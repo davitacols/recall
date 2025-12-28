@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "recall/wsgi.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
+    },
+    {
+      "src": "build_files.sh",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "staticfiles"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "config/wsgi.py"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "postgresql://neondb_owner:npg_TBtxv7d8LAEs@ep-rough-thunder-a44a4ps0-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require",
+    "REDIS_URL": "rediss://default:AR3KAAImcDFlNzhmYmViNTRkNTQ0YWJjYTQwN2MxNDMwOWYwOTgxY3AxNzYyNg@steady-collie-7626.upstash.io:6379",
+    "SECRET_KEY": "django-prod-secret-key",
+    "BEDROCK_ACCESS_KEY": "AKIAUHPTTS4AJTY5KHPF",
+    "BEDROCK_SECRET_KEY": "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",
+    "BEDROCK_REGION": "us-east-1",
+    "DEBUG": "False"
+  }
+}

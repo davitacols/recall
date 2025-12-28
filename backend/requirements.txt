@@ -22,3 +22,8 @@ djangorestframework-simplejwt==5.3.1
 
 # Production server
 gunicorn==21.2.0
+
+# Serverless deployment
+zappa==0.58.0
+django-storages==1.14.2
+boto3==1.34.0

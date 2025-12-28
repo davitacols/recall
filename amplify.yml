@@ -1,0 +1,19 @@
+version: 1
+applications:
+  - appRoot: backend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - pip install -r requirements.txt
+        build:
+          commands:
+            - python manage.py collectstatic --noinput
+            - python manage.py migrate
+      artifacts:
+        baseDirectory: /
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - '.venv/**/*'

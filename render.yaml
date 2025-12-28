@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: recall-backend
+    env: python
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn recall.wsgi:application
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_TBtxv7d8LAEs@ep-rough-thunder-a44a4ps0-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
+      - key: REDIS_URL
+        value: rediss://default:AR3KAAImcDFlNzhmYmViNTRkNTQ0YWJjYTQwN2MxNDMwOWYwOTgxY3AxNzYyNg@steady-collie-7626.upstash.io:6379
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AWS_ACCESS_KEY_ID
+        value: AKIAUHPTTS4AJTY5KHPF
+      - key: AWS_SECRET_ACCESS_KEY
+        value: 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
+      - key: AWS_REGION
+        value: us-east-1
+      - key: DEBUG
+        value: False
+      - key: PYTHON_VERSION
+        value: 3.11.0

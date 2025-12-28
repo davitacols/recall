@@ -19,3 +19,6 @@ dj-database-url==2.1.0
 
 # JWT for local authentication
 djangorestframework-simplejwt==5.3.1
+
+# Production server
+gunicorn==21.2.0

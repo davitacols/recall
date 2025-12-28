@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'League Spartan', system-ui, sans-serif;
+    background-color: #ffffff;
+    color: #27272a;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white shadow-space border border-gray-200 transition-all duration-200 hover:shadow-space-lg;
+  }
+  
+  .btn {
+    @apply px-4 py-2 font-bold text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 uppercase tracking-wide;
+  }
+  
+  .btn-primary {
+    @apply btn bg-gray-900 hover:bg-gray-800 text-white focus:ring-gray-900;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-900 focus:ring-gray-900;
+  }
+  
+  .input {
+    @apply w-full px-3 py-2 border-2 border-gray-300 focus:border-gray-900 focus:outline-none transition-colors text-sm;
+  }
+  
+  .nav-link {
+    @apply px-3 py-2 text-sm font-bold text-gray-600 hover:text-gray-900 transition-all duration-200 uppercase tracking-wide;
+  }
+  
+  .nav-link-active {
+    @apply nav-link text-gray-900 border-b-2 border-gray-900;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes zoom {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}

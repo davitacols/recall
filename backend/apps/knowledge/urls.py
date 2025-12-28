@@ -1,0 +1,21 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('search/', views.search_knowledge, name='search_knowledge'),
+    path('recent_decisions/', views.recent_decisions, name='recent_decisions'),
+    path('trending_topics/', views.trending_topics, name='trending_topics'),
+    path('trending/', views.trending_topics, name='trending_topics_alias'),
+    path('stats/', views.knowledge_stats, name='knowledge_stats'),
+    path('memory-score/', views.memory_score, name='memory_score'),
+    path('onboarding/', views.onboarding_package, name='onboarding_package'),
+    path('before-you-ask/', views.before_you_ask, name='before_you_ask'),
+    path('memory-gaps/', views.memory_gaps, name='memory_gaps'),
+    path('faq/', views.faq, name='faq'),
+    path('forgotten/', views.forgotten_knowledge, name='forgotten_knowledge'),
+    path('suggestions/', views.personalized_suggestions, name='personalized_suggestions'),
+    path('time-comparison/', views.time_comparison, name='time_comparison'),
+    path('cultural-memory/', views.cultural_memory, name='cultural_memory'),
+    path('legacy/', views.legacy_content, name='legacy_content'),
+    path('reflection/', views.personal_reflection, name='personal_reflection'),
+]

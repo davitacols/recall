@@ -1,0 +1,154 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './hooks/useAuth';
+import { useKeyboardShortcuts, CommandPalette } from './hooks/useKeyboardShortcuts';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import AcceptInvite from './pages/AcceptInvite';
+import Dashboard from './pages/Dashboard';
+import Conversations from './pages/Conversations';
+import ConversationDetail from './pages/ConversationDetail';
+import Decisions from './pages/Decisions';
+import DecisionDetail from './pages/DecisionDetail';
+import Knowledge from './pages/Knowledge';
+import ActivityFeed from './pages/ActivityFeed';
+import Settings from './pages/Settings';
+import Profile from './pages/Profile';
+import Onboarding from './pages/Onboarding';
+import FAQ from './pages/FAQ';
+import PersonalReflection from './pages/PersonalReflection';
+import NotificationsList from './components/NotificationsList';
+import NotificationDetail from './components/NotificationDetail';
+import Layout from './components/Layout';
+import './index.css';
+
+function ProtectedRoute({ children }) {
+  const { user } = useAuth();
+  return user ? children : <Navigate to="/login" />;
+}
+
+function AppContent() {
+  const { showCommandPalette, setShowCommandPalette } = useKeyboardShortcuts();
+
+  return (
+    <>
+      <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/invite/:token" element={<AcceptInvite />} />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
+        <Route path="/conversations" element={
+          <ProtectedRoute>
+            <Layout>
+              <Conversations />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/conversations/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <ConversationDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/decisions" element={
+          <ProtectedRoute>
+            <Layout>
+              <Decisions />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/decisions/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <DecisionDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/knowledge" element={
+          <ProtectedRoute>
+            <Layout>
+              <Knowledge />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/activity" element={
+          <ProtectedRoute>
+            <Layout>
+              <ActivityFeed />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Layout>
+              <Settings />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Layout>
+              <Profile />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/onboarding" element={
+          <ProtectedRoute>
+            <Layout>
+              <Onboarding />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/faq" element={
+          <ProtectedRoute>
+            <Layout>
+              <FAQ />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/reflection" element={
+          <ProtectedRoute>
+            <Layout>
+              <PersonalReflection />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/notifications" element={
+          <ProtectedRoute>
+            <Layout>
+              <NotificationsList />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/notifications/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <NotificationDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+      </Routes>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;

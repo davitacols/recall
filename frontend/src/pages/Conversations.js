@@ -174,9 +174,9 @@ function CreateConversationForm({ onSubmit, onCancel }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white w-full max-w-3xl">
-        <div className="p-8 border-b border-gray-200 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
           <h2 className="text-2xl font-bold text-gray-900">Create Conversation</h2>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-900">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +185,7 @@ function CreateConversationForm({ onSubmit, onCancel }) {
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-base font-bold text-gray-900 mb-3">
               Type
@@ -224,7 +224,7 @@ function CreateConversationForm({ onSubmit, onCancel }) {
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
               placeholder="Share your thoughts..."
-              rows={8}
+              rows={6}
             />
           </div>
           

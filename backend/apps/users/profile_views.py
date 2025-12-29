@@ -24,7 +24,16 @@ def update_profile(request):
     
     user.save()
     
-    avatar_url = request.build_absolute_uri(user.avatar.url) if user.avatar else None
+    # In production (S3), avatar.url is already absolute
+    # In development (local), we need to build absolute URI
+    from django.conf import settings
+    if user.avatar:
+        if settings.DEBUG:
+            avatar_url = request.build_absolute_uri(user.avatar.url)
+        else:
+            avatar_url = user.avatar.url
+    else:
+        avatar_url = None
     
     return Response({
         'id': user.id,

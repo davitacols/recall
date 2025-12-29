@@ -42,25 +42,28 @@ const MentionTagInput = ({ value, onChange, placeholder, rows = 4 }) => {
 
   const fetchUsers = async (query) => {
     try {
-      const response = await fetch('http://localhost:8000/api/conversations/users/', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/conversations/users/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const users = await response.json();
       const filtered = users.filter(u => 
-        u.username.toLowerCase().includes(query.toLowerCase())
+        u.username.toLowerCase().includes(query.toLowerCase()) ||
+        (u.full_name && u.full_name.toLowerCase().includes(query.toLowerCase()))
       );
       setSuggestions(filtered);
       setShowSuggestions(filtered.length > 0);
       setSelectedIndex(0);
     } catch (err) {
-      console.error('Failed to fetch users');
+      console.error('Failed to fetch users:', err);
     }
   };
 
   const fetchTags = async (query) => {
     try {
-      const response = await fetch('http://localhost:8000/api/conversations/tags/', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/conversations/tags/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const tags = await response.json();
       const filtered = tags.filter(t => 
@@ -70,7 +73,7 @@ const MentionTagInput = ({ value, onChange, placeholder, rows = 4 }) => {
       setShowSuggestions(filtered.length > 0);
       setSelectedIndex(0);
     } catch (err) {
-      console.error('Failed to fetch tags');
+      console.error('Failed to fetch tags:', err);
     }
   };
 

@@ -49,9 +49,13 @@ function Layout({ children }) {
           {/* Left: Logo + Org */}
           <div className="flex items-center space-x-2 md:space-x-6">
             <Link to="/" className="flex items-center space-x-2 md:space-x-3 group">
-              <div className="w-8 md:w-10 h-8 md:h-10 bg-gray-900 flex items-center justify-center">
-                <span className="text-white font-bold text-lg md:text-xl">R</span>
-              </div>
+              {user?.organization_logo ? (
+                <img src={user.organization_logo} alt={user.organization_name} className="w-8 md:w-10 h-8 md:h-10 object-contain" />
+              ) : (
+                <div className="w-8 md:w-10 h-8 md:h-10 bg-gray-900 flex items-center justify-center" style={{ backgroundColor: user?.organization_color || '#000000' }}>
+                  <span className="text-white font-bold text-lg md:text-xl">R</span>
+                </div>
+              )}
               <span className="text-xl md:text-2xl font-bold text-gray-900">RECALL</span>
             </Link>
             <span className="text-gray-300 hidden md:inline">|</span>

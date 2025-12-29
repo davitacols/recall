@@ -13,6 +13,10 @@ class Organization(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True, db_index=True)
     
+    # Branding
+    logo = models.ImageField(upload_to='org_logos/', blank=True, null=True)
+    primary_color = models.CharField(max_length=7, default='#000000', help_text='Hex color code')
+    
     # Subscription/limits for enterprise features
     max_users = models.PositiveIntegerField(default=50)
     ai_processing_enabled = models.BooleanField(default=True)

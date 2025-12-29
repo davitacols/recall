@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PlusIcon, EyeIcon, HeartIcon, BookmarkIcon, Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/outline';
+import { useToast } from '../components/Toast';
 import api from '../services/api';
 import MentionTagInput from '../components/MentionTagInput';
 
@@ -9,6 +10,7 @@ function Conversations() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('masonry');
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetchConversations();
@@ -20,6 +22,7 @@ function Conversations() {
       setConversations(response.data.results || response.data);
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
+      addToast('Failed to load conversations', 'error');
     } finally {
       setLoading(false);
     }
@@ -30,8 +33,10 @@ function Conversations() {
       await api.post('/api/conversations/', formData);
       setShowCreateForm(false);
       fetchConversations();
+      addToast('Conversation created successfully', 'success');
     } catch (error) {
       console.error('Failed to create conversation:', error);
+      addToast('Failed to create conversation', 'error');
     }
   };
 
@@ -57,14 +62,14 @@ function Conversations() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-12 animate-fadeIn">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 md:mb-12 animate-fadeIn gap-4">
         <div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-3">Conversations</h1>
-          <p className="text-xl text-gray-600">{conversations.length} conversations</p>
+          <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-2 md:mb-3">Conversations</h1>
+          <p className="text-base md:text-xl text-gray-600">{conversations.length} conversations</p>
         </div>
         <button
           onClick={() => setShowCreateForm(true)}
-          className="recall-btn-primary flex items-center space-x-2"
+          className="recall-btn-primary flex items-center space-x-2 justify-center sm:justify-start"
         >
           <PlusIcon className="w-5 h-5" />
           <span>New Conversation</span>
@@ -94,8 +99,8 @@ function Conversations() {
         <div className="space-y-4">
           {conversations.map((conversation, index) => (
             <Link key={conversation.id} to={`/conversations/${conversation.id}`}>
-              <div className="border border-gray-200 p-8 hover:border-gray-900 transition-all duration-200 animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
-                <div className="flex items-center justify-between mb-6">
+              <div className="border border-gray-200 p-4 md:p-8 hover:border-gray-900 transition-all duration-200 animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 md:mb-6 gap-3">
                   <div className="flex items-center space-x-3">
                     <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                       conversation.post_type === 'decision' ? 'bg-gray-900 text-white' :
@@ -115,15 +120,15 @@ function Conversations() {
                   </span>
                 </div>
                 
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 md:mb-4">
                   {conversation.title}
                 </h3>
                 
-                <p className="text-lg text-gray-700 line-clamp-2 mb-4">
+                <p className="text-base md:text-lg text-gray-700 line-clamp-2 mb-3 md:mb-4">
                   {conversation.content}
                 </p>
                 
-                <div className="flex items-center space-x-6 text-gray-600">
+                <div className="flex flex-wrap items-center gap-3 md:gap-6 text-sm md:text-base text-gray-600">
                   <span className="font-medium">{conversation.author}</span>
                   {conversation.replies_count > 0 && (
                     <span>{conversation.replies_count} {conversation.replies_count === 1 ? 'reply' : 'replies'}</span>

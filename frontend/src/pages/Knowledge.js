@@ -59,26 +59,26 @@ function Knowledge() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-12 animate-fadeIn">
-        <h1 className="text-5xl font-bold text-gray-900 mb-3">Knowledge Search</h1>
-        <p className="text-xl text-gray-600">Search through your organization's memory</p>
+      <div className="mb-8 md:mb-12 animate-fadeIn">
+        <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-2 md:mb-3">Knowledge Search</h1>
+        <p className="text-base md:text-xl text-gray-600">Search through your organization's memory</p>
       </div>
 
       {/* Search Form */}
-      <form onSubmit={handleSearch} className="mb-12 animate-fadeIn" style={{ animationDelay: '0.1s' }}>
+      <form onSubmit={handleSearch} className="mb-8 md:mb-12 animate-fadeIn" style={{ animationDelay: '0.1s' }}>
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-5 md:w-6 h-5 md:h-6 text-gray-400" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search for anything..."
-            className="w-full pl-16 pr-32 py-5 border border-gray-300 text-lg focus:border-gray-900 focus:outline-none"
+            className="w-full pl-12 md:pl-16 pr-24 md:pr-32 py-4 md:py-5 border border-gray-300 text-base md:text-lg focus:border-gray-900 focus:outline-none"
           />
           <button
             type="submit"
             disabled={loading || !query.trim()}
-            className="absolute right-3 top-1/2 -translate-y-1/2 recall-btn-primary disabled:opacity-50"
+            className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 recall-btn-primary disabled:opacity-50 text-sm md:text-base"
           >
             {loading ? 'Searching...' : 'Search'}
           </button>
@@ -157,7 +157,7 @@ function Knowledge() {
 
       {/* Stats */}
       {!hasSearched && (
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
           <div className="border border-gray-200 p-8 text-center">
             <div className="text-4xl font-bold text-gray-900 mb-2">{stats.total_items}</div>
             <div className="text-sm text-gray-600 uppercase tracking-wide">Searchable Items</div>

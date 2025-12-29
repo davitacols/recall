@@ -105,6 +105,7 @@ def login(request):
 def profile(request):
     user = request.user
     avatar_url = request.build_absolute_uri(user.avatar.url) if user.avatar else None
+    org_logo_url = request.build_absolute_uri(user.organization.logo.url) if user.organization.logo else None
     
     return Response({
         'id': user.id,
@@ -115,7 +116,9 @@ def profile(request):
         'role': user.role,
         'timezone': user.timezone,
         'avatar': avatar_url,
-        'organization_name': user.organization.name
+        'organization_name': user.organization.name,
+        'organization_logo': org_logo_url,
+        'organization_color': user.organization.primary_color
     })
 
 @csrf_exempt
@@ -135,13 +138,37 @@ def register(request):
             return Response({'error': 'Email, password, and organization name required'}, 
                            status=status.HTTP_400_BAD_REQUEST)
         
+        # Validate company email (no free email providers)
+        free_email_domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com', 'zoho.com', 'yandex.com']
+        email_domain = email.split('@')[-1].lower()
+        if email_domain in free_email_domains:
+            return Response({'error': 'Please use a company email address. Free email providers are not allowed for organization registration.'}, 
+                           status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate organization name
+        if len(organization_name.strip()) < 2:
+            return Response({'error': 'Organization name must be at least 2 characters'}, 
+                           status=status.HTTP_400_BAD_REQUEST)
+        
+        if not organization_name.replace(' ', '').replace('-', '').isalnum():
+            return Response({'error': 'Organization name can only contain letters, numbers, spaces, and hyphens'}, 
+                           status=status.HTTP_400_BAD_REQUEST)
+        
         try:
             from apps.organizations.models import Organization
-            org_slug = organization_name.lower().replace(' ', '-')
+            import re
+            
+            # Create slug from organization name
+            org_slug = re.sub(r'[^a-z0-9-]', '', organization_name.lower().replace(' ', '-'))
             
             # Check if organization already exists
             if Organization.objects.filter(slug=org_slug).exists():
-                return Response({'error': 'Organization already exists'}, 
+                return Response({'error': 'An organization with this name already exists. Please choose a different name.'}, 
+                               status=status.HTTP_400_BAD_REQUEST)
+            
+            # Check if email already exists
+            if User.objects.filter(email=email).exists():
+                return Response({'error': 'An account with this email already exists'}, 
                                status=status.HTTP_400_BAD_REQUEST)
             
             # Create organization

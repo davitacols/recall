@@ -76,26 +76,26 @@ function Insights() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-6 mb-12">
-        <div className="border border-gray-200 p-8">
-          <div className="text-4xl font-bold text-gray-900 mb-2">{stats.totalConversations}</div>
-          <div className="text-sm text-gray-600 uppercase tracking-wide">Total Conversations</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12">
+        <div className="border border-gray-200 p-4 md:p-8">
+          <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2">{stats.totalConversations}</div>
+          <div className="text-xs md:text-sm text-gray-600 uppercase tracking-wide">Total Conversations</div>
         </div>
-        <div className="border border-gray-200 p-8">
-          <div className="text-4xl font-bold text-gray-900 mb-2">{stats.totalDecisions}</div>
-          <div className="text-sm text-gray-600 uppercase tracking-wide">Decisions Made</div>
+        <div className="border border-gray-200 p-4 md:p-8">
+          <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2">{stats.totalDecisions}</div>
+          <div className="text-xs md:text-sm text-gray-600 uppercase tracking-wide">Decisions Made</div>
         </div>
-        <div className="border border-gray-200 p-8">
-          <div className="text-4xl font-bold text-gray-900 mb-2">{stats.thisWeek}</div>
-          <div className="text-sm text-gray-600 uppercase tracking-wide">This Week</div>
+        <div className="border border-gray-200 p-4 md:p-8">
+          <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2">{stats.thisWeek}</div>
+          <div className="text-xs md:text-sm text-gray-600 uppercase tracking-wide">This Week</div>
         </div>
-        <div className="border border-gray-200 p-8">
-          <div className="text-4xl font-bold text-gray-900 mb-2">{stats.activeUsers}</div>
-          <div className="text-sm text-gray-600 uppercase tracking-wide">Active Users</div>
+        <div className="border border-gray-200 p-4 md:p-8">
+          <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2">{stats.activeUsers}</div>
+          <div className="text-xs md:text-sm text-gray-600 uppercase tracking-wide">Active Users</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* Top Contributors */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Top Contributors</h2>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useToast } from '../components/Toast';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 function Login() {
@@ -18,6 +19,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login, register } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -28,19 +30,28 @@ function Login() {
     if (isLogin) {
       const result = await login(credentials);
       if (result.success) {
+        addToast('Welcome back!', 'success');
         navigate('/');
       } else {
         setError(result.error);
+        addToast(result.error, 'error');
       }
     } else {
       const result = await register(credentials);
       if (result.success) {
         setError('');
-        setIsLogin(true);
-        setCredentials({ username: '', password: '', token: '', organization: '' });
-        alert('Account created successfully! Please sign in.');
+        if (inviteToken) {
+          setIsLogin(true);
+          setCredentials({ username: inviteEmail || '', password: '', token: '', organization: '' });
+          addToast('Account created successfully! Please sign in.', 'success');
+        } else {
+          setIsLogin(true);
+          setCredentials({ username: '', password: '', token: '', organization: '' });
+          addToast('Organization created successfully! Please sign in.', 'success');
+        }
       } else {
         setError(result.error);
+        addToast(result.error, 'error');
       }
     }
     setLoading(false);

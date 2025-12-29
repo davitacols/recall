@@ -186,7 +186,7 @@ function Layout({ children }) {
       {/* Desktop Sidebar */}
       <aside className={`fixed top-16 left-0 bottom-0 ${
         sidebarCollapsed ? 'w-20' : 'w-64'
-      } bg-white border-r border-gray-200 hidden lg:block transition-all duration-200 overflow-hidden`}>
+      } bg-white border-r border-gray-200 hidden lg:block transition-all duration-200 overflow-y-auto`}>
         <div className="h-full flex flex-col">
           {/* Org Switcher */}
           <div className="p-4 border-b border-gray-200">

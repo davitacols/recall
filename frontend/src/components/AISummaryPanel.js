@@ -1,14 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
 function AISummaryPanel({ conversation, onExplainSimply, loadingExplanation, simpleExplanation }) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  
   if (!conversation.ai_summary && !conversation.ai_action_items?.length) {
     return null;
   }
 
   return (
-    <div className="sticky top-8 bg-white border border-gray-200 p-6 mb-8">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">Summary</h2>
+    <div className="sticky top-8 bg-white border border-gray-200 mb-8">
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
+      >
+        <h2 className="text-xl font-bold text-gray-900">Summary</h2>
+        {isCollapsed ? <ChevronDownIcon className="w-5 h-5" /> : <ChevronUpIcon className="w-5 h-5" />}
+      </button>
       
+      {!isCollapsed && (
+        <div className="px-6 pb-6">
       {/* AI Summary */}
       {conversation.ai_summary && (
         <div className="mb-6">
@@ -66,11 +77,13 @@ function AISummaryPanel({ conversation, onExplainSimply, loadingExplanation, sim
         {loadingExplanation ? 'Generating...' : 'Explain simply'}
       </button>
 
-      {/* Simple Explanation */}
-      {simpleExplanation && (
-        <div className="mt-4 p-4 bg-gray-50 border-l-2 border-gray-900">
-          <p className="text-sm font-bold text-gray-900 mb-2">Summary generated · Edit anytime</p>
-          <p className="text-sm text-gray-700 leading-relaxed">{simpleExplanation}</p>
+          {/* Simple Explanation */}
+          {simpleExplanation && (
+            <div className="mt-4 p-4 bg-gray-50 border-l-2 border-gray-900">
+              <p className="text-sm font-bold text-gray-900 mb-2">Summary generated · Edit anytime</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{simpleExplanation}</p>
+            </div>
+          )}
         </div>
       )}
     </div>

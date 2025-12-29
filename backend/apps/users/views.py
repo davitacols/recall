@@ -134,7 +134,11 @@ def profile(request):
         'avatar': avatar_url,
         'organization_name': user.organization.name,
         'organization_logo': org_logo_url,
-        'organization_color': user.organization.primary_color
+        'organization_color': user.organization.primary_color,
+        'onboarding_completed': user.onboarding_completed,
+        'first_conversation_created': user.first_conversation_created,
+        'first_teammate_invited': user.first_teammate_invited,
+        'first_decision_made': user.first_decision_made
     })
 
 @csrf_exempt

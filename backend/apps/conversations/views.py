@@ -24,6 +24,13 @@ def conversations(request):
             is_archived=False
         )
         
+        # Check for drafts
+        draft_param = request.GET.get('drafts')
+        if draft_param == 'true':
+            queryset = queryset.filter(is_draft=True, author=request.user)
+        else:
+            queryset = queryset.filter(is_draft=False)
+        
         # Search and filters
         search = request.GET.get('search')
         if search:
@@ -60,56 +67,67 @@ def conversations(request):
     
     elif request.method == 'POST':
         data = request.data
+        is_draft = data.get('is_draft', False)
+        
         conversation = Conversation.objects.create(
             organization=request.user.organization,
             author=request.user,
-            title=data['title'],
-            content=data['content'],
-            post_type=data['post_type'],
+            title=data.get('title', 'Untitled'),
+            content=data.get('content', ''),
+            post_type=data.get('post_type', 'update'),
             priority=data.get('priority', 'medium'),
-            why_this_matters=data.get('why_this_matters', '')
+            why_this_matters=data.get('why_this_matters', ''),
+            is_draft=is_draft,
+            draft_saved_at=timezone.now() if is_draft else None
         )
         
         # Parse mentions and tags
-        mentioned_users, tags = parse_mentions_and_tags(
-            data['content'], 
-            request.user.organization
-        )
-        conversation.mentioned_users.set(mentioned_users)
-        conversation.tags.set(tags)
-        
-        # Create notifications for mentions
-        from apps.notifications.utils import create_notification
-        for mentioned_user in mentioned_users:
-            if mentioned_user != request.user:
-                create_notification(
-                    user=mentioned_user,
-                    notification_type='mention',
-                    title=f'{request.user.get_full_name()} mentioned you',
-                    message=f'In: {conversation.title}',
-                    link=f'/conversations/{conversation.id}'
-                )
-        
-        # Log activity
-        log_activity(
-            organization=request.user.organization,
-            actor=request.user,
-            action_type='conversation_created',
-            content_object=conversation,
-            title=conversation.title,
-            post_type=conversation.post_type
-        )
-        
-        # Trigger AI processing (optional - fails gracefully if Redis/Celery not running)
-        try:
-            process_conversation_ai.delay(conversation.id)
-        except Exception as e:
-            print(f"AI processing skipped (Celery not running): {e}")
+        if not is_draft:
+            mentioned_users, tags = parse_mentions_and_tags(
+                data.get('content', ''), 
+                request.user.organization
+            )
+            conversation.mentioned_users.set(mentioned_users)
+            conversation.tags.set(tags)
+            
+            # Create notifications for mentions
+            from apps.notifications.utils import create_notification
+            for mentioned_user in mentioned_users:
+                if mentioned_user != request.user:
+                    create_notification(
+                        user=mentioned_user,
+                        notification_type='mention',
+                        title=f'{request.user.get_full_name()} mentioned you',
+                        message=f'In: {conversation.title}',
+                        link=f'/conversations/{conversation.id}'
+                    )
+            
+            # Log activity
+            log_activity(
+                organization=request.user.organization,
+                actor=request.user,
+                action_type='conversation_created',
+                content_object=conversation,
+                title=conversation.title,
+                post_type=conversation.post_type
+            )
+            
+            # Update onboarding progress
+            if not request.user.first_conversation_created:
+                request.user.first_conversation_created = True
+                request.user.save(update_fields=['first_conversation_created'])
+            
+            # Trigger AI processing
+            try:
+                process_conversation_ai.delay(conversation.id)
+            except Exception as e:
+                print(f"AI processing skipped (Celery not running): {e}")
         
         return Response({
             'id': conversation.id,
             'title': conversation.title,
             'post_type': conversation.post_type,
+            'is_draft': conversation.is_draft,
             'created_at': conversation.created_at
         }, status=status.HTTP_201_CREATED)
 
@@ -279,6 +297,13 @@ def conversation_detail(request, conversation_id):
             
             if 'emotional_context' in request.data:
                 conversation.emotional_context = request.data['emotional_context']
+            
+            if 'is_draft' in request.data:
+                conversation.is_draft = request.data['is_draft']
+                if request.data['is_draft']:
+                    conversation.draft_saved_at = timezone.now()
+                else:
+                    conversation.draft_saved_at = None
             
             conversation.save()
             

@@ -60,17 +60,25 @@ function NotificationBell() {
     }
   };
 
-  const getNotificationIcon = (type) => {
-    switch(type) {
-      case 'mention': return '💬';
-      case 'reply': return '↩️';
-      case 'decision': return '✅';
-      case 'reminder': return '🔔';
-      case 'badge': return '🏆';
-      case 'organization_update': return '🏢';
-      default: return '📢';
-    }
+  const groupNotificationsByType = (notifications) => {
+    const grouped = {
+      attention: [],
+      fyi: []
+    };
+    
+    notifications.forEach(notif => {
+      // Requires attention: mentions, decisions, organization updates
+      if (['mention', 'decision', 'organization_update'].includes(notif.type)) {
+        grouped.attention.push(notif);
+      } else {
+        grouped.fyi.push(notif);
+      }
+    });
+    
+    return grouped;
   };
+
+  const groupedNotifications = groupNotificationsByType(notifications);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -87,66 +95,115 @@ function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border-2 border-gray-900 shadow-lg z-50 max-w-[calc(100vw-2rem)]">
-          <div className="p-3 sm:p-4 border-b-2 border-gray-900 flex items-center justify-between">
-            <h3 className="text-base sm:text-lg font-bold text-gray-900 uppercase tracking-wide">Notifications</h3>
+        <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 shadow-lg z-50">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-base font-bold text-gray-900">Notifications</h3>
             <button
               onClick={() => {
                 navigate('/notifications');
                 setIsOpen(false);
               }}
-              className="text-xs font-bold text-gray-600 hover:text-gray-900 uppercase tracking-wide"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900"
             >
               View All
             </button>
           </div>
 
-          <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto">
             {loading ? (
-              <div className="p-6 sm:p-8 text-center">
+              <div className="p-8 text-center">
                 <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
               </div>
             ) : notifications.length === 0 ? (
-              <div className="p-6 sm:p-8 text-center text-gray-500">
-                <BellIcon className="w-10 sm:w-12 h-10 sm:h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-xs sm:text-sm">No notifications</p>
+              <div className="p-8 text-center text-gray-500">
+                <p className="text-sm">You're all caught up.</p>
+                <p className="text-xs text-gray-400 mt-1">New mentions and updates will appear here.</p>
               </div>
             ) : (
-              notifications.slice(0, 5).map((notif) => (
-                <div
-                  key={notif.id}
-                  className={`p-3 sm:p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors ${!notif.is_read ? 'bg-gray-50' : ''}`}
-                >
-                  <div className="flex items-start space-x-2 sm:space-x-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <p className="text-sm font-bold text-gray-900">{notif.title}</p>
-                        {!notif.is_read && (
-                          <div className="w-2 h-2 bg-gray-900 rounded-full ml-2 mt-1.5 flex-shrink-0"></div>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-600 mt-1">{notif.message}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-gray-500">
-                          {new Date(notif.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {notif.link && (
-                          <Link
-                            to={notif.link}
-                            onClick={() => {
-                              handleMarkAsRead(notif.id);
-                              setIsOpen(false);
-                            }}
-                            className="text-xs font-bold text-gray-900 hover:underline uppercase"
-                          >
-                            View →
-                          </Link>
-                        )}
-                      </div>
+              <>
+                {/* Requires Attention */}
+                {groupedNotifications.attention.length > 0 && (
+                  <div>
+                    <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                      <span className="text-xs font-bold text-gray-700 uppercase">Requires Attention</span>
                     </div>
+                    {groupedNotifications.attention.slice(0, 3).map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="text-sm font-bold text-gray-900 flex-1">{notif.title}</p>
+                          {!notif.is_read && (
+                            <div className="w-2 h-2 bg-red-600 rounded-full ml-2 mt-1.5 flex-shrink-0"></div>
+                          )}
+                        </div>
+                        {notif.ai_summary && (
+                          <p className="text-xs text-gray-600 mb-2 italic">{notif.ai_summary}</p>
+                        )}
+                        <p className="text-xs text-gray-600 mb-2">{notif.message}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">
+                            {new Date(notif.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {notif.link && (
+                            <Link
+                              to={notif.link}
+                              onClick={() => {
+                                handleMarkAsRead(notif.id);
+                                setIsOpen(false);
+                              }}
+                              className="text-xs font-bold text-gray-900 hover:underline"
+                            >
+                              View →
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))
+                )}
+
+                {/* FYI */}
+                {groupedNotifications.fyi.length > 0 && (
+                  <div>
+                    <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                      <span className="text-xs font-bold text-gray-700 uppercase">FYI</span>
+                    </div>
+                    {groupedNotifications.fyi.slice(0, 2).map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="text-sm font-medium text-gray-900 flex-1">{notif.title}</p>
+                          {!notif.is_read && (
+                            <div className="w-2 h-2 bg-gray-400 rounded-full ml-2 mt-1.5 flex-shrink-0"></div>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 mb-2">{notif.message}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">
+                            {new Date(notif.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                          {notif.link && (
+                            <Link
+                              to={notif.link}
+                              onClick={() => {
+                                handleMarkAsRead(notif.id);
+                                setIsOpen(false);
+                              }}
+                              className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                            >
+                              View
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

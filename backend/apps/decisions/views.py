@@ -79,6 +79,11 @@ def decisions(request):
             title=decision.title
         )
         
+        # Update onboarding progress
+        if not request.user.first_decision_made:
+            request.user.first_decision_made = True
+            request.user.save(update_fields=['first_decision_made'])
+        
         return Response({
             'id': decision.id,
             'title': decision.title,

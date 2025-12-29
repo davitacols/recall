@@ -35,6 +35,11 @@ def invite_user(request):
     from apps.notifications.email_service import send_invitation_email
     send_invitation_email(invitation)
     
+    # Update onboarding progress
+    if not request.user.first_teammate_invited:
+        request.user.first_teammate_invited = True
+        request.user.save(update_fields=['first_teammate_invited'])
+    
     return Response({
         'message': 'Invitation sent',
         'token': str(invitation.token),

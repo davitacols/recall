@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PlusIcon, EyeIcon, HeartIcon, BookmarkIcon, Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../components/Toast';
+import { useDraftRecovery } from '../hooks/useDraftRecovery';
+import MobileFAB from '../components/MobileFAB';
 import api from '../services/api';
 import MentionTagInput from '../components/MentionTagInput';
 
@@ -11,6 +13,7 @@ function Conversations() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('masonry');
   const { addToast } = useToast();
+  const { draft, loading: draftLoading } = useDraftRecovery();
 
   useEffect(() => {
     fetchConversations();
@@ -76,23 +79,45 @@ function Conversations() {
         </button>
       </div>
 
+      {/* Draft Recovery Banner */}
+      {!draftLoading && draft && (
+        <div className="mb-8 border-2 border-gray-900 bg-gray-50 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">You have an unfinished draft</h3>
+              <p className="text-base text-gray-700 mb-1">{draft.title || 'Untitled'}</p>
+              <p className="text-sm text-gray-500">Last saved {new Date(draft.draft_saved_at).toLocaleString()}</p>
+            </div>
+            <button
+              onClick={() => {
+                setShowCreateForm(true);
+              }}
+              className="recall-btn-primary ml-4"
+            >
+              Resume
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Create Form Modal */}
       {showCreateForm && (
         <CreateConversationForm
           onSubmit={handleCreateConversation}
           onCancel={() => setShowCreateForm(false)}
+          existingDraft={draft}
         />
       )}
 
       {/* Conversations */}
       {conversations.length === 0 ? (
-        <div className="text-center py-20">
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">No Conversations Yet</h3>
+        <div className="text-center py-20 border border-gray-200 bg-gray-50">
+          <h3 className="text-2xl font-bold text-gray-900 mb-3">No conversations yet</h3>
           <p className="text-lg text-gray-600 mb-8">
-            Start engaging with your team
+            Start the first conversation to capture decisions and knowledge.
           </p>
           <button onClick={() => setShowCreateForm(true)} className="recall-btn-primary">
-            Create First Conversation
+            Start a conversation
           </button>
         </div>
       ) : (
@@ -154,17 +179,51 @@ function Conversations() {
           ))}
         </div>
       )}
+      
+      {/* Mobile FAB */}
+      <MobileFAB onClick={() => setShowCreateForm(true)} />
     </div>
   );
 }
 
-function CreateConversationForm({ onSubmit, onCancel }) {
+function CreateConversationForm({ onSubmit, onCancel, existingDraft }) {
   const [formData, setFormData] = useState({
-    post_type: 'update',
-    title: '',
-    content: ''
+    post_type: existingDraft?.post_type || 'update',
+    title: existingDraft?.title || '',
+    content: existingDraft?.content || ''
   });
   const [loading, setLoading] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.title || formData.content) {
+        saveDraft();
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [formData]);
+
+  const saveDraft = async () => {
+    setAutoSaving(true);
+    try {
+      if (existingDraft) {
+        await api.put(`/api/conversations/${existingDraft.id}/`, {
+          ...formData,
+          is_draft: true
+        });
+      } else {
+        await api.post('/api/conversations/', {
+          ...formData,
+          is_draft: true
+        });
+      }
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    } finally {
+      setAutoSaving(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -177,7 +236,7 @@ function CreateConversationForm({ onSubmit, onCancel }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
-          <h2 className="text-2xl font-bold text-gray-900">Create Conversation</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Start a conversation</h2>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-900">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -204,14 +263,14 @@ function CreateConversationForm({ onSubmit, onCancel }) {
           
           <div>
             <label className="block text-base font-bold text-gray-900 mb-3">
-              Title
+              What's this about?
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 text-base focus:border-gray-900 focus:outline-none"
-              placeholder="Enter a compelling title"
+              placeholder="What's this about?"
               required
             />
           </div>
@@ -223,7 +282,7 @@ function CreateConversationForm({ onSubmit, onCancel }) {
             <MentionTagInput
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              placeholder="Share your thoughts..."
+              placeholder="Share context, ask a question, or propose a decision…"
               rows={6}
             />
           </div>
@@ -233,7 +292,7 @@ function CreateConversationForm({ onSubmit, onCancel }) {
               Cancel
             </button>
             <button type="submit" disabled={loading} className="recall-btn-primary disabled:opacity-50">
-              {loading ? 'Creating...' : 'Create'}
+              {loading ? 'Posting...' : 'Post'}
             </button>
           </div>
         </form>

@@ -80,6 +80,10 @@ class Conversation(models.Model):
     owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_conversations')
     is_crisis = models.BooleanField(default=False, db_index=True)
     
+    # Draft recovery
+    is_draft = models.BooleanField(default=False, db_index=True)
+    draft_saved_at = models.DateTimeField(null=True, blank=True)
+    
     # Memory health tracking
     memory_health_score = models.IntegerField(default=50, help_text="0-100 score for documentation quality")
     

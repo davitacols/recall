@@ -77,6 +77,12 @@ class User(AbstractUser):
         default='daily'
     )
     
+    # Onboarding progress
+    onboarding_completed = models.BooleanField(default=False)
+    first_conversation_created = models.BooleanField(default=False)
+    first_teammate_invited = models.BooleanField(default=False)
+    first_decision_made = models.BooleanField(default=False)
+    
     class Meta:
         db_table = 'users'
         unique_together = ['username', 'organization']

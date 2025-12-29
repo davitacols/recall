@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const DeveloperInsights = ({ conversationId }) => {
   const [insights, setInsights] = useState(null);
@@ -12,11 +12,7 @@ const DeveloperInsights = ({ conversationId }) => {
 
   const fetchInsights = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `http://localhost:8000/api/conversations/${conversationId}/developer-insights/`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.get(`/api/conversations/${conversationId}/developer-insights/`);
       if (response.data.simple_summary) {
         setInsights(response.data);
       }
@@ -28,12 +24,7 @@ const DeveloperInsights = ({ conversationId }) => {
   const processWithDeveloperMode = async () => {
     setProcessing(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post(
-        `http://localhost:8000/api/conversations/${conversationId}/developer-mode/`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.post(`/api/conversations/${conversationId}/developer-mode/`, {});
       setInsights(response.data);
     } catch (error) {
       console.error('Error processing:', error);

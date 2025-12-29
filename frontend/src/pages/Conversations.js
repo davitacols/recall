@@ -100,24 +100,39 @@ function Conversations() {
           {conversations.map((conversation, index) => (
             <Link key={conversation.id} to={`/conversations/${conversation.id}`}>
               <div className="border border-gray-200 p-4 md:p-8 hover:border-gray-900 transition-all duration-200 animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 md:mb-6 gap-3">
-                  <div className="flex items-center space-x-3">
-                    <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${
-                      conversation.post_type === 'decision' ? 'bg-gray-900 text-white' :
-                      conversation.post_type === 'question' ? 'border border-gray-900 text-gray-900' :
-                      conversation.post_type === 'proposal' ? 'bg-gray-900 text-white' :
-                      'border border-gray-900 text-gray-900'
-                    }`}>
-                      {conversation.post_type}
-                    </span>
+                <div className="flex items-start space-x-4 mb-4 md:mb-6">
+                  {/* Avatar */}
+                  <div className="w-10 md:w-12 h-10 md:h-12 flex-shrink-0">
+                    {conversation.author_avatar ? (
+                      <img src={conversation.author_avatar} alt={conversation.author} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                        <span className="text-white font-bold text-sm md:text-base">{conversation.author?.charAt(0).toUpperCase()}</span>
+                      </div>
+                    )}
                   </div>
-                  <span className="text-sm text-gray-600">
-                    {new Date(conversation.created_at).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </span>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-center space-x-3">
+                        <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                          conversation.post_type === 'decision' ? 'bg-gray-900 text-white' :
+                          conversation.post_type === 'question' ? 'border border-gray-900 text-gray-900' :
+                          conversation.post_type === 'proposal' ? 'bg-gray-900 text-white' :
+                          'border border-gray-900 text-gray-900'
+                        }`}>
+                          {conversation.post_type}
+                        </span>
+                      </div>
+                      <span className="text-sm text-gray-600">
+                        {new Date(conversation.created_at).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 
                 <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 md:mb-4">

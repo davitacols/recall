@@ -78,9 +78,15 @@ function Dashboard() {
               style={{ animationDelay: `${index * 0.05}s` }}
             >
               <div className="flex items-start space-x-6">
-                {/* Icon */}
-                <div className="w-12 h-12 bg-gray-900 flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-6 h-6 text-white" />
+                {/* Avatar */}
+                <div className="w-12 h-12 flex-shrink-0">
+                  {conv.author_avatar ? (
+                    <img src={conv.author_avatar} alt={conv.author} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">{conv.author?.charAt(0).toUpperCase()}</span>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Content */}
@@ -110,7 +116,10 @@ function Dashboard() {
                   </p>
                   
                   <div className="flex items-center space-x-6 text-gray-600">
-                    <span className="font-medium">{conv.author}</span>
+                    <div className="flex items-center space-x-2">
+                      <Icon className="w-5 h-5" />
+                      <span className="font-medium">{conv.author}</span>
+                    </div>
                     {conv.reply_count > 0 && (
                       <span>{conv.reply_count} {conv.reply_count === 1 ? 'reply' : 'replies'}</span>
                     )}

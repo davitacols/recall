@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
+import { useToast } from '../components/Toast';
 import { CameraIcon, ChatBubbleLeftIcon, CheckCircleIcon, DocumentTextIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 function Profile() {
   const { user, logout } = useAuth();
+  const { addToast } = useToast();
   const [profile, setProfile] = useState({
     full_name: '',
     bio: '',
@@ -17,8 +19,6 @@ function Profile() {
     new_password: '',
     confirm_password: ''
   });
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
   const [stats, setStats] = useState({
     conversations: 0,
     replies: 0,
@@ -91,8 +91,6 @@ function Profile() {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setError('');
 
     const formData = new FormData();
     formData.append('full_name', profile.full_name);
@@ -106,20 +104,18 @@ function Profile() {
       await api.put('/api/auth/profile/update/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setMessage('Profile updated successfully');
+      addToast('Profile updated successfully', 'success');
       fetchProfile();
     } catch (err) {
-      setError('Failed to update profile');
+      addToast('Failed to update profile', 'error');
     }
   };
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setError('');
 
     if (passwords.new_password !== passwords.confirm_password) {
-      setError('Passwords do not match');
+      addToast('Passwords do not match', 'error');
       return;
     }
 
@@ -128,34 +124,34 @@ function Profile() {
         old_password: passwords.old_password,
         new_password: passwords.new_password
       });
-      setMessage('Password changed successfully');
+      addToast('Password changed successfully', 'success');
       setPasswords({ old_password: '', new_password: '', confirm_password: '' });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to change password');
+      addToast(err.response?.data?.error || 'Failed to change password', 'error');
     }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
       {/* Left Column - Profile Card & Stats */}
-      <div className="lg:col-span-1 space-y-6">
+      <div className="lg:col-span-1 space-y-4 md:space-y-6">
         {/* Profile Card */}
         <div className="bg-white border-2 border-gray-900">
-          <div className="h-32 bg-gradient-to-br from-gray-900 to-gray-700"></div>
-          <div className="px-6 pb-6">
-            <div className="relative -mt-16 mb-4">
+          <div className="h-24 md:h-32 bg-gray-900"></div>
+          <div className="px-4 md:px-6 pb-4 md:pb-6">
+            <div className="relative -mt-12 md:-mt-16 mb-4">
               {avatarPreview ? (
-                <img src={avatarPreview} alt="Avatar" className="w-32 h-32 object-cover border-4 border-white" />
+                <img src={avatarPreview} alt="Avatar" className="w-24 md:w-32 h-24 md:h-32 object-cover border-4 border-white" />
               ) : (
-                <div className="w-32 h-32 bg-gray-900 border-4 border-white flex items-center justify-center">
-                  <span className="text-white font-bold text-4xl">
+                <div className="w-24 md:w-32 h-24 md:h-32 bg-gray-900 border-4 border-white flex items-center justify-center">
+                  <span className="text-white font-bold text-3xl md:text-4xl">
                     {user?.full_name?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase()}
                   </span>
                 </div>
               )}
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">{user?.full_name || user?.username}</h2>
-            <p className="text-sm text-gray-600 mb-2">{user?.email}</p>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">{user?.full_name || user?.username}</h2>
+            <p className="text-xs md:text-sm text-gray-600 mb-2">{user?.email}</p>
             <div className="inline-block px-3 py-1 bg-gray-900 text-white text-xs font-bold uppercase tracking-wider">
               {user?.role}
             </div>
@@ -166,7 +162,7 @@ function Profile() {
         </div>
 
         {/* Stats */}
-        <div className="bg-white border-2 border-gray-900 p-6">
+        <div className="bg-white border-2 border-gray-900 p-4 md:p-6">
           <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4">Activity Stats</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-4 border-b border-gray-200">
@@ -200,7 +196,7 @@ function Profile() {
         </div>
 
         {/* Bookmarks */}
-        <div className="bg-white border-2 border-gray-200 p-6">
+        <div className="bg-white border-2 border-gray-200 p-4 md:p-6">
           <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4">Bookmarks</h3>
           <div className="space-y-3">
             {bookmarks.length > 0 ? (
@@ -228,7 +224,7 @@ function Profile() {
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-white border-2 border-gray-900 p-6">
+        <div className="bg-white border-2 border-gray-900 p-4 md:p-6">
           <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4">Recent Activity</h3>
           <div className="space-y-3">
             {recentActivity.length > 0 ? (
@@ -255,28 +251,16 @@ function Profile() {
 
       {/* Right Column - Settings */}
       <div className="lg:col-span-2">
-        <div className="mb-6">
-          <h1 className="text-5xl font-bold text-gray-900 mb-2">Account Settings</h1>
-          <p className="text-lg text-gray-600">Manage your profile and preferences</p>
+        <div className="mb-4 md:mb-6">
+          <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-2">Account Settings</h1>
+          <p className="text-base md:text-lg text-gray-600">Manage your profile and preferences</p>
         </div>
 
-        {message && (
-          <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-600 text-green-700">
-            {message}
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-600 text-red-700">
-            {error}
-          </div>
-        )}
-
         {/* Tabs */}
-        <div className="flex space-x-2 mb-6 border-b-2 border-gray-900">
+        <div className="flex space-x-1 md:space-x-2 mb-4 md:mb-6 border-b-2 border-gray-900 overflow-x-auto">
           <button
             onClick={() => setActiveTab('profile')}
-            className={`px-6 py-3 font-bold uppercase tracking-wide text-sm transition-colors ${
+            className={`px-4 md:px-6 py-2 md:py-3 font-bold uppercase tracking-wide text-xs md:text-sm transition-colors whitespace-nowrap ${
               activeTab === 'profile'
                 ? 'bg-gray-900 text-white'
                 : 'text-gray-600 hover:text-gray-900'
@@ -286,7 +270,7 @@ function Profile() {
           </button>
           <button
             onClick={() => setActiveTab('security')}
-            className={`px-6 py-3 font-bold uppercase tracking-wide text-sm transition-colors ${
+            className={`px-4 md:px-6 py-2 md:py-3 font-bold uppercase tracking-wide text-xs md:text-sm transition-colors whitespace-nowrap ${
               activeTab === 'security'
                 ? 'bg-gray-900 text-white'
                 : 'text-gray-600 hover:text-gray-900'
@@ -296,20 +280,20 @@ function Profile() {
           </button>
           <button
             onClick={() => setActiveTab('danger')}
-            className={`px-6 py-3 font-bold uppercase tracking-wide text-sm transition-colors ${
+            className={`px-4 md:px-6 py-2 md:py-3 font-bold uppercase tracking-wide text-xs md:text-sm transition-colors whitespace-nowrap ${
               activeTab === 'danger'
                 ? 'bg-red-600 text-white'
                 : 'text-gray-600 hover:text-red-600'
             }`}
           >
-            Danger Zone
+            Danger
           </button>
         </div>
 
         {/* Profile Tab */}
         {activeTab === 'profile' && (
-          <div className="bg-white border-2 border-gray-900 p-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">Profile Information</h2>
+          <div className="bg-white border-2 border-gray-900 p-4 md:p-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Profile Information</h2>
             
             <form onSubmit={handleUpdateProfile}>
               {/* Avatar Upload */}
@@ -407,8 +391,8 @@ function Profile() {
 
         {/* Security Tab */}
         {activeTab === 'security' && (
-          <div className="bg-white border-2 border-gray-900 p-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">Security Settings</h2>
+          <div className="bg-white border-2 border-gray-900 p-4 md:p-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Security Settings</h2>
             
             <form onSubmit={handleChangePassword}>
               <div className="mb-6">
@@ -469,8 +453,8 @@ function Profile() {
 
         {/* Danger Zone Tab */}
         {activeTab === 'danger' && (
-          <div className="bg-white border-2 border-red-600 p-8">
-            <h2 className="text-3xl font-bold text-red-600 mb-8">Danger Zone</h2>
+          <div className="bg-white border-2 border-red-600 p-4 md:p-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-red-600 mb-6 md:mb-8">Danger Zone</h2>
             
             <div className="bg-red-50 border-l-4 border-red-600 p-6 mb-8">
               <p className="text-sm font-bold text-red-900 mb-2 uppercase tracking-wider">Warning</p>

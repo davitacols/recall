@@ -295,7 +295,6 @@ function SettingsNew() {
   }
 
   const tabs = [
-    { id: 'profile', name: 'Profile' },
     { id: 'security', name: 'Security' },
     { id: 'notifications', name: 'Notifications' },
     { id: 'preferences', name: 'Preferences' },
@@ -345,17 +344,6 @@ function SettingsNew() {
 
         {/* Content */}
         <div className="flex-1">
-          {activeTab === 'profile' && (
-            <ProfileTab 
-              profile={profile}
-              setProfile={setProfile}
-              saveProfile={saveProfile}
-              stats={stats}
-              badges={badges}
-              getBadgeIcon={getBadgeIcon}
-            />
-          )}
-
           {activeTab === 'security' && (
             <SecurityTab
               passwords={passwords}

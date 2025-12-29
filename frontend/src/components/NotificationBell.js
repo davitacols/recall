@@ -67,6 +67,7 @@ function NotificationBell() {
       case 'decision': return '✅';
       case 'reminder': return '🔔';
       case 'badge': return '🏆';
+      case 'organization_update': return '🏢';
       default: return '📢';
     }
   };
@@ -86,9 +87,9 @@ function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white border-2 border-gray-900 shadow-lg z-50">
-          <div className="p-4 border-b-2 border-gray-900 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wide">Notifications</h3>
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border-2 border-gray-900 shadow-lg z-50 max-w-[calc(100vw-2rem)]">
+          <div className="p-3 sm:p-4 border-b-2 border-gray-900 flex items-center justify-between">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 uppercase tracking-wide">Notifications</h3>
             <button
               onClick={() => {
                 navigate('/notifications');
@@ -100,34 +101,28 @@ function NotificationBell() {
             </button>
           </div>
 
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
             {loading ? (
-              <div className="p-8 text-center">
+              <div className="p-6 sm:p-8 text-center">
                 <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
               </div>
             ) : notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <BellIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No notifications</p>
+              <div className="p-6 sm:p-8 text-center text-gray-500">
+                <BellIcon className="w-10 sm:w-12 h-10 sm:h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-xs sm:text-sm">No notifications</p>
               </div>
             ) : (
               notifications.slice(0, 5).map((notif) => (
                 <div
                   key={notif.id}
-                  className={`p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors ${!notif.is_read ? 'bg-blue-50' : ''}`}
+                  className={`p-3 sm:p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors ${!notif.is_read ? 'bg-gray-50' : ''}`}
                 >
-                  <div className="flex items-start space-x-3">
-                    <span className="text-2xl">{getNotificationIcon(notif.type)}</span>
+                  <div className="flex items-start space-x-2 sm:space-x-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <p className="text-sm font-bold text-gray-900">{notif.title}</p>
                         {!notif.is_read && (
-                          <button
-                            onClick={() => handleMarkAsRead(notif.id)}
-                            className="ml-2 text-xs text-blue-600 hover:text-blue-800 font-bold"
-                          >
-                            ✓
-                          </button>
+                          <div className="w-2 h-2 bg-gray-900 rounded-full ml-2 mt-1.5 flex-shrink-0"></div>
                         )}
                       </div>
                       <p className="text-xs text-gray-600 mt-1">{notif.message}</p>

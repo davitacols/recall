@@ -33,5 +33,8 @@ urlpatterns = [
     path('<int:conversation_id>/code-links/', views.add_code_link, name='add_code_link'),
     path('<int:conversation_id>/developer-mode/', views.process_developer_mode, name='process_developer_mode'),
     path('<int:conversation_id>/developer-insights/', views.developer_insights, name='developer_insights'),
+    path('<int:conversation_id>/documents/', views.conversation_documents, name='conversation_documents'),
+    path('<int:conversation_id>/documents/upload/', views.upload_document, name='upload_document'),
+    path('documents/<int:document_id>/', views.delete_document, name='delete_document'),
     path('<int:conversation_id>/', views.conversation_detail, name='conversation_detail'),
 ]

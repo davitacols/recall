@@ -209,7 +209,7 @@ def update_organization(request):
                 notification_type='organization_update',
                 title='Organization settings updated',
                 message=f'{user.full_name or user.username} updated the organization settings.',
-                link=f'/settings'
+                link='/'
             )
     
     return Response({'message': 'Organization updated', 'name': org.name})

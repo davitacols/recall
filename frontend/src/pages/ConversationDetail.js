@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeftIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import MentionTagInput from '../components/MentionTagInput';
 import HighlightedText from '../components/HighlightedText';
@@ -20,11 +21,15 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
       <div className="bg-white border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <Link to="/profile" className="w-10 h-10 bg-gray-900 flex items-center justify-center">
-              <span className="text-white text-sm font-medium">
-                {reply.author?.charAt(0).toUpperCase()}
-              </span>
-            </Link>
+            {reply.author_avatar ? (
+              <img src={reply.author_avatar} alt={reply.author} className="w-10 h-10 object-cover" />
+            ) : (
+              <div className="w-10 h-10 bg-gray-900 flex items-center justify-center">
+                <span className="text-white text-sm font-medium">
+                  {reply.author?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             <div>
               <Link to="/profile" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">{reply.author}</Link>
               <div className="text-sm text-gray-500">
@@ -92,6 +97,7 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
 
 function ConversationDetail() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [conversation, setConversation] = useState(null);
   const [replies, setReplies] = useState([]);
   const [newReply, setNewReply] = useState('');
@@ -121,6 +127,11 @@ function ConversationDetail() {
   const [closureSummary, setClosureSummary] = useState('');
   const [nextSteps, setNextSteps] = useState('');
   const [shareUrl, setShareUrl] = useState('');
+  const [documents, setDocuments] = useState([]);
+  const [uploadComment, setUploadComment] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [showUploadBox, setShowUploadBox] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -131,6 +142,7 @@ function ConversationDetail() {
     fetchBookmarkStatus();
     fetchReactions();
     checkComplexity();
+    fetchDocuments();
   }, [id]);
 
   const fetchConversation = async () => {
@@ -181,6 +193,59 @@ function ConversationDetail() {
       setReactions(response.data);
     } catch (error) {
       console.error('Failed to fetch reactions:', error);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await api.get(`/api/conversations/${id}/documents/`);
+      setDocuments(response.data);
+    } catch (error) {
+      console.error('Failed to fetch documents:', error);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setShowUploadBox(true);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('comment', uploadComment);
+
+    try {
+      await api.post(`/api/conversations/${id}/documents/upload/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setUploadComment('');
+      setSelectedFile(null);
+      setShowUploadBox(false);
+      fetchDocuments();
+    } catch (error) {
+      alert('Failed to upload file');
+    }
+  };
+
+  const cancelUpload = () => {
+    setSelectedFile(null);
+    setUploadComment('');
+    setShowUploadBox(false);
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    if (!window.confirm('Delete this file?')) return;
+    try {
+      await api.delete(`/api/conversations/documents/${docId}/`);
+      fetchDocuments();
+    } catch (error) {
+      alert('Failed to delete file');
     }
   };
 
@@ -430,10 +495,24 @@ function ConversationDetail() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12">
+    <div className={`${sidebarOpen ? 'max-w-6xl' : 'max-w-full'} mx-auto px-4 md:px-8 py-8 md:py-12`}>
+      {/* Toggle Sidebar Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="mb-6 bg-white border border-gray-200 p-2.5 hover:bg-gray-50 hover:shadow-md transition-all shadow-sm"
+      >
+        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {sidebarOpen ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+      
       <div className="flex flex-col lg:flex-row gap-8 md:gap-12">
       {/* Main Content */}
-      <div className="flex-1 max-w-3xl">
+      <div className={`flex-1 ${sidebarOpen ? 'max-w-3xl' : 'max-w-full'}`}>
       {/* Header */}
       <div className="mb-12">
         <Link 
@@ -461,11 +540,15 @@ function ConversationDetail() {
         
         <div className="flex items-center justify-between pb-8 border-b border-gray-200">
           <div className="flex items-center space-x-4">
-            <Link to="/profile" className="w-12 h-12 bg-gray-900 flex items-center justify-center">
-              <span className="text-white font-bold">
-                {conversation.author?.charAt(0).toUpperCase()}
-              </span>
-            </Link>
+            {conversation.author_avatar ? (
+              <img src={conversation.author_avatar} alt={conversation.author} className="w-12 h-12 object-cover" />
+            ) : (
+              <div className="w-12 h-12 bg-gray-900 flex items-center justify-center">
+                <span className="text-white font-bold">
+                  {conversation.author?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             <div>
               <Link to="/profile" className="font-bold text-gray-900 hover:underline">{conversation.author}</Link>
               <div className="text-sm text-gray-500">Author</div>
@@ -672,14 +755,85 @@ function ConversationDetail() {
             placeholder="Share your thoughts..."
             rows={5}
           />
-          <button
-            type="submit"
-            disabled={submitting || !newReply.trim()}
-            className="recall-btn-primary mt-6 disabled:opacity-50"
-          >
-            {submitting ? 'Posting...' : 'Post'}
-          </button>
+          
+          {/* File Upload Box */}
+          {showUploadBox && (
+            <div className="mt-4 p-4 bg-gray-50 border-2 border-gray-900">
+              <div className="flex items-start gap-3 mb-3">
+                <svg className="w-6 h-6 text-gray-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="font-bold text-gray-900">{selectedFile?.name}</p>
+                  <p className="text-xs text-gray-500">{(selectedFile?.size / 1024).toFixed(1)} KB</p>
+                </div>
+                <button type="button" onClick={cancelUpload} className="text-gray-600 hover:text-gray-900">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <input
+                type="text"
+                value={uploadComment}
+                onChange={(e) => setUploadComment(e.target.value)}
+                placeholder="Add a comment about this file..."
+                className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 mb-3"
+              />
+              <button
+                type="button"
+                onClick={handleFileUpload}
+                className="w-full px-4 py-3 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-sm"
+              >
+                Upload File
+              </button>
+            </div>
+          )}
+          
+          <div className="flex items-center gap-4 mt-6">
+            <button
+              type="submit"
+              disabled={submitting || !newReply.trim()}
+              className="recall-btn-primary disabled:opacity-50"
+            >
+              {submitting ? 'Posting...' : 'Post'}
+            </button>
+            <label className="px-5 py-2.5 border-2 border-gray-900 text-gray-900 hover:bg-gray-100 font-bold uppercase text-sm cursor-pointer">
+              <input type="file" className="hidden" onChange={handleFileSelect} />
+              Attach File
+            </label>
+          </div>
         </form>
+        
+        {/* Documents */}
+        {documents.length > 0 && (
+          <div className="mt-8 border-t border-gray-200 pt-8">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Attachments</h3>
+            <div className="space-y-2">
+              {documents.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div>
+                      <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="font-medium text-gray-900 hover:underline">
+                        {doc.filename}
+                      </a>
+                      <p className="text-xs text-gray-500">{(doc.file_size / 1024).toFixed(1)} KB • {doc.uploaded_by}</p>
+                      {doc.comment && <p className="text-sm text-gray-700 mt-1">{doc.comment}</p>}
+                    </div>
+                  </div>
+                  {doc.uploaded_by === user?.full_name && (
+                    <button onClick={() => handleDeleteDocument(doc.id)} className="text-red-600 hover:text-red-700 text-sm font-bold">
+                      Delete
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Developer Insights */}
@@ -687,7 +841,8 @@ function ConversationDetail() {
       </div>
 
       {/* Sidebar */}
-      <div className="w-80 flex-shrink-0 sticky top-8 self-start space-y-8">
+      {sidebarOpen && (
+        <div className="w-80 flex-shrink-0 sticky top-8 self-start space-y-8">
         {/* Actions */}
         <div className="space-y-3">
           <button
@@ -801,7 +956,8 @@ function ConversationDetail() {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
       </div>
 
       {/* Convert Modal */}

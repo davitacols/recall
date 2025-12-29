@@ -31,6 +31,10 @@ def invite_user(request):
         }
     )
     
+    # Send invitation email
+    from apps.notifications.email_service import send_invitation_email
+    send_invitation_email(invitation)
+    
     return Response({
         'message': 'Invitation sent',
         'token': str(invitation.token),

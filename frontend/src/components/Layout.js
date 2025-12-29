@@ -15,7 +15,6 @@ import {
   FolderIcon,
   Bars3Icon,
   XMarkIcon,
-  ChevronDownIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 
@@ -191,8 +190,8 @@ function Layout({ children }) {
         <div className="h-full flex flex-col">
           {/* Org Switcher */}
           <div className="p-4 border-b border-gray-200">
-            {!sidebarCollapsed ? (
-              <button className="w-full flex items-center gap-3 hover:bg-gray-100 p-2 transition-colors">
+            {!sidebarCollapsed && (
+              <div className="flex items-center gap-3 p-2">
                 {user?.organization_logo ? (
                   <img src={user.organization_logo} alt="" className="w-8 h-8 object-contain" />
                 ) : (
@@ -203,9 +202,9 @@ function Layout({ children }) {
                 <div className="flex-1 text-left">
                   <div className="text-sm font-medium text-gray-900 truncate">{user?.organization_name}</div>
                 </div>
-                <ChevronDownIcon className="w-4 h-4 text-gray-400" />
-              </button>
-            ) : (
+              </div>
+            )}
+            {sidebarCollapsed && (
               <div className="flex justify-center">
                 {user?.organization_logo ? (
                   <img src={user.organization_logo} alt="" className="w-8 h-8 object-contain" />

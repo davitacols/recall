@@ -15,10 +15,13 @@ import Knowledge from './pages/Knowledge';
 import AskRecall from './pages/AskRecall';
 import Insights from './pages/Insights';
 import ActivityFeed from './pages/ActivityFeed';
-import Settings from './pages/SettingsNew';
+import Settings from './pages/Settings';
 import StaffInvitations from './pages/StaffInvitations';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
+import Bookmarks from './pages/Bookmarks';
+import Drafts from './pages/Drafts';
+import Files from './pages/Files';
 import Onboarding from './pages/Onboarding';
 import FAQ from './pages/FAQ';
 import PersonalReflection from './pages/PersonalReflection';
@@ -152,6 +155,27 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <Notifications />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/bookmarks" element={
+          <ProtectedRoute>
+            <Layout>
+              <Bookmarks />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/drafts" element={
+          <ProtectedRoute>
+            <Layout>
+              <Drafts />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/files" element={
+          <ProtectedRoute>
+            <Layout>
+              <Files />
             </Layout>
           </ProtectedRoute>
         } />

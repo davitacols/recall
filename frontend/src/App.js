@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { ToastProvider } from './components/Toast';
 import { useKeyboardShortcuts, CommandPalette } from './hooks/useKeyboardShortcuts';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -25,9 +26,11 @@ import NotificationDetail from './components/NotificationDetail';
 import Layout from './components/Layout';
 import './index.css';
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" />;
+  if (adminOnly && user.role !== 'admin') return <Navigate to="/" />;
+  return children;
 }
 
 function AppContent() {
@@ -105,14 +108,14 @@ function AppContent() {
           </ProtectedRoute>
         } />
         <Route path="/settings" element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly={true}>
             <Layout>
               <Settings />
             </Layout>
           </ProtectedRoute>
         } />
         <Route path="/invitations" element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly={true}>
             <Layout>
               <StaffInvitations />
             </Layout>
@@ -168,9 +171,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <ToastProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </ToastProvider>
     </AuthProvider>
   );
 }

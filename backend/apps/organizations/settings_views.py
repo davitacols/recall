@@ -185,10 +185,32 @@ def update_organization(request):
     if user.role != 'admin':
         return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
+    updated_fields = []
     if 'name' in request.data:
         org.name = request.data['name']
+        updated_fields.append('name')
+    if 'primary_color' in request.data:
+        org.primary_color = request.data['primary_color']
+        updated_fields.append('branding')
+    if 'logo' in request.FILES:
+        org.logo = request.FILES['logo']
+        updated_fields.append('branding')
     
     org.save()
+    
+    # Notify all organization members
+    if updated_fields:
+        from apps.notifications.utils import create_notification
+        org_users = User.objects.filter(organization=org, is_active=True).exclude(id=user.id)
+        
+        for member in org_users:
+            create_notification(
+                user=member,
+                notification_type='organization_update',
+                title='Organization settings updated',
+                message=f'{user.full_name or user.username} updated the organization settings.',
+                link=f'/settings'
+            )
     
     return Response({'message': 'Organization updated', 'name': org.name})
 

@@ -129,8 +129,8 @@ function Decisions() {
         <div className="space-y-4">
           {filteredDecisions.map((decision, index) => (
             <Link key={decision.id} to={`/decisions/${decision.id}`}>
-              <div className="border border-gray-200 p-8 hover:border-gray-900 transition-all duration-200 animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
-                <div className="flex items-center justify-between mb-6">
+              <div className="border border-gray-200 p-4 md:p-8 hover:border-gray-900 transition-all duration-200 animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 md:mb-6 gap-3">
                   <div className="flex items-center space-x-3">
                     <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                       decision.status === 'approved' || decision.status === 'implemented' ? 'bg-gray-900 text-white' :
@@ -156,15 +156,15 @@ function Decisions() {
                   </span>
                 </div>
                 
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 md:mb-4">
                   {decision.title}
                 </h3>
                 
-                <p className="text-lg text-gray-700 line-clamp-2 mb-4">
+                <p className="text-base md:text-lg text-gray-700 line-clamp-2 mb-3 md:mb-4">
                   {decision.description}
                 </p>
                 
-                <div className="text-gray-600">
+                <div className="text-sm md:text-base text-gray-600">
                   <span className="font-medium">Decision Maker:</span> {decision.decision_maker_name}
                 </div>
               </div>

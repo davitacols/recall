@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { useToast } from '../components/Toast';
 
 function StaffInvitations() {
+  const { addToast } = useToast();
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('contributor');
   const [generatedLink, setGeneratedLink] = useState('');
   const [showLinkModal, setShowLinkModal] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
 
   useEffect(() => {
     loadInvitations();
@@ -28,7 +28,7 @@ function StaffInvitations() {
 
   const generateInviteLink = async () => {
     if (!inviteEmail.trim()) {
-      showError('Email is required');
+      addToast('Email is required', 'error');
       return;
     }
 
@@ -44,22 +44,21 @@ function StaffInvitations() {
       setInviteEmail('');
       setInviteRole('contributor');
       loadInvitations();
-      showMessage('Invitation link generated successfully');
+      addToast('Invitation link generated successfully', 'success');
     } catch (err) {
-      showError(err.response?.data?.error || 'Failed to generate invitation');
+      addToast(err.response?.data?.error || 'Failed to generate invitation', 'error');
     }
   };
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedLink);
-    showMessage('Link copied to clipboard!');
+    addToast('Link copied to clipboard!', 'success');
   };
 
   const resendInvitation = async (invitation) => {
-    // Just copy the link again
     const link = `${window.location.origin}/invite/${invitation.token}`;
     navigator.clipboard.writeText(link);
-    showMessage('Link copied to clipboard!');
+    addToast('Link copied to clipboard!', 'success');
   };
 
   const revokeInvitation = async (invitationId) => {
@@ -67,23 +66,11 @@ function StaffInvitations() {
 
     try {
       await api.delete(`/api/organizations/invitations/${invitationId}/revoke/`);
-      showMessage('Invitation revoked');
+      addToast('Invitation revoked', 'success');
       loadInvitations();
     } catch (err) {
-      showError('Failed to revoke invitation');
+      addToast('Failed to revoke invitation', 'error');
     }
-  };
-
-  const showMessage = (msg) => {
-    setMessage(msg);
-    setError('');
-    setTimeout(() => setMessage(''), 3000);
-  };
-
-  const showError = (msg) => {
-    setError(msg);
-    setMessage('');
-    setTimeout(() => setError(''), 3000);
   };
 
   const getRoleColor = (role) => {
@@ -109,25 +96,13 @@ function StaffInvitations() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <h1 className="text-5xl font-bold text-gray-900 mb-8 uppercase tracking-wide">Staff Invitations</h1>
-
-      {/* Messages */}
-      {message && (
-        <div className="mb-6 p-4 bg-green-50 border-2 border-green-600 text-green-900 font-bold">
-          {message}
-        </div>
-      )}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border-2 border-red-600 text-red-900 font-bold">
-          {error}
-        </div>
-      )}
+      <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 md:mb-8 uppercase tracking-wide">Staff Invitations</h1>
 
       {/* Generate Invitation */}
-      <div className="bg-white border-2 border-gray-900 p-8 mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase tracking-wide">Generate Invitation Link</h2>
+      <div className="bg-white border-2 border-gray-900 p-4 md:p-8 mb-6 md:mb-8">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 uppercase tracking-wide">Generate Invitation Link</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 md:mb-6">
           <div className="md:col-span-2">
             <label className="block text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">Email Address</label>
             <input
@@ -155,9 +130,9 @@ function StaffInvitations() {
 
         <button
           onClick={generateInviteLink}
-          className="px-8 py-4 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-sm tracking-wide"
+          className="w-full md:w-auto px-6 md:px-8 py-3 md:py-4 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs md:text-sm tracking-wide"
         >
-          Generate Invitation Link
+          Generate Link
         </button>
 
         <div className="mt-6 p-4 bg-gray-50 border border-gray-200">
@@ -173,8 +148,8 @@ function StaffInvitations() {
       </div>
 
       {/* Pending Invitations */}
-      <div className="bg-white border-2 border-gray-900 p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase tracking-wide">
+      <div className="bg-white border-2 border-gray-900 p-4 md:p-8">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 uppercase tracking-wide">
           Pending Invitations ({invitations.length})
         </h2>
 
@@ -183,12 +158,12 @@ function StaffInvitations() {
         ) : (
           <div className="space-y-4">
             {invitations.map((invitation) => (
-              <div key={invitation.id} className="p-4 bg-gray-50 border border-gray-200">
-                <div className="flex items-center justify-between">
+              <div key={invitation.id} className="p-3 md:p-4 bg-gray-50 border border-gray-200">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <span className="font-bold text-gray-900">{invitation.email}</span>
-                      <span className={`px-3 py-1 ${getRoleColor(invitation.role)} text-white text-xs font-bold uppercase`}>
+                      <span className="font-bold text-gray-900 text-sm md:text-base break-all">{invitation.email}</span>
+                      <span className={`px-2 md:px-3 py-1 ${getRoleColor(invitation.role)} text-white text-xs font-bold uppercase whitespace-nowrap`}>
                         {invitation.role}
                       </span>
                       <span className={`text-xs font-bold uppercase ${getStatusColor(invitation.is_valid)}`}>
@@ -208,15 +183,15 @@ function StaffInvitations() {
                       onClick={() => {
                         const link = `${window.location.origin}/invite/${invitation.token}`;
                         navigator.clipboard.writeText(link);
-                        showMessage('Link copied!');
+                        addToast('Link copied!', 'success');
                       }}
-                      className="px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs"
+                      className="px-3 md:px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs"
                     >
-                      Copy Link
+                      Copy
                     </button>
                     <button
                       onClick={() => revokeInvitation(invitation.id)}
-                      className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-bold uppercase text-xs"
+                      className="px-3 md:px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-bold uppercase text-xs"
                     >
                       Revoke
                     </button>
@@ -230,33 +205,33 @@ function StaffInvitations() {
 
       {/* Link Modal */}
       {showLinkModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white border-2 border-gray-900 w-full max-w-2xl p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase tracking-wide">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-2 border-gray-900 w-full max-w-2xl p-4 md:p-8">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 uppercase tracking-wide">
               Invitation Link Generated
             </h2>
 
-            <div className="mb-6">
+            <div className="mb-4 md:mb-6">
               <label className="block text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">
-                Share this link with your staff member:
+                Share this link:
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={generatedLink}
                   readOnly
-                  className="flex-1 p-3 border-2 border-gray-300 bg-gray-50 font-mono text-sm"
+                  className="flex-1 p-3 border-2 border-gray-300 bg-gray-50 font-mono text-xs md:text-sm break-all"
                 />
                 <button
                   onClick={copyToClipboard}
-                  className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-sm"
+                  className="px-4 md:px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs md:text-sm whitespace-nowrap"
                 >
                   Copy
                 </button>
               </div>
             </div>
 
-            <div className="p-4 bg-yellow-50 border-2 border-yellow-600 mb-6">
+            <div className="p-4 bg-yellow-50 border-2 border-yellow-600 mb-4 md:mb-6">
               <p className="text-sm text-yellow-900 font-bold mb-2">⚠️ Important:</p>
               <ul className="text-sm text-yellow-900 space-y-1 list-disc list-inside">
                 <li>This link expires in 7 days</li>
@@ -266,10 +241,10 @@ function StaffInvitations() {
               </ul>
             </div>
 
-            <div className="flex justify-end space-x-4">
+            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
               <button
                 onClick={() => setShowLinkModal(false)}
-                className="px-6 py-3 border-2 border-gray-900 text-gray-900 hover:bg-gray-100 font-bold uppercase text-sm"
+                className="w-full sm:w-auto px-4 md:px-6 py-3 border-2 border-gray-900 text-gray-900 hover:bg-gray-100 font-bold uppercase text-xs md:text-sm"
               >
                 Close
               </button>

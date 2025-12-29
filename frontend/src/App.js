@@ -18,11 +18,10 @@ import ActivityFeed from './pages/ActivityFeed';
 import Settings from './pages/SettingsNew';
 import StaffInvitations from './pages/StaffInvitations';
 import Profile from './pages/Profile';
+import Notifications from './pages/Notifications';
 import Onboarding from './pages/Onboarding';
 import FAQ from './pages/FAQ';
 import PersonalReflection from './pages/PersonalReflection';
-import NotificationsList from './components/NotificationsList';
-import NotificationDetail from './components/NotificationDetail';
 import Layout from './components/Layout';
 import './index.css';
 
@@ -152,14 +151,7 @@ function AppContent() {
         <Route path="/notifications" element={
           <ProtectedRoute>
             <Layout>
-              <NotificationsList />
-            </Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/notifications/:id" element={
-          <ProtectedRoute>
-            <Layout>
-              <NotificationDetail />
+              <Notifications />
             </Layout>
           </ProtectedRoute>
         } />

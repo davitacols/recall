@@ -285,3 +285,20 @@ class CulturalMemory(models.Model):
     class Meta:
         db_table = 'cultural_memories'
         ordering = ['-year']
+
+class Document(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, null=True, blank=True, related_name='documents')
+    
+    file = models.FileField(upload_to='documents/%Y/%m/')
+    filename = models.CharField(max_length=255)
+    file_size = models.PositiveIntegerField()
+    file_type = models.CharField(max_length=100)
+    comment = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        db_table = 'documents'
+        ordering = ['-created_at']

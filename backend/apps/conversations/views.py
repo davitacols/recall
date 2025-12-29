@@ -47,6 +47,7 @@ def conversations(request):
                 'post_type': conv.post_type,
                 'priority': conv.priority,
                 'author': conv.author.get_full_name(),
+                'author_avatar': conv.author.avatar.url if conv.author.avatar else None,
                 'created_at': conv.created_at,
                 'reply_count': conv.reply_count,
                 'ai_summary': conv.ai_summary,
@@ -132,6 +133,7 @@ def conversation_replies(request, conversation_id):
                 'content': reply.content,
                 'author': reply.author.get_full_name(),
                 'author_id': reply.author.id,
+                'author_avatar': reply.author.avatar.url if reply.author.avatar else None,
                 'created_at': reply.created_at,
                 'is_ai_generated': reply.is_ai_generated,
                 'parent_reply': reply.parent_reply_id
@@ -219,6 +221,7 @@ def conversation_detail(request, conversation_id):
                 'priority': conversation.priority,
                 'author': conversation.author.get_full_name(),
                 'author_id': conversation.author.id,
+                'author_avatar': conversation.author.avatar.url if conversation.author.avatar else None,
                 'created_at': conversation.created_at,
                 'updated_at': conversation.updated_at,
                 'ai_summary': conversation.ai_summary,
@@ -993,3 +996,93 @@ def developer_insights(request, conversation_id):
         })
     except Conversation.DoesNotExist:
         return Response({'error': 'Conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+def upload_document(request, conversation_id):
+    """Upload document to conversation"""
+    from .models import Document
+    
+    if 'file' not in request.FILES:
+        return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    file = request.FILES['file']
+    
+    # Validate file size (max 10MB)
+    if file.size > 10 * 1024 * 1024:
+        return Response({'error': 'File too large (max 10MB)'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        conversation = Conversation.objects.get(
+            id=conversation_id,
+            organization=request.user.organization
+        )
+    except Conversation.DoesNotExist:
+        return Response({'error': 'Conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    document = Document.objects.create(
+        organization=request.user.organization,
+        uploaded_by=request.user,
+        conversation=conversation,
+        file=file,
+        filename=file.name,
+        file_size=file.size,
+        file_type=file.content_type,
+        comment=request.data.get('comment', '')
+    )
+    
+    return Response({
+        'id': document.id,
+        'filename': document.filename,
+        'file_url': document.file.url,
+        'file_size': document.file_size,
+        'comment': document.comment,
+        'uploaded_by': request.user.get_full_name(),
+        'created_at': document.created_at
+    }, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+def conversation_documents(request, conversation_id):
+    """Get documents for conversation"""
+    from .models import Document
+    
+    try:
+        conversation = Conversation.objects.get(
+            id=conversation_id,
+            organization=request.user.organization
+        )
+        
+        documents = Document.objects.filter(conversation=conversation)
+        
+        return Response([{
+            'id': doc.id,
+            'filename': doc.filename,
+            'file_url': doc.file.url,
+            'file_size': doc.file_size,
+            'file_type': doc.file_type,
+            'comment': doc.comment,
+            'uploaded_by': doc.uploaded_by.get_full_name(),
+            'created_at': doc.created_at
+        } for doc in documents])
+    except Conversation.DoesNotExist:
+        return Response({'error': 'Conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['DELETE'])
+def delete_document(request, document_id):
+    """Delete document"""
+    from .models import Document
+    
+    try:
+        document = Document.objects.get(
+            id=document_id,
+            organization=request.user.organization
+        )
+        
+        if document.uploaded_by != request.user:
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        document.file.delete()
+        document.delete()
+        
+        return Response({'message': 'Document deleted'})
+    except Document.DoesNotExist:
+        return Response({'error': 'Document not found'}, status=status.HTTP_404_NOT_FOUND)

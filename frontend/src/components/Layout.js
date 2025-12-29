@@ -11,7 +11,9 @@ import {
   ChartBarIcon,
   Cog6ToothIcon,
   MagnifyingGlassIcon,
-  ChatBubbleLeftIcon
+  ChatBubbleLeftIcon,
+  Bars3Icon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 function Layout({ children }) {
@@ -20,6 +22,7 @@ function Layout({ children }) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -46,8 +49,14 @@ function Layout({ children }) {
       {/* Top Bar */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 h-16 md:h-20 flex items-center justify-between">
-          {/* Left: Logo + Org */}
+          {/* Left: Mobile Menu + Logo + Org */}
           <div className="flex items-center space-x-2 md:space-x-6">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 text-gray-900"
+            >
+              {mobileMenuOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
+            </button>
             <Link to="/" className="flex items-center space-x-2 md:space-x-3 group">
               {user?.organization_logo ? (
                 <img src={user.organization_logo} alt={user.organization_name} className="w-8 md:w-10 h-8 md:h-10 object-contain" />
@@ -103,7 +112,37 @@ function Layout({ children }) {
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)} />
+            <aside className="fixed top-16 left-0 bottom-0 w-72 bg-white border-r border-gray-200 overflow-y-auto z-50">
+              <nav className="p-6 space-y-2">
+                {[...navigation, ...adminNavigation].map((item) => {
+                  const isActive = location.pathname === item.href;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center space-x-4 px-4 py-4 text-base font-medium transition-all ${
+                        isActive
+                          ? 'bg-gray-900 text-white'
+                          : 'text-gray-900 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Icon className="w-6 h-6" />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </aside>
+          </div>
+        )}
+
+        {/* Desktop Sidebar */}
         <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} bg-white border-r border-gray-200 h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] sticky top-16 md:top-20 overflow-hidden transition-all duration-300 hidden lg:block`}>
           <nav className="p-6 space-y-2 w-72">
             {[...navigation, ...adminNavigation].map((item) => {

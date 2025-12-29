@@ -495,99 +495,74 @@ function ConversationDetail() {
   }
 
   return (
-    <div className={`${sidebarOpen ? 'max-w-6xl' : 'max-w-full'} mx-auto px-4 md:px-8 py-8 md:py-12`}>
-      {/* Toggle Sidebar Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="mb-6 bg-white border border-gray-200 p-2.5 hover:bg-gray-50 hover:shadow-md transition-all shadow-sm"
-      >
-        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {sidebarOpen ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-          ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          )}
-        </svg>
-      </button>
-      
-      <div className="flex flex-col lg:flex-row gap-8 md:gap-12">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
+      <div className="flex flex-col lg:flex-row gap-12">
       {/* Main Content */}
-      <div className={`flex-1 ${sidebarOpen ? 'max-w-3xl' : 'max-w-full'}`}>
-      {/* Header */}
-      <div className="mb-12">
+      <div className="flex-1 max-w-4xl">
+        {/* Back Button */}
         <Link 
           to="/conversations" 
-          className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-8"
+          className="inline-flex items-center text-base text-gray-600 hover:text-gray-900 mb-8"
         >
-          <ArrowLeftIcon className="w-4 h-4 mr-2" />
-          Back
+          <ArrowLeftIcon className="w-5 h-5 mr-2" />
+          Back to Conversations
         </Link>
-        
-        <div className="flex items-center space-x-4 mb-6">
-          <span className="px-3 py-1 bg-gray-900 text-white text-xs font-bold uppercase tracking-wide">
-            {conversation.post_type}
-          </span>
-          <span className="text-gray-500">
-            {new Date(conversation.created_at).toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
-            })}
-          </span>
-        </div>
-        
-        <h1 className="text-6xl font-bold text-gray-900 mb-8 leading-tight">{conversation.title}</h1>
-        
-        <div className="flex items-center justify-between pb-8 border-b border-gray-200">
-          <div className="flex items-center space-x-4">
-            {conversation.author_avatar ? (
-              <img src={conversation.author_avatar} alt={conversation.author} className="w-12 h-12 object-cover" />
-            ) : (
-              <div className="w-12 h-12 bg-gray-900 flex items-center justify-center">
-                <span className="text-white font-bold">
-                  {conversation.author?.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
-            <div>
-              <Link to="/profile" className="font-bold text-gray-900 hover:underline">{conversation.author}</Link>
-              <div className="text-sm text-gray-500">Author</div>
-            </div>
+
+        {/* Header */}
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-6">
+            <span className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold uppercase tracking-wider">
+              {conversation.post_type}
+            </span>
+            <span className="text-base text-gray-500">
+              {new Date(conversation.created_at).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </span>
           </div>
-          <div className="flex items-center space-x-3">
-            <select
-              value={conversation.status_label}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className="px-4 py-2 border border-gray-900 text-sm font-medium focus:outline-none"
-            >
-              <option value="open">Open</option>
-              <option value="good_example">✓ Good Example</option>
-              <option value="needs_followup">⚠ Needs Follow-up</option>
-              <option value="resolved">✓ Resolved</option>
-              <option value="in_progress">→ In Progress</option>
-            </select>
+          
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8 leading-tight">{conversation.title}</h1>
+          
+          <div className="flex items-center justify-between pb-8 border-b border-gray-200">
+            <div className="flex items-center gap-4">
+              {conversation.author_avatar ? (
+                <img src={conversation.author_avatar} alt={conversation.author} className="w-12 h-12 object-cover" />
+              ) : (
+                <div className="w-12 h-12 bg-gray-900 flex items-center justify-center">
+                  <span className="text-white font-bold">
+                    {conversation.author?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div>
+                <Link to="/profile" className="text-lg font-bold text-gray-900 hover:underline">{conversation.author}</Link>
+                <div className="text-sm text-gray-500">Author</div>
+              </div>
+            </div>
             {conversation.author_id === currentUserId && (
-              <>
+              <div className="flex gap-3">
                 <button
                   onClick={() => setIsEditingPost(!isEditingPost)}
-                  className="recall-btn-secondary"
+                  className="recall-btn-secondary text-sm"
                 >
                   {isEditingPost ? 'Cancel' : 'Edit'}
                 </button>
                 <button
                   onClick={handleDeletePost}
-                  className="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 transition-colors"
+                  className="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 text-sm font-bold uppercase"
                 >
                   Delete
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="mb-12">
+        {/* Content */}
+        <div className="mb-12">
         {/* Complexity Warning */}
         {showComplexityWarning && complexity && (
           <div className="border-b border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-t-2xl">
@@ -710,11 +685,11 @@ function ConversationDetail() {
         </div>
       </div>
 
-      {/* Replies */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-8">
-          {replies.length} {replies.length === 1 ? 'Reply' : 'Replies'}
-        </h2>
+        {/* Replies */}
+        <div className="mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">
+            {replies.length} {replies.length === 1 ? 'Reply' : 'Replies'}
+          </h2>
         
         <div className="space-y-6">
           {buildReplyTree(replies).map((reply) => (
@@ -730,8 +705,8 @@ function ConversationDetail() {
         </div>
       </div>
 
-      {/* Reply Form */}
-      <div className="border-t border-gray-200 pt-8">
+        {/* Reply Form */}
+        <div className="border-t border-gray-200 pt-8">
         {replyingTo && (
           <div className="mb-6 p-4 bg-gray-100 border-l-4 border-gray-900">
             <div className="flex items-center justify-between">
@@ -836,13 +811,12 @@ function ConversationDetail() {
         )}
       </div>
 
-      {/* Developer Insights */}
-      <DeveloperInsights conversationId={id} />
+        {/* Developer Insights */}
+        <DeveloperInsights conversationId={id} />
       </div>
 
       {/* Sidebar */}
-      {sidebarOpen && (
-        <div className="w-80 flex-shrink-0 sticky top-8 self-start space-y-8">
+      <div className="w-80 flex-shrink-0 space-y-8">
         {/* Actions */}
         <div className="space-y-3">
           <button
@@ -956,8 +930,8 @@ function ConversationDetail() {
             </div>
           </div>
         )}
-        </div>
-      )}
+      </div>
+      </div>
       </div>
 
       {/* Convert Modal */}

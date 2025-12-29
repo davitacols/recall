@@ -104,8 +104,24 @@ def login(request):
 @api_view(['GET'])
 def profile(request):
     user = request.user
-    avatar_url = request.build_absolute_uri(user.avatar.url) if user.avatar else None
-    org_logo_url = request.build_absolute_uri(user.organization.logo.url) if user.organization.logo else None
+    
+    # In production (S3), avatar.url is already absolute
+    # In development (local), we need to build absolute URI
+    if user.avatar:
+        if settings.DEBUG:
+            avatar_url = request.build_absolute_uri(user.avatar.url)
+        else:
+            avatar_url = user.avatar.url
+    else:
+        avatar_url = None
+    
+    if user.organization.logo:
+        if settings.DEBUG:
+            org_logo_url = request.build_absolute_uri(user.organization.logo.url)
+        else:
+            org_logo_url = user.organization.logo.url
+    else:
+        org_logo_url = None
     
     return Response({
         'id': user.id,

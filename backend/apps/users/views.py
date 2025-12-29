@@ -190,6 +190,10 @@ def register(request):
                 role='admin'
             )
             
+            # Send welcome email
+            from apps.notifications.email_service import send_welcome_email
+            send_welcome_email(user)
+            
             return Response({
                 'message': 'Organization created successfully',
                 'username': email
@@ -231,6 +235,10 @@ def register(request):
                 first_name=display_name.split()[0] if display_name else username,
                 role=invitation.role or 'contributor'
             )
+            
+            # Send welcome email
+            from apps.notifications.email_service import send_welcome_email
+            send_welcome_email(user)
             
             # Mark invitation as accepted
             invitation.is_accepted = True

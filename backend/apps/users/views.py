@@ -55,7 +55,7 @@ def login(request):
                 'email': user.email,
                 'full_name': user.get_full_name(),
                 'role': user.role,
-                'organization': user.organization.name
+                'organization_name': user.organization.name
             }
         })
     
@@ -115,7 +115,7 @@ def profile(request):
         'role': user.role,
         'timezone': user.timezone,
         'avatar': avatar_url,
-        'organization': user.organization.name
+        'organization_name': user.organization.name
     })
 
 @csrf_exempt

@@ -109,6 +109,7 @@ def list_invitations(request):
         'id': inv.id,
         'email': inv.email,
         'role': inv.role,
+        'token': str(inv.token),
         'invited_by': inv.invited_by.get_full_name() if inv.invited_by else None,
         'created_at': inv.created_at,
         'expires_at': inv.expires_at,
@@ -116,6 +117,22 @@ def list_invitations(request):
     } for inv in invitations]
     
     return Response(data)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def revoke_invitation(request, invitation_id):
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admins can revoke invitations'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        invitation = Invitation.objects.get(
+            id=invitation_id,
+            organization=request.user.organization
+        )
+        invitation.delete()
+        return Response({'message': 'Invitation revoked'})
+    except Invitation.DoesNotExist:
+        return Response({'error': 'Invitation not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @csrf_exempt
 @api_view(['POST'])

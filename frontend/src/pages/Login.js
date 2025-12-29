@@ -48,38 +48,26 @@ function Login() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left side - Hero Image */}
-      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
-        <img 
-          src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=80" 
-          alt="Team collaboration"
-          className="absolute inset-0 w-full h-full object-cover animate-[zoom_20s_ease-in-out_infinite]" 
-        />
-        <div className="absolute inset-0 bg-black/40"></div>
-        
-        {/* Floating 3D Elements */}
-        <div className="absolute top-20 left-10 w-20 h-20 bg-blue-500/20 backdrop-blur-sm rounded-lg animate-[float_6s_ease-in-out_infinite] transform rotate-12"></div>
-        <div className="absolute top-40 right-20 w-16 h-16 bg-purple-500/20 backdrop-blur-sm rounded-full animate-[float_8s_ease-in-out_infinite_2s]"></div>
-        <div className="absolute bottom-32 left-20 w-24 h-24 bg-pink-500/20 backdrop-blur-sm rounded-lg animate-[float_7s_ease-in-out_infinite_1s] transform -rotate-12"></div>
-        
+      {/* Left side - Hero */}
+      <div className="hidden lg:block lg:w-1/2 bg-gray-900 relative">
         <div className="absolute inset-0 p-12 flex flex-col justify-between text-white">
-          <div className="flex items-center space-x-3 animate-[slideDown_0.6s_ease-out]">
-            <div className="w-10 h-10 bg-white flex items-center justify-center transform hover:scale-110 hover:rotate-12 transition-all duration-300">
-              <span className="text-blue-600 font-bold text-xl">R</span>
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-white flex items-center justify-center">
+              <span className="text-gray-900 font-bold text-2xl">R</span>
             </div>
-            <span className="text-2xl font-semibold">Recall</span>
+            <span className="text-3xl font-bold">RECALL</span>
           </div>
           
-          <div className="max-w-lg animate-[slideUp_0.8s_ease-out]">
-            <h1 className="text-5xl font-bold mb-6 leading-tight animate-[fadeIn_1s_ease-out]">
+          <div className="max-w-lg">
+            <h1 className="text-6xl font-bold mb-6 leading-tight">
               Transform conversations into knowledge
             </h1>
-            <p className="text-xl text-blue-50 leading-relaxed animate-[fadeIn_1.2s_ease-out]">
+            <p className="text-2xl text-gray-300 leading-relaxed">
               AI-powered platform that turns team discussions into structured, searchable company memory.
             </p>
           </div>
           
-          <div className="text-sm text-blue-100">
+          <div className="text-gray-400">
             © 2024 Recall. All rights reserved.
           </div>
         </div>
@@ -87,37 +75,37 @@ function Login() {
       
       {/* Right side - Form */}
       <div className="flex-1 lg:w-1/2 flex items-center justify-center px-8 py-12 bg-white">
-        <div className="w-full max-w-md animate-[fadeIn_0.8s_ease-out]">
+        <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden mb-8">
-            <div className="flex items-center space-x-3 animate-[slideDown_0.6s_ease-out]">
-              <div className="w-10 h-10 bg-blue-600 flex items-center justify-center transform hover:scale-110 hover:rotate-12 transition-all duration-300">
-                <span className="text-white font-bold text-xl">R</span>
+          <div className="lg:hidden mb-12">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gray-900 flex items-center justify-center">
+                <span className="text-white font-bold text-2xl">R</span>
               </div>
-              <span className="text-2xl font-semibold text-gray-900">Recall</span>
+              <span className="text-3xl font-bold text-gray-900">RECALL</span>
             </div>
           </div>
 
           {/* Form Header */}
-          <div className="mb-8 animate-[slideUp_0.6s_ease-out]">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          <div className="mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-3">
               {isLogin ? 'Welcome back' : (inviteToken ? 'Join your team' : 'Get started')}
             </h2>
-            <p className="text-base text-gray-600">
+            <p className="text-xl text-gray-600">
               {isLogin ? 'Sign in to your workspace' : (inviteToken ? 'Complete your registration' : 'Create your organization')}
             </p>
           </div>
 
           {/* Toggle */}
           {!inviteToken && (
-            <div className="flex mb-6 bg-gray-100 rounded-lg p-1 animate-[slideUp_0.7s_ease-out]">
+            <div className="flex mb-8 border border-gray-900">
               <button
                 type="button"
                 onClick={() => setIsLogin(true)}
-                className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-300 ${
+                className={`flex-1 py-3 px-4 font-medium transition-all ${
                   isLogin 
-                    ? 'bg-white text-gray-900 shadow-sm transform scale-105' 
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-gray-900 text-white' 
+                    : 'text-gray-900 hover:bg-gray-100'
                 }`}
               >
                 Sign in
@@ -125,10 +113,10 @@ function Login() {
               <button
                 type="button"
                 onClick={() => setIsLogin(false)}
-                className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-300 ${
+                className={`flex-1 py-3 px-4 font-medium transition-all ${
                   !isLogin 
-                    ? 'bg-white text-gray-900 shadow-sm transform scale-105' 
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-gray-900 text-white' 
+                    : 'text-gray-900 hover:bg-gray-100'
                 }`}
               >
                 Create org
@@ -137,68 +125,65 @@ function Login() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5 animate-[slideUp_0.8s_ease-out]">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded animate-[shake_0.5s_ease-in-out]">
-                <div className="text-sm text-red-800">{error}</div>
+              <div className="bg-red-600 text-white p-4">
+                <div className="text-base">{error}</div>
               </div>
             )}
             
             {!isLogin && !inviteToken && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-base font-bold text-gray-900 mb-3">
                   Organization Name
                 </label>
                 <input
                   type="text"
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                  className="w-full px-4 py-3 border border-gray-300 text-base focus:border-gray-900 focus:outline-none"
                   placeholder="Acme Inc."
                   value={credentials.organization}
                   onChange={(e) => setCredentials({...credentials, organization: e.target.value})}
-                  className="transition-all duration-300 focus:scale-[1.02]"
                 />
               </div>
             )}
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-base font-bold text-gray-900 mb-3">
                 Email
               </label>
               <input
                 type="email"
                 required
                 disabled={!!inviteToken}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base disabled:bg-gray-100"
+                className="w-full px-4 py-3 border border-gray-300 text-base disabled:bg-gray-100 focus:border-gray-900 focus:outline-none"
                 placeholder="you@company.com"
                 value={credentials.username}
                 onChange={(e) => setCredentials({...credentials, username: e.target.value})}
-                className="transition-all duration-300 focus:scale-[1.02]"
               />
             </div>
             
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-base font-bold text-gray-900 mb-3">
                 Password
               </label>
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                className="w-full px-4 py-3 pr-12 border border-gray-300 text-base focus:border-gray-900 focus:outline-none"
                 placeholder="••••••••"
                 value={credentials.password}
                 onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-                className="transition-all duration-300 focus:scale-[1.02]"
               />
               <button
                 type="button"
-                className="absolute right-4 top-11"
+                className="absolute right-4 top-12"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
-                  <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                  <EyeSlashIcon className="h-6 w-6 text-gray-400" />
                 ) : (
-                  <EyeIcon className="h-5 w-5 text-gray-400" />
+                  <EyeIcon className="h-6 w-6 text-gray-400" />
                 )}
               </button>
             </div>
@@ -206,7 +191,7 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg text-base font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mt-6 shadow-lg shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/60 hover:scale-[1.02] active:scale-95"
+              className="w-full bg-gray-900 hover:bg-gray-800 text-white py-4 px-4 text-base font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-8"
             >
               {loading ? (
                 <div className="flex items-center justify-center">
@@ -220,10 +205,10 @@ function Login() {
           </form>
           
           {isLogin && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+            <div className="mt-8 text-center">
+              <p className="text-base text-gray-600">
                 Need access?{' '}
-                <span className="text-blue-600 font-medium">Contact your admin</span>
+                <span className="text-gray-900 font-bold">Contact your admin</span>
               </p>
             </div>
           )}

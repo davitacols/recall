@@ -10,6 +10,10 @@ const HighlightedText = ({ text }) => {
       const parts = [];
       let lastIndex = 0;
       
+      // Detect leading spaces/tabs for indentation
+      const leadingWhitespace = line.match(/^[\s\t]+/);
+      const indentLevel = leadingWhitespace ? leadingWhitespace[0].length : 0;
+      
       const regex = /(@[\w\s]+)|(@\w+)|(#\w+)/g;
       let match;
       
@@ -43,7 +47,12 @@ const HighlightedText = ({ text }) => {
         });
       }
       
-      result.push({ type: 'line', parts, isEmpty: line.trim() === '' });
+      result.push({ 
+        type: 'line', 
+        parts, 
+        isEmpty: line.trim() === '',
+        indentLevel
+      });
     });
     
     return result;
@@ -52,9 +61,13 @@ const HighlightedText = ({ text }) => {
   const lines = parseText(text);
   
   return (
-    <div>
+    <div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
       {lines.map((line, lineIndex) => (
-        <div key={lineIndex} className={line.isEmpty ? 'h-6' : 'mb-4'}>
+        <div 
+          key={lineIndex} 
+          className={line.isEmpty ? 'h-4' : ''}
+          style={{ paddingLeft: `${line.indentLevel * 8}px` }}
+        >
           {line.parts.map((part, partIndex) => {
             if (part.type === 'mention') {
               return (

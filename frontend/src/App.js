@@ -11,8 +11,11 @@ import ConversationDetail from './pages/ConversationDetail';
 import Decisions from './pages/Decisions';
 import DecisionDetail from './pages/DecisionDetail';
 import Knowledge from './pages/Knowledge';
+import AskRecall from './pages/AskRecall';
+import Insights from './pages/Insights';
 import ActivityFeed from './pages/ActivityFeed';
-import Settings from './pages/Settings';
+import Settings from './pages/SettingsNew';
+import StaffInvitations from './pages/StaffInvitations';
 import Profile from './pages/Profile';
 import Onboarding from './pages/Onboarding';
 import FAQ from './pages/FAQ';
@@ -80,6 +83,20 @@ function AppContent() {
             </Layout>
           </ProtectedRoute>
         } />
+        <Route path="/ask" element={
+          <ProtectedRoute>
+            <Layout>
+              <AskRecall />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/insights" element={
+          <ProtectedRoute>
+            <Layout>
+              <Insights />
+            </Layout>
+          </ProtectedRoute>
+        } />
         <Route path="/activity" element={
           <ProtectedRoute>
             <Layout>
@@ -91,6 +108,13 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <Settings />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/invitations" element={
+          <ProtectedRoute>
+            <Layout>
+              <StaffInvitations />
             </Layout>
           </ProtectedRoute>
         } />

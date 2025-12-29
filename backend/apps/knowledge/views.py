@@ -29,48 +29,70 @@ def search_knowledge(request):
     if not org_id:
         return Response({'query': query, 'results': [], 'total': 0})
     
-    try:
-        search_engine = get_search_engine()
-        results = search_engine.search(
-            query=query,
-            organization_id=org_id,
-            limit=20
-        )
-    except Exception as e:
-        print(f"Search engine error: {e}")
-        # Fallback to basic text search
-        results = []
-        conversations = Conversation.objects.filter(
-            organization_id=org_id,
-            title__icontains=query
-        )[:10]
-        for conv in conversations:
-            results.append({
+    # Use text-based search (vector search disabled)
+    results = []
+    
+    # Search conversations
+    conversations = Conversation.objects.filter(
+        organization_id=org_id,
+        ai_processed=True
+    )
+    
+    query_lower = query.lower()
+    scored_results = []
+    
+    for conv in conversations:
+        score = 0
+        if query_lower in conv.title.lower():
+            score += 10
+        if query_lower in conv.content.lower():
+            score += 5
+        if conv.ai_summary and query_lower in conv.ai_summary.lower():
+            score += 7
+        for keyword in conv.ai_keywords:
+            if query_lower in keyword.lower() or keyword.lower() in query_lower:
+                score += 8
+        
+        if score > 0:
+            scored_results.append({
                 'id': f'conv_{conv.id}',
                 'title': conv.title,
                 'content_type': conv.post_type,
                 'content_preview': conv.content[:200],
-                'summary': conv.ai_summary,
-                'relevance_score': 0.8,
+                'summary': conv.ai_summary or conv.content[:200],
+                'relevance_score': min(score / 10, 1.0),
                 'created_at': conv.created_at.isoformat(),
-                'author': conv.author.get_full_name()
+                'author': conv.author.get_full_name(),
+                'score': score
             })
+    
+    # Search decisions
+    decisions = Decision.objects.filter(organization_id=org_id)
+    for dec in decisions:
+        score = 0
+        if query_lower in dec.title.lower():
+            score += 10
+        if query_lower in dec.description.lower():
+            score += 5
+        if query_lower in dec.rationale.lower():
+            score += 7
         
-        decisions = Decision.objects.filter(
-            organization_id=org_id,
-            title__icontains=query
-        )[:10]
-        for dec in decisions:
-            results.append({
+        if score > 0:
+            scored_results.append({
                 'id': f'decision_{dec.id}',
                 'title': dec.title,
                 'content_type': 'decision',
                 'content_preview': dec.description[:200],
                 'summary': dec.rationale,
-                'relevance_score': 0.8,
+                'relevance_score': min(score / 10, 1.0),
                 'created_at': dec.created_at.isoformat(),
-                'author': dec.decision_maker.get_full_name() if dec.decision_maker else None
+                'author': dec.decision_maker.get_full_name() if dec.decision_maker else None,
+                'score': score
             })
+    
+    # Sort by score and limit
+    scored_results.sort(key=lambda x: x['score'], reverse=True)
+    results = scored_results[:20]
     
     return Response({
         'query': query,
@@ -83,7 +105,7 @@ def recent_decisions(request):
     decisions = Decision.objects.filter(
         organization=request.user.organization,
         status='approved'
-    ).order_by('-approved_at')[:10]
+    ).order_by('-decided_at')[:10]
     
     decisions_data = []
     for decision in decisions:
@@ -91,7 +113,7 @@ def recent_decisions(request):
             'id': decision.id,
             'title': decision.title,
             'impact_level': decision.impact_level,
-            'approved_at': decision.approved_at,
+            'decided_at': decision.decided_at,
             'decision_maker': decision.decision_maker.get_full_name() if decision.decision_maker else None
         })
     

@@ -17,7 +17,7 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
 
   return (
     <div className={`${depth > 0 ? 'ml-12 mt-4' : ''}`}>
-      <div className="bg-white border border-gray-200 p-6 hover:shadow-sm transition-shadow">
+      <div className="bg-white border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <Link to="/profile" className="w-10 h-10 bg-gray-900 flex items-center justify-center">
@@ -71,9 +71,9 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
           </div>
         ) : (
           <>
-            <p className="text-gray-700 whitespace-pre-wrap mb-4">
+            <div className="text-lg text-gray-700 mb-4" style={{whiteSpace: 'pre-wrap', wordWrap: 'break-word'}}>
               <HighlightedText text={reply.content} />
-            </p>
+            </div>
             <button
               onClick={() => onReply(reply.id)}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
@@ -430,54 +430,25 @@ function ConversationDetail() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="flex gap-8">
+    <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12">
+      <div className="flex flex-col lg:flex-row gap-8 md:gap-12">
       {/* Main Content */}
-      <div className="flex-1">
+      <div className="flex-1 max-w-3xl">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-6">
-          <Link 
-            to="/conversations" 
-            className="inline-flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors"
-          >
-            <ArrowLeftIcon className="w-4 h-4 mr-2" />
-            Back to Conversations
-          </Link>
-          {conversation.author_id === currentUserId && (
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setIsEditingPost(!isEditingPost)}
-                className="px-4 py-2 border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                {isEditingPost ? 'Cancel' : 'Edit'}
-              </button>
-              <button
-                onClick={handleDeletePost}
-                className="px-4 py-2 bg-red-600 text-sm text-white hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+      <div className="mb-12">
+        <Link 
+          to="/conversations" 
+          className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-8"
+        >
+          <ArrowLeftIcon className="w-4 h-4 mr-2" />
+          Back
+        </Link>
         
-        <div className="flex items-center space-x-3 mb-6">
-          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium">
+        <div className="flex items-center space-x-4 mb-6">
+          <span className="px-3 py-1 bg-gray-900 text-white text-xs font-bold uppercase tracking-wide">
             {conversation.post_type}
           </span>
-          <select
-            value={conversation.status_label}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className="px-3 py-1 border border-gray-300 text-xs font-medium focus:outline-none focus:border-blue-500"
-          >
-            <option value="open">Open</option>
-            <option value="good_example">✓ Good Example</option>
-            <option value="needs_followup">⚠ Needs Follow-up</option>
-            <option value="resolved">✓ Resolved</option>
-            <option value="in_progress">→ In Progress</option>
-          </select>
-          <span className="text-xs text-gray-500">
+          <span className="text-gray-500">
             {new Date(conversation.created_at).toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
@@ -486,23 +457,54 @@ function ConversationDetail() {
           </span>
         </div>
         
-        <h1 className="text-3xl font-semibold text-gray-900 mb-6">{conversation.title}</h1>
+        <h1 className="text-6xl font-bold text-gray-900 mb-8 leading-tight">{conversation.title}</h1>
         
-        <div className="flex items-center space-x-3">
-          <Link to="/profile" className="w-10 h-10 bg-gray-900 flex items-center justify-center">
-            <span className="text-white font-medium text-sm">
-              {conversation.author?.charAt(0).toUpperCase()}
-            </span>
-          </Link>
-          <div>
-            <Link to="/profile" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">{conversation.author}</Link>
-            <div className="text-sm text-gray-500">Author</div>
+        <div className="flex items-center justify-between pb-8 border-b border-gray-200">
+          <div className="flex items-center space-x-4">
+            <Link to="/profile" className="w-12 h-12 bg-gray-900 flex items-center justify-center">
+              <span className="text-white font-bold">
+                {conversation.author?.charAt(0).toUpperCase()}
+              </span>
+            </Link>
+            <div>
+              <Link to="/profile" className="font-bold text-gray-900 hover:underline">{conversation.author}</Link>
+              <div className="text-sm text-gray-500">Author</div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <select
+              value={conversation.status_label}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              className="px-4 py-2 border border-gray-900 text-sm font-medium focus:outline-none"
+            >
+              <option value="open">Open</option>
+              <option value="good_example">✓ Good Example</option>
+              <option value="needs_followup">⚠ Needs Follow-up</option>
+              <option value="resolved">✓ Resolved</option>
+              <option value="in_progress">→ In Progress</option>
+            </select>
+            {conversation.author_id === currentUserId && (
+              <>
+                <button
+                  onClick={() => setIsEditingPost(!isEditingPost)}
+                  className="recall-btn-secondary"
+                >
+                  {isEditingPost ? 'Cancel' : 'Edit'}
+                </button>
+                <button
+                  onClick={handleDeletePost}
+                  className="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="bg-white border border-gray-200 mb-8">
+      <div className="mb-12">
         {/* Complexity Warning */}
         {showComplexityWarning && complexity && (
           <div className="border-b border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-t-2xl">
@@ -559,78 +561,76 @@ function ConversationDetail() {
           </div>
         )}
         
-        <div className="p-8">
+        <div className="py-8">
           {isEditingPost ? (
             <div>
               <input
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full text-4xl font-bold mb-4 p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                className="w-full text-3xl font-bold mb-6 p-4 border border-gray-900 focus:outline-none"
               />
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                rows={8}
+                className="w-full p-4 border border-gray-900 focus:outline-none text-lg"
+                rows={12}
               />
               <button
                 onClick={handleEditPost}
-                className="mt-4 px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                className="recall-btn-primary mt-6"
               >
                 Save Changes
               </button>
             </div>
           ) : (
-            <div className="prose max-w-none">
-              <div className="text-lg leading-relaxed text-gray-700 whitespace-pre-wrap">
-                <HighlightedText text={conversation.content} />
-              </div>
+            <div className="text-xl leading-relaxed text-gray-800" style={{whiteSpace: 'pre-wrap', wordWrap: 'break-word'}}>
+              <HighlightedText text={conversation.content} />
             </div>
           )}
         </div>
         
         {/* Reactions */}
-        <div className="border-t border-gray-200 p-6">
+        <div className="pt-8 border-t border-gray-200">
           <div className="flex items-center space-x-3">
             <button
               onClick={() => handleReaction('agree')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+              className={`px-6 py-3 font-medium transition-all ${
                 reactions.user_reaction === 'agree'
-                  ? 'bg-green-600 text-white shadow-md'
-                  : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  ? 'bg-gray-900 text-white'
+                  : 'border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
               }`}
             >
-              👍 Agree {reactions.reactions.find(r => r.reaction_type === 'agree')?.count || 0}
+              👍 {reactions.reactions.find(r => r.reaction_type === 'agree')?.count || 0}
             </button>
             <button
               onClick={() => handleReaction('unsure')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+              className={`px-6 py-3 font-medium transition-all ${
                 reactions.user_reaction === 'unsure'
-                  ? 'bg-yellow-600 text-white shadow-md'
-                  : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  ? 'bg-gray-900 text-white'
+                  : 'border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
               }`}
             >
-              🤔 Unsure {reactions.reactions.find(r => r.reaction_type === 'unsure')?.count || 0}
+              🤔 {reactions.reactions.find(r => r.reaction_type === 'unsure')?.count || 0}
             </button>
             <button
               onClick={() => handleReaction('concern')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+              className={`px-6 py-3 font-medium transition-all ${
                 reactions.user_reaction === 'concern'
-                  ? 'bg-red-600 text-white shadow-md'
-                  : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  ? 'bg-gray-900 text-white'
+                  : 'border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
               }`}
             >
-              👎 Concern {reactions.reactions.find(r => r.reaction_type === 'concern')?.count || 0}
+              👎 {reactions.reactions.find(r => r.reaction_type === 'concern')?.count || 0}
             </button>
           </div>
         </div>
       </div>
 
       {/* Replies */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-          Replies ({replies.length})
+      <div className="mb-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-8">
+          {replies.length} {replies.length === 1 ? 'Reply' : 'Replies'}
         </h2>
         
         <div className="space-y-6">
@@ -648,36 +648,36 @@ function ConversationDetail() {
       </div>
 
       {/* Reply Form */}
-      <div className="bg-white border border-gray-200 p-6">
+      <div className="border-t border-gray-200 pt-8">
         {replyingTo && (
-          <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-600">
+          <div className="mb-6 p-4 bg-gray-100 border-l-4 border-gray-900">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-blue-900 font-medium">Replying to a comment</span>
+              <span className="font-medium text-gray-900">Replying to a comment</span>
               <button
                 onClick={() => setReplyingTo(null)}
-                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                className="text-gray-600 hover:text-gray-900 font-medium"
               >
                 Cancel
               </button>
             </div>
           </div>
         )}
-        <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-          {replyingTo ? 'Add Reply' : 'Add Comment'}
+        <h3 className="text-xl font-bold text-gray-900 mb-6">
+          {replyingTo ? 'Write a Reply' : 'Write a Comment'}
         </h3>
         <form onSubmit={handleSubmitReply}>
           <MentionTagInput
             value={newReply}
             onChange={(e) => setNewReply(e.target.value)}
-            placeholder="Share your thoughts... Use @username to mention"
-            rows={4}
+            placeholder="Share your thoughts..."
+            rows={5}
           />
           <button
             type="submit"
             disabled={submitting || !newReply.trim()}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50 mt-4"
+            className="recall-btn-primary mt-6 disabled:opacity-50"
           >
-            {submitting ? 'Posting...' : 'Post Reply'}
+            {submitting ? 'Posting...' : 'Post'}
           </button>
         </form>
       </div>
@@ -687,47 +687,25 @@ function ConversationDetail() {
       </div>
 
       {/* Sidebar */}
-      <div className="w-96 flex-shrink-0 sticky top-4 self-start space-y-6">
-        {/* Why This Matters */}
-        {conversation.why_this_matters && (
-          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl shadow-md border border-yellow-200 p-6">
-            <h3 className="font-semibold text-yellow-900 mb-3 text-sm flex items-center">
-              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
-              </svg>
-              Why This Matters
-            </h3>
-            <p className="text-sm text-yellow-900 leading-relaxed">{conversation.why_this_matters}</p>
-          </div>
-        )}
-
-        {/* Convert to Decision */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-            Actions
-          </h3>
-          {conversation.is_crisis && (
-            <div className="mb-3 px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg text-center shadow-md">
-              CRISIS MODE
-            </div>
-          )}
-          <div className="space-y-2">
+      <div className="w-80 flex-shrink-0 sticky top-8 self-start space-y-8">
+        {/* Actions */}
+        <div className="space-y-3">
           <button
             onClick={handleMarkCrisis}
-            className={`w-full px-4 py-3 font-medium text-sm rounded-lg transition-all ${
+            className={`w-full px-5 py-3 font-medium transition-all ${
               conversation.is_crisis
-                ? 'bg-gray-900 text-white hover:bg-gray-800 shadow-md'
-                : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-gray-900 text-white'
+                : 'border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
             }`}
           >
-            {conversation.is_crisis ? '✓ Crisis Mode Active' : 'Mark as Crisis'}
+            {conversation.is_crisis ? '✓ Crisis Mode' : 'Mark as Crisis'}
           </button>
           <button
             onClick={handleBookmark}
-            className={`w-full px-4 py-3 font-medium text-sm rounded-lg transition-all ${
+            className={`w-full px-5 py-3 font-medium transition-all ${
               bookmarked
-                ? 'bg-gray-900 text-white hover:bg-gray-800 shadow-md'
-                : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-gray-900 text-white'
+                : 'border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
             }`}
           >
             {bookmarked ? '★ Bookmarked' : '☆ Bookmark'}
@@ -735,130 +713,61 @@ function ConversationDetail() {
           <button
             onClick={() => setShowCloseModal(true)}
             disabled={conversation.is_closed}
-            className="w-full px-4 py-3 bg-gray-900 text-white hover:bg-gray-800 font-medium text-sm rounded-lg transition-all disabled:opacity-50 shadow-md"
+            className="w-full px-5 py-3 bg-gray-900 text-white hover:bg-gray-800 font-medium transition-all disabled:opacity-50"
           >
-            {conversation.is_closed ? '✓ Closed' : 'Wrap Up & Close'}
+            {conversation.is_closed ? '✓ Closed' : 'Close Conversation'}
           </button>
           <button
             onClick={handleGenerateShareLink}
-            className="w-full px-4 py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-sm rounded-lg transition-all"
+            className="w-full px-5 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-medium transition-all"
           >
-            Share Link
+            Share
           </button>
           <button
             onClick={() => setShowConvertModal(true)}
-            className="w-full px-4 py-3 bg-gray-900 text-white hover:bg-gray-800 font-medium text-sm rounded-lg transition-all shadow-md"
+            className="w-full px-5 py-3 bg-gray-900 text-white hover:bg-gray-800 font-medium transition-all"
           >
             Convert to Decision
           </button>
-          {editHistory.length > 0 && (
-            <button
-              onClick={() => {
-                setShowHistory(!showHistory);
-                if (!showHistory && timeline.length === 0) fetchTimeline();
-              }}
-              className="w-full px-4 py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-sm rounded-lg transition-all"
-            >
-              {showHistory ? 'Hide' : 'Show'} History
-            </button>
-          )}
-          <button
-            onClick={() => {
-              setShowTimeline(!showTimeline);
-              if (!showTimeline && timeline.length === 0) fetchTimeline();
-            }}
-            className="w-full px-4 py-3 bg-gray-900 text-white hover:bg-gray-800 font-medium text-sm rounded-lg transition-all shadow-md"
-          >
-            {showTimeline ? 'Hide' : 'Show'} Timeline
-          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="border-t border-gray-200 pt-8">
+          <h3 className="font-bold text-gray-900 mb-4">Stats</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Views</span>
+              <span className="font-bold text-gray-900">{conversation.view_count}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Replies</span>
+              <span className="font-bold text-gray-900">{conversation.reply_count}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Created</span>
+              <span className="font-bold text-gray-900">
+                {new Date(conversation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Edit History */}
-        {showHistory && editHistory.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-              Edit History
-            </h3>
-            <div className="space-y-3">
-              {editHistory.map((edit) => (
-                <div key={edit.id} className="pb-3 border-b border-gray-200 last:border-0">
-                  <div className="text-xs text-gray-500 mb-1">
-                    {new Date(edit.edited_at).toLocaleDateString()} by {edit.edited_by}
-                  </div>
-                  <div className="text-xs font-semibold text-gray-900 mb-1">{edit.field_changed}</div>
-                  <div className="text-xs text-red-600 line-through mb-1">{edit.old_value}</div>
-                  <div className="text-xs text-green-600">{edit.new_value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Full Timeline */}
-        {showTimeline && timeline.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-              Timeline
-            </h3>
-            <div className="space-y-3">
-              {timeline.map((item, idx) => (
-                <div key={idx} className="flex items-start space-x-3 pb-3 border-b border-gray-200 last:border-0">
-                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                    item.type === 'created' ? 'bg-gray-900' :
-                    item.type === 'edited' ? 'bg-blue-600' :
-                    item.type === 'decision' ? 'bg-green-600' :
-                    'bg-purple-600'
-                  }`}></div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold text-gray-900">{item.type}</span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(item.date).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {item.id && item.type === 'related' ? (
-                      <Link to={`/conversations/${item.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                        {item.title}
-                      </Link>
-                    ) : item.id && item.type === 'decision' ? (
-                      <Link to={`/decisions/${item.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                        {item.title}
-                      </Link>
-                    ) : (
-                      <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                    )}
-                    {item.author && (
-                      <p className="text-xs text-gray-600 mt-1">by {item.author}</p>
-                    )}
-                    {item.details && (
-                      <p className="text-xs text-gray-600 mt-1">{item.details}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Summary */}
         {conversation.ai_summary && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-              Summary
-            </h3>
-            <p className="text-sm text-gray-700 leading-relaxed mb-4">{conversation.ai_summary}</p>
+          <div className="border-t border-gray-200 pt-8">
+            <h3 className="font-bold text-gray-900 mb-4">Summary</h3>
+            <p className="text-gray-700 leading-relaxed mb-4">{conversation.ai_summary}</p>
             <button
               onClick={handleExplainSimply}
               disabled={loadingExplanation}
-              className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg font-medium text-xs rounded-lg transition-all disabled:opacity-50"
+              className="w-full px-5 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-medium transition-all disabled:opacity-50"
             >
-              {loadingExplanation ? 'Generating...' : 'Explain Like I\'m New'}
+              {loadingExplanation ? 'Generating...' : 'Explain Simply'}
             </button>
             {simpleExplanation && (
-              <div className="mt-4 p-4 bg-blue-50 border-l-4 border-blue-600 rounded-lg">
-                <p className="text-xs font-semibold text-blue-900 mb-2">Simple Explanation</p>
-                <p className="text-sm text-blue-900 leading-relaxed">{simpleExplanation}</p>
+              <div className="mt-4 p-4 bg-gray-100 border-l-4 border-gray-900">
+                <p className="text-sm font-bold text-gray-900 mb-2">Simple Explanation</p>
+                <p className="text-gray-700 leading-relaxed">{simpleExplanation}</p>
               </div>
             )}
           </div>
@@ -866,20 +775,13 @@ function ConversationDetail() {
 
         {/* Action Items */}
         {conversation.ai_action_items?.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-              Action Items
-            </h3>
+          <div className="border-t border-gray-200 pt-8">
+            <h3 className="font-bold text-gray-900 mb-4">Action Items</h3>
             <div className="space-y-3">
               {conversation.ai_action_items.map((item, idx) => (
-                <div key={idx} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm text-gray-700 font-medium">{item.title}</p>
-                    {item.priority && (
-                      <span className="text-xs text-gray-500">{item.priority}</span>
-                    )}
-                  </div>
+                <div key={idx} className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-gray-900 rounded-full mt-2 flex-shrink-0"></div>
+                  <p className="text-gray-700 font-medium">{item.title}</p>
                 </div>
               ))}
             </div>
@@ -888,42 +790,17 @@ function ConversationDetail() {
 
         {/* Keywords */}
         {conversation.ai_keywords?.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-              Keywords
-            </h3>
+          <div className="border-t border-gray-200 pt-8">
+            <h3 className="font-bold text-gray-900 mb-4">Keywords</h3>
             <div className="flex flex-wrap gap-2">
               {conversation.ai_keywords.map((keyword, idx) => (
-                <span key={idx} className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-purple-100 text-gray-900 text-xs font-medium rounded-full">
+                <span key={idx} className="px-3 py-1 bg-gray-900 text-white text-sm font-medium">
                   {keyword}
                 </span>
               ))}
             </div>
           </div>
         )}
-
-        {/* Stats */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-            Stats
-          </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Views</span>
-              <span className="text-sm font-semibold text-gray-900">{conversation.view_count}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Replies</span>
-              <span className="text-sm font-semibold text-gray-900">{conversation.reply_count}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Created</span>
-              <span className="text-sm font-semibold text-gray-900">
-                {new Date(conversation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
       </div>
 

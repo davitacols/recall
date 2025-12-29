@@ -22,7 +22,7 @@ def seed_data():
     
     # Get Pic2Nav organization
     try:
-        org = Organization.objects.get(slug='pic2nav')
+        org = Organization.objects.get(slug='pic2nav-inc.')
         print(f"\n[OK] Found organization: {org.name}")
     except Organization.DoesNotExist:
         print("\n[ERROR] Pic2Nav organization not found!")

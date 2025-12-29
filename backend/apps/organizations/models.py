@@ -56,6 +56,23 @@ class User(AbstractUser):
     # Activity tracking
     last_active = models.DateTimeField(null=True, blank=True)
     
+    # Notification settings
+    email_notifications = models.BooleanField(default=True)
+    mention_notifications = models.BooleanField(default=True)
+    reply_notifications = models.BooleanField(default=True)
+    decision_notifications = models.BooleanField(default=True)
+    digest_frequency = models.CharField(
+        max_length=20,
+        choices=[
+            ('realtime', 'Real-time'),
+            ('hourly', 'Hourly'),
+            ('daily', 'Daily'),
+            ('weekly', 'Weekly'),
+            ('never', 'Never')
+        ],
+        default='daily'
+    )
+    
     class Meta:
         db_table = 'users'
         unique_together = ['username', 'organization']

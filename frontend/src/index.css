@@ -1,44 +1,54 @@
-@import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    font-family: 'League Spartan', system-ui, sans-serif;
-    background-color: #ffffff;
-    color: #27272a;
+    font-family: 'League Spartan', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #fafbfc;
+    color: #1a1a1a;
   }
 }
 
 @layer components {
-  .card {
-    @apply bg-white shadow-space border border-gray-200 transition-all duration-200 hover:shadow-space-lg;
+  .recall-card {
+    @apply bg-white border border-gray-200 rounded-xl hover:shadow-lg hover:border-gray-300 transition-all duration-200;
   }
   
-  .btn {
-    @apply px-4 py-2 font-bold text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 uppercase tracking-wide;
+  .recall-btn-primary {
+    @apply px-5 py-2.5 bg-black hover:bg-gray-900 text-white text-base font-medium shadow-sm hover:shadow-md transition-all duration-200;
   }
   
-  .btn-primary {
-    @apply btn bg-gray-900 hover:bg-gray-800 text-white focus:ring-gray-900;
+  .recall-btn-secondary {
+    @apply px-5 py-2.5 bg-white hover:bg-gray-50 text-black text-base font-medium border border-black shadow-sm hover:shadow transition-all duration-200;
   }
   
-  .btn-secondary {
-    @apply btn bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-900 focus:ring-gray-900;
+  .recall-input {
+    @apply w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-base transition-all duration-200;
   }
   
-  .input {
-    @apply w-full px-3 py-2 border-2 border-gray-300 focus:border-gray-900 focus:outline-none transition-colors text-sm;
+  .recall-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
   }
-  
-  .nav-link {
-    @apply px-3 py-2 text-sm font-bold text-gray-600 hover:text-gray-900 transition-all duration-200 uppercase tracking-wide;
-  }
-  
-  .nav-link-active {
-    @apply nav-link text-gray-900 border-b-2 border-gray-900;
-  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
 }
 
 @keyframes float {

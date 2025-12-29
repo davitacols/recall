@@ -17,3 +17,6 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif hasattr(settings, 'MEDIA_ROOT'):
+    # Serve media files in production when using filesystem storage
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

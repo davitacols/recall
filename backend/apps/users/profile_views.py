@@ -25,16 +25,18 @@ def update_profile(request):
         
         user.save()
         
-        # In production (S3), avatar.url is already absolute
-        # In development (local), we need to build absolute URI
-        from django.conf import settings
+        # Build avatar URL
+        avatar_url = None
         if user.avatar:
-            if settings.DEBUG:
-                avatar_url = request.build_absolute_uri(user.avatar.url)
-            else:
-                avatar_url = user.avatar.url
-        else:
-            avatar_url = None
+            try:
+                from django.conf import settings
+                if hasattr(user.avatar, 'url'):
+                    if settings.DEBUG or not hasattr(settings, 'AWS_STORAGE_BUCKET_NAME') or not settings.AWS_STORAGE_BUCKET_NAME:
+                        avatar_url = request.build_absolute_uri(user.avatar.url)
+                    else:
+                        avatar_url = user.avatar.url
+            except Exception as e:
+                print(f"Avatar URL error: {str(e)}")
         
         return Response({
             'id': user.id,

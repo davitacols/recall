@@ -8,44 +8,50 @@ from apps.decisions.models import Decision
 @api_view(['PUT'])
 @parser_classes([MultiPartParser, FormParser])
 def update_profile(request):
-    user = request.user
-    
-    # Update text fields
-    if 'full_name' in request.data:
-        user.full_name = request.data['full_name']
-    if 'bio' in request.data:
-        user.bio = request.data['bio']
-    if 'timezone' in request.data:
-        user.timezone = request.data['timezone']
-    
-    # Handle avatar upload
-    if 'avatar' in request.FILES:
-        user.avatar = request.FILES['avatar']
-    
-    user.save()
-    
-    # In production (S3), avatar.url is already absolute
-    # In development (local), we need to build absolute URI
-    from django.conf import settings
-    if user.avatar:
-        if settings.DEBUG:
-            avatar_url = request.build_absolute_uri(user.avatar.url)
+    try:
+        user = request.user
+        
+        # Update text fields
+        if 'full_name' in request.data:
+            user.full_name = request.data['full_name']
+        if 'bio' in request.data:
+            user.bio = request.data['bio']
+        if 'timezone' in request.data:
+            user.timezone = request.data['timezone']
+        
+        # Handle avatar upload
+        if 'avatar' in request.FILES:
+            user.avatar = request.FILES['avatar']
+        
+        user.save()
+        
+        # In production (S3), avatar.url is already absolute
+        # In development (local), we need to build absolute URI
+        from django.conf import settings
+        if user.avatar:
+            if settings.DEBUG:
+                avatar_url = request.build_absolute_uri(user.avatar.url)
+            else:
+                avatar_url = user.avatar.url
         else:
-            avatar_url = user.avatar.url
-    else:
-        avatar_url = None
-    
-    return Response({
-        'id': user.id,
-        'username': user.username,
-        'email': user.email,
-        'full_name': user.full_name,
-        'bio': user.bio,
-        'role': user.role,
-        'timezone': user.timezone,
-        'avatar': avatar_url,
-        'organization': user.organization.name
-    })
+            avatar_url = None
+        
+        return Response({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'full_name': user.full_name,
+            'bio': user.bio,
+            'role': user.role,
+            'timezone': user.timezone,
+            'avatar': avatar_url,
+            'organization': user.organization.name
+        })
+    except Exception as e:
+        print(f"Profile update error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 def change_password(request):

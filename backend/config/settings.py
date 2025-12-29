@@ -102,6 +102,11 @@ AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
 AWS_REGION = config('AWS_REGION', default='us-east-1')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 
+# Email Configuration (Resend)
+RESEND_API_KEY = config('RESEND_API_KEY', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Recall <onboarding@resend.dev>')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+
 # Vector Database
 CHROMA_PERSIST_DIRECTORY = config('CHROMA_PERSIST_DIRECTORY', default='./chroma_db')
 

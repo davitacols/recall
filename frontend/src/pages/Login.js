@@ -100,10 +100,10 @@ function Login() {
           {/* Form Header */}
           <div className="mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-3">
-              {isLogin ? 'Welcome back' : (inviteToken ? 'Join your team' : 'Get started')}
+              {isLogin ? 'Welcome back' : (inviteToken ? `You've been invited` : 'Get started')}
             </h2>
             <p className="text-xl text-gray-600">
-              {isLogin ? 'Sign in to your workspace' : (inviteToken ? 'Complete your registration' : 'Create your organization')}
+              {isLogin ? 'Sign in to continue' : (inviteToken ? 'Complete your registration to join the team' : 'Create your organization')}
             </p>
           </div>
 
@@ -207,10 +207,10 @@ function Login() {
               {loading ? (
                 <div className="flex items-center justify-center">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  {isLogin ? 'Signing in...' : 'Creating...'}
+                  {isLogin ? 'Signing in...' : 'Creating account...'}
                 </div>
               ) : (
-                <span>{isLogin ? 'Sign in' : (inviteToken ? 'Complete registration' : 'Create organization')}</span>
+                <span>{isLogin ? 'Sign in' : (inviteToken ? 'Create account' : 'Create account')}</span>
               )}
             </button>
           </form>
@@ -218,8 +218,8 @@ function Login() {
           {isLogin && (
             <div className="mt-8 text-center">
               <p className="text-base text-gray-600">
-                Need access?{' '}
-                <span className="text-gray-900 font-bold">Contact your admin</span>
+                New to Recall?{' '}
+                <button onClick={() => setIsLogin(false)} className="text-gray-900 font-bold hover:underline">Create an account</button>
               </p>
             </div>
           )}

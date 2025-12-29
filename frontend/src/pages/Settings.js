@@ -1,222 +1,279 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
+import { useToast } from '../components/Toast';
+import { CheckIcon } from '@heroicons/react/24/outline';
 
 function Settings() {
   const { user } = useAuth();
-  const [preferences, setPreferences] = useState({
-    quiet_mode: false,
-    muted_topics: [],
-    muted_post_types: [],
-    offline_mode: false,
-    low_data_mode: false
+  const { addToast } = useToast();
+  const [activeSection, setActiveSection] = useState('notifications');
+  const [saved, setSaved] = useState(false);
+  const [notifications, setNotifications] = useState({
+    mention_notifications: true,
+    reply_notifications: true,
+    decision_notifications: true,
+    digest_frequency: 'daily'
   });
-  const [badges, setBadges] = useState([]);
-  const [newTopic, setNewTopic] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [quietMode, setQuietMode] = useState(false);
 
   useEffect(() => {
-    fetchPreferences();
-    fetchBadges();
+    fetchSettings();
   }, []);
 
-  const fetchPreferences = async () => {
+  const fetchSettings = async () => {
     try {
-      const response = await api.get('/api/conversations/preferences/');
-      setPreferences(response.data);
+      const response = await api.get('/api/auth/profile/');
+      setNotifications({
+        mention_notifications: response.data.mention_notifications ?? true,
+        reply_notifications: response.data.reply_notifications ?? true,
+        decision_notifications: response.data.decision_notifications ?? true,
+        digest_frequency: response.data.digest_frequency || 'daily'
+      });
     } catch (error) {
-      console.error('Failed to fetch preferences:', error);
-    } finally {
-      setLoading(false);
+      console.error('Failed to fetch settings:', error);
     }
   };
 
-  const fetchBadges = async () => {
+  const handleSave = async (updates) => {
     try {
-      const response = await api.get('/api/conversations/badges/');
-      setBadges(response.data);
+      await api.put('/api/auth/profile/update/', updates);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     } catch (error) {
-      console.error('Failed to fetch badges:', error);
+      addToast('Failed to save settings', 'error');
     }
   };
 
-  const handleToggle = async (field) => {
-    const updated = { ...preferences, [field]: !preferences[field] };
-    setPreferences(updated);
-    try {
-      await api.put('/api/conversations/preferences/', updated);
-    } catch (error) {
-      console.error('Failed to update preferences:', error);
-    }
+  const handleToggle = (key) => {
+    const updated = { ...notifications, [key]: !notifications[key] };
+    setNotifications(updated);
+    handleSave(updated);
   };
 
-  const handleAddMutedTopic = () => {
-    if (!newTopic.trim()) return;
-    const updated = { ...preferences, muted_topics: [...preferences.muted_topics, newTopic] };
-    setPreferences(updated);
-    setNewTopic('');
-    api.put('/api/conversations/preferences/', updated);
+  const handleDigestChange = (value) => {
+    const updated = { ...notifications, digest_frequency: value };
+    setNotifications(updated);
+    handleSave(updated);
   };
 
-  const handleRemoveMutedTopic = (topic) => {
-    const updated = { ...preferences, muted_topics: preferences.muted_topics.filter(t => t !== topic) };
-    setPreferences(updated);
-    api.put('/api/conversations/preferences/', updated);
-  };
-
-  const handleTogglePostType = (type) => {
-    const muted = preferences.muted_post_types.includes(type)
-      ? preferences.muted_post_types.filter(t => t !== type)
-      : [...preferences.muted_post_types, type];
-    const updated = { ...preferences, muted_post_types: muted };
-    setPreferences(updated);
-    api.put('/api/conversations/preferences/', updated);
-  };
-
-  const getBadgeIcon = (type) => {
-    switch(type) {
-      case 'decision_owner': return '🏆';
-      case 'context_contributor': return '📚';
-      case 'knowledge_builder': return '🧠';
-      case 'crisis_responder': return '🚨';
-      default: return '⭐';
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  const sections = [
+    { id: 'notifications', label: 'Notifications' },
+    ...(user?.role === 'admin' ? [
+      { id: 'organization', label: 'Organization' },
+      { id: 'team', label: 'Team' }
+    ] : []),
+    { id: 'advanced', label: 'Advanced' }
+  ];
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-5xl font-bold text-gray-900 mb-8 uppercase tracking-wide">Settings</h1>
+    <div className="max-w-5xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
+        <p className="text-base text-gray-600">Manage your preferences</p>
+      </div>
 
-      {/* Badges */}
-      <div className="bg-white border-2 border-gray-900 p-8 mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase tracking-wide">Your Badges</h2>
-        {badges.length === 0 ? (
-          <p className="text-gray-600">No badges earned yet. Keep contributing!</p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {badges.map((badge, idx) => (
-              <div key={idx} className="text-center p-4 bg-gray-50 border border-gray-200">
-                <div className="text-4xl mb-2">{getBadgeIcon(badge.badge_type)}</div>
-                <div className="text-xs font-bold text-gray-900 uppercase">
-                  {badge.badge_type.replace('_', ' ')}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {new Date(badge.earned_at).toLocaleDateString()}
+      <div className="flex gap-8">
+        {/* Sidebar Navigation */}
+        <aside className="w-48 flex-shrink-0">
+          <nav className="space-y-1">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors ${
+                  activeSection === section.id
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                {section.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        {/* Content */}
+        <div className="flex-1">
+          {saved && (
+            <div className="mb-4 flex items-center gap-2 text-sm text-gray-600">
+              <CheckIcon className="w-4 h-4" />
+              <span>Saved just now</span>
+            </div>
+          )}
+
+          {/* Notifications Section */}
+          {activeSection === 'notifications' && (
+            <div className="space-y-8">
+              {/* Reassurance Banner */}
+              <div className="bg-gray-50 border border-gray-200 p-6">
+                <p className="text-sm font-medium text-gray-900 mb-2">Feeling overwhelmed?</p>
+                <p className="text-sm text-gray-600">
+                  Try Quiet Mode or switch to Daily summaries to reduce noise.
+                </p>
+              </div>
+
+              {/* Quiet Mode */}
+              <div className="bg-white border border-gray-200 p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-gray-900 mb-1">Quiet Mode</h3>
+                    <p className="text-sm text-gray-600">
+                      Pause notifications temporarily without missing anything
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setQuietMode(!quietMode)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      quietMode ? 'bg-gray-900' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        quietMode ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Quiet Mode */}
-      <div className="bg-white border-2 border-gray-900 p-8 mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase tracking-wide">Quiet Mode</h2>
-        <p className="text-gray-600 mb-6">Control what you see in your feed</p>
+              {/* Notification Preferences */}
+              <div className="bg-white border border-gray-200 p-6">
+                <h3 className="text-base font-bold text-gray-900 mb-6">Notification preferences</h3>
+                <div className="space-y-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 mb-1">Mentions</p>
+                      <p className="text-sm text-gray-600">Get notified when someone mentions you</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggle('mention_notifications')}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        notifications.mention_notifications ? 'bg-gray-900' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifications.mention_notifications ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
 
-        <div className="mb-6">
-          <label className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 cursor-pointer">
-            <div>
-              <div className="font-bold text-gray-900 uppercase text-sm">Enable Quiet Mode</div>
-              <div className="text-xs text-gray-600">Hide muted topics and post types</div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 mb-1">Replies</p>
+                      <p className="text-sm text-gray-600">Get notified when someone replies to your post</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggle('reply_notifications')}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        notifications.reply_notifications ? 'bg-gray-900' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifications.reply_notifications ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 mb-1">Decisions</p>
+                      <p className="text-sm text-gray-600">Get notified when a decision is made or updated</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggle('decision_notifications')}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        notifications.decision_notifications ? 'bg-gray-900' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifications.decision_notifications ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Digests */}
+              <div className="bg-white border border-gray-200 p-6">
+                <h3 className="text-base font-bold text-gray-900 mb-6">Email digests</h3>
+                <div className="space-y-3">
+                  {['realtime', 'hourly', 'daily', 'weekly', 'never'].map((freq) => (
+                    <label key={freq} className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="digest"
+                        checked={notifications.digest_frequency === freq}
+                        onChange={() => handleDigestChange(freq)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-900 capitalize">{freq}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
-            <input
-              type="checkbox"
-              checked={preferences.quiet_mode}
-              onChange={() => handleToggle('quiet_mode')}
-              className="w-6 h-6"
-            />
-          </label>
-        </div>
+          )}
 
-        <div className="mb-6">
-          <h3 className="font-bold text-gray-900 mb-3 uppercase text-sm">Muted Topics</h3>
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              value={newTopic}
-              onChange={(e) => setNewTopic(e.target.value)}
-              placeholder="Add topic to mute..."
-              className="flex-1 p-3 border-2 border-gray-300 focus:outline-none focus:border-gray-900"
-            />
-            <button
-              onClick={handleAddMutedTopic}
-              className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-sm"
-            >
-              Add
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {preferences.muted_topics.map((topic, idx) => (
-              <span key={idx} className="px-3 py-1 bg-gray-900 text-white text-sm flex items-center">
-                {topic}
-                <button
-                  onClick={() => handleRemoveMutedTopic(topic)}
-                  className="ml-2 text-white hover:text-gray-300"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h3 className="font-bold text-gray-900 mb-3 uppercase text-sm">Muted Post Types</h3>
-          <div className="space-y-2">
-            {['update', 'decision', 'question', 'proposal'].map(type => (
-              <label key={type} className="flex items-center p-3 bg-gray-50 border border-gray-200 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={preferences.muted_post_types.includes(type)}
-                  onChange={() => handleTogglePostType(type)}
-                  className="w-5 h-5 mr-3"
-                />
-                <span className="font-medium text-gray-900 uppercase text-sm">{type}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Performance Settings */}
-      <div className="bg-white border-2 border-gray-900 p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase tracking-wide">Performance</h2>
-        
-        <div className="space-y-4">
-          <label className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 cursor-pointer">
-            <div>
-              <div className="font-bold text-gray-900 uppercase text-sm">Low Data Mode</div>
-              <div className="text-xs text-gray-600">Reduce image quality and limit content</div>
+          {/* Organization Section (Admin Only) */}
+          {activeSection === 'organization' && user?.role === 'admin' && (
+            <div className="bg-white border border-gray-200 p-6">
+              <h3 className="text-base font-bold text-gray-900 mb-6">Organization profile</h3>
+              <p className="text-sm text-gray-600">Organization settings coming soon</p>
             </div>
-            <input
-              type="checkbox"
-              checked={preferences.low_data_mode}
-              onChange={() => handleToggle('low_data_mode')}
-              className="w-6 h-6"
-            />
-          </label>
+          )}
 
-          <label className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 cursor-pointer">
-            <div>
-              <div className="font-bold text-gray-900 uppercase text-sm">Offline Mode</div>
-              <div className="text-xs text-gray-600">Cache content for offline access</div>
+          {/* Team Section (Admin Only) */}
+          {activeSection === 'team' && user?.role === 'admin' && (
+            <div className="bg-white border border-gray-200 p-6">
+              <h3 className="text-base font-bold text-gray-900 mb-6">Team members</h3>
+              <p className="text-sm text-gray-600">Team management coming soon</p>
             </div>
-            <input
-              type="checkbox"
-              checked={preferences.offline_mode}
-              onChange={() => handleToggle('offline_mode')}
-              className="w-6 h-6"
-            />
-          </label>
+          )}
+
+          {/* Advanced Section */}
+          {activeSection === 'advanced' && (
+            <div className="space-y-8">
+              {/* Data & Privacy */}
+              <div className="bg-white border border-gray-200 p-6">
+                <h3 className="text-base font-bold text-gray-900 mb-6">Data & Privacy</h3>
+                <div className="space-y-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 mb-1">AI assistance</p>
+                      <p className="text-sm text-gray-600">
+                        Helps summarize conversations and extract action items. Your data stays private to your organization.
+                      </p>
+                    </div>
+                    <button
+                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-900"
+                    >
+                      <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Danger Zone (Admin Only) */}
+              {user?.role === 'admin' && (
+                <div className="bg-white border-2 border-red-600 p-6">
+                  <h3 className="text-base font-bold text-red-600 mb-2">Danger zone</h3>
+                  <p className="text-sm text-gray-600 mb-6">
+                    These actions are permanent and affect your organization.
+                  </p>
+                  <button className="px-6 py-2 border-2 border-red-600 text-red-600 text-sm font-medium hover:bg-red-50">
+                    Delete organization
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

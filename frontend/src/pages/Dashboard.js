@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import OnboardingProgress from '../components/OnboardingProgress';
 import { 
   DocumentTextIcon,
   ChatBubbleLeftIcon,
@@ -15,6 +16,11 @@ function Dashboard() {
   const { user } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [todaySummary, setTodaySummary] = useState({
+    decisions: 0,
+    proposals: 0,
+    updates: 0
+  });
 
   useEffect(() => {
     fetchData();
@@ -23,7 +29,19 @@ function Dashboard() {
   const fetchData = async () => {
     try {
       const convRes = await api.get('/api/conversations/');
-      setConversations((convRes.data.results || convRes.data || []).slice(0, 12));
+      const allConvs = convRes.data.results || convRes.data || [];
+      
+      // Calculate today's summary
+      const today = new Date().toDateString();
+      const todayConvs = allConvs.filter(c => new Date(c.created_at).toDateString() === today);
+      
+      setTodaySummary({
+        decisions: todayConvs.filter(c => c.post_type === 'decision').length,
+        proposals: todayConvs.filter(c => c.post_type === 'proposal').length,
+        updates: todayConvs.filter(c => c.post_type === 'update').length
+      });
+      
+      setConversations(allConvs.slice(0, 12));
     } catch (error) {
       console.error('Failed to fetch:', error);
     } finally {
@@ -60,76 +78,138 @@ function Dashboard() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8 md:mb-12 animate-fadeIn">
-        <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-2 md:mb-3">Welcome back, {user?.full_name || user?.username}</h1>
-        <p className="text-base md:text-xl text-gray-600">Your organization's memory</p>
+      <div className="mb-8 animate-fadeIn">
+        <h1 className="text-5xl font-bold text-gray-900 mb-3">Welcome back, {user?.full_name || user?.username}</h1>
+        <p className="text-xl text-gray-600">Your organization's memory</p>
       </div>
 
-      {/* Feed */}
-      <div className="space-y-3 md:space-y-4">
-        {conversations.map((conv, index) => {
+      {/* Today in Recall Summary */}
+      <div className="bg-gray-50 border border-gray-200 p-6 mb-8">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Today in Recall</h2>
+        <div className="flex items-center gap-8 text-base text-gray-700">
+          {todaySummary.decisions > 0 && (
+            <div>
+              <span className="font-bold text-gray-900">{todaySummary.decisions}</span> new {todaySummary.decisions === 1 ? 'decision' : 'decisions'}
+            </div>
+          )}
+          {todaySummary.proposals > 0 && (
+            <div>
+              <span className="font-bold text-gray-900">{todaySummary.proposals}</span> {todaySummary.proposals === 1 ? 'proposal' : 'proposals'} awaiting input
+            </div>
+          )}
+          {todaySummary.updates > 0 && (
+            <div>
+              <span className="font-bold text-gray-900">{todaySummary.updates}</span> {todaySummary.updates === 1 ? 'update' : 'updates'} from your team
+            </div>
+          )}
+          {todaySummary.decisions === 0 && todaySummary.proposals === 0 && todaySummary.updates === 0 && (
+            <div className="text-gray-600">No new activity today</div>
+          )}
+        </div>
+      </div>
+
+      {/* Onboarding Progress */}
+      <OnboardingProgress />
+
+      {/* Empty State */}
+      {conversations.length === 0 ? (
+        <div className="text-center py-20 border border-gray-200 bg-gray-50">
+          <h3 className="text-2xl font-bold text-gray-900 mb-3">No conversations yet</h3>
+          <p className="text-lg text-gray-600 mb-8">
+            Start the first conversation to capture decisions and knowledge.
+          </p>
+          <a href="/conversations" className="recall-btn-primary inline-block">
+            Start a conversation
+          </a>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {conversations.map((conv, index) => {
           const Icon = getPostIcon(conv.post_type);
           
           return (
             <Link
               key={conv.id}
               to={`/conversations/${conv.id}`}
-              className="border border-gray-200 p-8 block hover:border-gray-900 transition-all duration-200 animate-fadeIn"
+              className="border border-gray-200 p-6 block hover:border-gray-900 transition-all duration-200 animate-fadeIn"
               style={{ animationDelay: `${index * 0.05}s` }}
             >
-              <div className="flex items-start space-x-6">
+              <div className="flex items-start gap-4">
                 {/* Avatar */}
                 <div className="w-12 h-12 flex-shrink-0">
                   {conv.author_avatar ? (
                     <img src={conv.author_avatar} alt={conv.author} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">{conv.author?.charAt(0).toUpperCase()}</span>
+                      <span className="text-white font-bold text-base">{conv.author?.charAt(0).toUpperCase()}</span>
                     </div>
                   )}
                 </div>
                 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 text-xs font-bold uppercase ${
                         conv.post_type === 'decision' ? 'bg-gray-900 text-white' :
-                        conv.post_type === 'question' ? 'border border-gray-900 text-gray-900' :
                         conv.post_type === 'proposal' ? 'bg-gray-900 text-white' :
                         'border border-gray-900 text-gray-900'
                       }`}>
                         {conv.post_type}
                       </span>
+                      {conv.impact_level && (
+                        <span className="text-xs text-gray-600 font-medium">
+                          {conv.impact_level} impact
+                        </span>
+                      )}
                     </div>
-                    <span className="text-sm text-gray-600">
-                      {new Date(conv.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    <span className="text-sm text-gray-500">
+                      {new Date(conv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
                   
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">
                     {conv.title}
                   </h3>
                   
-                  <p className="text-lg text-gray-700 line-clamp-2 mb-4">
-                    {conv.content}
-                  </p>
-                  
-                  <div className="flex items-center space-x-6 text-gray-600">
-                    <div className="flex items-center space-x-2">
-                      <Icon className="w-5 h-5" />
-                      <span className="font-medium">{conv.author}</span>
+                  {/* AI Summary */}
+                  {conv.ai_summary && (
+                    <div className="bg-gray-50 border-l-2 border-gray-900 p-3 mb-3">
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {conv.ai_summary}
+                      </p>
                     </div>
+                  )}
+                  
+                  {/* Why it matters */}
+                  {conv.why_matters && (
+                    <p className="text-base text-gray-600 mb-3 italic">
+                      Why it matters: {conv.why_matters}
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center gap-6 text-sm text-gray-600">
+                    <span className="font-medium">{conv.author}</span>
                     {conv.reply_count > 0 && (
                       <span>{conv.reply_count} {conv.reply_count === 1 ? 'reply' : 'replies'}</span>
+                    )}
+                    {conv.ai_keywords && conv.ai_keywords.length > 0 && (
+                      <div className="flex gap-2">
+                        {conv.ai_keywords.slice(0, 3).map((keyword, i) => (
+                          <span key={i} className="text-xs px-2 py-1 bg-gray-100 text-gray-700">
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
             </Link>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }

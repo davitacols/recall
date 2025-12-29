@@ -6,6 +6,7 @@ import api from '../services/api';
 import MentionTagInput from '../components/MentionTagInput';
 import HighlightedText from '../components/HighlightedText';
 import DeveloperInsights from '../components/DeveloperInsights';
+import AISummaryPanel from '../components/AISummaryPanel';
 
 const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -563,6 +564,14 @@ function ConversationDetail() {
 
         {/* Content */}
         <div className="mb-12">
+        {/* AI Summary Panel - Sticky */}
+        <AISummaryPanel 
+          conversation={conversation}
+          onExplainSimply={handleExplainSimply}
+          loadingExplanation={loadingExplanation}
+          simpleExplanation={simpleExplanation}
+        />
+        
         {/* Complexity Warning */}
         {showComplexityWarning && complexity && (
           <div className="border-b border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-t-2xl">
@@ -688,21 +697,27 @@ function ConversationDetail() {
         {/* Replies */}
         <div className="mb-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-8">
-            {replies.length} {replies.length === 1 ? 'Reply' : 'Replies'}
+            Replies
           </h2>
         
-        <div className="space-y-6">
-          {buildReplyTree(replies).map((reply) => (
-            <ReplyItem 
-              key={reply.id} 
-              reply={reply} 
-              onReply={setReplyingTo} 
-              onEdit={handleEditReply}
-              onDelete={handleDeleteReply}
-              currentUserId={currentUserId}
-            />
-          ))}
-        </div>
+        {replies.length === 0 ? (
+          <div className="text-center py-12 border border-gray-200 bg-gray-50">
+            <p className="text-base text-gray-600">No replies yet. Be the first to comment.</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {buildReplyTree(replies).map((reply) => (
+              <ReplyItem 
+                key={reply.id} 
+                reply={reply} 
+                onReply={setReplyingTo} 
+                onEdit={handleEditReply}
+                onDelete={handleDeleteReply}
+                currentUserId={currentUserId}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
         {/* Reply Form */}
@@ -721,7 +736,7 @@ function ConversationDetail() {
           </div>
         )}
         <h3 className="text-xl font-bold text-gray-900 mb-6">
-          {replyingTo ? 'Write a Reply' : 'Write a Comment'}
+          {replyingTo ? 'Reply' : 'Add a comment'}
         </h3>
         <form onSubmit={handleSubmitReply}>
           <MentionTagInput
@@ -771,7 +786,7 @@ function ConversationDetail() {
               disabled={submitting || !newReply.trim()}
               className="recall-btn-primary disabled:opacity-50"
             >
-              {submitting ? 'Posting...' : 'Post'}
+              {submitting ? 'Posting...' : 'Reply'}
             </button>
             <label className="px-5 py-2.5 border-2 border-gray-900 text-gray-900 hover:bg-gray-100 font-bold uppercase text-sm cursor-pointer">
               <input type="file" className="hidden" onChange={handleFileSelect} />
@@ -783,7 +798,7 @@ function ConversationDetail() {
         {/* Documents */}
         {documents.length > 0 && (
           <div className="mt-8 border-t border-gray-200 pt-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Attachments</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Attached files</h3>
             <div className="space-y-2">
               {documents.map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200">
@@ -938,7 +953,7 @@ function ConversationDetail() {
       {showConvertModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Convert to Decision</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Convert to decision</h2>
             <p className="text-gray-600 mb-6">
               This will create a decision record from this conversation.
             </p>
@@ -979,7 +994,7 @@ function ConversationDetail() {
       {showBookmarkModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Bookmark Note</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Save for later</h2>
             <p className="text-sm text-gray-600 mb-4">Add a private note to remember why this is important</p>
             <textarea
               value={bookmarkNote}
@@ -1016,7 +1031,7 @@ function ConversationDetail() {
       {showCloseModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Wrap Up Conversation</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Close conversation</h2>
             <p className="text-sm text-gray-600 mb-6">
               Summarize what was decided and what happens next.
             </p>

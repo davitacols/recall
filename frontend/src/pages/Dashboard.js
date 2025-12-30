@@ -3,6 +3,8 @@ import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import OnboardingProgress from '../components/OnboardingProgress';
+import FirstTimeExperience from '../components/FirstTimeExperience';
+import SprintSummary from '../components/SprintSummary';
 import { 
   DocumentTextIcon,
   ChatBubbleLeftIcon,
@@ -107,6 +109,12 @@ function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* First Time Experience */}
+      <FirstTimeExperience />
+
+      {/* Sprint Summary */}
+      <SprintSummary />
 
       {/* Onboarding Progress */}
       <OnboardingProgress />

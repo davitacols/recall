@@ -1,7 +1,9 @@
 from django.urls import path
 from . import views
+from apps.decisions.phase2_views import knowledge_health
 
 urlpatterns = [
+    path('health/', knowledge_health, name='knowledge_health'),
     path('search/', views.search_knowledge, name='search_knowledge'),
     path('recent_decisions/', views.recent_decisions, name='recent_decisions'),
     path('trending_topics/', views.trending_topics, name='trending_topics'),

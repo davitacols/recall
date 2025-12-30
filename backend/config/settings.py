@@ -30,6 +30,8 @@ INSTALLED_APPS = [
     'apps.knowledge',
     'apps.users',
     'apps.notifications',
+    'apps.agile',
+    'apps.integrations',
 ]
 
 MIDDLEWARE = [

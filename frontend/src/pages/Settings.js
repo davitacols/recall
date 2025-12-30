@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
+import { useAutoSave } from '../hooks/useAutoSave';
+import SaveIndicator from '../components/SaveIndicator';
 import { CheckIcon } from '@heroicons/react/24/outline';
 
 function Settings() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState('notifications');
-  const [saved, setSaved] = useState(false);
   const [notifications, setNotifications] = useState({
     mention_notifications: true,
     reply_notifications: true,
@@ -16,6 +17,12 @@ function Settings() {
     digest_frequency: 'daily'
   });
   const [quietMode, setQuietMode] = useState(false);
+
+  const saveSettings = async (data) => {
+    await api.put('/api/auth/profile/update/', data);
+  };
+
+  const { status, triggerSave, getStatusText } = useAutoSave(saveSettings, 1000);
 
   useEffect(() => {
     fetchSettings();
@@ -36,13 +43,7 @@ function Settings() {
   };
 
   const handleSave = async (updates) => {
-    try {
-      await api.put('/api/auth/profile/update/', updates);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (error) {
-      addToast('Failed to save settings', 'error');
-    }
+    triggerSave(updates);
   };
 
   const handleToggle = (key) => {
@@ -95,12 +96,7 @@ function Settings() {
 
         {/* Content */}
         <div className="flex-1">
-          {saved && (
-            <div className="mb-4 flex items-center gap-2 text-sm text-gray-600">
-              <CheckIcon className="w-4 h-4" />
-              <span>Saved just now</span>
-            </div>
-          )}
+          <SaveIndicator status={status} statusText={getStatusText()} />
 
           {/* Notifications Section */}
           {activeSection === 'notifications' && (

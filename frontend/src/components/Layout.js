@@ -60,6 +60,27 @@ function Layout({ children }) {
     { name: 'Files', href: '/files', icon: FolderIcon },
   ];
 
+  const personalNav = [
+    { name: 'My Decisions', href: '/my-decisions' },
+    { name: 'My Questions', href: '/my-questions' },
+  ];
+
+  const insightsNav = [
+    { name: 'Knowledge Health', href: '/knowledge-health' },
+  ];
+
+  const agileNav = [
+    { name: 'Current Sprint', href: '/sprint' },
+    { name: 'Sprint History', href: '/sprint-history' },
+    { name: 'Blockers', href: '/blockers' },
+    { name: 'Retrospectives', href: '/retrospectives' },
+  ];
+
+  const adminNav = [
+    { name: 'Analytics', href: '/analytics' },
+    { name: 'Integrations', href: '/integrations' },
+  ];
+
   const getPageTitle = () => {
     if (location.pathname === '/') return 'Home';
     if (location.pathname.startsWith('/conversations')) return 'Conversations';
@@ -259,6 +280,51 @@ function Layout({ children }) {
             {/* Secondary Nav */}
             {!sidebarCollapsed && (
               <div className="pt-6 space-y-1">
+                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Personal</div>
+                {personalNav.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    <span>{item.name}</span>
+                  </Link>
+                ))}
+                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">Insights</div>
+                {insightsNav.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    <span>{item.name}</span>
+                  </Link>
+                ))}
+                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">Sprint</div>
+                {agileNav.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="flex items-center gap-3 px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    <span>{item.name}</span>
+                  </Link>
+                ))}
+                {user?.role === 'admin' && (
+                  <>
+                    <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">Admin</div>
+                    {adminNav.map((item) => (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        className="flex items-center gap-3 px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
+                      >
+                        <span>{item.name}</span>
+                      </Link>
+                    ))}
+                  </>
+                )}
+                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">Saved</div>
                 {secondaryNav.map((item) => {
                   const Icon = item.icon;
                   return (

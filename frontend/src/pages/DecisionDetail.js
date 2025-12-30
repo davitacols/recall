@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import DecisionLockBanner from '../components/DecisionLockBanner';
+import AISuggestionsPanel from '../components/AISuggestionsPanel';
+import ImpactReviewModal from '../components/ImpactReviewModal';
 
 function DecisionDetail() {
   const { id } = useParams();
   const [decision, setDecision] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   useEffect(() => {
     fetchDecision();
@@ -38,6 +42,35 @@ function DecisionDetail() {
       fetchDecision();
     } catch (error) {
       console.error('Failed to mark as implemented:', error);
+    }
+  };
+
+  const handleLock = async () => {
+    const reason = prompt('Why are you locking this decision?');
+    if (!reason) return;
+    try {
+      await api.post(`/api/decisions/${id}/lock/`, { reason });
+      fetchDecision();
+    } catch (error) {
+      alert('Failed to lock decision');
+    }
+  };
+
+  const handleOverride = async (reason) => {
+    try {
+      await api.post(`/api/decisions/${id}/override-lock/`, { reason });
+      fetchDecision();
+    } catch (error) {
+      alert('Failed to override lock');
+    }
+  };
+
+  const handleSubmitReview = async (reviewData) => {
+    try {
+      await api.post(`/api/decisions/${id}/impact-review/`, reviewData);
+      fetchDecision();
+    } catch (error) {
+      alert('Failed to submit review');
     }
   };
 
@@ -120,6 +153,12 @@ function DecisionDetail() {
             </div>
           </div>
 
+          {/* Phase 2: Lock Banner */}
+          <DecisionLockBanner decision={decision} onOverride={handleOverride} />
+
+          {/* Phase 2: AI Suggestions */}
+          <AISuggestionsPanel decisionId={id} />
+
           {/* Content */}
           <div className="bg-white border border-gray-200 mb-8">
             <div className="p-8">
@@ -152,12 +191,31 @@ function DecisionDetail() {
 
               {/* Actions */}
               {decision.status === 'approved' && (
-                <div className="pt-6 border-t border-gray-200">
+                <div className="pt-6 border-t border-gray-200 flex gap-3">
                   <button
                     onClick={handleImplement}
                     className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors"
                   >
                     Mark as Implemented
+                  </button>
+                  {!decision.is_locked && (
+                    <button
+                      onClick={handleLock}
+                      className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-100 transition-colors"
+                    >
+                      Lock Decision
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {decision.status === 'implemented' && !decision.review_completed_at && (
+                <div className="pt-6 border-t border-gray-200">
+                  <button
+                    onClick={() => setShowReviewModal(true)}
+                    className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                  >
+                    Submit Impact Review
                   </button>
                 </div>
               )}
@@ -295,6 +353,15 @@ function DecisionDetail() {
           )}
         </div>
       </div>
+
+      {/* Phase 2: Impact Review Modal */}
+      {showReviewModal && (
+        <ImpactReviewModal
+          decision={decision}
+          onSubmit={handleSubmitReview}
+          onClose={() => setShowReviewModal(false)}
+        />
+      )}
     </div>
   );
 }

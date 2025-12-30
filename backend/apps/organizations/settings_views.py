@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction
 from django.utils import timezone
+from datetime import timedelta
 from .models import Organization, User
 from apps.conversations.models import UserPreferences, Badge
 from apps.notifications.models import Notification
@@ -189,6 +190,9 @@ def update_organization(request):
     if 'name' in request.data:
         org.name = request.data['name']
         updated_fields.append('name')
+    if 'description' in request.data:
+        org.description = request.data['description']
+        updated_fields.append('description')
     if 'primary_color' in request.data:
         org.primary_color = request.data['primary_color']
         updated_fields.append('branding')
@@ -271,8 +275,7 @@ def remove_member(request, user_id):
     
     try:
         member = User.objects.get(id=user_id, organization=request.user.organization)
-        member.is_active = False
-        member.save()
+        member.delete()
         
         return Response({'message': 'Member removed'})
     except User.DoesNotExist:
@@ -295,19 +298,29 @@ def invite_member(request):
     if User.objects.filter(email=email).exists():
         return Response({'error': 'User with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Create invitation
     from apps.organizations.models import Invitation
-    invitation = Invitation.objects.create(
+    
+    # Get or create invitation
+    expires_at = timezone.now() + timedelta(days=7)
+    invitation, created = Invitation.objects.get_or_create(
         organization=request.user.organization,
         email=email,
-        role=role,
-        invited_by=request.user
+        is_accepted=False,
+        defaults={
+            'role': role,
+            'invited_by': request.user,
+            'expires_at': expires_at
+        }
     )
     
-    # TODO: Send invitation email
+    # Update role and expiration if invitation already exists
+    if not created:
+        invitation.role = role
+        invitation.expires_at = expires_at
+        invitation.save()
     
     return Response({
-        'message': 'Invitation sent',
+        'message': 'Invitation created',
         'invitation_id': invitation.id,
         'email': email
     }, status=status.HTTP_201_CREATED)
@@ -426,3 +439,55 @@ def security_log(request):
             }
         ]
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_invitation_link(request):
+    """Get invitation link for a specific invitation"""
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    
+    invitation_id = request.query_params.get('invitation_id')
+    if not invitation_id:
+        return Response({'error': 'invitation_id required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    from apps.organizations.models import Invitation
+    from django.conf import settings
+    
+    try:
+        invitation = Invitation.objects.get(id=invitation_id, organization=request.user.organization)
+        return Response({
+            'invitation_link': f"{settings.FRONTEND_URL}/invite/{invitation.token}"
+        })
+    except Invitation.DoesNotExist:
+        return Response({'error': 'Invitation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_invitation_links(request):
+    """Get all pending invitation links (admin only)"""
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    
+    from apps.organizations.models import Invitation
+    from django.conf import settings
+    
+    invitations = Invitation.objects.filter(
+        organization=request.user.organization,
+        is_accepted=False
+    ).order_by('-created_at')
+    
+    links = []
+    for inv in invitations:
+        links.append({
+            'id': inv.id,
+            'email': inv.email,
+            'role': inv.role,
+            'link': f"{settings.FRONTEND_URL}/invite/{inv.token}",
+            'created_at': inv.created_at,
+            'expires_at': inv.expires_at
+        })
+    
+    return Response(links)

@@ -7,11 +7,13 @@ from .settings_views import (
     user_profile, change_password, user_stats, notification_settings,
     organization_settings, update_organization, organization_members,
     update_member_role, remove_member, invite_member, api_keys,
-    generate_api_key, export_data, delete_account, activity_log, security_log
+    generate_api_key, export_data, delete_account, activity_log, security_log, get_invitation_link,
+    get_invitation_links
 )
 
 urlpatterns = [
     path('current/', OrganizationDetailView.as_view(), name='current-org'),
+    path('me/', OrganizationDetailView.as_view(), name='org-me'),
     path('activity/', activity_feed, name='activity-feed'),
     path('activity/stats/', activity_stats, name='activity-stats'),
     path('analytics/', analytics, name='analytics'),
@@ -39,4 +41,11 @@ urlpatterns = [
     path('settings/delete-account/', delete_account, name='delete-account'),
     path('settings/activity-log/', activity_log, name='activity-log'),
     path('settings/security-log/', security_log, name='security-log'),
+    path('settings/test-invitation/', get_invitation_link, name='test-invitation'),
+    path('settings/invitation-links/', get_invitation_links, name='invitation-links'),
+    
+    # Shorthand routes for frontend
+    path('members/', organization_members, name='members-list'),
+    path('members/<int:user_id>/', remove_member, name='member-detail'),
+    path('members/invite/', invite_member, name='members-invite'),
 ]

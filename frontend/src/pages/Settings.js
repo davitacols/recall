@@ -4,7 +4,7 @@ import api from '../services/api';
 import { useToast } from '../components/Toast';
 import { useAutoSave } from '../hooks/useAutoSave';
 import SaveIndicator from '../components/SaveIndicator';
-import { CheckIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 function Settings() {
   const { user } = useAuth();
@@ -17,6 +17,14 @@ function Settings() {
     digest_frequency: 'daily'
   });
   const [quietMode, setQuietMode] = useState(false);
+  const [organization, setOrganization] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('contributor');
+  const [orgName, setOrgName] = useState('');
+  const [orgDescription, setOrgDescription] = useState('');
+  const [pendingInvitations, setPendingInvitations] = useState([]);
+  const [invitationLinks, setInvitationLinks] = useState({});
 
   const saveSettings = async (data) => {
     await api.put('/api/auth/profile/update/', data);
@@ -26,7 +34,12 @@ function Settings() {
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+    if (user?.role === 'admin') {
+      fetchOrganization();
+      fetchMembers();
+      fetchPendingInvitations();
+    }
+  }, [user]);
 
   const fetchSettings = async () => {
     try {
@@ -39,6 +52,48 @@ function Settings() {
       });
     } catch (error) {
       console.error('Failed to fetch settings:', error);
+    }
+  };
+
+  const fetchOrganization = async () => {
+    try {
+      const response = await api.get('/api/organizations/me/');
+      setOrganization(response.data);
+      setOrgName(response.data.name || '');
+      setOrgDescription(response.data.description || '');
+    } catch (error) {
+      addToast('Failed to fetch organization', 'error');
+    }
+  };
+
+  const fetchMembers = async () => {
+    try {
+      const response = await api.get('/api/organizations/members/');
+      setMembers(response.data);
+    } catch (error) {
+      addToast('Failed to fetch members', 'error');
+    }
+  };
+
+  const fetchPendingInvitations = async () => {
+    try {
+      const response = await api.get('/api/organizations/settings/invitation-links/');
+      setPendingInvitations(response.data);
+    } catch (error) {
+      addToast('Failed to fetch pending invitations', 'error');
+    }
+  };
+
+  const generateInvitationLink = async (invitationId) => {
+    try {
+      const response = await api.get(`/api/organizations/settings/test-invitation/?invitation_id=${invitationId}`);
+      setInvitationLinks(prev => ({
+        ...prev,
+        [invitationId]: response.data.invitation_link
+      }));
+      addToast('Link generated', 'success');
+    } catch (error) {
+      addToast('Failed to generate link', 'error');
     }
   };
 
@@ -56,6 +111,57 @@ function Settings() {
     const updated = { ...notifications, digest_frequency: value };
     setNotifications(updated);
     handleSave(updated);
+  };
+
+  const saveOrganization = async () => {
+    try {
+      await api.put('/api/organizations/me/', {
+        name: orgName,
+        description: orgDescription
+      });
+      addToast('Organization updated', 'success');
+      fetchOrganization();
+    } catch (error) {
+      addToast('Failed to update organization', 'error');
+    }
+  };
+
+  const inviteMember = async () => {
+    if (!inviteEmail.trim()) return;
+    try {
+      const response = await api.post('/api/organizations/members/invite/', {
+        email: inviteEmail,
+        role: inviteRole
+      });
+      const invitationId = response.data.invitation_id;
+      try {
+        const linkResponse = await api.get(`/api/organizations/settings/test-invitation/?invitation_id=${invitationId}`);
+        setInvitationLinks(prev => ({
+          ...prev,
+          [invitationId]: linkResponse.data.invitation_link
+        }));
+        addToast('Invitation link generated', 'success');
+      } catch (linkError) {
+        addToast('Invitation created but failed to generate link', 'error');
+      }
+      setInviteEmail('');
+      setInviteRole('contributor');
+      fetchPendingInvitations();
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to generate invitation';
+      addToast(errorMsg, 'error');
+    }
+  };
+
+  const removeMember = async (memberId) => {
+    if (!window.confirm('Remove this member?')) return;
+    try {
+      await api.delete(`/api/organizations/members/${memberId}/`);
+      addToast('Member removed', 'success');
+      fetchMembers();
+    } catch (error) {
+      addToast('Failed to remove member', 'error');
+    }
   };
 
   const sections = [
@@ -221,15 +327,149 @@ function Settings() {
           {activeSection === 'organization' && user?.role === 'admin' && (
             <div className="bg-white border border-gray-200 p-6">
               <h3 className="text-base font-bold text-gray-900 mb-6">Organization profile</h3>
-              <p className="text-sm text-gray-600">Organization settings coming soon</p>
+              {organization && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">Organization name</label>
+                    <input
+                      type="text"
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 text-sm focus:border-gray-900 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">Description</label>
+                    <textarea
+                      value={orgDescription}
+                      onChange={(e) => setOrgDescription(e.target.value)}
+                      rows="4"
+                      className="w-full px-4 py-2 border border-gray-300 text-sm focus:border-gray-900 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    onClick={saveOrganization}
+                    className="px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+                  >
+                    Save changes
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {/* Team Section (Admin Only) */}
           {activeSection === 'team' && user?.role === 'admin' && (
-            <div className="bg-white border border-gray-200 p-6">
-              <h3 className="text-base font-bold text-gray-900 mb-6">Team members</h3>
-              <p className="text-sm text-gray-600">Team management coming soon</p>
+            <div className="space-y-6">
+              {/* Invite Member */}
+              <div className="bg-white border border-gray-200 p-6">
+                <h3 className="text-base font-bold text-gray-900 mb-6">Invite team member</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">Email address</label>
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="member@example.com"
+                      className="w-full px-4 py-2 border border-gray-300 text-sm focus:border-gray-900 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">Role</label>
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 text-sm focus:border-gray-900 focus:outline-none"
+                    >
+                      <option value="contributor">Contributor</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={inviteMember}
+                    className="px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+                  >
+                    Generate link
+                  </button>
+                </div>
+              </div>
+
+              {/* Pending Invitations */}
+              {pendingInvitations.length > 0 && (
+                <div className="bg-white border border-gray-200 p-6">
+                  <h3 className="text-base font-bold text-gray-900 mb-6">Pending invitations ({pendingInvitations.length})</h3>
+                  <div className="space-y-3">
+                    {pendingInvitations.map((invitation) => (
+                      <div key={invitation.id} className="flex items-center justify-between p-4 border border-gray-200">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{invitation.email}</p>
+                          <p className="text-xs text-gray-600">Invited as {invitation.role}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {invitationLinks[invitation.id] ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={invitationLinks[invitation.id]}
+                                readOnly
+                                className="px-3 py-1 text-xs border border-gray-300 bg-gray-50 w-64"
+                              />
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(invitationLinks[invitation.id]);
+                                    addToast('Link copied', 'success');
+                                  } catch (err) {
+                                    addToast('Failed to copy link', 'error');
+                                  }
+                                }}
+                                className="px-3 py-1 text-xs bg-gray-900 text-white hover:bg-gray-800"
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => generateInvitationLink(invitation.id)}
+                              className="px-4 py-1 text-xs bg-gray-900 text-white hover:bg-gray-800"
+                            >
+                              Generate link
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Team Members */}
+              <div className="bg-white border border-gray-200 p-6">
+                <h3 className="text-base font-bold text-gray-900 mb-6">Team members ({members.length})</h3>
+                <div className="space-y-3">
+                  {members.map((member) => (
+                    <div key={member.id} className="flex items-center justify-between p-4 border border-gray-200">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{member.full_name}</p>
+                        <p className="text-xs text-gray-600">{member.email}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-gray-600 uppercase">{member.role}</span>
+                        {member.id !== user?.id && (
+                          <button
+                            onClick={() => removeMember(member.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

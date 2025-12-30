@@ -167,10 +167,10 @@ function Layout({ children }) {
       {/* Desktop Sidebar */}
       <aside className={`fixed top-16 left-0 bottom-0 ${
         sidebarCollapsed ? 'w-20' : 'w-64'
-      } bg-white border-r border-gray-200 hidden lg:block transition-all duration-200 overflow-y-auto`}>
+      } bg-white border-r border-gray-200 hidden lg:block transition-all duration-200 flex flex-col`}>
         <div className="h-full flex flex-col">
           {/* Primary Nav */}
-          <nav className="flex-1 py-6">
+          <nav className="flex-1 py-6 overflow-y-auto">
             <div className="px-3 space-y-1">
               {primaryNav.map((item) => {
                 const isActive = location.pathname === item.href;
@@ -275,8 +275,8 @@ function Layout({ children }) {
             )}
           </nav>
 
-          {/* User Profile */}
-          <div className="p-4 border-t border-gray-200">
+          {/* User Profile - Fixed at bottom */}
+          <div className="p-4 border-t border-gray-200 flex-shrink-0">
             {!sidebarCollapsed ? (
               <div className="flex items-center gap-3 px-2">
                 <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">

@@ -381,3 +381,30 @@ def end_sprint(request, sprint_id):
         })
     except Sprint.DoesNotExist:
         return Response({'error': 'Sprint not found'}, status=404)
+
+@api_view(['GET'])
+def sprint_decisions(request, sprint_id):
+    """Get decisions for a sprint"""
+    try:
+        sprint = Sprint.objects.get(
+            id=sprint_id,
+            organization=request.user.organization
+        )
+        
+        decisions = Decision.objects.filter(
+            organization=request.user.organization,
+            sprint=sprint
+        ).order_by('-created_at')
+        
+        data = [{
+            'id': d.id,
+            'title': d.title,
+            'impact_level': d.impact_level,
+            'status': d.status,
+            'decision_maker': d.decision_maker.get_full_name(),
+            'created_at': d.created_at
+        } for d in decisions]
+        
+        return Response(data)
+    except Sprint.DoesNotExist:
+        return Response({'error': 'Sprint not found'}, status=404)

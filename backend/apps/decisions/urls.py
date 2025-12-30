@@ -10,4 +10,7 @@ urlpatterns = [
     path('timeline/', views.decisions_timeline, name='decisions_timeline'),
     path('reminders/', views.decisions_needing_reminders, name='decisions_reminders'),
     path('convert/<int:conversation_id>/', views.convert_to_decision, name='convert_to_decision'),
+    path('proposals/', views.proposals, name='proposals'),
+    path('proposals/<int:proposal_id>/accept/', views.accept_proposal, name='accept_proposal'),
+    path('proposals/<int:proposal_id>/reject/', views.reject_proposal, name='reject_proposal'),
 ]

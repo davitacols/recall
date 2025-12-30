@@ -56,78 +56,33 @@ function DecisionDetail() {
   return (
     <div className="flex justify-center">
       <div className="max-w-6xl w-full">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h1 className="text-4xl font-bold text-gray-900 mb-3">{decision.title}</h1>
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className={`px-3 py-1 text-sm font-medium border ${impactColors[decision.impact_level]}`}>
-                {decision.impact_level.charAt(0).toUpperCase() + decision.impact_level.slice(1)} Impact
-              </span>
-              <span className={`px-3 py-1 text-sm font-medium ${statusColors[decision.status]}`}>
-                {decision.status.replace('_', ' ').charAt(0).toUpperCase() + decision.status.replace('_', ' ').slice(1)}
-              </span>
-              <span className="text-sm text-gray-600">By {decision.decision_maker_name}</span>
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h1 className="text-4xl font-bold text-gray-900 mb-3">{decision.title}</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`px-3 py-1 text-sm font-medium border ${impactColors[decision.impact_level]}`}>
+                  {decision.impact_level.charAt(0).toUpperCase() + decision.impact_level.slice(1)} Impact
+                </span>
+                <span className={`px-3 py-1 text-sm font-medium ${statusColors[decision.status]}`}>
+                  {decision.status.replace('_', ' ').charAt(0).toUpperCase() + decision.status.replace('_', ' ').slice(1)}
+                </span>
+                <span className="text-sm text-gray-600">By {decision.decision_maker_name}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-3 gap-8">
-        {/* Left Column - Main Content */}
-        <div className="col-span-2 space-y-6">
-          {/* Description */}
-          <section className="border border-gray-200 p-8">
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Overview</h2>
-            <div className="prose prose-sm max-w-none text-gray-700 space-y-4">
-              {decision.description.split('\n\n').map((paragraph, idx) => (
-                <div key={idx}>
-                  {paragraph.split('\n').map((line, lineIdx) => {
-                    // Handle bullet points
-                    if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
-                      return (
-                        <div key={lineIdx} className="flex gap-3 ml-4">
-                          <span className="text-gray-900 font-bold">•</span>
-                          <span>{line.replace(/^[-•]\s*/, '')}</span>
-                        </div>
-                      );
-                    }
-                    // Handle numbered lists
-                    if (/^\d+\./.test(line.trim())) {
-                      return (
-                        <div key={lineIdx} className="flex gap-3 ml-4">
-                          <span className="text-gray-900 font-bold">{line.match(/^\d+/)[0]}.</span>
-                          <span>{line.replace(/^\d+\.\s*/, '')}</span>
-                        </div>
-                      );
-                    }
-                    // Handle bold text (text between ** or __)
-                    const boldRegex = /\*\*(.*?)\*\*|__(.*?)__/g;
-                    const parts = line.split(boldRegex);
-                    return (
-                      <p key={lineIdx} className="leading-relaxed">
-                        {parts.map((part, partIdx) => {
-                          if (part && (parts[partIdx - 1]?.includes('**') || parts[partIdx - 1]?.includes('__'))) {
-                            return <strong key={partIdx}>{part}</strong>;
-                          }
-                          return part;
-                        })}
-                      </p>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Rationale */}
-          {decision.rationale && (
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-3 gap-8">
+          {/* Left Column - Main Content */}
+          <div className="col-span-2 space-y-6">
+            {/* Description */}
             <section className="border border-gray-200 p-8">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Rationale</h2>
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Overview</h2>
               <div className="prose prose-sm max-w-none text-gray-700 space-y-4">
-                {decision.rationale.split('\n\n').map((paragraph, idx) => (
+                {decision.description.split('\n\n').map((paragraph, idx) => (
                   <div key={idx}>
                     {paragraph.split('\n').map((line, lineIdx) => {
                       if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
@@ -152,101 +107,132 @@ function DecisionDetail() {
                 ))}
               </div>
             </section>
-          )}
 
-          {/* Code Links */}
-          <section className="border border-gray-200 p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Related Code</h2>
-              <button
-                onClick={() => setShowGithubSearch(!showGithubSearch)}
-                className="text-sm font-medium text-gray-900 border border-gray-900 px-3 py-1 hover:bg-gray-50 transition-colors"
-              >
-                {showGithubSearch ? '−' : '+'} Link PR
-              </button>
-            </div>
-
-            {decision.code_links && decision.code_links.length > 0 ? (
-              <div className="space-y-3">
-                {decision.code_links.map((link, idx) => (
-                  <a
-                    key={idx}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block p-4 border border-gray-200 hover:border-gray-900 transition-colors group"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900 group-hover:underline">
-                          {link.title || `PR #${link.number}`}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">{link.url}</div>
-                      </div>
-                      <span className="text-xs text-gray-500 ml-2">→</span>
+            {/* Rationale */}
+            {decision.rationale && (
+              <section className="border border-gray-200 p-8">
+                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Rationale</h2>
+                <div className="prose prose-sm max-w-none text-gray-700 space-y-4">
+                  {decision.rationale.split('\n\n').map((paragraph, idx) => (
+                    <div key={idx}>
+                      {paragraph.split('\n').map((line, lineIdx) => {
+                        if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
+                          return (
+                            <div key={lineIdx} className="flex gap-3 ml-4">
+                              <span className="text-gray-900 font-bold">•</span>
+                              <span>{line.replace(/^[-•]\s*/, '')}</span>
+                            </div>
+                          );
+                        }
+                        if (/^\d+\./.test(line.trim())) {
+                          return (
+                            <div key={lineIdx} className="flex gap-3 ml-4">
+                              <span className="text-gray-900 font-bold">{line.match(/^\d+/)[0]}.</span>
+                              <span>{line.replace(/^\d+\.\s*/, '')}</span>
+                            </div>
+                          );
+                        }
+                        return <p key={lineIdx} className="leading-relaxed">{line}</p>;
+                      })}
                     </div>
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-600">
-                <p className="text-sm">No linked PRs yet</p>
-                <p className="text-xs text-gray-500 mt-1">Link PRs to track implementation</p>
-              </div>
+                  ))}
+                </div>
+              </section>
             )}
 
-            {showGithubSearch && <GitHubSearchPanel decisionId={id} onLinked={fetchDecision} onClose={() => setShowGithubSearch(false)} />}
-          </section>
+            {/* Code Links */}
+            <section className="border border-gray-200 p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Related Code</h2>
+                <button
+                  onClick={() => setShowGithubSearch(!showGithubSearch)}
+                  className="text-sm font-medium text-gray-900 border border-gray-900 px-3 py-1 hover:bg-gray-50 transition-colors"
+                >
+                  {showGithubSearch ? '−' : '+'} Link PR
+                </button>
+              </div>
+
+              {decision.code_links && decision.code_links.length > 0 ? (
+                <div className="space-y-3">
+                  {decision.code_links.map((link, idx) => (
+                    <a
+                      key={idx}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-4 border border-gray-200 hover:border-gray-900 transition-colors group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900 group-hover:underline">
+                            {link.title || `PR #${link.number}`}
+                          </div>
+                          <div className="text-sm text-gray-600 mt-1">{link.url}</div>
+                        </div>
+                        <span className="text-xs text-gray-500 ml-2">→</span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-600">
+                  <p className="text-sm">No linked PRs yet</p>
+                  <p className="text-xs text-gray-500 mt-1">Link PRs to track implementation</p>
+                </div>
+              )}
+
+              {showGithubSearch && <GitHubSearchPanel decisionId={id} onLinked={fetchDecision} onClose={() => setShowGithubSearch(false)} />}
+            </section>
+          </div>
+
+          {/* Right Column - Sidebar */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <section className="border border-gray-200 p-6">
+              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Actions</h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setShowGithubSearch(!showGithubSearch)}
+                  className="w-full px-4 py-2 text-sm font-medium border border-gray-900 text-gray-900 hover:bg-gray-50 transition-colors text-left"
+                >
+                  Link GitHub PR
+                </button>
+                <button
+                  onClick={() => setShowJiraCreate(!showJiraCreate)}
+                  className="w-full px-4 py-2 text-sm font-medium border border-gray-900 text-gray-900 hover:bg-gray-50 transition-colors text-left"
+                >
+                  Create Jira Issue
+                </button>
+              </div>
+            </section>
+
+            {/* Metadata */}
+            <section className="border border-gray-200 p-6">
+              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Details</h3>
+              <div className="space-y-4 text-sm">
+                <div>
+                  <div className="text-gray-600 mb-1">Status</div>
+                  <div className="font-medium text-gray-900">{decision.status.replace('_', ' ')}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600 mb-1">Impact</div>
+                  <div className="font-medium text-gray-900">{decision.impact_level}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600 mb-1">Owner</div>
+                  <div className="font-medium text-gray-900">{decision.decision_maker_name}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600 mb-1">Created</div>
+                  <div className="font-medium text-gray-900">{new Date(decision.created_at).toLocaleDateString()}</div>
+                </div>
+              </div>
+            </section>
+
+            {/* Jira Integration */}
+            {showJiraCreate && <JiraCreatePanel decisionId={id} onCreated={fetchDecision} />}
+          </div>
         </div>
-
-        {/* Right Column - Sidebar */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <section className="border border-gray-200 p-6">
-            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Actions</h3>
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowGithubSearch(!showGithubSearch)}
-                className="w-full px-4 py-2 text-sm font-medium border border-gray-900 text-gray-900 hover:bg-gray-50 transition-colors text-left"
-              >
-                Link GitHub PR
-              </button>
-              <button
-                onClick={() => setShowJiraCreate(!showJiraCreate)}
-                className="w-full px-4 py-2 text-sm font-medium border border-gray-900 text-gray-900 hover:bg-gray-50 transition-colors text-left"
-              >
-                Create Jira Issue
-              </button>
-            </div>
-          </section>
-
-          {/* Metadata */}
-          <section className="border border-gray-200 p-6">
-            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Details</h3>
-            <div className="space-y-4 text-sm">
-              <div>
-                <div className="text-gray-600 mb-1">Status</div>
-                <div className="font-medium text-gray-900">{decision.status.replace('_', ' ')}</div>
-              </div>
-              <div>
-                <div className="text-gray-600 mb-1">Impact</div>
-                <div className="font-medium text-gray-900">{decision.impact_level}</div>
-              </div>
-              <div>
-                <div className="text-gray-600 mb-1">Owner</div>
-                <div className="font-medium text-gray-900">{decision.decision_maker_name}</div>
-              </div>
-              <div>
-                <div className="text-gray-600 mb-1">Created</div>
-                <div className="font-medium text-gray-900">{new Date(decision.created_at).toLocaleDateString()}</div>
-              </div>
-            </div>
-          </section>
-
-          {/* Jira Integration */}
-          {showJiraCreate && <JiraCreatePanel decisionId={id} onCreated={fetchDecision} />}
-        </div>
-      </div>
       </div>
     </div>
   );
@@ -256,6 +242,7 @@ function GitHubSearchPanel({ decisionId, onLinked, onClose }) {
   const [prs, setPrs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [linking, setLinking] = useState(null);
+  const [manualUrl, setManualUrl] = useState('');
 
   useEffect(() => {
     handleSearch();
@@ -287,39 +274,75 @@ function GitHubSearchPanel({ decisionId, onLinked, onClose }) {
     }
   };
 
+  const handleManualSubmit = (e) => {
+    e.preventDefault();
+    if (manualUrl.trim()) {
+      handleLinkPr(manualUrl);
+      setManualUrl('');
+    }
+  };
+
   return (
     <div className="mt-6 p-6 bg-gray-50 border border-gray-200">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="font-medium text-gray-900">Search Results</h4>
+        <h4 className="font-medium text-gray-900">Link PR</h4>
         <button onClick={onClose} className="text-gray-600 hover:text-gray-900">✕</button>
       </div>
 
-      {loading ? (
-        <div className="text-sm text-gray-600 text-center py-4">Searching GitHub...</div>
-      ) : prs.length > 0 ? (
-        <div className="space-y-2">
-          {prs.map(pr => (
-            <div key={pr.number} className="flex items-start justify-between p-3 bg-white border border-gray-200 hover:border-gray-900 transition-colors">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900 truncate">{pr.title}</div>
-                <div className="text-xs text-gray-600 mt-1">#{pr.number} · {pr.state}</div>
-              </div>
-              <button
-                onClick={() => handleLinkPr(pr.url)}
-                disabled={linking === pr.url}
-                className="ml-2 px-2 py-1 text-xs border border-gray-900 text-gray-900 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
-              >
-                {linking === pr.url ? 'Linking...' : 'Link'}
-              </button>
+      <div className="space-y-4">
+        {/* Manual URL Input */}
+        <form onSubmit={handleManualSubmit}>
+          <label className="block text-sm font-medium text-gray-900 mb-2">PR URL</label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={manualUrl}
+              onChange={(e) => setManualUrl(e.target.value)}
+              placeholder="https://github.com/owner/repo/pull/123"
+              className="flex-1 px-3 py-2 border border-gray-900 focus:outline-none text-sm"
+            />
+            <button
+              type="submit"
+              disabled={!manualUrl.trim()}
+              className="px-3 py-2 border border-gray-900 text-gray-900 font-medium hover:bg-gray-100 disabled:opacity-50 text-sm"
+            >
+              Link
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Paste any PR URL directly</p>
+        </form>
+
+        {/* Search Results */}
+        <div className="border-t border-gray-200 pt-4">
+          <h5 className="text-sm font-medium text-gray-900 mb-2">Search Results</h5>
+          {loading ? (
+            <div className="text-sm text-gray-600 text-center py-4">Searching GitHub...</div>
+          ) : prs.length > 0 ? (
+            <div className="space-y-2">
+              {prs.map(pr => (
+                <div key={pr.number} className="flex items-start justify-between p-3 bg-white border border-gray-200 hover:border-gray-900 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 truncate">{pr.title}</div>
+                    <div className="text-xs text-gray-600 mt-1">#{pr.number} · {pr.state}</div>
+                  </div>
+                  <button
+                    onClick={() => handleLinkPr(pr.url)}
+                    disabled={linking === pr.url}
+                    className="ml-2 px-2 py-1 text-xs border border-gray-900 text-gray-900 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {linking === pr.url ? 'Linking...' : 'Link'}
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            <div className="text-center py-4 text-gray-600">
+              <p className="text-sm">No PRs found matching this decision</p>
+              <p className="text-xs text-gray-500 mt-1">Paste URL above to link manually</p>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="text-center py-6 text-gray-600">
-          <p className="text-sm">No PRs found matching this decision</p>
-          <p className="text-xs text-gray-500 mt-1">Try searching with different keywords</p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

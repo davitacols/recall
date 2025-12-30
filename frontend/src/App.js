@@ -35,6 +35,7 @@ import SprintDetail from './pages/SprintDetail';
 import BlockerTracker from './pages/BlockerTracker';
 import RetrospectiveMemory from './pages/RetrospectiveMemory';
 import Integrations from './pages/Integrations';
+import Proposals from './pages/Proposals';
 import Analytics from './pages/Analytics';
 import Layout from './components/Layout';
 import './index.css';
@@ -257,6 +258,13 @@ function AppContent() {
           <ProtectedRoute adminOnly={true}>
             <Layout>
               <Integrations />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/proposals" element={
+          <ProtectedRoute>
+            <Layout>
+              <Proposals />
             </Layout>
           </ProtectedRoute>
         } />

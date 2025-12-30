@@ -68,6 +68,7 @@ def decisions(request):
             rationale=data.get('rationale', ''),
             impact_level=data.get('impact_level', 'medium'),
             decision_maker=request.user,
+            sprint_id=data.get('sprint_id')  # Link to sprint if provided
         )
         
         # Log activity
@@ -280,15 +281,23 @@ def convert_to_decision(request, conversation_id):
             return Response({'error': 'Decision already exists for this conversation'}, 
                           status=status.HTTP_400_BAD_REQUEST)
         
+        # Generate AI summary from conversation
+        from apps.agile.ai_service import generate_sprint_update_summary
+        ai_summary = generate_sprint_update_summary(
+            conversation.title,
+            conversation.content
+        )
+        
         # Create decision from conversation
         decision = Decision.objects.create(
             organization=request.user.organization,
             conversation=conversation,
             title=conversation.title,
             description=conversation.content,
-            rationale=conversation.ai_summary or '',
+            rationale=ai_summary,
             impact_level=request.data.get('impact_level', 'medium'),
-            decision_maker=request.user
+            decision_maker=request.user,
+            status='proposed'
         )
         
         log_activity(
@@ -299,10 +308,15 @@ def convert_to_decision(request, conversation_id):
             title=decision.title
         )
         
+        # Notify Slack
+        from apps.integrations.utils import notify_decision_created
+        notify_decision_created(decision)
+        
         return Response({
             'id': decision.id,
             'title': decision.title,
-            'status': decision.status
+            'status': decision.status,
+            'ai_summary': ai_summary
         }, status=status.HTTP_201_CREATED)
         
     except Conversation.DoesNotExist:
@@ -347,3 +361,106 @@ def mark_reminded(request, decision_id):
         return Response({'message': 'Marked as reminded'})
     except Decision.DoesNotExist:
         return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET', 'POST'])
+def proposals(request):
+    """List or create proposals"""
+    from .models import Proposal
+    
+    if request.method == 'GET':
+        proposals = Proposal.objects.filter(organization=request.user.organization)
+        data = [{
+            'id': p.id,
+            'title': p.title,
+            'description': p.description[:200],
+            'status': p.status,
+            'proposed_by': p.proposed_by.get_full_name(),
+            'created_at': p.created_at,
+            'accepted_at': p.accepted_at
+        } for p in proposals]
+        return Response(data)
+    
+    elif request.method == 'POST':
+        proposal = Proposal.objects.create(
+            organization=request.user.organization,
+            title=request.data['title'],
+            description=request.data['description'],
+            rationale=request.data.get('rationale', ''),
+            alternatives_considered=request.data.get('alternatives_considered', ''),
+            risks=request.data.get('risks', ''),
+            proposed_by=request.user,
+            status='open'
+        )
+        return Response({'id': proposal.id, 'title': proposal.title}, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+def accept_proposal(request, proposal_id):
+    """Accept proposal and convert to decision"""
+    from .models import Proposal
+    
+    try:
+        proposal = Proposal.objects.get(
+            id=proposal_id,
+            organization=request.user.organization
+        )
+        
+        if proposal.status != 'open':
+            return Response({'error': 'Proposal is not open'}, status=400)
+        
+        # Create decision from proposal
+        decision = Decision.objects.create(
+            organization=request.user.organization,
+            title=proposal.title,
+            description=proposal.description,
+            rationale=proposal.rationale,
+            impact_level=request.data.get('impact_level', 'medium'),
+            decision_maker=request.user,
+            status='approved',
+            alternatives_considered=proposal.alternatives_considered,
+            context_reason=proposal.risks
+        )
+        
+        # Link proposal to decision
+        proposal.decision = decision
+        proposal.status = 'accepted'
+        proposal.accepted_by = request.user
+        proposal.accepted_at = timezone.now()
+        proposal.save()
+        
+        log_activity(
+            organization=request.user.organization,
+            actor=request.user,
+            action_type='decision_created',
+            content_object=decision,
+            title=decision.title
+        )
+        
+        # Notify Slack
+        from apps.integrations.utils import notify_decision_created
+        notify_decision_created(decision)
+        
+        return Response({
+            'id': decision.id,
+            'title': decision.title,
+            'status': decision.status
+        })
+    except Proposal.DoesNotExist:
+        return Response({'error': 'Proposal not found'}, status=404)
+
+@api_view(['POST'])
+def reject_proposal(request, proposal_id):
+    """Reject proposal"""
+    from .models import Proposal
+    
+    try:
+        proposal = Proposal.objects.get(
+            id=proposal_id,
+            organization=request.user.organization
+        )
+        proposal.status = 'rejected'
+        proposal.accepted_by = request.user
+        proposal.accepted_at = timezone.now()
+        proposal.save()
+        return Response({'message': 'Proposal rejected'})
+    except Proposal.DoesNotExist:
+        return Response({'error': 'Proposal not found'}, status=404)

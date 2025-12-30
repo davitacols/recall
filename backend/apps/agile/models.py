@@ -84,3 +84,26 @@ class Retrospective(models.Model):
     class Meta:
         db_table = 'retrospectives'
         ordering = ['-created_at']
+
+class SprintUpdate(models.Model):
+    TYPE_CHOICES = [
+        ('sprint_update', 'Sprint Update'),
+        ('blocker', 'Blocker'),
+        ('decision_impact', 'Decision Impact'),
+    ]
+    
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    sprint = models.ForeignKey(Sprint, on_delete=models.CASCADE, related_name='updates')
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='sprint_update')
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    ai_summary = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        db_table = 'sprint_updates'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', 'sprint', '-created_at']),
+        ]

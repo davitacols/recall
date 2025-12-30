@@ -11,6 +11,8 @@ function CurrentSprint() {
   const [showModal, setShowModal] = useState(false);
   const [showStartModal, setShowStartModal] = useState(false);
   const [showLearnModal, setShowLearnModal] = useState(false);
+  const [showEndModal, setShowEndModal] = useState(false);
+  const [ending, setEnding] = useState(false);
 
   useEffect(() => {
     fetchSprint();
@@ -18,18 +20,37 @@ function CurrentSprint() {
 
   const fetchSprint = async () => {
     try {
-      const response = await api.get('/api/agile/current-sprint/');
-      if (response.data.message === 'No active sprint') {
+      const [sprintRes, updatesRes] = await Promise.all([
+        api.get('/api/agile/current-sprint/'),
+        api.get('/api/agile/sprint-updates/')
+      ]);
+      
+      if (sprintRes.data.message === 'No active sprint') {
         setSprint(null);
         setSummary(null);
+        setUpdates([]);
       } else {
-        setSprint(response.data);
-        setSummary(response.data);
+        setSprint(sprintRes.data);
+        setSummary(sprintRes.data);
+        setUpdates(updatesRes.data);
       }
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch sprint:', error);
       setLoading(false);
+    }
+  };
+
+  const handleEndSprint = async () => {
+    setEnding(true);
+    try {
+      await api.post(`/api/agile/sprints/${sprint.id}/end/`);
+      fetchSprint();
+      setShowEndModal(false);
+    } catch (error) {
+      console.error('Failed to end sprint:', error);
+    } finally {
+      setEnding(false);
     }
   };
 
@@ -79,7 +100,10 @@ function CurrentSprint() {
           </div>
           <div className="flex items-center gap-3">
             <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium">Active</span>
-            <button className="px-4 py-2 border border-gray-900 font-medium hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() => setShowEndModal(true)}
+              className="px-4 py-2 border border-gray-900 font-medium hover:bg-gray-50 transition-colors"
+            >
               End sprint
             </button>
           </div>
@@ -94,7 +118,13 @@ function CurrentSprint() {
 
           {updates.length === 0 ? (
             <div className="border border-gray-200 p-12 text-center">
-              <p className="text-gray-600">No updates yet. Post your first sprint update.</p>
+              <p className="text-gray-600 mb-4">No updates yet. Post your first sprint update.</p>
+              <button
+                onClick={() => setShowModal(true)}
+                className="px-4 py-2 bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors"
+              >
+                Post update
+              </button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -153,28 +183,24 @@ function CurrentSprint() {
       </button>
 
       {showModal && <NewUpdateModal onClose={() => setShowModal(false)} onSubmit={fetchSprint} />}
+      {showEndModal && <EndSprintModal sprint={sprint} onClose={() => setShowEndModal(false)} onConfirm={handleEndSprint} loading={ending} />}
     </div>
   );
 }
 
 function UpdateCard({ update }) {
   const [expanded, setExpanded] = useState(false);
-
-  const typeColors = {
-    'sprint_update': 'bg-gray-100 text-gray-800',
-    'blocker': 'border-l-4 border-red-600',
-    'decision_impact': 'bg-blue-50 text-blue-800'
-  };
+  const authorInitial = update.author ? update.author.charAt(0).toUpperCase() : 'U';
 
   return (
     <div className={`border border-gray-200 p-6 ${update.type === 'blocker' ? 'border-l-4 border-red-600' : ''}`}>
       <div className="flex items-start gap-3 mb-3">
         <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-bold">
-          {update.author?.charAt(0) || 'U'}
+          {authorInitial}
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium text-gray-900">{update.author}</span>
+            <span className="text-sm font-medium text-gray-900">{update.author || 'Unknown'}</span>
             <span className="text-sm text-gray-500">{update.timestamp}</span>
             {update.type === 'blocker' && (
               <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs font-medium">Blocker</span>
@@ -214,15 +240,17 @@ function NewUpdateModal({ onClose, onSubmit }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.post('/api/agile/sprint-updates/', {
+      const response = await api.post('/api/agile/sprint-updates/', {
         type,
         title,
         content
       });
+      console.log('Update posted:', response.data);
       onSubmit();
       onClose();
     } catch (error) {
       console.error('Failed to post update:', error);
+      alert('Failed to post update. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -283,6 +311,18 @@ function NewUpdateModal({ onClose, onSubmit }) {
               className="w-full px-3 py-2 border border-gray-900 focus:outline-none resize-none"
               required
             />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Link decision (optional)
+            </label>
+            <input
+              type="text"
+              placeholder="Decision ID or URL"
+              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
+            />
+            <p className="text-xs text-gray-500 mt-1">Link a decision to track scope changes</p>
           </div>
 
           <div className="flex items-center justify-end gap-3">
@@ -461,6 +501,39 @@ function LearnSprintsModal({ onClose, onStart }) {
           </Button>
           <Button type="button" onClick={onStart}>
             Start your first sprint
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EndSprintModal({ sprint, onClose, onConfirm, loading }) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white w-full max-w-md">
+        <div className="border-b border-gray-200 p-6">
+          <h2 className="text-2xl font-bold text-gray-900">End sprint?</h2>
+        </div>
+
+        <div className="p-6">
+          <p className="text-base text-gray-700 mb-6">
+            This will mark {sprint.name} as complete and generate an AI retrospective summary.
+          </p>
+
+          <div className="bg-gray-50 p-4 space-y-2 text-sm text-gray-700">
+            <div>✓ Sprint updates will be preserved</div>
+            <div>✓ Blockers will remain visible</div>
+            <div>✓ AI summary will be generated</div>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 p-6 flex items-center justify-end gap-3">
+          <Button type="button" onClick={onClose} variant="secondary">
+            Cancel
+          </Button>
+          <Button type="button" onClick={onConfirm} loading={loading}>
+            End sprint
           </Button>
         </div>
       </div>

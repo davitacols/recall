@@ -114,6 +114,15 @@ class Decision(models.Model):
     impact_review_notes = models.TextField(blank=True)
     lessons_learned = models.TextField(blank=True)
     
+    # Sprint linking
+    sprint = models.ForeignKey(
+        'agile.Sprint',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='decisions'
+    )
+    
     class Meta:
         db_table = 'decisions'
         ordering = ['-created_at']

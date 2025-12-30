@@ -10,9 +10,6 @@ import {
   DocumentTextIcon,
   BookOpenIcon,
   BellIcon,
-  BookmarkIcon,
-  DocumentDuplicateIcon,
-  FolderIcon,
   Bars3Icon,
   XMarkIcon,
   MagnifyingGlassIcon
@@ -54,26 +51,17 @@ function Layout({ children }) {
     { name: 'Notifications', href: '/notifications', icon: BellIcon },
   ];
 
-  const secondaryNav = [
-    { name: 'Bookmarks', href: '/bookmarks', icon: BookmarkIcon },
-    { name: 'Drafts', href: '/drafts', icon: DocumentDuplicateIcon },
-    { name: 'Files', href: '/files', icon: FolderIcon },
+  const sprintNav = [
+    { name: 'Current Sprint', href: '/sprint' },
+    { name: 'Sprint History', href: '/sprint-history' },
+    { name: 'Blockers', href: '/blockers' },
+    { name: 'Retrospectives', href: '/retrospectives' },
   ];
 
   const personalNav = [
     { name: 'My Decisions', href: '/my-decisions' },
     { name: 'My Questions', href: '/my-questions' },
-  ];
-
-  const insightsNav = [
     { name: 'Knowledge Health', href: '/knowledge-health' },
-  ];
-
-  const agileNav = [
-    { name: 'Current Sprint', href: '/sprint' },
-    { name: 'Sprint History', href: '/sprint-history' },
-    { name: 'Blockers', href: '/blockers' },
-    { name: 'Retrospectives', href: '/retrospectives' },
   ];
 
   const adminNav = [
@@ -87,6 +75,9 @@ function Layout({ children }) {
     if (location.pathname.startsWith('/decisions')) return 'Decisions';
     if (location.pathname.startsWith('/knowledge')) return 'Knowledge';
     if (location.pathname.startsWith('/notifications')) return 'Notifications';
+    if (location.pathname.startsWith('/sprint')) return 'Sprint';
+    if (location.pathname.startsWith('/blockers')) return 'Blockers';
+    if (location.pathname.startsWith('/retrospectives')) return 'Retrospectives';
     return 'Recall';
   };
 
@@ -95,7 +86,6 @@ function Layout({ children }) {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50">
         <div className="h-full flex items-center justify-between px-4">
-          {/* Left: Toggle + Page Title */}
           <div className="flex items-center gap-4">
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2">
               {mobileMenuOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
@@ -106,7 +96,6 @@ function Layout({ children }) {
             <h1 className="text-lg font-bold text-gray-900">{getPageTitle()}</h1>
           </div>
 
-          {/* Center: Search */}
           <div className="hidden md:block flex-1 max-w-md mx-8">
             <form onSubmit={handleSearch}>
               <div className="relative">
@@ -123,7 +112,6 @@ function Layout({ children }) {
             </form>
           </div>
 
-          {/* Right: Actions */}
           <div className="flex items-center gap-3">
             <NotificationBell />
             
@@ -176,12 +164,14 @@ function Layout({ children }) {
         </div>
       </header>
 
-      {/* Mobile Sidebar */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)} />
-          <aside className="fixed top-16 left-0 bottom-0 w-64 bg-white border-r border-gray-200 overflow-y-auto">
-            <nav className="p-4">
+      {/* Desktop Sidebar */}
+      <aside className={`fixed top-16 left-0 bottom-0 ${
+        sidebarCollapsed ? 'w-20' : 'w-64'
+      } bg-white border-r border-gray-200 hidden lg:block transition-all duration-200 overflow-y-auto`}>
+        <div className="h-full flex flex-col">
+          {/* Primary Nav */}
+          <nav className="flex-1 py-6">
+            <div className="px-3 space-y-1">
               {primaryNav.map((item) => {
                 const isActive = location.pathname === item.href;
                 const Icon = item.icon;
@@ -189,163 +179,106 @@ function Layout({ children }) {
                   <Link
                     key={item.name}
                     to={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive ? 'bg-gray-900 text-white' : 'text-gray-900 hover:bg-gray-100'
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      isActive 
+                        ? 'bg-gray-900 text-white' 
+                        : 'text-gray-700 hover:bg-gray-100'
                     }`}
+                    title={sidebarCollapsed ? item.name : ''}
                   >
-                    <Icon className="w-5 h-5" />
-                    <span>{item.name}</span>
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    {!sidebarCollapsed && <span>{item.name}</span>}
                   </Link>
                 );
               })}
-            </nav>
-          </aside>
-        </div>
-      )}
+            </div>
 
-      {/* Desktop Sidebar */}
-      <aside className={`fixed top-16 left-0 bottom-0 ${
-        sidebarCollapsed ? 'w-20' : 'w-64'
-      } bg-white border-r border-gray-200 hidden lg:block transition-all duration-200 overflow-y-auto`}>
-        <div className="h-full flex flex-col">
-          {/* Org Switcher */}
-          <div className="p-4 border-b border-gray-200">
             {!sidebarCollapsed && (
-              <div className="flex items-center gap-3 p-2">
-                {user?.organization_logo ? (
-                  <img src={user.organization_logo} alt="" className="w-8 h-8 object-contain" />
-                ) : (
-                  <div className="w-8 h-8 bg-gray-900 flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">R</span>
+              <>
+                {/* Sprint Section */}
+                <div className="mt-8 px-3">
+                  <div className="px-3 mb-2">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Sprint</h3>
                   </div>
-                )}
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-medium text-gray-900 truncate">{user?.organization_name}</div>
+                  <div className="space-y-0.5">
+                    {sprintNav.map((item) => {
+                      const isActive = location.pathname === item.href;
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          className={`block px-3 py-2 rounded-lg text-sm transition-all ${
+                            isActive 
+                              ? 'bg-gray-100 text-gray-900 font-medium' 
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
+                        >
+                          {item.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-            {sidebarCollapsed && (
-              <div className="flex justify-center">
-                {user?.organization_logo ? (
-                  <img src={user.organization_logo} alt="" className="w-8 h-8 object-contain" />
-                ) : (
-                  <div className="w-8 h-8 bg-gray-900 flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">R</span>
+
+                {/* Personal Section */}
+                <div className="mt-8 px-3">
+                  <div className="px-3 mb-2">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Personal</h3>
+                  </div>
+                  <div className="space-y-0.5">
+                    {personalNav.map((item) => {
+                      const isActive = location.pathname === item.href;
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          className={`block px-3 py-2 rounded-lg text-sm transition-all ${
+                            isActive 
+                              ? 'bg-gray-100 text-gray-900 font-medium' 
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
+                        >
+                          {item.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Admin Section */}
+                {user?.role === 'admin' && (
+                  <div className="mt-8 px-3">
+                    <div className="px-3 mb-2">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Admin</h3>
+                    </div>
+                    <div className="space-y-0.5">
+                      {adminNav.map((item) => {
+                        const isActive = location.pathname === item.href;
+                        return (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            className={`block px-3 py-2 rounded-lg text-sm transition-all ${
+                              isActive 
+                                ? 'bg-gray-100 text-gray-900 font-medium' 
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            }`}
+                          >
+                            {item.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
-              </div>
-            )}
-          </div>
-
-          {/* Primary Nav */}
-          <nav className="flex-1 p-4 space-y-1">
-            {primaryNav.map((item) => {
-              const isActive = location.pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors relative ${
-                    isActive ? 'bg-gray-900 text-white' : 'text-gray-900 hover:bg-gray-100'
-                  }`}
-                  title={sidebarCollapsed ? item.name : ''}
-                >
-                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-900" />}
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  {!sidebarCollapsed && <span>{item.name}</span>}
-                </Link>
-              );
-            })}
-
-            {/* Quick Actions */}
-            {!sidebarCollapsed && (
-              <div className="pt-4 space-y-2">
-                <Link
-                  to="/conversations/new"
-                  className="block w-full px-3 py-2 text-sm font-medium text-gray-900 border border-gray-900 hover:bg-gray-100 transition-colors text-center"
-                >
-                  + New conversation
-                </Link>
-                <Link
-                  to="/decisions/new"
-                  className="block w-full px-3 py-2 text-sm font-medium text-gray-900 border border-gray-900 hover:bg-gray-100 transition-colors text-center"
-                >
-                  + New decision
-                </Link>
-              </div>
-            )}
-
-            {/* Secondary Nav */}
-            {!sidebarCollapsed && (
-              <div className="pt-6 space-y-1">
-                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Personal</div>
-                {personalNav.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="flex items-center gap-3 px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
-                  >
-                    <span>{item.name}</span>
-                  </Link>
-                ))}
-                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">Insights</div>
-                {insightsNav.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="flex items-center gap-3 px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
-                  >
-                    <span>{item.name}</span>
-                  </Link>
-                ))}
-                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">Sprint</div>
-                {agileNav.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="flex items-center gap-3 px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
-                  >
-                    <span>{item.name}</span>
-                  </Link>
-                ))}
-                {user?.role === 'admin' && (
-                  <>
-                    <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">Admin</div>
-                    {adminNav.map((item) => (
-                      <Link
-                        key={item.name}
-                        to={item.href}
-                        className="flex items-center gap-3 px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
-                      >
-                        <span>{item.name}</span>
-                      </Link>
-                    ))}
-                  </>
-                )}
-                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">Saved</div>
-                {secondaryNav.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className="flex items-center gap-3 px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span>{item.name}</span>
-                    </Link>
-                  );
-                })}
-              </div>
+              </>
             )}
           </nav>
 
           {/* User Profile */}
           <div className="p-4 border-t border-gray-200">
             {!sidebarCollapsed ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 px-2">
                 <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                   {user?.avatar ? (
                     <img src={user.avatar} alt="" className="w-full h-full object-cover" />
@@ -357,7 +290,7 @@ function Layout({ children }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-900 truncate">{user?.full_name?.split(' ')[0]}</div>
-                  <div className="text-xs text-gray-600">{user?.role}</div>
+                  <div className="text-xs text-gray-500">{user?.organization_name}</div>
                 </div>
               </div>
             ) : (
@@ -386,7 +319,6 @@ function Layout({ children }) {
         </div>
       </main>
       
-      {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
     </div>
   );

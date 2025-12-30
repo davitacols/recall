@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { useParams } from 'react-router-dom';
 import api from '../services/api';
-import DecisionLockBanner from '../components/DecisionLockBanner';
-import AISuggestionsPanel from '../components/AISuggestionsPanel';
-import ImpactReviewModal from '../components/ImpactReviewModal';
+import Button from '../components/Button';
 
 function DecisionDetail() {
   const { id } = useParams();
   const [decision, setDecision] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showGithubSearch, setShowGithubSearch] = useState(false);
+  const [showJiraCreate, setShowJiraCreate] = useState(false);
 
   useEffect(() => {
     fetchDecision();
@@ -18,351 +16,341 @@ function DecisionDetail() {
 
   const fetchDecision = async () => {
     try {
-      const response = await api.get(`/api/decisions/${id}/`);
-      setDecision(response.data);
+      const res = await api.get(`/api/decisions/${id}/`);
+      setDecision(res.data);
+      setLoading(false);
     } catch (error) {
       console.error('Failed to fetch decision:', error);
-    } finally {
       setLoading(false);
-    }
-  };
-
-  const handleApprove = async () => {
-    try {
-      await api.post(`/api/decisions/${id}/approve/`);
-      fetchDecision();
-    } catch (error) {
-      console.error('Failed to approve:', error);
-    }
-  };
-
-  const handleImplement = async () => {
-    try {
-      await api.post(`/api/decisions/${id}/implement/`);
-      fetchDecision();
-    } catch (error) {
-      console.error('Failed to mark as implemented:', error);
-    }
-  };
-
-  const handleLock = async () => {
-    const reason = prompt('Why are you locking this decision?');
-    if (!reason) return;
-    try {
-      await api.post(`/api/decisions/${id}/lock/`, { reason });
-      fetchDecision();
-    } catch (error) {
-      alert('Failed to lock decision');
-    }
-  };
-
-  const handleOverride = async (reason) => {
-    try {
-      await api.post(`/api/decisions/${id}/override-lock/`, { reason });
-      fetchDecision();
-    } catch (error) {
-      alert('Failed to override lock');
-    }
-  };
-
-  const handleSubmitReview = async (reviewData) => {
-    try {
-      await api.post(`/api/decisions/${id}/impact-review/`, reviewData);
-      fetchDecision();
-    } catch (error) {
-      alert('Failed to submit review');
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'approved':
-      case 'implemented':
-        return <CheckCircleIcon className="w-4 h-4" />;
-      case 'under_review':
-      case 'proposed':
-        return <ClockIcon className="w-4 h-4" />;
-      case 'rejected':
-      case 'cancelled':
-        return <XCircleIcon className="w-4 h-4" />;
-      default:
-        return <ClockIcon className="w-4 h-4" />;
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center h-96">
+        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!decision) {
-    return (
-      <div className="text-center py-20">
-        <h3 className="text-2xl font-semibold text-gray-900 mb-4">Decision Not Found</h3>
-        <Link to="/decisions" className="text-gray-600 hover:text-gray-900">
-          ← Back to Decisions
-        </Link>
-      </div>
-    );
+    return <div className="text-center py-8 text-gray-600">Decision not found</div>;
   }
 
+  const impactColors = {
+    low: 'bg-blue-50 border-blue-200 text-blue-900',
+    medium: 'bg-yellow-50 border-yellow-200 text-yellow-900',
+    high: 'bg-orange-50 border-orange-200 text-orange-900',
+    critical: 'bg-red-50 border-red-200 text-red-900'
+  };
+
+  const statusColors = {
+    proposed: 'bg-gray-100 text-gray-800',
+    under_review: 'bg-blue-100 text-blue-800',
+    approved: 'bg-green-100 text-green-800',
+    rejected: 'bg-red-100 text-red-800',
+    implemented: 'bg-green-100 text-green-800',
+    cancelled: 'bg-gray-100 text-gray-800'
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="flex gap-8">
-        {/* Main Content */}
-        <div className="flex-1">
-          {/* Header */}
-          <div className="mb-6">
-            <Link 
-              to="/decisions" 
-              className="inline-flex items-center text-sm text-gray-600 hover:text-blue-600 mb-6 transition-colors"
-            >
-              <ArrowLeftIcon className="w-4 h-4 mr-2" />
-              Back to Decisions
-            </Link>
-            
-            <div className="flex items-center space-x-3 mb-6">
-              <span className="px-3 py-1 bg-gray-900 text-white text-xs font-medium flex items-center space-x-2">
-                {getStatusIcon(decision.status)}
-                <span>{decision.status.replace('_', ' ')}</span>
+    <div className="flex justify-center">
+      <div className="max-w-6xl w-full">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h1 className="text-4xl font-bold text-gray-900 mb-3">{decision.title}</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className={`px-3 py-1 text-sm font-medium border ${impactColors[decision.impact_level]}`}>
+                {decision.impact_level.charAt(0).toUpperCase() + decision.impact_level.slice(1)} Impact
               </span>
-              <span className="text-xs text-gray-500">
-                {new Date(decision.created_at).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
+              <span className={`px-3 py-1 text-sm font-medium ${statusColors[decision.status]}`}>
+                {decision.status.replace('_', ' ').charAt(0).toUpperCase() + decision.status.replace('_', ' ').slice(1)}
               </span>
-            </div>
-            
-            <h1 className="text-3xl font-semibold text-gray-900 mb-6">{decision.title}</h1>
-            
-            <div className="flex items-center space-x-3">
-              <Link to="/profile" className="w-10 h-10 bg-gray-900 flex items-center justify-center">
-                <span className="text-white font-medium text-sm">
-                  {decision.decision_maker_name?.charAt(0).toUpperCase()}
-                </span>
-              </Link>
-              <div>
-                <Link to="/profile" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">{decision.decision_maker_name}</Link>
-                <div className="text-sm text-gray-500">Decision Maker</div>
-              </div>
+              <span className="text-sm text-gray-600">By {decision.decision_maker_name}</span>
             </div>
           </div>
-
-          {/* Phase 2: Lock Banner */}
-          <DecisionLockBanner decision={decision} onOverride={handleOverride} />
-
-          {/* Phase 2: AI Suggestions */}
-          <AISuggestionsPanel decisionId={id} />
-
-          {/* Content */}
-          <div className="bg-white border border-gray-200 mb-8">
-            <div className="p-8">
-              <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-                Description
-              </h3>
-              <p className="text-base leading-relaxed text-gray-700 mb-8">
-                {decision.description}
-              </p>
-
-              {decision.rationale && (
-                <>
-                  <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-                    Rationale
-                  </h3>
-                  <div className="p-6 bg-blue-50 border-l-4 border-blue-600 mb-8">
-                    <p className="text-gray-700">{decision.rationale}</p>
-                  </div>
-                </>
-              )}
-
-              {decision.impact && (
-                <>
-                  <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-                    Impact
-                  </h3>
-                  <p className="text-gray-700 mb-8">{decision.impact}</p>
-                </>
-              )}
-
-              {/* Actions */}
-              {decision.status === 'approved' && (
-                <div className="pt-6 border-t border-gray-200 flex gap-3">
-                  <button
-                    onClick={handleImplement}
-                    className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors"
-                  >
-                    Mark as Implemented
-                  </button>
-                  {!decision.is_locked && (
-                    <button
-                      onClick={handleLock}
-                      className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-100 transition-colors"
-                    >
-                      Lock Decision
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {decision.status === 'implemented' && !decision.review_completed_at && (
-                <div className="pt-6 border-t border-gray-200">
-                  <button
-                    onClick={() => setShowReviewModal(true)}
-                    className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                  >
-                    Submit Impact Review
-                  </button>
-                </div>
-              )}
-
-              {decision.status === 'under_review' && (
-                <div className="pt-6 border-t border-gray-200 flex space-x-3">
-                  <button
-                    onClick={handleApprove}
-                    className="px-6 py-3 bg-green-600 text-white hover:bg-green-700 transition-colors"
-                  >
-                    Approve Decision
-                  </button>
-                  <button
-                    className="px-6 py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Request Changes
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="w-96 flex-shrink-0 sticky top-4 self-start space-y-6">
-          {/* Confidence Indicator */}
-          {decision.confidence && (
-            <div className={`border p-6 ${
-              decision.confidence.color === 'green' ? 'bg-green-50 border-green-200' :
-              decision.confidence.color === 'blue' ? 'bg-blue-50 border-blue-200' :
-              'bg-yellow-50 border-yellow-200'
-            }`}>
-              <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-                Decision Confidence
-              </h3>
-              <div className="text-center mb-4">
-                <div className={`text-5xl font-bold ${
-                  decision.confidence.color === 'green' ? 'text-green-600' :
-                  decision.confidence.color === 'blue' ? 'text-blue-600' :
-                  'text-yellow-600'
-                }`}>
-                  {decision.confidence.score}%
-                </div>
-                <div className="text-sm font-semibold text-gray-900 mt-2">
-                  {decision.confidence.level}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm p-3 bg-white">
-                  <span className="text-gray-700">👍 Agree</span>
-                  <span className="font-semibold text-gray-900">{decision.confidence.agree_count}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm p-3 bg-white">
-                  <span className="text-gray-700">🤔 Unsure</span>
-                  <span className="font-semibold text-gray-900">{decision.confidence.unsure_count}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm p-3 bg-white">
-                  <span className="text-gray-700">👎 Concern</span>
-                  <span className="font-semibold text-gray-900">{decision.confidence.concern_count}</span>
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-gray-300">
-                <p className="text-xs text-gray-700">
-                  Based on {decision.confidence.factors.join(', ')}
-                </p>
-              </div>
-            </div>
-          )}
-          
-          {/* Timeline */}
-          <div className="bg-white border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-              Timeline
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-gray-900 mt-2 flex-shrink-0"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Created</p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(decision.created_at).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </p>
-                </div>
-              </div>
-              {decision.approved_at && (
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-green-600 mt-2 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Approved</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(decision.approved_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {decision.implemented_at && (
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-purple-600 mt-2 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Implemented</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(decision.implemented_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Related Conversation */}
-          {decision.conversation && (
-            <div className="bg-white border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4 text-sm">
-                Related Conversation
-              </h3>
-              <Link 
-                to={`/conversations/${decision.conversation}`}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
-              >
-                View Original Discussion →
-              </Link>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Phase 2: Impact Review Modal */}
-      {showReviewModal && (
-        <ImpactReviewModal
-          decision={decision}
-          onSubmit={handleSubmitReview}
-          onClose={() => setShowReviewModal(false)}
-        />
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-3 gap-8">
+        {/* Left Column - Main Content */}
+        <div className="col-span-2 space-y-6">
+          {/* Description */}
+          <section className="border border-gray-200 p-8">
+            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Overview</h2>
+            <div className="prose prose-sm max-w-none text-gray-700 space-y-4">
+              {decision.description.split('\n\n').map((paragraph, idx) => (
+                <div key={idx}>
+                  {paragraph.split('\n').map((line, lineIdx) => {
+                    // Handle bullet points
+                    if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
+                      return (
+                        <div key={lineIdx} className="flex gap-3 ml-4">
+                          <span className="text-gray-900 font-bold">•</span>
+                          <span>{line.replace(/^[-•]\s*/, '')}</span>
+                        </div>
+                      );
+                    }
+                    // Handle numbered lists
+                    if (/^\d+\./.test(line.trim())) {
+                      return (
+                        <div key={lineIdx} className="flex gap-3 ml-4">
+                          <span className="text-gray-900 font-bold">{line.match(/^\d+/)[0]}.</span>
+                          <span>{line.replace(/^\d+\.\s*/, '')}</span>
+                        </div>
+                      );
+                    }
+                    // Handle bold text (text between ** or __)
+                    const boldRegex = /\*\*(.*?)\*\*|__(.*?)__/g;
+                    const parts = line.split(boldRegex);
+                    return (
+                      <p key={lineIdx} className="leading-relaxed">
+                        {parts.map((part, partIdx) => {
+                          if (part && (parts[partIdx - 1]?.includes('**') || parts[partIdx - 1]?.includes('__'))) {
+                            return <strong key={partIdx}>{part}</strong>;
+                          }
+                          return part;
+                        })}
+                      </p>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Rationale */}
+          {decision.rationale && (
+            <section className="border border-gray-200 p-8">
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Rationale</h2>
+              <div className="prose prose-sm max-w-none text-gray-700 space-y-4">
+                {decision.rationale.split('\n\n').map((paragraph, idx) => (
+                  <div key={idx}>
+                    {paragraph.split('\n').map((line, lineIdx) => {
+                      if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
+                        return (
+                          <div key={lineIdx} className="flex gap-3 ml-4">
+                            <span className="text-gray-900 font-bold">•</span>
+                            <span>{line.replace(/^[-•]\s*/, '')}</span>
+                          </div>
+                        );
+                      }
+                      if (/^\d+\./.test(line.trim())) {
+                        return (
+                          <div key={lineIdx} className="flex gap-3 ml-4">
+                            <span className="text-gray-900 font-bold">{line.match(/^\d+/)[0]}.</span>
+                            <span>{line.replace(/^\d+\.\s*/, '')}</span>
+                          </div>
+                        );
+                      }
+                      return <p key={lineIdx} className="leading-relaxed">{line}</p>;
+                    })}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Code Links */}
+          <section className="border border-gray-200 p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Related Code</h2>
+              <button
+                onClick={() => setShowGithubSearch(!showGithubSearch)}
+                className="text-sm font-medium text-gray-900 border border-gray-900 px-3 py-1 hover:bg-gray-50 transition-colors"
+              >
+                {showGithubSearch ? '−' : '+'} Link PR
+              </button>
+            </div>
+
+            {decision.code_links && decision.code_links.length > 0 ? (
+              <div className="space-y-3">
+                {decision.code_links.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-4 border border-gray-200 hover:border-gray-900 transition-colors group"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 group-hover:underline">
+                          {link.title || `PR #${link.number}`}
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">{link.url}</div>
+                      </div>
+                      <span className="text-xs text-gray-500 ml-2">→</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-600">
+                <p className="text-sm">No linked PRs yet</p>
+                <p className="text-xs text-gray-500 mt-1">Link PRs to track implementation</p>
+              </div>
+            )}
+
+            {showGithubSearch && <GitHubSearchPanel decisionId={id} onLinked={fetchDecision} onClose={() => setShowGithubSearch(false)} />}
+          </section>
+        </div>
+
+        {/* Right Column - Sidebar */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          <section className="border border-gray-200 p-6">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Actions</h3>
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowGithubSearch(!showGithubSearch)}
+                className="w-full px-4 py-2 text-sm font-medium border border-gray-900 text-gray-900 hover:bg-gray-50 transition-colors text-left"
+              >
+                Link GitHub PR
+              </button>
+              <button
+                onClick={() => setShowJiraCreate(!showJiraCreate)}
+                className="w-full px-4 py-2 text-sm font-medium border border-gray-900 text-gray-900 hover:bg-gray-50 transition-colors text-left"
+              >
+                Create Jira Issue
+              </button>
+            </div>
+          </section>
+
+          {/* Metadata */}
+          <section className="border border-gray-200 p-6">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Details</h3>
+            <div className="space-y-4 text-sm">
+              <div>
+                <div className="text-gray-600 mb-1">Status</div>
+                <div className="font-medium text-gray-900">{decision.status.replace('_', ' ')}</div>
+              </div>
+              <div>
+                <div className="text-gray-600 mb-1">Impact</div>
+                <div className="font-medium text-gray-900">{decision.impact_level}</div>
+              </div>
+              <div>
+                <div className="text-gray-600 mb-1">Owner</div>
+                <div className="font-medium text-gray-900">{decision.decision_maker_name}</div>
+              </div>
+              <div>
+                <div className="text-gray-600 mb-1">Created</div>
+                <div className="font-medium text-gray-900">{new Date(decision.created_at).toLocaleDateString()}</div>
+              </div>
+            </div>
+          </section>
+
+          {/* Jira Integration */}
+          {showJiraCreate && <JiraCreatePanel decisionId={id} onCreated={fetchDecision} />}
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+function GitHubSearchPanel({ decisionId, onLinked, onClose }) {
+  const [prs, setPrs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [linking, setLinking] = useState(null);
+
+  useEffect(() => {
+    handleSearch();
+  }, []);
+
+  const handleSearch = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/api/integrations/github/search/${decisionId}/`);
+      setPrs(res.data.prs);
+    } catch (error) {
+      console.error('Search failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLinkPr = async (prUrl) => {
+    setLinking(prUrl);
+    try {
+      await api.post(`/api/integrations/github/link/${decisionId}/`, { pr_url: prUrl });
+      alert('PR linked successfully');
+      onLinked();
+      onClose();
+    } catch (error) {
+      alert('Failed to link PR');
+    } finally {
+      setLinking(null);
+    }
+  };
+
+  return (
+    <div className="mt-6 p-6 bg-gray-50 border border-gray-200">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-medium text-gray-900">Search Results</h4>
+        <button onClick={onClose} className="text-gray-600 hover:text-gray-900">✕</button>
+      </div>
+
+      {loading ? (
+        <div className="text-sm text-gray-600 text-center py-4">Searching GitHub...</div>
+      ) : prs.length > 0 ? (
+        <div className="space-y-2">
+          {prs.map(pr => (
+            <div key={pr.number} className="flex items-start justify-between p-3 bg-white border border-gray-200 hover:border-gray-900 transition-colors">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 truncate">{pr.title}</div>
+                <div className="text-xs text-gray-600 mt-1">#{pr.number} · {pr.state}</div>
+              </div>
+              <button
+                onClick={() => handleLinkPr(pr.url)}
+                disabled={linking === pr.url}
+                className="ml-2 px-2 py-1 text-xs border border-gray-900 text-gray-900 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
+              >
+                {linking === pr.url ? 'Linking...' : 'Link'}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-6 text-gray-600">
+          <p className="text-sm">No PRs found matching this decision</p>
+          <p className="text-xs text-gray-500 mt-1">Try searching with different keywords</p>
+        </div>
       )}
     </div>
+  );
+}
+
+function JiraCreatePanel({ decisionId, onCreated }) {
+  const [creating, setCreating] = useState(false);
+
+  const handleCreateIssue = async () => {
+    if (!window.confirm('Create a Jira issue for this decision?')) return;
+    
+    setCreating(true);
+    try {
+      const res = await api.post(`/api/integrations/jira/create/${decisionId}/`);
+      alert(`Jira issue created: ${res.data.ticket_id}`);
+      window.open(res.data.ticket_url, '_blank');
+      onCreated();
+    } catch (error) {
+      alert('Failed to create Jira issue: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <section className="border border-gray-200 p-6 bg-blue-50">
+      <h3 className="text-sm font-bold text-gray-900 mb-3">Create Jira Issue</h3>
+      <p className="text-sm text-gray-700 mb-4">Create a Jira issue to track implementation of this decision</p>
+      <Button onClick={handleCreateIssue} loading={creating} className="w-full">
+        Create Issue
+      </Button>
+    </section>
   );
 }
 

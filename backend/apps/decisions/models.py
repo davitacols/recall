@@ -95,6 +95,25 @@ class Decision(models.Model):
     outcome_notes = models.TextField(blank=True)
     success_metrics = models.JSONField(default=dict, blank=True)
     
+    # Phase 2: Decision Locking
+    is_locked = models.BooleanField(default=False, db_index=True)
+    locked_at = models.DateTimeField(null=True, blank=True)
+    locked_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='locked_decisions'
+    )
+    lock_reason = models.TextField(blank=True)
+    
+    # Phase 2: Impact Review
+    review_scheduled_at = models.DateTimeField(null=True, blank=True)
+    review_completed_at = models.DateTimeField(null=True, blank=True)
+    was_successful = models.BooleanField(null=True, blank=True)
+    impact_review_notes = models.TextField(blank=True)
+    lessons_learned = models.TextField(blank=True)
+    
     class Meta:
         db_table = 'decisions'
         ordering = ['-created_at']

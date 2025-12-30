@@ -25,6 +25,17 @@ import Files from './pages/Files';
 import Onboarding from './pages/Onboarding';
 import FAQ from './pages/FAQ';
 import PersonalReflection from './pages/PersonalReflection';
+import MyDecisions from './pages/MyDecisions';
+import MyQuestions from './pages/MyQuestions';
+import SampleDecision from './pages/SampleDecision';
+import KnowledgeHealthDashboard from './pages/KnowledgeHealthDashboard';
+import CurrentSprint from './pages/CurrentSprint';
+import SprintHistory from './pages/SprintHistory';
+import SprintDetail from './pages/SprintDetail';
+import BlockerTracker from './pages/BlockerTracker';
+import RetrospectiveMemory from './pages/RetrospectiveMemory';
+import Integrations from './pages/Integrations';
+import Analytics from './pages/Analytics';
 import Layout from './components/Layout';
 import './index.css';
 
@@ -176,6 +187,83 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <Files />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/my-decisions" element={
+          <ProtectedRoute>
+            <Layout>
+              <MyDecisions />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/my-questions" element={
+          <ProtectedRoute>
+            <Layout>
+              <MyQuestions />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/sample-decision" element={
+          <ProtectedRoute>
+            <Layout>
+              <SampleDecision />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/knowledge-health" element={
+          <ProtectedRoute>
+            <Layout>
+              <KnowledgeHealthDashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/sprint" element={
+          <ProtectedRoute>
+            <Layout>
+              <CurrentSprint />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/sprint-history" element={
+          <ProtectedRoute>
+            <Layout>
+              <SprintHistory />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/sprints/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <SprintDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/blockers" element={
+          <ProtectedRoute>
+            <Layout>
+              <BlockerTracker />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/retrospectives" element={
+          <ProtectedRoute>
+            <Layout>
+              <RetrospectiveMemory />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/integrations" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <Integrations />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/analytics" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <Analytics />
             </Layout>
           </ProtectedRoute>
         } />

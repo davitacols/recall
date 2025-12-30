@@ -402,6 +402,15 @@ function ConversationDetail() {
     }
   };
 
+  const handleQuickConvertToDecision = async () => {
+    try {
+      const response = await api.post(`/api/decisions/convert/${id}/`, { impact_level: 'medium' });
+      window.location.href = `/decisions/${response.data.id}`;
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to convert');
+    }
+  };
+
   const handleConvertToDecision = async () => {
     try {
       const response = await api.post(`/api/decisions/convert/${id}/`, { impact_level: impactLevel });
@@ -868,7 +877,7 @@ function ConversationDetail() {
             Share
           </button>
           <button
-            onClick={() => setShowConvertModal(true)}
+            onClick={handleQuickConvertToDecision}
             className="w-full px-5 py-3 bg-gray-900 text-white hover:bg-gray-800 font-medium transition-all"
           >
             Convert to Decision

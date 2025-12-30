@@ -13,6 +13,8 @@ urlpatterns = [
     path('api/knowledge/', include('apps.knowledge.urls')),
     path('api/organizations/', include('apps.organizations.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
+    path('api/agile/', include('apps.agile.urls')),
+    path('api/integrations/', include('apps.integrations.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,11 +1,18 @@
 import resend
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 resend.api_key = settings.RESEND_API_KEY
 
 def send_welcome_email(user):
     """Send welcome email to new user"""
     try:
+        if not settings.RESEND_API_KEY:
+            logger.error("RESEND_API_KEY not configured")
+            return False
+        
         resend.Emails.send({
             "from": settings.DEFAULT_FROM_EMAIL,
             "to": user.email,
@@ -19,12 +26,19 @@ def send_welcome_email(user):
                 <p>Best regards,<br>The Recall Team</p>
             """
         })
+        logger.info(f"Welcome email sent to {user.email}")
+        return True
     except Exception as e:
-        print(f"Failed to send welcome email: {e}")
+        logger.error(f"Failed to send welcome email to {user.email}: {e}")
+        return False
 
 def send_invitation_email(invitation):
     """Send invitation email"""
     try:
+        if not settings.RESEND_API_KEY:
+            logger.error("RESEND_API_KEY not configured")
+            return False
+        
         invite_link = f"{settings.FRONTEND_URL}/invite/{invitation.token}"
         invited_by_name = invitation.invited_by.get_full_name() if invitation.invited_by else "Your team"
         
@@ -43,5 +57,8 @@ def send_invitation_email(invitation):
                 <p>Best regards,<br>The Recall Team</p>
             """
         })
+        logger.info(f"Invitation email sent to {invitation.email}")
+        return True
     except Exception as e:
-        print(f"Failed to send invitation email: {e}")
+        logger.error(f"Failed to send invitation email to {invitation.email}: {e}")
+        return False

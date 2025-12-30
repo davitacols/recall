@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Count, Q
 from datetime import timedelta
-from apps.agile.models import Sprint, Blocker, Retrospective
+from apps.agile.models import Sprint, Blocker, Retrospective, SprintUpdate
+from apps.agile.ai_service import generate_sprint_update_summary, detect_action_items
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
 
@@ -13,11 +14,11 @@ def current_sprint_summary(request):
     today = timezone.now().date()
     
     try:
+        # Get most recent sprint (active or just ended)
         sprint = Sprint.objects.filter(
             organization=request.user.organization,
-            start_date__lte=today,
-            end_date__gte=today
-        ).first()
+            start_date__lte=today + timedelta(days=365)  # Include future sprints
+        ).order_by('-start_date').first()
         
         if not sprint:
             return Response({'message': 'No active sprint'})
@@ -99,15 +100,25 @@ def blockers(request):
             organization=request.user.organization
         )
         
+        # Get most recent sprint
+        sprint = Sprint.objects.filter(
+            organization=request.user.organization
+        ).order_by('-start_date').first()
+        
         blocker = Blocker.objects.create(
             organization=request.user.organization,
             conversation=conversation,
+            sprint=sprint,
             title=request.data['title'],
             description=request.data.get('description', ''),
             blocker_type=request.data.get('type', 'technical'),
             blocked_by=request.user,
             ticket_url=request.data.get('ticket_url', '')
         )
+        
+        # Notify Slack only
+        from apps.integrations.utils import notify_blocker_created
+        notify_blocker_created(blocker)
         
         return Response({'id': blocker.id, 'title': blocker.title})
 
@@ -124,6 +135,31 @@ def resolve_blocker(request, blocker_id):
     blocker.save()
     
     return Response({'message': 'Blocker resolved'})
+
+@api_view(['GET'])
+def blocker_detail(request, blocker_id):
+    """Get blocker details"""
+    try:
+        blocker = Blocker.objects.get(
+            id=blocker_id,
+            organization=request.user.organization
+        )
+        
+        return Response({
+            'id': blocker.id,
+            'title': blocker.title,
+            'description': blocker.description,
+            'type': blocker.blocker_type,
+            'status': blocker.status,
+            'blocked_by': blocker.blocked_by.get_full_name(),
+            'assigned_to': blocker.assigned_to.get_full_name() if blocker.assigned_to else None,
+            'days_open': (timezone.now().date() - blocker.created_at.date()).days,
+            'ticket_url': blocker.ticket_url,
+            'ticket_id': blocker.ticket_id,
+            'created_at': blocker.created_at
+        })
+    except Blocker.DoesNotExist:
+        return Response({'error': 'Blocker not found'}, status=404)
 
 @api_view(['GET'])
 def retrospective_insights(request):
@@ -211,3 +247,137 @@ def sprint_history(request):
     } for s in sprints]
     
     return Response(data)
+
+
+@api_view(['GET', 'POST'])
+def sprint_updates(request):
+    """List or create sprint updates"""
+    if request.method == 'GET':
+        sprint_id = request.GET.get('sprint_id')
+        if sprint_id:
+            updates = SprintUpdate.objects.filter(
+                organization=request.user.organization,
+                sprint_id=sprint_id
+            )
+        else:
+            # Get most recent sprint
+            sprint = Sprint.objects.filter(
+                organization=request.user.organization
+            ).order_by('-start_date').first()
+            
+            if not sprint:
+                return Response([])
+            
+            updates = SprintUpdate.objects.filter(
+                organization=request.user.organization,
+                sprint=sprint
+            ).order_by('-created_at')
+        
+        data = [{
+            'id': u.id,
+            'type': u.type,
+            'title': u.title,
+            'content': u.content,
+            'author': u.author.get_full_name(),
+            'timestamp': u.created_at.strftime('%b %d, %Y at %I:%M %p'),
+            'ai_summary': u.ai_summary,
+            'linked_decisions': []
+        } for u in updates]
+        
+        return Response(data)
+    
+    elif request.method == 'POST':
+        # Get most recent sprint
+        sprint = Sprint.objects.filter(
+            organization=request.user.organization
+        ).order_by('-start_date').first()
+        
+        if not sprint:
+            return Response({'error': 'No active sprint'}, status=400)
+        
+        # Generate AI summary using Claude
+        content = request.data.get('content', '')
+        ai_summary = generate_sprint_update_summary(request.data['title'], content)
+        action_items = detect_action_items(content)
+        
+        update = SprintUpdate.objects.create(
+            organization=request.user.organization,
+            sprint=sprint,
+            author=request.user,
+            type=request.data.get('type', 'sprint_update'),
+            title=request.data['title'],
+            content=content,
+            ai_summary=ai_summary
+        )
+        
+        # If it's a blocker, create blocker entry
+        if update.type == 'blocker':
+            # Find or create a conversation for this blocker
+            from apps.conversations.models import Conversation
+            conversation = Conversation.objects.create(
+                organization=request.user.organization,
+                author=request.user,
+                title=update.title,
+                content=update.content,
+                post_type='update'
+            )
+            
+            Blocker.objects.create(
+                organization=request.user.organization,
+                conversation=conversation,
+                sprint=sprint,
+                title=update.title,
+                description=update.content,
+                blocker_type='technical',
+                blocked_by=request.user
+            )
+        
+        return Response({
+            'id': update.id,
+            'type': update.type,
+            'title': update.title,
+            'content': update.content,
+            'author': update.author.get_full_name(),
+            'timestamp': update.created_at.strftime('%b %d, %Y at %I:%M %p'),
+            'ai_summary': update.ai_summary,
+            'message': 'Update posted'
+        })
+
+
+@api_view(['POST'])
+def end_sprint(request, sprint_id):
+    """End a sprint and generate retrospective"""
+    try:
+        sprint = Sprint.objects.get(
+            id=sprint_id,
+            organization=request.user.organization
+        )
+        
+        # Update sprint end date to today if needed
+        sprint.end_date = timezone.now().date()
+        sprint.save()
+        
+        # Generate AI retrospective summary
+        from apps.agile.ai_service import generate_retrospective_summary
+        
+        updates = SprintUpdate.objects.filter(sprint=sprint)
+        blockers = Blocker.objects.filter(sprint=sprint)
+        
+        what_went_well = [f"{updates.filter(type='sprint_update').count()} updates posted"]
+        what_needs_improvement = [f"{blockers.filter(status='active').count()} unresolved blockers"]
+        
+        summary = generate_retrospective_summary(
+            sprint.name,
+            what_went_well,
+            what_needs_improvement
+        )
+        
+        sprint.summary = summary
+        sprint.save()
+        
+        return Response({
+            'message': 'Sprint ended',
+            'summary': summary
+        })
+    except Sprint.DoesNotExist:
+        return Response({'error': 'Sprint not found'}, status=404)

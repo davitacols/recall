@@ -79,6 +79,10 @@ def decisions(request):
             title=decision.title
         )
         
+        # Notify Slack only
+        from apps.integrations.utils import notify_decision_created
+        notify_decision_created(decision)
+        
         # Update onboarding progress
         if not request.user.first_decision_made:
             request.user.first_decision_made = True
@@ -178,7 +182,8 @@ def decision_detail(request, decision_id):
             'context_reason': decision.context_reason,
             'if_this_fails': decision.if_this_fails,
             'confidence_level': decision.confidence_level,
-            'confidence_votes': decision.confidence_votes or []
+            'confidence_votes': decision.confidence_votes or [],
+            'code_links': decision.code_links or []
         })
     except Decision.DoesNotExist:
         return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)

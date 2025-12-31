@@ -4,7 +4,11 @@ import api from '../services/api';
 import { useToast } from '../components/Toast';
 import { useAutoSave } from '../hooks/useAutoSave';
 import SaveIndicator from '../components/SaveIndicator';
+import Button from '../components/Button';
+import Card from '../components/Card';
+import Input from '../components/Input';
 import { CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { colors, spacing } from '../utils/designTokens';
 
 function Settings() {
   const { user } = useAuth();
@@ -51,7 +55,7 @@ function Settings() {
         digest_frequency: response.data.digest_frequency || 'daily'
       });
     } catch (error) {
-      console.error('Failed to fetch settings:', error);
+      addToast('Failed to fetch settings', 'error');
     }
   };
 
@@ -97,20 +101,16 @@ function Settings() {
     }
   };
 
-  const handleSave = async (updates) => {
-    triggerSave(updates);
-  };
-
   const handleToggle = (key) => {
     const updated = { ...notifications, [key]: !notifications[key] };
     setNotifications(updated);
-    handleSave(updated);
+    triggerSave(updated);
   };
 
   const handleDigestChange = (value) => {
     const updated = { ...notifications, digest_frequency: value };
     setNotifications(updated);
-    handleSave(updated);
+    triggerSave(updated);
   };
 
   const saveOrganization = async () => {
@@ -174,25 +174,35 @@ function Settings() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
-        <p className="text-base text-gray-600">Manage your preferences</p>
+    <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+      <div style={{ marginBottom: spacing.xl }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: colors.primary, marginBottom: spacing.md }}>Settings</h1>
+        <p style={{ fontSize: '16px', color: colors.secondary }}>Manage your preferences</p>
       </div>
 
-      <div className="flex gap-8">
+      <div style={{ display: 'flex', gap: spacing.xl }}>
         {/* Sidebar Navigation */}
-        <aside className="w-48 flex-shrink-0">
-          <nav className="space-y-1">
+        <aside style={{ width: '192px', flexShrink: 0 }}>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
             {sections.map((section) => (
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
-                className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors ${
-                  activeSection === section.id
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-900 hover:bg-gray-100'
-                }`}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: `${spacing.md} ${spacing.lg}`,
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: activeSection === section.id ? colors.accentLight : 'transparent',
+                  color: activeSection === section.id ? colors.accent : colors.secondary,
+                  cursor: 'pointer',
+                  transition: '150ms ease-out',
+                  borderLeft: activeSection === section.id ? `3px solid ${colors.accent}` : 'none',
+                  paddingLeft: activeSection === section.id ? '13px' : spacing.lg
+                }}
               >
                 {section.label}
               </button>
@@ -201,314 +211,234 @@ function Settings() {
         </aside>
 
         {/* Content */}
-        <div className="flex-1">
+        <div style={{ flex: 1 }}>
           <SaveIndicator status={status} statusText={getStatusText()} />
 
           {/* Notifications Section */}
           {activeSection === 'notifications' && (
-            <div className="space-y-8">
-              {/* Reassurance Banner */}
-              <div className="bg-gray-50 border border-gray-200 p-6">
-                <p className="text-sm font-medium text-gray-900 mb-2">Feeling overwhelmed?</p>
-                <p className="text-sm text-gray-600">
-                  Try Quiet Mode or switch to Daily summaries to reduce noise.
-                </p>
-              </div>
-
-              {/* Quiet Mode */}
-              <div className="bg-white border border-gray-200 p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-gray-900 mb-1">Quiet Mode</h3>
-                    <p className="text-sm text-gray-600">
-                      Pause notifications temporarily without missing anything
-                    </p>
-                  </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xl }}>
+              <Card title="Quiet Mode" subtitle="Pause notifications temporarily">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '14px', color: colors.secondary }}>Disable all notifications</span>
                   <button
                     onClick={() => setQuietMode(!quietMode)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      quietMode ? 'bg-gray-900' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        quietMode ? 'translate-x-6' : 'translate-x-1'
-                      }`}
+                    style={{
+                      width: '44px',
+                      height: '24px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      backgroundColor: quietMode ? colors.accent : colors.border,
+                      cursor: 'pointer',
+                      transition: '150ms ease-out'
+                    }}
+                  />
+                </div>
+              </Card>
+
+              <Card title="Notification Preferences">
+                {['mention_notifications', 'reply_notifications', 'decision_notifications'].map((key) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
+                    <span style={{ fontSize: '14px', color: colors.primary, textTransform: 'capitalize' }}>
+                      {key.replace('_', ' ')}
+                    </span>
+                    <button
+                      onClick={() => handleToggle(key)}
+                      style={{
+                        width: '44px',
+                        height: '24px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        backgroundColor: notifications[key] ? colors.accent : colors.border,
+                        cursor: 'pointer',
+                        transition: '150ms ease-out'
+                      }}
                     />
-                  </button>
-                </div>
-              </div>
-
-              {/* Notification Preferences */}
-              <div className="bg-white border border-gray-200 p-6">
-                <h3 className="text-base font-bold text-gray-900 mb-6">Notification preferences</h3>
-                <div className="space-y-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 mb-1">Mentions</p>
-                      <p className="text-sm text-gray-600">Get notified when someone mentions you</p>
-                    </div>
-                    <button
-                      onClick={() => handleToggle('mention_notifications')}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        notifications.mention_notifications ? 'bg-gray-900' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          notifications.mention_notifications ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
                   </div>
+                ))}
+              </Card>
 
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 mb-1">Replies</p>
-                      <p className="text-sm text-gray-600">Get notified when someone replies to your post</p>
-                    </div>
-                    <button
-                      onClick={() => handleToggle('reply_notifications')}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        notifications.reply_notifications ? 'bg-gray-900' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          notifications.reply_notifications ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 mb-1">Decisions</p>
-                      <p className="text-sm text-gray-600">Get notified when a decision is made or updated</p>
-                    </div>
-                    <button
-                      onClick={() => handleToggle('decision_notifications')}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        notifications.decision_notifications ? 'bg-gray-900' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          notifications.decision_notifications ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Email Digests */}
-              <div className="bg-white border border-gray-200 p-6">
-                <h3 className="text-base font-bold text-gray-900 mb-6">Email digests</h3>
-                <div className="space-y-3">
-                  {['realtime', 'hourly', 'daily', 'weekly', 'never'].map((freq) => (
-                    <label key={freq} className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="digest"
-                        checked={notifications.digest_frequency === freq}
-                        onChange={() => handleDigestChange(freq)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm text-gray-900 capitalize">{freq}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Organization Section (Admin Only) */}
-          {activeSection === 'organization' && user?.role === 'admin' && (
-            <div className="bg-white border border-gray-200 p-6">
-              <h3 className="text-base font-bold text-gray-900 mb-6">Organization profile</h3>
-              {organization && (
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-2">Organization name</label>
+              <Card title="Email Digests">
+                {['realtime', 'hourly', 'daily', 'weekly', 'never'].map((freq) => (
+                  <label key={freq} style={{ display: 'flex', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md, cursor: 'pointer' }}>
                     <input
-                      type="text"
-                      value={orgName}
-                      onChange={(e) => setOrgName(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 text-sm focus:border-gray-900 focus:outline-none"
+                      type="radio"
+                      name="digest"
+                      checked={notifications.digest_frequency === freq}
+                      onChange={() => handleDigestChange(freq)}
+                      style={{ cursor: 'pointer' }}
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-2">Description</label>
-                    <textarea
-                      value={orgDescription}
-                      onChange={(e) => setOrgDescription(e.target.value)}
-                      rows="4"
-                      className="w-full px-4 py-2 border border-gray-300 text-sm focus:border-gray-900 focus:outline-none"
-                    />
-                  </div>
-                  <button
-                    onClick={saveOrganization}
-                    className="px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
-                  >
-                    Save changes
-                  </button>
-                </div>
-              )}
+                    <span style={{ fontSize: '14px', color: colors.primary, textTransform: 'capitalize' }}>{freq}</span>
+                  </label>
+                ))}
+              </Card>
             </div>
           )}
 
-          {/* Team Section (Admin Only) */}
+          {/* Organization Section */}
+          {activeSection === 'organization' && user?.role === 'admin' && organization && (
+            <Card title="Organization Profile" subtitle="Manage your organization details">
+              <Input
+                label="Organization name"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+              />
+              <div style={{ marginBottom: spacing.lg }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colors.primary, marginBottom: spacing.sm }}>
+                  Description
+                </label>
+                <textarea
+                  value={orgDescription}
+                  onChange={(e) => setOrgDescription(e.target.value)}
+                  rows="4"
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '10px 12px',
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    transition: '150ms ease-out'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = colors.accent;
+                    e.target.style.boxShadow = `0 0 0 3px rgba(79, 70, 229, 0.1)`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = colors.border;
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+              <Button onClick={saveOrganization}>Save changes</Button>
+            </Card>
+          )}
+
+          {/* Team Section */}
           {activeSection === 'team' && user?.role === 'admin' && (
-            <div className="space-y-6">
-              {/* Invite Member */}
-              <div className="bg-white border border-gray-200 p-6">
-                <h3 className="text-base font-bold text-gray-900 mb-6">Invite team member</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-2">Email address</label>
-                    <input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="member@example.com"
-                      className="w-full px-4 py-2 border border-gray-300 text-sm focus:border-gray-900 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-2">Role</label>
-                    <select
-                      value={inviteRole}
-                      onChange={(e) => setInviteRole(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 text-sm focus:border-gray-900 focus:outline-none"
-                    >
-                      <option value="contributor">Contributor</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  <button
-                    onClick={inviteMember}
-                    className="px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xl }}>
+              <Card title="Invite Team Member">
+                <Input
+                  label="Email address"
+                  type="email"
+                  placeholder="member@example.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+                <div style={{ marginBottom: spacing.lg }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colors.primary, marginBottom: spacing.sm }}>
+                    Role
+                  </label>
+                  <select
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      fontFamily: 'Inter, system-ui, sans-serif',
+                      cursor: 'pointer'
+                    }}
                   >
-                    Generate link
-                  </button>
+                    <option value="contributor">Contributor</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </div>
-              </div>
+                <Button onClick={inviteMember}>Generate link</Button>
+              </Card>
 
-              {/* Pending Invitations */}
               {pendingInvitations.length > 0 && (
-                <div className="bg-white border border-gray-200 p-6">
-                  <h3 className="text-base font-bold text-gray-900 mb-6">Pending invitations ({pendingInvitations.length})</h3>
-                  <div className="space-y-3">
-                    {pendingInvitations.map((invitation) => (
-                      <div key={invitation.id} className="flex items-center justify-between p-4 border border-gray-200">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{invitation.email}</p>
-                          <p className="text-xs text-gray-600">Invited as {invitation.role}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {invitationLinks[invitation.id] ? (
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={invitationLinks[invitation.id]}
-                                readOnly
-                                className="px-3 py-1 text-xs border border-gray-300 bg-gray-50 w-64"
-                              />
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await navigator.clipboard.writeText(invitationLinks[invitation.id]);
-                                    addToast('Link copied', 'success');
-                                  } catch (err) {
-                                    addToast('Failed to copy link', 'error');
-                                  }
-                                }}
-                                className="px-3 py-1 text-xs bg-gray-900 text-white hover:bg-gray-800"
-                              >
-                                Copy
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => generateInvitationLink(invitation.id)}
-                              className="px-4 py-1 text-xs bg-gray-900 text-white hover:bg-gray-800"
+                <Card title="Pending Invitations" subtitle={`${pendingInvitations.length} pending`}>
+                  {pendingInvitations.map((invitation) => (
+                    <div key={invitation.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, border: `1px solid ${colors.border}`, borderRadius: '8px', marginBottom: spacing.md }}>
+                      <div>
+                        <p style={{ fontSize: '14px', fontWeight: 500, color: colors.primary, margin: 0 }}>{invitation.email}</p>
+                        <p style={{ fontSize: '13px', color: colors.secondary, margin: 0 }}>Invited as {invitation.role}</p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
+                        {invitationLinks[invitation.id] ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                            <input
+                              type="text"
+                              value={invitationLinks[invitation.id]}
+                              readOnly
+                              style={{
+                                padding: '8px 12px',
+                                fontSize: '12px',
+                                border: `1px solid ${colors.border}`,
+                                borderRadius: '6px',
+                                backgroundColor: colors.background,
+                                width: '256px'
+                              }}
+                            />
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                navigator.clipboard.writeText(invitationLinks[invitation.id]);
+                                addToast('Link copied', 'success');
+                              }}
                             >
-                              Generate link
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Team Members */}
-              <div className="bg-white border border-gray-200 p-6">
-                <h3 className="text-base font-bold text-gray-900 mb-6">Team members ({members.length})</h3>
-                <div className="space-y-3">
-                  {members.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between p-4 border border-gray-200">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">{member.full_name}</p>
-                        <p className="text-xs text-gray-600">{member.email}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-medium text-gray-600 uppercase">{member.role}</span>
-                        {member.id !== user?.id && (
-                          <button
-                            onClick={() => removeMember(member.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 transition-colors"
+                              Copy
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            onClick={() => generateInvitationLink(invitation.id)}
                           >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
+                            Generate link
+                          </Button>
                         )}
                       </div>
                     </div>
                   ))}
-                </div>
-              </div>
+                </Card>
+              )}
+
+              <Card title="Team Members" subtitle={`${members.length} members`}>
+                {members.map((member) => (
+                  <div key={member.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, border: `1px solid ${colors.border}`, borderRadius: '8px', marginBottom: spacing.md }}>
+                    <div>
+                      <p style={{ fontSize: '14px', fontWeight: 500, color: colors.primary, margin: 0 }}>{member.full_name}</p>
+                      <p style={{ fontSize: '13px', color: colors.secondary, margin: 0 }}>{member.email}</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: colors.secondary, textTransform: 'uppercase' }}>{member.role}</span>
+                      {member.id !== user?.id && (
+                        <button
+                          onClick={() => removeMember(member.id)}
+                          style={{
+                            padding: '8px',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            color: '#EF4444',
+                            cursor: 'pointer',
+                            borderRadius: '6px',
+                            transition: '150ms ease-out'
+                          }}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#FEE2E2'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                        >
+                          <TrashIcon style={{ width: '16px', height: '16px' }} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </Card>
             </div>
           )}
 
           {/* Advanced Section */}
           {activeSection === 'advanced' && (
-            <div className="space-y-8">
-              {/* Data & Privacy */}
-              <div className="bg-white border border-gray-200 p-6">
-                <h3 className="text-base font-bold text-gray-900 mb-6">Data & Privacy</h3>
-                <div className="space-y-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 mb-1">AI assistance</p>
-                      <p className="text-sm text-gray-600">
-                        Helps summarize conversations and extract action items. Your data stays private to your organization.
-                      </p>
-                    </div>
-                    <button
-                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-900"
-                    >
-                      <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Danger Zone (Admin Only) */}
-              {user?.role === 'admin' && (
-                <div className="bg-white border-2 border-red-600 p-6">
-                  <h3 className="text-base font-bold text-red-600 mb-2">Danger zone</h3>
-                  <p className="text-sm text-gray-600 mb-6">
-                    These actions are permanent and affect your organization.
-                  </p>
-                  <button className="px-6 py-2 border-2 border-red-600 text-red-600 text-sm font-medium hover:bg-red-50">
-                    Delete organization
-                  </button>
-                </div>
-              )}
-            </div>
+            <Card title="Data & Privacy">
+              <p style={{ fontSize: '14px', color: colors.secondary }}>
+                AI assistance helps summarize conversations and extract action items. Your data stays private to your organization.
+              </p>
+            </Card>
           )}
         </div>
       </div>

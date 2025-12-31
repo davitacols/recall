@@ -57,7 +57,7 @@ function Conversations() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -113,8 +113,11 @@ function Conversations() {
       {conversations.length === 0 ? (
         <div className="text-center py-20 border border-gray-200 bg-gray-50">
           <h3 className="text-2xl font-bold text-gray-900 mb-3">No conversations yet</h3>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-lg text-gray-600 mb-2">
             Start the first conversation to capture decisions and knowledge.
+          </p>
+          <p className="text-base text-gray-500 mb-8">
+            Share updates, ask questions, propose decisions, or make proposals to keep your team aligned.
           </p>
           <button onClick={() => setShowCreateForm(true)} className="recall-btn-primary">
             Start a conversation

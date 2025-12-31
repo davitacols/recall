@@ -69,7 +69,7 @@ function Decisions() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -79,7 +79,8 @@ function Decisions() {
       {/* Header */}
       <div className="mb-8 animate-fadeIn">
         <h1 className="text-5xl font-bold text-gray-900 mb-3">Decisions</h1>
-        <p className="text-xl text-gray-600">The brain of your organization</p>
+        <p className="text-xl text-gray-600 mb-2">The brain of your organization</p>
+        <p className="text-base text-gray-500">Track decisions, their status, and impact across your team. Convert conversations into decisions to maintain a searchable record.</p>
       </div>
 
       {/* Stats */}
@@ -125,8 +126,11 @@ function Decisions() {
       {filteredDecisions.length === 0 ? (
         <div className="text-center py-20 border border-gray-200 bg-gray-50">
           <h3 className="text-2xl font-bold text-gray-900 mb-3">No decisions yet</h3>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-lg text-gray-600 mb-2">
             Convert conversations into decisions to track outcomes.
+          </p>
+          <p className="text-base text-gray-500 mb-8">
+            Decisions help your team understand what was decided, why, and what the impact was.
           </p>
           <a href="/conversations" className="recall-btn-primary inline-block">
             View conversations

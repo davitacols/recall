@@ -72,7 +72,7 @@ function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -82,7 +82,8 @@ function Dashboard() {
       {/* Header */}
       <div className="mb-8 animate-fadeIn">
         <h1 className="text-5xl font-bold text-gray-900 mb-3">Welcome back, {user?.full_name || user?.username}</h1>
-        <p className="text-xl text-gray-600">Your organization's memory</p>
+        <p className="text-xl text-gray-600 mb-2">Your organization's memory</p>
+        <p className="text-base text-gray-500">Stay updated with recent conversations, decisions, and team activity. Search your knowledge base to find past decisions and insights.</p>
       </div>
 
       {/* Today in Recall Summary */}

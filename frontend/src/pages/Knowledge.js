@@ -61,7 +61,8 @@ function Knowledge() {
       {/* Header */}
       <div className="mb-8 md:mb-12 animate-fadeIn">
         <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-2 md:mb-3">Knowledge Search</h1>
-        <p className="text-base md:text-xl text-gray-600">Search through your organization's memory</p>
+        <p className="text-base md:text-xl text-gray-600 mb-2">Search through your organization's memory</p>
+        <p className="text-sm md:text-base text-gray-500">Find decisions, conversations, and insights from your team's collective knowledge base.</p>
       </div>
 
       {/* Search Form */}

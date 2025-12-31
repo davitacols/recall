@@ -6,29 +6,39 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          500: '#167dff',
-          600: '#0b6ae8',
-          700: '#0057d1',
-        },
-        dark: {
-          800: '#1e1f22',
-          850: '#1a1b1e',
-          900: '#16171a',
-          950: '#0d0e10',
-        }
+        // Core Neutrals
+        background: '#F9FAFB',
+        surface: '#FFFFFF',
+        primary: '#0F172A',
+        secondary: '#64748B',
+        border: '#E2E8F0',
+        
+        // Brand Accent - Electric Indigo
+        accent: '#4F46E5',
+        'accent-light': '#EEF2FF',
+        'accent-dark': '#3730A3',
+        
+        // Secondary Accent
+        amber: '#F59E0B',
+        'amber-light': '#FFFBEB',
+        
+        // Semantic
+        success: '#10B981',
+        'success-light': '#ECFDF5',
+        critical: '#EF4444',
+        'critical-light': '#FEE2E2',
       },
       fontFamily: {
-        sans: ['League Spartan', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'space': '0 2px 8px rgba(0, 0, 0, 0.08)',
-        'space-lg': '0 4px 16px rgba(0, 0, 0, 0.12)',
+        sm: '0 1px 2px rgba(0, 0, 0, 0.05)',
+        md: '0 4px 12px rgba(0, 0, 0, 0.08)',
+        lg: '0 10px 25px rgba(0, 0, 0, 0.1)',
+        focus: '0 0 0 3px rgba(79, 70, 229, 0.1)',
       },
       borderRadius: {
-        'space': '6px',
+        none: '0px',
       }
     },
   },

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import NotificationBell from './NotificationBell';
 import MobileBottomNav from './MobileBottomNav';
+import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
 import '../styles/mobile.css';
 import { 
   HomeIcon,
@@ -82,59 +83,98 @@ function Layout({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div style={{ minHeight: '100vh', backgroundColor: colors.background }}>
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50">
-        <div className="h-full flex items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2">
-              {mobileMenuOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
+      <header style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '64px',
+        backgroundColor: colors.surface,
+        borderBottom: `1px solid ${colors.border}`,
+        zIndex: 50,
+        boxShadow: shadows.sm
+      }}>
+        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${spacing.lg}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing.lg }}>
+            <button onClick={toggleSidebar} style={{ display: 'none', padding: spacing.md, background: 'none', border: 'none', cursor: 'pointer' }}>
+              <Bars3Icon style={{ width: '20px', height: '20px', color: colors.primary }} />
             </button>
-            <button onClick={toggleSidebar} className="hidden lg:block p-2">
-              <Bars3Icon className="w-5 h-5" />
-            </button>
-            <h1 className="text-lg font-bold text-gray-900">{getPageTitle()}</h1>
+            <h1 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary }}>{getPageTitle()}</h1>
           </div>
 
-          <div className="hidden md:block flex-1 max-w-md mx-8">
-            <form onSubmit={handleSearch}>
-              <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search conversations, decisions, or tags"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-12 py-2 border border-gray-300 text-sm focus:border-gray-900 focus:outline-none"
-                />
-                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">⌘K</kbd>
-              </div>
-            </form>
-          </div>
-
-          <div className="flex items-center gap-3">
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing.lg }}>
             <NotificationBell />
             
-            <div className="relative">
+            <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowNewMenu(!showNewMenu)}
-                className="px-4 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+                style={{
+                  padding: `${spacing.sm} ${spacing.lg}`,
+                  backgroundColor: colors.primary,
+                  color: colors.surface,
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  border: 'none',
+                  borderRadius: radius.md,
+                  cursor: 'pointer',
+                  transition: motion.fast,
+                  boxShadow: shadows.sm
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#1a1f35';
+                  e.target.style.boxShadow = shadows.md;
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = colors.primary;
+                  e.target.style.boxShadow = shadows.sm;
+                }}
               >
                 New
               </button>
               {showNewMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-lg">
+                <div style={{
+                  position: 'absolute',
+                  right: 0,
+                  marginTop: spacing.sm,
+                  width: '192px',
+                  backgroundColor: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: radius.lg,
+                  boxShadow: shadows.lg,
+                  zIndex: 10
+                }}>
                   <Link
                     to="/conversations/new"
                     onClick={() => setShowNewMenu(false)}
-                    className="block px-4 py-3 text-sm text-gray-900 hover:bg-gray-100"
+                    style={{
+                      display: 'block',
+                      padding: spacing.lg,
+                      fontSize: '14px',
+                      color: colors.primary,
+                      textDecoration: 'none',
+                      borderBottom: `1px solid ${colors.border}`,
+                      transition: motion.fast
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                   >
                     New conversation
                   </Link>
                   <Link
                     to="/decisions/new"
                     onClick={() => setShowNewMenu(false)}
-                    className="block px-4 py-3 text-sm text-gray-900 hover:bg-gray-100"
+                    style={{
+                      display: 'block',
+                      padding: spacing.lg,
+                      fontSize: '14px',
+                      color: colors.primary,
+                      textDecoration: 'none',
+                      transition: motion.fast
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                   >
                     New decision
                   </Link>
@@ -142,21 +182,31 @@ function Layout({ children }) {
               )}
             </div>
 
-            <div className="relative">
-              <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="w-8 h-8 rounded-full overflow-hidden">
+            <div style={{ position: 'relative' }}>
+              <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', border: 'none', cursor: 'pointer' }}>
                 {user?.avatar ? (
-                  <img src={user.avatar} alt={user.full_name} className="w-full h-full object-cover" />
+                  <img src={user.avatar} alt={user.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">{user?.full_name?.charAt(0) || 'U'}</span>
+                  <div style={{ width: '100%', height: '100%', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ color: colors.surface, fontSize: '14px', fontWeight: 'bold' }}>{user?.full_name?.charAt(0) || 'U'}</span>
                   </div>
                 )}
               </button>
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-lg">
-                  <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-3 text-sm text-gray-900 hover:bg-gray-100">Profile</Link>
-                  <Link to="/settings" onClick={() => setShowProfileMenu(false)} className="block px-4 py-3 text-sm text-gray-900 hover:bg-gray-100">Settings</Link>
-                  <button onClick={logout} className="w-full text-left px-4 py-3 text-sm text-gray-900 hover:bg-gray-100">Sign out</button>
+                <div style={{
+                  position: 'absolute',
+                  right: 0,
+                  marginTop: spacing.sm,
+                  width: '192px',
+                  backgroundColor: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: radius.lg,
+                  boxShadow: shadows.lg,
+                  zIndex: 10
+                }}>
+                  <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: spacing.lg, fontSize: '14px', color: colors.primary, textDecoration: 'none', borderBottom: `1px solid ${colors.border}`, transition: motion.fast }} onMouseEnter={(e) => e.target.style.backgroundColor = colors.background} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Profile</Link>
+                  <Link to="/settings" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: spacing.lg, fontSize: '14px', color: colors.primary, textDecoration: 'none', borderBottom: `1px solid ${colors.border}`, transition: motion.fast }} onMouseEnter={(e) => e.target.style.backgroundColor = colors.background} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Settings</Link>
+                  <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: spacing.lg, fontSize: '14px', color: colors.primary, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', transition: motion.fast }} onMouseEnter={(e) => e.target.style.backgroundColor = colors.background} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Sign out</button>
                 </div>
               )}
             </div>
@@ -165,13 +215,21 @@ function Layout({ children }) {
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className={`fixed top-16 left-0 bottom-0 ${
-        sidebarCollapsed ? 'w-20' : 'w-64'
-      } bg-white border-r border-gray-200 hidden lg:block transition-all duration-200 flex flex-col`}>
-        <div className="h-full flex flex-col">
-          {/* Primary Nav */}
-          <nav className="flex-1 py-6 overflow-y-auto">
-            <div className="px-3 space-y-1">
+      <aside style={{
+        position: 'fixed',
+        top: '64px',
+        left: 0,
+        bottom: 0,
+        width: sidebarCollapsed ? '80px' : '256px',
+        backgroundColor: colors.background,
+        borderRight: `1px solid ${colors.border}`,
+        display: 'flex',
+        flexDirection: 'column',
+        transition: motion.normal
+      }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <nav style={{ flex: 1, padding: spacing.lg, overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
               {primaryNav.map((item) => {
                 const isActive = location.pathname === item.href;
                 const Icon = item.icon;
@@ -179,14 +237,24 @@ function Layout({ children }) {
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      isActive 
-                        ? 'bg-gray-900 text-white' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing.md,
+                      padding: `${spacing.md} ${spacing.lg}`,
+                      borderRadius: radius.md,
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      textDecoration: 'none',
+                      color: isActive ? colors.accent : colors.secondary,
+                      backgroundColor: isActive ? colors.accentLight : 'transparent',
+                      borderLeft: isActive ? `3px solid ${colors.accent}` : 'none',
+                      paddingLeft: isActive ? '13px' : spacing.lg,
+                      transition: motion.fast
+                    }}
                     title={sidebarCollapsed ? item.name : ''}
                   >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <Icon style={{ width: '20px', height: '20px', flexShrink: 0 }} />
                     {!sidebarCollapsed && <span>{item.name}</span>}
                   </Link>
                 );
@@ -195,74 +263,33 @@ function Layout({ children }) {
 
             {!sidebarCollapsed && (
               <>
-                {/* Sprint Section */}
-                <div className="mt-8 px-3">
-                  <div className="px-3 mb-2">
-                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Sprint</h3>
-                  </div>
-                  <div className="space-y-0.5">
-                    {sprintNav.map((item) => {
-                      const isActive = location.pathname === item.href;
-                      return (
-                        <Link
-                          key={item.name}
-                          to={item.href}
-                          className={`block px-3 py-2 rounded-lg text-sm transition-all ${
-                            isActive 
-                              ? 'bg-gray-100 text-gray-900 font-medium' 
-                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                          }`}
-                        >
-                          {item.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Personal Section */}
-                <div className="mt-8 px-3">
-                  <div className="px-3 mb-2">
-                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Personal</h3>
-                  </div>
-                  <div className="space-y-0.5">
-                    {personalNav.map((item) => {
-                      const isActive = location.pathname === item.href;
-                      return (
-                        <Link
-                          key={item.name}
-                          to={item.href}
-                          className={`block px-3 py-2 rounded-lg text-sm transition-all ${
-                            isActive 
-                              ? 'bg-gray-100 text-gray-900 font-medium' 
-                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                          }`}
-                        >
-                          {item.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Admin Section */}
-                {user?.role === 'admin' && (
-                  <div className="mt-8 px-3">
-                    <div className="px-3 mb-2">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Admin</h3>
-                    </div>
-                    <div className="space-y-0.5">
-                      {adminNav.map((item) => {
+                {[
+                  { title: 'Sprint', items: sprintNav },
+                  { title: 'Personal', items: personalNav },
+                  ...(user?.role === 'admin' ? [{ title: 'Admin', items: adminNav }] : [])
+                ].map((section) => (
+                  <div key={section.title} style={{ marginTop: spacing.xl }}>
+                    <h3 style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, textTransform: 'uppercase', letterSpacing: '0.05em', padding: `0 ${spacing.lg}`, marginBottom: spacing.md }}>
+                      {section.title}
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
+                      {section.items.map((item) => {
                         const isActive = location.pathname === item.href;
                         return (
                           <Link
                             key={item.name}
                             to={item.href}
-                            className={`block px-3 py-2 rounded-lg text-sm transition-all ${
-                              isActive 
-                                ? 'bg-gray-100 text-gray-900 font-medium' 
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                            }`}
+                            style={{
+                              display: 'block',
+                              padding: `${spacing.md} ${spacing.lg}`,
+                              borderRadius: radius.md,
+                              fontSize: '14px',
+                              textDecoration: 'none',
+                              color: isActive ? colors.accent : colors.secondary,
+                              backgroundColor: isActive ? colors.accentLight : 'transparent',
+                              fontWeight: isActive ? 500 : 'normal',
+                              transition: motion.fast
+                            }}
                           >
                             {item.name}
                           </Link>
@@ -270,37 +297,36 @@ function Layout({ children }) {
                       })}
                     </div>
                   </div>
-                )}
+                ))}
               </>
             )}
           </nav>
 
-          {/* User Profile - Fixed at bottom */}
-          <div className="p-4 border-t border-gray-200 flex-shrink-0">
+          <div style={{ padding: spacing.lg, borderTop: `1px solid ${colors.border}`, flexShrink: 0 }}>
             {!sidebarCollapsed ? (
-              <div className="flex items-center gap-3 px-2">
-                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
                   {user?.avatar ? (
-                    <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                    <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">{user?.full_name?.charAt(0) || 'U'}</span>
+                    <div style={{ width: '100%', height: '100%', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ color: colors.surface, fontSize: '12px', fontWeight: 'bold' }}>{user?.full_name?.charAt(0) || 'U'}</span>
                     </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">{user?.full_name?.split(' ')[0]}</div>
-                  <div className="text-xs text-gray-500">{user?.organization_name}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 500, color: colors.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name?.split(' ')[0]}</div>
+                  <div style={{ fontSize: '12px', color: colors.secondary }}>{user?.organization_name}</div>
                 </div>
               </div>
             ) : (
-              <div className="flex justify-center">
-                <div className="w-8 h-8 rounded-full overflow-hidden">
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden' }}>
                   {user?.avatar ? (
-                    <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                    <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">{user?.full_name?.charAt(0) || 'U'}</span>
+                    <div style={{ width: '100%', height: '100%', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ color: colors.surface, fontSize: '12px', fontWeight: 'bold' }}>{user?.full_name?.charAt(0) || 'U'}</span>
                     </div>
                   )}
                 </div>
@@ -311,10 +337,12 @@ function Layout({ children }) {
       </aside>
 
       {/* Main Content */}
-      <main className={`pt-16 ${
-        sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
-      } transition-all duration-200 mobile-content-wrapper`}>
-        <div className="p-4 md:p-8">
+      <main style={{
+        paddingTop: '64px',
+        paddingLeft: sidebarCollapsed ? '80px' : '256px',
+        transition: motion.normal
+      }}>
+        <div style={{ padding: spacing.xl }}>
           {children}
         </div>
       </main>

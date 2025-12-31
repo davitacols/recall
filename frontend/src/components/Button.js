@@ -1,4 +1,5 @@
 import React from 'react';
+import { components, motion, shadows } from '../utils/designTokens';
 
 function Button({ 
   children, 
@@ -7,25 +8,63 @@ function Button({
   variant = 'primary', 
   type = 'button',
   onClick,
-  className = ''
+  style = {}
 }) {
-  const baseStyles = 'px-4 py-2 font-medium transition-colors inline-flex items-center justify-center gap-2';
-  
-  const variants = {
-    primary: 'bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-400',
-    secondary: 'border border-gray-900 text-gray-900 hover:bg-gray-50 disabled:border-gray-400 disabled:text-gray-400',
-    danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400'
+  const variantStyles = {
+    primary: components.button.primary,
+    secondary: components.button.secondary,
+    ghost: components.button.ghost,
   };
+
+  const baseStyle = variantStyles[variant];
 
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
-      className={`${baseStyles} ${variants[variant]} ${className}`}
+      style={{
+        ...baseStyle,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        border: baseStyle.border || 'none',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: motion.fast,
+        ...style
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.target.style.backgroundColor = baseStyle.hover;
+          if (variant === 'primary') {
+            e.target.style.boxShadow = shadows.md;
+          }
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.target.style.backgroundColor = baseStyle.background;
+        if (variant === 'primary') {
+          e.target.style.boxShadow = shadows.sm;
+        }
+      }}
+      onFocus={(e) => {
+        e.target.style.boxShadow = shadows.focus;
+      }}
+      onBlur={(e) => {
+        e.target.style.boxShadow = variant === 'primary' ? shadows.sm : 'none';
+      }}
     >
       {loading && (
-        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        <div style={{
+          width: '16px',
+          height: '16px',
+          border: `2px solid ${baseStyle.text}`,
+          borderTop: `2px solid transparent`,
+          borderRadius: '50%',
+          animation: 'spin 0.6s linear infinite'
+        }} />
       )}
       {children}
     </button>

@@ -98,8 +98,12 @@ function Layout({ children }) {
       }}>
         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${spacing.lg}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing.lg }}>
-            <button onClick={toggleSidebar} style={{ display: 'none', padding: spacing.md, background: 'none', border: 'none', cursor: 'pointer' }}>
-              <Bars3Icon style={{ width: '20px', height: '20px', color: colors.primary }} />
+            <button onClick={toggleSidebar} style={{ padding: spacing.md, background: 'none', border: 'none', cursor: 'pointer' }}>
+              {sidebarCollapsed ? (
+                <Bars3Icon style={{ width: '20px', height: '20px', color: colors.primary }} />
+              ) : (
+                <XMarkIcon style={{ width: '20px', height: '20px', color: colors.primary }} />
+              )}
             </button>
             <h1 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary }}>{getPageTitle()}</h1>
           </div>

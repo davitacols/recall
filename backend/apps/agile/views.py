@@ -1,4 +1,5 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Count, Q
@@ -9,9 +10,11 @@ from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def current_sprint_summary(request):
     """Get auto-generated summary of current sprint with issues"""
-    today = timezone.now().date()
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
     
     try:
         # Get most recent active sprint
@@ -74,8 +77,12 @@ def current_sprint_summary(request):
         return Response({'error': str(e)}, status=500)
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def blockers(request):
     """List or create blockers linked to sprints"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     if request.method == 'GET':
         sprint_id = request.GET.get('sprint_id')
         
@@ -147,8 +154,12 @@ def blockers(request):
         })
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def resolve_blocker(request, blocker_id):
     """Mark blocker as resolved"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     blocker = Blocker.objects.get(
         id=blocker_id,
         organization=request.user.organization
@@ -161,8 +172,12 @@ def resolve_blocker(request, blocker_id):
     return Response({'message': 'Blocker resolved'})
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def blocker_detail(request, blocker_id):
     """Get blocker details"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         blocker = Blocker.objects.get(
             id=blocker_id,
@@ -188,8 +203,12 @@ def blocker_detail(request, blocker_id):
         return Response({'error': 'Blocker not found'}, status=404)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def retrospective_insights(request):
     """Get AI-detected patterns from past retrospectives"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     retros = Retrospective.objects.filter(
         organization=request.user.organization
     ).order_by('-created_at')[:10]
@@ -216,8 +235,12 @@ def retrospective_insights(request):
     })
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_sprint(request):
     """Create new sprint (deprecated - use kanban_views.sprints instead)"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     project_id = request.data.get('project_id')
     
     if not project_id:
@@ -246,8 +269,12 @@ def create_sprint(request):
     })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def sprint_detail(request, sprint_id):
     """Get sprint details with issues"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         sprint = Sprint.objects.get(
             id=sprint_id,
@@ -287,8 +314,12 @@ def sprint_detail(request, sprint_id):
         return Response({'error': 'Sprint not found'}, status=404)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def sprint_history(request):
     """Get past sprints with summaries"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     project_id = request.GET.get('project_id')
     
     if project_id:
@@ -320,8 +351,12 @@ def sprint_history(request):
     return Response(data)
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def sprint_updates(request):
     """List or create sprint updates"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     if request.method == 'GET':
         sprint_id = request.GET.get('sprint_id')
         if sprint_id:
@@ -409,8 +444,12 @@ def sprint_updates(request):
         })
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def end_sprint(request, sprint_id):
     """End a sprint and generate retrospective"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         sprint = Sprint.objects.get(
             id=sprint_id,
@@ -438,8 +477,12 @@ def end_sprint(request, sprint_id):
         return Response({'error': 'Sprint not found'}, status=404)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def sprint_decisions(request, sprint_id):
     """Get decisions for a sprint"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         sprint = Sprint.objects.get(
             id=sprint_id,
@@ -467,8 +510,12 @@ def sprint_decisions(request, sprint_id):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def project_issues_unified(request, project_id):
     """Get issues with unified context (decisions, conversations, blockers)"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     from apps.agile.models import DecisionIssueLink, ConversationIssueLink, BlockerIssueLink
     
     try:
@@ -508,8 +555,12 @@ def project_issues_unified(request, project_id):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def project_roadmap(request, project_id):
     """Get project roadmap with sprints and milestones"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         sprints = Sprint.objects.filter(
             project_id=project_id,

@@ -1,4 +1,5 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Count, Q
@@ -6,8 +7,12 @@ from apps.agile.models import Project, Board, Column, Issue, IssueComment, Issue
 from apps.organizations.models import User
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def projects(request):
     """List or create projects"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     if request.method == 'GET':
         projects = Project.objects.filter(organization=request.user.organization)
         data = [{
@@ -58,8 +63,12 @@ def projects(request):
             return Response({'error': str(e)}, status=400)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def project_detail(request, project_id):
     """Get project details with boards and sprints"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         project = Project.objects.get(
             id=project_id,
@@ -113,8 +122,12 @@ def project_detail(request, project_id):
         return Response({'error': 'Project not found'}, status=404)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def board_view(request, board_id):
     """Get board with all columns and issues (Kanban view)"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         board = Board.objects.get(id=board_id)
         
@@ -156,8 +169,12 @@ def board_view(request, board_id):
         return Response({'error': 'Board not found'}, status=404)
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def issues(request, project_id):
     """List or create issues"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         project = Project.objects.get(
             id=project_id,
@@ -234,8 +251,12 @@ def issues(request, project_id):
         })
 
 @api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
 def issue_detail(request, issue_id):
     """Get, update, or delete an issue"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         issue = Issue.objects.get(id=issue_id)
     except Issue.DoesNotExist:
@@ -303,8 +324,12 @@ def issue_detail(request, issue_id):
         return Response({'message': 'Issue deleted'})
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def move_issue(request, issue_id):
     """Move issue to different column and auto-assign to active sprint if needed"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         issue = Issue.objects.get(id=issue_id)
         column = Column.objects.get(id=request.data['column_id'])
@@ -329,8 +354,12 @@ def move_issue(request, issue_id):
         return Response({'error': 'Issue or column not found'}, status=404)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def add_comment(request, issue_id):
     """Add comment to issue"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         issue = Issue.objects.get(id=issue_id)
         
@@ -350,8 +379,12 @@ def add_comment(request, issue_id):
         return Response({'error': 'Issue not found'}, status=404)
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def labels(request, project_id):
     """List or create labels"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         project = Project.objects.get(
             id=project_id,
@@ -382,8 +415,12 @@ def labels(request, project_id):
         })
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def sprints(request, project_id):
     """List or create sprints for a project"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         project = Project.objects.get(
             id=project_id,
@@ -429,8 +466,12 @@ def sprints(request, project_id):
         })
 
 @api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
 def sprint_detail(request, sprint_id):
     """Get, update, or delete a sprint"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         sprint = Sprint.objects.get(id=sprint_id)
     except Sprint.DoesNotExist:
@@ -480,8 +521,12 @@ def sprint_detail(request, sprint_id):
         return Response({'message': 'Sprint deleted'})
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def assign_issue_to_sprint(request, issue_id):
     """Assign issue to a sprint"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
     try:
         issue = Issue.objects.get(id=issue_id)
         sprint_id = request.data.get('sprint_id')

@@ -102,6 +102,15 @@ def login(request):
                        status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['GET'])
+def team(request):
+    """Get all team members in the user's organization"""
+    organization = request.user.organization
+    users = User.objects.filter(organization=organization).values(
+        'id', 'username', 'email', 'full_name', 'role'
+    )
+    return Response(list(users))
+
+@api_view(['GET'])
 def profile(request):
     user = request.user
     

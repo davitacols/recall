@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './components/Toast';
 import { useKeyboardShortcuts, CommandPalette } from './hooks/useKeyboardShortcuts';
+import Layout from './components/Layout.js';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AcceptInvite from './pages/AcceptInvite';
@@ -37,7 +38,10 @@ import RetrospectiveMemory from './pages/RetrospectiveMemory';
 import Integrations from './pages/Integrations';
 import Proposals from './pages/Proposals';
 import Analytics from './pages/Analytics';
-import Layout from './components/Layout';
+import Projects from './pages/Projects';
+import ProjectDetail from './pages/ProjectDetail';
+import KanbanBoard from './pages/KanbanBoard';
+import ProjectManagement from './pages/ProjectManagement';
 import './index.css';
 
 function ProtectedRoute({ children, adminOnly = false }) {
@@ -49,9 +53,35 @@ function ProtectedRoute({ children, adminOnly = false }) {
 
 function AppContent() {
   const { showCommandPalette, setShowCommandPalette } = useKeyboardShortcuts();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      console.log('Back online');
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      console.log('Offline');
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   return (
     <>
+      {!isOnline && (
+        <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white p-2 text-center z-50">
+          You are offline. Some features may be limited.
+        </div>
+      )}
       <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -233,6 +263,7 @@ function AppContent() {
             </Layout>
           </ProtectedRoute>
         } />
+        <Route path="/sprints" element={<Navigate to="/sprint-history" replace />} />
         <Route path="/sprints/:id" element={
           <ProtectedRoute>
             <Layout>
@@ -272,6 +303,34 @@ function AppContent() {
           <ProtectedRoute adminOnly={true}>
             <Layout>
               <Analytics />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/projects" element={
+          <ProtectedRoute>
+            <Layout>
+              <Projects />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/projects/:projectId" element={
+          <ProtectedRoute>
+            <Layout>
+              <ProjectDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/boards/:boardId" element={
+          <ProtectedRoute>
+            <Layout>
+              <KanbanBoard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/projects/:projectId/manage" element={
+          <ProtectedRoute>
+            <Layout>
+              <ProjectManagement />
             </Layout>
           </ProtectedRoute>
         } />

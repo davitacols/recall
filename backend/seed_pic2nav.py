@@ -1,490 +1,395 @@
-"""
-Seed full data for Pic2Nav organization
-Run: python seed_pic2nav.py
-"""
-
 import os
 import django
 from datetime import datetime, timedelta
-from django.utils import timezone
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
+from django.utils import timezone
 from apps.organizations.models import Organization, User
-from apps.conversations.models import Conversation, ConversationReply, Tag, Badge
-from apps.decisions.models import Decision
+from apps.conversations.models import Conversation, ConversationReply, ActionItem
+from apps.agile.models import Project, Sprint, Board, Column, Issue
+from apps.decisions.models import Decision, Proposal
 
-def seed_data():
-    print("=" * 60)
-    print("SEEDING PIC2NAV ORGANIZATION")
-    print("=" * 60)
-    
-    # Get Pic2Nav organization
-    try:
-        org = Organization.objects.get(slug='pic2nav-inc.')
-        print(f"\n[OK] Found organization: {org.name}")
-    except Organization.DoesNotExist:
-        print("\n[ERROR] Pic2Nav organization not found!")
-        return
-    
-    # Get users
-    users = list(User.objects.filter(organization=org))
-    if not users:
-        print("[ERROR] No users found in Pic2Nav!")
-        return
-    
-    admin = users[0]
-    print(f"[OK] Using admin: {admin.username}")
-    
-    # Create tags
-    print("\n[1/5] Creating tags...")
-    tags_data = [
-        ('architecture', '#000000'),
-        ('backend', '#1F2937'),
-        ('frontend', '#3B82F6'),
-        ('database', '#10B981'),
-        ('security', '#EF4444'),
-        ('performance', '#F59E0B'),
-        ('api', '#8B5CF6'),
-        ('mobile', '#EC4899'),
-    ]
-    
-    tags = []
-    for name, color in tags_data:
-        tag, created = Tag.objects.get_or_create(
-            name=name,
-            organization=org,
-            defaults={'color': color, 'usage_count': 0}
-        )
-        tags.append(tag)
-        print(f"  {'Created' if created else 'Found'}: #{name}")
-    
-    # Create conversations
-    print("\n[2/5] Creating conversations...")
-    
-    conversations_data = [
-        {
-            'title': 'Architecture Decision: Microservices vs Monolith',
-            'content': '''Team discussed whether to adopt microservices architecture for our new mobile app backend.
+# Create organization
+org, _ = Organization.objects.get_or_create(
+    slug='pic2nav-inc',
+    defaults={
+        'name': 'Pic2Nav Inc',
+        'primary_color': '#3B82F6',
+    }
+)
 
-DECISION: We're going with microservices.
+# Create users
+users_data = [
+    {'username': 'sarah_chen', 'first_name': 'Sarah', 'last_name': 'Chen', 'email': 'sarah@pic2nav.com', 'role': 'admin'},
+    {'username': 'mike_johnson', 'first_name': 'Mike', 'last_name': 'Johnson', 'email': 'mike@pic2nav.com', 'role': 'manager'},
+    {'username': 'alex_patel', 'first_name': 'Alex', 'last_name': 'Patel', 'email': 'alex@pic2nav.com', 'role': 'contributor'},
+    {'username': 'emma_wilson', 'first_name': 'Emma', 'last_name': 'Wilson', 'email': 'emma@pic2nav.com', 'role': 'contributor'},
+]
 
-REASONING:
-- Team is scaling to 15 developers
-- Need independent deployment cycles
-- Different services have different scaling needs
-- Want to use different tech stacks per service
-
-ALTERNATIVES CONSIDERED:
-1. Monolith - Too limiting as team grows
-2. Modular monolith - Middle ground but still single deployment
-3. Microservices - Chosen for flexibility
-
-TRADEOFFS:
-- Gain: Team autonomy, independent scaling, tech flexibility
-- Cost: Increased complexity, distributed system challenges, more DevOps overhead
-
-CONFIDENCE: Medium (7/10)
-- Team has some microservices experience
-- Will need to invest in observability
-- Risk of over-engineering early on''',
-            'post_type': 'decision',
-            'priority': 'high',
-            'context_reason': 'Mobile app user base growing 50% monthly, current monolith becoming bottleneck',
-            'key_takeaway': 'Adopting microservices for team autonomy and independent scaling',
-            'emotional_context': 'risky',
-            'alternatives_considered': 'Monolith: Too limiting\nModular monolith: Still single deployment\nMicroservices: Chosen for flexibility',
-            'tradeoffs': 'Complexity vs Scalability. More DevOps work but better team autonomy.',
-            'tags': ['architecture', 'backend'],
-        },
-        {
-            'title': 'API Design: REST vs GraphQL for Mobile',
-            'content': '''Mobile team needs a new API. Discussed REST vs GraphQL.
-
-DECISION: GraphQL with Apollo Client
-
-WHY:
-- Mobile screens have very different data needs
-- Want to avoid over-fetching
-- Single endpoint simplifies mobile networking
-- Strong typing helps catch errors early
-
-CONCERNS:
-- Team learning curve (2-3 weeks)
-- Caching complexity
-- N+1 query problems
-
-MITIGATION:
-- Start with Apollo tutorials
-- Use DataLoader for batching
-- Monitor query performance closely
-
-IMPLEMENTATION:
-- Week 1-2: Team training
-- Week 3: Build first schema
-- Week 4: Mobile integration
-- Week 5: Performance tuning''',
-            'post_type': 'proposal',
-            'priority': 'high',
-            'context_reason': 'Mobile app needs flexible data fetching, REST endpoints becoming too numerous',
-            'key_takeaway': 'GraphQL chosen for flexible mobile queries despite learning curve',
-            'emotional_context': 'experimental',
-            'alternatives_considered': 'REST: Too many endpoints\nGraphQL: Flexible but complex\nBFF Pattern: Considered but adds layer',
-            'tradeoffs': 'Learning curve vs Flexibility. Team needs training but mobile gets better UX.',
-            'tags': ['api', 'mobile', 'backend'],
-        },
-        {
-            'title': 'Bug Postmortem: Database Connection Pool Exhaustion',
-            'content': '''INCIDENT: Production outage for 2 hours on Dec 15, 2024
-
-IMPACT:
-- All API requests failing
-- 50,000 users affected
-- $10K estimated revenue loss
-
-ROOT CAUSE:
-Connection leak in payment service. Connections not being returned to pool after failed transactions.
-
-WHY IT WASN'T CAUGHT:
-- No connection pool monitoring
-- Load testing didn't simulate payment failures
-- Staging environment has smaller pool (didn't hit limit)
-
-THE FIX:
-- Added explicit connection.close() in finally blocks
-- Implemented connection pool monitoring
-- Added alerts at 80% pool usage
-- Updated load tests to include failure scenarios
-
-PREVENTION:
-- Code review checklist now includes resource cleanup
-- Added connection leak detection in CI
-- Staging pool size now matches production
-
-LESSONS LEARNED:
-- Monitor ALL resource pools
-- Test failure scenarios, not just happy path
-- Staging should mirror production config''',
-            'post_type': 'update',
-            'priority': 'urgent',
-            'context_reason': 'Production outage affecting all users, need to document for future prevention',
-            'key_takeaway': 'Connection leak caused outage, fixed with proper cleanup and monitoring',
-            'emotional_context': 'urgent',
-            'tags': ['database', 'backend', 'performance'],
-        },
-        {
-            'title': 'Performance: Image Upload Optimization',
-            'content': '''PROBLEM: Image uploads taking 5-10 seconds, users complaining
-
-INVESTIGATION:
-- Profiled upload endpoint
-- Found: Processing images synchronously
-- Resizing 3 versions (thumbnail, medium, large) before responding
-- Each resize taking 2-3 seconds
-
-SOLUTION: Async processing with job queue
-
-IMPLEMENTATION:
-1. Upload returns immediately with "processing" status
-2. Celery worker handles resizing in background
-3. WebSocket notifies client when done
-4. Fallback to polling for older clients
-
-RESULTS:
-- Upload response time: 5-10s → 200ms (96% improvement)
-- User satisfaction up 40%
-- Server CPU usage down 30%
-
-TRADEOFFS:
-- Added complexity (job queue, WebSocket)
-- Slightly delayed image availability (1-2s)
-- Users love the instant feedback
-
-MONITORING:
-- Track job queue length
-- Alert if processing time > 5s
-- Monitor WebSocket connection health''',
-            'post_type': 'update',
-            'priority': 'medium',
-            'context_reason': 'User complaints about slow uploads, impacting user experience',
-            'key_takeaway': 'Moved image processing to background, 96% faster uploads',
-            'tags': ['performance', 'backend'],
-        },
-        {
-            'title': 'Security: Implementing Rate Limiting',
-            'content': '''PROPOSAL: Add rate limiting to all public APIs
-
-MOTIVATION:
-- Recent bot attack consumed 80% of API capacity
-- No protection against credential stuffing
-- Potential for DDoS attacks
-
-PROPOSED SOLUTION:
-- Redis-based rate limiting
-- Tiered limits: Anonymous (10/min), Authenticated (100/min), Premium (1000/min)
-- Per-IP and per-user tracking
-- Exponential backoff for repeated violations
-
-IMPLEMENTATION PLAN:
-1. Add Redis to infrastructure
-2. Implement middleware
-3. Add rate limit headers to responses
-4. Update API documentation
-5. Monitor and tune limits
-
-CONCERNS:
-- Legitimate users might hit limits
-- Need good error messages
-- Redis becomes critical dependency
-
-MITIGATION:
-- Start with generous limits
-- Clear error messages with retry-after
-- Redis cluster for high availability
-- Fallback to in-memory if Redis down''',
-            'post_type': 'proposal',
-            'priority': 'high',
-            'context_reason': 'Recent bot attack exposed lack of rate limiting, security vulnerability',
-            'key_takeaway': 'Adding Redis-based rate limiting to prevent abuse and attacks',
-            'emotional_context': 'risky',
-            'tags': ['security', 'backend', 'api'],
-        },
-        {
-            'title': 'Frontend: Migrating to React 18',
-            'content': '''DECISION: Upgrade from React 17 to React 18
-
-BENEFITS:
-- Automatic batching (better performance)
-- Concurrent rendering
-- Suspense improvements
-- Better TypeScript support
-
-MIGRATION PLAN:
-- Week 1: Update dependencies, test in dev
-- Week 2: Fix breaking changes (mostly ReactDOM.render)
-- Week 3: Gradual rollout with feature flags
-- Week 4: Full production deployment
-
-BREAKING CHANGES:
-- ReactDOM.render → createRoot
-- Automatic batching (might expose bugs)
-- Stricter hydration warnings
-
-RISK ASSESSMENT:
-- Low risk: React team provides good migration guide
-- Main concern: Third-party library compatibility
-- Mitigation: Test all major libraries first
-
-ROLLBACK PLAN:
-- Keep React 17 branch for 2 weeks
-- Can revert via feature flag
-- Database changes not required''',
-            'post_type': 'decision',
-            'priority': 'medium',
-            'context_reason': 'React 18 offers performance improvements, staying current with ecosystem',
-            'key_takeaway': 'Upgrading to React 18 for performance and concurrent rendering',
-            'tags': ['frontend'],
-        },
-        {
-            'title': 'Database: PostgreSQL vs MySQL Decision',
-            'content': '''CONTEXT: Choosing database for new analytics service
-
-DECISION: PostgreSQL
-
-REASONING:
-- Better JSON support (JSONB)
-- Advanced indexing (GiST, GIN)
-- Full-text search built-in
-- Better for complex queries
-- Strong ACID compliance
-
-ALTERNATIVES:
-- MySQL: Familiar but limited JSON support
-- MongoDB: Good for JSON but weak transactions
-- PostgreSQL: Best balance for our needs
-
-TRADEOFFS:
-- Team needs to learn PostgreSQL (1-2 weeks)
-- Slightly more complex setup
-- Better long-term capabilities
-
-MIGRATION PLAN:
-- Start with new analytics service
-- Evaluate for 3 months
-- Consider migrating other services if successful
-
-CONFIDENCE: High (8/10)''',
-            'post_type': 'decision',
-            'priority': 'high',
-            'context_reason': 'New analytics service needs robust database with JSON support',
-            'key_takeaway': 'PostgreSQL chosen for advanced features and JSON support',
-            'tags': ['database', 'backend'],
-        },
-        {
-            'title': 'Sprint Planning: Q1 2025 Priorities',
-            'content': '''SPRINT GOALS:
-1. Complete microservices migration (3 services)
-2. Launch GraphQL API beta
-3. Implement rate limiting
-4. React 18 upgrade
-
-TEAM CAPACITY:
-- 5 backend developers
-- 3 frontend developers
-- 1 DevOps engineer
-- 2 QA engineers
-
-DEPENDENCIES:
-- Microservices needs DevOps support
-- GraphQL needs mobile team coordination
-- Rate limiting blocks public API launch
-
-RISKS:
-- Microservices might take longer than estimated
-- Holiday season (reduced capacity)
-- External vendor delays possible
-
-MITIGATION:
-- Buffer time in estimates
-- Prioritize rate limiting (security critical)
-- GraphQL can slip to Q2 if needed''',
-            'post_type': 'update',
-            'priority': 'medium',
-            'context_reason': 'Q1 planning to align team on priorities and manage dependencies',
-            'key_takeaway': 'Q1 focused on microservices, GraphQL, and security improvements',
-            'tags': ['architecture', 'backend', 'frontend'],
-        },
-    ]
-    
-    conversations = []
-    for i, conv_data in enumerate(conversations_data, 1):
-        tag_names = conv_data.pop('tags', [])
-        conv = Conversation.objects.create(
-            organization=org,
-            author=admin,
-            **conv_data,
-            created_at=timezone.now() - timedelta(days=len(conversations_data) - i)
-        )
-        
-        # Add tags
-        for tag_name in tag_names:
-            tag = next((t for t in tags if t.name == tag_name), None)
-            if tag:
-                conv.tags.add(tag)
-                tag.usage_count += 1
-                tag.save()
-        
-        conversations.append(conv)
-        print(f"  Created: {conv.title[:50]}...")
-    
-    # Create replies
-    print("\n[3/5] Creating replies...")
-    replies_data = [
-        (0, "Great analysis! I agree microservices is the right call. We should start with the payment service as it's the most isolated."),
-        (0, "Concerned about the DevOps overhead. Do we have enough infrastructure expertise?"),
-        (1, "GraphQL is powerful but the learning curve is real. Let's budget 3 weeks for team training, not 2."),
-        (2, "This was a tough incident. Thanks for the thorough postmortem. The monitoring improvements are crucial."),
-        (3, "Impressive results! Can we apply the same async pattern to video uploads?"),
-        (4, "Rate limiting is essential. Let's make sure we have good documentation for API consumers."),
-        (5, "React 18 upgrade should be smooth. I've done this on another project. Happy to help."),
-    ]
-    
-    for conv_idx, content in replies_data:
-        ConversationReply.objects.create(
-            conversation=conversations[conv_idx],
-            author=admin,
-            content=content,
-            created_at=timezone.now() - timedelta(hours=12)
-        )
-        conversations[conv_idx].reply_count += 1
-        conversations[conv_idx].save()
-        print(f"  Added reply to: {conversations[conv_idx].title[:40]}...")
-    
-    # Create decisions
-    print("\n[4/5] Creating decisions...")
-    decisions_data = [
-        {
-            'conversation': conversations[0],
-            'title': 'Adopt Microservices Architecture',
-            'description': 'Transition from monolith to microservices for scalability and team autonomy',
-            'rationale': 'Team scaling, need independent deployments, different scaling needs per service',
-            'impact_level': 'critical',
-            'status': 'approved',
-            'context_reason': 'Mobile app growth requires architectural change',
-            'if_this_fails': 'Can consolidate services back into modular monolith. Keep monolith running for 6 months as fallback.',
-            'confidence_level': 7,
-            'confidence_votes': [
-                {'user_id': admin.id, 'user_name': admin.get_full_name(), 'vote': 7, 'timestamp': timezone.now().isoformat()},
-            ],
-        },
-        {
-            'conversation': conversations[1],
-            'title': 'Use GraphQL for Mobile API',
-            'description': 'Implement GraphQL API with Apollo Client for mobile applications',
-            'rationale': 'Flexible data fetching, single endpoint, strong typing, better mobile UX',
-            'impact_level': 'high',
-            'status': 'under_review',
-            'context_reason': 'Mobile app needs flexible data fetching',
-            'if_this_fails': 'Fall back to REST API with BFF pattern. GraphQL can be optional endpoint.',
-            'confidence_level': 6,
-        },
-        {
-            'conversation': conversations[6],
-            'title': 'Migrate to PostgreSQL',
-            'description': 'Use PostgreSQL for new analytics service',
-            'rationale': 'Better JSON support, advanced indexing, full-text search, complex queries',
-            'impact_level': 'high',
-            'status': 'approved',
-            'context_reason': 'Analytics service needs robust JSON and query capabilities',
-            'if_this_fails': 'Can switch to MySQL if PostgreSQL proves too complex. Data migration plan exists.',
-            'confidence_level': 8,
-        },
-    ]
-    
-    for dec_data in decisions_data:
-        decision = Decision.objects.create(
-            organization=org,
-            decision_maker=admin,
-            decided_at=timezone.now() - timedelta(days=5),
-            **dec_data
-        )
-        print(f"  Created: {decision.title}")
-    
-    # Create badges
-    print("\n[5/5] Creating badges...")
-    Badge.objects.create(
-        user=admin,
-        badge_type='decision_owner',
-        conversation=conversations[0],
-        earned_at=timezone.now() - timedelta(days=3)
+users = {}
+for user_data in users_data:
+    user, _ = User.objects.get_or_create(
+        username=user_data['username'],
+        organization=org,
+        defaults={
+            'first_name': user_data['first_name'],
+            'last_name': user_data['last_name'],
+            'email': user_data['email'],
+            'role': user_data['role'],
+            'is_active': True,
+        }
     )
-    Badge.objects.create(
-        user=admin,
-        badge_type='knowledge_builder',
-        conversation=conversations[2],
-        earned_at=timezone.now() - timedelta(days=2)
-    )
-    print(f"  Created 2 badges for {admin.username}")
-    
-    # Update stats
-    print("\n[STATS] Updating conversation stats...")
-    for conv in conversations:
-        conv.view_count = 15 + (hash(conv.title) % 50)
-        conv.save()
-    
-    print("\n" + "=" * 60)
-    print("[SUCCESS] SEEDING COMPLETE")
-    print("=" * 60)
-    print(f"\nCreated:")
-    print(f"  - {len(tags)} tags")
-    print(f"  - {len(conversations)} conversations")
-    print(f"  - {len(replies_data)} replies")
-    print(f"  - {len(decisions_data)} decisions")
-    print(f"  - 2 badges")
-    print(f"\nOrganization: {org.name}")
-    print(f"User: {admin.username}")
-    print("\nYou can now test all features in the frontend!")
+    users[user_data['username']] = user
 
-if __name__ == '__main__':
-    seed_data()
+now = timezone.now()
+
+# Decision conversation
+decision_conv = Conversation.objects.create(
+    organization=org,
+    author=users['sarah_chen'],
+    post_type='decision',
+    title='Adopt React Native for Mobile App Development',
+    content='After evaluating multiple frameworks, we need to decide on React Native for our mobile app. It offers code reuse across iOS and Android, strong community support, and faster development cycles. The main concern is performance for graphics-heavy features, but our testing shows acceptable results.',
+    priority='high',
+    why_this_matters='This decision will impact our development timeline and team skill requirements for the next 12 months.',
+    context_reason='We have 3 months to launch the MVP and need to choose a framework that balances speed and quality.',
+    key_takeaway='React Native chosen for faster time-to-market with acceptable performance trade-offs.',
+    emotional_context='consensus',
+    ai_summary='Team consensus to adopt React Native for mobile development due to code reuse benefits and timeline constraints.',
+    ai_keywords=['react-native', 'mobile', 'framework', 'decision'],
+    ai_processed=True,
+    owner=users['sarah_chen'],
+)
+
+# Create decision from conversation
+Decision.objects.get_or_create(
+    conversation=decision_conv,
+    defaults={
+        'organization': org,
+        'title': decision_conv.title,
+        'description': decision_conv.content,
+        'rationale': 'React Native provides the best balance of development speed and cross-platform compatibility.',
+        'impact_level': 'high',
+        'decision_maker': users['sarah_chen'],
+        'status': 'approved',
+        'decided_at': now,
+    }
+)
+
+# Update conversation
+update = Conversation.objects.create(
+    organization=org,
+    author=users['mike_johnson'],
+    post_type='update',
+    title='Sprint 3 Progress Update - Navigation Module Complete',
+    content='Great progress this week! The navigation module is now complete and integrated with the backend. All unit tests are passing. We\'re on track to finish the search functionality by end of sprint. One blocker: waiting on design team for the new UI mockups.',
+    priority='medium',
+    ai_summary='Sprint 3 progressing well with navigation module complete. Search functionality on track. Awaiting UI mockups from design.',
+    ai_keywords=['sprint-3', 'navigation', 'progress', 'blocker'],
+    ai_processed=True,
+)
+
+# Proposal conversation
+proposal_conv = Conversation.objects.create(
+    organization=org,
+    author=users['alex_patel'],
+    post_type='proposal',
+    title='Implement Real-time Location Tracking Feature',
+    content='I propose we add real-time location tracking to help users navigate more efficiently. This would involve integrating with Google Maps API and implementing WebSocket connections for live updates. Estimated effort: 2 sprints. Benefits: improved user experience, competitive advantage.',
+    priority='high',
+    alternatives_considered='Batch location updates every 30 seconds, third-party tracking service',
+    tradeoffs='Real-time tracking increases server load and battery consumption on mobile devices.',
+    ai_summary='Proposal to add real-time location tracking using Google Maps API and WebSockets. 2-sprint effort with UX benefits.',
+    ai_keywords=['feature', 'location-tracking', 'proposal', 'api-integration'],
+    ai_processed=True,
+)
+
+# Create proposal from conversation
+Proposal.objects.get_or_create(
+    organization=org,
+    title=proposal_conv.title,
+    defaults={
+        'description': proposal_conv.content,
+        'rationale': 'Real-time location tracking will significantly improve user experience and provide competitive advantage.',
+        'proposed_by': users['alex_patel'],
+        'status': 'open',
+        'alternatives_considered': proposal_conv.alternatives_considered,
+        'risks': proposal_conv.tradeoffs,
+    }
+)
+
+# Question conversation
+question = Conversation.objects.create(
+    organization=org,
+    author=users['emma_wilson'],
+    post_type='question',
+    title='How should we handle offline navigation scenarios?',
+    content='Users in areas with poor connectivity need offline navigation. Should we cache map tiles locally, use a lightweight offline map library, or both? What are the storage implications?',
+    priority='medium',
+    ai_summary='Question about offline navigation strategy. Options: local tile caching, offline map library, or hybrid approach.',
+    ai_keywords=['offline', 'navigation', 'question', 'architecture'],
+    ai_processed=True,
+)
+
+# Add replies to decision
+ConversationReply.objects.create(
+    conversation=decision_conv,
+    author=users['mike_johnson'],
+    content='I agree with this decision. React Native will help us move faster. We should plan for a performance testing phase before launch.',
+)
+
+ConversationReply.objects.create(
+    conversation=decision_conv,
+    author=users['alex_patel'],
+    content='Agreed. I\'ll start setting up the development environment and create a starter template for the team.',
+)
+
+# Add action items to decision
+ActionItem.objects.create(
+    conversation=decision_conv,
+    title='Set up React Native development environment',
+    assignee=users['alex_patel'],
+    status='in_progress',
+    priority='high',
+    due_date=now + timedelta(days=3),
+)
+
+ActionItem.objects.create(
+    conversation=decision_conv,
+    title='Create project starter template',
+    assignee=users['alex_patel'],
+    status='pending',
+    priority='high',
+    due_date=now + timedelta(days=5),
+)
+
+ActionItem.objects.create(
+    conversation=decision_conv,
+    title='Schedule team training on React Native',
+    assignee=users['sarah_chen'],
+    status='pending',
+    priority='medium',
+    due_date=now + timedelta(days=7),
+)
+
+# Create project
+project, _ = Project.objects.get_or_create(
+    organization=org,
+    key='P2N',
+    defaults={
+        'name': 'Pic2Nav Mobile App',
+        'description': 'Mobile navigation application with real-time location tracking and offline support',
+        'lead': users['sarah_chen'],
+    }
+)
+
+# Create board
+board = Board.objects.create(
+    organization=org,
+    project=project,
+    name='Development Board',
+    board_type='kanban',
+)
+
+# Create columns
+columns = {}
+for col_name in ['To Do', 'In Progress', 'In Review', 'Done']:
+    col = Column.objects.create(
+        board=board,
+        name=col_name,
+        order=list(['To Do', 'In Progress', 'In Review', 'Done']).index(col_name),
+    )
+    columns[col_name] = col
+
+# Create sprints
+sprint_active = Sprint.objects.create(
+    organization=org,
+    project=project,
+    name='Sprint 3 - Navigation & Search',
+    start_date=now.date() - timedelta(days=7),
+    end_date=now.date() + timedelta(days=7),
+    goal='Complete navigation module and implement search functionality',
+    status='active',
+    summary='Navigation module complete. Search in progress.',
+    completed_count=5,
+    blocked_count=1,
+    decisions_made=2,
+)
+
+sprint_completed = Sprint.objects.create(
+    organization=org,
+    project=project,
+    name='Sprint 2 - Authentication & User Profile',
+    start_date=now.date() - timedelta(days=21),
+    end_date=now.date() - timedelta(days=8),
+    goal='Implement user authentication and profile management',
+    status='completed',
+    summary='All authentication features completed. User profile fully functional.',
+    completed_count=8,
+    blocked_count=0,
+    decisions_made=1,
+)
+
+# Create issues for active sprint
+issues_active = [
+    {
+        'title': 'Implement search algorithm',
+        'description': 'Create efficient search algorithm for location names and addresses',
+        'priority': 'high',
+        'status': 'in_progress',
+        'assignee': users['alex_patel'],
+        'story_points': 5,
+        'column': 'In Progress',
+    },
+    {
+        'title': 'Add search UI component',
+        'description': 'Build search input component with autocomplete suggestions',
+        'priority': 'high',
+        'status': 'todo',
+        'assignee': users['emma_wilson'],
+        'story_points': 3,
+        'column': 'To Do',
+    },
+    {
+        'title': 'Integrate Google Maps API',
+        'description': 'Set up Google Maps API integration for map display',
+        'priority': 'high',
+        'status': 'done',
+        'assignee': users['mike_johnson'],
+        'story_points': 5,
+        'column': 'Done',
+    },
+    {
+        'title': 'Add route optimization',
+        'description': 'Implement route optimization algorithm for multiple waypoints',
+        'priority': 'medium',
+        'status': 'in_review',
+        'assignee': users['alex_patel'],
+        'story_points': 8,
+        'column': 'In Review',
+    },
+    {
+        'title': 'Write search tests',
+        'description': 'Create comprehensive unit tests for search functionality',
+        'priority': 'medium',
+        'status': 'todo',
+        'assignee': users['emma_wilson'],
+        'story_points': 3,
+        'column': 'To Do',
+    },
+]
+
+for idx, issue_data in enumerate(issues_active, 1):
+    Issue.objects.create(
+        organization=org,
+        project=project,
+        board=board,
+        column=columns[issue_data['column']],
+        key=f'P2N-{idx}',
+        title=issue_data['title'],
+        description=issue_data['description'],
+        priority=issue_data['priority'],
+        status=issue_data['status'],
+        assignee=issue_data['assignee'],
+        reporter=users['sarah_chen'],
+        story_points=issue_data['story_points'],
+        sprint=sprint_active,
+        due_date=now.date() + timedelta(days=7),
+    )
+
+# Create issues for completed sprint
+issues_completed = [
+    {
+        'title': 'Implement JWT authentication',
+        'description': 'Set up JWT token-based authentication system',
+        'priority': 'high',
+        'status': 'done',
+        'assignee': users['mike_johnson'],
+        'story_points': 5,
+    },
+    {
+        'title': 'Create user profile page',
+        'description': 'Build user profile UI with edit capabilities',
+        'priority': 'high',
+        'status': 'done',
+        'assignee': users['emma_wilson'],
+        'story_points': 3,
+    },
+    {
+        'title': 'Add password reset flow',
+        'description': 'Implement password reset via email',
+        'priority': 'medium',
+        'status': 'done',
+        'assignee': users['alex_patel'],
+        'story_points': 3,
+    },
+    {
+        'title': 'Set up user preferences',
+        'description': 'Create user preferences storage and retrieval',
+        'priority': 'medium',
+        'status': 'done',
+        'assignee': users['mike_johnson'],
+        'story_points': 2,
+    },
+    {
+        'title': 'Add profile picture upload',
+        'description': 'Implement profile picture upload and storage',
+        'priority': 'low',
+        'status': 'done',
+        'assignee': users['emma_wilson'],
+        'story_points': 2,
+    },
+    {
+        'title': 'Create user settings page',
+        'description': 'Build settings page for notification and privacy preferences',
+        'priority': 'medium',
+        'status': 'done',
+        'assignee': users['alex_patel'],
+        'story_points': 3,
+    },
+    {
+        'title': 'Implement email verification',
+        'description': 'Add email verification on signup',
+        'priority': 'high',
+        'status': 'done',
+        'assignee': users['mike_johnson'],
+        'story_points': 3,
+    },
+    {
+        'title': 'Add two-factor authentication',
+        'description': 'Implement optional 2FA for enhanced security',
+        'priority': 'medium',
+        'status': 'done',
+        'assignee': users['alex_patel'],
+        'story_points': 5,
+    },
+]
+
+for idx, issue_data in enumerate(issues_completed, 6):
+    Issue.objects.create(
+        organization=org,
+        project=project,
+        board=board,
+        column=columns['Done'],
+        key=f'P2N-{idx}',
+        title=issue_data['title'],
+        description=issue_data['description'],
+        priority=issue_data['priority'],
+        status=issue_data['status'],
+        assignee=issue_data['assignee'],
+        reporter=users['sarah_chen'],
+        story_points=issue_data['story_points'],
+        sprint=sprint_completed,
+    )
+
+print("[SUCCESS] Pic2Nav Inc data seeded successfully!")
+print(f"   Organization: {org.name}")
+print(f"   Users: {len(users)}")
+print(f"   Conversations: 4 (1 decision, 1 update, 1 proposal, 1 question)")
+print(f"   Decisions: 1 (approved)")
+print(f"   Proposals: 1 (open)")
+print(f"   Project: {project.name}")
+print(f"   Sprints: 2 (1 active, 1 completed)")
+print(f"   Issues: 13 (5 active, 8 completed)")

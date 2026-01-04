@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import Button from '../components/Button';
+import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
 
 function CurrentSprint() {
   const [sprint, setSprint] = useState(null);
-  const [updates, setUpdates] = useState([]);
-  const [summary, setSummary] = useState(null);
+  const [blockers, setBlockers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [showStartModal, setShowStartModal] = useState(false);
-  const [showLearnModal, setShowLearnModal] = useState(false);
-  const [showEndModal, setShowEndModal] = useState(false);
-  const [ending, setEnding] = useState(false);
+  const [showBlockerModal, setShowBlockerModal] = useState(false);
 
   useEffect(() => {
     fetchSprint();
@@ -20,406 +15,477 @@ function CurrentSprint() {
 
   const fetchSprint = async () => {
     try {
-      const [sprintRes, updatesRes] = await Promise.all([
-        api.get('/api/agile/current-sprint/'),
-        api.get('/api/agile/sprint-updates/')
-      ]);
+      const sprintRes = await api.get('/api/agile/current-sprint/');
+      setSprint(sprintRes.data);
       
-      if (sprintRes.data.message === 'No active sprint') {
-        setSprint(null);
-        setSummary(null);
-        setUpdates([]);
-      } else {
-        setSprint(sprintRes.data);
-        setSummary(sprintRes.data);
-        setUpdates(updatesRes.data);
+      if (sprintRes.data.id) {
+        const blockersRes = await api.get(`/api/agile/blockers/?sprint_id=${sprintRes.data.id}`);
+        setBlockers(blockersRes.data);
       }
-      setLoading(false);
     } catch (error) {
       console.error('Failed to fetch sprint:', error);
-      setLoading(false);
-    }
-  };
-
-  const handleEndSprint = async () => {
-    setEnding(true);
-    try {
-      await api.post(`/api/agile/sprints/${sprint.id}/end/`);
-      fetchSprint();
-      setShowEndModal(false);
-    } catch (error) {
-      console.error('Failed to end sprint:', error);
     } finally {
-      setEnding(false);
+      setLoading(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
+        <div style={{ width: '24px', height: '24px', border: '2px solid #E5E7EB', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
 
   if (!sprint) {
     return (
-      <div className="text-center py-32">
-        <h2 className="text-4xl font-bold text-gray-900 mb-4">No active sprint</h2>
-        <p className="text-xl text-gray-600 mb-8 max-w-lg mx-auto">
-          Start a sprint to capture progress, blockers, and decisions in one place.
+      <div style={{ textAlign: 'center', paddingTop: '80px' }}>
+        <h2 style={{ fontSize: '32px', fontWeight: 700, color: colors.primary, marginBottom: spacing.md }}>
+          No active sprint
+        </h2>
+        <p style={{ fontSize: '16px', color: colors.secondary, marginBottom: spacing.lg, maxWidth: '500px', margin: '0 auto' }}>
+          Create a sprint in a project to start tracking progress, blockers, and team updates.
         </p>
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={() => setShowStartModal(true)}
-            className="px-6 py-3 bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors"
-          >
-            Start sprint
-          </button>
-          <button
-            onClick={() => setShowLearnModal(true)}
-            className="px-6 py-3 border border-gray-900 text-gray-900 font-medium hover:bg-gray-50 transition-colors"
-          >
-            Learn how sprints work
-          </button>
-        </div>
-        {showStartModal && <StartSprintModal onClose={() => setShowStartModal(false)} onSubmit={fetchSprint} />}
-        {showLearnModal && <LearnSprintsModal onClose={() => setShowLearnModal(false)} onStart={() => { setShowLearnModal(false); setShowStartModal(true); }} />}
+        <Link to="/projects" style={{ color: colors.primary, textDecoration: 'none', fontWeight: 500 }}>
+          Go to Projects →
+        </Link>
       </div>
     );
   }
 
+  const completionPercentage = sprint.issue_stats?.completion_percentage || 0;
+
   return (
-    <div className="relative">
-      {/* Top Sprint Bar (Sticky) */}
-      <div className="sticky top-16 bg-white border-b border-gray-200 -mx-8 px-8 py-4 mb-8 z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-gray-900">{sprint.name}</h1>
-            <span className="text-base text-gray-600">{sprint.start_date} — {sprint.end_date}</span>
+    <div>
+      {/* Sprint Header */}
+      <div style={{
+        backgroundColor: colors.surface,
+        border: `1px solid ${colors.border}`,
+        borderRadius: radius.md,
+        padding: spacing.lg,
+        marginBottom: spacing.xl
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: spacing.md }}>
+          <div>
+            <h1 style={{ fontSize: '28px', fontWeight: 700, color: colors.primary, marginBottom: spacing.sm }}>
+              {sprint.name}
+            </h1>
+            <p style={{ fontSize: '14px', color: colors.secondary }}>
+              {sprint.project_name} • {sprint.start_date} to {sprint.end_date}
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium">Active</span>
-            <button
-              onClick={() => setShowEndModal(true)}
-              className="px-4 py-2 border border-gray-900 font-medium hover:bg-gray-50 transition-colors"
-            >
-              End sprint
-            </button>
+          <div style={{
+            display: 'flex',
+            gap: spacing.sm,
+            alignItems: 'center'
+          }}>
+            <span style={{
+              padding: `${spacing.sm} ${spacing.md}`,
+              backgroundColor: '#10B981',
+              color: 'white',
+              fontSize: '12px',
+              fontWeight: 600,
+              borderRadius: radius.md
+            }}>
+              Active
+            </span>
+            <span style={{
+              padding: `${spacing.sm} ${spacing.md}`,
+              backgroundColor: colors.background,
+              color: colors.primary,
+              fontSize: '12px',
+              fontWeight: 600,
+              borderRadius: radius.md
+            }}>
+              {sprint.days_remaining} days left
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-[65%_35%] gap-8">
-        {/* Left: Sprint Feed */}
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-6">Sprint Feed</h2>
-
-          {updates.length === 0 ? (
-            <div className="border border-gray-200 p-12 text-center">
-              <p className="text-gray-600 mb-4">No updates yet. Post your first sprint update.</p>
-              <button
-                onClick={() => setShowModal(true)}
-                className="px-4 py-2 bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors"
-              >
-                Post update
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {updates.map(update => (
-                <UpdateCard key={update.id} update={update} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right: Sprint Overview (AI) */}
-        {summary && (
-          <div className="sticky top-32 h-fit">
-            <div className="border border-gray-200 bg-white p-6">
-              <h3 className="text-base font-bold text-gray-900 mb-6">
-                Sprint overview
-              </h3>
-
-              <div className="space-y-6">
-                <div>
-                  <div className="text-sm text-gray-600 mb-2">Completed updates</div>
-                  <div className="text-3xl font-bold text-gray-900">{summary.completed}</div>
-                </div>
-
-                {summary.blocked > 0 && (
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="text-sm text-gray-600 mb-2">Open blockers</div>
-                    <div className="text-3xl font-bold text-red-600 mb-2">{summary.blocked}</div>
-                    <Link to="/blockers" className="text-sm text-gray-900 hover:underline">
-                      View all blockers →
-                    </Link>
-                  </div>
-                )}
-
-                {summary.decisions_made > 0 && (
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="text-sm text-gray-600 mb-2">Scope changes</div>
-                    <div className="text-3xl font-bold text-blue-600 mb-2">{summary.decisions_made}</div>
-                    <Link to="/decisions" className="text-sm text-gray-900 hover:underline">
-                      Review decisions →
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+        {sprint.goal && (
+          <p style={{ fontSize: '14px', color: colors.secondary, fontStyle: 'italic' }}>
+            Goal: {sprint.goal}
+          </p>
         )}
       </div>
 
-      {/* Floating Action Button */}
-      <button
-        onClick={() => setShowModal(true)}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-gray-900 text-white rounded-full shadow-lg hover:bg-gray-800 transition-colors flex items-center justify-center text-2xl font-light z-50"
-      >
-        +
-      </button>
+      {/* Two Column Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: spacing.xl }}>
+        {/* Left: Issues Progress */}
+        <div>
+          <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary, marginBottom: spacing.lg }}>
+            Sprint Progress
+          </h2>
 
-      {showModal && <NewUpdateModal onClose={() => setShowModal(false)} onSubmit={fetchSprint} />}
-      {showEndModal && <EndSprintModal sprint={sprint} onClose={() => setShowEndModal(false)} onConfirm={handleEndSprint} loading={ending} />}
-    </div>
-  );
-}
-
-function UpdateCard({ update }) {
-  const [expanded, setExpanded] = useState(false);
-  const authorInitial = update.author ? update.author.charAt(0).toUpperCase() : 'U';
-
-  return (
-    <div className={`border border-gray-200 p-6 ${update.type === 'blocker' ? 'border-l-4 border-red-600' : ''}`}>
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-bold">
-          {authorInitial}
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium text-gray-900">{update.author || 'Unknown'}</span>
-            <span className="text-sm text-gray-500">{update.timestamp}</span>
-            {update.type === 'blocker' && (
-              <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs font-medium">Blocker</span>
-            )}
+          {/* Progress Bar */}
+          <div style={{
+            backgroundColor: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: radius.md,
+            padding: spacing.lg,
+            marginBottom: spacing.lg
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing.md }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: colors.primary }}>
+                Completion
+              </span>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: colors.primary }}>
+                {completionPercentage}%
+              </span>
+            </div>
+            <div style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: colors.background,
+              borderRadius: '4px',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: `${completionPercentage}%`,
+                height: '100%',
+                backgroundColor: '#10B981',
+                transition: 'width 0.3s ease'
+              }} />
+            </div>
           </div>
-          <h3 className="text-base font-bold text-gray-900 mb-2">{update.title}</h3>
-          <p className="text-base text-gray-700">{update.content}</p>
+
+          {/* Issue Stats */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: spacing.md,
+            marginBottom: spacing.lg
+          }}>
+            <div style={{
+              backgroundColor: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: radius.md,
+              padding: spacing.lg,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: 700, color: colors.primary, marginBottom: spacing.sm }}>
+                {sprint.issue_stats?.completed || 0}
+              </div>
+              <div style={{ fontSize: '12px', color: colors.secondary, textTransform: 'uppercase' }}>
+                Completed
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: radius.md,
+              padding: spacing.lg,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: 700, color: '#F59E0B', marginBottom: spacing.sm }}>
+                {sprint.issue_stats?.in_progress || 0}
+              </div>
+              <div style={{ fontSize: '12px', color: colors.secondary, textTransform: 'uppercase' }}>
+                In Progress
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: radius.md,
+              padding: spacing.lg,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: 700, color: '#6B7280', marginBottom: spacing.sm }}>
+                {sprint.issue_stats?.todo || 0}
+              </div>
+              <div style={{ fontSize: '12px', color: colors.secondary, textTransform: 'uppercase' }}>
+                To Do
+              </div>
+            </div>
+          </div>
+
+          {/* View Board Link */}
+          <Link to={`/projects/${sprint.project_id}`} style={{
+            display: 'inline-block',
+            padding: `${spacing.md} ${spacing.lg}`,
+            backgroundColor: colors.primary,
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: radius.md,
+            fontSize: '14px',
+            fontWeight: 500,
+            transition: motion.fast
+          }}>
+            View Kanban Board →
+          </Link>
+        </div>
+
+        {/* Right: Sidebar */}
+        <div>
+          {/* Blockers */}
+          <div style={{
+            backgroundColor: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: radius.md,
+            padding: spacing.lg,
+            marginBottom: spacing.lg
+          }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, marginBottom: spacing.md }}>
+              Active Blockers
+            </h3>
+
+            {blockers.length === 0 ? (
+              <p style={{ fontSize: '12px', color: colors.secondary }}>
+                No active blockers
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
+                {blockers.slice(0, 3).map(blocker => (
+                  <div key={blocker.id} style={{
+                    padding: spacing.md,
+                    backgroundColor: colors.background,
+                    borderRadius: radius.md,
+                    borderLeft: `3px solid #EF4444`
+                  }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: colors.primary, marginBottom: '4px' }}>
+                      {blocker.title}
+                    </div>
+                    <div style={{ fontSize: '11px', color: colors.secondary }}>
+                      {blocker.days_open} days open
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowBlockerModal(true)}
+              style={{
+                width: '100%',
+                marginTop: spacing.md,
+                padding: `${spacing.sm} ${spacing.md}`,
+                backgroundColor: colors.primary,
+                color: 'white',
+                border: 'none',
+                borderRadius: radius.md,
+                fontSize: '12px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: motion.fast
+              }}
+            >
+              Report Blocker
+            </button>
+          </div>
+
+          {/* Sprint Info */}
+          <div style={{
+            backgroundColor: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: radius.md,
+            padding: spacing.lg
+          }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, marginBottom: spacing.md }}>
+              Sprint Info
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}>
+              <div>
+                <div style={{ fontSize: '11px', color: colors.secondary, textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Total Issues
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: colors.primary }}>
+                  {sprint.issue_stats?.total || 0}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '11px', color: colors.secondary, textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Decisions Made
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: colors.primary }}>
+                  {sprint.decisions_made || 0}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {update.ai_summary && (
-        <div className="border-t border-gray-100 pt-3 mt-3">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-sm text-gray-600 hover:text-gray-900"
-          >
-            {expanded ? '− Hide' : '+ Show'} AI summary
-          </button>
-          {expanded && (
-            <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3">
-              {update.ai_summary}
-            </div>
-          )}
-        </div>
+      {showBlockerModal && (
+        <BlockerModal
+          sprintId={sprint.id}
+          onClose={() => setShowBlockerModal(false)}
+          onSubmit={() => {
+            setShowBlockerModal(false);
+            fetchSprint();
+          }}
+        />
       )}
     </div>
   );
 }
 
-function NewUpdateModal({ onClose, onSubmit }) {
-  const [type, setType] = useState('sprint_update');
+function BlockerModal({ sprintId, onClose, onSubmit }) {
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [description, setDescription] = useState('');
+  const [type, setType] = useState('technical');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const response = await api.post('/api/agile/sprint-updates/', {
-        type,
+      await api.post('/api/agile/blockers/', {
+        sprint_id: sprintId,
         title,
-        content
+        description,
+        type
       });
-      console.log('Update posted:', response.data);
       onSubmit();
-      onClose();
     } catch (error) {
-      console.error('Failed to post update:', error);
-      alert('Failed to post update. Please try again.');
+      console.error('Failed to create blocker:', error);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-2xl">
-        <div className="border-b border-gray-200 p-6">
-          <h2 className="text-2xl font-bold text-gray-900">Create update</h2>
-        </div>
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 50
+    }}>
+      <div style={{
+        backgroundColor: colors.surface,
+        borderRadius: radius.md,
+        padding: spacing.lg,
+        maxWidth: '400px',
+        width: '90%',
+        boxShadow: shadows.lg
+      }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary, marginBottom: spacing.md }}>
+          Report Blocker
+        </h2>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="mb-6">
-            <div className="flex gap-2 mb-4">
-              <button
-                type="button"
-                onClick={() => setType('sprint_update')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  type === 'sprint_update' ? 'bg-gray-900 text-white' : 'border border-gray-900 text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                Sprint Update
-              </button>
-              <button
-                type="button"
-                onClick={() => setType('blocker')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  type === 'blocker' ? 'bg-gray-900 text-white' : 'border border-gray-900 text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                Blocker
-              </button>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              What's the update?
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: spacing.md }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
+              Title
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
+              placeholder="What's blocking progress?"
+              style={{
+                width: '100%',
+                padding: spacing.md,
+                border: `1px solid ${colors.border}`,
+                borderRadius: radius.md,
+                fontSize: '14px',
+                boxSizing: 'border-box'
+              }}
               required
             />
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Share progress, context, or concerns. Keep it simple.
+          <div style={{ marginBottom: spacing.md }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
+              Type
+            </label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              style={{
+                width: '100%',
+                padding: spacing.md,
+                border: `1px solid ${colors.border}`,
+                borderRadius: radius.md,
+                fontSize: '14px',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="technical">Technical</option>
+              <option value="dependency">Dependency</option>
+              <option value="decision">Decision Needed</option>
+              <option value="resource">Resource</option>
+              <option value="external">External</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: spacing.lg }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
+              Description
             </label>
             <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={6}
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none resize-none"
-              required
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Provide context..."
+              style={{
+                width: '100%',
+                padding: spacing.md,
+                border: `1px solid ${colors.border}`,
+                borderRadius: radius.md,
+                fontSize: '14px',
+                boxSizing: 'border-box',
+                minHeight: '100px',
+                fontFamily: 'inherit'
+              }}
             />
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Link decision (optional)
-            </label>
-            <input
-              type="text"
-              placeholder="Decision ID or URL"
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-            />
-            <p className="text-xs text-gray-500 mt-1">Link a decision to track scope changes</p>
-          </div>
-
-          <div className="flex items-center justify-end gap-3">
-            <Button type="button" onClick={onClose} variant="secondary">
+          <div style={{ display: 'flex', gap: spacing.md, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              style={{
+                padding: `${spacing.sm} ${spacing.md}`,
+                backgroundColor: colors.background,
+                color: colors.primary,
+                border: `1px solid ${colors.border}`,
+                borderRadius: radius.md,
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                opacity: submitting ? 0.6 : 1
+              }}
+            >
               Cancel
-            </Button>
-            <Button type="submit" loading={submitting}>
-              Post update
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function StartSprintModal({ onClose, onSubmit }) {
-  const [name, setName] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const twoWeeks = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    setStartDate(today);
-    setEndDate(twoWeeks);
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await api.post('/api/agile/sprints/', {
-        name,
-        start_date: startDate,
-        end_date: endDate
-      });
-      onSubmit();
-      onClose();
-    } catch (error) {
-      console.error('Failed to start sprint:', error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-md">
-        <div className="border-b border-gray-200 p-6">
-          <h2 className="text-2xl font-bold text-gray-900">Start a sprint</h2>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-900 mb-2">Sprint name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Sprint 14"
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-              required
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-900 mb-2">Start date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-              required
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-900 mb-2">End date</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-2">You can change these later.</p>
-          </div>
-
-          <div className="flex items-center justify-end gap-3">
-            <Button type="button" onClick={onClose} variant="secondary">
-              Cancel
-            </Button>
-            <Button type="submit" loading={submitting}>
-              Start sprint
-            </Button>
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                padding: `${spacing.sm} ${spacing.md}`,
+                backgroundColor: colors.primary,
+                color: 'white',
+                border: 'none',
+                borderRadius: radius.md,
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                opacity: submitting ? 0.6 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing.sm
+              }}
+            >
+              {submitting && (
+                <div style={{
+                  width: '14px',
+                  height: '14px',
+                  border: '2px solid white',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 0.6s linear infinite'
+                }} />
+              )}
+              {submitting ? 'Creating...' : 'Report Blocker'}
+            </button>
           </div>
         </form>
       </div>
@@ -428,115 +494,3 @@ function StartSprintModal({ onClose, onSubmit }) {
 }
 
 export default CurrentSprint;
-
-function LearnSprintsModal({ onClose, onStart }) {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="border-b border-gray-200 p-6">
-          <h2 className="text-2xl font-bold text-gray-900">How sprints work in Recall</h2>
-        </div>
-
-        <div className="p-6 space-y-6">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Async-first sprint memory</h3>
-            <p className="text-base text-gray-700">
-              Sprints in Recall capture progress, blockers, and decisions in one place. No meetings required.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">What you can do</h3>
-            <ul className="space-y-2 text-base text-gray-700">
-              <li className="flex items-start gap-2">
-                <span className="text-gray-900 font-bold">•</span>
-                <span>Post sprint updates to share progress and context</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-gray-900 font-bold">•</span>
-                <span>Flag blockers to make them visible early</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-gray-900 font-bold">•</span>
-                <span>Link decisions to track what changed and why</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-gray-900 font-bold">•</span>
-                <span>Get AI-generated summaries automatically</span>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">What we don't do</h3>
-            <p className="text-base text-gray-700 mb-2">
-              Recall is not a task tracker. We focus on memory and context:
-            </p>
-            <ul className="space-y-2 text-base text-gray-700">
-              <li className="flex items-start gap-2">
-                <span className="text-gray-400">✗</span>
-                <span>No story points or task assignments</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-gray-400">✗</span>
-                <span>No burndown charts or velocity tracking</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-gray-400">✗</span>
-                <span>No live chat or real-time collaboration</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="bg-gray-50 p-4 border-l-4 border-gray-900">
-            <p className="text-base text-gray-900">
-              Teams don't "manage" sprints in Recall — they remember them.
-            </p>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-200 p-6 flex items-center justify-end gap-3">
-          <Button type="button" onClick={onClose} variant="secondary">
-            Close
-          </Button>
-          <Button type="button" onClick={onStart}>
-            Start your first sprint
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EndSprintModal({ sprint, onClose, onConfirm, loading }) {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-md">
-        <div className="border-b border-gray-200 p-6">
-          <h2 className="text-2xl font-bold text-gray-900">End sprint?</h2>
-        </div>
-
-        <div className="p-6">
-          <p className="text-base text-gray-700 mb-6">
-            This will mark {sprint.name} as complete and generate an AI retrospective summary.
-          </p>
-
-          <div className="bg-gray-50 p-4 space-y-2 text-sm text-gray-700">
-            <div>✓ Sprint updates will be preserved</div>
-            <div>✓ Blockers will remain visible</div>
-            <div>✓ AI summary will be generated</div>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-200 p-6 flex items-center justify-end gap-3">
-          <Button type="button" onClick={onClose} variant="secondary">
-            Cancel
-          </Button>
-          <Button type="button" onClick={onConfirm} loading={loading}>
-            End sprint
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}

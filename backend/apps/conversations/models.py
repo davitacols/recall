@@ -32,7 +32,6 @@ class Conversation(models.Model):
         ('urgent', 'Urgent'),
     ]
     
-    # Core fields
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     post_type = models.CharField(max_length=20, choices=POST_TYPES, db_index=True)
@@ -43,11 +42,10 @@ class Conversation(models.Model):
     )
     content = models.TextField(validators=[MinLengthValidator(10)])
     priority = models.CharField(max_length=10, choices=PRIORITY_LEVELS, default='medium')
-    why_this_matters = models.TextField(blank=True, help_text="Explain the importance and impact")
+    why_this_matters = models.TextField(blank=True)
     
-    # New high-impact fields
-    context_reason = models.TextField(blank=True, help_text="Why are we even talking about this?")
-    key_takeaway = models.CharField(max_length=255, blank=True, help_text="If you remember one thing, remember this")
+    context_reason = models.TextField(blank=True)
+    key_takeaway = models.CharField(max_length=255, blank=True)
     emotional_context = models.CharField(max_length=20, blank=True, choices=[
         ('urgent', '🚨 Urgent'),
         ('consensus', '🤝 Consensus'),
@@ -55,22 +53,18 @@ class Conversation(models.Model):
         ('experimental', '💡 Experimental'),
     ])
     
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    # AI processing fields
     ai_summary = models.TextField(blank=True)
     ai_action_items = models.JSONField(default=list, blank=True)
     ai_keywords = models.JSONField(default=list, blank=True)
     ai_processed = models.BooleanField(default=False, db_index=True)
     ai_processing_error = models.TextField(blank=True)
     
-    # Engagement metrics
     view_count = models.PositiveIntegerField(default=0)
     reply_count = models.PositiveIntegerField(default=0)
     
-    # Status tracking
     is_archived = models.BooleanField(default=False, db_index=True)
     is_pinned = models.BooleanField(default=False)
     is_closed = models.BooleanField(default=False, db_index=True)
@@ -80,28 +74,23 @@ class Conversation(models.Model):
     owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_conversations')
     is_crisis = models.BooleanField(default=False, db_index=True)
     
-    # Draft recovery
     is_draft = models.BooleanField(default=False, db_index=True)
     draft_saved_at = models.DateTimeField(null=True, blank=True)
     
-    # Memory health tracking
-    memory_health_score = models.IntegerField(default=50, help_text="0-100 score for documentation quality")
+    memory_health_score = models.IntegerField(default=50)
     
-    # Developer productivity fields
-    alternatives_considered = models.TextField(blank=True, help_text="What other options did we consider?")
-    tradeoffs = models.TextField(blank=True, help_text="What are the tradeoffs of this approach?")
-    code_links = models.JSONField(default=list, blank=True, help_text="Links to PRs, commits, docs")
-    plain_language_summary = models.TextField(blank=True, help_text="Non-technical explanation")
+    alternatives_considered = models.TextField(blank=True)
+    tradeoffs = models.TextField(blank=True)
+    code_links = models.JSONField(default=list, blank=True)
+    plain_language_summary = models.TextField(blank=True)
     
-    # Developer Assistant AI output
-    dev_simple_summary = models.TextField(blank=True, help_text="Simple explanation for new developers")
-    dev_technical_decision = models.JSONField(default=dict, blank=True, help_text="Structured decision info")
-    dev_action_items = models.JSONField(default=list, blank=True, help_text="Extracted action items")
-    dev_agile_context = models.JSONField(default=list, blank=True, help_text="Agile classification")
-    dev_future_note = models.TextField(blank=True, help_text="What future developers should know")
-    dev_warnings = models.JSONField(default=dict, blank=True, help_text="Warnings and flags")
+    dev_simple_summary = models.TextField(blank=True)
+    dev_technical_decision = models.JSONField(default=dict, blank=True)
+    dev_action_items = models.JSONField(default=list, blank=True)
+    dev_agile_context = models.JSONField(default=list, blank=True)
+    dev_future_note = models.TextField(blank=True)
+    dev_warnings = models.JSONField(default=dict, blank=True)
     
-    # Real-life status labels
     STATUS_LABELS = [
         ('open', 'Open'),
         ('good_example', 'Good Example'),
@@ -111,7 +100,6 @@ class Conversation(models.Model):
     ]
     status_label = models.CharField(max_length=20, choices=STATUS_LABELS, default='open', db_index=True)
     
-    # Mentions and tags
     mentioned_users = models.ManyToManyField(User, related_name='mentioned_in', blank=True)
     tags = models.ManyToManyField(Tag, related_name='conversations', blank=True)
     
@@ -144,7 +132,6 @@ class ConversationReply(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    # Reply metadata
     is_ai_generated = models.BooleanField(default=False)
     parent_reply = models.ForeignKey(
         'self', 
@@ -164,6 +151,17 @@ class ConversationReply(models.Model):
     
     def __str__(self):
         return f"Reply by {self.author.get_full_name()} on {self.conversation.title}"
+    
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        try:
+            from apps.organizations.automation_engine import trigger_automation
+            if is_new:
+                trigger_automation(self, 'comment_added', self.author)
+        except Exception:
+            pass
 
 class ActionItem(models.Model):
     STATUS_CHOICES = [
@@ -194,7 +192,6 @@ class ActionItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     
-    # AI extraction metadata
     extracted_by_ai = models.BooleanField(default=False)
     confidence_score = models.FloatField(null=True, blank=True)
     
@@ -225,7 +222,7 @@ class Bookmark(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookmarks')
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='bookmarks')
     created_at = models.DateTimeField(auto_now_add=True)
-    note = models.TextField(blank=True, help_text="Private note about this conversation")
+    note = models.TextField(blank=True)
     
     class Meta:
         db_table = 'bookmarks'

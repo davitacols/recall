@@ -7,6 +7,7 @@ import MentionTagInput from '../components/MentionTagInput';
 import HighlightedText from '../components/HighlightedText';
 import DeveloperInsights from '../components/DeveloperInsights';
 import AISummaryPanel from '../components/AISummaryPanel';
+import RelatedDecisions from '../components/RelatedDecisions';
 
 const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -837,6 +838,9 @@ function ConversationDetail() {
 
         {/* Developer Insights */}
         <DeveloperInsights conversationId={id} />
+        
+        {/* Related Decisions */}
+        <RelatedDecisions conversationId={id} />
       </div>
 
       {/* Sidebar */}

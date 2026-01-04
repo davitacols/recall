@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import NotificationBell from './NotificationBell';
 import MobileBottomNav from './MobileBottomNav';
+import Search from './Search';
 import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
 import '../styles/mobile.css';
 import { 
@@ -13,18 +14,29 @@ import {
   BellIcon,
   Bars3Icon,
   XMarkIcon,
-  MagnifyingGlassIcon
+  RectangleStackIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
+
+function AvatarDisplay({ avatar, fullName }) {
+  const initials = fullName?.charAt(0) || 'U';
+
+  return (
+    <div style={{ width: '100%', height: '100%', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ color: colors.surface, fontSize: '14px', fontWeight: 'bold' }}>{initials}</span>
+    </div>
+  );
+}
 
 function Layout({ children }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState({ Sprint: true, Personal: true, Admin: true });
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -37,11 +49,11 @@ function Layout({ children }) {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/knowledge?q=${encodeURIComponent(searchQuery)}`);
-    }
+  const toggleGroup = (groupName) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }));
   };
 
   const primaryNav = [
@@ -49,6 +61,7 @@ function Layout({ children }) {
     { name: 'Conversations', href: '/conversations', icon: ChatBubbleLeftIcon },
     { name: 'Decisions', href: '/decisions', icon: DocumentTextIcon },
     { name: 'Knowledge', href: '/knowledge', icon: BookOpenIcon },
+    { name: 'Projects', href: '/projects', icon: RectangleStackIcon },
     { name: 'Notifications', href: '/notifications', icon: BellIcon },
   ];
 
@@ -75,6 +88,8 @@ function Layout({ children }) {
     if (location.pathname.startsWith('/conversations')) return 'Conversations';
     if (location.pathname.startsWith('/decisions')) return 'Decisions';
     if (location.pathname.startsWith('/knowledge')) return 'Knowledge';
+    if (location.pathname.startsWith('/projects')) return 'Projects';
+    if (location.pathname.startsWith('/boards')) return 'Board';
     if (location.pathname.startsWith('/notifications')) return 'Notifications';
     if (location.pathname.startsWith('/sprint')) return 'Sprint';
     if (location.pathname.startsWith('/blockers')) return 'Blockers';
@@ -109,6 +124,7 @@ function Layout({ children }) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing.lg }}>
+            <Search />
             <NotificationBell />
             
             <div style={{ position: 'relative' }}>
@@ -175,6 +191,7 @@ function Layout({ children }) {
                       fontSize: '14px',
                       color: colors.primary,
                       textDecoration: 'none',
+                      borderBottom: `1px solid ${colors.border}`,
                       transition: motion.fast
                     }}
                     onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
@@ -182,19 +199,29 @@ function Layout({ children }) {
                   >
                     New decision
                   </Link>
+                  <Link
+                    to="/issues/new"
+                    onClick={() => setShowNewMenu(false)}
+                    style={{
+                      display: 'block',
+                      padding: spacing.lg,
+                      fontSize: '14px',
+                      color: colors.primary,
+                      textDecoration: 'none',
+                      transition: motion.fast
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    New issue
+                  </Link>
                 </div>
               )}
             </div>
 
             <div style={{ position: 'relative' }}>
               <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', border: 'none', cursor: 'pointer' }}>
-                {user?.avatar ? (
-                  <img src={user.avatar} alt={user.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ color: colors.surface, fontSize: '14px', fontWeight: 'bold' }}>{user?.full_name?.charAt(0) || 'U'}</span>
-                  </div>
-                )}
+                <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
               </button>
               {showProfileMenu && (
                 <div style={{
@@ -272,34 +299,66 @@ function Layout({ children }) {
                   { title: 'Personal', items: personalNav },
                   ...(user?.role === 'admin' ? [{ title: 'Admin', items: adminNav }] : [])
                 ].map((section) => (
-                  <div key={section.title} style={{ marginTop: spacing.xl }}>
-                    <h3 style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, textTransform: 'uppercase', letterSpacing: '0.05em', padding: `0 ${spacing.lg}`, marginBottom: spacing.md }}>
-                      {section.title}
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
-                      {section.items.map((item) => {
-                        const isActive = location.pathname === item.href;
-                        return (
-                          <Link
-                            key={item.name}
-                            to={item.href}
-                            style={{
-                              display: 'block',
-                              padding: `${spacing.md} ${spacing.lg}`,
-                              borderRadius: radius.md,
-                              fontSize: '14px',
-                              textDecoration: 'none',
-                              color: isActive ? colors.accent : colors.secondary,
-                              backgroundColor: isActive ? colors.accentLight : 'transparent',
-                              fontWeight: isActive ? 500 : 'normal',
-                              transition: motion.fast
-                            }}
-                          >
-                            {item.name}
-                          </Link>
-                        );
-                      })}
-                    </div>
+                  <div key={section.title} style={{ marginTop: spacing.lg }}>
+                    <button
+                      onClick={() => toggleGroup(section.title)}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: `${spacing.sm} ${spacing.lg}`,
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: colors.secondary,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: motion.fast
+                      }}
+                      onMouseEnter={(e) => e.target.style.color = colors.primary}
+                      onMouseLeave={(e) => e.target.style.color = colors.secondary}
+                    >
+                      <span>{section.title}</span>
+                      <ChevronDownIcon 
+                        style={{ 
+                          width: '14px', 
+                          height: '14px',
+                          transform: expandedGroups[section.title] ? 'rotate(0deg)' : 'rotate(-90deg)',
+                          transition: motion.fast
+                        }} 
+                      />
+                    </button>
+                    
+                    {expandedGroups[section.title] && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm, marginTop: spacing.sm }}>
+                        {section.items.map((item) => {
+                          const isActive = location.pathname === item.href;
+                          return (
+                            <Link
+                              key={item.name}
+                              to={item.href}
+                              style={{
+                                display: 'block',
+                                padding: `${spacing.sm} ${spacing.lg}`,
+                                paddingLeft: spacing.xl,
+                                borderRadius: radius.md,
+                                fontSize: '13px',
+                                textDecoration: 'none',
+                                color: isActive ? colors.accent : colors.secondary,
+                                backgroundColor: isActive ? colors.accentLight : 'transparent',
+                                fontWeight: isActive ? 500 : 'normal',
+                                transition: motion.fast
+                              }}
+                            >
+                              {item.name}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
               </>
@@ -310,13 +369,7 @@ function Layout({ children }) {
             {!sidebarCollapsed ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ color: colors.surface, fontSize: '12px', fontWeight: 'bold' }}>{user?.full_name?.charAt(0) || 'U'}</span>
-                    </div>
-                  )}
+                  <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '14px', fontWeight: 500, color: colors.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name?.split(' ')[0]}</div>
@@ -326,13 +379,7 @@ function Layout({ children }) {
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden' }}>
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ color: colors.surface, fontSize: '12px', fontWeight: 'bold' }}>{user?.full_name?.charAt(0) || 'U'}</span>
-                    </div>
-                  )}
+                  <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
                 </div>
               </div>
             )}

@@ -44,6 +44,7 @@ MIDDLEWARE = [
     'apps.organizations.middleware.OrganizationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.media_middleware.MediaNotFoundMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .reply_views import reply_detail
+from . import linking_views
 
 urlpatterns = [
     path('', views.conversations, name='conversations'),
@@ -36,5 +37,6 @@ urlpatterns = [
     path('<int:conversation_id>/documents/', views.conversation_documents, name='conversation_documents'),
     path('<int:conversation_id>/documents/upload/', views.upload_document, name='upload_document'),
     path('documents/<int:document_id>/', views.delete_document, name='delete_document'),
+    path('<int:conversation_id>/related-decisions/', linking_views.conversation_related_decisions, name='conversation_related_decisions'),
     path('<int:conversation_id>/', views.conversation_detail, name='conversation_detail'),
 ]

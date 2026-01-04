@@ -5,9 +5,11 @@ class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ('mention', 'Mentioned'),
         ('reply', 'Reply'),
+        ('reaction', 'Reaction'),
         ('decision', 'Decision'),
         ('reminder', 'Reminder'),
         ('badge', 'Badge Earned'),
+        ('automation', 'Automation'),
         ('system', 'System'),
     ]
     

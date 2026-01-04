@@ -69,6 +69,16 @@ function Dashboard() {
     }
   };
 
+  const getCardBackground = (type) => {
+    const backgrounds = {
+      decision: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)',
+      proposal: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)',
+      question: 'linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(217, 119, 6, 0.05) 100%)',
+      update: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(22, 163, 74, 0.05) 100%)'
+    };
+    return backgrounds[type] || backgrounds.update;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -140,10 +150,18 @@ function Dashboard() {
             <Link
               key={conv.id}
               to={`/conversations/${conv.id}`}
-              className="border border-gray-200 p-6 block hover:border-gray-900 transition-all duration-200 animate-fadeIn"
-              style={{ animationDelay: `${index * 0.05}s` }}
+              className="border border-gray-200 p-6 block hover:border-gray-900 transition-all duration-200 animate-fadeIn relative overflow-hidden"
+              style={{ 
+                animationDelay: `${index * 0.05}s`,
+                background: getCardBackground(conv.post_type)
+              }}
             >
-              <div className="flex items-start gap-4">
+              {/* Decorative background element */}
+              <div className="absolute top-0 right-0 w-32 h-32 opacity-5 pointer-events-none">
+                <Icon className="w-full h-full" />
+              </div>
+
+              <div className="flex items-start gap-4 relative z-10">
                 {/* Avatar */}
                 <div className="w-12 h-12 flex-shrink-0">
                   {conv.author_avatar ? (
@@ -183,7 +201,7 @@ function Dashboard() {
                   
                   {/* AI Summary */}
                   {conv.ai_summary && (
-                    <div className="bg-gray-50 border-l-2 border-gray-900 p-3 mb-3">
+                    <div className="bg-white bg-opacity-60 border-l-2 border-gray-900 p-3 mb-3">
                       <p className="text-sm text-gray-700 leading-relaxed">
                         {conv.ai_summary}
                       </p>
@@ -205,7 +223,7 @@ function Dashboard() {
                     {conv.ai_keywords && conv.ai_keywords.length > 0 && (
                       <div className="flex gap-2">
                         {conv.ai_keywords.slice(0, 3).map((keyword, i) => (
-                          <span key={i} className="text-xs px-2 py-1 bg-gray-100 text-gray-700">
+                          <span key={i} className="text-xs px-2 py-1 bg-white bg-opacity-60 text-gray-700">
                             {keyword}
                           </span>
                         ))}

@@ -162,7 +162,6 @@ def decision_detail(request, decision_id):
             organization=request.user.organization
         )
         
-        # Calculate confidence score
         confidence = calculate_confidence(decision)
         
         return Response({
@@ -176,15 +175,15 @@ def decision_detail(request, decision_id):
             'decision_maker_name': decision.decision_maker.get_full_name() if decision.decision_maker else None,
             'created_at': decision.created_at,
             'decided_at': decision.decided_at,
-            'approved_at': getattr(decision, 'approved_at', None),
             'implemented_at': decision.implemented_at,
             'conversation': decision.conversation_id,
             'confidence': confidence,
-            'context_reason': decision.context_reason,
-            'if_this_fails': decision.if_this_fails,
+            'context_reason': decision.context_reason or '',
+            'if_this_fails': decision.if_this_fails or '',
             'confidence_level': decision.confidence_level,
             'confidence_votes': decision.confidence_votes or [],
-            'code_links': decision.code_links or []
+            'code_links': decision.code_links or [],
+            'alternatives_considered': decision.alternatives_considered or []
         })
     except Decision.DoesNotExist:
         return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -194,18 +193,16 @@ def calculate_confidence(decision):
     from apps.conversations.models import Reaction
     
     if not decision.conversation:
-        return {'score': 50, 'level': 'Medium', 'factors': []}
+        return {'score': 50, 'level': 'Medium', 'factors': [], 'agree_count': 0, 'unsure_count': 0, 'concern_count': 0}
     
     conv = decision.conversation
     
-    # Get reactions
     reactions = Reaction.objects.filter(conversation=conv)
     agree_count = reactions.filter(reaction_type='agree').count()
     unsure_count = reactions.filter(reaction_type='unsure').count()
     concern_count = reactions.filter(reaction_type='concern').count()
     total_reactions = agree_count + unsure_count + concern_count
     
-    # Calculate factors
     reaction_score = 0
     if total_reactions > 0:
         reaction_score = (agree_count / total_reactions) * 40
@@ -215,16 +212,12 @@ def calculate_confidence(decision):
     
     total_score = reaction_score + discussion_score + participation_score
     
-    # Determine level
     if total_score >= 75:
         level = 'High'
-        color = 'green'
     elif total_score >= 50:
         level = 'Medium'
-        color = 'blue'
     else:
         level = 'Low'
-        color = 'yellow'
     
     factors = [
         f'{agree_count} agree, {unsure_count} unsure, {concern_count} concern',
@@ -235,7 +228,6 @@ def calculate_confidence(decision):
     return {
         'score': round(total_score),
         'level': level,
-        'color': color,
         'factors': factors,
         'agree_count': agree_count,
         'unsure_count': unsure_count,
@@ -464,3 +456,40 @@ def reject_proposal(request, proposal_id):
         return Response({'message': 'Proposal rejected'})
     except Proposal.DoesNotExist:
         return Response({'error': 'Proposal not found'}, status=404)
+
+@api_view(['POST'])
+def link_pr(request, decision_id):
+    try:
+        decision = Decision.objects.get(
+            id=decision_id,
+            organization=request.user.organization
+        )
+        
+        pr_url = request.data.get('pr_url')
+        if not pr_url:
+            return Response({'error': 'PR URL required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not decision.code_links:
+            decision.code_links = []
+        
+        import re
+        match = re.search(r'github\.com/([^/]+)/([^/]+)/pull/(\d+)', pr_url)
+        if match:
+            owner, repo, pr_number = match.groups()
+            decision.code_links.append({
+                'type': 'github_pr',
+                'url': pr_url,
+                'title': f'{owner}/{repo}#{pr_number}',
+                'number': int(pr_number)
+            })
+        else:
+            decision.code_links.append({
+                'type': 'link',
+                'url': pr_url,
+                'title': pr_url
+            })
+        
+        decision.save()
+        return Response({'message': 'PR linked successfully'}, status=status.HTTP_201_CREATED)
+    except Decision.DoesNotExist:
+        return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)

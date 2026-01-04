@@ -21,7 +21,6 @@ class Decision(models.Model):
         ('critical', 'Critical Impact'),
     ]
     
-    # Core fields
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
     conversation = models.ForeignKey(
         Conversation, 
@@ -36,7 +35,6 @@ class Decision(models.Model):
     )
     description = models.TextField(validators=[MinLengthValidator(10)])
     
-    # Decision makers and stakeholders
     decision_maker = models.ForeignKey(
         User, 
         on_delete=models.CASCADE, 
@@ -49,7 +47,6 @@ class Decision(models.Model):
         blank=True
     )
     
-    # Decision details
     status = models.CharField(
         max_length=20, 
         choices=STATUS_CHOICES, 
@@ -64,38 +61,31 @@ class Decision(models.Model):
     )
     impact_assessment = models.TextField(blank=True)
     
-    # High-impact additions
-    context_reason = models.TextField(blank=True, help_text="Why are we even talking about this?")
-    if_this_fails = models.TextField(blank=True, help_text="What happens if this doesn't work?")
-    confidence_level = models.IntegerField(null=True, blank=True, help_text="1-10: How confident are you this will work?")
-    confidence_votes = models.JSONField(default=list, blank=True, help_text="List of {user_id, vote, timestamp}")
+    context_reason = models.TextField(blank=True)
+    if_this_fails = models.TextField(blank=True)
+    confidence_level = models.IntegerField(null=True, blank=True)
+    confidence_votes = models.JSONField(default=list, blank=True)
     
-    # Alternative options considered
     alternatives_considered = models.JSONField(default=list, blank=True)
-    tradeoffs = models.TextField(blank=True, help_text="What are the tradeoffs?")
-    code_links = models.JSONField(default=list, blank=True, help_text="Links to PRs, commits, docs")
-    plain_language_summary = models.TextField(blank=True, help_text="Non-technical explanation")
+    tradeoffs = models.TextField(blank=True)
+    code_links = models.JSONField(default=list, blank=True)
+    plain_language_summary = models.TextField(blank=True)
     
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     decided_at = models.DateTimeField(null=True, blank=True)
     implementation_deadline = models.DateTimeField(null=True, blank=True)
     implemented_at = models.DateTimeField(null=True, blank=True)
     
-    # Reminder settings
     reminder_enabled = models.BooleanField(default=True)
-    reminder_days = models.IntegerField(default=30, help_text="Days after approval to remind")
+    reminder_days = models.IntegerField(default=30)
     last_reminded_at = models.DateTimeField(null=True, blank=True)
     
-    # AI extraction metadata
     extracted_by_ai = models.BooleanField(default=False)
     ai_confidence_score = models.FloatField(null=True, blank=True)
     
-    # Decision outcome tracking
     outcome_notes = models.TextField(blank=True)
     success_metrics = models.JSONField(default=dict, blank=True)
     
-    # Phase 2: Decision Locking
     is_locked = models.BooleanField(default=False, db_index=True)
     locked_at = models.DateTimeField(null=True, blank=True)
     locked_by = models.ForeignKey(
@@ -107,14 +97,12 @@ class Decision(models.Model):
     )
     lock_reason = models.TextField(blank=True)
     
-    # Phase 2: Impact Review
     review_scheduled_at = models.DateTimeField(null=True, blank=True)
     review_completed_at = models.DateTimeField(null=True, blank=True)
     was_successful = models.BooleanField(null=True, blank=True)
     impact_review_notes = models.TextField(blank=True)
     lessons_learned = models.TextField(blank=True)
     
-    # Sprint linking
     sprint = models.ForeignKey(
         'agile.Sprint',
         on_delete=models.SET_NULL,
@@ -136,21 +124,56 @@ class Decision(models.Model):
     def __str__(self):
         return f"{self.get_status_display()}: {self.title}"
     
+    def save(self, *args, **kwargs):
+        try:
+            from apps.organizations.automation_engine import trigger_automation
+            from apps.organizations.analytics_engine import AnalyticsEngine
+            from apps.notifications.models import Notification
+            
+            is_new = self.pk is None
+            
+            if is_new:
+                super().save(*args, **kwargs)
+                trigger_automation(self, 'decision_created', self.decision_maker)
+                AnalyticsEngine.record_metric(
+                    self.organization,
+                    'decision_count',
+                    1
+                )
+            else:
+                old_decision = Decision.objects.get(pk=self.pk)
+                super().save(*args, **kwargs)
+                
+                if not old_decision.is_locked and self.is_locked:
+                    self.locked_at = timezone.now()
+                    self.save(update_fields=['locked_at'])
+                    trigger_automation(self, 'decision_locked', self.locked_by)
+                    
+                    # Send notifications to stakeholders
+                    for stakeholder in self.stakeholders.all():
+                        if stakeholder.id != self.locked_by.id:
+                            Notification.objects.create(
+                                user=stakeholder,
+                                notification_type='decision',
+                                title=f'{self.locked_by.get_full_name()} locked a decision',
+                                message=f'"{self.title}"',
+                                link=f'/decisions/{self.id}'
+                            )
+        except Exception:
+            super().save(*args, **kwargs)
+    
     def approve(self, approved_by=None):
-        """Approve the decision"""
         self.status = 'approved'
         self.decided_at = timezone.now()
         self.save()
     
     def implement(self):
-        """Mark decision as implemented"""
         self.status = 'implemented'
         self.implemented_at = timezone.now()
         self.save()
     
     @property
     def is_overdue(self):
-        """Check if implementation is overdue"""
         if not self.implementation_deadline:
             return False
         return (
@@ -160,7 +183,6 @@ class Decision(models.Model):
     
     @property
     def needs_reminder(self):
-        """Check if decision needs a reminder"""
         if not self.reminder_enabled or self.status not in ['approved', 'under_review']:
             return False
         if not self.decided_at:
@@ -168,9 +190,7 @@ class Decision(models.Model):
         
         days_since_approval = (timezone.now() - self.decided_at).days
         
-        # Check if it's time for reminder
         if days_since_approval >= self.reminder_days:
-            # Check if already reminded recently (within 7 days)
             if self.last_reminded_at:
                 days_since_reminder = (timezone.now() - self.last_reminded_at).days
                 return days_since_reminder >= 7
@@ -180,10 +200,9 @@ class Decision(models.Model):
 class DecisionTag(models.Model):
     name = models.CharField(max_length=50, db_index=True)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    color = models.CharField(max_length=7, default='#3B82F6')  # Hex color
+    color = models.CharField(max_length=7, default='#3B82F6')
     description = models.TextField(blank=True)
     
-    # Usage tracking
     usage_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -196,7 +215,6 @@ class DecisionTag(models.Model):
         return self.name
 
 class DecisionTagging(models.Model):
-    """Through model for Decision-Tag relationship with metadata"""
     decision = models.ForeignKey(Decision, on_delete=models.CASCADE)
     tag = models.ForeignKey(DecisionTag, on_delete=models.CASCADE)
     tagged_by = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -206,7 +224,6 @@ class DecisionTagging(models.Model):
         db_table = 'decision_tagging'
         unique_together = ['decision', 'tag']
 
-# Add the many-to-many relationship to Decision
 Decision.add_to_class(
     'tags',
     models.ManyToManyField(

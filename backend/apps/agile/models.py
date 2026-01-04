@@ -3,14 +3,36 @@ from django.utils import timezone
 from apps.organizations.models import User, Organization
 from apps.conversations.models import Conversation
 
-class Sprint(models.Model):
+class Project(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    name = models.CharField(max_length=255)
+    key = models.CharField(max_length=10, unique=True)
+    description = models.TextField(blank=True)
+    lead = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='projects_led')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'projects'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', '-created_at']),
+        ]
+
+class Sprint(models.Model):
+    STATUS_CHOICES = [
+        ('planning', 'Planning'),
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+    ]
+    
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True, related_name='sprints')
     name = models.CharField(max_length=100)
     start_date = models.DateField()
     end_date = models.DateField()
     goal = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planning')
     
-    # Auto-generated summary
     summary = models.TextField(blank=True)
     completed_count = models.IntegerField(default=0)
     blocked_count = models.IntegerField(default=0)
@@ -23,7 +45,160 @@ class Sprint(models.Model):
         ordering = ['-start_date']
         indexes = [
             models.Index(fields=['organization', '-start_date']),
+            models.Index(fields=['project', '-start_date']),
         ]
+    
+    def save(self, *args, **kwargs):
+        try:
+            from apps.organizations.automation_engine import trigger_automation
+            
+            if self.pk:
+                old_sprint = Sprint.objects.get(pk=self.pk)
+                if old_sprint.status != 'active' and self.status == 'active':
+                    super().save(*args, **kwargs)
+                    trigger_automation(self, 'sprint_started', None)
+                    return
+                elif old_sprint.status != 'completed' and self.status == 'completed':
+                    super().save(*args, **kwargs)
+                    trigger_automation(self, 'sprint_ended', None)
+                    return
+        except Exception:
+            pass
+        
+        super().save(*args, **kwargs)
+
+class Board(models.Model):
+    BOARD_TYPES = [
+        ('kanban', 'Kanban'),
+        ('scrum', 'Scrum'),
+    ]
+    
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='boards')
+    name = models.CharField(max_length=255)
+    board_type = models.CharField(max_length=20, choices=BOARD_TYPES, default='kanban')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'boards'
+        ordering = ['-created_at']
+
+class Column(models.Model):
+    board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='columns')
+    name = models.CharField(max_length=100)
+    order = models.IntegerField(default=0)
+    
+    class Meta:
+        db_table = 'columns'
+        ordering = ['order']
+        unique_together = ['board', 'name']
+
+class Issue(models.Model):
+    PRIORITY_CHOICES = [
+        ('lowest', 'Lowest'),
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('highest', 'Highest'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('todo', 'To Do'),
+        ('in_progress', 'In Progress'),
+        ('in_review', 'In Review'),
+        ('done', 'Done'),
+    ]
+    
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='issues')
+    board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='issues')
+    column = models.ForeignKey(Column, on_delete=models.SET_NULL, null=True, related_name='issues')
+    
+    key = models.CharField(max_length=20)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='todo', db_index=True)
+    
+    assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_issues')
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reported_issues')
+    
+    story_points = models.IntegerField(null=True, blank=True)
+    sprint = models.ForeignKey(Sprint, on_delete=models.SET_NULL, null=True, blank=True, related_name='issues')
+    
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    due_date = models.DateField(null=True, blank=True)
+    
+    # Developer-focused fields
+    branch_name = models.CharField(max_length=255, blank=True, help_text='Git branch name')
+    pr_url = models.URLField(blank=True, help_text='Pull request URL')
+    commit_hash = models.CharField(max_length=40, blank=True, help_text='Git commit hash')
+    code_review_status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('changes_requested', 'Changes Requested'),
+        ('merged', 'Merged'),
+    ], blank=True)
+    ci_status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending'),
+        ('running', 'Running'),
+        ('passed', 'Passed'),
+        ('failed', 'Failed'),
+    ], blank=True, help_text='CI/CD pipeline status')
+    ci_url = models.URLField(blank=True, help_text='CI/CD pipeline URL')
+    test_coverage = models.IntegerField(null=True, blank=True, help_text='Test coverage percentage')
+    
+    class Meta:
+        db_table = 'issues'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', 'project', 'status']),
+            models.Index(fields=['assignee', 'status']),
+        ]
+        unique_together = ['project', 'key']
+    
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        try:
+            from apps.organizations.automation_engine import trigger_automation
+            from apps.organizations.analytics_engine import AnalyticsEngine
+            
+            if is_new:
+                trigger_automation(self, 'issue_created', self.reporter)
+                AnalyticsEngine.record_metric(
+                    self.organization,
+                    'issue_count',
+                    1,
+                    {'project_id': self.project_id}
+                )
+            else:
+                trigger_automation(self, 'issue_updated', self.reporter)
+        except Exception:
+            pass
+
+class IssueComment(models.Model):
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'issue_comments'
+        ordering = ['created_at']
+
+class IssueLabel(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    name = models.CharField(max_length=50)
+    color = models.CharField(max_length=7, default='#4F46E5')
+    issues = models.ManyToManyField(Issue, related_name='labels')
+    
+    class Meta:
+        db_table = 'issue_labels'
+        unique_together = ['organization', 'name']
 
 class Blocker(models.Model):
     BLOCKER_TYPES = [
@@ -55,7 +230,6 @@ class Blocker(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
     
-    # External ticket linking
     ticket_url = models.URLField(blank=True)
     ticket_id = models.CharField(max_length=50, blank=True)
     
@@ -74,7 +248,6 @@ class Retrospective(models.Model):
     what_needs_improvement = models.JSONField(default=list)
     action_items = models.JSONField(default=list)
     
-    # AI-detected patterns
     recurring_issues = models.JSONField(default=list)
     positive_trends = models.JSONField(default=list)
     
@@ -107,3 +280,91 @@ class SprintUpdate(models.Model):
         indexes = [
             models.Index(fields=['organization', 'sprint', '-created_at']),
         ]
+
+
+class CodeCommit(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='commits', null=True, blank=True)
+    
+    commit_hash = models.CharField(max_length=40, db_index=True)
+    message = models.TextField()
+    author = models.CharField(max_length=255)
+    branch = models.CharField(max_length=255)
+    url = models.URLField()
+    
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        db_table = 'code_commits'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', 'issue', '-created_at']),
+        ]
+
+
+class PullRequest(models.Model):
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('approved', 'Approved'),
+        ('changes_requested', 'Changes Requested'),
+        ('merged', 'Merged'),
+        ('closed', 'Closed'),
+    ]
+    
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='pull_requests', null=True, blank=True)
+    
+    pr_number = models.IntegerField()
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    url = models.URLField()
+    
+    author = models.CharField(max_length=255)
+    reviewers = models.JSONField(default=list)
+    
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    merged_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'pull_requests'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', 'issue', 'status']),
+        ]
+
+class DecisionIssueLink(models.Model):
+    """Links decisions to issues they impact"""
+    from apps.decisions.models import Decision
+    decision = models.ForeignKey(Decision, on_delete=models.CASCADE, related_name='linked_issues')
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='linked_decisions')
+    impact_type = models.CharField(max_length=50, choices=[
+        ('blocks', 'Blocks'),
+        ('enables', 'Enables'),
+        ('relates_to', 'Relates To'),
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'decision_issue_links'
+        unique_together = ['decision', 'issue']
+
+class ConversationIssueLink(models.Model):
+    """Links conversations to issues they discuss"""
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='linked_issues')
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='linked_conversations')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'conversation_issue_links'
+        unique_together = ['conversation', 'issue']
+
+class BlockerIssueLink(models.Model):
+    """Links blockers to issues they block"""
+    blocker = models.ForeignKey(Blocker, on_delete=models.CASCADE, related_name='blocked_issues')
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='blocking_blockers')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'blocker_issue_links'
+        unique_together = ['blocker', 'issue']

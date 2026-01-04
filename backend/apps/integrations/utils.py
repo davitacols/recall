@@ -16,32 +16,40 @@ def post_to_slack(organization, message, blocks=None):
 
 def notify_decision_created(decision):
     """Notify Slack when decision is created"""
-    if not decision.organization.slack or not decision.organization.slack.post_decisions:
-        return
-    
-    message = f"*New Decision:* {decision.title}\n*Impact:* {decision.impact_level}\n*Owner:* {decision.decision_maker.get_full_name()}"
-    post_to_slack(decision.organization, message)
+    try:
+        slack = decision.organization.slack
+        if not slack or not slack.post_decisions:
+            return
+        message = f"*New Decision:* {decision.title}\n*Impact:* {decision.impact_level}\n*Owner:* {decision.decision_maker.get_full_name()}"
+        post_to_slack(decision.organization, message)
+    except:
+        pass
 
 def notify_blocker_created(blocker):
     """Notify Slack when blocker is reported"""
-    if not blocker.organization.slack or not blocker.organization.slack.post_blockers:
-        return
-    
-    message = f"🚧 *Blocker:* {blocker.title}\n*Type:* {blocker.blocker_type}\n*Reported by:* {blocker.blocked_by.get_full_name()}"
-    post_to_slack(blocker.organization, message)
+    try:
+        slack = blocker.organization.slack
+        if not slack or not slack.post_blockers:
+            return
+        message = f"🚧 *Blocker:* {blocker.title}\n*Type:* {blocker.blocker_type}\n*Reported by:* {blocker.blocked_by.get_full_name()}"
+        post_to_slack(blocker.organization, message)
+    except:
+        pass
 
 def post_sprint_summary(organization, summary):
     """Post sprint summary to Slack"""
-    if not organization.slack or not organization.slack.post_sprint_summary:
-        return
-    
-    message = f"*{summary['sprint_name']}* - {summary['days_remaining']} days left\n"
-    message += f"✅ {summary['completed']} completed | "
-    message += f"🔄 {summary['in_progress']} in progress | "
-    message += f"🚧 {summary['blocked']} blocked | "
-    message += f"📋 {summary['decisions_made']} decisions"
-    
-    post_to_slack(organization, message)
+    try:
+        slack = organization.slack
+        if not slack or not slack.post_sprint_summary:
+            return
+        message = f"*{summary['sprint_name']}* - {summary['days_remaining']} days left\n"
+        message += f"✅ {summary['completed']} completed | "
+        message += f"🔄 {summary['in_progress']} in progress | "
+        message += f"🚧 {summary['blocked']} blocked | "
+        message += f"📋 {summary['decisions_made']} decisions"
+        post_to_slack(organization, message)
+    except:
+        pass
 
 def fetch_github_pr(integration, pr_number):
     """Fetch PR details from GitHub"""

@@ -1,379 +1,356 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
-import Button from '../components/Button';
+import { CheckCircleIcon, ExclamationTriangleIcon, LinkIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
 function DecisionDetail() {
   const { id } = useParams();
   const [decision, setDecision] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showGithubSearch, setShowGithubSearch] = useState(false);
-  const [showJiraCreate, setShowJiraCreate] = useState(false);
-
-  useEffect(() => {
-    fetchDecision();
-  }, [id]);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showLinkPR, setShowLinkPR] = useState(false);
+  const [prUrl, setPrUrl] = useState('');
+  const [linking, setLinking] = useState(false);
 
   const fetchDecision = async () => {
     try {
       const res = await api.get(`/api/decisions/${id}/`);
       setDecision(res.data);
-      setLoading(false);
     } catch (error) {
       console.error('Failed to fetch decision:', error);
+    } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDecision();
+  }, [id]);
+
+  const handleLinkPR = async (e) => {
+    e.preventDefault();
+    if (!prUrl.trim()) return;
+    
+    setLinking(true);
+    try {
+      await api.post(`/api/decisions/${id}/link-pr/`, { pr_url: prUrl });
+      setPrUrl('');
+      setShowLinkPR(false);
+      fetchDecision();
+    } catch (error) {
+      console.error('Failed to link PR:', error);
+      alert('Failed to link PR');
+    } finally {
+      setLinking(false);
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!decision) {
-    return <div className="text-center py-8 text-gray-600">Decision not found</div>;
+    return <div className="text-center py-8 text-slate-600">Decision not found</div>;
   }
 
-  const impactColors = {
-    low: 'bg-blue-50 border-blue-200 text-blue-900',
-    medium: 'bg-yellow-50 border-yellow-200 text-yellow-900',
-    high: 'bg-orange-50 border-orange-200 text-orange-900',
-    critical: 'bg-red-50 border-red-200 text-red-900'
+  const impactConfig = {
+    low: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900', label: 'Low' },
+    medium: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-900', label: 'Medium' },
+    high: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-900', label: 'High' },
+    critical: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-900', label: 'Critical' }
   };
 
-  const statusColors = {
-    proposed: 'bg-gray-100 text-gray-800',
-    under_review: 'bg-blue-100 text-blue-800',
-    approved: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
-    implemented: 'bg-green-100 text-green-800',
-    cancelled: 'bg-gray-100 text-gray-800'
+  const statusConfig = {
+    proposed: { bg: 'bg-slate-100', text: 'text-slate-800', icon: '◯' },
+    under_review: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '◐' },
+    approved: { bg: 'bg-green-100', text: 'text-green-800', icon: '✓' },
+    rejected: { bg: 'bg-red-100', text: 'text-red-800', icon: '✕' },
+    implemented: { bg: 'bg-emerald-100', text: 'text-emerald-800', icon: '✓' },
+    cancelled: { bg: 'bg-slate-100', text: 'text-slate-800', icon: '−' }
   };
+
+  const impact = decision ? (impactConfig[decision.impact_level] || impactConfig.medium) : impactConfig.medium;
+  const status = decision ? (statusConfig[decision.status] || statusConfig.proposed) : statusConfig.proposed;
 
   return (
-    <div className="flex justify-center">
-      <div className="max-w-6xl w-full">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between mb-4">
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
-              <h1 className="text-4xl font-bold text-gray-900 mb-3">{decision.title}</h1>
+              <h1 className="text-4xl font-bold text-slate-900 mb-4">{decision.title}</h1>
               <div className="flex items-center gap-3 flex-wrap">
-                <span className={`px-3 py-1 text-sm font-medium border ${impactColors[decision.impact_level]}`}>
-                  {decision.impact_level.charAt(0).toUpperCase() + decision.impact_level.slice(1)} Impact
+                <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium border ${impact.bg} ${impact.border} ${impact.text}`}>
+                  <span className="w-2 h-2 rounded-full bg-current"></span>
+                  {impact.label} Impact
                 </span>
-                <span className={`px-3 py-1 text-sm font-medium ${statusColors[decision.status]}`}>
-                  {decision.status.replace('_', ' ').charAt(0).toUpperCase() + decision.status.replace('_', ' ').slice(1)}
+                <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium ${status.bg} ${status.text}`}>
+                  {status.icon} {decision.status.replace('_', ' ').charAt(0).toUpperCase() + decision.status.replace('_', ' ').slice(1)}
                 </span>
-                <span className="text-sm text-gray-600">By {decision.decision_maker_name}</span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-3 gap-8">
-          {/* Left Column - Main Content */}
-          <div className="col-span-2 space-y-6">
-            {/* Description */}
-            <section className="border border-gray-200 p-8">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Overview</h2>
-              <div className="prose prose-sm max-w-none text-gray-700 space-y-4">
-                {decision.description.split('\n\n').map((paragraph, idx) => (
-                  <div key={idx}>
-                    {paragraph.split('\n').map((line, lineIdx) => {
-                      if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
-                        return (
-                          <div key={lineIdx} className="flex gap-3 ml-4">
-                            <span className="text-gray-900 font-bold">•</span>
-                            <span>{line.replace(/^[-•]\s*/, '')}</span>
-                          </div>
-                        );
-                      }
-                      if (/^\d+\./.test(line.trim())) {
-                        return (
-                          <div key={lineIdx} className="flex gap-3 ml-4">
-                            <span className="text-gray-900 font-bold">{line.match(/^\d+/)[0]}.</span>
-                            <span>{line.replace(/^\d+\.\s*/, '')}</span>
-                          </div>
-                        );
-                      }
-                      return <p key={lineIdx} className="leading-relaxed">{line}</p>;
-                    })}
-                  </div>
-                ))}
+          {/* Metadata Bar */}
+          <div className="grid grid-cols-4 gap-4 pt-6 border-t border-slate-200">
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Owner</div>
+              <div className="text-sm font-medium text-slate-900">{decision.decision_maker_name}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Created</div>
+              <div className="text-sm font-medium text-slate-900">{new Date(decision.created_at).toLocaleDateString()}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Decided</div>
+              <div className="text-sm font-medium text-slate-900">
+                {decision.decided_at ? new Date(decision.decided_at).toLocaleDateString() : '−'}
               </div>
-            </section>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Confidence</div>
+              <div className="text-sm font-medium text-slate-900">{decision.confidence?.score || '−'}%</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Rationale */}
-            {decision.rationale && (
-              <section className="border border-gray-200 p-8">
-                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Rationale</h2>
-                <div className="prose prose-sm max-w-none text-gray-700 space-y-4">
-                  {decision.rationale.split('\n\n').map((paragraph, idx) => (
-                    <div key={idx}>
-                      {paragraph.split('\n').map((line, lineIdx) => {
-                        if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
-                          return (
-                            <div key={lineIdx} className="flex gap-3 ml-4">
-                              <span className="text-gray-900 font-bold">•</span>
-                              <span>{line.replace(/^[-•]\s*/, '')}</span>
-                            </div>
-                          );
-                        }
-                        if (/^\d+\./.test(line.trim())) {
-                          return (
-                            <div key={lineIdx} className="flex gap-3 ml-4">
-                              <span className="text-gray-900 font-bold">{line.match(/^\d+/)[0]}.</span>
-                              <span>{line.replace(/^\d+\.\s*/, '')}</span>
-                            </div>
-                          );
-                        }
-                        return <p key={lineIdx} className="leading-relaxed">{line}</p>;
-                      })}
-                    </div>
+      {/* Tabs */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-8">
+            {['overview', 'rationale', 'code', 'details'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === tab
+                    ? 'border-slate-900 text-slate-900'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="col-span-2">
+            {activeTab === 'overview' && (
+              <div className="bg-white rounded-lg border border-slate-200 p-8">
+                <h2 className="text-lg font-bold text-slate-900 mb-6">Overview</h2>
+                <div className="prose prose-sm max-w-none text-slate-700 space-y-4">
+                  {decision.description.split('\n\n').map((paragraph, idx) => (
+                    <p key={idx} className="leading-relaxed">{paragraph}</p>
                   ))}
                 </div>
-              </section>
+              </div>
             )}
 
-            {/* Code Links */}
-            <section className="border border-gray-200 p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Related Code</h2>
-                <button
-                  onClick={() => setShowGithubSearch(!showGithubSearch)}
-                  className="text-sm font-medium text-gray-900 border border-gray-900 px-3 py-1 hover:bg-gray-50 transition-colors"
-                >
-                  {showGithubSearch ? '−' : '+'} Link PR
-                </button>
-              </div>
-
-              {decision.code_links && decision.code_links.length > 0 ? (
-                <div className="space-y-3">
-                  {decision.code_links.map((link, idx) => (
-                    <a
-                      key={idx}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block p-4 border border-gray-200 hover:border-gray-900 transition-colors group"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900 group-hover:underline">
-                            {link.title || `PR #${link.number}`}
-                          </div>
-                          <div className="text-sm text-gray-600 mt-1">{link.url}</div>
-                        </div>
-                        <span className="text-xs text-gray-500 ml-2">→</span>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-600">
-                  <p className="text-sm">No linked PRs yet</p>
-                  <p className="text-xs text-gray-500 mt-1">Link PRs to track implementation</p>
-                </div>
-              )}
-
-              {showGithubSearch && <GitHubSearchPanel decisionId={id} onLinked={fetchDecision} onClose={() => setShowGithubSearch(false)} />}
-            </section>
-          </div>
-
-          {/* Right Column - Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Actions */}
-            <section className="border border-gray-200 p-6">
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Actions</h3>
-              <div className="space-y-2">
-                <button
-                  onClick={() => setShowGithubSearch(!showGithubSearch)}
-                  className="w-full px-4 py-2 text-sm font-medium border border-gray-900 text-gray-900 hover:bg-gray-50 transition-colors text-left"
-                >
-                  Link GitHub PR
-                </button>
-                <button
-                  onClick={() => setShowJiraCreate(!showJiraCreate)}
-                  className="w-full px-4 py-2 text-sm font-medium border border-gray-900 text-gray-900 hover:bg-gray-50 transition-colors text-left"
-                >
-                  Create Jira Issue
-                </button>
-              </div>
-            </section>
-
-            {/* Metadata */}
-            <section className="border border-gray-200 p-6">
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Details</h3>
-              <div className="space-y-4 text-sm">
-                <div>
-                  <div className="text-gray-600 mb-1">Status</div>
-                  <div className="font-medium text-gray-900">{decision.status.replace('_', ' ')}</div>
-                </div>
-                <div>
-                  <div className="text-gray-600 mb-1">Impact</div>
-                  <div className="font-medium text-gray-900">{decision.impact_level}</div>
-                </div>
-                <div>
-                  <div className="text-gray-600 mb-1">Owner</div>
-                  <div className="font-medium text-gray-900">{decision.decision_maker_name}</div>
-                </div>
-                <div>
-                  <div className="text-gray-600 mb-1">Created</div>
-                  <div className="font-medium text-gray-900">{new Date(decision.created_at).toLocaleDateString()}</div>
-                </div>
-              </div>
-            </section>
-
-            {/* Jira Integration */}
-            {showJiraCreate && <JiraCreatePanel decisionId={id} onCreated={fetchDecision} />}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GitHubSearchPanel({ decisionId, onLinked, onClose }) {
-  const [prs, setPrs] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [linking, setLinking] = useState(null);
-  const [manualUrl, setManualUrl] = useState('');
-
-  useEffect(() => {
-    handleSearch();
-  }, []);
-
-  const handleSearch = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/api/integrations/github/search/${decisionId}/`);
-      setPrs(res.data.prs);
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLinkPr = async (prUrl) => {
-    setLinking(prUrl);
-    try {
-      await api.post(`/api/integrations/github/link/${decisionId}/`, { pr_url: prUrl });
-      alert('PR linked successfully');
-      onLinked();
-      onClose();
-    } catch (error) {
-      alert('Failed to link PR');
-    } finally {
-      setLinking(null);
-    }
-  };
-
-  const handleManualSubmit = (e) => {
-    e.preventDefault();
-    if (manualUrl.trim()) {
-      handleLinkPr(manualUrl);
-      setManualUrl('');
-    }
-  };
-
-  return (
-    <div className="mt-6 p-6 bg-gray-50 border border-gray-200">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="font-medium text-gray-900">Link PR</h4>
-        <button onClick={onClose} className="text-gray-600 hover:text-gray-900">✕</button>
-      </div>
-
-      <div className="space-y-4">
-        {/* Manual URL Input */}
-        <form onSubmit={handleManualSubmit}>
-          <label className="block text-sm font-medium text-gray-900 mb-2">PR URL</label>
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={manualUrl}
-              onChange={(e) => setManualUrl(e.target.value)}
-              placeholder="https://github.com/owner/repo/pull/123"
-              className="flex-1 px-3 py-2 border border-gray-900 focus:outline-none text-sm"
-            />
-            <button
-              type="submit"
-              disabled={!manualUrl.trim()}
-              className="px-3 py-2 border border-gray-900 text-gray-900 font-medium hover:bg-gray-100 disabled:opacity-50 text-sm"
-            >
-              Link
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">Paste any PR URL directly</p>
-        </form>
-
-        {/* Search Results */}
-        <div className="border-t border-gray-200 pt-4">
-          <h5 className="text-sm font-medium text-gray-900 mb-2">Search Results</h5>
-          {loading ? (
-            <div className="text-sm text-gray-600 text-center py-4">Searching GitHub...</div>
-          ) : prs.length > 0 ? (
-            <div className="space-y-2">
-              {prs.map(pr => (
-                <div key={pr.number} className="flex items-start justify-between p-3 bg-white border border-gray-200 hover:border-gray-900 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">{pr.title}</div>
-                    <div className="text-xs text-gray-600 mt-1">#{pr.number} · {pr.state}</div>
+            {activeTab === 'rationale' && (
+              <div className="bg-white rounded-lg border border-slate-200 p-8">
+                <h2 className="text-lg font-bold text-slate-900 mb-6">Rationale</h2>
+                {decision.rationale ? (
+                  <div className="prose prose-sm max-w-none text-slate-700 space-y-4">
+                    {decision.rationale.split('\n\n').map((paragraph, idx) => (
+                      <p key={idx} className="leading-relaxed">{paragraph}</p>
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-slate-600">No rationale provided</p>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'code' && (
+              <div className="bg-white rounded-lg border border-slate-200 p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-bold text-slate-900">Related Code</h2>
                   <button
-                    onClick={() => handleLinkPr(pr.url)}
-                    disabled={linking === pr.url}
-                    className="ml-2 px-2 py-1 text-xs border border-gray-900 text-gray-900 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
+                    onClick={() => setShowLinkPR(!showLinkPR)}
+                    className="px-3 py-1 text-sm font-medium border border-slate-900 text-slate-900 hover:bg-slate-50 transition-colors"
                   >
-                    {linking === pr.url ? 'Linking...' : 'Link'}
+                    {showLinkPR ? '−' : '+'} Link PR
                   </button>
                 </div>
-              ))}
+
+                {showLinkPR && (
+                  <form onSubmit={handleLinkPR} className="mb-6 p-4 bg-slate-50 border border-slate-200">
+                    <label className="block text-sm font-medium text-slate-900 mb-2">PR URL</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={prUrl}
+                        onChange={(e) => setPrUrl(e.target.value)}
+                        placeholder="https://github.com/owner/repo/pull/123"
+                        className="flex-1 px-3 py-2 border border-slate-300 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!prUrl.trim() || linking}
+                        className="px-4 py-2 bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50 text-sm"
+                      >
+                        {linking ? 'Linking...' : 'Link'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {decision.code_links && decision.code_links.length > 0 ? (
+                  <div className="space-y-3">
+                    {decision.code_links.map((link, idx) => (
+                      <a
+                        key={idx}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-slate-900 hover:bg-slate-50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <LinkIcon className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <div className="font-medium text-slate-900 group-hover:underline truncate">
+                              {link.title || `PR #${link.number}`}
+                            </div>
+                            <div className="text-xs text-slate-500 truncate">{link.url}</div>
+                          </div>
+                        </div>
+                        <span className="text-slate-400 group-hover:text-slate-900 ml-2">→</span>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <LinkIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-600 font-medium">No linked PRs</p>
+                    <p className="text-sm text-slate-500 mt-1">Link PRs to track implementation</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'details' && (
+              <div className="space-y-6">
+                {decision.context_reason && (
+                  <div className="bg-white rounded-lg border border-slate-200 p-8">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">Context</h3>
+                    <p className="text-slate-700">{decision.context_reason}</p>
+                  </div>
+                )}
+
+                {decision.if_this_fails && (
+                  <div className="bg-red-50 rounded-lg border border-red-200 p-8">
+                    <div className="flex gap-3">
+                      <ExclamationTriangleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="text-sm font-bold text-red-900 uppercase tracking-wide mb-2">If This Fails</h3>
+                        <p className="text-red-800">{decision.if_this_fails}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {decision.alternatives_considered && decision.alternatives_considered.length > 0 && (
+                  <div className="bg-white rounded-lg border border-slate-200 p-8">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">Alternatives Considered</h3>
+                    <ul className="space-y-2">
+                      {(Array.isArray(decision.alternatives_considered) ? decision.alternatives_considered : [decision.alternatives_considered]).map((alt, idx) => (
+                        <li key={idx} className="flex gap-3 text-slate-700">
+                          <span className="text-slate-400 flex-shrink-0">•</span>
+                          <span>{alt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Confidence Score */}
+            {decision.confidence && (
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">Confidence</h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-end justify-between mb-2">
+                      <span className="text-2xl font-bold text-slate-900">{decision.confidence.score}%</span>
+                      <span className={`text-xs font-semibold px-2 py-1 rounded ${
+                        decision.confidence.level === 'High' ? 'bg-green-100 text-green-800' :
+                        decision.confidence.level === 'Medium' ? 'bg-amber-100 text-amber-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {decision.confidence.level}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all ${
+                          decision.confidence.level === 'High' ? 'bg-green-500' :
+                          decision.confidence.level === 'Medium' ? 'bg-amber-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${decision.confidence.score}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  {decision.confidence.factors && (
+                    <div className="pt-4 border-t border-slate-200 space-y-2">
+                      {decision.confidence.factors.map((factor, idx) => (
+                        <div key={idx} className="text-xs text-slate-600">
+                          <span className="text-slate-400">•</span> {factor}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Info */}
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">Quick Info</h3>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Status</div>
+                  <div className={`inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium ${status.bg} ${status.text}`}>
+                    {status.icon} {decision.status.replace('_', ' ')}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Impact Level</div>
+                  <div className={`inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium ${impact.bg} ${impact.border} ${impact.text}`}>
+                    {impact.label}
+                  </div>
+                </div>
+                {decision.implementation_deadline && (
+                  <div>
+                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Deadline</div>
+                    <div className="flex items-center gap-2 text-sm text-slate-700">
+                      <CalendarIcon className="w-4 h-4 text-slate-400" />
+                      {new Date(decision.implementation_deadline).toLocaleDateString()}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-4 text-gray-600">
-              <p className="text-sm">No PRs found matching this decision</p>
-              <p className="text-xs text-gray-500 mt-1">Paste URL above to link manually</p>
-            </div>
-          )}
+
+          </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function JiraCreatePanel({ decisionId, onCreated }) {
-  const [creating, setCreating] = useState(false);
-
-  const handleCreateIssue = async () => {
-    if (!window.confirm('Create a Jira issue for this decision?')) return;
-    
-    setCreating(true);
-    try {
-      const res = await api.post(`/api/integrations/jira/create/${decisionId}/`);
-      alert(`Jira issue created: ${res.data.ticket_id}`);
-      window.open(res.data.ticket_url, '_blank');
-      onCreated();
-    } catch (error) {
-      alert('Failed to create Jira issue: ' + (error.response?.data?.error || error.message));
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  return (
-    <section className="border border-gray-200 p-6 bg-blue-50">
-      <h3 className="text-sm font-bold text-gray-900 mb-3">Create Jira Issue</h3>
-      <p className="text-sm text-gray-700 mb-4">Create a Jira issue to track implementation of this decision</p>
-      <Button onClick={handleCreateIssue} loading={creating} className="w-full">
-        Create Issue
-      </Button>
-    </section>
   );
 }
 

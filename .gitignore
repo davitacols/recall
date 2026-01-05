@@ -17,6 +17,8 @@ db.sqlite3
 media/
 staticfiles/
 .env
+.env.production
+.env.local
 *.pot
 
 # Node

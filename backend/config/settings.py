@@ -8,7 +8,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 if not DEBUG:
-    ALLOWED_HOSTS.append('.vercel.app')
+    ALLOWED_HOSTS.extend(['.onrender.com', '.vercel.app'])
 
 # Security Settings
 SECURE_BROWSER_XSS_FILTER = True
@@ -131,9 +131,9 @@ FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 CHROMA_PERSIST_DIRECTORY = config('CHROMA_PERSIST_DIRECTORY', default='./chroma_db')
 
 # Model Cache Directories
-HUGGINGFACE_HUB_CACHE = config('HUGGINGFACE_HUB_CACHE', default='D:\\huggingface_cache')
-TRANSFORMERS_CACHE = config('TRANSFORMERS_CACHE', default='D:\\transformers_cache')
-TEMP_DIR = config('TEMP_DIR', default='D:\\temp')
+HUGGINGFACE_HUB_CACHE = config('HUGGINGFACE_HUB_CACHE', default='D:\\\\huggingface_cache')
+TRANSFORMERS_CACHE = config('TRANSFORMERS_CACHE', default='D:\\\\transformers_cache')
+TEMP_DIR = config('TEMP_DIR', default='D:\\\\temp')
 
 os.environ['HUGGINGFACE_HUB_CACHE'] = HUGGINGFACE_HUB_CACHE
 os.environ['TRANSFORMERS_CACHE'] = TRANSFORMERS_CACHE
@@ -141,8 +141,15 @@ os.environ['TMPDIR'] = TEMP_DIR
 os.environ['TEMP'] = TEMP_DIR
 os.environ['TMP'] = TEMP_DIR
 
+# CORS Configuration
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000').split(',')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS]
+
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS.extend([
+        'https://recall-frontend.onrender.com',
+        'https://recall.dev',
+    ])
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = DEBUG

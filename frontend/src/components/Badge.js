@@ -1,51 +1,39 @@
 import React from 'react';
 import { colors, spacing } from '../utils/designTokens';
 
-function Badge({ children, variant = 'default', style = {} }) {
+function Badge({ 
+  children, 
+  variant = 'default',
+  size = 'md'
+}) {
   const variants = {
-    default: {
-      backgroundColor: '#F3F4F6',
-      color: '#6B7280',
-      border: '1px solid #E5E7EB',
-    },
-    decision: {
-      backgroundColor: '#F1F5F9',
-      color: colors.decision,
-      border: `1px solid ${colors.decision}`,
-    },
-    question: {
-      backgroundColor: '#FFFBEB',
-      color: colors.question,
-      border: `1px solid ${colors.question}`,
-    },
-    success: {
-      backgroundColor: '#F0FDF4',
-      color: colors.success,
-      border: `1px solid ${colors.success}`,
-    },
-    critical: {
-      backgroundColor: '#FEF2F2',
-      color: colors.critical,
-      border: `1px solid ${colors.critical}`,
-    },
-    intelligence: {
-      backgroundColor: colors.aiTint,
-      color: colors.intelligence,
-      border: `1px solid #DBEAFE`,
-    }
+    default: { bg: colors.background, text: colors.primary, border: colors.border },
+    success: { bg: colors.successLight, text: colors.success, border: colors.success },
+    warning: { bg: colors.warningLight, text: colors.warning, border: colors.warning },
+    critical: { bg: colors.criticalLight, text: colors.critical, border: colors.critical },
+    accent: { bg: colors.accentLight, text: colors.accent, border: colors.accent }
   };
 
-  const style_obj = variants[variant] || variants.default;
+  const sizes = {
+    sm: { padding: `${spacing.xs} ${spacing.sm}`, fontSize: '12px' },
+    md: { padding: `${spacing.xs} ${spacing.md}`, fontSize: '13px' },
+    lg: { padding: `${spacing.sm} ${spacing.lg}`, fontSize: '14px' }
+  };
+
+  const variantStyle = variants[variant];
+  const sizeStyle = sizes[size];
 
   return (
     <span style={{
-      display: 'inline-block',
-      padding: `${spacing.sm} ${spacing.md}`,
-      fontSize: '12px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      ...sizeStyle,
+      backgroundColor: variantStyle.bg,
+      color: variantStyle.text,
+      border: `1px solid ${variantStyle.border}`,
+      borderRadius: '6px',
       fontWeight: 500,
-      borderRadius: '4px',
-      ...style_obj,
-      ...style
+      whiteSpace: 'nowrap'
     }}>
       {children}
     </span>

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './components/Toast';
 import { useKeyboardShortcuts, CommandPalette } from './hooks/useKeyboardShortcuts';
+import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout.js';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -40,9 +41,22 @@ import Proposals from './pages/Proposals';
 import Analytics from './pages/Analytics';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
-import KanbanBoard from './pages/KanbanBoard';
+import ProjectRoadmap from './pages/ProjectRoadmap';
+import KanbanBoard from './pages/KanbanBoardFull';
 import ProjectManagement from './pages/ProjectManagement';
-import './index.css';
+import TeamManagement from './pages/TeamManagement';
+import AutomationRules from './pages/AutomationRules';
+import Workflows from './pages/Workflows';
+import Reports from './pages/Reports';
+import Dashboards from './pages/Dashboards';
+import APIKeys from './pages/APIKeys';
+import AuditLogs from './pages/AuditLogs';
+import DataExport from './pages/DataExport';
+import AccountSettings from './pages/AccountSettings';
+import IntegrationManagement from './pages/IntegrationManagement';
+import DecisionProposals from './pages/DecisionProposals';
+import KnowledgeBase from './pages/KnowledgeBase';
+import Messages from './pages/Messages';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
@@ -334,6 +348,111 @@ function AppContent() {
             </Layout>
           </ProtectedRoute>
         } />
+        <Route path="/projects/:projectId/roadmap" element={
+          <ProtectedRoute>
+            <Layout>
+              <ProjectRoadmap />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/team" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <TeamManagement />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/automation" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <AutomationRules />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/workflows" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <Workflows />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/reports" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <Reports />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboards" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <Dashboards />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/api-keys" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <APIKeys />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/audit-logs" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <AuditLogs />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/export" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <DataExport />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/account-settings" element={
+          <ProtectedRoute>
+            <Layout>
+              <AccountSettings />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/integrations-manage" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <IntegrationManagement />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/decision-proposals" element={
+          <ProtectedRoute>
+            <Layout>
+              <DecisionProposals />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/knowledge-base" element={
+          <ProtectedRoute>
+            <Layout>
+              <KnowledgeBase />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/messages" element={
+          <ProtectedRoute>
+            <Layout>
+              <Messages />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/messages/:userId" element={
+          <ProtectedRoute>
+            <Layout>
+              <Messages />
+            </Layout>
+          </ProtectedRoute>
+        } />
       </Routes>
     </>
   );
@@ -341,13 +460,15 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </ToastProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

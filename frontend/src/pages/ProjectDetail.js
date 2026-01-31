@@ -1,40 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
-import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
-import { ChevronRightIcon, UserGroupIcon, PlusIcon, CheckCircleIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
-import SprintRoadmap from '../components/SprintRoadmap';
 
 function ProjectDetail() {
   const { projectId } = useParams();
-  const navigate = useNavigate();
   const [project, setProject] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [teamMembers, setTeamMembers] = useState([]);
   const [sprints, setSprints] = useState([]);
-  const [showSprintForm, setShowSprintForm] = useState(false);
-  const [sprintData, setSprintData] = useState({ name: '', goal: '' });
-  const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [integrations, setIntegrations] = useState([]);
-  const [showGitHubForm, setShowGitHubForm] = useState(false);
-  const [githubData, setGithubData] = useState({ repo_url: '', github_token: '' });
-  const [githubLoading, setGithubLoading] = useState(false);
-  const [githubSuccess, setGithubSuccess] = useState(false);
-  const [githubActivity, setGithubActivity] = useState([]);
-  const [activityLoading, setActivityLoading] = useState(false);
+  const [issues, setIssues] = useState([]);
+  const [boards, setBoards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('sprints');
+  const [showCreateSprint, setShowCreateSprint] = useState(false);
+  const [showCreateIssue, setShowCreateIssue] = useState(false);
+  const [sprintForm, setSprintForm] = useState({ name: '', start_date: '', end_date: '', goal: '' });
+  const [issueForm, setIssueForm] = useState({ title: '', description: '', priority: 'medium', sprint_id: '', assignee_id: '' });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreatingSprint, setIsCreatingSprint] = useState(false);
+  const [isCreatingIssue, setIsCreatingIssue] = useState(false);
 
   useEffect(() => {
     fetchProject();
-    fetchTeamMembers();
-    fetchSprints();
-    fetchIntegrations();
   }, [projectId]);
 
   const fetchProject = async () => {
     try {
-      const response = await api.get(`/api/agile/projects/${projectId}/`);
-      setProject(response.data);
+      const [projectRes, sprintsRes, issuesRes] = await Promise.all([
+        api.get(`/api/agile/projects/${projectId}/`),
+        api.get(`/api/agile/projects/${projectId}/sprints/`),
+        api.get(`/api/agile/projects/${projectId}/issues/`)
+      ]);
+      setProject(projectRes.data);
+      setSprints(sprintsRes.data);
+      setIssues(issuesRes.data);
+      setBoards(projectRes.data.boards || []);
     } catch (error) {
       console.error('Failed to fetch project:', error);
     } finally {
@@ -42,612 +42,284 @@ function ProjectDetail() {
     }
   };
 
-  const fetchTeamMembers = async () => {
-    try {
-      const response = await api.get('/api/auth/team/');
-      setTeamMembers(response.data);
-    } catch (error) {
-      console.error('Failed to fetch team members:', error);
-    }
-  };
-
-  const fetchSprints = async () => {
-    try {
-      const response = await api.get(`/api/agile/projects/${projectId}/sprints/`);
-      setSprints(response.data);
-    } catch (error) {
-      console.error('Failed to fetch sprints:', error);
-      setSprints([]);
-    }
-  };
-
-  const fetchIntegrations = async () => {
-    try {
-      const response = await api.get('/api/integrations/list/');
-      console.log('Integrations response:', response.data);
-      setIntegrations(response.data);
-    } catch (error) {
-      console.error('Failed to fetch integrations:', error);
-    }
-  };
-
-  const fetchGitHubActivity = async () => {
-    setActivityLoading(true);
-    try {
-      const response = await api.get('/api/integrations/github/activity/');
-      console.log('GitHub activity response:', response.data);
-      setGithubActivity(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch GitHub activity:', error);
-      setGithubActivity([]);
-    } finally {
-      setActivityLoading(false);
-    }
-  };
-
   const handleCreateSprint = async (e) => {
     e.preventDefault();
-    if (!sprintData.name.trim()) return;
-    
-    setSubmitting(true);
+    setIsCreatingSprint(true);
     try {
-      await api.post(`/api/agile/projects/${projectId}/sprints/`, sprintData);
-      setShowSprintForm(false);
-      setSprintData({ name: '', goal: '' });
-      fetchSprints();
+      await api.post(`/api/agile/projects/${projectId}/sprints/`, sprintForm);
+      setShowCreateSprint(false);
+      setSprintForm({ name: '', start_date: '', end_date: '', goal: '' });
+      fetchProject();
     } catch (error) {
       console.error('Failed to create sprint:', error);
     } finally {
-      setSubmitting(false);
+      setIsCreatingSprint(false);
     }
   };
 
-  const handleConnectGitHub = async (e) => {
+  const handleCreateIssue = async (e) => {
     e.preventDefault();
-    setGithubLoading(true);
+    setIsCreatingIssue(true);
     try {
-      await api.post('/api/integrations/github/connect/', githubData);
-      setGithubSuccess(true);
-      setTimeout(() => {
-        setShowGitHubForm(false);
-        setGithubData({ repo_url: '', github_token: '' });
-        setGithubSuccess(false);
-        fetchIntegrations();
-      }, 1500);
+      await api.post(`/api/agile/projects/${projectId}/issues/`, issueForm);
+      setShowCreateIssue(false);
+      setIssueForm({ title: '', description: '', priority: 'medium', sprint_id: '', assignee_id: '' });
+      fetchProject();
     } catch (error) {
-      console.error('Failed to connect GitHub:', error);
+      console.error('Failed to create issue:', error);
     } finally {
-      setGithubLoading(false);
+      setIsCreatingIssue(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    setIsDeleting(true);
+    try {
+      await api.delete(`/api/agile/projects/${projectId}/delete/`);
+      window.location.href = '/projects';
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      setIsDeleting(false);
     }
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #E5E7EB', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <div className="flex items-center justify-center h-96">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
       </div>
     );
   }
 
   if (!project) {
-    return <div>Project not found</div>;
+    return (
+      <div className="text-center py-20">
+        <h2 className="text-4xl font-black text-gray-900 mb-4">Project not found</h2>
+      </div>
+    );
   }
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'integrations', label: 'Integrations' },
-    ...(integrations.length > 0 ? [{ id: 'activity', label: 'GitHub Activity' }] : [])
-  ];
-
   return (
-    <div style={{ display: 'flex', gap: spacing.xl }}>
-      {/* Sidebar */}
-      <div style={{
-        width: '280px',
-        backgroundColor: colors.background,
-        borderRadius: radius.md,
-        border: `1px solid ${colors.border}`,
-        padding: spacing.lg,
-        height: 'fit-content',
-        position: 'sticky',
-        top: '100px'
-      }}>
-        <div style={{ marginBottom: spacing.xl }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            backgroundColor: colors.primary,
-            borderRadius: radius.md,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: colors.surface,
-            fontWeight: 700,
-            fontSize: '20px',
-            marginBottom: spacing.md
-          }}>
-            {project.key.charAt(0)}
-          </div>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: colors.primary, marginBottom: '4px' }}>
-            {project.name}
-          </h2>
-          <p style={{ fontSize: '12px', color: colors.secondary }}>
-            {project.key}
-          </p>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: spacing.sm,
-          marginBottom: spacing.xl,
-          paddingBottom: spacing.lg,
-          borderBottom: `1px solid ${colors.border}`
-        }}>
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: 700, color: colors.primary }}>
-              {project.issue_count}
-            </div>
-            <div style={{ fontSize: '11px', color: colors.secondary, textTransform: 'uppercase' }}>
-              Issues
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: 700, color: colors.primary }}>
-              {project.boards.length}
-            </div>
-            <div style={{ fontSize: '11px', color: colors.secondary, textTransform: 'uppercase' }}>
-              Boards
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginBottom: spacing.xl }}>
-          <h3 style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, textTransform: 'uppercase', marginBottom: spacing.md }}>
-            Boards
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
-            {project.boards.map((board) => (
-              <Link
-                key={board.id}
-                to={`/boards/${board.id}`}
-                style={{
-                  padding: spacing.md,
-                  backgroundColor: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  fontSize: '13px',
-                  color: colors.primary,
-                  textDecoration: 'none',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  transition: motion.fast,
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = colors.background;
-                  e.currentTarget.style.borderColor = colors.primary;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = colors.surface;
-                  e.currentTarget.style.borderColor = colors.border;
-                }}
-              >
-                <span>{board.name}</span>
-                <ChevronRightIcon style={{ width: '14px', height: '14px', color: colors.secondary }} />
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h3 style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, textTransform: 'uppercase', marginBottom: spacing.md, display: 'flex', alignItems: 'center', gap: spacing.sm }}>
-            <UserGroupIcon style={{ width: '14px', height: '14px' }} />
-            Team
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
-            {teamMembers.slice(0, 5).map((member) => (
-              <div
-                key={member.id}
-                style={{
-                  padding: spacing.md,
-                  backgroundColor: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  fontSize: '13px',
-                  color: colors.primary,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: spacing.sm
-                }}
-              >
-                <div style={{
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '50%',
-                  backgroundColor: colors.primary,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: colors.surface,
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  flexShrink: 0
-                }}>
-                  {member.full_name?.charAt(0).toUpperCase()}
-                </div>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {member.full_name}
-                </span>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+        {/* Header */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gray-900 flex items-center justify-center text-white font-black text-2xl">
+                {project.key.charAt(0)}
               </div>
-            ))}
+              <div>
+                <h1 className="text-5xl font-black text-gray-900 mb-2">{project.name}</h1>
+                <p className="text-lg text-gray-600 font-light">{project.key}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-3 hover:bg-red-50 text-red-600 transition-all"
+              title="Delete project"
+            >
+              <TrashIcon className="w-6 h-6" />
+            </button>
           </div>
+          {project.description && (
+            <p className="text-lg text-gray-600 font-light max-w-2xl">{project.description}</p>
+          )}
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div style={{ flex: 1 }}>
-        <div style={{ marginBottom: spacing.xl }}>
-          <Link to="/projects" style={{ color: colors.secondary, textDecoration: 'none', fontSize: '14px', marginBottom: spacing.md, display: 'inline-block' }}>
-            Back to Projects
-          </Link>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: colors.primary, marginBottom: spacing.md }}>
-            {project.name}
-          </h1>
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-6 mb-12">
+          <div className="p-6 bg-white border border-gray-200 text-center">
+            <p className="text-3xl font-black text-gray-900 mb-2">{project.issue_count}</p>
+            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Total Issues</p>
+          </div>
+          <div className="p-6 bg-white border border-gray-200 text-center">
+            <p className="text-3xl font-black text-green-600 mb-2">{project.completed_issues}</p>
+            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Completed</p>
+          </div>
+          <div className="p-6 bg-white border border-gray-200 text-center">
+            <p className="text-3xl font-black text-amber-600 mb-2">{project.active_issues}</p>
+            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Active</p>
+          </div>
+          <div className="p-6 bg-white border border-gray-200 text-center">
+            <p className="text-3xl font-black text-gray-900 mb-2">{sprints.length}</p>
+            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Sprints</p>
+          </div>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: spacing.lg, marginBottom: spacing.xl, borderBottom: `1px solid ${colors.border}`, paddingBottom: spacing.md }}>
-          {tabs.map((tab) => (
+        <div className="flex gap-4 mb-8 border-b border-gray-200">
+          {['sprints', 'issues', 'roadmap'].map(tab => (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: `${spacing.sm} 0`,
-                backgroundColor: 'transparent',
-                border: 'none',
-                borderBottom: activeTab === tab.id ? `2px solid ${colors.primary}` : 'none',
-                color: activeTab === tab.id ? colors.primary : colors.secondary,
-                fontSize: '14px',
-                fontWeight: activeTab === tab.id ? 600 : 500,
-                cursor: 'pointer',
-                transition: motion.fast
-              }}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-4 font-bold uppercase text-sm transition-all border-b-2 ${
+                activeTab === tab
+                  ? 'border-gray-900 text-gray-900'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
             >
-              {tab.label}
+              {tab}
             </button>
           ))}
         </div>
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <>
-            <div style={{ marginBottom: spacing.xl }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary }}>
-                  Sprints
-                </h2>
-                <button
-                  onClick={() => setShowSprintForm(true)}
-                  style={{
-                    padding: `${spacing.sm} ${spacing.md}`,
-                    backgroundColor: colors.primary,
-                    color: colors.surface,
-                    border: 'none',
-                    borderRadius: radius.md,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: spacing.sm,
-                    fontWeight: 500,
-                    fontSize: '13px',
-                    transition: motion.fast
-                  }}
-                >
-                  <PlusIcon style={{ width: '16px', height: '16px' }} />
-                  New Sprint
-                </button>
-              </div>
-
-              {showSprintForm && (
-                <div style={{
-                  padding: spacing.lg,
-                  backgroundColor: colors.background,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  marginBottom: spacing.lg
-                }}>
-                  <form onSubmit={handleCreateSprint} style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}>
-                    <div>
-                      <label style={{ fontSize: '13px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-                        Sprint Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={sprintData.name}
-                        onChange={(e) => setSprintData({ ...sprintData, name: e.target.value })}
-                        placeholder="e.g., Sprint 1"
-                        style={{
-                          width: '100%',
-                          padding: `${spacing.sm} ${spacing.md}`,
-                          border: `1px solid ${colors.border}`,
-                          borderRadius: radius.md,
-                          fontSize: '13px',
-                          boxSizing: 'border-box'
-                        }}
-                        disabled={submitting}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', gap: spacing.md, justifyContent: 'flex-end' }}>
-                      <button
-                        type="button"
-                        onClick={() => setShowSprintForm(false)}
-                        disabled={submitting}
-                        style={{
-                          padding: `${spacing.sm} ${spacing.md}`,
-                          backgroundColor: colors.surface,
-                          color: colors.primary,
-                          border: `1px solid ${colors.border}`,
-                          borderRadius: radius.md,
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 500
-                        }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={submitting}
-                        style={{
-                          padding: `${spacing.sm} ${spacing.md}`,
-                          backgroundColor: colors.primary,
-                          color: colors.surface,
-                          border: 'none',
-                          borderRadius: radius.md,
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 500
-                        }}
-                      >
-                        {submitting ? 'Creating...' : 'Create Sprint'}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {sprints.length === 0 ? (
-                <div style={{
-                  padding: spacing.lg,
-                  backgroundColor: colors.background,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  textAlign: 'center',
-                  color: colors.secondary,
-                  fontSize: '14px'
-                }}>
-                  No sprints yet. Create one to start planning.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}>
-                  {sprints.map((sprint) => (
-                    <div
-                      key={sprint.id}
-                      onClick={() => navigate(`/sprints/${sprint.id}`)}
-                      style={{
-                        padding: spacing.lg,
-                        backgroundColor: colors.surface,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: radius.md,
-                        cursor: 'pointer',
-                        transition: motion.fast
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = colors.primary;
-                        e.currentTarget.style.boxShadow = shadows.sm;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = colors.border;
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: colors.primary }}>
-                        {sprint.name}
-                      </h3>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <SprintRoadmap projectId={projectId} />
-          </>
-        )}
-
-        {/* Integrations Tab */}
-        {activeTab === 'integrations' && (
+        {/* Sprints Tab */}
+        {activeTab === 'sprints' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary }}>
-                Integrations
-              </h2>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-black text-gray-900">Sprints</h2>
               <button
-                onClick={() => setShowGitHubForm(true)}
-                style={{
-                  padding: `${spacing.sm} ${spacing.md}`,
-                  backgroundColor: colors.primary,
-                  color: colors.surface,
-                  border: 'none',
-                  borderRadius: radius.md,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: spacing.sm,
-                  fontWeight: 500,
-                  fontSize: '13px',
-                  transition: motion.fast
-                }}
+                onClick={() => setShowCreateSprint(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
               >
-                <PlusIcon style={{ width: '16px', height: '16px' }} />
-                Connect GitHub
+                <PlusIcon className="w-4 h-4" />
+                New Sprint
               </button>
             </div>
 
-            {showGitHubForm && (
-              <div style={{
-                padding: spacing.lg,
-                backgroundColor: colors.background,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                marginBottom: spacing.lg
-              }}>
-                {githubSuccess ? (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: spacing.md,
-                    padding: spacing.lg,
-                    backgroundColor: '#ECFDF5',
-                    border: '1px solid #D1FAE5',
-                    borderRadius: radius.md,
-                    color: '#065F46'
-                  }}>
-                    <CheckCircleIcon style={{ width: '20px', height: '20px', flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '14px' }}>GitHub Connected!</div>
-                      <div style={{ fontSize: '13px', marginTop: '4px' }}>
-                        {githubData.repo_url} is now connected
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleConnectGitHub} style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}>
-                    <div>
-                      <label style={{ fontSize: '13px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-                        Repository URL *
-                      </label>
-                      <input
-                        type="text"
-                        value={githubData.repo_url}
-                        onChange={(e) => setGithubData({ ...githubData, repo_url: e.target.value })}
-                        placeholder="e.g., username/repo-name"
-                        style={{
-                          width: '100%',
-                          padding: `${spacing.sm} ${spacing.md}`,
-                          border: `1px solid ${colors.border}`,
-                          borderRadius: radius.md,
-                          fontSize: '13px',
-                          boxSizing: 'border-box'
-                        }}
-                        disabled={githubLoading}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '13px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-                        GitHub Token *
-                      </label>
-                      <input
-                        type="password"
-                        value={githubData.github_token}
-                        onChange={(e) => setGithubData({ ...githubData, github_token: e.target.value })}
-                        placeholder="ghp_xxxxx"
-                        style={{
-                          width: '100%',
-                          padding: `${spacing.sm} ${spacing.md}`,
-                          border: `1px solid ${colors.border}`,
-                          borderRadius: radius.md,
-                          fontSize: '13px',
-                          boxSizing: 'border-box'
-                        }}
-                        disabled={githubLoading}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', gap: spacing.md, justifyContent: 'flex-end' }}>
-                      <button
-                        type="button"
-                        onClick={() => setShowGitHubForm(false)}
-                        disabled={githubLoading}
-                        style={{
-                          padding: `${spacing.sm} ${spacing.md}`,
-                          backgroundColor: colors.surface,
-                          color: colors.primary,
-                          border: `1px solid ${colors.border}`,
-                          borderRadius: radius.md,
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 500
-                        }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={githubLoading}
-                        style={{
-                          padding: `${spacing.sm} ${spacing.md}`,
-                          backgroundColor: colors.primary,
-                          color: colors.surface,
-                          border: 'none',
-                          borderRadius: radius.md,
-                          cursor: githubLoading ? 'not-allowed' : 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: spacing.sm,
-                          opacity: githubLoading ? 0.6 : 1
-                        }}
-                      >
-                        {githubLoading && (
-                          <div style={{
-                            width: '12px',
-                            height: '12px',
-                            border: '2px solid white',
-                            borderTop: '2px solid transparent',
-                            borderRadius: '50%',
-                            animation: 'spin 0.6s linear infinite'
-                          }} />
-                        )}
-                        {githubLoading ? 'Connecting...' : 'Connect'}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            )}
-
-            {integrations.length === 0 ? (
-              <div style={{
-                padding: spacing.lg,
-                backgroundColor: colors.background,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                textAlign: 'center',
-                color: colors.secondary,
-                fontSize: '14px'
-              }}>
-                No integrations connected yet.
+            {sprints.length === 0 ? (
+              <div className="p-8 bg-white border border-gray-200 text-center">
+                <p className="text-gray-600 mb-6">No sprints yet</p>
+                <button
+                  onClick={() => setShowCreateSprint(true)}
+                  className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+                >
+                  Create First Sprint
+                </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}>
-                {integrations.map((integration) => (
-                  <div
-                    key={integration.id}
-                    style={{
-                      padding: spacing.lg,
-                      backgroundColor: colors.surface,
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: radius.md
-                    }}
+              <div className="space-y-4">
+                {sprints.map(sprint => (
+                  <Link
+                    key={sprint.id}
+                    to={`/sprints/${sprint.id}`}
+                    className="block p-6 bg-white border border-gray-200 hover:border-gray-900 hover:shadow-md transition-all"
                   >
-                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: colors.primary, marginBottom: spacing.sm }}>
-                      {integration.name}
-                    </h3>
-                    <p style={{ fontSize: '13px', color: colors.secondary }}>
-                      Type: {integration.type}
-                    </p>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">{sprint.name}</h3>
+                        <p className="text-sm text-gray-600">{sprint.start_date} to {sprint.end_date}</p>
+                        {sprint.goal && <p className="text-sm text-gray-600 mt-2 italic">{sprint.goal}</p>}
+                      </div>
+                      <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                        sprint.status === 'active' ? 'bg-green-100 text-green-700' :
+                        sprint.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {sprint.status}
+                      </span>
+                    </div>
+                    <div className="flex gap-6 text-sm text-gray-600">
+                      <span>{sprint.issue_count} issues</span>
+                      <span>{sprint.completed_count} completed</span>
+                      {sprint.blocked_count > 0 && <span className="text-red-600">{sprint.blocked_count} blocked</span>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Issues Tab */}
+        {activeTab === 'issues' && (
+          <div>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-black text-gray-900">Issues</h2>
+              <div className="flex gap-4">
+                {boards.length > 0 && (
+                  <a href={`/boards/${boards[0].id}`} className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all">
+                    View Kanban Board
+                  </a>
+                )}
+                <button
+                  onClick={() => setShowCreateIssue(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  New Issue
+                </button>
+              </div>
+            </div>
+
+            {issues.length === 0 ? (
+              <div className="p-8 bg-white border border-gray-200 text-center">
+                <p className="text-gray-600 mb-6">No issues yet</p>
+                <button
+                  onClick={() => setShowCreateIssue(true)}
+                  className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+                >
+                  Create First Issue
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {issues.map(issue => (
+                  <Link
+                    key={issue.id}
+                    to={`/issues/${issue.id}`}
+                    className="block p-4 bg-white border border-gray-200 hover:border-gray-900 hover:shadow-md transition-all"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="font-bold text-gray-900">{issue.key}</span>
+                          <span className={`px-2 py-1 text-xs font-bold uppercase ${
+                            issue.priority === 'highest' ? 'bg-red-100 text-red-700' :
+                            issue.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                            issue.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {issue.priority}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-bold text-gray-900 mb-1">{issue.title}</h4>
+                        <div className="flex gap-4 text-xs text-gray-600">
+                          <span>Status: {issue.status}</span>
+                          {issue.assignee && <span>Assigned: {issue.assignee}</span>}
+                          {issue.sprint_name && <span>Sprint: {issue.sprint_name}</span>}
+                        </div>
+                      </div>
+                      {issue.story_points && (
+                        <div className="text-right">
+                          <p className="text-2xl font-black text-gray-900">{issue.story_points}</p>
+                          <p className="text-xs text-gray-600">points</p>
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Roadmap Tab */}
+        {activeTab === 'roadmap' && (
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 mb-8">Project Roadmap</h2>
+            {sprints.length === 0 ? (
+              <div className="p-8 bg-white border border-gray-200 text-center">
+                <p className="text-gray-600">No sprints to display</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {sprints.map(sprint => (
+                  <div key={sprint.id} className="p-6 bg-white border border-gray-200">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">{sprint.name}</h3>
+                        <p className="text-sm text-gray-600">{sprint.start_date} to {sprint.end_date}</p>
+                      </div>
+                      <span className="text-sm font-bold text-gray-600">{sprint.completed_count}/{sprint.issue_count} completed</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200">
+                      <div
+                        style={{ width: `${sprint.issue_count > 0 ? (sprint.completed_count / sprint.issue_count) * 100 : 0}%` }}
+                        className="h-full bg-green-600 transition-all"
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -655,93 +327,192 @@ function ProjectDetail() {
           </div>
         )}
 
-        {/* GitHub Activity Tab */}
-        {activeTab === 'activity' && (
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary, marginBottom: spacing.lg }}>
-              Recent Activity
-            </h2>
-
-            {!githubActivity.length && !activityLoading && (
-              <button
-                onClick={fetchGitHubActivity}
-                style={{
-                  padding: `${spacing.md} ${spacing.lg}`,
-                  backgroundColor: colors.primary,
-                  color: colors.surface,
-                  border: 'none',
-                  borderRadius: radius.md,
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: '13px',
-                  marginBottom: spacing.lg
-                }}
-              >
-                Load Activity
-              </button>
-            )}
-
-            {activityLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
-                <div style={{ width: '24px', height: '24px', border: '2px solid #E5E7EB', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              </div>
-            ) : githubActivity.length === 0 ? (
-              <div style={{
-                padding: spacing.lg,
-                backgroundColor: colors.background,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                textAlign: 'center',
-                color: colors.secondary,
-                fontSize: '14px'
-              }}>
-                No activity yet. Click "Load Activity" to fetch commits and PRs.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}>
-                {githubActivity.map((item, idx) => (
-                  <a
-                    key={idx}
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      padding: spacing.lg,
-                      backgroundColor: colors.surface,
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: radius.md,
-                      textDecoration: 'none',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      transition: motion.fast,
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = colors.primary;
-                      e.currentTarget.style.backgroundColor = colors.background;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = colors.border;
-                      e.currentTarget.style.backgroundColor = colors.surface;
-                    }}
+        {/* Create Sprint Modal */}
+        {showCreateSprint && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-8 w-full max-w-md">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Sprint</h2>
+              <form onSubmit={handleCreateSprint} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Name *</label>
+                  <input
+                    type="text"
+                    value={sprintForm.name}
+                    onChange={(e) => setSprintForm({ ...sprintForm, name: e.target.value })}
+                    placeholder="e.g., Sprint 1"
+                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Start Date *</label>
+                    <input
+                      type="date"
+                      value={sprintForm.start_date}
+                      onChange={(e) => setSprintForm({ ...sprintForm, start_date: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">End Date *</label>
+                    <input
+                      type="date"
+                      value={sprintForm.end_date}
+                      onChange={(e) => setSprintForm({ ...sprintForm, end_date: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Goal</label>
+                  <textarea
+                    value={sprintForm.goal}
+                    onChange={(e) => setSprintForm({ ...sprintForm, goal: e.target.value })}
+                    placeholder="Sprint goal..."
+                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all min-h-20"
+                  />
+                </div>
+                <div className="flex gap-3 justify-end pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateSprint(false)}
+                    className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all"
                   >
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, marginBottom: spacing.sm }}>
-                        {item.type === 'commit' ? '📝 Commit' : '🔀 Pull Request'}
-                      </div>
-                      <div style={{ fontSize: '13px', color: colors.primary, marginBottom: '4px' }}>
-                        {item.message || item.title}
-                      </div>
-                      <div style={{ fontSize: '12px', color: colors.secondary }}>
-                        {item.author} • {new Date(item.date).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <ArrowTopRightOnSquareIcon style={{ width: '16px', height: '16px', color: colors.secondary, flexShrink: 0 }} />
-                  </a>
-                ))}
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingSprint}
+                    className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isCreatingSprint && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    )}
+                    Create Sprint
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Create Issue Modal */}
+        {showCreateIssue && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-8 w-full max-w-md">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Issue</h2>
+              <form onSubmit={handleCreateIssue} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Title *</label>
+                  <input
+                    type="text"
+                    value={issueForm.title}
+                    onChange={(e) => setIssueForm({ ...issueForm, title: e.target.value })}
+                    placeholder="Issue title"
+                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Description</label>
+                  <textarea
+                    value={issueForm.description}
+                    onChange={(e) => setIssueForm({ ...issueForm, description: e.target.value })}
+                    placeholder="Issue description"
+                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all min-h-20"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Priority</label>
+                    <select
+                      value={issueForm.priority}
+                      onChange={(e) => setIssueForm({ ...issueForm, priority: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    >
+                      <option value="lowest">Lowest</option>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="highest">Highest</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Sprint</label>
+                    <select
+                      value={issueForm.sprint_id}
+                      onChange={(e) => setIssueForm({ ...issueForm, sprint_id: e.target.value ? parseInt(e.target.value) : '' })}
+                      className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    >
+                      <option value="">Backlog</option>
+                      {sprints.map(sprint => (
+                        <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Assignee</label>
+                  <input
+                    type="text"
+                    value={issueForm.assignee_id}
+                    onChange={(e) => setIssueForm({ ...issueForm, assignee_id: e.target.value })}
+                    placeholder="User ID or name"
+                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                  />
+                </div>
+                <div className="flex gap-3 justify-end pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateIssue(false)}
+                    className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingIssue}
+                    className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isCreatingIssue && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    )}
+                    Create Issue
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-8 w-full max-w-md">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Delete Project?</h2>
+              <p className="text-gray-600 mb-6">This will permanently delete the project and all associated sprints, issues, and data.</p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteProject}
+                  disabled={isDeleting}
+                  className="px-6 py-3 bg-red-600 text-white hover:bg-red-700 font-bold uppercase text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isDeleting && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  Delete Project
+                </button>
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>

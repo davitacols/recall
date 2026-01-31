@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BellIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { BellIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
-import { useToast } from '../components/Toast';
 
 function Notifications() {
-  const { addToast } = useToast();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -16,182 +14,146 @@ function Notifications() {
 
   const fetchNotifications = async () => {
     try {
-      setLoading(true);
       const response = await api.get('/api/notifications/');
-      setNotifications(response.data.notifications || []);
+      setNotifications(response.data.results || response.data || []);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
-      addToast('Failed to load notifications', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMarkAsRead = async (id) => {
+  const markAsRead = async (notificationId) => {
     try {
-      await api.post(`/api/notifications/${id}/read/`);
-      fetchNotifications();
+      await api.patch(`/api/notifications/${notificationId}/`, { read: true });
+      setNotifications(notifications.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
+      ));
     } catch (error) {
-      addToast('Failed to mark as read', 'error');
+      console.error('Failed to mark notification as read:', error);
     }
   };
 
-  const handleMarkAllAsRead = async () => {
+  const deleteNotification = async (notificationId) => {
     try {
-      await api.post('/api/notifications/read-all/');
-      fetchNotifications();
-      addToast('All notifications marked as read', 'success');
+      await api.delete(`/api/notifications/${notificationId}/`);
+      setNotifications(notifications.filter(n => n.id !== notificationId));
     } catch (error) {
-      addToast('Failed to mark all as read', 'error');
+      console.error('Failed to delete notification:', error);
     }
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await api.delete(`/api/notifications/${id}/`);
-      fetchNotifications();
-      addToast('Notification deleted', 'success');
-    } catch (error) {
-      addToast('Failed to delete notification', 'error');
-    }
-  };
-
-  const getNotificationIcon = (type) => {
-    return null;
-  };
-
-  const filteredNotifications = notifications.filter(n => {
-    if (filter === 'unread') return !n.is_read;
-    if (filter === 'read') return n.is_read;
-    return true;
-  });
-
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const filteredNotifications = filter === 'all' 
+    ? notifications 
+    : filter === 'unread' 
+    ? notifications.filter(n => !n.read)
+    : notifications.filter(n => n.type === filter);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center h-96">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-2">Notifications</h1>
-        <p className="text-base md:text-lg text-gray-600">
-          {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}` : 'All caught up!'}
-        </p>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white border-2 border-gray-900 p-4 md:p-6 mb-4 md:mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex space-x-2 overflow-x-auto">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 font-bold uppercase text-xs whitespace-nowrap ${
-                filter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-              }`}
-            >
-              All ({notifications.length})
-            </button>
-            <button
-              onClick={() => setFilter('unread')}
-              className={`px-4 py-2 font-bold uppercase text-xs whitespace-nowrap ${
-                filter === 'unread' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-              }`}
-            >
-              Unread ({unreadCount})
-            </button>
-            <button
-              onClick={() => setFilter('read')}
-              className={`px-4 py-2 font-bold uppercase text-xs whitespace-nowrap ${
-                filter === 'read' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-              }`}
-            >
-              Read ({notifications.length - unreadCount})
-            </button>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-4xl mx-auto px-4 md:px-8 py-12 md:py-16">
+        {/* Header */}
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-6">
+            <BellIcon className="w-8 h-8 text-gray-900" />
+            <h1 className="text-5xl font-black text-gray-900">Notifications</h1>
           </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAllAsRead}
-              className="px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs whitespace-nowrap"
-            >
-              Mark All Read
-            </button>
-          )}
+          <p className="text-lg text-gray-600 font-light">Stay updated on sprints, blockers, and team activity</p>
         </div>
-      </div>
 
-      {/* Notifications List */}
-      <div className="space-y-3 md:space-y-4">
+        {/* Filters */}
+        <div className="flex gap-3 mb-12 flex-wrap">
+          {['all', 'unread', 'sprint', 'blocker', 'decision'].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-6 py-3 font-bold uppercase text-sm transition-all ${
+                filter === f
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-white border border-gray-300 text-gray-900 hover:border-gray-900'
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Notifications List */}
         {filteredNotifications.length === 0 ? (
-          <div className="bg-white border-2 border-gray-200 p-8 md:p-12 text-center">
-            <BellIcon className="w-12 md:w-16 h-12 md:h-16 mx-auto mb-4 text-gray-300" />
-            <p className="text-base md:text-lg text-gray-500">
-              {filter === 'unread' ? 'No unread notifications' : filter === 'read' ? 'No read notifications' : 'No notifications yet'}
-            </p>
+          <div className="text-center py-24 bg-white border border-gray-200">
+            <BellIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-3xl font-black text-gray-900 mb-3">No notifications</h3>
+            <p className="text-lg text-gray-600 font-light">You're all caught up!</p>
           </div>
         ) : (
-          filteredNotifications.map((notif) => (
-            <div
-              key={notif.id}
-              className={`bg-white border-2 ${!notif.is_read ? 'border-gray-900' : 'border-gray-200'} p-4 md:p-6 hover:shadow-md transition-all`}
-            >
-              <div className="flex items-start gap-3 md:gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      {!notif.is_read && (
-                        <div className="w-2 h-2 bg-gray-900 rounded-full flex-shrink-0"></div>
+          <div className="space-y-4">
+            {filteredNotifications.map(notification => (
+              <div
+                key={notification.id}
+                className={`p-6 border-l-4 transition-all ${
+                  notification.read
+                    ? 'bg-gray-50 border-gray-300'
+                    : 'bg-blue-50 border-blue-600'
+                }`}
+              >
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                        notification.type === 'sprint' ? 'bg-green-100 text-green-700' :
+                        notification.type === 'blocker' ? 'bg-red-100 text-red-700' :
+                        notification.type === 'decision' ? 'bg-purple-100 text-purple-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {notification.type}
+                      </span>
+                      {!notification.read && (
+                        <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
                       )}
-                      <h3 className="text-base md:text-lg font-bold text-gray-900">{notif.title}</h3>
                     </div>
-                    <span className="text-xs text-gray-500 whitespace-nowrap">
-                      {new Date(notif.created_at).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </span>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">{notification.title}</h3>
+                    <p className="text-gray-600 mb-3">{notification.message}</p>
+                    <p className="text-xs text-gray-500">{new Date(notification.created_at).toLocaleString()}</p>
                   </div>
-                  
-                  <p className="text-sm md:text-base text-gray-700 mb-3">{notif.message}</p>
-                  
-                  <div className="flex flex-wrap items-center gap-2">
-                    {notif.link && (
+
+                  <div className="flex gap-2">
+                    {notification.related_url && (
                       <Link
-                        to={notif.link}
-                        onClick={() => !notif.is_read && handleMarkAsRead(notif.id)}
-                        className="px-3 py-1.5 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs"
+                        to={notification.related_url}
+                        className="px-4 py-2 bg-gray-900 text-white hover:bg-black font-bold uppercase text-xs transition-all"
                       >
                         View
                       </Link>
                     )}
-                    {!notif.is_read && (
+                    {!notification.read && (
                       <button
-                        onClick={() => handleMarkAsRead(notif.id)}
-                        className="px-3 py-1.5 border-2 border-gray-900 text-gray-900 hover:bg-gray-100 font-bold uppercase text-xs flex items-center gap-1"
+                        onClick={() => markAsRead(notification.id)}
+                        className="p-2 hover:bg-gray-200 transition-all"
+                        title="Mark as read"
                       >
-                        <CheckIcon className="w-3 h-3" />
-                        Mark Read
+                        <CheckIcon className="w-5 h-5 text-gray-600" />
                       </button>
                     )}
                     <button
-                      onClick={() => handleDelete(notif.id)}
-                      className="px-3 py-1.5 border-2 border-red-600 text-red-600 hover:bg-red-50 font-bold uppercase text-xs flex items-center gap-1"
+                      onClick={() => deleteNotification(notification.id)}
+                      className="p-2 hover:bg-gray-200 transition-all"
+                      title="Delete"
                     >
-                      <TrashIcon className="w-3 h-3" />
-                      Delete
+                      <XMarkIcon className="w-5 h-5 text-gray-600" />
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>

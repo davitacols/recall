@@ -7,7 +7,7 @@ function Decisions() {
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('timeline'); // timeline or list
+  const [viewMode, setViewMode] = useState('timeline');
 
   useEffect(() => {
     fetchDecisions();
@@ -16,19 +16,20 @@ function Decisions() {
   const fetchDecisions = async () => {
     try {
       const response = await api.get('/api/decisions/');
-      // Sort by date for timeline view
-      const sorted = (response.data.results || response.data).sort((a, b) => 
+      const data = response.data.data || response.data.results || response.data || [];
+      const decisionsArray = Array.isArray(data) ? data : [];
+      
+      const sorted = decisionsArray.sort((a, b) => 
         new Date(b.created_at) - new Date(a.created_at)
       );
       setDecisions(sorted);
     } catch (error) {
       console.error('Failed to fetch decisions:', error);
+      setDecisions([]);
     } finally {
       setLoading(false);
     }
   };
-
-
 
   const getImpactColor = (level) => {
     switch (level) {
@@ -196,8 +197,6 @@ function Decisions() {
           </div>
         </div>
       )}
-
-
     </div>
   );
 }

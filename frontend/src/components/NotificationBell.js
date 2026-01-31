@@ -2,9 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BellIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import { useNotifications } from '../hooks/useNotifications';
+import { useToast } from './Toast';
 
 function NotificationBell() {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -13,7 +16,7 @@ function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -27,16 +30,24 @@ function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleNotification = (notification) => {
+    setNotifications(prev => [notification, ...prev]);
+    setUnreadCount(prev => prev + 1);
+    if (addToast) {
+      addToast(notification.message, 'info');
+    }
+  };
+
+  useNotifications(handleNotification);
+
   const fetchNotifications = async () => {
     try {
       setLoading(true);
       const response = await api.get('/api/notifications/');
-      console.log('Notifications response:', response.data);
       setNotifications(response.data.notifications || []);
       setUnreadCount(response.data.unread_count || 0);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
-      console.error('Error details:', error.response?.data);
     } finally {
       setLoading(false);
     }
@@ -67,7 +78,6 @@ function NotificationBell() {
     };
     
     notifications.forEach(notif => {
-      // Requires attention: mentions, decisions, organization updates
       if (['mention', 'decision', 'organization_update'].includes(notif.type)) {
         grouped.attention.push(notif);
       } else {
@@ -116,12 +126,11 @@ function NotificationBell() {
               </div>
             ) : notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
-                <p className="text-sm">You're all caught up.</p>
+                <p className="text-sm">You're all caught up!</p>
                 <p className="text-xs text-gray-400 mt-1">New mentions and updates will appear here.</p>
               </div>
             ) : (
               <>
-                {/* Requires Attention */}
                 {groupedNotifications.attention.length > 0 && (
                   <div>
                     <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
@@ -130,7 +139,7 @@ function NotificationBell() {
                     {groupedNotifications.attention.slice(0, 3).map((notif) => (
                       <div
                         key={notif.id}
-                        className={`p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors`}
+                        className="p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-start justify-between mb-2">
                           <p className="text-sm font-bold text-gray-900 flex-1">{notif.title}</p>
@@ -138,9 +147,6 @@ function NotificationBell() {
                             <div className="w-2 h-2 bg-red-600 rounded-full ml-2 mt-1.5 flex-shrink-0"></div>
                           )}
                         </div>
-                        {notif.ai_summary && (
-                          <p className="text-xs text-gray-600 mb-2 italic">{notif.ai_summary}</p>
-                        )}
                         <p className="text-xs text-gray-600 mb-2">{notif.message}</p>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">
@@ -164,7 +170,6 @@ function NotificationBell() {
                   </div>
                 )}
 
-                {/* FYI */}
                 {groupedNotifications.fyi.length > 0 && (
                   <div>
                     <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
@@ -173,7 +178,7 @@ function NotificationBell() {
                     {groupedNotifications.fyi.slice(0, 2).map((notif) => (
                       <div
                         key={notif.id}
-                        className={`p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors`}
+                        className="p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-start justify-between mb-2">
                           <p className="text-sm font-medium text-gray-900 flex-1">{notif.title}</p>

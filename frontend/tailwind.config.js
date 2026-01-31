@@ -3,43 +3,175 @@ module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Core Neutrals
-        background: '#F9FAFB',
-        surface: '#FFFFFF',
-        primary: '#0F172A',
-        secondary: '#64748B',
-        border: '#E2E8F0',
-        
-        // Brand Accent - Electric Indigo
-        accent: '#4F46E5',
-        'accent-light': '#EEF2FF',
-        'accent-dark': '#3730A3',
-        
-        // Secondary Accent
-        amber: '#F59E0B',
-        'amber-light': '#FFFBEB',
-        
-        // Semantic
-        success: '#10B981',
-        'success-light': '#ECFDF5',
-        critical: '#EF4444',
-        'critical-light': '#FEE2E2',
+        // Black & White Theme
+        light: {
+          bg: '#FFFFFF',
+          surface: '#FAFAFA',
+          'surface-elevated': '#FFFFFF',
+          border: '#E5E5E5',
+          'border-subtle': '#F5F5F5',
+          text: '#000000',
+          'text-secondary': '#404040',
+          'text-tertiary': '#737373',
+          'text-muted': '#A3A3A3',
+        },
+        // Dark Mode (GitHub style)
+        dark: {
+          bg: '#0d1117',
+          surface: '#161b22',
+          'surface-elevated': '#21262d',
+          border: '#30363d',
+          'border-subtle': '#21262d',
+          text: '#e6edf3',
+          'text-secondary': '#8b949e',
+          'text-tertiary': '#7d8590',
+          'text-muted': '#656d76',
+        },
+        // Primary: GitHub colors
+        primary: {
+          50: '#f6f8fa',
+          100: '#eaeef2',
+          200: '#d0d7de',
+          300: '#afb8c1',
+          400: '#8c959f',
+          500: '#6e7781',
+          600: '#57606a',
+          700: '#424a53',
+          800: '#32383f',
+          900: '#24292f',
+        },
+        // Semantic Colors (Improved)
+        success: {
+          50: '#ECFDF5',
+          100: '#D1FAE5',
+          500: '#10B981',
+          600: '#059669',
+          700: '#047857',
+        },
+        warning: {
+          50: '#FFFBEB',
+          100: '#FEF3C7',
+          500: '#F59E0B',
+          600: '#D97706',
+          700: '#B45309',
+        },
+        error: {
+          50: '#FEF2F2',
+          100: '#FEE2E2',
+          500: '#EF4444',
+          600: '#DC2626',
+          700: '#B91C1C',
+        },
+        info: {
+          50: '#EFF6FF',
+          100: '#DBEAFE',
+          500: '#3B82F6',
+          600: '#2563EB',
+          700: '#1D4ED8',
+        },
+        // Legacy support (Updated)
+        accent: '#334155',
+        'accent-light': '#F1F5F9',
+        'accent-hover': '#1E293B',
+        critical: '#DC2626',
+        'critical-light': '#FEF2F2',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['League Spartan', 'system-ui', 'sans-serif'],
+        display: ['League Spartan', 'system-ui', 'sans-serif'],
+      },
+      fontSize: {
+        'xs': ['0.75rem', { lineHeight: '1rem', letterSpacing: '-0.01em' }],
+        'sm': ['0.875rem', { lineHeight: '1.25rem', letterSpacing: '-0.005em' }],
+        'base': ['1rem', { lineHeight: '1.5rem', letterSpacing: '0em' }],
+        'lg': ['1.125rem', { lineHeight: '1.75rem', letterSpacing: '0em' }],
+        'xl': ['1.25rem', { lineHeight: '1.75rem', letterSpacing: '-0.01em' }],
+        '2xl': ['1.5rem', { lineHeight: '2rem', letterSpacing: '-0.02em' }],
+        '3xl': ['1.875rem', { lineHeight: '2.25rem', letterSpacing: '-0.02em' }],
+        '4xl': ['2.25rem', { lineHeight: '2.5rem', letterSpacing: '-0.03em' }],
       },
       boxShadow: {
-        sm: '0 1px 2px rgba(0, 0, 0, 0.05)',
-        md: '0 4px 12px rgba(0, 0, 0, 0.08)',
-        lg: '0 10px 25px rgba(0, 0, 0, 0.1)',
-        focus: '0 0 0 3px rgba(79, 70, 229, 0.1)',
+        'xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'sm': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+        'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+        'lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
+        'xl': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+        '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        'inner': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)',
+        'focus': '0 0 0 3px rgba(0, 0, 0, 0.1)',
+        'focus-visible': '0 0 0 2px rgba(0, 0, 0, 0.5)',
       },
       borderRadius: {
-        none: '0px',
-      }
+        'none': '0',
+        'sm': '0.25rem',
+        'md': '0.5rem',
+        'lg': '0.75rem',
+        'xl': '1rem',
+        '2xl': '1.25rem',
+        '3xl': '1.5rem',
+      },
+      spacing: {
+        '0.5': '0.125rem',
+        '1.5': '0.375rem',
+        '2.5': '0.625rem',
+        '3.5': '0.875rem',
+        '4.5': '1.125rem',
+        '5.5': '1.375rem',
+        '6.5': '1.625rem',
+        '7.5': '1.875rem',
+        '8.5': '2.125rem',
+        '9.5': '2.375rem',
+        '18': '4.5rem',
+        '22': '5.5rem',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.2s ease-out',
+        'slide-up': 'slideUp 0.2s ease-out',
+        'slide-down': 'slideDown 0.2s ease-out',
+        'scale-in': 'scaleIn 0.15s ease-out',
+        'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideDown: {
+          '0%': { opacity: '0', transform: 'translateY(-8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        pulseSubtle: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.8' },
+        },
+      },
+      transitionDuration: {
+        '75': '75ms',
+        '100': '100ms',
+        '200': '200ms',
+        '300': '300ms',
+        '500': '500ms',
+      },
+      transitionTimingFunction: {
+        'bounce-subtle': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+      },
+      letterSpacing: {
+        'tight': '-0.02em',
+        'normal': '0em',
+        'wide': '0.02em',
+      },
     },
   },
   plugins: [],

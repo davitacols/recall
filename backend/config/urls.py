@@ -10,10 +10,12 @@ urlpatterns = [
     path('api/auth/', include('apps.users.urls')),
     path('api/conversations/', include('apps.conversations.urls')),
     path('api/decisions/', include('apps.decisions.urls')),
+    path('api/decisions/fresh/', include('apps.decisions.urls_fresh')),
     path('api/knowledge/', include('apps.knowledge.urls')),
+    path('api/recall/search/', include('apps.knowledge.bm25_urls')),
     path('api/organizations/', include('apps.organizations.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
-    path('api/agile/', include('apps.agile.urls')),
+    path('api/agile/', include('apps.agile.urls_fresh')),
     path('api/integrations/', include('apps.integrations.urls')),
 ]
 

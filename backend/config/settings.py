@@ -4,16 +4,28 @@ import dj_database_url
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-SECRET_KEY = config('SECRET_KEY', default='dev-key-change-in-production')
-DEBUG = config('DEBUG', default=True, cast=bool)
+SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 if not DEBUG:
     ALLOWED_HOSTS.append('.vercel.app')
+
+# Security Settings
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = not DEBUG
 
 # Custom User Model
 AUTH_USER_MODEL = 'organizations.User'
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -24,6 +36,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'cloudinary_storage',
     'cloudinary',
+    'channels',
     'apps.organizations',
     'apps.conversations',
     'apps.decisions',
@@ -91,14 +104,17 @@ COGNITO_CLIENT_ID = config('COGNITO_CLIENT_ID', default='')
 COGNITO_REGION = config('AWS_REGION', default='us-east-1')
 
 # Celery Configuration
-CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+redis_url = config('REDIS_URL', default='redis://localhost:6379/0')
+if redis_url.startswith('rediss://'):
+    redis_url += '?ssl_cert_reqs=CERT_NONE'
+CELERY_BROKER_URL = redis_url
+CELERY_RESULT_BACKEND = redis_url
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+CELERY_TASK_TIME_LIMIT = 30 * 60
 
 # AI Configuration
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
@@ -119,21 +135,17 @@ HUGGINGFACE_HUB_CACHE = config('HUGGINGFACE_HUB_CACHE', default='D:\\huggingface
 TRANSFORMERS_CACHE = config('TRANSFORMERS_CACHE', default='D:\\transformers_cache')
 TEMP_DIR = config('TEMP_DIR', default='D:\\temp')
 
-# Set environment variables for model caching
-import os
 os.environ['HUGGINGFACE_HUB_CACHE'] = HUGGINGFACE_HUB_CACHE
 os.environ['TRANSFORMERS_CACHE'] = TRANSFORMERS_CACHE
 os.environ['TMPDIR'] = TEMP_DIR
 os.environ['TEMP'] = TEMP_DIR
 os.environ['TMP'] = TEMP_DIR
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000').split(',')
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS]
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -143,7 +155,6 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Cloudinary Configuration
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -169,9 +180,17 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [(redis_url if not redis_url.startswith('rediss://') else redis_url + '?ssl_cert_reqs=CERT_NONE')],
+        },
+    },
+}
 
-# JWT Settings
 from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
@@ -182,4 +201,30 @@ SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
 }

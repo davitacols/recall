@@ -2,13 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
-import { useAutoSave } from '../hooks/useAutoSave';
-import SaveIndicator from '../components/SaveIndicator';
-import Button from '../components/Button';
-import Card from '../components/Card';
-import Input from '../components/Input';
-import { CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { colors, spacing } from '../utils/designTokens';
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 function Settings() {
   const { user } = useAuth();
@@ -20,7 +14,6 @@ function Settings() {
     decision_notifications: true,
     digest_frequency: 'daily'
   });
-  const [quietMode, setQuietMode] = useState(false);
   const [organization, setOrganization] = useState(null);
   const [members, setMembers] = useState([]);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -28,13 +21,6 @@ function Settings() {
   const [orgName, setOrgName] = useState('');
   const [orgDescription, setOrgDescription] = useState('');
   const [pendingInvitations, setPendingInvitations] = useState([]);
-  const [invitationLinks, setInvitationLinks] = useState({});
-
-  const saveSettings = async (data) => {
-    await api.put('/api/auth/profile/update/', data);
-  };
-
-  const { status, triggerSave, getStatusText } = useAutoSave(saveSettings, 1000);
 
   useEffect(() => {
     fetchSettings();
@@ -88,29 +74,16 @@ function Settings() {
     }
   };
 
-  const generateInvitationLink = async (invitationId) => {
-    try {
-      const response = await api.get(`/api/organizations/settings/test-invitation/?invitation_id=${invitationId}`);
-      setInvitationLinks(prev => ({
-        ...prev,
-        [invitationId]: response.data.invitation_link
-      }));
-      addToast('Link generated', 'success');
-    } catch (error) {
-      addToast('Failed to generate link', 'error');
-    }
-  };
-
   const handleToggle = (key) => {
     const updated = { ...notifications, [key]: !notifications[key] };
     setNotifications(updated);
-    triggerSave(updated);
+    api.put('/api/auth/profile/update/', updated).catch(() => addToast('Failed to save', 'error'));
   };
 
   const handleDigestChange = (value) => {
     const updated = { ...notifications, digest_frequency: value };
     setNotifications(updated);
-    triggerSave(updated);
+    api.put('/api/auth/profile/update/', updated).catch(() => addToast('Failed to save', 'error'));
   };
 
   const saveOrganization = async () => {
@@ -129,27 +102,16 @@ function Settings() {
   const inviteMember = async () => {
     if (!inviteEmail.trim()) return;
     try {
-      const response = await api.post('/api/organizations/members/invite/', {
+      await api.post('/api/organizations/members/invite/', {
         email: inviteEmail,
         role: inviteRole
       });
-      const invitationId = response.data.invitation_id;
-      try {
-        const linkResponse = await api.get(`/api/organizations/settings/test-invitation/?invitation_id=${invitationId}`);
-        setInvitationLinks(prev => ({
-          ...prev,
-          [invitationId]: linkResponse.data.invitation_link
-        }));
-        addToast('Invitation link generated', 'success');
-      } catch (linkError) {
-        addToast('Invitation created but failed to generate link', 'error');
-      }
+      addToast('Invitation sent', 'success');
       setInviteEmail('');
       setInviteRole('contributor');
       fetchPendingInvitations();
     } catch (error) {
-      const errorMsg = error.response?.data?.error || 'Failed to generate invitation';
-      addToast(errorMsg, 'error');
+      addToast('Failed to invite member', 'error');
     }
   };
 
@@ -174,272 +136,199 @@ function Settings() {
   ];
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-      <div style={{ marginBottom: spacing.xl }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: colors.primary, marginBottom: spacing.md }}>Settings</h1>
-        <p style={{ fontSize: '16px', color: colors.secondary }}>Manage your preferences</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-8 py-8">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-4xl font-black text-gray-900 mb-1">Settings</h1>
+          <p className="text-gray-600">Manage your preferences and organization</p>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: spacing.xl }}>
-        {/* Sidebar Navigation */}
-        <aside style={{ width: '192px', flexShrink: 0 }}>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: `${spacing.md} ${spacing.lg}`,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  border: 'none',
-                  borderRadius: '8px',
-                  backgroundColor: activeSection === section.id ? colors.accentLight : 'transparent',
-                  color: activeSection === section.id ? colors.accent : colors.secondary,
-                  cursor: 'pointer',
-                  transition: '150ms ease-out',
-                  borderLeft: activeSection === section.id ? `3px solid ${colors.accent}` : 'none',
-                  paddingLeft: activeSection === section.id ? '13px' : spacing.lg
-                }}
-              >
-                {section.label}
-              </button>
-            ))}
-          </nav>
-        </aside>
+      <div className="max-w-7xl mx-auto px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar Navigation */}
+          <aside className="lg:col-span-1">
+            <nav className="space-y-2 sticky top-24">
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm uppercase tracking-wide transition-all ${
+                    activeSection === section.id
+                      ? 'bg-gray-900 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-        {/* Content */}
-        <div style={{ flex: 1 }}>
-          <SaveIndicator status={status} statusText={getStatusText()} />
-
-          {/* Notifications Section */}
-          {activeSection === 'notifications' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xl }}>
-              <Card title="Quiet Mode" subtitle="Pause notifications temporarily">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '14px', color: colors.secondary }}>Disable all notifications</span>
-                  <button
-                    onClick={() => setQuietMode(!quietMode)}
-                    style={{
-                      width: '44px',
-                      height: '24px',
-                      borderRadius: '12px',
-                      border: 'none',
-                      backgroundColor: quietMode ? colors.accent : colors.border,
-                      cursor: 'pointer',
-                      transition: '150ms ease-out'
-                    }}
-                  />
-                </div>
-              </Card>
-
-              <Card title="Notification Preferences">
-                {['mention_notifications', 'reply_notifications', 'decision_notifications'].map((key) => (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
-                    <span style={{ fontSize: '14px', color: colors.primary, textTransform: 'capitalize' }}>
-                      {key.replace('_', ' ')}
-                    </span>
-                    <button
-                      onClick={() => handleToggle(key)}
-                      style={{
-                        width: '44px',
-                        height: '24px',
-                        borderRadius: '12px',
-                        border: 'none',
-                        backgroundColor: notifications[key] ? colors.accent : colors.border,
-                        cursor: 'pointer',
-                        transition: '150ms ease-out'
-                      }}
-                    />
-                  </div>
-                ))}
-              </Card>
-
-              <Card title="Email Digests">
-                {['realtime', 'hourly', 'daily', 'weekly', 'never'].map((freq) => (
-                  <label key={freq} style={{ display: 'flex', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md, cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="digest"
-                      checked={notifications.digest_frequency === freq}
-                      onChange={() => handleDigestChange(freq)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: '14px', color: colors.primary, textTransform: 'capitalize' }}>{freq}</span>
-                  </label>
-                ))}
-              </Card>
-            </div>
-          )}
-
-          {/* Organization Section */}
-          {activeSection === 'organization' && user?.role === 'admin' && organization && (
-            <Card title="Organization Profile" subtitle="Manage your organization details">
-              <Input
-                label="Organization name"
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-              />
-              <div style={{ marginBottom: spacing.lg }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colors.primary, marginBottom: spacing.sm }}>
-                  Description
-                </label>
-                <textarea
-                  value={orgDescription}
-                  onChange={(e) => setOrgDescription(e.target.value)}
-                  rows="4"
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '10px 12px',
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: '10px',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, system-ui, sans-serif',
-                    transition: '150ms ease-out'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = colors.accent;
-                    e.target.style.boxShadow = `0 0 0 3px rgba(79, 70, 229, 0.1)`;
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = colors.border;
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
-              <Button onClick={saveOrganization}>Save changes</Button>
-            </Card>
-          )}
-
-          {/* Team Section */}
-          {activeSection === 'team' && user?.role === 'admin' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xl }}>
-              <Card title="Invite Team Member">
-                <Input
-                  label="Email address"
-                  type="email"
-                  placeholder="member@example.com"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                />
-                <div style={{ marginBottom: spacing.lg }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colors.primary, marginBottom: spacing.sm }}>
-                    Role
-                  </label>
-                  <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      fontFamily: 'Inter, system-ui, sans-serif',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="contributor">Contributor</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <Button onClick={inviteMember}>Generate link</Button>
-              </Card>
-
-              {pendingInvitations.length > 0 && (
-                <Card title="Pending Invitations" subtitle={`${pendingInvitations.length} pending`}>
-                  {pendingInvitations.map((invitation) => (
-                    <div key={invitation.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, border: `1px solid ${colors.border}`, borderRadius: '8px', marginBottom: spacing.md }}>
-                      <div>
-                        <p style={{ fontSize: '14px', fontWeight: 500, color: colors.primary, margin: 0 }}>{invitation.email}</p>
-                        <p style={{ fontSize: '13px', color: colors.secondary, margin: 0 }}>Invited as {invitation.role}</p>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
-                        {invitationLinks[invitation.id] ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
-                            <input
-                              type="text"
-                              value={invitationLinks[invitation.id]}
-                              readOnly
-                              style={{
-                                padding: '8px 12px',
-                                fontSize: '12px',
-                                border: `1px solid ${colors.border}`,
-                                borderRadius: '6px',
-                                backgroundColor: colors.background,
-                                width: '256px'
-                              }}
-                            />
-                            <Button
-                              variant="secondary"
-                              onClick={() => {
-                                navigator.clipboard.writeText(invitationLinks[invitation.id]);
-                                addToast('Link copied', 'success');
-                              }}
-                            >
-                              Copy
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="secondary"
-                            onClick={() => generateInvitationLink(invitation.id)}
-                          >
-                            Generate link
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </Card>
-              )}
-
-              <Card title="Team Members" subtitle={`${members.length} members`}>
-                {members.map((member) => (
-                  <div key={member.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, border: `1px solid ${colors.border}`, borderRadius: '8px', marginBottom: spacing.md }}>
-                    <div>
-                      <p style={{ fontSize: '14px', fontWeight: 500, color: colors.primary, margin: 0 }}>{member.full_name}</p>
-                      <p style={{ fontSize: '13px', color: colors.secondary, margin: 0 }}>{member.email}</p>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
-                      <span style={{ fontSize: '12px', fontWeight: 500, color: colors.secondary, textTransform: 'uppercase' }}>{member.role}</span>
-                      {member.id !== user?.id && (
+          {/* Content */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Notifications Section */}
+            {activeSection === 'notifications' && (
+              <>
+                <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+                  <h2 className="text-2xl font-black text-gray-900 mb-6">Notification Preferences</h2>
+                  <div className="space-y-4">
+                    {['mention_notifications', 'reply_notifications', 'decision_notifications'].map((key) => (
+                      <div key={key} className="flex items-center justify-between p-4 border border-gray-200 hover:border-gray-900 transition-all">
+                        <span className="font-bold text-gray-900 capitalize">{key.replace(/_/g, ' ')}</span>
                         <button
-                          onClick={() => removeMember(member.id)}
-                          style={{
-                            padding: '8px',
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            color: '#EF4444',
-                            cursor: 'pointer',
-                            borderRadius: '6px',
-                            transition: '150ms ease-out'
-                          }}
-                          onMouseEnter={(e) => e.target.style.backgroundColor = '#FEE2E2'}
-                          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                        >
-                          <TrashIcon style={{ width: '16px', height: '16px' }} />
-                        </button>
-                      )}
+                          onClick={() => handleToggle(key)}
+                          className={`w-12 h-6 rounded-full transition-all ${
+                            notifications[key] ? 'bg-gray-900' : 'bg-gray-300'
+                          }`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+                  <h2 className="text-2xl font-black text-gray-900 mb-6">Email Digests</h2>
+                  <div className="space-y-3">
+                    {['realtime', 'hourly', 'daily', 'weekly', 'never'].map((freq) => (
+                      <label key={freq} className="flex items-center gap-3 p-3 border border-gray-200 hover:border-gray-900 cursor-pointer transition-all">
+                        <input
+                          type="radio"
+                          name="digest"
+                          checked={notifications.digest_frequency === freq}
+                          onChange={() => handleDigestChange(freq)}
+                          className="w-4 h-4"
+                        />
+                        <span className="font-bold text-gray-900 capitalize">{freq}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Organization Section */}
+            {activeSection === 'organization' && user?.role === 'admin' && organization && (
+              <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+                <h2 className="text-2xl font-black text-gray-900 mb-6">Organization Profile</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-600 uppercase tracking-wide mb-2">Organization Name</label>
+                    <input
+                      type="text"
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 focus:border-gray-900 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-600 uppercase tracking-wide mb-2">Description</label>
+                    <textarea
+                      value={orgDescription}
+                      onChange={(e) => setOrgDescription(e.target.value)}
+                      rows="4"
+                      className="w-full px-4 py-3 border-2 border-gray-200 focus:border-gray-900 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    onClick={saveOrganization}
+                    className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Team Section */}
+            {activeSection === 'team' && user?.role === 'admin' && (
+              <>
+                <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+                  <h2 className="text-2xl font-black text-gray-900 mb-6">Invite Team Member</h2>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-600 uppercase tracking-wide mb-2">Email Address</label>
+                      <input
+                        type="email"
+                        placeholder="member@example.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 focus:border-gray-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-600 uppercase tracking-wide mb-2">Role</label>
+                      <select
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 focus:border-gray-900 focus:outline-none"
+                      >
+                        <option value="contributor">Contributor</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={inviteMember}
+                      className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+                    >
+                      Send Invite
+                    </button>
+                  </div>
+                </div>
+
+                {pendingInvitations.length > 0 && (
+                  <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+                    <h2 className="text-2xl font-black text-gray-900 mb-6">Pending Invitations ({pendingInvitations.length})</h2>
+                    <div className="space-y-3">
+                      {pendingInvitations.map((invitation) => (
+                        <div key={invitation.id} className="flex items-center justify-between p-4 border border-gray-200">
+                          <div>
+                            <p className="font-bold text-gray-900">{invitation.email}</p>
+                            <p className="text-sm text-gray-600">Role: {invitation.role}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </Card>
-            </div>
-          )}
+                )}
 
-          {/* Advanced Section */}
-          {activeSection === 'advanced' && (
-            <Card title="Data & Privacy">
-              <p style={{ fontSize: '14px', color: colors.secondary }}>
-                AI assistance helps summarize conversations and extract action items. Your data stays private to your organization.
-              </p>
-            </Card>
-          )}
+                <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+                  <h2 className="text-2xl font-black text-gray-900 mb-6">Team Members ({members.length})</h2>
+                  <div className="space-y-3">
+                    {members.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-4 border border-gray-200">
+                        <div>
+                          <p className="font-bold text-gray-900">{member.full_name}</p>
+                          <p className="text-sm text-gray-600">{member.email}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-xs font-bold uppercase text-gray-600 bg-gray-100 px-3 py-1">{member.role}</span>
+                          {member.id !== user?.id && (
+                            <button
+                              onClick={() => removeMember(member.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 transition-all"
+                            >
+                              <TrashIcon className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Advanced Section */}
+            {activeSection === 'advanced' && (
+              <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+                <h2 className="text-2xl font-black text-gray-900 mb-6">Data & Privacy</h2>
+                <p className="text-gray-600">AI assistance helps summarize conversations and extract action items. Your data stays private to your organization.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -13,19 +13,27 @@ api.interceptors.request.use(
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('[API] Request to', config.url, 'with token:', token.substring(0, 20) + '...');
-    } else {
-      console.warn('[API] No token found for request to', config.url);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[API] Request to', config.url);
+      }
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle auth errors
+// Response interceptor to handle auth errors and standardize responses
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API] Response from', response.config.url, response.status, response.data);
+    }
+    return response;
+  },
   (error) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API] Error from', error.config?.url, error.response?.status, error.response?.data);
+    }
     if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('token');

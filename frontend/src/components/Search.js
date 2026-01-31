@@ -1,212 +1,213 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { colors, spacing, radius, shadows } from '../utils/designTokens';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 function Search() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [results, setResults] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const inputRef = useRef(null);
+  const containerRef = useRef(null);
+  const navigate = useNavigate();
 
-  const handleSearch = async (e) => {
-    const q = e.target.value;
-    setQuery(q);
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+      if (e.key === 'Escape') {
+        setIsFocused(false);
+      }
+    };
 
-    if (q.length < 2) {
-      setResults(null);
-      setShowResults(false);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsFocused(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Fetch suggestions
+  useEffect(() => {
+    if (query.length < 1) {
+      setSuggestions([]);
       return;
     }
 
-    setLoading(true);
-    setShowResults(true);
+    const timer = setTimeout(async () => {
+      try {
+        const response = await api.get('/api/recall/search/suggestions/', {
+          params: { q: query, limit: 5 }
+        });
+        setSuggestions(response.data.suggestions || []);
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+      }
+    }, 200);
 
-    try {
-      const [convRes, decRes, issueRes] = await Promise.all([
-        api.get(`/api/conversations/?search=${q}`),
-        api.get(`/api/decisions/?search=${q}`),
-        api.get(`/api/agile/projects/1/issues/?search=${q}`).catch(() => ({ data: [] }))
-      ]);
+    return () => clearTimeout(timer);
+  }, [query]);
 
-      setResults({
-        conversations: convRes.data.results || convRes.data || [],
-        decisions: decRes.data || [],
-        issues: issueRes.data || []
-      });
-    } catch (error) {
-      console.error('Search failed:', error);
-      setResults({ conversations: [], decisions: [], issues: [] });
-    } finally {
-      setLoading(false);
+  // Fetch search results
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+
+    const searchWithBM25 = async () => {
+      setLoading(true);
+      try {
+        const response = await api.post('/api/recall/search/search/', {
+          query,
+          limit: 8
+        });
+        setResults(response.data.results || []);
+      } catch (error) {
+        console.error('Search error:', error);
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timer = setTimeout(searchWithBM25, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const handleResultClick = (result) => {
+    let href;
+    switch (result.type) {
+      case 'conversation':
+        href = `/conversations/${result.id}`;
+        break;
+      case 'decision':
+        href = `/decisions/${result.id}`;
+        break;
+      case 'sprint':
+        href = `/sprint/${result.id}`;
+        break;
+      case 'issue':
+        href = `/issues/${result.id}`;
+        break;
+      case 'blocker':
+        href = `/blockers/${result.id}`;
+        break;
+      default:
+        href = `/`;
+    }
+    navigate(href);
+    setQuery('');
+    setIsFocused(false);
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    if (suggestion.type === 'tag') {
+      setQuery(`#${suggestion.value}`);
+    } else {
+      setQuery(suggestion.text);
+    }
+  };
+
+  const getTypeColor = (type) => {
+    switch (type) {
+      case 'conversation': return 'bg-blue-50 text-blue-900';
+      case 'decision': return 'bg-purple-50 text-purple-900';
+      case 'sprint': return 'bg-green-50 text-green-900';
+      case 'issue': return 'bg-orange-50 text-orange-900';
+      case 'blocker': return 'bg-red-50 text-red-900';
+      default: return 'bg-gray-50 text-gray-900';
     }
   };
 
   return (
-    <div style={{ position: 'relative' }}>
-      <div style={{
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center'
-      }}>
-        <MagnifyingGlassIcon style={{
-          position: 'absolute',
-          left: spacing.md,
-          width: '18px',
-          height: '18px',
-          color: colors.secondary,
-          pointerEvents: 'none'
-        }} />
+    <div ref={containerRef} className="relative w-80">
+      <div className={`relative flex items-center bg-gray-100 border transition-all ${isFocused ? 'border-gray-900 shadow-md' : 'border-gray-200'}`}>
+        <MagnifyingGlassIcon className="absolute left-4 w-4 h-4 text-gray-600 pointer-events-none" />
+        
         <input
+          ref={inputRef}
           type="text"
+          placeholder="Search..."
           value={query}
-          onChange={handleSearch}
-          onFocus={() => query.length >= 2 && setShowResults(true)}
-          placeholder="Search conversations, decisions, issues..."
-          style={{
-            width: '100%',
-            padding: `${spacing.md} ${spacing.md} ${spacing.md} ${spacing.xl}`,
-            border: `1px solid ${colors.border}`,
-            borderRadius: radius.md,
-            fontSize: '14px',
-            boxSizing: 'border-box'
-          }}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          className="flex-1 px-4 py-2 pl-10 bg-transparent border-none text-sm text-gray-900 outline-none placeholder-gray-600"
         />
+
+        {query && (
+          <button
+            onClick={() => setQuery('')}
+            className="p-2 mr-2 hover:bg-gray-200 transition-all"
+          >
+            <XMarkIcon className="w-4 h-4 text-gray-600" />
+          </button>
+        )}
+
+        {!query && (
+          <div className="px-2 mr-2 py-1 bg-gray-200 rounded text-xs text-gray-600 font-medium">
+            ⌘K
+          </div>
+        )}
       </div>
 
-      {showResults && results && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          marginTop: spacing.sm,
-          backgroundColor: colors.surface,
-          border: `1px solid ${colors.border}`,
-          borderRadius: radius.md,
-          boxShadow: shadows.lg,
-          zIndex: 50,
-          maxHeight: '400px',
-          overflowY: 'auto'
-        }}>
+      {isFocused && query && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 shadow-lg z-50">
+          {suggestions.length > 0 && !loading && (
+            <div className="border-b border-gray-100">
+              {suggestions.map((suggestion, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-600 flex items-center gap-2"
+                >
+                  {suggestion.type === 'tag' && <span className="text-blue-500">#</span>}
+                  {suggestion.type === 'tag' ? suggestion.value : suggestion.text}
+                </button>
+              ))}
+            </div>
+          )}
+          
           {loading ? (
-            <div style={{ padding: spacing.lg, textAlign: 'center', color: colors.secondary }}>
-              Searching...
+            <div className="p-4 text-center">
+              <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+          ) : results.length === 0 ? (
+            <div className="p-4 text-center text-sm text-gray-600">
+              No results found for "{query}"
             </div>
           ) : (
-            <>
-              {results.conversations.length > 0 && (
-                <div style={{ borderBottom: `1px solid ${colors.border}` }}>
-                  <div style={{
-                    padding: `${spacing.sm} ${spacing.lg}`,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: colors.secondary,
-                    textTransform: 'uppercase'
-                  }}>
-                    Conversations
-                  </div>
-                  {results.conversations.slice(0, 3).map(conv => (
-                    <Link
-                      key={conv.id}
-                      to={`/conversations/${conv.id}`}
-                      style={{
-                        display: 'block',
-                        padding: spacing.md,
-                        paddingLeft: spacing.lg,
-                        color: colors.primary,
-                        textDecoration: 'none',
-                        borderBottom: `1px solid ${colors.border}`,
-                        fontSize: '13px',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                    >
-                      <div style={{ fontWeight: 500 }}>{conv.title}</div>
-                      <div style={{ fontSize: '11px', color: colors.secondary, marginTop: '2px' }}>
-                        {conv.post_type}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-
-              {results.decisions.length > 0 && (
-                <div style={{ borderBottom: `1px solid ${colors.border}` }}>
-                  <div style={{
-                    padding: `${spacing.sm} ${spacing.lg}`,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: colors.secondary,
-                    textTransform: 'uppercase'
-                  }}>
-                    Decisions
-                  </div>
-                  {results.decisions.slice(0, 3).map(dec => (
-                    <Link
-                      key={dec.id}
-                      to={`/decisions/${dec.id}`}
-                      style={{
-                        display: 'block',
-                        padding: spacing.md,
-                        paddingLeft: spacing.lg,
-                        color: colors.primary,
-                        textDecoration: 'none',
-                        borderBottom: `1px solid ${colors.border}`,
-                        fontSize: '13px',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                    >
-                      <div style={{ fontWeight: 500 }}>{dec.title}</div>
-                      <div style={{ fontSize: '11px', color: colors.secondary, marginTop: '2px' }}>
-                        {dec.status}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-
-              {results.issues.length > 0 && (
-                <div>
-                  <div style={{
-                    padding: `${spacing.sm} ${spacing.lg}`,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: colors.secondary,
-                    textTransform: 'uppercase'
-                  }}>
-                    Issues
-                  </div>
-                  {results.issues.slice(0, 3).map(issue => (
-                    <div
-                      key={issue.id}
-                      style={{
-                        padding: spacing.md,
-                        paddingLeft: spacing.lg,
-                        color: colors.primary,
-                        borderBottom: `1px solid ${colors.border}`,
-                        fontSize: '13px'
-                      }}
-                    >
-                      <div style={{ fontWeight: 500 }}>{issue.key}: {issue.title}</div>
-                      <div style={{ fontSize: '11px', color: colors.secondary, marginTop: '2px' }}>
-                        {issue.status}
-                      </div>
+            <div className="max-h-96 overflow-y-auto">
+              {results.map((result, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleResultClick(result)}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-all"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className={`px-2 py-1 text-xs font-bold uppercase rounded ${getTypeColor(result.type)}`}>
+                      {result.type}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-gray-900 truncate">{result.title}</div>
+                      <div className="text-xs text-gray-600 mt-1">Score: {result.score?.toFixed(2) || 'N/A'}</div>
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {results.conversations.length === 0 && results.decisions.length === 0 && results.issues.length === 0 && (
-                <div style={{ padding: spacing.lg, textAlign: 'center', color: colors.secondary }}>
-                  No results found
-                </div>
-              )}
-            </>
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       )}

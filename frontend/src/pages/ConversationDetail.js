@@ -507,17 +507,17 @@ function ConversationDetail() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
       <div className="flex flex-col lg:flex-row gap-12">
       {/* Main Content */}
       <div className="flex-1 max-w-4xl">
         {/* Back Button */}
         <Link 
           to="/conversations" 
-          className="inline-flex items-center text-base text-gray-600 hover:text-gray-900 mb-8"
+          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-12 font-medium"
         >
-          <ArrowLeftIcon className="w-5 h-5 mr-2" />
-          Back to Conversations
+          <ArrowLeftIcon className="w-4 h-4 mr-2" />
+          Back
         </Link>
 
         {/* Header */}
@@ -535,7 +535,7 @@ function ConversationDetail() {
             </span>
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8 leading-tight">{conversation.title}</h1>
+          <h1 className="text-6xl font-black text-gray-900 mb-8 leading-tight tracking-tight">{conversation.title}</h1>
           
           <div className="flex items-center justify-between pb-8 border-b border-gray-200">
             <div className="flex items-center gap-4">
@@ -668,37 +668,37 @@ function ConversationDetail() {
         </div>
         
         {/* Reactions */}
-        <div className="pt-8 border-t border-gray-200">
-          <div className="flex items-center space-x-3">
+        <div className="pt-10 border-t border-gray-200">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => handleReaction('agree')}
-              className={`px-6 py-3 font-medium transition-all ${
+              className={`px-5 py-2.5 font-bold text-sm uppercase transition-all ${
                 reactions.user_reaction === 'agree'
                   ? 'bg-gray-900 text-white'
                   : 'border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
               }`}
             >
-              👍 {reactions.reactions.find(r => r.reaction_type === 'agree')?.count || 0}
+              Agree ({reactions.reactions.find(r => r.reaction_type === 'agree')?.count || 0})
             </button>
             <button
               onClick={() => handleReaction('unsure')}
-              className={`px-6 py-3 font-medium transition-all ${
+              className={`px-5 py-2.5 font-bold text-sm uppercase transition-all ${
                 reactions.user_reaction === 'unsure'
                   ? 'bg-gray-900 text-white'
                   : 'border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
               }`}
             >
-              🤔 {reactions.reactions.find(r => r.reaction_type === 'unsure')?.count || 0}
+              Unsure ({reactions.reactions.find(r => r.reaction_type === 'unsure')?.count || 0})
             </button>
             <button
               onClick={() => handleReaction('concern')}
-              className={`px-6 py-3 font-medium transition-all ${
+              className={`px-5 py-2.5 font-bold text-sm uppercase transition-all ${
                 reactions.user_reaction === 'concern'
                   ? 'bg-gray-900 text-white'
                   : 'border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
               }`}
             >
-              👎 {reactions.reactions.find(r => r.reaction_type === 'concern')?.count || 0}
+              Concern ({reactions.reactions.find(r => r.reaction_type === 'concern')?.count || 0})
             </button>
           </div>
         </div>
@@ -706,13 +706,13 @@ function ConversationDetail() {
 
         {/* Replies */}
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">
-            Replies
+          <h2 className="text-4xl font-black text-gray-900 mb-8">
+            Replies ({replies.length})
           </h2>
         
         {replies.length === 0 ? (
-          <div className="text-center py-12 border border-gray-200 bg-gray-50">
-            <p className="text-base text-gray-600">No replies yet. Be the first to comment.</p>
+          <div className="text-center py-16 border border-gray-200 bg-white">
+            <p className="text-base text-gray-600 font-medium">No replies yet. Be the first to comment.</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -745,7 +745,7 @@ function ConversationDetail() {
             </div>
           </div>
         )}
-        <h3 className="text-xl font-bold text-gray-900 mb-6">
+        <h3 className="text-2xl font-black text-gray-900 mb-6">
           {replyingTo ? 'Reply' : 'Add a comment'}
         </h3>
         <form onSubmit={handleSubmitReply}>
@@ -790,17 +790,17 @@ function ConversationDetail() {
             </div>
           )}
           
-          <div className="flex items-center gap-4 mt-6">
+          <div className="flex items-center gap-3 mt-6">
             <button
               type="submit"
               disabled={submitting || !newReply.trim()}
-              className="recall-btn-primary disabled:opacity-50"
+              className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50"
             >
               {submitting ? 'Posting...' : 'Reply'}
             </button>
-            <label className="px-5 py-2.5 border-2 border-gray-900 text-gray-900 hover:bg-gray-100 font-bold uppercase text-sm cursor-pointer">
+            <label className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm cursor-pointer transition-all">
               <input type="file" className="hidden" onChange={handleFileSelect} />
-              Attach File
+              Attach
             </label>
           </div>
         </form>

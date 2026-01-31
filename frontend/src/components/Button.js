@@ -1,71 +1,99 @@
 import React from 'react';
-import { components, motion, shadows } from '../utils/designTokens';
+import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
 
-function Button({ 
-  children, 
-  loading = false, 
-  disabled = false, 
-  variant = 'primary', 
-  type = 'button',
+function Button({
+  children,
+  variant = 'primary',
+  size = 'md',
   onClick,
-  style = {}
+  disabled = false,
+  loading = false,
+  icon: Icon,
+  style = {},
+  ...props
 }) {
-  const variantStyles = {
-    primary: components.button.primary,
-    secondary: components.button.secondary,
-    ghost: components.button.ghost,
+  const variants = {
+    primary: {
+      backgroundColor: colors.accent,
+      color: colors.surface,
+      border: 'none',
+      hover: colors.accentDark,
+      boxShadow: shadows.sm
+    },
+    secondary: {
+      backgroundColor: colors.surface,
+      color: colors.primary,
+      border: `1px solid ${colors.border}`,
+      hover: colors.background,
+      boxShadow: 'none'
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+      color: colors.secondary,
+      border: 'none',
+      hover: colors.background,
+      boxShadow: 'none'
+    },
+    danger: {
+      backgroundColor: colors.critical,
+      color: colors.surface,
+      border: 'none',
+      hover: '#DC2626',
+      boxShadow: shadows.sm
+    }
   };
 
-  const baseStyle = variantStyles[variant];
+  const sizes = {
+    sm: { padding: `${spacing.xs} ${spacing.md}`, fontSize: '13px' },
+    md: { padding: `${spacing.sm} ${spacing.lg}`, fontSize: '14px' },
+    lg: { padding: `${spacing.md} ${spacing.xl}`, fontSize: '15px' }
+  };
+
+  const variantStyle = variants[variant];
+  const sizeStyle = sizes[size];
 
   return (
     <button
-      type={type}
       onClick={onClick}
       disabled={disabled || loading}
       style={{
-        ...baseStyle,
+        ...variantStyle,
+        ...sizeStyle,
+        borderRadius: '8px',
+        fontWeight: 500,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: motion.fast,
         display: 'inline-flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: '8px',
-        border: baseStyle.border || 'none',
-        cursor: disabled ? 'not-allowed' : 'pointer',
+        gap: spacing.sm,
         opacity: disabled ? 0.5 : 1,
-        transition: motion.fast,
         ...style
       }}
       onMouseEnter={(e) => {
         if (!disabled) {
-          e.target.style.backgroundColor = baseStyle.hover;
-          if (variant === 'primary') {
-            e.target.style.boxShadow = shadows.md;
-          }
+          e.currentTarget.style.backgroundColor = variantStyle.hover;
+          e.currentTarget.style.boxShadow = shadows.md;
         }
       }}
       onMouseLeave={(e) => {
-        e.target.style.backgroundColor = baseStyle.background;
-        if (variant === 'primary') {
-          e.target.style.boxShadow = shadows.sm;
+        if (!disabled) {
+          e.currentTarget.style.backgroundColor = variantStyle.backgroundColor;
+          e.currentTarget.style.boxShadow = variantStyle.boxShadow;
         }
       }}
-      onFocus={(e) => {
-        e.target.style.boxShadow = shadows.focus;
-      }}
-      onBlur={(e) => {
-        e.target.style.boxShadow = variant === 'primary' ? shadows.sm : 'none';
-      }}
+      {...props}
     >
       {loading && (
         <div style={{
-          width: '16px',
-          height: '16px',
-          border: `2px solid ${baseStyle.text}`,
-          borderTop: `2px solid transparent`,
+          width: '14px',
+          height: '14px',
+          border: '2px solid currentColor',
+          borderTop: '2px solid transparent',
           borderRadius: '50%',
           animation: 'spin 0.6s linear infinite'
         }} />
       )}
+      {Icon && <Icon style={{ width: '18px', height: '18px' }} />}
       {children}
     </button>
   );

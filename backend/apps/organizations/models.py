@@ -130,3 +130,25 @@ class Invitation(models.Model):
     
     def is_valid(self):
         return not self.is_accepted and timezone.now() < self.expires_at
+
+class SavedSearch(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_searches')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    query = models.CharField(max_length=255)
+    filters = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'saved_searches'
+        ordering = ['-created_at']
+
+class SearchAnalytics(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    query = models.CharField(max_length=255)
+    results_count = models.PositiveIntegerField()
+    searched_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'search_analytics'
+        ordering = ['-searched_at']

@@ -29,6 +29,8 @@ export const colors = {
   criticalLight: '#FEE2E2',
   warning: '#F59E0B',
   warningLight: '#FFFBEB',
+  info: '#3B82F6',
+  infoLight: '#EFF6FF',
 };
 
 export const spacing = {
@@ -42,8 +44,9 @@ export const spacing = {
 
 export const typography = {
   fontFamily: {
-    body: 'Inter, system-ui, sans-serif',
-    header: 'Inter, system-ui, sans-serif',
+    body: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    header: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    mono: '"Fira Code", "Courier New", monospace',
   },
   sizes: {
     pageTitle: '36px',
@@ -70,13 +73,14 @@ export const shadows = {
   sm: '0 1px 2px rgba(0, 0, 0, 0.05)',
   md: '0 4px 12px rgba(0, 0, 0, 0.08)',
   lg: '0 10px 25px rgba(0, 0, 0, 0.1)',
+  xl: '0 20px 40px rgba(0, 0, 0, 0.12)',
   focus: '0 0 0 3px rgba(79, 70, 229, 0.1)',
 };
 
 export const radius = {
-  sm: '0px',
-  md: '0px',
-  lg: '0px',
+  sm: '4px',
+  md: '8px',
+  lg: '12px',
   full: '9999px',
 };
 
@@ -86,7 +90,7 @@ export const components = {
       background: colors.accent,
       text: colors.surface,
       hover: colors.accentDark,
-      radius: '0px',
+      radius: radius.md,
       padding: '10px 16px',
       fontSize: '14px',
       fontWeight: 500,
@@ -97,7 +101,7 @@ export const components = {
       text: colors.primary,
       border: `1px solid ${colors.border}`,
       hover: colors.background,
-      radius: '0px',
+      radius: radius.md,
       padding: '10px 16px',
       fontSize: '14px',
       fontWeight: 500,
@@ -106,7 +110,7 @@ export const components = {
       background: 'transparent',
       text: colors.secondary,
       hover: colors.background,
-      radius: '0px',
+      radius: radius.md,
       padding: '8px 12px',
     }
   },
@@ -114,7 +118,7 @@ export const components = {
   card: {
     background: colors.surface,
     border: `1px solid ${colors.border}`,
-    radius: '0px',
+    radius: radius.md,
     padding: spacing.lg,
     shadow: shadows.sm,
   },
@@ -122,7 +126,7 @@ export const components = {
   input: {
     background: colors.surface,
     border: `1px solid ${colors.border}`,
-    radius: '0px',
+    radius: radius.md,
     padding: '10px 12px',
     fontSize: '14px',
     focusBorder: `2px solid ${colors.accent}`,
@@ -154,4 +158,10 @@ export const layout = {
   sidebarCollapsedWidth: '80px',
   headerHeight: '64px',
   contentPadding: spacing.xl,
+};
+
+export const breakpoints = {
+  mobile: '640px',
+  tablet: '1024px',
+  desktop: '1280px',
 };

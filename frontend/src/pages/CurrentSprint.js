@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
 
 function CurrentSprint() {
   const [sprint, setSprint] = useState(null);
   const [blockers, setBlockers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showBlockerModal, setShowBlockerModal] = useState(false);
+  const [isReportingBlocker, setIsReportingBlocker] = useState(false);
 
   useEffect(() => {
     fetchSprint();
@@ -19,11 +18,12 @@ function CurrentSprint() {
       setSprint(sprintRes.data);
       
       if (sprintRes.data.id) {
-        const blockersRes = await api.get(`/api/agile/blockers/?sprint_id=${sprintRes.data.id}`);
+        const blockersRes = await api.get(`/api/agile/blockers/?sprint_id=${sprintRes.data.id}`).catch(() => ({ data: [] }));
         setBlockers(blockersRes.data);
       }
     } catch (error) {
       console.error('Failed to fetch sprint:', error);
+      setSprint(null);
     } finally {
       setLoading(false);
     }
@@ -31,295 +31,146 @@ function CurrentSprint() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #E5E7EB', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <div className="flex items-center justify-center h-96">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
       </div>
     );
   }
 
   if (!sprint) {
     return (
-      <div style={{ textAlign: 'center', paddingTop: '80px' }}>
-        <h2 style={{ fontSize: '32px', fontWeight: 700, color: colors.primary, marginBottom: spacing.md }}>
-          No active sprint
-        </h2>
-        <p style={{ fontSize: '16px', color: colors.secondary, marginBottom: spacing.lg, maxWidth: '500px', margin: '0 auto' }}>
-          Create a sprint in a project to start tracking progress, blockers, and team updates.
-        </p>
-        <Link to="/projects" style={{ color: colors.primary, textDecoration: 'none', fontWeight: 500 }}>
-          Go to Projects →
-        </Link>
+      <div className="text-center py-20">
+        <h2 className="text-4xl font-black text-gray-900 mb-4">No active sprint</h2>
+        <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto font-light">Create a sprint in a project to start tracking progress, blockers, and team updates.</p>
+        <a href="/projects" className="text-gray-900 font-bold hover:underline">Go to Projects →</a>
       </div>
     );
   }
 
-  const completionPercentage = sprint.issue_stats?.completion_percentage || 0;
+  const completionPercentage = sprint.completed && sprint.issue_count ? Math.round((sprint.completed / sprint.issue_count) * 100) : 0;
 
   return (
-    <div>
-      {/* Sprint Header */}
-      <div style={{
-        backgroundColor: colors.surface,
-        border: `1px solid ${colors.border}`,
-        borderRadius: radius.md,
-        padding: spacing.lg,
-        marginBottom: spacing.xl
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: spacing.md }}>
-          <div>
-            <h1 style={{ fontSize: '28px', fontWeight: 700, color: colors.primary, marginBottom: spacing.sm }}>
-              {sprint.name}
-            </h1>
-            <p style={{ fontSize: '14px', color: colors.secondary }}>
-              {sprint.project_name} • {sprint.start_date} to {sprint.end_date}
-            </p>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+        {/* Sprint Header */}
+        <div className="p-8 bg-white border border-gray-200 mb-12">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h1 className="text-5xl font-black text-gray-900 mb-3 tracking-tight">{sprint.name}</h1>
+              <p className="text-lg text-gray-600 font-light">{sprint.start_date} to {sprint.end_date}</p>
+            </div>
+            <div className="flex gap-2">
+              <span className="px-4 py-2 bg-green-600 text-white text-xs font-bold uppercase tracking-wide">Active</span>
+            </div>
           </div>
-          <div style={{
-            display: 'flex',
-            gap: spacing.sm,
-            alignItems: 'center'
-          }}>
-            <span style={{
-              padding: `${spacing.sm} ${spacing.md}`,
-              backgroundColor: '#10B981',
-              color: 'white',
-              fontSize: '12px',
-              fontWeight: 600,
-              borderRadius: radius.md
-            }}>
-              Active
-            </span>
-            <span style={{
-              padding: `${spacing.sm} ${spacing.md}`,
-              backgroundColor: colors.background,
-              color: colors.primary,
-              fontSize: '12px',
-              fontWeight: 600,
-              borderRadius: radius.md
-            }}>
-              {sprint.days_remaining} days left
-            </span>
+
+          {sprint.goal && (
+            <p className="text-gray-600 font-light italic">Goal: {sprint.goal}</p>
+          )}
+        </div>
+
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-3 gap-12">
+          {/* Left: Issues Progress (2 columns) */}
+          <div className="col-span-2 space-y-8">
+            <h2 className="text-3xl font-black text-gray-900">Sprint Progress</h2>
+
+            {/* Progress Bar */}
+            <div className="p-8 bg-white border border-gray-200">
+              <div className="flex justify-between mb-4">
+                <span className="text-sm font-bold text-gray-900 uppercase tracking-wide">Completion</span>
+                <span className="text-sm font-bold text-gray-900">{completionPercentage}%</span>
+              </div>
+              <div className="w-full h-3 bg-gray-200">
+                <div
+                  style={{ width: `${completionPercentage}%` }}
+                  className="h-full bg-green-600 transition-all duration-300"
+                />
+              </div>
+            </div>
+
+            {/* Issue Stats */}
+            <div className="grid grid-cols-3 gap-6">
+              <div className="p-8 bg-white border border-gray-200 text-center">
+                <p className="text-4xl font-black text-gray-900 mb-2">{sprint.completed || 0}</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Completed</p>
+              </div>
+
+              <div className="p-8 bg-white border border-gray-200 text-center">
+                <p className="text-4xl font-black text-amber-600 mb-2">{sprint.in_progress || 0}</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">In Progress</p>
+              </div>
+
+              <div className="p-8 bg-white border border-gray-200 text-center">
+                <p className="text-4xl font-black text-gray-600 mb-2">{sprint.todo || 0}</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">To Do</p>
+              </div>
+            </div>
+
+            {/* View Board Link */}
+            {sprint.project_id && (
+              <a href={`/projects/${sprint.project_id}`} className="inline-block px-8 py-4 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all">
+                View Kanban Board →
+              </a>
+            )}
+          </div>
+
+          {/* Right: Sidebar */}
+          <div className="space-y-8">
+            {/* Blockers */}
+            <div className="p-8 bg-white border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-6">Active Blockers</h3>
+
+              {blockers.length === 0 ? (
+                <p className="text-sm text-gray-600 font-medium mb-6">No active blockers</p>
+              ) : (
+                <div className="space-y-3 mb-6">
+                  {blockers.slice(0, 3).map(blocker => (
+                    <div key={blocker.id} className="p-4 bg-white border-l-4 border-red-600">
+                      <div className="text-sm font-bold text-gray-900 mb-1">{blocker.title}</div>
+                      <div className="text-xs text-gray-600">{blocker.days_open} days open</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowBlockerModal(true)}
+                disabled={isReportingBlocker}
+                className="w-full px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isReportingBlocker && (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                Report Blocker
+              </button>
+            </div>
+
+            {/* Sprint Info */}
+            <div className="p-8 bg-white border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-6">Sprint Info</h3>
+
+              <div className="space-y-6">
+                <div>
+                  <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Total Issues</p>
+                  <p className="text-3xl font-black text-gray-900">{sprint.issue_count || 0}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {sprint.goal && (
-          <p style={{ fontSize: '14px', color: colors.secondary, fontStyle: 'italic' }}>
-            Goal: {sprint.goal}
-          </p>
+        {showBlockerModal && (
+          <BlockerModal
+            sprintId={sprint.id}
+            onClose={() => setShowBlockerModal(false)}
+            onSubmit={() => {
+              setShowBlockerModal(false);
+              fetchSprint();
+            }}
+          />
         )}
       </div>
-
-      {/* Two Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: spacing.xl }}>
-        {/* Left: Issues Progress */}
-        <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary, marginBottom: spacing.lg }}>
-            Sprint Progress
-          </h2>
-
-          {/* Progress Bar */}
-          <div style={{
-            backgroundColor: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: radius.md,
-            padding: spacing.lg,
-            marginBottom: spacing.lg
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing.md }}>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: colors.primary }}>
-                Completion
-              </span>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: colors.primary }}>
-                {completionPercentage}%
-              </span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: colors.background,
-              borderRadius: '4px',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${completionPercentage}%`,
-                height: '100%',
-                backgroundColor: '#10B981',
-                transition: 'width 0.3s ease'
-              }} />
-            </div>
-          </div>
-
-          {/* Issue Stats */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            gap: spacing.md,
-            marginBottom: spacing.lg
-          }}>
-            <div style={{
-              backgroundColor: colors.surface,
-              border: `1px solid ${colors.border}`,
-              borderRadius: radius.md,
-              padding: spacing.lg,
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: colors.primary, marginBottom: spacing.sm }}>
-                {sprint.issue_stats?.completed || 0}
-              </div>
-              <div style={{ fontSize: '12px', color: colors.secondary, textTransform: 'uppercase' }}>
-                Completed
-              </div>
-            </div>
-
-            <div style={{
-              backgroundColor: colors.surface,
-              border: `1px solid ${colors.border}`,
-              borderRadius: radius.md,
-              padding: spacing.lg,
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: '#F59E0B', marginBottom: spacing.sm }}>
-                {sprint.issue_stats?.in_progress || 0}
-              </div>
-              <div style={{ fontSize: '12px', color: colors.secondary, textTransform: 'uppercase' }}>
-                In Progress
-              </div>
-            </div>
-
-            <div style={{
-              backgroundColor: colors.surface,
-              border: `1px solid ${colors.border}`,
-              borderRadius: radius.md,
-              padding: spacing.lg,
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: '#6B7280', marginBottom: spacing.sm }}>
-                {sprint.issue_stats?.todo || 0}
-              </div>
-              <div style={{ fontSize: '12px', color: colors.secondary, textTransform: 'uppercase' }}>
-                To Do
-              </div>
-            </div>
-          </div>
-
-          {/* View Board Link */}
-          <Link to={`/projects/${sprint.project_id}`} style={{
-            display: 'inline-block',
-            padding: `${spacing.md} ${spacing.lg}`,
-            backgroundColor: colors.primary,
-            color: 'white',
-            textDecoration: 'none',
-            borderRadius: radius.md,
-            fontSize: '14px',
-            fontWeight: 500,
-            transition: motion.fast
-          }}>
-            View Kanban Board →
-          </Link>
-        </div>
-
-        {/* Right: Sidebar */}
-        <div>
-          {/* Blockers */}
-          <div style={{
-            backgroundColor: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: radius.md,
-            padding: spacing.lg,
-            marginBottom: spacing.lg
-          }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, marginBottom: spacing.md }}>
-              Active Blockers
-            </h3>
-
-            {blockers.length === 0 ? (
-              <p style={{ fontSize: '12px', color: colors.secondary }}>
-                No active blockers
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
-                {blockers.slice(0, 3).map(blocker => (
-                  <div key={blocker.id} style={{
-                    padding: spacing.md,
-                    backgroundColor: colors.background,
-                    borderRadius: radius.md,
-                    borderLeft: `3px solid #EF4444`
-                  }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: colors.primary, marginBottom: '4px' }}>
-                      {blocker.title}
-                    </div>
-                    <div style={{ fontSize: '11px', color: colors.secondary }}>
-                      {blocker.days_open} days open
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button
-              onClick={() => setShowBlockerModal(true)}
-              style={{
-                width: '100%',
-                marginTop: spacing.md,
-                padding: `${spacing.sm} ${spacing.md}`,
-                backgroundColor: colors.primary,
-                color: 'white',
-                border: 'none',
-                borderRadius: radius.md,
-                fontSize: '12px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                transition: motion.fast
-              }}
-            >
-              Report Blocker
-            </button>
-          </div>
-
-          {/* Sprint Info */}
-          <div style={{
-            backgroundColor: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: radius.md,
-            padding: spacing.lg
-          }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, marginBottom: spacing.md }}>
-              Sprint Info
-            </h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}>
-              <div>
-                <div style={{ fontSize: '11px', color: colors.secondary, textTransform: 'uppercase', marginBottom: '4px' }}>
-                  Total Issues
-                </div>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: colors.primary }}>
-                  {sprint.issue_stats?.total || 0}
-                </div>
-              </div>
-
-              <div>
-                <div style={{ fontSize: '11px', color: colors.secondary, textTransform: 'uppercase', marginBottom: '4px' }}>
-                  Decisions Made
-                </div>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: colors.primary }}>
-                  {sprint.decisions_made || 0}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {showBlockerModal && (
-        <BlockerModal
-          sprintId={sprint.id}
-          onClose={() => setShowBlockerModal(false)}
-          onSubmit={() => {
-            setShowBlockerModal(false);
-            fetchSprint();
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -349,64 +200,29 @@ function BlockerModal({ sprintId, onClose, onSubmit }) {
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 50
-    }}>
-      <div style={{
-        backgroundColor: colors.surface,
-        borderRadius: radius.md,
-        padding: spacing.lg,
-        maxWidth: '400px',
-        width: '90%',
-        boxShadow: shadows.lg
-      }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary, marginBottom: spacing.md }}>
-          Report Blocker
-        </h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-8 w-full max-w-md">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Report Blocker</h2>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: spacing.md }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-              Title
-            </label>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="What's blocking progress?"
-              style={{
-                width: '100%',
-                padding: spacing.md,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
+              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
               required
             />
           </div>
 
-          <div style={{ marginBottom: spacing.md }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-              Type
-            </label>
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Type</label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              style={{
-                width: '100%',
-                padding: spacing.md,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
+              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
             >
               <option value="technical">Technical</option>
               <option value="dependency">Dependency</option>
@@ -416,73 +232,32 @@ function BlockerModal({ sprintId, onClose, onSubmit }) {
             </select>
           </div>
 
-          <div style={{ marginBottom: spacing.lg }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-              Description
-            </label>
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Provide context..."
-              style={{
-                width: '100%',
-                padding: spacing.md,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                minHeight: '100px',
-                fontFamily: 'inherit'
-              }}
+              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all min-h-24"
             />
           </div>
 
-          <div style={{ display: 'flex', gap: spacing.md, justifyContent: 'flex-end' }}>
+          <div className="flex gap-3 justify-end pt-4">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              style={{
-                padding: `${spacing.sm} ${spacing.md}`,
-                backgroundColor: colors.background,
-                color: colors.primary,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                cursor: submitting ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: 500,
-                opacity: submitting ? 0.6 : 1
-              }}
+              className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              style={{
-                padding: `${spacing.sm} ${spacing.md}`,
-                backgroundColor: colors.primary,
-                color: 'white',
-                border: 'none',
-                borderRadius: radius.md,
-                cursor: submitting ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: 500,
-                opacity: submitting ? 0.6 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: spacing.sm
-              }}
+              className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {submitting && (
-                <div style={{
-                  width: '14px',
-                  height: '14px',
-                  border: '2px solid white',
-                  borderTop: '2px solid transparent',
-                  borderRadius: '50%',
-                  animation: 'spin 0.6s linear infinite'
-                }} />
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               )}
               {submitting ? 'Creating...' : 'Report Blocker'}
             </button>

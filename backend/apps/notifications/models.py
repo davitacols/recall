@@ -10,6 +10,7 @@ class Notification(models.Model):
         ('reminder', 'Reminder'),
         ('badge', 'Badge Earned'),
         ('automation', 'Automation'),
+        ('message', 'Message'),
         ('system', 'System'),
     ]
     

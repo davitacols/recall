@@ -116,9 +116,13 @@ class Conversation(models.Model):
     def __str__(self):
         return f"{self.get_post_type_display()}: {self.title}"
     
-    @property
-    def has_ai_content(self):
-        return bool(self.ai_summary or self.ai_action_items)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        try:
+            from apps.organizations.automation_engine import trigger_automation
+            trigger_automation(self, 'conversation_created', self.author)
+        except Exception:
+            pass
 
 class ConversationReply(models.Model):
     conversation = models.ForeignKey(
@@ -156,12 +160,22 @@ class ConversationReply(models.Model):
         is_new = self.pk is None
         super().save(*args, **kwargs)
         
-        try:
-            from apps.organizations.automation_engine import trigger_automation
-            if is_new:
+        if is_new:
+            try:
+                from apps.organizations.automation_engine import trigger_automation
+                from apps.notifications.helpers import notify_conversation_reply, notify_mentioned_users
+                
                 trigger_automation(self, 'comment_added', self.author)
-        except Exception:
-            pass
+                
+                # Notify conversation author
+                notify_conversation_reply(self, self.conversation)
+                
+                # Notify mentioned users
+                mentioned_ids = list(self.mentioned_users.values_list('id', flat=True))
+                if mentioned_ids:
+                    notify_mentioned_users(self.conversation, mentioned_ids)
+            except Exception:
+                pass
 
 class ActionItem(models.Model):
     STATUS_CHOICES = [

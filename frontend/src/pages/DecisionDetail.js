@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
-import { CheckCircleIcon, ExclamationTriangleIcon, LinkIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { LinkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 function DecisionDetail() {
   const { id } = useParams();
@@ -48,108 +48,97 @@ function DecisionDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
       </div>
     );
   }
 
   if (!decision) {
-    return <div className="text-center py-8 text-slate-600">Decision not found</div>;
+    return <div className="text-center py-8 text-gray-600">Decision not found</div>;
   }
 
   const impactConfig = {
-    low: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900', label: 'Low' },
-    medium: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-900', label: 'Medium' },
-    high: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-900', label: 'High' },
-    critical: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-900', label: 'Critical' }
+    low: { bg: 'bg-blue-50', text: 'text-blue-900', label: 'Low' },
+    medium: { bg: 'bg-amber-50', text: 'text-amber-900', label: 'Medium' },
+    high: { bg: 'bg-orange-50', text: 'text-orange-900', label: 'High' },
+    critical: { bg: 'bg-red-50', text: 'text-red-900', label: 'Critical' }
   };
 
   const statusConfig = {
-    proposed: { bg: 'bg-slate-100', text: 'text-slate-800', icon: '◯' },
-    under_review: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '◐' },
-    approved: { bg: 'bg-green-100', text: 'text-green-800', icon: '✓' },
-    rejected: { bg: 'bg-red-100', text: 'text-red-800', icon: '✕' },
-    implemented: { bg: 'bg-emerald-100', text: 'text-emerald-800', icon: '✓' },
-    cancelled: { bg: 'bg-slate-100', text: 'text-slate-800', icon: '−' }
+    proposed: { bg: 'bg-gray-100', text: 'text-gray-900', label: 'Proposed' },
+    under_review: { bg: 'bg-blue-100', text: 'text-blue-900', label: 'Under Review' },
+    approved: { bg: 'bg-green-100', text: 'text-green-900', label: 'Approved' },
+    rejected: { bg: 'bg-red-100', text: 'text-red-900', label: 'Rejected' },
+    implemented: { bg: 'bg-emerald-100', text: 'text-emerald-900', label: 'Implemented' },
+    cancelled: { bg: 'bg-gray-100', text: 'text-gray-900', label: 'Cancelled' }
   };
 
-  const impact = decision ? (impactConfig[decision.impact_level] || impactConfig.medium) : impactConfig.medium;
-  const status = decision ? (statusConfig[decision.status] || statusConfig.proposed) : statusConfig.proposed;
+  const impact = impactConfig[decision.impact_level] || impactConfig.medium;
+  const status = statusConfig[decision.status] || statusConfig.proposed;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold text-slate-900 mb-4">{decision.title}</h1>
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium border ${impact.bg} ${impact.border} ${impact.text}`}>
-                  <span className="w-2 h-2 rounded-full bg-current"></span>
-                  {impact.label} Impact
-                </span>
-                <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium ${status.bg} ${status.text}`}>
-                  {status.icon} {decision.status.replace('_', ' ').charAt(0).toUpperCase() + decision.status.replace('_', ' ').slice(1)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Metadata Bar */}
-          <div className="grid grid-cols-4 gap-4 pt-6 border-t border-slate-200">
-            <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Owner</div>
-              <div className="text-sm font-medium text-slate-900">{decision.decision_maker_name}</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Created</div>
-              <div className="text-sm font-medium text-slate-900">{new Date(decision.created_at).toLocaleDateString()}</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Decided</div>
-              <div className="text-sm font-medium text-slate-900">
-                {decision.decided_at ? new Date(decision.decided_at).toLocaleDateString() : '−'}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Confidence</div>
-              <div className="text-sm font-medium text-slate-900">{decision.confidence?.score || '−'}%</div>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+        <a href="/decisions" className="text-sm text-gray-600 hover:text-gray-900 font-medium mb-4 inline-block">← Back to Decisions</a>
+        
+        <div className="mb-12">
+          <h1 className="text-6xl font-black text-gray-900 mb-4 tracking-tight">{decision.title}</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className={`px-4 py-2 text-xs font-bold uppercase tracking-wide ${impact.bg} ${impact.text}`}>
+              {impact.label} Impact
+            </span>
+            <span className={`px-4 py-2 text-xs font-bold uppercase tracking-wide ${status.bg} ${status.text}`}>
+              {status.label}
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-8">
-            {['overview', 'rationale', 'code', 'details'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab
-                    ? 'border-slate-900 text-slate-900'
-                    : 'border-transparent text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
+        {/* Metadata Grid */}
+        <div className="grid grid-cols-4 gap-6 mb-16">
+          <div className="p-6 bg-white border border-gray-200">
+            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Owner</p>
+            <p className="text-lg font-bold text-gray-900">{decision.decision_maker_name}</p>
+          </div>
+          <div className="p-6 bg-white border border-gray-200">
+            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Created</p>
+            <p className="text-lg font-bold text-gray-900">{new Date(decision.created_at).toLocaleDateString()}</p>
+          </div>
+          <div className="p-6 bg-white border border-gray-200">
+            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Decided</p>
+            <p className="text-lg font-bold text-gray-900">{decision.decided_at ? new Date(decision.decided_at).toLocaleDateString() : '−'}</p>
+          </div>
+          <div className="p-6 bg-white border border-gray-200">
+            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Confidence</p>
+            <p className="text-lg font-bold text-gray-900">{decision.confidence?.score || '−'}%</p>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-3 gap-8">
+        {/* Tabs */}
+        <div className="flex gap-8 mb-12 border-b border-gray-200 pb-4">
+          {['overview', 'rationale', 'code', 'details'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`text-sm font-bold uppercase tracking-wide transition-all ${
+                activeTab === tab
+                  ? 'text-gray-900 border-b-2 border-gray-900 pb-4'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="grid grid-cols-3 gap-12">
           {/* Main Content */}
           <div className="col-span-2">
             {activeTab === 'overview' && (
-              <div className="bg-white rounded-lg border border-slate-200 p-8">
-                <h2 className="text-lg font-bold text-slate-900 mb-6">Overview</h2>
-                <div className="prose prose-sm max-w-none text-slate-700 space-y-4">
+              <div className="p-8 bg-white border border-gray-200">
+                <h2 className="text-2xl font-black text-gray-900 mb-6">Overview</h2>
+                <div className="space-y-4 text-gray-700 font-light">
                   {decision.description.split('\n\n').map((paragraph, idx) => (
                     <p key={idx} className="leading-relaxed">{paragraph}</p>
                   ))}
@@ -158,47 +147,47 @@ function DecisionDetail() {
             )}
 
             {activeTab === 'rationale' && (
-              <div className="bg-white rounded-lg border border-slate-200 p-8">
-                <h2 className="text-lg font-bold text-slate-900 mb-6">Rationale</h2>
+              <div className="p-8 bg-white border border-gray-200">
+                <h2 className="text-2xl font-black text-gray-900 mb-6">Rationale</h2>
                 {decision.rationale ? (
-                  <div className="prose prose-sm max-w-none text-slate-700 space-y-4">
+                  <div className="space-y-4 text-gray-700 font-light">
                     {decision.rationale.split('\n\n').map((paragraph, idx) => (
                       <p key={idx} className="leading-relaxed">{paragraph}</p>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-slate-600">No rationale provided</p>
+                  <p className="text-gray-600">No rationale provided</p>
                 )}
               </div>
             )}
 
             {activeTab === 'code' && (
-              <div className="bg-white rounded-lg border border-slate-200 p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-bold text-slate-900">Related Code</h2>
+              <div className="p-8 bg-white border border-gray-200">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-2xl font-black text-gray-900">Related Code</h2>
                   <button
                     onClick={() => setShowLinkPR(!showLinkPR)}
-                    className="px-3 py-1 text-sm font-medium border border-slate-900 text-slate-900 hover:bg-slate-50 transition-colors"
+                    className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all"
                   >
-                    {showLinkPR ? '−' : '+'} Link PR
+                    {showLinkPR ? 'Cancel' : 'Link PR'}
                   </button>
                 </div>
 
                 {showLinkPR && (
-                  <form onSubmit={handleLinkPR} className="mb-6 p-4 bg-slate-50 border border-slate-200">
-                    <label className="block text-sm font-medium text-slate-900 mb-2">PR URL</label>
-                    <div className="flex gap-2">
+                  <form onSubmit={handleLinkPR} className="mb-8 p-6 bg-gray-50 border border-gray-200">
+                    <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">PR URL</label>
+                    <div className="flex gap-3">
                       <input
                         type="url"
                         value={prUrl}
                         onChange={(e) => setPrUrl(e.target.value)}
                         placeholder="https://github.com/owner/repo/pull/123"
-                        className="flex-1 px-3 py-2 border border-slate-300 text-sm focus:border-slate-900 focus:outline-none"
+                        className="flex-1 px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
                       />
                       <button
                         type="submit"
                         disabled={!prUrl.trim() || linking}
-                        className="px-4 py-2 bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50 text-sm"
+                        className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50"
                       >
                         {linking ? 'Linking...' : 'Link'}
                       </button>
@@ -214,26 +203,26 @@ function DecisionDetail() {
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-slate-900 hover:bg-slate-50 transition-all group"
+                        className="flex items-center justify-between p-6 border border-gray-200 hover:border-gray-900 hover:shadow-md transition-all"
                       >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <LinkIcon className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <LinkIcon className="w-5 h-5 text-gray-600 flex-shrink-0" />
                           <div className="min-w-0">
-                            <div className="font-medium text-slate-900 group-hover:underline truncate">
+                            <div className="font-bold text-gray-900 truncate">
                               {link.title || `PR #${link.number}`}
                             </div>
-                            <div className="text-xs text-slate-500 truncate">{link.url}</div>
+                            <div className="text-xs text-gray-600 truncate">{link.url}</div>
                           </div>
                         </div>
-                        <span className="text-slate-400 group-hover:text-slate-900 ml-2">→</span>
+                        <span className="text-gray-600 ml-4">→</span>
                       </a>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <LinkIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-600 font-medium">No linked PRs</p>
-                    <p className="text-sm text-slate-500 mt-1">Link PRs to track implementation</p>
+                  <div className="text-center py-16">
+                    <LinkIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-600 font-medium">No linked PRs</p>
+                    <p className="text-sm text-gray-500 mt-2">Link PRs to track implementation</p>
                   </div>
                 )}
               </div>
@@ -242,31 +231,31 @@ function DecisionDetail() {
             {activeTab === 'details' && (
               <div className="space-y-6">
                 {decision.context_reason && (
-                  <div className="bg-white rounded-lg border border-slate-200 p-8">
-                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">Context</h3>
-                    <p className="text-slate-700">{decision.context_reason}</p>
+                  <div className="p-8 bg-white border border-gray-200">
+                    <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-4">Context</h3>
+                    <p className="text-gray-700 font-light">{decision.context_reason}</p>
                   </div>
                 )}
 
                 {decision.if_this_fails && (
-                  <div className="bg-red-50 rounded-lg border border-red-200 p-8">
-                    <div className="flex gap-3">
-                      <ExclamationTriangleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="p-8 bg-red-50 border border-red-200">
+                    <div className="flex gap-4">
+                      <ExclamationTriangleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
                       <div>
-                        <h3 className="text-sm font-bold text-red-900 uppercase tracking-wide mb-2">If This Fails</h3>
-                        <p className="text-red-800">{decision.if_this_fails}</p>
+                        <h3 className="text-xs font-bold text-red-900 uppercase tracking-wide mb-2">If This Fails</h3>
+                        <p className="text-red-800 font-light">{decision.if_this_fails}</p>
                       </div>
                     </div>
                   </div>
                 )}
 
                 {decision.alternatives_considered && decision.alternatives_considered.length > 0 && (
-                  <div className="bg-white rounded-lg border border-slate-200 p-8">
-                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">Alternatives Considered</h3>
-                    <ul className="space-y-2">
+                  <div className="p-8 bg-white border border-gray-200">
+                    <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-4">Alternatives Considered</h3>
+                    <ul className="space-y-3">
                       {(Array.isArray(decision.alternatives_considered) ? decision.alternatives_considered : [decision.alternatives_considered]).map((alt, idx) => (
-                        <li key={idx} className="flex gap-3 text-slate-700">
-                          <span className="text-slate-400 flex-shrink-0">•</span>
+                        <li key={idx} className="flex gap-3 text-gray-700 font-light">
+                          <span className="text-gray-400 flex-shrink-0">•</span>
                           <span>{alt}</span>
                         </li>
                       ))}
@@ -281,36 +270,36 @@ function DecisionDetail() {
           <div className="space-y-6">
             {/* Confidence Score */}
             {decision.confidence && (
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">Confidence</h3>
+              <div className="p-8 bg-white border border-gray-200">
+                <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-6">Confidence</h3>
                 <div className="space-y-4">
                   <div>
-                    <div className="flex items-end justify-between mb-2">
-                      <span className="text-2xl font-bold text-slate-900">{decision.confidence.score}%</span>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                        decision.confidence.level === 'High' ? 'bg-green-100 text-green-800' :
-                        decision.confidence.level === 'Medium' ? 'bg-amber-100 text-amber-800' :
-                        'bg-red-100 text-red-800'
+                    <div className="flex items-end justify-between mb-3">
+                      <span className="text-4xl font-black text-gray-900">{decision.confidence.score}%</span>
+                      <span className={`text-xs font-bold uppercase px-3 py-1 ${
+                        decision.confidence.level === 'High' ? 'bg-green-100 text-green-900' :
+                        decision.confidence.level === 'Medium' ? 'bg-amber-100 text-amber-900' :
+                        'bg-red-100 text-red-900'
                       }`}>
                         {decision.confidence.level}
                       </span>
                     </div>
-                    <div className="w-full bg-slate-200 rounded-full h-2">
+                    <div className="w-full h-2 bg-gray-200">
                       <div
-                        className={`h-2 rounded-full transition-all ${
-                          decision.confidence.level === 'High' ? 'bg-green-500' :
-                          decision.confidence.level === 'Medium' ? 'bg-amber-500' :
-                          'bg-red-500'
+                        className={`h-2 transition-all ${
+                          decision.confidence.level === 'High' ? 'bg-green-600' :
+                          decision.confidence.level === 'Medium' ? 'bg-amber-600' :
+                          'bg-red-600'
                         }`}
                         style={{ width: `${decision.confidence.score}%` }}
                       ></div>
                     </div>
                   </div>
                   {decision.confidence.factors && (
-                    <div className="pt-4 border-t border-slate-200 space-y-2">
+                    <div className="pt-4 border-t border-gray-200 space-y-2">
                       {decision.confidence.factors.map((factor, idx) => (
-                        <div key={idx} className="text-xs text-slate-600">
-                          <span className="text-slate-400">•</span> {factor}
+                        <div key={idx} className="text-xs text-gray-600 font-light">
+                          <span className="text-gray-400">•</span> {factor}
                         </div>
                       ))}
                     </div>
@@ -320,33 +309,29 @@ function DecisionDetail() {
             )}
 
             {/* Quick Info */}
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">Quick Info</h3>
+            <div className="p-8 bg-white border border-gray-200">
+              <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-6">Quick Info</h3>
               <div className="space-y-4">
                 <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Status</div>
-                  <div className={`inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium ${status.bg} ${status.text}`}>
-                    {status.icon} {decision.status.replace('_', ' ')}
-                  </div>
+                  <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Status</p>
+                  <span className={`inline-block px-3 py-1 text-xs font-bold uppercase ${status.bg} ${status.text}`}>
+                    {status.label}
+                  </span>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Impact Level</div>
-                  <div className={`inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium ${impact.bg} ${impact.border} ${impact.text}`}>
+                  <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Impact</p>
+                  <span className={`inline-block px-3 py-1 text-xs font-bold uppercase ${impact.bg} ${impact.text}`}>
                     {impact.label}
-                  </div>
+                  </span>
                 </div>
                 {decision.implementation_deadline && (
                   <div>
-                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Deadline</div>
-                    <div className="flex items-center gap-2 text-sm text-slate-700">
-                      <CalendarIcon className="w-4 h-4 text-slate-400" />
-                      {new Date(decision.implementation_deadline).toLocaleDateString()}
-                    </div>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Deadline</p>
+                    <p className="text-sm font-bold text-gray-900">{new Date(decision.implementation_deadline).toLocaleDateString()}</p>
                   </div>
                 )}
               </div>
             </div>
-
           </div>
         </div>
       </div>

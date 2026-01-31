@@ -14,7 +14,10 @@ from apps.organizations.models import Organization
 @csrf_exempt
 @api_view(['POST'])
 def search_knowledge(request):
+    """Search knowledge base"""
     query = request.data.get('query', '').strip()
+    filters = request.data.get('filters', {})
+    
     if not query:
         return Response({'error': 'Query required'}, 
                        status=status.HTTP_400_BAD_REQUEST)
@@ -29,76 +32,68 @@ def search_knowledge(request):
     if not org_id:
         return Response({'query': query, 'results': [], 'total': 0})
     
-    # Use text-based search (vector search disabled)
-    results = []
-    
-    # Search conversations
-    conversations = Conversation.objects.filter(
-        organization_id=org_id,
-        ai_processed=True
-    )
-    
-    query_lower = query.lower()
-    scored_results = []
-    
-    for conv in conversations:
-        score = 0
-        if query_lower in conv.title.lower():
-            score += 10
-        if query_lower in conv.content.lower():
-            score += 5
-        if conv.ai_summary and query_lower in conv.ai_summary.lower():
-            score += 7
-        for keyword in conv.ai_keywords:
-            if query_lower in keyword.lower() or keyword.lower() in query_lower:
-                score += 8
-        
-        if score > 0:
-            scored_results.append({
-                'id': f'conv_{conv.id}',
-                'title': conv.title,
-                'content_type': conv.post_type,
-                'content_preview': conv.content[:200],
-                'summary': conv.ai_summary or conv.content[:200],
-                'relevance_score': min(score / 10, 1.0),
-                'created_at': conv.created_at.isoformat(),
-                'author': conv.author.get_full_name(),
-                'score': score
-            })
-    
-    # Search decisions
-    decisions = Decision.objects.filter(organization_id=org_id)
-    for dec in decisions:
-        score = 0
-        if query_lower in dec.title.lower():
-            score += 10
-        if query_lower in dec.description.lower():
-            score += 5
-        if query_lower in dec.rationale.lower():
-            score += 7
-        
-        if score > 0:
-            scored_results.append({
-                'id': f'decision_{dec.id}',
-                'title': dec.title,
-                'content_type': 'decision',
-                'content_preview': dec.description[:200],
-                'summary': dec.rationale,
-                'relevance_score': min(score / 10, 1.0),
-                'created_at': dec.created_at.isoformat(),
-                'author': dec.decision_maker.get_full_name() if dec.decision_maker else None,
-                'score': score
-            })
-    
-    # Sort by score and limit
-    scored_results.sort(key=lambda x: x['score'], reverse=True)
-    results = scored_results[:20]
+    # Use search engine
+    search_engine = get_search_engine()
+    results = search_engine.search(query, org_id, filters, limit=20)
     
     return Response({
         'query': query,
+        'filters': filters,
         'results': results,
-        'total': len(results)
+        'total': results.get('total', 0)
     })
+
+@csrf_exempt
+@api_view(['POST'])
+def enhanced_search(request):
+    query = request.data.get('query', '').strip()
+    filters = request.data.get('filters', {})
+    
+    if not query:
+        return Response({'error': 'Query required'}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get organization
+    if request.user and request.user.is_authenticated:
+        org_id = request.user.organization_id
+    else:
+        org = Organization.objects.first()
+        org_id = org.id if org else None
+    
+    if not org_id:
+        return Response({'query': query, 'results': [], 'total': 0})
+    
+    # Use enhanced search engine
+    search_engine = get_search_engine()
+    results = search_engine.search(query, org_id, filters, limit=20)
+    
+    return Response({
+        'query': query,
+        'filters': filters,
+        'results': results,
+        'total': results.get('total', 0)
+    })
+
+@api_view(['GET'])
+def search_suggestions(request):
+    query = request.GET.get('q', '').strip()
+    
+    if not query or len(query) < 2:
+        return Response({'suggestions': []})
+    
+    if request.user and request.user.is_authenticated:
+        org_id = request.user.organization_id
+    else:
+        org = Organization.objects.first()
+        org_id = org.id if org else None
+    
+    if not org_id:
+        return Response({'suggestions': []})
+    
+    search_engine = get_search_engine()
+    suggestions = search_engine.get_suggestions(query, org_id)
+    
+    return Response({'suggestions': suggestions})
 
 @api_view(['GET'])
 def recent_decisions(request):

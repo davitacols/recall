@@ -2,49 +2,59 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.contrib.auth import get_user_model
-from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import get_user_model, authenticate
 from django.utils import timezone
-from .authentication import CognitoClient
+from django.core.exceptions import ValidationError
+import logging
 import boto3
 from django.conf import settings
+from .auth_utils import check_rate_limit, validate_email, validate_password, validate_username
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
-@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
-    
-    print(f"[LOGIN] Attempting login with username: {username}")
+    username = request.data.get('username', '').strip()
+    password = request.data.get('password', '')
     
     if not username or not password:
         return Response({'error': 'Username and password required'}, 
                        status=status.HTTP_400_BAD_REQUEST)
     
-    # Try local authentication first - support both username and email
-    from django.contrib.auth import authenticate
+    # Rate limiting
+    if not check_rate_limit(username):
+        logger.warning(f"Rate limit exceeded for login attempt: {username}")
+        return Response(
+            {'error': 'Too many login attempts. Try again later.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+    
+    # Input validation
+    try:
+        if '@' in username:
+            validate_email(username)
+        else:
+            validate_username(username)
+    except ValidationError as e:
+        logger.warning(f"Invalid input for login: {username}")
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Try local authentication
     user = authenticate(username=username, password=password)
     
-    # If username auth failed, try email
     if not user:
         try:
             user_obj = User.objects.get(email__iexact=username)
             user = authenticate(username=user_obj.username, password=password)
-            print(f"[LOGIN] Tried email lookup, found username: {user_obj.username}")
         except User.DoesNotExist:
-            print(f"[LOGIN] No user found with email: {username}")
-    
-    print(f"[LOGIN] Local auth result: {user}")
+            pass
     
     if user:
-        # Local authentication successful
         from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(user)
-        
-        print(f"[LOGIN] Success for user: {user.username}")
+        logger.info(f"Successful login for user: {user.username}")
         
         return Response({
             'access_token': str(refresh.access_token),
@@ -59,51 +69,18 @@ def login(request):
             }
         })
     
-    print(f"[LOGIN] Local auth failed, trying Cognito...")
-    
-    # Fallback to Cognito authentication
-    try:
-        client = boto3.client(
-            'cognito-idp',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION
-        )
-        
-        response = client.initiate_auth(
-            ClientId=settings.COGNITO_CLIENT_ID,
-            AuthFlow='USER_PASSWORD_AUTH',
-            AuthParameters={
-                'USERNAME': username,
-                'PASSWORD': password
-            }
-        )
-        
-        access_token = response['AuthenticationResult']['AccessToken']
-        id_token = response['AuthenticationResult']['IdToken']
-        
-        # Get user info from token
-        user_response = client.get_user(AccessToken=access_token)
-        user_attrs = {attr['Name']: attr['Value'] for attr in user_response['UserAttributes']}
-        
-        return Response({
-            'access_token': access_token,
-            'id_token': id_token,
-            'user': {
-                'username': user_attrs.get('email', '').split('@')[0],
-                'email': user_attrs.get('email', ''),
-                'full_name': user_attrs.get('email', '').split('@')[0].title(),
-                'organization': 'Demo Company'
-            }
-        })
-    except Exception as e:
-        print(f"[LOGIN] Cognito auth failed: {e}")
-        return Response({'error': 'Invalid credentials'}, 
-                       status=status.HTTP_401_UNAUTHORIZED)
+    logger.warning(f"Failed login attempt for: {username}")
+    return Response({'error': 'Invalid credentials'}, 
+                   status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def team(request):
     """Get all team members in the user's organization"""
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, 
+                       status=status.HTTP_401_UNAUTHORIZED)
+    
     organization = request.user.organization
     users = User.objects.filter(organization=organization).values(
         'id', 'username', 'email', 'full_name', 'role'
@@ -111,26 +88,21 @@ def team(request):
     return Response(list(users))
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def profile(request):
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, 
+                       status=status.HTTP_401_UNAUTHORIZED)
+    
     user = request.user
     
-    # In production (S3), avatar.url is already absolute
-    # In development (local), we need to build absolute URI
+    avatar_url = None
     if user.avatar:
-        if settings.DEBUG:
-            avatar_url = request.build_absolute_uri(user.avatar.url)
-        else:
-            avatar_url = user.avatar.url
-    else:
-        avatar_url = None
+        avatar_url = user.avatar.url if not settings.DEBUG else request.build_absolute_uri(user.avatar.url)
     
+    org_logo_url = None
     if user.organization.logo:
-        if settings.DEBUG:
-            org_logo_url = request.build_absolute_uri(user.organization.logo.url)
-        else:
-            org_logo_url = user.organization.logo.url
-    else:
-        org_logo_url = None
+        org_logo_url = user.organization.logo.url if not settings.DEBUG else request.build_absolute_uri(user.organization.logo.url)
     
     return Response({
         'id': user.id,
@@ -150,63 +122,64 @@ def profile(request):
         'first_decision_made': user.first_decision_made
     })
 
-@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
-    email = request.data.get('email')
-    password = request.data.get('password')
+    email = request.data.get('email', '').strip()
+    password = request.data.get('password', '')
     token = request.data.get('token')
-    organization_name = request.data.get('organization')
+    organization_name = request.data.get('organization', '').strip()
     
-    print(f"[REGISTER] Received: email={email}, token={token}, org={organization_name}")
+    # Rate limiting
+    if not check_rate_limit(f'register:{email}'):
+        logger.warning(f"Rate limit exceeded for registration: {email}")
+        return Response(
+            {'error': 'Too many registration attempts. Try again later.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
     
-    # Organization registration (first user creates org)
+    # Input validation
+    try:
+        validate_email(email)
+        validate_password(password)
+    except ValidationError as e:
+        logger.warning(f"Invalid input for registration: {email}")
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Organization registration
     if organization_name and not token:
         if not all([email, password, organization_name]):
             return Response({'error': 'Email, password, and organization name required'}, 
                            status=status.HTTP_400_BAD_REQUEST)
         
-        # Validate company email (no free email providers)
-        free_email_domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com', 'zoho.com', 'yandex.com']
+        free_email_domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
+                             'aol.com', 'icloud.com', 'mail.com', 'protonmail.com', 
+                             'zoho.com', 'yandex.com']
         email_domain = email.split('@')[-1].lower()
         if email_domain in free_email_domains:
-            return Response({'error': 'Please use a company email address. Free email providers are not allowed for organization registration.'}, 
+            return Response({'error': 'Please use a company email address'}, 
                            status=status.HTTP_400_BAD_REQUEST)
         
-        # Validate organization name
-        if len(organization_name.strip()) < 2:
+        if len(organization_name) < 2:
             return Response({'error': 'Organization name must be at least 2 characters'}, 
-                           status=status.HTTP_400_BAD_REQUEST)
-        
-        if not organization_name.replace(' ', '').replace('-', '').isalnum():
-            return Response({'error': 'Organization name can only contain letters, numbers, spaces, and hyphens'}, 
                            status=status.HTTP_400_BAD_REQUEST)
         
         try:
             from apps.organizations.models import Organization
             import re
             
-            # Create slug from organization name
             org_slug = re.sub(r'[^a-z0-9-]', '', organization_name.lower().replace(' ', '-'))
             
-            # Check if organization already exists
             if Organization.objects.filter(slug=org_slug).exists():
-                return Response({'error': 'An organization with this name already exists. Please choose a different name.'}, 
+                return Response({'error': 'Organization name already exists'}, 
                                status=status.HTTP_400_BAD_REQUEST)
             
-            # Check if email already exists
             if User.objects.filter(email=email).exists():
-                return Response({'error': 'An account with this email already exists'}, 
+                return Response({'error': 'Email already exists'}, 
                                status=status.HTTP_400_BAD_REQUEST)
             
-            # Create organization
-            org = Organization.objects.create(
-                name=organization_name,
-                slug=org_slug
-            )
+            org = Organization.objects.create(name=organization_name, slug=org_slug)
             
-            # Create admin user
             username = email.split('@')[0]
             display_name = username.replace('.', ' ').replace('_', ' ').title()
             user = User.objects.create_user(
@@ -219,9 +192,7 @@ def register(request):
                 role='admin'
             )
             
-            # Send welcome email
-            from apps.notifications.email_service import send_welcome_email
-            send_welcome_email(user)
+            logger.info(f"New organization created: {organization_name} by {email}")
             
             return Response({
                 'message': 'Organization created successfully',
@@ -229,8 +200,8 @@ def register(request):
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            print(f"[REGISTER] Error: {str(e)}")
-            return Response({'error': f'Registration failed: {str(e)}'}, 
+            logger.error(f"Registration error: {str(e)}")
+            return Response({'error': 'Registration failed'}, 
                            status=status.HTTP_400_BAD_REQUEST)
     
     # Invitation registration
@@ -247,12 +218,10 @@ def register(request):
                 return Response({'error': 'Invalid or expired invitation'}, 
                                status=status.HTTP_400_BAD_REQUEST)
             
-            # Check if user already exists
             if User.objects.filter(email=email, organization=invitation.organization).exists():
                 return Response({'error': 'User already exists in this organization'}, 
                                status=status.HTTP_400_BAD_REQUEST)
             
-            # Create user
             username = email.split('@')[0]
             display_name = username.replace('.', ' ').replace('_', ' ').title()
             user = User.objects.create_user(
@@ -265,14 +234,11 @@ def register(request):
                 role=invitation.role or 'contributor'
             )
             
-            # Send welcome email
-            from apps.notifications.email_service import send_welcome_email
-            send_welcome_email(user)
-            
-            # Mark invitation as accepted
             invitation.is_accepted = True
             invitation.accepted_at = timezone.now()
             invitation.save()
+            
+            logger.info(f"User registered via invitation: {email}")
             
             return Response({
                 'message': 'Account created successfully',
@@ -280,8 +246,8 @@ def register(request):
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            print(f"[REGISTER] Error: {str(e)}")
-            return Response({'error': f'Registration failed: {str(e)}'}, 
+            logger.error(f"Registration error: {str(e)}")
+            return Response({'error': 'Registration failed'}, 
                            status=status.HTTP_400_BAD_REQUEST)
     
     return Response({'error': 'Invalid registration request'}, 

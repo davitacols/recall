@@ -4,19 +4,19 @@ from apps.organizations.models import User, Organization
 from apps.conversations.models import Conversation
 
 class Project(models.Model):
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     key = models.CharField(max_length=10, unique=True)
     description = models.TextField(blank=True)
-    lead = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='projects_led')
+    lead = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='led_projects')
     created_at = models.DateTimeField(auto_now_add=True)
-    
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         db_table = 'projects'
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['organization', '-created_at']),
-        ]
+
+
 
 class Sprint(models.Model):
     STATUS_CHOICES = [
@@ -368,3 +368,82 @@ class BlockerIssueLink(models.Model):
     class Meta:
         db_table = 'blocker_issue_links'
         unique_together = ['blocker', 'issue']
+
+class SprintVelocity(models.Model):
+    """Track velocity metrics for sprints"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='velocities')
+    sprint = models.OneToOneField(Sprint, on_delete=models.CASCADE, related_name='velocity')
+    
+    planned_points = models.IntegerField(default=0)
+    completed_points = models.IntegerField(default=0)
+    velocity = models.FloatField(default=0.0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'sprint_velocities'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', 'project', '-created_at']),
+        ]
+
+class TeamCapacity(models.Model):
+    """Track team member capacity for sprints"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    sprint = models.ForeignKey(Sprint, on_delete=models.CASCADE, related_name='capacities')
+    team_member = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    available_hours = models.FloatField()
+    allocated_hours = models.FloatField(default=0.0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'team_capacities'
+        unique_together = ['sprint', 'team_member']
+        indexes = [
+            models.Index(fields=['organization', 'sprint']),
+        ]
+
+class SprintForecast(models.Model):
+    """Sprint forecasting based on historical velocity"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='forecasts')
+    sprint = models.OneToOneField(Sprint, on_delete=models.CASCADE, related_name='forecast')
+    
+    avg_velocity = models.FloatField()
+    recommended_capacity = models.IntegerField()
+    confidence_level = models.CharField(max_length=20, choices=[
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ], default='medium')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'sprint_forecasts'
+        ordering = ['-sprint__start_date']
+
+class BurndownData(models.Model):
+    """Daily burndown data for sprints"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    sprint = models.ForeignKey(Sprint, on_delete=models.CASCADE, related_name='burndown_data')
+    
+    date = models.DateField()
+    remaining_points = models.IntegerField()
+    completed_points = models.IntegerField()
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'burndown_data'
+        unique_together = ['sprint', 'date']
+        ordering = ['date']
+        indexes = [
+            models.Index(fields=['organization', 'sprint', 'date']),
+        ]

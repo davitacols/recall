@@ -2,8 +2,16 @@ from django.urls import path
 from . import views
 from .reply_views import reply_detail
 from . import linking_views
+from . import search_views
+from . import sentiment_endpoints
 
 urlpatterns = [
+    path('search/', search_views.advanced_search, name='advanced_search'),
+    path('search/suggestions/', search_views.search_suggestions, name='search_suggestions'),
+    path('search/save/', search_views.save_search, name='save_search'),
+    path('search/saved/', search_views.saved_searches, name='saved_searches'),
+    path('search/saved/<int:search_id>/', search_views.delete_saved_search, name='delete_saved_search'),
+    path('search/analytics/', search_views.search_analytics, name='search_analytics'),
     path('', views.conversations, name='conversations'),
     path('templates/', views.templates_list, name='templates_list'),
     path('templates/<str:template_key>/', views.template_detail, name='template_detail'),
@@ -38,5 +46,12 @@ urlpatterns = [
     path('<int:conversation_id>/documents/upload/', views.upload_document, name='upload_document'),
     path('documents/<int:document_id>/', views.delete_document, name='delete_document'),
     path('<int:conversation_id>/related-decisions/', linking_views.conversation_related_decisions, name='conversation_related_decisions'),
+    
+    # Sentiment & Team Pulse
+    path('sentiment/team/', sentiment_endpoints.team_sentiment, name='team-sentiment'),
+    path('sentiment/health/', sentiment_endpoints.team_health_metrics, name='team-health'),
+    path('sentiment/user/<int:user_id>/', sentiment_endpoints.user_sentiment, name='user-sentiment'),
+    path('sentiment/concerns/', sentiment_endpoints.concern_detection, name='concern-detection'),
+    
     path('<int:conversation_id>/', views.conversation_detail, name='conversation_detail'),
 ]

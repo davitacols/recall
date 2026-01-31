@@ -55,11 +55,7 @@ function StaffInvitations() {
     addToast('Link copied to clipboard!', 'success');
   };
 
-  const resendInvitation = async (invitation) => {
-    const link = `${window.location.origin}/invite/${invitation.token}`;
-    navigator.clipboard.writeText(link);
-    addToast('Link copied to clipboard!', 'success');
-  };
+
 
   const revokeInvitation = async (invitationId) => {
     if (!window.confirm('Are you sure you want to revoke this invitation?')) return;

@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { CheckCircleIcon, ExclamationIcon, CodeBracketIcon, CommandLineIcon, SparklesIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 function ProjectManagement() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const [project, setProject] = useState(null);
-  const [activeSprint, setActiveSprint] = useState(null);
-  const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('sprint');
+  const [activeSection, setActiveSection] = useState('overview');
+  const [sprints, setSprints] = useState([]);
+  const [issues, setIssues] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [showSprintForm, setShowSprintForm] = useState(false);
+  const [sprintData, setSprintData] = useState({ name: '', goal: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchProjectData();
@@ -17,15 +22,17 @@ function ProjectManagement() {
 
   const fetchProjectData = async () => {
     try {
-      const [projectRes, sprintRes, issuesRes] = await Promise.all([
+      const [projRes, sprintsRes, issuesRes, teamRes] = await Promise.all([
         api.get(`/api/agile/projects/${projectId}/`),
-        api.get(`/api/agile/projects/${projectId}/sprints/?status=active`),
-        api.get(`/api/agile/projects/${projectId}/issues/unified/`)
+        api.get(`/api/agile/projects/${projectId}/sprints/`),
+        api.get(`/api/agile/projects/${projectId}/issues/`).catch(() => ({ data: [] })),
+        api.get('/api/auth/team/').catch(() => ({ data: [] }))
       ]);
       
-      setProject(projectRes.data);
-      setActiveSprint(sprintRes.data[0] || null);
+      setProject(projRes.data);
+      setSprints(sprintsRes.data);
       setIssues(issuesRes.data);
+      setTeamMembers(teamRes.data);
     } catch (error) {
       console.error('Failed to fetch project data:', error);
     } finally {
@@ -33,196 +40,258 @@ function ProjectManagement() {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 to-slate-800"><div className="animate-spin text-white">Loading...</div></div>;
+  const handleCreateSprint = async (e) => {
+    e.preventDefault();
+    if (!sprintData.name.trim()) return;
+    
+    setSubmitting(true);
+    try {
+      await api.post(`/api/agile/projects/${projectId}/sprints/`, sprintData);
+      setShowSprintForm(false);
+      setSprintData({ name: '', goal: '' });
+      fetchProjectData();
+    } catch (error) {
+      console.error('Failed to create sprint:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
+      </div>
+    );
+  }
+
   if (!project) return <div>Project not found</div>;
 
+  const activeSprint = sprints.find(s => s.status === 'active');
+  const completedSprints = sprints.filter(s => s.status === 'completed');
   const todoIssues = issues.filter(i => i.status === 'todo');
   const inProgressIssues = issues.filter(i => i.status === 'in_progress');
-  const inReviewIssues = issues.filter(i => i.status === 'in_review');
   const doneIssues = issues.filter(i => i.status === 'done');
 
-  const completionPercent = activeSprint ? Math.round((activeSprint.completed / activeSprint.issue_count) * 100) : 0;
+  const sections = [
+    { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'planning', label: 'Planning', icon: '📋' },
+    { id: 'execution', label: 'Execution', icon: '⚙️' },
+    { id: 'team', label: 'Team', icon: '👥' }
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <SparklesIcon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-white">{project.name}</h1>
-                  <p className="text-sm text-slate-400">{project.key}</p>
-                </div>
-              </div>
-              <p className="text-slate-300 mt-2">{project.description}</p>
-            </div>
-            <Link to={`/projects/${projectId}/settings`} className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors">
-              Settings
-            </Link>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="flex gap-2 border-t border-slate-700/50 pt-4">
-            {['sprint', 'backlog', 'code', 'insights'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  activeTab === tab
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+        {/* Header */}
+        <div className="mb-12">
+          <button onClick={() => navigate('/projects')} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium mb-4">
+            <ArrowLeftIcon className="w-4 h-4" />
+            Back to Projects
+          </button>
+          <h1 className="text-6xl font-black text-gray-900 mb-3 tracking-tight">{project.name}</h1>
+          <p className="text-lg text-gray-600 font-light">{project.key} • {project.description}</p>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {activeTab === 'sprint' && (
-          <div className="space-y-8">
-            {activeSprint ? (
-              <>
-                {/* Sprint Header Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl border border-slate-600/50 p-8 shadow-2xl">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold text-white">{activeSprint.name}</h2>
-                      <p className="text-slate-400 mt-1">{activeSprint.start_date} to {activeSprint.end_date}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                        {completionPercent}%
-                      </div>
-                      <p className="text-slate-400 text-sm mt-1">Complete</p>
-                    </div>
+        {/* Navigation */}
+        <div className="flex gap-2 mb-12 border-b border-gray-200 pb-4">
+          {sections.map(section => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all ${
+                activeSection === section.id
+                  ? 'text-gray-900 border-b-2 border-gray-900'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {section.icon} {section.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Overview Section */}
+        {activeSection === 'overview' && (
+          <div className="space-y-12">
+            {/* Key Metrics */}
+            <div className="grid grid-cols-4 gap-6">
+              <MetricBox label="Total Issues" value={issues.length} />
+              <MetricBox label="Active Sprint" value={activeSprint ? activeSprint.name : 'None'} />
+              <MetricBox label="Completed" value={doneIssues.length} />
+              <MetricBox label="In Progress" value={inProgressIssues.length} />
+            </div>
+
+            {/* Active Sprint */}
+            {activeSprint && (
+              <div className="p-8 bg-white border border-gray-200">
+                <h2 className="text-2xl font-black text-gray-900 mb-6">Active Sprint: {activeSprint.name}</h2>
+                <div className="grid grid-cols-3 gap-6">
+                  <div>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Duration</p>
+                    <p className="text-lg font-bold text-gray-900">{activeSprint.start_date} to {activeSprint.end_date}</p>
                   </div>
-                  {activeSprint.goal && (
-                    <p className="text-slate-200 mt-4 text-lg">{activeSprint.goal}</p>
-                  )}
-                  {/* Progress Bar */}
-                  <div className="mt-6 h-2 bg-slate-600 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-500"
-                      style={{ width: `${completionPercent}%` }}
-                    />
+                  <div>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Progress</p>
+                    <p className="text-lg font-bold text-gray-900">{activeSprint.completed}/{activeSprint.issue_count} issues</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Goal</p>
+                    <p className="text-lg font-bold text-gray-900">{activeSprint.goal || '−'}</p>
                   </div>
                 </div>
-
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-4 gap-4">
-                  <MetricCard label="To Do" value={todoIssues.length} color="from-slate-600 to-slate-700" icon="📋" />
-                  <MetricCard label="In Progress" value={inProgressIssues.length} color="from-blue-600 to-blue-700" icon="⚙️" />
-                  <MetricCard label="In Review" value={inReviewIssues.length} color="from-amber-600 to-amber-700" icon="👀" />
-                  <MetricCard label="Done" value={doneIssues.length} color="from-green-600 to-green-700" icon="✅" />
-                </div>
-
-                {/* Kanban Board */}
-                <div className="grid grid-cols-4 gap-4">
-                  <IssueColumn title="To Do" issues={todoIssues} status="todo" color="slate" />
-                  <IssueColumn title="In Progress" issues={inProgressIssues} status="in_progress" color="blue" />
-                  <IssueColumn title="In Review" issues={inReviewIssues} status="in_review" color="amber" />
-                  <IssueColumn title="Done" issues={doneIssues} status="done" color="green" />
-                </div>
-              </>
-            ) : (
-              <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl border border-slate-600/50 p-12 text-center">
-                <p className="text-slate-300 mb-4">No active sprint</p>
-                <Link to={`/projects/${projectId}/sprints/new`} className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all">
-                  Create Sprint
-                </Link>
               </div>
             )}
-          </div>
-        )}
 
-        {activeTab === 'backlog' && (
-          <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl border border-slate-600/50 p-8">
-            <h2 className="text-xl font-bold text-white mb-6">Backlog</h2>
-            <div className="space-y-3">
-              {issues.filter(i => !i.sprint).map(issue => (
-                <IssueRow key={issue.id} issue={issue} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'code' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              {/* Pull Requests */}
-              <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl border border-slate-600/50 p-8">
-                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                  <CodeBracketIcon className="w-5 h-5 text-blue-400" />
-                  Pull Requests
-                </h3>
-                <div className="space-y-3">
-                  {issues.filter(i => i.pr_url).map(issue => (
-                    <div key={issue.id} className="p-4 bg-slate-700/50 rounded-lg border border-slate-600/50 hover:border-blue-500/50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-white">{issue.key}: {issue.title}</p>
-                          <p className="text-xs text-slate-400 mt-1">
-                            Status: <span className={`font-medium ${getCodeReviewColor(issue.code_review_status)}`}>
-                              {issue.code_review_status || 'pending'}
-                            </span>
-                          </p>
-                        </div>
-                        <a href={issue.pr_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-sm font-medium">
-                          View PR →
-                        </a>
-                      </div>
+            {/* Recent Activity */}
+            <div className="p-8 bg-white border border-gray-200">
+              <h2 className="text-2xl font-black text-gray-900 mb-6">Recent Activity</h2>
+              <div className="space-y-3">
+                {completedSprints.slice(0, 5).map(sprint => (
+                  <div key={sprint.id} className="p-4 bg-gray-50 border border-gray-200 flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-gray-900">{sprint.name}</p>
+                      <p className="text-xs text-gray-600">{sprint.start_date} to {sprint.end_date}</p>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* CI/CD Status */}
-              <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl border border-slate-600/50 p-8">
-                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                  <CommandLineIcon className="w-5 h-5 text-purple-400" />
-                  CI/CD Pipeline
-                </h3>
-                <div className="space-y-3">
-                  {issues.filter(i => i.ci_status).map(issue => (
-                    <div key={issue.id} className="p-4 bg-slate-700/50 rounded-lg border border-slate-600/50 hover:border-purple-500/50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-white">{issue.key}: {issue.title}</p>
-                          <p className="text-xs text-slate-400 mt-1">
-                            <span className={`font-medium ${getCIStatusColor(issue.ci_status)}`}>
-                              {issue.ci_status}
-                            </span>
-                            {issue.test_coverage && ` • Coverage: ${issue.test_coverage}%`}
-                          </p>
-                        </div>
-                        {issue.ci_url && (
-                          <a href={issue.ci_url} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 text-sm font-medium">
-                            View →
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    <span className="text-sm font-bold text-green-600">Completed</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {activeTab === 'insights' && (
-          <div className="grid grid-cols-3 gap-6">
-            <InsightCard title="Velocity" value={`${activeSprint?.completed || 0} pts`} icon="📊" />
-            <InsightCard title="Burndown" value={`${completionPercent}%`} icon="📉" />
-            <InsightCard title="Code Quality" value={`${issues.filter(i => i.test_coverage && i.test_coverage > 80).length}/${issues.length}`} icon="✨" />
+        {/* Planning Section */}
+        {activeSection === 'planning' && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <h2 className="text-3xl font-black text-gray-900">Sprint Planning</h2>
+              <button
+                onClick={() => setShowSprintForm(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+              >
+                <PlusIcon className="w-4 h-4" />
+                New Sprint
+              </button>
+            </div>
+
+            {showSprintForm && (
+              <div className="p-8 bg-white border border-gray-200">
+                <form onSubmit={handleCreateSprint} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Sprint Name *</label>
+                    <input
+                      type="text"
+                      value={sprintData.name}
+                      onChange={(e) => setSprintData({ ...sprintData, name: e.target.value })}
+                      placeholder="e.g., Sprint 1"
+                      className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Goal</label>
+                    <textarea
+                      value={sprintData.goal}
+                      onChange={(e) => setSprintData({ ...sprintData, goal: e.target.value })}
+                      placeholder="Sprint goal..."
+                      rows="3"
+                      className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowSprintForm(false)}
+                      disabled={submitting}
+                      className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50"
+                    >
+                      {submitting ? 'Creating...' : 'Create Sprint'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Sprints List */}
+            <div className="space-y-4">
+              {sprints.length === 0 ? (
+                <div className="p-12 bg-white border border-gray-200 text-center">
+                  <p className="text-gray-600 font-medium">No sprints yet. Create one to start planning.</p>
+                </div>
+              ) : (
+                sprints.map(sprint => (
+                  <div key={sprint.id} className="p-6 bg-white border border-gray-200 hover:border-gray-900 hover:shadow-lg transition-all cursor-pointer" onClick={() => navigate(`/sprints/${sprint.id}`)}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">{sprint.name}</h3>
+                        <p className="text-sm text-gray-600">{sprint.start_date} to {sprint.end_date}</p>
+                      </div>
+                      <span className={`px-3 py-1 text-xs font-bold uppercase ${
+                        sprint.status === 'active' ? 'bg-green-100 text-green-900' :
+                        sprint.status === 'completed' ? 'bg-blue-100 text-blue-900' :
+                        'bg-gray-100 text-gray-900'
+                      }`}>
+                        {sprint.status}
+                      </span>
+                    </div>
+                    {sprint.goal && <p className="text-gray-700 font-light mb-3">{sprint.goal}</p>}
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>{sprint.completed}/{sprint.issue_count} issues completed</span>
+                      <span>{Math.round((sprint.completed / sprint.issue_count) * 100)}%</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Execution Section */}
+        {activeSection === 'execution' && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-black text-gray-900">Kanban Board</h2>
+            <div className="grid grid-cols-3 gap-6">
+              <IssueColumn title="To Do" issues={todoIssues} />
+              <IssueColumn title="In Progress" issues={inProgressIssues} />
+              <IssueColumn title="Done" issues={doneIssues} />
+            </div>
+          </div>
+        )}
+
+        {/* Team Section */}
+        {activeSection === 'team' && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-black text-gray-900">Team Members</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {teamMembers.length === 0 ? (
+                <div className="p-12 bg-white border border-gray-200 text-center col-span-full">
+                  <p className="text-gray-600 font-medium">No team members yet.</p>
+                </div>
+              ) : (
+                teamMembers.map(member => (
+                  <div key={member.id} className="p-6 bg-white border border-gray-200">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-gray-900 flex items-center justify-center text-white font-black text-lg">
+                        {member.full_name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900">{member.full_name}</h3>
+                        <p className="text-xs text-gray-600">{member.role || 'Team Member'}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600">{member.email}</p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -230,110 +299,34 @@ function ProjectManagement() {
   );
 }
 
-function MetricCard({ label, value, color, icon }) {
+function MetricBox({ label, value }) {
   return (
-    <div className={`bg-gradient-to-br ${color} rounded-xl p-6 border border-slate-600/50 shadow-lg hover:shadow-xl transition-shadow`}>
-      <div className="text-3xl mb-2">{icon}</div>
-      <div className="text-3xl font-bold text-white">{value}</div>
-      <div className="text-sm text-slate-300 mt-2">{label}</div>
+    <div className="p-6 bg-white border border-gray-200">
+      <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">{label}</p>
+      <p className="text-3xl font-black text-gray-900">{value}</p>
     </div>
   );
 }
 
-function IssueColumn({ title, issues, status, color }) {
-  const colorMap = {
-    slate: 'from-slate-700 to-slate-600',
-    blue: 'from-blue-700 to-blue-600',
-    amber: 'from-amber-700 to-amber-600',
-    green: 'from-green-700 to-green-600',
-  };
-
+function IssueColumn({ title, issues }) {
   return (
-    <div className={`bg-gradient-to-br ${colorMap[color]} rounded-xl p-4 border border-slate-600/50 min-h-96`}>
-      <h3 className="font-bold text-white mb-4 flex items-center justify-between">
-        {title}
-        <span className="bg-slate-700/50 px-2 py-1 rounded text-xs">{issues.length}</span>
-      </h3>
+    <div className="p-6 bg-white border border-gray-200">
+      <h3 className="text-lg font-bold text-gray-900 mb-6">{title} ({issues.length})</h3>
       <div className="space-y-3">
-        {issues.map(issue => (
-          <div key={issue.id} className="p-3 bg-slate-700/50 rounded-lg border border-slate-600/50 hover:border-slate-500 transition-colors cursor-pointer hover:shadow-lg">
-            <p className="font-medium text-white text-sm">{issue.key}</p>
-            <p className="text-xs text-slate-300 mt-1">{issue.title}</p>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-xs text-slate-400">{issue.assignee || 'Unassigned'}</span>
-              {issue.story_points && <span className="text-xs font-medium bg-slate-600 px-2 py-1 rounded text-slate-100">{issue.story_points}pts</span>}
+        {issues.length === 0 ? (
+          <p className="text-sm text-gray-600 text-center py-8">No issues</p>
+        ) : (
+          issues.map(issue => (
+            <div key={issue.id} className="p-4 bg-gray-50 border border-gray-200 hover:border-gray-900 transition-all">
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">{issue.key}</p>
+              <p className="text-sm font-bold text-gray-900 mb-2">{issue.title}</p>
+              <p className="text-xs text-gray-600">{issue.assignee || 'Unassigned'}</p>
             </div>
-            <div className="mt-2 space-y-1">
-              {issue.pr_url && <div className="text-xs text-blue-400">📝 PR linked</div>}
-              {issue.ci_status && <div className={`text-xs ${getCIStatusColor(issue.ci_status)}`}>🔄 {issue.ci_status}</div>}
-              {issue.linked_decisions?.length > 0 && <div className="text-xs text-purple-400">📋 {issue.linked_decisions.length} decision(s)</div>}
-              {issue.linked_conversations?.length > 0 && <div className="text-xs text-indigo-400">💬 {issue.linked_conversations.length} conversation(s)</div>}
-              {issue.blocking_blockers?.length > 0 && <div className="text-xs text-red-400">🚫 {issue.blocking_blockers.length} blocker(s)</div>}
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
-}
-
-function IssueRow({ issue }) {
-  return (
-    <div className="p-4 bg-slate-700/50 rounded-lg border border-slate-600/50 hover:border-slate-500 transition-colors">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <p className="font-medium text-white">{issue.key}: {issue.title}</p>
-          <p className="text-sm text-slate-400 mt-1">{issue.assignee || 'Unassigned'}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          {issue.story_points && <span className="text-sm font-medium text-slate-300">{issue.story_points}pts</span>}
-          <span className={`text-xs font-medium px-3 py-1 rounded ${getStatusColor(issue.status)}`}>
-            {issue.status.replace('_', ' ').toUpperCase()}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InsightCard({ title, value, icon }) {
-  return (
-    <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl border border-slate-600/50 p-8 text-center shadow-lg hover:shadow-xl transition-shadow">
-      <div className="text-4xl mb-4">{icon}</div>
-      <p className="text-slate-400 text-sm font-medium mb-2">{title}</p>
-      <p className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">{value}</p>
-    </div>
-  );
-}
-
-function getStatusColor(status) {
-  const colors = {
-    todo: 'bg-slate-600 text-slate-100',
-    in_progress: 'bg-blue-600 text-blue-100',
-    in_review: 'bg-amber-600 text-amber-100',
-    done: 'bg-green-600 text-green-100',
-  };
-  return colors[status] || colors.todo;
-}
-
-function getCodeReviewColor(status) {
-  const colors = {
-    pending: 'text-slate-400',
-    approved: 'text-green-400',
-    changes_requested: 'text-amber-400',
-    merged: 'text-green-300 font-bold',
-  };
-  return colors[status] || colors.pending;
-}
-
-function getCIStatusColor(status) {
-  const colors = {
-    pending: 'text-slate-400',
-    running: 'text-blue-400',
-    passed: 'text-green-400',
-    failed: 'text-red-400',
-  };
-  return colors[status] || colors.pending;
 }
 
 export default ProjectManagement;

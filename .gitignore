@@ -1,6 +1,27 @@
 # Markdown
 *.md
 
+# Backup/Experimental files
+*.bak
+*.backup
+*.txt
+*.xml
+*_v2.py
+*_v3.py
+*_new.py
+*_old.py
+*_backup.py
+*_test.py
+*_guard.js
+*_guards.js
+*_fetchData.js
+venv_new/
+recall/
+enhanced_slack.py
+fix-white-backgrounds.js
+slack_webhook.py
+newbot.xml
+
 # Python
 __pycache__/
 *.py[cod]

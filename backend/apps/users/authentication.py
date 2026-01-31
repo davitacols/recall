@@ -1,4 +1,5 @@
 import boto3
+import logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework.authentication import BaseAuthentication
@@ -8,22 +9,21 @@ from jwt import PyJWKClient
 from apps.organizations.models import Organization
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 class CognitoAuthentication(BaseAuthentication):
     def authenticate(self, request):
         auth_header = request.META.get('HTTP_AUTHORIZATION')
-        print(f"[AUTH DEBUG] Authorization header: {auth_header}")
         
         if not auth_header or not auth_header.startswith('Bearer '):
-            print("[AUTH DEBUG] No Bearer token found")
             return None
         
         token = auth_header.split(' ')[1]
-        print(f"[AUTH DEBUG] Token extracted: {token[:20]}...")
         
         try:
-            # Verify Cognito JWT token
-            jwks_client = PyJWKClient(f"https://cognito-idp.{settings.AWS_REGION}.amazonaws.com/{settings.COGNITO_USER_POOL_ID}/.well-known/jwks.json")
+            jwks_client = PyJWKClient(
+                f"https://cognito-idp.{settings.AWS_REGION}.amazonaws.com/{settings.COGNITO_USER_POOL_ID}/.well-known/jwks.json"
+            )
             signing_key = jwks_client.get_signing_key_from_jwt(token)
             
             payload = jwt.decode(
@@ -31,22 +31,16 @@ class CognitoAuthentication(BaseAuthentication):
                 signing_key.key,
                 algorithms=["RS256"],
                 audience=settings.COGNITO_CLIENT_ID,
-                options={"verify_aud": False}  # Disable audience verification for now
+                options={"verify_aud": True}
             )
             
-            print(f"[AUTH DEBUG] Token decoded successfully, payload: {payload.get('username', 'N/A')}")
-            
-            # Get or create organization
             org, _ = Organization.objects.get_or_create(
                 slug='demo-company',
                 defaults={'name': 'Demo Company'}
             )
             
-            # Get or create user from Cognito data
             email = payload.get('email', '')
-            username = payload.get('username', '') or email.split('@')[0] if email else 'user'
-            
-            # Extract name from email or username
+            username = payload.get('username', '') or (email.split('@')[0] if email else 'user')
             display_name = username.split('@')[0] if '@' in username else username
             display_name = display_name.replace('.', ' ').replace('_', ' ').title()
             
@@ -62,11 +56,11 @@ class CognitoAuthentication(BaseAuthentication):
                 }
             )
             
-            print(f"[AUTH DEBUG] User authenticated: {user.username}")
+            logger.info(f"User authenticated: {user.username}")
             return (user, token)
         except Exception as e:
-            print(f"[AUTH DEBUG] Authentication failed: {str(e)}")
-            raise AuthenticationFailed(f'Invalid token: {str(e)}')
+            logger.warning(f"Authentication failed: {type(e).__name__}")
+            raise AuthenticationFailed('Invalid token')
 
 class CognitoClient:
     def __init__(self):
@@ -90,7 +84,6 @@ class CognitoClient:
                 MessageAction='SUPPRESS'
             )
             
-            # Set permanent password
             self.client.admin_set_user_password(
                 UserPoolId=settings.COGNITO_USER_POOL_ID,
                 Username=username,
@@ -98,6 +91,8 @@ class CognitoClient:
                 Permanent=True
             )
             
+            logger.info(f"Cognito user created: {username}")
             return response
         except Exception as e:
-            raise Exception(f'Failed to create user: {str(e)}')
+            logger.error(f"Failed to create Cognito user: {type(e).__name__}")
+            raise Exception('Failed to create user')

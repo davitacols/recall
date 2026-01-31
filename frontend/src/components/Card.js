@@ -1,54 +1,59 @@
 import React from 'react';
-import { components, spacing, motion } from '../utils/designTokens';
+import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
 
-function Card({ children, title, subtitle, action, style = {} }) {
+function Card({ 
+  children, 
+  hoverable = false, 
+  onClick, 
+  style = {},
+  padding = spacing.lg,
+  variant = 'default'
+}) {
+  const variants = {
+    default: {
+      backgroundColor: colors.surface,
+      border: `1px solid ${colors.border}`,
+      boxShadow: shadows.sm
+    },
+    elevated: {
+      backgroundColor: colors.surface,
+      border: `1px solid ${colors.border}`,
+      boxShadow: shadows.md
+    },
+    ghost: {
+      backgroundColor: colors.background,
+      border: `1px solid ${colors.border}`,
+      boxShadow: 'none'
+    }
+  };
+
   return (
-    <div style={{
-      ...components.card,
-      marginBottom: spacing.lg,
-      transition: motion.normal,
-      ...style
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
-    }}>
-      {(title || subtitle) && (
-        <div style={{ marginBottom: spacing.lg }}>
-          {title && (
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: 600,
-              color: '#0F172A',
-              margin: 0,
-              marginBottom: subtitle ? spacing.sm : 0
-            }}>
-              {title}
-            </h3>
-          )}
-          {subtitle && (
-            <p style={{
-              fontSize: '14px',
-              color: '#64748B',
-              margin: 0
-            }}>
-              {subtitle}
-            </p>
-          )}
-        </div>
-      )}
-      
-      <div style={{ marginBottom: action ? spacing.lg : 0 }}>
-        {children}
-      </div>
-      
-      {action && (
-        <div style={{ display: 'flex', gap: spacing.md, justifyContent: 'flex-end' }}>
-          {action}
-        </div>
-      )}
+    <div
+      onClick={onClick}
+      style={{
+        padding,
+        borderRadius: '8px',
+        transition: motion.fast,
+        cursor: hoverable ? 'pointer' : 'default',
+        ...variants[variant],
+        ...style
+      }}
+      onMouseEnter={(e) => {
+        if (hoverable) {
+          e.currentTarget.style.borderColor = colors.accent;
+          e.currentTarget.style.boxShadow = shadows.md;
+          e.currentTarget.style.transform = 'translateY(-2px)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (hoverable) {
+          e.currentTarget.style.borderColor = colors.border;
+          e.currentTarget.style.boxShadow = shadows.sm;
+          e.currentTarget.style.transform = 'translateY(0)';
+        }
+      }}
+    >
+      {children}
     </div>
   );
 }

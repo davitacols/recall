@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
-import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
 import { PlusIcon } from '@heroicons/react/24/outline';
+import api from '../services/api';
 
 function Projects() {
   const [projects, setProjects] = useState([]);
@@ -19,7 +18,7 @@ function Projects() {
   const fetchProjects = async () => {
     try {
       const response = await api.get('/api/agile/projects/');
-      setProjects(response.data);
+      setProjects(response.data.results || response.data || []);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
     } finally {
@@ -31,7 +30,6 @@ function Projects() {
     e.preventDefault();
     setError('');
 
-    // Validate form
     if (!formData.name.trim()) {
       setError('Project name is required');
       return;
@@ -50,7 +48,6 @@ function Projects() {
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Failed to create project';
       setError(errorMessage);
-      console.error('Failed to create project:', error);
     } finally {
       setSubmitting(false);
     }
@@ -58,301 +55,158 @@ function Projects() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #E5E7EB', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <div className="flex items-center justify-center h-96">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xl }}>
-        <div>
-          <h1 style={{ fontSize: '32px', fontWeight: 700, color: colors.primary, marginBottom: spacing.sm }}>
-            Projects
-          </h1>
-          <p style={{ fontSize: '16px', color: colors.secondary }}>
-            Manage your projects and boards
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setShowCreateForm(true);
-            setError('');
-          }}
-          style={{
-            padding: `${spacing.md} ${spacing.lg}`,
-            backgroundColor: colors.primary,
-            color: colors.surface,
-            border: 'none',
-            borderRadius: radius.md,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: spacing.sm,
-            fontWeight: 500,
-            transition: motion.fast,
-            boxShadow: shadows.sm
-          }}
-        >
-          <PlusIcon style={{ width: '18px', height: '18px' }} />
-          New Project
-        </button>
-      </div>
-
-      {showCreateForm && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50
-        }}>
-          <div style={{
-            backgroundColor: colors.surface,
-            borderRadius: radius.md,
-            padding: spacing.xl,
-            maxWidth: '500px',
-            width: '90%',
-            boxShadow: shadows.lg
-          }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 600, color: colors.primary, marginBottom: spacing.lg }}>
-              Create New Project
-            </h2>
-
-            {error && (
-              <div style={{
-                padding: spacing.md,
-                backgroundColor: '#FEE2E2',
-                border: '1px solid #FECACA',
-                borderRadius: radius.md,
-                color: '#DC2626',
-                fontSize: '14px',
-                marginBottom: spacing.lg
-              }}>
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateProject} style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colors.primary, marginBottom: spacing.sm }}>
-                  Project Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Mobile App"
-                  style={{
-                    width: '100%',
-                    padding: `${spacing.md} ${spacing.md}`,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    boxSizing: 'border-box'
-                  }}
-                  disabled={submitting}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colors.primary, marginBottom: spacing.sm }}>
-                  Project Key *
-                </label>
-                <input
-                  type="text"
-                  value={formData.key}
-                  onChange={(e) => setFormData({ ...formData, key: e.target.value.toUpperCase() })}
-                  placeholder="e.g., MOBILE"
-                  maxLength="10"
-                  style={{
-                    width: '100%',
-                    padding: `${spacing.md} ${spacing.md}`,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    boxSizing: 'border-box'
-                  }}
-                  disabled={submitting}
-                />
-                <p style={{ fontSize: '12px', color: colors.secondary, marginTop: '4px' }}>
-                  Used for issue IDs (e.g., MOBILE-1, MOBILE-2)
-                </p>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colors.primary, marginBottom: spacing.sm }}>
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Project description..."
-                  rows="4"
-                  style={{
-                    width: '100%',
-                    padding: `${spacing.md} ${spacing.md}`,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    boxSizing: 'border-box',
-                    fontFamily: 'inherit'
-                  }}
-                  disabled={submitting}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: spacing.md, justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateForm(false);
-                    setError('');
-                  }}
-                  disabled={submitting}
-                  style={{
-                    padding: `${spacing.md} ${spacing.lg}`,
-                    backgroundColor: colors.background,
-                    color: colors.primary,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    fontWeight: 500,
-                    transition: motion.fast,
-                    opacity: submitting ? 0.6 : 1
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{
-                    padding: `${spacing.md} ${spacing.lg}`,
-                    backgroundColor: colors.primary,
-                    color: colors.surface,
-                    border: 'none',
-                    borderRadius: radius.md,
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    fontWeight: 500,
-                    transition: motion.fast,
-                    opacity: submitting ? 0.6 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: spacing.sm
-                  }}
-                >
-                  {submitting && (
-                    <div style={{
-                      width: '14px',
-                      height: '14px',
-                      border: '2px solid white',
-                      borderTop: '2px solid transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 0.6s linear infinite'
-                    }} />
-                  )}
-                  {submitting ? 'Creating...' : 'Create Project'}
-                </button>
-              </div>
-            </form>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-16">
+          <div>
+            <h1 className="text-7xl font-black text-gray-900 mb-3 tracking-tight">Projects</h1>
+            <p className="text-xl text-gray-600 font-light">Manage your projects and boards</p>
           </div>
-        </div>
-      )}
-
-      {projects.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: `${spacing.xl} ${spacing.lg}`,
-          border: `1px solid ${colors.border}`,
-          borderRadius: radius.md,
-          backgroundColor: colors.background
-        }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary, marginBottom: spacing.md }}>
-            No projects yet
-          </h3>
-          <p style={{ fontSize: '14px', color: colors.secondary, marginBottom: spacing.lg }}>
-            Create your first project to get started with Kanban boards
-          </p>
           <button
             onClick={() => {
               setShowCreateForm(true);
               setError('');
             }}
-            style={{
-              padding: `${spacing.md} ${spacing.lg}`,
-              backgroundColor: colors.primary,
-              color: colors.surface,
-              border: 'none',
-              borderRadius: radius.md,
-              cursor: 'pointer',
-              fontWeight: 500
-            }}
+            className="flex items-center gap-2 px-8 py-4 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all shadow-lg hover:shadow-xl"
           >
-            Create First Project
+            <PlusIcon className="w-5 h-5" />
+            New Project
           </button>
         </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: spacing.lg
-        }}>
-          {projects.map((project) => (
-            <Link
-              key={project.id}
-              to={`/projects/${project.id}`}
-              style={{ textDecoration: 'none' }}
-            >
-              <div
-                style={{
-                  padding: spacing.lg,
-                  backgroundColor: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  cursor: 'pointer',
-                  transition: motion.fast,
-                  boxShadow: shadows.sm
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md }}>
-                  <div
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      backgroundColor: colors.primary,
-                      borderRadius: radius.md,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: colors.surface,
-                      fontWeight: 700,
-                      fontSize: '16px'
+
+        {/* Create Form Modal */}
+        {showCreateForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-8 w-full max-w-md">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New Project</h2>
+
+              {error && (
+                <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm font-medium mb-6">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateProject} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                    Project Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g., Mobile App"
+                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    disabled={submitting}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                    Project Key *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.key}
+                    onChange={(e) => setFormData({ ...formData, key: e.target.value.toUpperCase() })}
+                    placeholder="e.g., MOBILE"
+                    maxLength="10"
+                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    disabled={submitting}
+                  />
+                  <p className="text-xs text-gray-600 mt-2">Used for issue IDs (e.g., MOBILE-1, MOBILE-2)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Project description..."
+                    rows="4"
+                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="flex gap-3 justify-end pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      setError('');
                     }}
+                    disabled={submitting}
+                    className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all disabled:opacity-50"
                   >
-                    {project.key.charAt(0)}
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {submitting ? 'Creating...' : 'Create Project'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {projects.length === 0 ? (
+          <div className="text-center py-24 border border-gray-200 bg-white">
+            <h3 className="text-3xl font-black text-gray-900 mb-3">No projects yet</h3>
+            <p className="text-lg text-gray-600 mb-8">Create your first project to get started with Kanban boards</p>
+            <button
+              onClick={() => {
+                setShowCreateForm(true);
+                setError('');
+              }}
+              className="px-8 py-4 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+            >
+              Create First Project
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
+              <Link
+                key={project.id}
+                to={`/projects/${project.id}`}
+                className="no-underline"
+              >
+                <div className="p-8 bg-white border border-gray-200 hover:border-gray-900 hover:shadow-lg transition-all h-full flex flex-col">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-gray-900 flex items-center justify-center text-white font-black text-lg">
+                      {project.key.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">{project.name}</h3>
+                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">{project.key}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, color: colors.primary }}>
-                      {project.name}
-                    </h3>
-                    <p style={{ fontSize: '12px', color: colors.secondary }}>
-                      {project.key}
-                    </p>
+                  <p className="text-gray-700 text-sm mb-6 flex-1 font-light">
+                    {project.description || 'No description'}
+                  </p>
+                  <div className="flex justify-between text-xs text-gray-600 font-medium uppercase tracking-wide pt-6 border-t border-gray-200">
+                    <span>{project.issue_count} Issues</span>
+                    <span>Lead: {project.lead || 'Unassigned'}</span>
                   </div>
                 </div>
-                <p style={{ fontSize: '13px', color: colors.secondary, marginBottom: spacing.md, lineHeight: 1.5 }}>
-                  {project.description || 'No description'}
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: colors.secondary }}>
-                  <span>{project.issue_count} issues</span>
-                  <span>Lead: {project.lead || 'Unassigned'}</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

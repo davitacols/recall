@@ -26,7 +26,8 @@ export function AuthProvider({ children }) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       api.get('/api/auth/profile/')
         .then((response) => {
-          setUser(response.data);
+          const profileData = response.data.data || response.data;
+          setUser(profileData);
         })
         .catch(() => {
           localStorage.removeItem('access_token');
@@ -40,14 +41,12 @@ export function AuthProvider({ children }) {
 
   const register = async (userData) => {
     try {
-      // Map username to email for backend
       const payload = {
         email: userData.username,
         password: userData.password,
         token: userData.token,
         organization: userData.organization
       };
-      console.log('[AUTH] Registering with:', payload);
       const response = await api.post('/api/auth/register/', payload);
       return { success: true, message: response.data.message };
     } catch (error) {
@@ -61,19 +60,21 @@ export function AuthProvider({ children }) {
   const login = async (credentials) => {
     try {
       const response = await api.post('/api/auth/login/', credentials);
-      const { access_token, user: userData } = response.data;
+      const responseData = response.data.data || response.data;
+      const { access_token, user: userData } = responseData;
       
-      console.log('[AUTH] Login successful, token:', access_token?.substring(0, 20));
+      if (!access_token || !userData) {
+        throw new Error('Invalid response format');
+      }
       
       localStorage.setItem('access_token', access_token);
-      localStorage.setItem('token', access_token); // Also set 'token' for compatibility
+      localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
       setUser(userData);
       return { success: true };
     } catch (error) {
-      console.error('[AUTH] Login failed:', error.response?.data);
       return { 
         success: false, 
         error: error.response?.data?.error || 'Login failed' 

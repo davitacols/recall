@@ -2,26 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import OnboardingProgress from '../components/OnboardingProgress';
-import FirstTimeExperience from '../components/FirstTimeExperience';
-import SprintSummary from '../components/SprintSummary';
 import { 
   DocumentTextIcon,
   ChatBubbleLeftIcon,
-  QuestionMarkCircleIcon,
-  LightBulbIcon,
+  CheckCircleIcon,
   ClockIcon,
-  UserIcon
+  ListBulletIcon,
+  SparklesIcon,
+  TrendingUpIcon,
+  UserGroupIcon,
+  ArrowRightIcon
 } from '@heroicons/react/24/outline';
 
 function Dashboard() {
   const { user } = useAuth();
   const [conversations, setConversations] = useState([]);
+  const [decisions, setDecisions] = useState([]);
+  const [currentSprint, setCurrentSprint] = useState(null);
+  const [todayActivity, setTodayActivity] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [todaySummary, setTodaySummary] = useState({
-    decisions: 0,
-    proposals: 0,
-    updates: 0
+  const [stats, setStats] = useState({
+    totalConversations: 0,
+    totalDecisions: 0,
+    activeIssues: 0,
+    teamMembers: 0
   });
 
   useEffect(() => {
@@ -30,20 +34,50 @@ function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const convRes = await api.get('/api/conversations/');
-      const allConvs = convRes.data.results || convRes.data || [];
+      const [convRes, decRes, sprintRes] = await Promise.all([
+        api.get('/api/conversations/').catch(() => ({ data: [] })),
+        api.get('/api/decisions/').catch(() => ({ data: [] })),
+        api.get('/api/agile/current-sprint/').catch(() => ({ data: null }))
+      ]);
       
-      // Calculate today's summary
+      const convData = convRes.data.results || convRes.data.data || convRes.data || [];
+      const allConvs = Array.isArray(convData) ? convData : [];
+      const decData = decRes.data.results || decRes.data.data || decRes.data || [];
+      const allDecs = Array.isArray(decData) ? decData : [];
+      
+      // Get today's activity
       const today = new Date().toDateString();
-      const todayConvs = allConvs.filter(c => new Date(c.created_at).toDateString() === today);
+      const todayConvs = allConvs.filter(c => c && c.created_at && new Date(c.created_at).toDateString() === today);
+      const todayDecs = allDecs.filter(d => d && d.created_at && new Date(d.created_at).toDateString() === today);
       
-      setTodaySummary({
-        decisions: todayConvs.filter(c => c.post_type === 'decision').length,
-        proposals: todayConvs.filter(c => c.post_type === 'proposal').length,
-        updates: todayConvs.filter(c => c.post_type === 'update').length
+      const activity = [
+        ...todayConvs.map(c => ({
+          type: 'conversation',
+          title: c.title,
+          author: c.author,
+          time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          postType: c.post_type
+        })),
+        ...todayDecs.map(d => ({
+          type: 'decision',
+          title: d.title,
+          author: d.decision_maker,
+          time: new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: d.status
+        }))
+      ].sort((a, b) => new Date(b.time) - new Date(a.time));
+      
+      setStats({
+        totalConversations: allConvs.length,
+        totalDecisions: allDecs.length,
+        activeIssues: currentSprint?.issue_count || 0,
+        teamMembers: 0
       });
       
-      setConversations(allConvs.slice(0, 12));
+      setTodayActivity(activity);
+      setConversations(allConvs.filter(c => c && c.id).slice(0, 5));
+      setDecisions(allDecs.filter(d => d && d.id).slice(0, 5));
+      setCurrentSprint(sprintRes.data);
     } catch (error) {
       console.error('Failed to fetch:', error);
     } finally {
@@ -51,192 +85,217 @@ function Dashboard() {
     }
   };
 
-  const getPostIcon = (type) => {
-    switch(type) {
-      case 'decision': return DocumentTextIcon;
-      case 'question': return QuestionMarkCircleIcon;
-      case 'proposal': return LightBulbIcon;
-      default: return ChatBubbleLeftIcon;
-    }
-  };
-
-  const getPostColor = (type) => {
-    switch(type) {
-      case 'decision': return 'text-blue-600 bg-blue-50';
-      case 'question': return 'text-amber-600 bg-amber-50';
-      case 'proposal': return 'text-purple-600 bg-purple-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  const getCardBackground = (type) => {
-    const backgrounds = {
-      decision: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)',
-      proposal: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)',
-      question: 'linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(217, 119, 6, 0.05) 100%)',
-      update: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(22, 163, 74, 0.05) 100%)'
-    };
-    return backgrounds[type] || backgrounds.update;
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-8 animate-fadeIn">
-        <h1 className="text-5xl font-bold text-gray-900 mb-3">Welcome back, {user?.full_name || user?.username}</h1>
-        <p className="text-xl text-gray-600 mb-2">Your organization's memory</p>
-        <p className="text-base text-gray-500">Stay updated with recent conversations, decisions, and team activity. Search your knowledge base to find past decisions and insights.</p>
-      </div>
-
-      {/* Today in Recall Summary */}
-      <div className="bg-gray-50 border border-gray-200 p-6 mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Today in Recall</h2>
-        <div className="flex items-center gap-8 text-base text-gray-700">
-          {todaySummary.decisions > 0 && (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Hero Header */}
+      <div className="bg-white border-b border-gray-200 px-8 py-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
             <div>
-              <span className="font-bold text-gray-900">{todaySummary.decisions}</span> new {todaySummary.decisions === 1 ? 'decision' : 'decisions'}
+              <h1 className="text-4xl font-black text-gray-900 mb-1">Welcome back, {user?.full_name?.split(' ')[0]}</h1>
+              <p className="text-gray-600">Your organizational memory at a glance</p>
             </div>
-          )}
-          {todaySummary.proposals > 0 && (
-            <div>
-              <span className="font-bold text-gray-900">{todaySummary.proposals}</span> {todaySummary.proposals === 1 ? 'proposal' : 'proposals'} awaiting input
-            </div>
-          )}
-          {todaySummary.updates > 0 && (
-            <div>
-              <span className="font-bold text-gray-900">{todaySummary.updates}</span> {todaySummary.updates === 1 ? 'update' : 'updates'} from your team
-            </div>
-          )}
-          {todaySummary.decisions === 0 && todaySummary.proposals === 0 && todaySummary.updates === 0 && (
-            <div className="text-gray-600">No new activity today</div>
-          )}
+            <Link to="/conversations/new" className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all">
+              + New Conversation
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* First Time Experience */}
-      <FirstTimeExperience />
-
-      {/* Sprint Summary */}
-      <SprintSummary />
-
-      {/* Onboarding Progress */}
-      <OnboardingProgress />
-
-      {/* Empty State */}
-      {conversations.length === 0 ? (
-        <div className="text-center py-20 border border-gray-200 bg-gray-50">
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">No conversations yet</h3>
-          <p className="text-lg text-gray-600 mb-8">
-            Start the first conversation to capture decisions and knowledge.
-          </p>
-          <a href="/conversations" className="recall-btn-primary inline-block">
-            Start a conversation
-          </a>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {conversations.map((conv, index) => {
-          const Icon = getPostIcon(conv.post_type);
+      <div className="max-w-7xl mx-auto px-8 py-8">
+        {/* Key Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white border-2 border-gray-900 p-6 hover:shadow-md transition-all shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Conversations</span>
+              <ChatBubbleLeftIcon className="w-5 h-5 text-blue-600" />
+            </div>
+            <p className="text-3xl font-black text-gray-900">{stats.totalConversations}</p>
+            <p className="text-xs text-gray-500 mt-2">Organizational knowledge</p>
+          </div>
           
-          return (
-            <Link
-              key={conv.id}
-              to={`/conversations/${conv.id}`}
-              className="border border-gray-200 p-6 block hover:border-gray-900 transition-all duration-200 animate-fadeIn relative overflow-hidden"
-              style={{ 
-                animationDelay: `${index * 0.05}s`,
-                background: getCardBackground(conv.post_type)
-              }}
-            >
-              {/* Decorative background element */}
-              <div className="absolute top-0 right-0 w-32 h-32 opacity-5 pointer-events-none">
-                <Icon className="w-full h-full" />
-              </div>
+          <div className="bg-white border-2 border-gray-900 p-6 hover:shadow-md transition-all shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Decisions</span>
+              <DocumentTextIcon className="w-5 h-5 text-purple-600" />
+            </div>
+            <p className="text-3xl font-black text-gray-900">{stats.totalDecisions}</p>
+            <p className="text-xs text-gray-500 mt-2">Tracked & documented</p>
+          </div>
+          
+          <div className="bg-white border-2 border-gray-900 p-6 hover:shadow-md transition-all shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Active Issues</span>
+              <ListBulletIcon className="w-5 h-5 text-orange-600" />
+            </div>
+            <p className="text-3xl font-black text-gray-900">{currentSprint?.issue_count || 0}</p>
+            <p className="text-xs text-gray-500 mt-2">In current sprint</p>
+          </div>
+          
+          <div className="bg-white border-2 border-gray-900 p-6 hover:shadow-md transition-all shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Memory Health</span>
+              <SparklesIcon className="w-5 h-5 text-green-600" />
+            </div>
+            <p className="text-3xl font-black text-gray-900">85%</p>
+            <p className="text-xs text-gray-500 mt-2">Knowledge captured</p>
+          </div>
+        </div>
 
-              <div className="flex items-start gap-4 relative z-10">
-                {/* Avatar */}
-                <div className="w-12 h-12 flex-shrink-0">
-                  {conv.author_avatar ? (
-                    <img src={conv.author_avatar} alt={conv.author} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-                      <span className="text-white font-bold text-base">{conv.author?.charAt(0).toUpperCase()}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Today's Activity */}
+            <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+              <h2 className="text-xl font-black text-gray-900 mb-6">Today's Activity</h2>
+              
+              {todayActivity.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">No activity yet today</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {todayActivity.map((activity, idx) => (
+                    <div key={idx} className="flex items-start gap-4 p-4 border border-gray-200 hover:border-gray-900 transition-all">
+                      <div className="w-2 h-2 bg-gray-900 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-bold text-gray-900 truncate">{activity.title}</h3>
+                          <span className="text-xs text-gray-500 flex-shrink-0">{activity.time}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs font-bold uppercase bg-gray-100 text-gray-700 px-2 py-1">
+                            {activity.postType || activity.status}
+                          </span>
+                          <span className="text-xs text-gray-600">by {activity.author}</span>
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Current Sprint */}
+            {currentSprint && (
+              <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-black text-gray-900">{currentSprint.name}</h2>
+                    <p className="text-sm text-gray-600 mt-1">{currentSprint.start_date} → {currentSprint.end_date}</p>
+                  </div>
+                  <Link to="/sprint" className="flex items-center gap-2 text-gray-900 hover:text-black font-bold text-sm">
+                    View <ArrowRightIcon className="w-4 h-4" />
+                  </Link>
                 </div>
                 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 text-xs font-bold uppercase ${
-                        conv.post_type === 'decision' ? 'bg-gray-900 text-white' :
-                        conv.post_type === 'proposal' ? 'bg-gray-900 text-white' :
-                        'border border-gray-900 text-gray-900'
-                      }`}>
-                        {conv.post_type}
-                      </span>
-                      {conv.impact_level && (
-                        <span className="text-xs text-gray-600 font-medium">
-                          {conv.impact_level} impact
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-500">
-                      {new Date(conv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-green-50 border border-green-200 p-4 text-center shadow-sm">
+                    <p className="text-2xl font-black text-green-600">{currentSprint.completed_count || currentSprint.completed || 0}</p>
+                    <p className="text-xs text-gray-600 mt-1">Completed</p>
                   </div>
-                  
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
-                    {conv.title}
-                  </h3>
-                  
-                  {/* AI Summary */}
-                  {conv.ai_summary && (
-                    <div className="bg-white bg-opacity-60 border-l-2 border-gray-900 p-3 mb-3">
-                      <p className="text-sm text-gray-700 leading-relaxed">
-                        {conv.ai_summary}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Why it matters */}
-                  {conv.why_matters && (
-                    <p className="text-base text-gray-600 mb-3 italic">
-                      Why it matters: {conv.why_matters}
-                    </p>
-                  )}
-                  
-                  <div className="flex items-center gap-6 text-sm text-gray-600">
-                    <span className="font-medium">{conv.author}</span>
-                    {conv.reply_count > 0 && (
-                      <span>{conv.reply_count} {conv.reply_count === 1 ? 'reply' : 'replies'}</span>
-                    )}
-                    {conv.ai_keywords && conv.ai_keywords.length > 0 && (
-                      <div className="flex gap-2">
-                        {conv.ai_keywords.slice(0, 3).map((keyword, i) => (
-                          <span key={i} className="text-xs px-2 py-1 bg-white bg-opacity-60 text-gray-700">
-                            {keyword}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                  <div className="bg-blue-50 border border-blue-200 p-4 text-center shadow-sm">
+                    <p className="text-2xl font-black text-blue-600">{currentSprint.in_progress || 0}</p>
+                    <p className="text-xs text-gray-600 mt-1">In Progress</p>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-200 p-4 text-center shadow-sm">
+                    <p className="text-2xl font-black text-gray-600">{(currentSprint.issue_count || 0) - (currentSprint.completed_count || currentSprint.completed || 0) - (currentSprint.in_progress || 0) - (currentSprint.blocked_count || currentSprint.blocked || 0)}</p>
+                    <p className="text-xs text-gray-600 mt-1">To Do</p>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 p-4 text-center shadow-sm">
+                    <p className="text-2xl font-black text-amber-600">{currentSprint.blocked_count || currentSprint.blocked || 0}</p>
+                    <p className="text-xs text-gray-600 mt-1">Blocked</p>
                   </div>
                 </div>
               </div>
-            </Link>
-          );
-          })}
+            )}
+
+            {/* Recent Conversations */}
+            <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-black text-gray-900">Recent Conversations</h2>
+                <Link to="/conversations" className="text-gray-600 hover:text-gray-900 font-bold text-sm">View All →</Link>
+              </div>
+              
+              {conversations.length === 0 ? (
+                <div className="text-center py-8">
+                  <ChatBubbleLeftIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-600">No conversations yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {conversations.map(conv => (
+                    <Link key={conv.id} to={`/conversations/${conv.id}`} className="flex items-start gap-4 p-4 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all">
+                      <div className="w-2 h-2 bg-gray-900 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-gray-900 truncate">{conv.title}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs font-bold uppercase bg-gray-100 text-gray-700 px-2 py-1">{conv.post_type}</span>
+                          <span className="text-xs text-gray-500">{conv.reply_count} replies</span>
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-500 flex-shrink-0">{new Date(conv.created_at).toLocaleDateString()}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Sidebar */}
+          <div className="space-y-8">
+            {/* Recent Decisions */}
+            <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-black text-gray-900">Recent Decisions</h2>
+                <Link to="/decisions" className="text-gray-600 hover:text-gray-900 font-bold text-sm">All →</Link>
+              </div>
+              
+              {decisions.length === 0 ? (
+                <div className="text-center py-8">
+                  <DocumentTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-600 text-sm">No decisions yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {decisions.map(dec => (
+                    <Link key={dec.id} to={`/decisions/${dec.id}`} className="block p-3 border border-gray-200 hover:border-gray-900 hover:bg-gray-50 transition-all">
+                      <h3 className="font-bold text-sm text-gray-900 truncate">{dec.title}</h3>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs font-bold uppercase text-gray-600 bg-gray-100 px-2 py-1">{dec.status}</span>
+                        <span className="text-xs text-gray-500">{dec.impact_level}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+              <h2 className="text-xl font-black text-gray-900 mb-4">Quick Actions</h2>
+              <div className="space-y-2">
+                <Link to="/conversations/new" className="block w-full px-4 py-3 bg-gray-900 text-white hover:bg-black font-bold text-sm text-center transition-all">
+                  New Conversation
+                </Link>
+                <Link to="/decisions/new" className="block w-full px-4 py-3 border border-gray-900 text-gray-900 hover:bg-gray-50 font-bold text-sm text-center transition-all">
+                  New Decision
+                </Link>
+                <Link to="/sprint" className="block w-full px-4 py-3 border border-gray-200 text-gray-900 hover:bg-gray-50 font-bold text-sm text-center transition-all">
+                  View Sprint
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

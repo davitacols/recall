@@ -15,7 +15,8 @@ import {
   Bars3Icon,
   XMarkIcon,
   RectangleStackIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  InboxIcon
 } from '@heroicons/react/24/outline';
 
 function AvatarDisplay({ avatar, fullName }) {
@@ -100,118 +101,53 @@ function Layout({ children }) {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: colors.background }}>
       {/* Header */}
-      <header style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '64px',
-        backgroundColor: colors.surface,
-        borderBottom: `1px solid ${colors.border}`,
-        zIndex: 50,
-        boxShadow: shadows.sm
-      }}>
-        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${spacing.lg}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: spacing.lg }}>
-            <button onClick={toggleSidebar} style={{ padding: spacing.md, background: 'none', border: 'none', cursor: 'pointer' }}>
+      <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 shadow-sm">
+        <div className="h-full flex items-center justify-between px-8">
+          <div className="flex items-center gap-8">
+            <button onClick={toggleSidebar} className="p-2 hover:bg-gray-100 transition-all">
               {sidebarCollapsed ? (
-                <Bars3Icon style={{ width: '20px', height: '20px', color: colors.primary }} />
+                <Bars3Icon className="w-5 h-5 text-gray-900" />
               ) : (
-                <XMarkIcon style={{ width: '20px', height: '20px', color: colors.primary }} />
+                <XMarkIcon className="w-5 h-5 text-gray-900" />
               )}
             </button>
-            <h1 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary }}>{getPageTitle()}</h1>
+            <h1 className="text-2xl font-black text-gray-900">{getPageTitle()}</h1>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: spacing.lg }}>
+          <div className="flex items-center gap-6">
             <Search />
+            <Link to="/messages" className="p-2 text-gray-600 hover:text-gray-900 transition-colors" title="Messages">
+              <InboxIcon className="w-6 h-6" />
+            </Link>
             <NotificationBell />
             
-            <div style={{ position: 'relative' }}>
+            <div className="relative">
               <button
                 onClick={() => setShowNewMenu(!showNewMenu)}
-                style={{
-                  padding: `${spacing.sm} ${spacing.lg}`,
-                  backgroundColor: colors.primary,
-                  color: colors.surface,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  border: 'none',
-                  borderRadius: radius.md,
-                  cursor: 'pointer',
-                  transition: motion.fast,
-                  boxShadow: shadows.sm
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#1a1f35';
-                  e.target.style.boxShadow = shadows.md;
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = colors.primary;
-                  e.target.style.boxShadow = shadows.sm;
-                }}
+                className="px-6 py-2 bg-gray-900 text-white hover:bg-black font-bold uppercase text-xs transition-all"
               >
                 New
               </button>
               {showNewMenu && (
-                <div style={{
-                  position: 'absolute',
-                  right: 0,
-                  marginTop: spacing.sm,
-                  width: '192px',
-                  backgroundColor: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.lg,
-                  boxShadow: shadows.lg,
-                  zIndex: 10
-                }}>
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-lg z-10">
                   <Link
                     to="/conversations/new"
                     onClick={() => setShowNewMenu(false)}
-                    style={{
-                      display: 'block',
-                      padding: spacing.lg,
-                      fontSize: '14px',
-                      color: colors.primary,
-                      textDecoration: 'none',
-                      borderBottom: `1px solid ${colors.border}`,
-                      transition: motion.fast
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-b border-gray-200 transition-all"
                   >
                     New conversation
                   </Link>
                   <Link
                     to="/decisions/new"
                     onClick={() => setShowNewMenu(false)}
-                    style={{
-                      display: 'block',
-                      padding: spacing.lg,
-                      fontSize: '14px',
-                      color: colors.primary,
-                      textDecoration: 'none',
-                      borderBottom: `1px solid ${colors.border}`,
-                      transition: motion.fast
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-b border-gray-200 transition-all"
                   >
                     New decision
                   </Link>
                   <Link
                     to="/issues/new"
                     onClick={() => setShowNewMenu(false)}
-                    style={{
-                      display: 'block',
-                      padding: spacing.lg,
-                      fontSize: '14px',
-                      color: colors.primary,
-                      textDecoration: 'none',
-                      transition: motion.fast
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 transition-all"
                   >
                     New issue
                   </Link>
@@ -219,25 +155,15 @@ function Layout({ children }) {
               )}
             </div>
 
-            <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', border: 'none', cursor: 'pointer' }}>
+            <div className="relative">
+              <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="w-8 h-8 overflow-hidden border-none cursor-pointer">
                 <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
               </button>
               {showProfileMenu && (
-                <div style={{
-                  position: 'absolute',
-                  right: 0,
-                  marginTop: spacing.sm,
-                  width: '192px',
-                  backgroundColor: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.lg,
-                  boxShadow: shadows.lg,
-                  zIndex: 10
-                }}>
-                  <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: spacing.lg, fontSize: '14px', color: colors.primary, textDecoration: 'none', borderBottom: `1px solid ${colors.border}`, transition: motion.fast }} onMouseEnter={(e) => e.target.style.backgroundColor = colors.background} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Profile</Link>
-                  <Link to="/settings" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: spacing.lg, fontSize: '14px', color: colors.primary, textDecoration: 'none', borderBottom: `1px solid ${colors.border}`, transition: motion.fast }} onMouseEnter={(e) => e.target.style.backgroundColor = colors.background} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Settings</Link>
-                  <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: spacing.lg, fontSize: '14px', color: colors.primary, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', transition: motion.fast }} onMouseEnter={(e) => e.target.style.backgroundColor = colors.background} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Sign out</button>
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-lg z-10">
+                  <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-b border-gray-200 transition-all">Profile</Link>
+                  <Link to="/settings" onClick={() => setShowProfileMenu(false)} className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-b border-gray-200 transition-all">Settings</Link>
+                  <button onClick={logout} className="w-full text-left px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-none bg-transparent cursor-pointer transition-all">Sign out</button>
                 </div>
               )}
             </div>
@@ -251,8 +177,8 @@ function Layout({ children }) {
         top: '64px',
         left: 0,
         bottom: 0,
-        width: sidebarCollapsed ? '80px' : '256px',
-        backgroundColor: colors.background,
+        width: sidebarCollapsed ? '80px' : '320px',
+        backgroundColor: colors.surface,
         borderRight: `1px solid ${colors.border}`,
         display: 'flex',
         flexDirection: 'column',
@@ -260,7 +186,7 @@ function Layout({ children }) {
       }}>
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           <nav style={{ flex: 1, padding: spacing.lg, overflowY: 'auto' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
               {primaryNav.map((item) => {
                 const isActive = location.pathname === item.href;
                 const Icon = item.icon;
@@ -273,14 +199,14 @@ function Layout({ children }) {
                       alignItems: 'center',
                       gap: spacing.md,
                       padding: `${spacing.md} ${spacing.lg}`,
-                      borderRadius: radius.md,
+                      borderRadius: '0',
                       fontSize: '14px',
-                      fontWeight: 500,
+                      fontWeight: isActive ? 700 : 500,
                       textDecoration: 'none',
-                      color: isActive ? colors.accent : colors.secondary,
-                      backgroundColor: isActive ? colors.accentLight : 'transparent',
-                      borderLeft: isActive ? `3px solid ${colors.accent}` : 'none',
-                      paddingLeft: isActive ? '13px' : spacing.lg,
+                      color: isActive ? colors.primary : colors.secondary,
+                      backgroundColor: isActive ? '#f3f4f6' : 'transparent',
+                      borderLeft: isActive ? `4px solid ${colors.primary}` : '4px solid transparent',
+                      paddingLeft: isActive ? '12px' : spacing.lg,
                       transition: motion.fast
                     }}
                     title={sidebarCollapsed ? item.name : ''}
@@ -299,7 +225,7 @@ function Layout({ children }) {
                   { title: 'Personal', items: personalNav },
                   ...(user?.role === 'admin' ? [{ title: 'Admin', items: adminNav }] : [])
                 ].map((section) => (
-                  <div key={section.title} style={{ marginTop: spacing.lg }}>
+                  <div key={section.title} style={{ marginTop: spacing.xl }}>
                     <button
                       onClick={() => toggleGroup(section.title)}
                       style={{
@@ -308,11 +234,11 @@ function Layout({ children }) {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: `${spacing.sm} ${spacing.lg}`,
-                        fontSize: '12px',
-                        fontWeight: 600,
+                        fontSize: '11px',
+                        fontWeight: 700,
                         color: colors.secondary,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
+                        letterSpacing: '0.08em',
                         backgroundColor: 'transparent',
                         border: 'none',
                         cursor: 'pointer',
@@ -333,7 +259,7 @@ function Layout({ children }) {
                     </button>
                     
                     {expandedGroups[section.title] && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm, marginTop: spacing.sm }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs, marginTop: spacing.sm }}>
                         {section.items.map((item) => {
                           const isActive = location.pathname === item.href;
                           return (
@@ -344,12 +270,14 @@ function Layout({ children }) {
                                 display: 'block',
                                 padding: `${spacing.sm} ${spacing.lg}`,
                                 paddingLeft: spacing.xl,
-                                borderRadius: radius.md,
+                                borderRadius: '0',
                                 fontSize: '13px',
                                 textDecoration: 'none',
-                                color: isActive ? colors.accent : colors.secondary,
-                                backgroundColor: isActive ? colors.accentLight : 'transparent',
-                                fontWeight: isActive ? 500 : 'normal',
+                                color: isActive ? colors.primary : colors.secondary,
+                                backgroundColor: isActive ? '#f3f4f6' : 'transparent',
+                                fontWeight: isActive ? 600 : 'normal',
+                                borderLeft: isActive ? `4px solid ${colors.primary}` : '4px solid transparent',
+                                paddingLeft: isActive ? '12px' : spacing.xl,
                                 transition: motion.fast
                               }}
                             >
@@ -368,17 +296,17 @@ function Layout({ children }) {
           <div style={{ padding: spacing.lg, borderTop: `1px solid ${colors.border}`, flexShrink: 0 }}>
             {!sidebarCollapsed ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '0', overflow: 'hidden', flexShrink: 0 }}>
                   <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '14px', fontWeight: 500, color: colors.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name?.split(' ')[0]}</div>
-                  <div style={{ fontSize: '12px', color: colors.secondary }}>{user?.organization_name}</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: colors.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name?.split(' ')[0]}</div>
+                  <div style={{ fontSize: '11px', color: colors.secondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.organization_name}</div>
                 </div>
               </div>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '0', overflow: 'hidden' }}>
                   <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
                 </div>
               </div>
@@ -390,7 +318,7 @@ function Layout({ children }) {
       {/* Main Content */}
       <main style={{
         paddingTop: '64px',
-        paddingLeft: sidebarCollapsed ? '80px' : '256px',
+        paddingLeft: sidebarCollapsed ? '80px' : '320px',
         transition: motion.normal
       }}>
         <div style={{ padding: spacing.xl }}>

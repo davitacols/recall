@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { colors, spacing, shadows, radius } from '../utils/designTokens';
 
 function SprintHistory() {
   const [sprints, setSprints] = useState([]);
@@ -20,7 +19,7 @@ function SprintHistory() {
         api.get('/api/agile/sprint-history/')
       ]);
       setProjects(projectsRes.data);
-      setSprints(sprintsRes.data);
+      setSprints(sprintsRes.data.results || sprintsRes.data || []);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -34,205 +33,108 @@ function SprintHistory() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #E5E7EB', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <div className="flex items-center justify-center h-96">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ marginBottom: spacing.xl }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 700, color: colors.primary, marginBottom: spacing.sm }}>
-          Sprint History
-        </h1>
-        <p style={{ fontSize: '14px', color: colors.secondary }}>
-          Institutional memory for your team
-        </p>
-      </div>
-
-      {/* Filter */}
-      {projects.length > 0 && (
-        <div style={{
-          backgroundColor: colors.surface,
-          border: `1px solid ${colors.border}`,
-          borderRadius: radius.md,
-          padding: spacing.lg,
-          marginBottom: spacing.xl
-        }}>
-          <label style={{ fontSize: '12px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-            Filter by Project
-          </label>
-          <select
-            value={selectedProject || ''}
-            onChange={(e) => setSelectedProject(e.target.value ? parseInt(e.target.value) : null)}
-            style={{
-              width: '100%',
-              maxWidth: '300px',
-              padding: spacing.md,
-              border: `1px solid ${colors.border}`,
-              borderRadius: radius.md,
-              fontSize: '14px',
-              boxSizing: 'border-box'
-            }}
-          >
-            <option value="">All Projects</option>
-            {projects.map(project => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-6xl font-black text-gray-900 mb-3 tracking-tight">Sprint History</h1>
+          <p className="text-xl text-gray-600 font-light">Institutional memory for your team</p>
         </div>
-      )}
 
-      {/* Sprints List */}
-      {filteredSprints.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: spacing.xl,
-          backgroundColor: colors.background,
-          borderRadius: radius.md,
-          border: `1px solid ${colors.border}`
-        }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary, marginBottom: spacing.md }}>
-            No past sprints
-          </h3>
-          <p style={{ fontSize: '14px', color: colors.secondary }}>
-            Sprint history will appear here once sprints are completed
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
-          {filteredSprints.map(sprint => (
-            <div key={sprint.id} style={{
-              backgroundColor: colors.surface,
-              border: `1px solid ${colors.border}`,
-              borderRadius: radius.md,
-              padding: spacing.lg,
-              boxShadow: shadows.sm
-            }}>
-              {/* Sprint Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: spacing.lg }}>
+        {/* Filter */}
+        {projects.length > 0 && (
+          <div className="p-8 bg-white border border-gray-200 mb-12">
+            <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Filter by Project</label>
+            <select
+              value={selectedProject || ''}
+              onChange={(e) => setSelectedProject(e.target.value ? parseInt(e.target.value) : null)}
+              className="w-full max-w-xs px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+            >
+              <option value="">All Projects</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Sprints List */}
+        {filteredSprints.length === 0 ? (
+          <div className="text-center py-24 bg-white border border-gray-200">
+            <h3 className="text-3xl font-black text-gray-900 mb-3">No past sprints</h3>
+            <p className="text-lg text-gray-600 font-light">Sprint history will appear here once sprints are completed</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {filteredSprints.map(sprint => (
+              <div key={sprint.id} className="p-8 bg-white border border-gray-200 hover:border-gray-900 hover:shadow-lg transition-all">
+                {/* Sprint Header */}
+                <div className="flex justify-between items-start mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">{sprint.name}</h2>
+                    <p className="text-sm text-gray-600 font-medium">{sprint.project_name} • {sprint.start_date} to {sprint.end_date}</p>
+                  </div>
+                  <Link
+                    to={`/sprints/${sprint.id}`}
+                    className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+                  >
+                    View Details
+                  </Link>
+                </div>
+
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-3 gap-6 mb-8">
+                  <div className="p-6 bg-white border border-gray-200 text-center">
+                    <p className="text-3xl font-black text-green-600 mb-2">{sprint.completed}</p>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Completed</p>
+                  </div>
+
+                  <div className="p-6 bg-white border border-gray-200 text-center">
+                    <p className="text-3xl font-black text-red-600 mb-2">{sprint.blocked}</p>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Blocked</p>
+                  </div>
+
+                  <div className="p-6 bg-white border border-gray-200 text-center">
+                    <p className="text-3xl font-black text-gray-900 mb-2">{sprint.decisions}</p>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Decisions</p>
+                  </div>
+                </div>
+
+                {/* Completion Bar */}
                 <div>
-                  <h2 style={{ fontSize: '18px', fontWeight: 600, color: colors.primary, marginBottom: spacing.sm }}>
-                    {sprint.name}
-                  </h2>
-                  <p style={{ fontSize: '12px', color: colors.secondary }}>
-                    {sprint.project_name} • {sprint.start_date} to {sprint.end_date}
-                  </p>
-                </div>
-                <Link
-                  to={`/sprints/${sprint.id}`}
-                  style={{
-                    padding: `${spacing.sm} ${spacing.md}`,
-                    backgroundColor: colors.primary,
-                    color: 'white',
-                    textDecoration: 'none',
-                    borderRadius: radius.md,
-                    fontSize: '12px',
-                    fontWeight: 500
-                  }}
-                >
-                  View Details
-                </Link>
-              </div>
-
-              {/* Metrics Grid */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: spacing.md,
-                marginBottom: spacing.lg
-              }}>
-                <div style={{
-                  backgroundColor: colors.background,
-                  borderRadius: radius.md,
-                  padding: spacing.md,
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#10B981', marginBottom: '4px' }}>
-                    {sprint.completed}
+                  <div className="flex justify-between mb-3">
+                    <span className="text-sm font-bold text-gray-900 uppercase tracking-wide">Completion</span>
+                    <span className="text-sm font-bold text-gray-900">{sprint.completed}/{sprint.completed + sprint.blocked}</span>
                   </div>
-                  <div style={{ fontSize: '11px', color: colors.secondary, textTransform: 'uppercase' }}>
-                    Completed
-                  </div>
-                </div>
-
-                <div style={{
-                  backgroundColor: colors.background,
-                  borderRadius: radius.md,
-                  padding: spacing.md,
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#EF4444', marginBottom: '4px' }}>
-                    {sprint.blocked}
-                  </div>
-                  <div style={{ fontSize: '11px', color: colors.secondary, textTransform: 'uppercase' }}>
-                    Blocked
-                  </div>
-                </div>
-
-                <div style={{
-                  backgroundColor: colors.background,
-                  borderRadius: radius.md,
-                  padding: spacing.md,
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: colors.primary, marginBottom: '4px' }}>
-                    {sprint.decisions}
-                  </div>
-                  <div style={{ fontSize: '11px', color: colors.secondary, textTransform: 'uppercase' }}>
-                    Decisions
+                  <div className="w-full h-3 bg-gray-200">
+                    <div
+                      style={{
+                        width: `${sprint.completed + sprint.blocked > 0 ? (sprint.completed / (sprint.completed + sprint.blocked)) * 100 : 0}%`
+                      }}
+                      className="h-full bg-green-600 transition-all duration-300"
+                    />
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              {/* Completion Bar */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing.sm }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: colors.primary }}>
-                    Completion
-                  </span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: colors.primary }}>
-                    {sprint.completed}/{sprint.completed + sprint.blocked}
-                  </span>
-                </div>
-                <div style={{
-                  width: '100%',
-                  height: '8px',
-                  backgroundColor: colors.background,
-                  borderRadius: '4px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    width: `${sprint.completed + sprint.blocked > 0 ? (sprint.completed / (sprint.completed + sprint.blocked)) * 100 : 0}%`,
-                    height: '100%',
-                    backgroundColor: '#10B981',
-                    transition: 'width 0.3s ease'
-                  }} />
-                </div>
-              </div>
-            </div>
-          ))}
+        {/* View Projects Link */}
+        <div className="mt-12">
+          <a href="/projects" className="inline-block px-8 py-4 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all">
+            View All Projects →
+          </a>
         </div>
-      )}
-
-      {/* View Projects Link */}
-      <div style={{ marginTop: spacing.xl }}>
-        <Link to="/projects" style={{
-          display: 'inline-block',
-          padding: `${spacing.md} ${spacing.lg}`,
-          backgroundColor: colors.primary,
-          color: 'white',
-          textDecoration: 'none',
-          borderRadius: radius.md,
-          fontSize: '14px',
-          fontWeight: 500
-        }}>
-          View All Projects →
-        </Link>
       </div>
     </div>
   );

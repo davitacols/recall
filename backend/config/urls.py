@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/notifications/', include('apps.notifications.urls')),
     path('api/agile/', include('apps.agile.urls_fresh')),
     path('api/integrations/', include('apps.integrations.urls')),
+    path('api/integrations/fresh/', include('apps.integrations.urls_fresh')),
 ]
 
 if settings.DEBUG:

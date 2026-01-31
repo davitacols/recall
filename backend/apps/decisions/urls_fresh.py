@@ -1,5 +1,5 @@
 from django.urls import path
-from . import proposal_endpoints, template_endpoints, velocity_endpoints, impact_endpoints, vote_endpoints
+from . import proposal_endpoints, template_endpoints, velocity_endpoints, impact_endpoints, vote_endpoints, ai_endpoints
 
 app_name = 'decisions'
 
@@ -31,4 +31,12 @@ urlpatterns = [
     path('<int:decision_id>/votes/', vote_endpoints.decision_votes, name='decision-votes'),
     path('<int:decision_id>/consensus/', vote_endpoints.consensus_report, name='consensus-report'),
     path('consensus/metrics/', vote_endpoints.organization_consensus_metrics, name='consensus-metrics'),
+    
+    # AI Assistant
+    path('ai/suggest-similar/', ai_endpoints.suggest_similar_decisions, name='suggest-similar'),
+    path('<int:decision_id>/ai/check-conflicts/', ai_endpoints.check_decision_conflicts, name='check-conflicts'),
+    path('<int:decision_id>/ai/missing-stakeholders/', ai_endpoints.identify_missing_stakeholders, name='missing-stakeholders'),
+    path('ai/draft-rationale/', ai_endpoints.draft_decision_rationale, name='draft-rationale'),
+    path('<int:decision_id>/ai/context/', ai_endpoints.analyze_decision_context, name='analyze-context'),
+    path('ai/recommendations/', ai_endpoints.decision_recommendations, name='recommendations'),
 ]

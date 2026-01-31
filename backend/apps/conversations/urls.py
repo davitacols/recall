@@ -4,6 +4,7 @@ from .reply_views import reply_detail
 from . import linking_views
 from . import search_views
 from . import sentiment_endpoints
+from . import thread_endpoints
 
 urlpatterns = [
     path('search/', search_views.advanced_search, name='advanced_search'),
@@ -52,6 +53,14 @@ urlpatterns = [
     path('sentiment/health/', sentiment_endpoints.team_health_metrics, name='team-health'),
     path('sentiment/user/<int:user_id>/', sentiment_endpoints.user_sentiment, name='user-sentiment'),
     path('sentiment/concerns/', sentiment_endpoints.concern_detection, name='concern-detection'),
+    
+    # Threading
+    path('threads/link/', thread_endpoints.link_conversations, name='link-conversations'),
+    path('<int:conversation_id>/threads/', thread_endpoints.conversation_threads, name='conversation-threads'),
+    path('<int:conversation_id>/threads/auto-link/', thread_endpoints.auto_link_similar_conversations, name='auto-link-similar'),
+    path('threads/history/', thread_endpoints.conversation_history, name='conversation-history'),
+    path('threads/record-topic/', thread_endpoints.record_conversation_topic, name='record-topic'),
+    path('threads/recurring/', thread_endpoints.recurring_topics, name='recurring-topics'),
     
     path('<int:conversation_id>/', views.conversation_detail, name='conversation_detail'),
 ]

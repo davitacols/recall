@@ -447,3 +447,31 @@ class BurndownData(models.Model):
         indexes = [
             models.Index(fields=['organization', 'sprint', 'date']),
         ]
+
+
+class Deployment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+    ]
+    
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    
+    environment = models.CharField(max_length=50)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    commit_hash = models.CharField(max_length=40)
+    branch = models.CharField(max_length=255)
+    
+    deployed_by = models.CharField(max_length=255)
+    deployed_at = models.DateTimeField(null=True, blank=True)
+    
+    url = models.URLField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'deployments'
+        ordering = ['-created_at']

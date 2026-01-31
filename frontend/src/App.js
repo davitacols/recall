@@ -57,6 +57,7 @@ import IntegrationManagement from './pages/IntegrationManagement';
 import DecisionProposals from './pages/DecisionProposals';
 import KnowledgeBase from './pages/KnowledgeBase';
 import Messages from './pages/Messages';
+import IssueDetail from './pages/IssueDetail';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
@@ -450,6 +451,13 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <Messages />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/issues/:issueId" element={
+          <ProtectedRoute>
+            <Layout>
+              <IssueDetail />
             </Layout>
           </ProtectedRoute>
         } />

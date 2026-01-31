@@ -11,32 +11,10 @@ function KanbanBoard() {
   const [showCreateIssue, setShowCreateIssue] = useState(false);
   const [newIssueTitle, setNewIssueTitle] = useState('');
   const [newIssueColumn, setNewIssueColumn] = useState(null);
-  const wsRef = useRef(null);
 
   useEffect(() => {
     fetchBoard();
-    connectWebSocket();
-    return () => {
-      if (wsRef.current) wsRef.current.close();
-    };
   }, [boardId]);
-
-  const connectWebSocket = () => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/boards/${boardId}/`;
-    wsRef.current = new WebSocket(wsUrl);
-    
-    wsRef.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'issue_moved') {
-        fetchBoard();
-      }
-    };
-    
-    wsRef.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-  };
 
   const fetchBoard = async () => {
     try {
@@ -72,40 +50,35 @@ function KanbanBoard() {
 
     try {
       const status = statusMap[column.name] || 'todo';
+      const updatedIssue = { ...draggedIssue, status };
       
-      // Update UI immediately (optimistic update)
       setBoard(prevBoard => ({
         ...prevBoard,
-        columns: prevBoard.columns.map(col => ({
-          ...col,
-          issues: col.id === column.id 
-            ? [...col.issues, draggedIssue]
-            : col.issues.filter(i => i.id !== draggedIssue.id),
-          issue_count: col.id === column.id 
-            ? col.issue_count + 1
-            : col.issue_count - 1
-        }))
+        columns: prevBoard.columns.map(col => {
+          if (col.id === column.id) {
+            return {
+              ...col,
+              issues: [...(col.issues || []), updatedIssue],
+              issue_count: (col.issue_count || 0) + 1
+            };
+          }
+          return {
+            ...col,
+            issues: (col.issues || []).filter(i => i.id !== draggedIssue.id),
+            issue_count: Math.max(0, (col.issue_count || 0) - 1)
+          };
+        })
       }));
       
       setDraggedIssue(null);
       
-      // Send to server in background
       await api.put(`/api/agile/issues/${draggedIssue.id}/`, {
         status: status,
       });
-      
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          type: 'issue_moved',
-          issue_id: draggedIssue.id,
-          column_id: column.id,
-          status: status
-        }));
-      }
     } catch (error) {
       console.error('Failed to move issue:', error);
       setDraggedIssue(null);
-      await fetchBoard();
+      fetchBoard();
     }
   };
 
@@ -119,7 +92,7 @@ function KanbanBoard() {
       setNewIssueTitle('');
       setNewIssueColumn(null);
       setShowCreateIssue(false);
-      await fetchBoard();
+      fetchBoard();
     } catch (error) {
       console.error('Failed to create issue:', error);
     }
@@ -130,7 +103,7 @@ function KanbanBoard() {
 
     try {
       await api.delete(`/api/agile/issues/${issueId}/`);
-      await fetchBoard();
+      fetchBoard();
     } catch (error) {
       console.error('Failed to delete issue:', error);
     }

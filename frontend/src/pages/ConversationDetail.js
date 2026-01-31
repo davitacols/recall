@@ -8,6 +8,7 @@ import HighlightedText from '../components/HighlightedText';
 import DeveloperInsights from '../components/DeveloperInsights';
 import AISummaryPanel from '../components/AISummaryPanel';
 import RelatedDecisions from '../components/RelatedDecisions';
+import ActionItemManager from '../components/ActionItemManager';
 
 const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -134,6 +135,7 @@ function ConversationDetail() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [showUploadBox, setShowUploadBox] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [teamMembers, setTeamMembers] = useState([]);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -145,7 +147,17 @@ function ConversationDetail() {
     fetchReactions();
     checkComplexity();
     fetchDocuments();
+    fetchTeamMembers();
   }, [id]);
+
+  const fetchTeamMembers = async () => {
+    try {
+      const response = await api.get('/api/team/members/');
+      setTeamMembers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch team members:', error);
+    }
+  };
 
   const fetchConversation = async () => {
     try {
@@ -835,6 +847,9 @@ function ConversationDetail() {
           </div>
         )}
       </div>
+
+        {/* Action Items */}
+        <ActionItemManager conversationId={id} teamMembers={teamMembers} />
 
         {/* Developer Insights */}
         <DeveloperInsights conversationId={id} />

@@ -15,6 +15,9 @@ def invite_user(request):
     email = request.data.get('email')
     role = request.data.get('role', 'contributor')
     
+    if not email:
+        return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
     # Check if user already exists
     if User.objects.filter(email=email, organization=request.user.organization).exists():
         return Response({'error': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
@@ -31,20 +34,25 @@ def invite_user(request):
         }
     )
     
-    # Send invitation email
-    from apps.notifications.email_service import send_invitation_email
-    send_invitation_email(invitation)
+    # Try to send email
+    email_sent = False
+    try:
+        from apps.notifications.email_service import send_invitation_email
+        email_sent = send_invitation_email(invitation)
+    except Exception as e:
+        print(f"Email send failed: {e}")
     
-    # Update onboarding progress
-    if not request.user.first_teammate_invited:
-        request.user.first_teammate_invited = True
-        request.user.save(update_fields=['first_teammate_invited'])
+    # Always return the invite link for UI display
+    invite_link = f"{request.build_absolute_uri('/').rstrip('/')}/invite/{invitation.token}"
     
     return Response({
-        'message': 'Invitation sent',
+        'message': 'Invitation created',
         'token': str(invitation.token),
-        'invite_link': f'/invite/{invitation.token}'
-    })
+        'invite_link': invite_link,
+        'email_sent': email_sent,
+        'email': invitation.email,
+        'role': invitation.role
+    }, status=status.HTTP_201_CREATED)
 
 @csrf_exempt
 @api_view(['GET'])
@@ -114,7 +122,7 @@ def list_invitations(request):
         is_accepted=False
     ).order_by('-created_at')
     
-    data = [{
+    data = [({
         'id': inv.id,
         'email': inv.email,
         'role': inv.role,
@@ -122,8 +130,9 @@ def list_invitations(request):
         'invited_by': inv.invited_by.get_full_name() if inv.invited_by else None,
         'created_at': inv.created_at,
         'expires_at': inv.expires_at,
-        'is_valid': inv.is_valid()
-    } for inv in invitations]
+        'is_valid': inv.is_valid(),
+        'invite_link': f"{request.build_absolute_uri('/').rstrip('/')}/invite/{inv.token}"
+    }) for inv in invitations]
     
     return Response(data)
 

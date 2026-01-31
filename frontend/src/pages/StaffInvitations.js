@@ -17,10 +17,12 @@ function StaffInvitations() {
 
   const loadInvitations = async () => {
     try {
+      setLoading(true);
       const response = await api.get('/api/organizations/invitations/');
-      setInvitations(response.data);
+      setInvitations(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('Failed to load invitations:', err);
+      addToast('Failed to load invitations', 'error');
     } finally {
       setLoading(false);
     }
@@ -38,15 +40,14 @@ function StaffInvitations() {
         role: inviteRole
       });
 
-      const fullLink = `${window.location.origin}${response.data.invite_link}`;
-      setGeneratedLink(fullLink);
+      setGeneratedLink(response.data.invite_link);
       setShowLinkModal(true);
       setInviteEmail('');
       setInviteRole('contributor');
       loadInvitations();
-      addToast('Invitation link generated successfully', 'success');
+      addToast('Invitation sent successfully', 'success');
     } catch (err) {
-      addToast(err.response?.data?.error || 'Failed to generate invitation', 'error');
+      addToast(err.response?.data?.error || 'Failed to send invitation', 'error');
     }
   };
 
@@ -54,8 +55,6 @@ function StaffInvitations() {
     navigator.clipboard.writeText(generatedLink);
     addToast('Link copied to clipboard!', 'success');
   };
-
-
 
   const revokeInvitation = async (invitationId) => {
     if (!window.confirm('Are you sure you want to revoke this invitation?')) return;
@@ -154,44 +153,41 @@ function StaffInvitations() {
         ) : (
           <div className="space-y-4">
             {invitations.map((invitation) => (
-              <div key={invitation.id} className="p-3 md:p-4 bg-gray-50 border border-gray-200">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className="font-bold text-gray-900 text-sm md:text-base break-all">{invitation.email}</span>
-                      <span className={`px-2 md:px-3 py-1 ${getRoleColor(invitation.role)} text-white text-xs font-bold uppercase whitespace-nowrap`}>
-                        {invitation.role}
-                      </span>
-                      <span className={`text-xs font-bold uppercase ${getStatusColor(invitation.is_valid)}`}>
-                        {invitation.is_valid ? 'Active' : 'Expired'}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Invited by {invitation.invited_by} on {new Date(invitation.created_at).toLocaleDateString()}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Expires: {new Date(invitation.expires_at).toLocaleDateString()}
-                    </div>
+              <div key={invitation.id} className="p-4 bg-gray-50 border border-gray-200">
+                <div className="mb-3">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <span className="font-bold text-gray-900">{invitation.email}</span>
+                    <span className={`px-3 py-1 ${getRoleColor(invitation.role)} text-white text-xs font-bold uppercase`}>
+                      {invitation.role}
+                    </span>
+                    <span className={`text-xs font-bold uppercase ${getStatusColor(invitation.is_valid)}`}>
+                      {invitation.is_valid ? 'Active' : 'Expired'}
+                    </span>
                   </div>
+                  <div className="text-sm text-gray-600">
+                    Invited by {invitation.invited_by} on {new Date(invitation.created_at).toLocaleDateString()}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Expires: {new Date(invitation.expires_at).toLocaleDateString()}
+                  </div>
+                </div>
 
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        const link = `${window.location.origin}/invite/${invitation.token}`;
-                        navigator.clipboard.writeText(link);
-                        addToast('Link copied!', 'success');
-                      }}
-                      className="px-3 md:px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs"
-                    >
-                      Copy
-                    </button>
-                    <button
-                      onClick={() => revokeInvitation(invitation.id)}
-                      className="px-3 md:px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-bold uppercase text-xs"
-                    >
-                      Revoke
-                    </button>
-                  </div>
+                <div className="flex gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(invitation.invite_link);
+                      addToast('Link copied!', 'success');
+                    }}
+                    className="px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs"
+                  >
+                    Copy Link
+                  </button>
+                  <button
+                    onClick={() => revokeInvitation(invitation.id)}
+                    className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-bold uppercase text-xs"
+                  >
+                    Revoke
+                  </button>
                 </div>
               </div>
             ))}

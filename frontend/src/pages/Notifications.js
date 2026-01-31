@@ -15,9 +15,11 @@ function Notifications() {
   const fetchNotifications = async () => {
     try {
       const response = await api.get('/api/notifications/');
-      setNotifications(response.data.results || response.data || []);
+      const data = response.data.results || response.data || [];
+      setNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -26,9 +28,11 @@ function Notifications() {
   const markAsRead = async (notificationId) => {
     try {
       await api.patch(`/api/notifications/${notificationId}/`, { read: true });
-      setNotifications(notifications.map(n => 
-        n.id === notificationId ? { ...n, read: true } : n
-      ));
+      if (Array.isArray(notifications)) {
+        setNotifications(notifications.map(n => 
+          n.id === notificationId ? { ...n, read: true } : n
+        ));
+      }
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
@@ -37,7 +41,9 @@ function Notifications() {
   const deleteNotification = async (notificationId) => {
     try {
       await api.delete(`/api/notifications/${notificationId}/`);
-      setNotifications(notifications.filter(n => n.id !== notificationId));
+      if (Array.isArray(notifications)) {
+        setNotifications(notifications.filter(n => n.id !== notificationId));
+      }
     } catch (error) {
       console.error('Failed to delete notification:', error);
     }

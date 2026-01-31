@@ -8,22 +8,37 @@ function IssueDetail() {
   const navigate = useNavigate();
   const [issue, setIssue] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [teamMembers, setTeamMembers] = useState([]);
 
   useEffect(() => {
     fetchIssue();
+    fetchTeamMembers();
   }, [issueId]);
+
+  const fetchTeamMembers = async () => {
+    try {
+      const response = await api.get('/api/team/members/');
+      setTeamMembers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch team members:', error);
+    }
+  };
 
   const fetchIssue = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const response = await api.get(`/api/agile/issues/${issueId}/`);
       setIssue(response.data);
       setFormData(response.data);
-    } catch (error) {
-      console.error('Failed to fetch issue:', error);
+    } catch (err) {
+      console.error('Failed to fetch issue:', err);
+      setError(err.response?.data?.error || 'Failed to load issue');
     } finally {
       setLoading(false);
     }
@@ -37,6 +52,7 @@ function IssueDetail() {
       fetchIssue();
     } catch (error) {
       console.error('Failed to update issue:', error);
+      setError(error.response?.data?.error || 'Failed to update issue');
     } finally {
       setSubmitting(false);
     }
@@ -53,6 +69,7 @@ function IssueDetail() {
       fetchIssue();
     } catch (error) {
       console.error('Failed to add comment:', error);
+      setError(error.response?.data?.error || 'Failed to add comment');
     } finally {
       setSubmitting(false);
     }
@@ -65,6 +82,7 @@ function IssueDetail() {
       navigate(`/projects/${issue.project_id}`);
     } catch (error) {
       console.error('Failed to delete issue:', error);
+      setError(error.response?.data?.error || 'Failed to delete issue');
     }
   };
 
@@ -72,6 +90,26 @@ function IssueDetail() {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="max-w-4xl mx-auto px-4 md:px-8 py-12">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-8 inline-flex items-center text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeftIcon className="w-4 h-4 mr-2" />
+            Back
+          </button>
+          <div className="p-8 bg-red-50 border border-red-200 rounded">
+            <h2 className="text-2xl font-bold text-red-900 mb-2">Error</h2>
+            <p className="text-red-700">{error}</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -90,7 +128,7 @@ function IssueDetail() {
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button
-            onClick={() => navigate(`/projects/${issue.project_id}`)}
+            onClick={() => navigate(-1)}
             className="p-2 hover:bg-gray-100 transition-all"
           >
             <ArrowLeftIcon className="w-6 h-6 text-gray-900" />
@@ -242,13 +280,18 @@ function IssueDetail() {
               {!editing ? (
                 <p className="text-gray-600">{issue.assignee || 'Unassigned'}</p>
               ) : (
-                <input
-                  type="text"
+                <select
                   value={formData.assignee_id || ''}
-                  onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
-                  placeholder="User ID or name"
+                  onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value ? parseInt(e.target.value) : null })}
                   className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-                />
+                >
+                  <option value="">Unassigned</option>
+                  {teamMembers.map(member => (
+                    <option key={member.id} value={member.id}>
+                      {member.first_name} {member.last_name}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
 

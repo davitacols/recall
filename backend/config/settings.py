@@ -147,6 +147,7 @@ CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS]
 
 if not DEBUG:
     CORS_ALLOWED_ORIGINS.extend([
+        'https://recall-three-plum.vercel.app',
         'https://recall-frontend.onrender.com',
         'https://recall.dev',
     ])

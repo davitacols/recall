@@ -40,6 +40,7 @@ function StaffInvitations() {
         role: inviteRole
       });
 
+      console.log('Invite response:', response.data);
       setGeneratedLink(response.data.invite_link);
       setShowLinkModal(true);
       setInviteEmail('');
@@ -198,12 +199,12 @@ function StaffInvitations() {
       {/* Link Modal */}
       {showLinkModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-2 border-gray-900 w-full max-w-2xl p-4 md:p-8">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 uppercase tracking-wide">
+          <div className="bg-white border-2 border-gray-900 w-full max-w-2xl p-8 rounded-lg shadow-2xl">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase tracking-wide">
               Invitation Link Generated
             </h2>
 
-            <div className="mb-4 md:mb-6">
+            <div className="mb-6">
               <label className="block text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">
                 Share this link:
               </label>
@@ -212,18 +213,18 @@ function StaffInvitations() {
                   type="text"
                   value={generatedLink}
                   readOnly
-                  className="flex-1 p-3 border-2 border-gray-300 bg-gray-50 font-mono text-xs md:text-sm break-all"
+                  className="flex-1 p-3 border-2 border-gray-300 bg-gray-50 font-mono text-sm"
                 />
                 <button
                   onClick={copyToClipboard}
-                  className="px-4 md:px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs md:text-sm whitespace-nowrap"
+                  className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-sm whitespace-nowrap"
                 >
                   Copy
                 </button>
               </div>
             </div>
 
-            <div className="p-4 bg-yellow-50 border-2 border-yellow-600 mb-4 md:mb-6">
+            <div className="p-4 bg-yellow-50 border-2 border-yellow-600 mb-6">
               <p className="text-sm text-yellow-900 font-bold mb-2">⚠️ Important:</p>
               <ul className="text-sm text-yellow-900 space-y-1 list-disc list-inside">
                 <li>This link expires in 7 days</li>
@@ -233,14 +234,12 @@ function StaffInvitations() {
               </ul>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
-              <button
-                onClick={() => setShowLinkModal(false)}
-                className="w-full sm:w-auto px-4 md:px-6 py-3 border-2 border-gray-900 text-gray-900 hover:bg-gray-100 font-bold uppercase text-xs md:text-sm"
-              >
-                Close
-              </button>
-            </div>
+            <button
+              onClick={() => setShowLinkModal(false)}
+              className="w-full px-6 py-3 border-2 border-gray-900 text-gray-900 hover:bg-gray-100 font-bold uppercase text-sm"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

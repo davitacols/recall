@@ -1,3 +1,6 @@
+# Markdown
+*.md
+
 # Python
 __pycache__/
 *.py[cod]
@@ -20,6 +23,13 @@ staticfiles/
 .env.production
 .env.local
 *.pot
+
+# Security - Never commit these
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
 
 # Node
 node_modules/

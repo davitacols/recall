@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
@@ -58,152 +58,163 @@ function Login() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div style={{ width: '100%', maxWidth: '420px' }}>
-        {/* Logo */}
-        <div style={{ marginBottom: '48px', textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
-            <div style={{ width: '40px', height: '40px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}>
-              <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '20px' }}>R</span>
-            </div>
-            <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffffff' }}>Recall</span>
-          </div>
-          
-          <h1 style={{ fontSize: '32px', fontWeight: 900, color: '#ffffff', marginBottom: '8px' }}>
-            {isLogin ? 'Welcome back' : (inviteToken ? 'Join the team' : 'Get started')}
-          </h1>
-          <p style={{ fontSize: '14px', color: '#d1d5db' }}>
-            {isLogin ? 'Sign in to your account' : (inviteToken ? 'Complete your registration' : 'Create your organization')}
-          </p>
-        </div>
-
-        {/* Toggle */}
-        {!inviteToken && (
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', backgroundColor: '#1a1a1a', padding: '4px', borderRadius: '4px' }}>
-            <button
-              type="button"
-              onClick={() => setIsLogin(true)}
-              style={{ flex: 1, paddingTop: '12px', paddingBottom: '12px', fontWeight: 600, transition: 'all 0.2s', backgroundColor: isLogin ? '#374151' : 'transparent', color: isLogin ? '#ffffff' : '#9ca3af', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsLogin(false)}
-              style={{ flex: 1, paddingTop: '12px', paddingBottom: '12px', fontWeight: 600, transition: 'all 0.2s', backgroundColor: !isLogin ? '#374151' : 'transparent', color: !isLogin ? '#ffffff' : '#9ca3af', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
-            >
-              Sign up
-            </button>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {error && (
-            <div style={{ backgroundColor: '#7f1d1d', border: '1px solid #dc2626', color: '#fca5a5', padding: '12px', fontSize: '14px', borderRadius: '4px' }}>
-              {error}
-            </div>
-          )}
-          
-          {!isLogin && !inviteToken && (
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
-                Organization Name
-              </label>
-              <input
-                type="text"
-                required
-                style={{ width: '100%', paddingLeft: '12px', paddingRight: '12px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: '#1a1a1a', border: '1px solid #374151', color: '#ffffff', fontSize: '14px', borderRadius: '4px', outline: 'none', transition: 'all 0.2s' }}
-                placeholder="Acme Inc."
-                value={credentials.organization}
-                onChange={(e) => setCredentials({...credentials, organization: e.target.value})}
-                onFocus={(e) => e.target.style.borderColor = '#4b5563'}
-                onBlur={(e) => e.target.style.borderColor = '#374151'}
-              />
-            </div>
-          )}
-          
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
-              Email address
-            </label>
-            <input
-              type="email"
-              required
-              disabled={!!inviteToken}
-              style={{ width: '100%', paddingLeft: '12px', paddingRight: '12px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: inviteToken ? '#0f0f0f' : '#1a1a1a', border: '1px solid #374151', color: '#ffffff', fontSize: '14px', borderRadius: '4px', outline: 'none', transition: 'all 0.2s', opacity: inviteToken ? 0.6 : 1 }}
-              placeholder="you@company.com"
-              value={credentials.username}
-              onChange={(e) => setCredentials({...credentials, username: e.target.value})}
-              onFocus={(e) => !inviteToken && (e.target.style.borderColor = '#4b5563')}
-              onBlur={(e) => e.target.style.borderColor = '#374151'}
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                style={{ width: '100%', paddingLeft: '12px', paddingRight: '40px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: '#1a1a1a', border: '1px solid #374151', color: '#ffffff', fontSize: '14px', borderRadius: '4px', outline: 'none', transition: 'all 0.2s' }}
-                placeholder="••••••••"
-                value={credentials.password}
-                onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-                onFocus={(e) => e.target.style.borderColor = '#4b5563'}
-                onBlur={(e) => e.target.style.borderColor = '#374151'}
-              />
-              <button
-                type="button"
-                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px' }}
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeSlashIcon style={{ width: '18px', height: '18px' }} />
-                ) : (
-                  <EyeIcon style={{ width: '18px', height: '18px' }} />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ width: '100%', backgroundColor: loading ? '#4b5563' : '#374151', color: '#ffffff', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', fontWeight: 700, border: 'none', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', marginTop: '24px', opacity: loading ? 0.6 : 1 }}
-            onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4b5563')}
-            onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#374151')}
-          >
-            {loading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <div style={{ width: '14px', height: '14px', border: '2px solid #ffffff', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                {isLogin ? 'Signing in...' : 'Creating account...'}
-              </div>
-            ) : (
-              <span>{isLogin ? 'Sign in' : (inviteToken ? 'Create account' : 'Create account')}</span>
-            )}
+    <div className="min-h-screen w-full bg-stone-950">
+      {/* Header */}
+      <header className="border-b border-amber-700 px-6 lg:px-12 py-4 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <button onClick={() => navigate('/')} className="flex items-center gap-3 hover:opacity-80 transition">
+            <img src="/recalljpg.jpg" alt="RECALL" className="h-8" />
+            <span className="text-xl font-bold text-white">RECALL</span>
           </button>
-        </form>
-        
-        {isLogin && (
-          <div style={{ marginTop: '24px', textAlign: 'center' }}>
-            <p style={{ fontSize: '13px', color: '#9ca3af' }}>
-              Don't have an account?{' '}
-              <button onClick={() => setIsLogin(false)} style={{ color: '#ffffff', fontWeight: 600, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                Sign up
-              </button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="px-6 lg:px-12 py-20">
+        <div className="max-w-2xl mx-auto">
+          {/* Title Section */}
+          <div className="text-center mb-12">
+            <h1 className="text-5xl font-bold text-white mb-4">
+              {isLogin ? 'Welcome back' : (inviteToken ? 'Join the team' : 'Get started')}
+            </h1>
+            <p className="text-xl text-amber-100">
+              {isLogin ? 'Sign in to your account' : (inviteToken ? 'Complete your registration' : 'Create your organization')}
             </p>
           </div>
-        )}
-      </div>
 
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+          {/* Form Card */}
+          <div className="border border-amber-700 rounded-2xl p-8 lg:p-12 backdrop-blur-sm">
+            {/* Toggle Buttons */}
+            {!inviteToken && (
+              <div className="flex gap-2 mb-8 bg-stone-900 p-1 rounded-lg border border-amber-700">
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(true)}
+                  className={`flex-1 py-2 px-4 text-sm font-semibold rounded-md transition ${
+                    isLogin ? 'bg-amber-700 text-white' : 'text-amber-100 hover:text-white'
+                  }`}
+                >
+                  Sign in
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(false)}
+                  className={`flex-1 py-2 px-4 text-sm font-semibold rounded-md transition ${
+                    !isLogin ? 'bg-amber-700 text-white' : 'text-amber-100 hover:text-white'
+                  }`}
+                >
+                  Sign up
+                </button>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-4 text-sm rounded-lg">
+                  {error}
+                </div>
+              )}
+
+              {!isLogin && !inviteToken && (
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">
+                    Organization Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-3 bg-stone-900 border border-amber-700 text-white placeholder-amber-100 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                    placeholder="Acme Inc."
+                    value={credentials.organization}
+                    onChange={(e) => setCredentials({...credentials, organization: e.target.value})}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-white mb-2">
+                  Email address
+                </label>
+                <input
+                  type="email"
+                  required
+                  disabled={!!inviteToken}
+                  className={`w-full px-4 py-3 bg-stone-900 border border-amber-700 text-white placeholder-amber-100 rounded-lg focus:outline-none focus:border-amber-600 transition ${
+                    inviteToken ? 'opacity-60' : ''
+                  }`}
+                  placeholder="you@company.com"
+                  value={credentials.username}
+                  onChange={(e) => setCredentials({...credentials, username: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-white mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    className="w-full px-4 py-3 pr-12 bg-stone-900 border border-amber-700 text-white placeholder-amber-100 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                    placeholder="••••••••"
+                    value={credentials.password}
+                    onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-amber-100 hover:text-white transition"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="w-5 h-5" />
+                    ) : (
+                      <EyeIcon className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-8 px-8 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-full font-semibold transition disabled:opacity-50"
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {isLogin ? 'Signing in...' : 'Creating account...'}
+                  </div>
+                ) : (
+                  <span>{isLogin ? 'Sign in' : 'Create account'}</span>
+                )}
+              </button>
+            </form>
+
+            {/* Footer Links */}
+            <div className="mt-8 space-y-4 text-center">
+              {isLogin && !inviteToken && (
+                <p className="text-sm text-amber-100">
+                  Don't have an account?{' '}
+                  <button 
+                    onClick={() => setIsLogin(false)} 
+                    className="text-white font-semibold hover:underline"
+                  >
+                    Sign up
+                  </button>
+                </p>
+              )}
+              <button
+                onClick={() => navigate('/')}
+                className="text-sm text-amber-100 hover:text-white transition"
+              >
+                ← Back to homepage
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

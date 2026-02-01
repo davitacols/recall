@@ -60,12 +60,25 @@ import KnowledgeBase from './pages/KnowledgeBase';
 import Messages from './pages/Messages';
 import IssueDetail from './pages/IssueDetail';
 import Backlog from './pages/Backlog';
+import Homepage from './pages/Homepage';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" />;
+  if (!user) return <Navigate to="/home" />;
   if (adminOnly && user.role !== 'admin') return <Navigate to="/" />;
   return children;
+}
+
+function RootRoute() {
+  const { user } = useAuth();
+  if (!user) return <Homepage />;
+  return (
+    <ProtectedRoute>
+      <Layout>
+        <Dashboard />
+      </Layout>
+    </ProtectedRoute>
+  );
 }
 
 function AppContent() {
@@ -101,16 +114,11 @@ function AppContent() {
       )}
       <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
       <Routes>
+        <Route path="/home" element={<Homepage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
-        <Route path="/" element={
-          <ProtectedRoute>
-            <Layout>
-              <Dashboard />
-            </Layout>
-          </ProtectedRoute>
-        } />
+        <Route path="/" element={<RootRoute />} />
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/conversations" element={
           <ProtectedRoute>

@@ -7,9 +7,10 @@ console.log('API_URL configured as:', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // Increased timeout for mobile networks
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
 });
 
@@ -54,8 +55,13 @@ api.interceptors.response.use(
 );
 
 export const authService = {
-  login: (email: string, password: string) =>
-    api.post('/auth/login/', { username: email, password }),
+  login: (email: string, password: string) => {
+    console.log('Attempting login with:', email);
+    return api.post('/auth/login/', { 
+      username: email, 
+      password 
+    });
+  },
   
   register: (email: string, password: string, organization: string) =>
     api.post('/auth/register/', { email, password, organization }),

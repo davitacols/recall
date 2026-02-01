@@ -16,11 +16,11 @@ function Conversations() {
   const [filterType, setFilterType] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
 
-  const bgColor = darkMode ? '#000000' : '#ffffff';
-  const textColor = darkMode ? '#f3f4f6' : '#111827';
-  const borderColor = darkMode ? '#1a1a1a' : '#e5e7eb';
-  const hoverBg = darkMode ? '#1a1a1a' : '#f3f4f6';
-  const secondaryText = darkMode ? '#d1d5db' : '#6b7280';
+  const bgColor = '#1c1917';
+  const textColor = '#ffffff';
+  const borderColor = '#b45309';
+  const hoverBg = '#292415';
+  const secondaryText = '#d1d5db';
 
   useEffect(() => {
     loadConversations();
@@ -88,9 +88,9 @@ function Conversations() {
           </div>
           <button
             onClick={() => navigate('/conversations/new')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '32px', paddingRight: '32px', paddingTop: '16px', paddingBottom: '16px', backgroundColor: '#374151', color: '#ffffff', border: 'none', fontWeight: 700, textTransform: 'uppercase', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#4b5563'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#374151'}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '32px', paddingRight: '32px', paddingTop: '16px', paddingBottom: '16px', backgroundColor: '#d97706', color: '#ffffff', border: 'none', fontWeight: 700, textTransform: 'uppercase', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#fbbf24'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#d97706'}
           >
             <PlusIcon style={{ width: '20px', height: '20px' }} />
             New

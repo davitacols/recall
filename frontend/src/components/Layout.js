@@ -25,8 +25,8 @@ import {
 function AvatarDisplay({ avatar, fullName }) {
   const initials = fullName?.charAt(0) || 'U';
   return (
-    <div style={{ width: '100%', height: '100%', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ color: colors.surface, fontSize: '14px', fontWeight: 'bold' }}>{initials}</span>
+    <div style={{ width: '100%', height: '100%', backgroundColor: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>{initials}</span>
     </div>
   );
 }
@@ -42,12 +42,14 @@ function Layout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({ Sprint: true, Personal: true, Admin: true });
 
-  const bgColor = darkMode ? '#000000' : '#ffffff';
-  const textColor = darkMode ? '#f3f4f6' : '#111827';
-  const borderColor = darkMode ? '#1a1a1a' : '#e5e7eb';
-  const hoverBg = darkMode ? '#1a1a1a' : '#f3f4f6';
-  const secondaryText = darkMode ? '#d1d5db' : '#6b7280';
-  const mainBg = darkMode ? '#000000' : '#ffffff';
+  const bgColor = '#1c1917';
+  const textColor = '#ffffff';
+  const accentColor = '#d97706';
+  const accentLight = '#fbbf24';
+  const hoverBg = '#292415';
+  const secondaryText = '#d1d5db';
+  const mainBg = '#0f0f0f';
+  const borderColor = '#b45309';
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -120,15 +122,15 @@ function Layout({ children }) {
         backgroundColor: bgColor,
         borderBottom: `1px solid ${borderColor}`,
         zIndex: 50,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
       }}>
         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '32px', paddingRight: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-            <button onClick={toggleSidebar} style={{ padding: '8px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>
+            <button onClick={toggleSidebar} style={{ padding: '8px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', transition: 'all 0.2s', color: secondaryText }} onMouseEnter={(e) => e.target.style.color = accentLight} onMouseLeave={(e) => e.target.style.color = secondaryText}>
               {sidebarCollapsed ? (
-                <Bars3Icon style={{ width: '20px', height: '20px', color: textColor }} />
+                <Bars3Icon style={{ width: '20px', height: '20px' }} />
               ) : (
-                <XMarkIcon style={{ width: '20px', height: '20px', color: textColor }} />
+                <XMarkIcon style={{ width: '20px', height: '20px' }} />
               )}
             </button>
             <h1 style={{ fontSize: '24px', fontWeight: 900, color: textColor }}>{getPageTitle()}</h1>
@@ -136,12 +138,12 @@ function Layout({ children }) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
             <Search />
-            <Link to="/messages" style={{ padding: '8px', color: secondaryText, textDecoration: 'none', transition: 'color 0.2s' }} title="Messages" onMouseEnter={(e) => e.target.style.color = textColor} onMouseLeave={(e) => e.target.style.color = secondaryText}>
+            <Link to="/messages" style={{ padding: '8px', color: secondaryText, textDecoration: 'none', transition: 'color 0.2s' }} title="Messages" onMouseEnter={(e) => e.target.style.color = accentLight} onMouseLeave={(e) => e.target.style.color = secondaryText}>
               <InboxIcon style={{ width: '24px', height: '24px' }} />
             </Link>
             <NotificationBell />
             
-            <button onClick={toggleDarkMode} style={{ padding: '8px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', color: secondaryText, fontSize: '18px', transition: 'color 0.2s' }} title="Toggle dark mode" onMouseEnter={(e) => e.target.style.color = textColor} onMouseLeave={(e) => e.target.style.color = secondaryText}>
+            <button onClick={toggleDarkMode} style={{ padding: '8px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', color: secondaryText, fontSize: '18px', transition: 'color 0.2s' }} title="Toggle dark mode" onMouseEnter={(e) => e.target.style.color = accentLight} onMouseLeave={(e) => e.target.style.color = secondaryText}>
               {darkMode ? <SunIcon style={{ width: '20px', height: '20px' }} /> : <MoonIcon style={{ width: '20px', height: '20px' }} />}
             </button>
 
@@ -150,7 +152,7 @@ function Layout({ children }) {
                 <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
               </button>
               {showProfileMenu && (
-                <div style={{ position: 'absolute', right: 0, marginTop: '8px', width: '192px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, boxShadow: '0 10px 15px rgba(0,0,0,0.1)', zIndex: 10 }}>
+                <div style={{ position: 'absolute', right: 0, marginTop: '8px', width: '192px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, boxShadow: '0 10px 15px rgba(0,0,0,0.3)', zIndex: 10 }}>
                   <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', color: textColor, textDecoration: 'none', borderBottom: `1px solid ${borderColor}`, transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Profile</Link>
                   <Link to="/settings" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', color: textColor, textDecoration: 'none', borderBottom: `1px solid ${borderColor}`, transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Settings</Link>
                   <button onClick={logout} style={{ width: '100%', textAlign: 'left', paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', color: textColor, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Sign out</button>
@@ -193,9 +195,9 @@ function Layout({ children }) {
                       fontSize: '14px',
                       fontWeight: isActive ? 700 : 500,
                       textDecoration: 'none',
-                      color: isActive ? textColor : secondaryText,
+                      color: isActive ? accentColor : secondaryText,
                       backgroundColor: isActive ? hoverBg : 'transparent',
-                      borderLeft: isActive ? `4px solid ${textColor}` : '4px solid transparent',
+                      borderLeft: isActive ? `4px solid ${accentColor}` : '4px solid transparent',
                       paddingLeft: isActive ? '12px' : spacing.lg,
                       transition: motion.fast
                     }}
@@ -226,7 +228,7 @@ function Layout({ children }) {
                         padding: `${spacing.sm} ${spacing.lg}`,
                         fontSize: '11px',
                         fontWeight: 700,
-                        color: secondaryText,
+                        color: accentColor,
                         textTransform: 'uppercase',
                         letterSpacing: '0.08em',
                         backgroundColor: 'transparent',
@@ -234,8 +236,8 @@ function Layout({ children }) {
                         cursor: 'pointer',
                         transition: motion.fast
                       }}
-                      onMouseEnter={(e) => e.target.style.color = textColor}
-                      onMouseLeave={(e) => e.target.style.color = secondaryText}
+                      onMouseEnter={(e) => e.target.style.color = accentLight}
+                      onMouseLeave={(e) => e.target.style.color = accentColor}
                     >
                       <span>{section.title}</span>
                       <ChevronDownIcon 
@@ -263,10 +265,10 @@ function Layout({ children }) {
                                 borderRadius: '0',
                                 fontSize: '13px',
                                 textDecoration: 'none',
-                                color: isActive ? textColor : secondaryText,
+                                color: isActive ? accentColor : secondaryText,
                                 backgroundColor: isActive ? hoverBg : 'transparent',
                                 fontWeight: isActive ? 600 : 'normal',
-                                borderLeft: isActive ? `4px solid ${textColor}` : '4px solid transparent',
+                                borderLeft: isActive ? `4px solid ${accentColor}` : '4px solid transparent',
                                 paddingLeft: isActive ? '12px' : spacing.xl,
                                 transition: motion.fast
                               }}

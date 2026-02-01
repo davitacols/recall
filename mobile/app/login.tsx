@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../stores/authStore';
-import APITest from '../components/APITest';
+import { EyeIcon, EyeSlashIcon } from '../components/Icons';
+import ConnectionTest from '../components/ConnectionTest';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [showTest, setShowTest] = useState(false);
   const { login, loading, error } = useAuthStore();
   const router = useRouter();
@@ -23,7 +25,7 @@ export default function LoginScreen() {
   if (showTest) {
     return (
       <View style={styles.container}>
-        <APITest />
+        <ConnectionTest />
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={() => setShowTest(false)}
@@ -36,48 +38,93 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>RECALL</Text>
-      <Text style={styles.subtitle}>Organizational Memory</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        editable={!loading}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        editable={!loading}
-      />
-
-      {error && <Text style={styles.error}>{error}</Text>}
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleLogin}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Login</Text>
-        )}
-      </TouchableOpacity>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
-      <TouchableOpacity
-        style={styles.testButton}
-        onPress={() => setShowTest(true)}
-      >
-        <Text style={styles.testButtonText}>Test API Connection</Text>
-      </TouchableOpacity>
+      {/* Logo Section */}
+      <View style={styles.logoSection}>
+        <View style={styles.logoContainer}>
+          <View style={styles.logoIcon}>
+            <Text style={styles.logoText}>R</Text>
+          </View>
+          <Text style={styles.brandName}>Recall</Text>
+        </View>
+        
+        <Text style={styles.title}>Welcome back</Text>
+        <Text style={styles.subtitle}>Sign in to your account</Text>
+      </View>
+
+      {/* Form Section */}
+      <View style={styles.formSection}>
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email address</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="you@company.com"
+            placeholderTextColor="#6b7280"
+            value={email}
+            onChangeText={setEmail}
+            editable={!loading}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Password</Text>
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="••••••••"
+              placeholderTextColor="#6b7280"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              editable={!loading}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeSlashIcon size={18} color="#9ca3af" />
+              ) : (
+                <EyeIcon size={18} color="#9ca3af" />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#ffffff" size="small" />
+              <Text style={styles.loadingText}>Signing in...</Text>
+            </View>
+          ) : (
+            <Text style={styles.loginButtonText}>Sign in</Text>
+          )}
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={styles.testButton}
+          onPress={() => setShowTest(true)}
+        >
+          <Text style={styles.testButtonText}>Test Connection</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -85,72 +132,155 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: '#000000',
+    paddingHorizontal: 24,
+  },
+  logoSection: {
+    flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    alignItems: 'center',
+    paddingBottom: 48,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoIcon: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#374151',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  logoText: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  brandName: {
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: '900',
+    color: '#ffffff',
     marginBottom: 8,
-    color: '#000',
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
+    color: '#d1d5db',
     textAlign: 'center',
-    marginBottom: 40,
-    color: '#666',
   },
-  input: {
+  formSection: {
+    paddingBottom: 48,
+  },
+  errorContainer: {
+    backgroundColor: '#7f1d1d',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#dc2626',
+    borderRadius: 4,
     padding: 12,
     marginBottom: 16,
-    borderRadius: 8,
-    fontSize: 16,
   },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  error: {
-    color: '#FF3B30',
-    marginBottom: 12,
+  errorText: {
+    color: '#fca5a5',
+    fontSize: 14,
     textAlign: 'center',
   },
-  testButton: {
-    backgroundColor: '#34C759',
-    padding: 12,
-    borderRadius: 8,
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#374151',
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#ffffff',
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#374151',
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingRight: 40,
+    fontSize: 14,
+    color: '#ffffff',
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    top: '50%',
+    transform: [{ translateY: -9 }],
+    padding: 4,
+  },
+  loginButton: {
+    backgroundColor: '#374151',
+    borderRadius: 4,
+    paddingVertical: 12,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 24,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#4b5563',
+    opacity: 0.6,
+  },
+  loginButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  testButton: {
+    backgroundColor: '#059669',
+    borderRadius: 4,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 12,
   },
   testButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   backButton: {
-    backgroundColor: '#666',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#6b7280',
+    borderRadius: 4,
+    paddingVertical: 10,
     alignItems: 'center',
     marginTop: 20,
   },
   backButtonText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 14,
+    fontWeight: '600',
   },
 });

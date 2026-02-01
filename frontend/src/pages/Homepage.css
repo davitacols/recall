@@ -1,0 +1,98 @@
+.gradient-bg {
+  background: linear-gradient(-45deg, #3d1f0f, #4a2511, #5a3a1a, #3d1f0f);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.6;
+  animation: orbFloat 20s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 500px;
+  height: 500px;
+  top: -10%;
+  left: -10%;
+  background: #a855f7;
+  animation-delay: 0s;
+}
+
+.orb-2 {
+  width: 400px;
+  height: 400px;
+  bottom: -10%;
+  right: -10%;
+  background: #c084fc;
+  animation-delay: -5s;
+}
+
+.orb-3 {
+  width: 300px;
+  height: 300px;
+  top: 50%;
+  left: 50%;
+  background: #a855f7;
+  animation-delay: -10s;
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -30px) scale(1.1); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(20px, 30px) scale(1.05); }
+}
+
+.orb-3 {
+  animation-name: orbFloatCenter;
+}
+
+@keyframes orbFloatCenter {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  25% { transform: translate(-40%, -60%) scale(1.1); }
+  50% { transform: translate(-60%, -40%) scale(0.95); }
+  75% { transform: translate(-45%, -55%) scale(1.05); }
+}
+
+.sparkle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  animation: sparkle 3s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.homepage-gradient {
+  background: linear-gradient(-45deg, #3d1f0f, #4a2511, #5a3a1a, #3d1f0f);
+  background-size: 400% 400%;
+  animation: coffeeGradient 15s ease infinite;
+}
+
+@keyframes coffeeGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.image-card-glow {
+  box-shadow: 0 0 30px rgba(217, 119, 6, 0.6), 0 0 60px rgba(217, 119, 6, 0.3);
+}
+
+.feature-card {
+  background-color: #92400e !important;
+}

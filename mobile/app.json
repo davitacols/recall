@@ -24,7 +24,8 @@
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE"
-      ]
+      ],
+      "networkSecurityConfig": "@xml/network_security_config"
     },
     "web": {
       "output": "static",

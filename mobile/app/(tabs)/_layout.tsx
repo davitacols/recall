@@ -1,45 +1,55 @@
 import { Tabs } from 'expo-router';
-import { useRouter } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { TouchableOpacity } from 'react-native';
-import { useAuthStore } from '../../stores/authStore';
+import React from 'react';
+import { Platform } from 'react-native';
+import { HomeIcon, ChatIcon, DecisionIcon, KnowledgeIcon, SprintIcon } from '../../components/Icons';
 
-export default function TabsLayout() {
-  const { logout } = useAuthStore();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/login');
-  };
-
+export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#999',
-        headerRight: () => (
-          <TouchableOpacity onPress={handleLogout} style={{ marginRight: 16 }}>
-            <MaterialCommunityIcons name="logout" size={24} color="#007AFF" />
-          </TouchableOpacity>
-        ),
+        tabBarActiveTintColor: '#ffffff',
+        tabBarInactiveTintColor: '#6b7280',
+        tabBarStyle: {
+          backgroundColor: '#000000',
+          borderTopColor: '#1a1a1a',
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 4,
+        },
+        headerStyle: {
+          backgroundColor: '#000000',
+          borderBottomColor: '#1a1a1a',
+          borderBottomWidth: 1,
+        },
+        headerTintColor: '#ffffff',
+        headerTitleStyle: {
+          fontWeight: '900',
+          fontSize: 20,
+        },
       }}
     >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <HomeIcon size={24} color={color} />
+          ),
+          headerTitle: 'Dashboard',
+        }}
+      />
       <Tabs.Screen
         name="conversations"
         options={{
           title: 'Conversations',
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="chat-multiple" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="sprints"
-        options={{
-          title: 'Sprints',
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="run-fast" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <ChatIcon size={24} color={color} />
           ),
         }}
       />
@@ -47,8 +57,26 @@ export default function TabsLayout() {
         name="decisions"
         options={{
           title: 'Decisions',
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="check-circle" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <DecisionIcon size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Knowledge',
+          tabBarIcon: ({ color, focused }) => (
+            <KnowledgeIcon size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="sprints"
+        options={{
+          title: 'Sprints',
+          tabBarIcon: ({ color, focused }) => (
+            <SprintIcon size={24} color={color} />
           ),
         }}
       />

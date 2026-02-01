@@ -1,132 +1,299 @@
-/* Unified Theme Styles */
+/* Global Theme - Stone-950 & Amber */
 
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --border-color: #e5e7eb;
-  --hover-bg: #f3f4f6;
-}
-
-.dark {
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #0f0f0f;
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1c1917;
+  --bg-tertiary: #292415;
   --text-primary: #ffffff;
-  --text-secondary: #9ca3af;
-  --border-color: #333333;
-  --hover-bg: #2a2a2a;
+  --text-secondary: #d1d5db;
+  --accent-primary: #d97706;
+  --accent-light: #fbbf24;
+  --accent-dark: #b45309;
+  --border-color: #b45309;
 }
 
-/* Override all page backgrounds */
-body, html {
-  background-color: var(--bg-secondary) !important;
-}
-
-/* Remove hardcoded backgrounds */
-.min-h-screen,
-.h-screen {
-  background-color: transparent !important;
-}
-
-.bg-white {
-  background-color: var(--bg-primary) !important;
-  color: var(--text-primary) !important;
-}
-
-.bg-gray-50,
-.bg-gray-100 {
-  background-color: var(--hover-bg) !important;
-}
-
-.bg-gray-900 {
-  background-color: #111827 !important;
-}
-
-.dark .bg-gray-900 {
-  background-color: #333333 !important;
-}
-
-/* Text colors */
-.text-gray-900,
-.text-gray-800,
-.text-gray-700 {
-  color: var(--text-primary) !important;
-}
-
-.text-gray-600,
-.text-gray-500,
-.text-gray-400 {
-  color: var(--text-secondary) !important;
-}
-
-.text-white {
+/* Force stone background everywhere */
+body,
+html,
+#root,
+main,
+[role="main"],
+.page,
+.page-content {
+  background-color: #0f0f0f !important;
   color: #ffffff !important;
 }
 
-/* Border colors */
-.border-gray-200,
-.border-gray-300 {
-  border-color: var(--border-color) !important;
+/* Ensure all text is visible */
+* {
+  color: inherit !important;
 }
 
-/* Form elements */
+p,
+span,
+div,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+li,
+td,
+th,
+label,
+button,
+a {
+  color: #ffffff !important;
+}
+
+/* Remove all white backgrounds */
+.bg-white {
+  background-color: #1c1917 !important;
+}
+
+.bg-gray-50 {
+  background-color: #1c1917 !important;
+}
+
+.bg-gray-100 {
+  background-color: #292415 !important;
+}
+
+.bg-gray-200 {
+  background-color: #292415 !important;
+}
+
+/* Override inline white backgrounds */
+[style*="background-color: #ffffff"],
+[style*="background-color: #f9fafb"],
+[style*="background-color: #f3f4f6"],
+[style*="background-color: white"] {
+  background-color: #1c1917 !important;
+  color: #ffffff !important;
+}
+
+/* Page backgrounds */
+.card,
+.container,
+[class*="card"],
+[class*="panel"],
+[class*="modal"] {
+  background-color: #1c1917;
+  border-color: #b45309;
+  color: #ffffff;
+}
+
+/* Buttons */
+button,
+.btn,
+[role="button"] {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+  border-color: #d97706 !important;
+}
+
+button:hover,
+.btn:hover,
+[role="button"]:hover {
+  background-color: #fbbf24 !important;
+  border-color: #fbbf24 !important;
+  color: #000000 !important;
+}
+
+/* Input fields */
 input,
 textarea,
-select {
-  background-color: var(--bg-primary) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-color) !important;
+select,
+[class*="input"],
+[class*="field"] {
+  background-color: #292415 !important;
+  color: #ffffff !important;
+  border-color: #b45309 !important;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: var(--text-secondary) !important;
+  color: #d1d5db !important;
 }
 
-/* Hover states */
-.hover\:bg-gray-50:hover,
-.hover\:bg-gray-100:hover {
-  background-color: var(--hover-bg) !important;
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #d97706 !important;
+  outline: none !important;
 }
 
-.hover\:text-gray-900:hover {
-  color: var(--text-primary) !important;
+/* Links */
+a {
+  color: #d97706 !important;
 }
 
-/* Cards */
-.border {
-  background-color: var(--bg-primary) !important;
-  border-color: var(--border-color) !important;
-  color: var(--text-primary) !important;
+a:hover {
+  color: #fbbf24 !important;
 }
 
-/* Ensure main content area is transparent */
-main {
-  background-color: transparent !important;
+/* Tables */
+table,
+[role="table"] {
+  background-color: #1c1917;
+  color: #ffffff;
 }
 
-main > div {
-  background-color: transparent !important;
+thead,
+[role="rowgroup"] {
+  background-color: #292415;
+  border-color: #b45309;
+  color: #ffffff;
 }
 
-/* Override Tailwind classes */
-.dark .bg-white {
-  background-color: var(--bg-primary) !important;
+tbody tr:hover {
+  background-color: #292415;
 }
 
-.dark .text-gray-900 {
-  color: var(--text-primary) !important;
+/* Borders */
+[class*="border"] {
+  border-color: #b45309 !important;
 }
 
-.dark .border-gray-200 {
-  border-color: var(--border-color) !important;
+hr {
+  border-color: #b45309 !important;
 }
 
-.dark input,
-.dark textarea,
-.dark select {
-  background-color: var(--bg-primary) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-color) !important;
+/* Text color utilities */
+.text-white {
+  color: #ffffff !important;
+}
+
+.text-gray-900 {
+  color: #ffffff !important;
+}
+
+.text-gray-800 {
+  color: #ffffff !important;
+}
+
+.text-gray-700 {
+  color: #d1d5db !important;
+}
+
+.text-gray-600 {
+  color: #d1d5db !important;
+}
+
+.text-gray-500 {
+  color: #d1d5db !important;
+}
+
+.text-primary {
+  color: #ffffff !important;
+}
+
+.text-secondary {
+  color: #d1d5db !important;
+}
+
+.text-accent {
+  color: #d97706 !important;
+}
+
+/* Background utilities */
+.bg-primary {
+  background-color: #0f0f0f !important;
+}
+
+.bg-secondary {
+  background-color: #1c1917 !important;
+}
+
+.bg-accent {
+  background-color: #d97706 !important;
+}
+
+/* Badges and tags */
+.badge,
+.tag,
+[class*="badge"],
+[class*="tag"] {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+}
+
+/* Alerts and notifications */
+.alert,
+.notification,
+[class*="alert"],
+[class*="notification"] {
+  background-color: #1c1917 !important;
+  border-color: #b45309 !important;
+  color: #ffffff !important;
+}
+
+/* Dropdowns and menus */
+.dropdown,
+.menu,
+[role="menu"],
+[role="listbox"] {
+  background-color: #1c1917 !important;
+  border-color: #b45309 !important;
+  color: #ffffff !important;
+}
+
+.dropdown-item:hover,
+[role="menuitem"]:hover {
+  background-color: #292415 !important;
+  color: #ffffff !important;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1c1917;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d97706;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #fbbf24;
+}
+
+/* Placeholders */
+::placeholder {
+  color: #d1d5db !important;
+  opacity: 1 !important;
+}
+
+/* Selection */
+::selection {
+  background-color: #d97706;
+  color: #ffffff;
+}
+
+/* Focus states */
+:focus-visible {
+  outline: 2px solid #d97706 !important;
+  outline-offset: 2px !important;
+}
+
+/* Disabled states */
+:disabled,
+[disabled],
+[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Active states */
+.active,
+[aria-current="page"],
+[aria-selected="true"] {
+  color: #d97706 !important;
+  border-color: #d97706 !important;
 }

@@ -157,8 +157,9 @@ if not DEBUG:
         'https://recall.dev',
     ])
 
+# Allow mobile app requests
+CORS_ALLOW_ALL_ORIGINS = True  # Required for mobile apps
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'

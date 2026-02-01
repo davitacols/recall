@@ -1,20 +1,57 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://recall-backend-4hok.onrender.com/api';
+
+console.log('API_URL configured as:', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 30000, // Increased timeout for mobile networks
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Add request logging
+api.interceptors.request.use(
+  async (config) => {
+    console.log('Making API request to:', config.baseURL + config.url);
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error('Error getting token:', error);
+    }
+    return config;
+  },
+  (error) => {
+    console.error('Request interceptor error:', error);
+    return Promise.reject(error);
   }
-  return config;
-});
+);
+
+// Add response logging
+api.interceptors.response.use(
+  (response) => {
+    console.log('API response received:', response.status);
+    return response;
+  },
+  (error) => {
+    console.error('API error:', {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+    if (error.response?.status === 401) {
+      AsyncStorage.removeItem('access_token');
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const authService = {
   login: (email: string, password: string) =>

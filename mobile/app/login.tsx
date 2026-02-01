@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../stores/authStore';
+import APITest from '../components/APITest';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showTest, setShowTest] = useState(false);
   const { login, loading, error } = useAuthStore();
   const router = useRouter();
 
@@ -17,6 +19,20 @@ export default function LoginScreen() {
       console.error('Login error:', err);
     }
   };
+
+  if (showTest) {
+    return (
+      <View style={styles.container}>
+        <APITest />
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => setShowTest(false)}
+        >
+          <Text style={styles.backButtonText}>Back to Login</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -54,6 +70,13 @@ export default function LoginScreen() {
         ) : (
           <Text style={styles.buttonText}>Login</Text>
         )}
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={styles.testButton}
+        onPress={() => setShowTest(true)}
+      >
+        <Text style={styles.testButtonText}>Test API Connection</Text>
       </TouchableOpacity>
     </View>
   );
@@ -106,5 +129,28 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     marginBottom: 12,
     textAlign: 'center',
+  },
+  testButton: {
+    backgroundColor: '#34C759',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  testButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  backButton: {
+    backgroundColor: '#666',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 14,
   },
 });

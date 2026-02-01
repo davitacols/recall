@@ -10,6 +10,7 @@ app_name = 'conversations'
 urlpatterns = [
     # Conversations
     path('conversations/', endpoints.conversations_list, name='conversations-list'),
+    path('conversations/new/', endpoints.conversations_list, name='create-conversation'),
     path('conversations/<int:conversation_id>/', endpoints.conversation_detail, name='conversation-detail'),
     path('conversations/<int:conversation_id>/context/', endpoints.conversation_context, name='conversation-context'),
     path('conversations/<int:conversation_id>/timeline/', endpoints.conversation_timeline, name='conversation-timeline'),
@@ -37,4 +38,8 @@ urlpatterns = [
     
     # Tags
     path('tags/', endpoints.tags_list, name='tags-list'),
+    
+    # Export
+    path('export/conversation-pdf/', endpoints.export_conversation_pdf, name='export-conversation-pdf'),
+    path('export/decision-pdf/', endpoints.export_decision_pdf, name='export-decision-pdf'),
 ]

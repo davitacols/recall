@@ -5,6 +5,8 @@ import api from '../services/api';
 export function AddIssuesToSprintModal({ sprintId, projectId, onClose, onSuccess }) {
   const [availableIssues, setAvailableIssues] = useState([]);
   const [selectedIssues, setSelectedIssues] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [selectedAssignee, setSelectedAssignee] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -13,7 +15,20 @@ export function AddIssuesToSprintModal({ sprintId, projectId, onClose, onSuccess
 
   useEffect(() => {
     fetchAvailableIssues();
+    fetchTeamMembers();
   }, [projectId]);
+
+  const fetchTeamMembers = async () => {
+    try {
+      console.log('Fetching team members from /api/organizations/members/');
+      const response = await api.get('/api/organizations/members/');
+      console.log('Team members response:', response.data);
+      setTeamMembers(response.data || []);
+    } catch (err) {
+      console.error('Failed to fetch team members:', err);
+      setTeamMembers([]);
+    }
+  };
 
   const fetchAvailableIssues = async () => {
     try {
@@ -38,12 +53,14 @@ export function AddIssuesToSprintModal({ sprintId, projectId, onClose, onSuccess
     if (!newIssueTitle.trim()) return;
     
     try {
-      console.log('Creating issue:', { title: newIssueTitle, sprint_id: sprintId, project_id: projectId });
-      const response = await api.post(`/api/agile/projects/${projectId}/issues/`, {
+      const payload = {
         title: newIssueTitle,
         sprint_id: sprintId,
-      });
-      console.log('Issue created:', response.data);
+      };
+      if (selectedAssignee) {
+        payload.assignee_id = selectedAssignee;
+      }
+      const response = await api.post(`/api/agile/projects/${projectId}/issues/`, payload);
       setNewIssueTitle('');
       setShowCreateIssue(false);
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -160,6 +177,27 @@ export function AddIssuesToSprintModal({ sprintId, projectId, onClose, onSuccess
                 placeholder="Issue title"
                 className="w-full px-4 py-2 border border-gray-300 focus:border-gray-900 focus:outline-none mb-4"
               />
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-900 mb-2">Assign to</label>
+                {teamMembers.length === 0 ? (
+                  <div className="text-sm text-gray-600 p-3 border border-gray-300 bg-gray-50">
+                    No team members available
+                  </div>
+                ) : (
+                  <select
+                    value={selectedAssignee}
+                    onChange={(e) => setSelectedAssignee(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 focus:border-gray-900 focus:outline-none"
+                  >
+                    <option value="">Unassigned</option>
+                    {teamMembers.map(member => (
+                      <option key={member.id} value={member.id}>
+                        {member.full_name || member.username}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowCreateIssue(false)}

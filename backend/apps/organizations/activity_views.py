@@ -1,8 +1,8 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.contenttypes.models import ContentType
-from django.views.decorators.csrf import csrf_exempt
 from .activity import Activity
 from apps.conversations.models import Conversation, ConversationReply
 from apps.decisions.models import Decision
@@ -10,8 +10,8 @@ from apps.decisions.models import Decision
 class ActivityPagination(PageNumberPagination):
     page_size = 20
 
-@csrf_exempt
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def activity_feed(request):
     """Get recent activities for the organization"""
     activities = Activity.objects.filter(
@@ -55,8 +55,8 @@ def activity_feed(request):
     
     return Response({'activities': feed_items})
 
-@csrf_exempt
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def activity_stats(request):
     """Get activity statistics for the organization"""
     org = request.user.organization

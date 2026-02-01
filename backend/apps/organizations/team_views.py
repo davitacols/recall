@@ -29,16 +29,20 @@ def log_action(organization, user, action, obj, description, changes=None):
 def get_team_members(request):
     """Get all team members with their roles and permissions"""
     organization = request.user.organization
-    members = User.objects.filter(organization=organization).values(
-        'id', 'username', 'email', 'full_name', 'role', 'last_active'
-    )
+    members = User.objects.filter(organization=organization, is_active=True)
     
     result = []
     for member in members:
-        member['permissions'] = get_user_permissions(
-            User.objects.get(id=member['id'])
-        )
-        result.append(member)
+        result.append({
+            'id': member.id,
+            'username': member.username,
+            'email': member.email,
+            'full_name': member.full_name,
+            'role': member.role,
+            'last_active': member.last_login,
+            'avatar_url': member.avatar.url if member.avatar else None,
+            'permissions': get_user_permissions(member)
+        })
     
     return Response(result)
 

@@ -3,11 +3,11 @@ Unified API Endpoints for Conversations, Decisions, and Knowledge
 Implements best practices for context-aware recall
 """
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, action
+from rest_framework.decorators import api_view, action, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q, Count, F, Prefetch
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from datetime import timedelta
 
@@ -16,7 +16,7 @@ from .serializers import (
     ConversationListSerializer, ConversationDetailSerializer,
     ConversationCreateSerializer, ConversationUpdateSerializer,
     ActionItemSerializer, ActionItemCreateSerializer, ActionItemUpdateSerializer,
-    BookmarkSerializer, ReactionSerializer, TagSerializer
+    BookmarkSerializer, ReactionSerializer, TagSerializer, ConversationReplySerializer
 )
 from .context_manager import ContextManager
 from apps.decisions.models import Decision
@@ -29,7 +29,7 @@ class StandardPagination(PageNumberPagination):
     max_page_size = 100
 
 
-@csrf_exempt
+@permission_classes([IsAuthenticated])
 @api_view(['GET', 'POST'])
 def conversations_list(request):
     """List or create conversations with context"""
@@ -111,6 +111,7 @@ def conversations_list(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['GET', 'PUT', 'DELETE'])
 def conversation_detail(request, conversation_id):
     """Get, update, or delete conversation with full context"""
@@ -171,6 +172,7 @@ def conversation_detail(request, conversation_id):
         return Response({'message': 'Deleted'}, status=status.HTTP_204_NO_CONTENT)
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['GET', 'POST'])
 def conversation_replies(request, conversation_id):
     """Get or create replies for conversation"""
@@ -218,6 +220,7 @@ def conversation_replies(request, conversation_id):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def conversation_context(request, conversation_id):
     """Get full context for a conversation"""
@@ -235,6 +238,7 @@ def conversation_context(request, conversation_id):
     return Response(context)
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def conversation_timeline(request, conversation_id):
     """Get timeline of conversation events"""
@@ -252,6 +256,7 @@ def conversation_timeline(request, conversation_id):
     return Response({'timeline': timeline})
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['GET', 'POST'])
 def action_items(request, conversation_id):
     """Get or create action items for conversation"""
@@ -284,6 +289,7 @@ def action_items(request, conversation_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['PUT', 'DELETE'])
 def action_item_detail(request, action_item_id):
     """Update or delete action item"""
@@ -308,6 +314,7 @@ def action_item_detail(request, action_item_id):
         return Response({'message': 'Deleted'}, status=status.HTTP_204_NO_CONTENT)
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def link_conversation_to_decision(request, conversation_id):
     """Link conversation to a decision"""
@@ -334,6 +341,7 @@ def link_conversation_to_decision(request, conversation_id):
     )
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def bookmarks_list(request):
     """Get user's bookmarks"""
@@ -345,6 +353,7 @@ def bookmarks_list(request):
     return Response(serializer.data)
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def create_bookmark(request, conversation_id):
     """Create bookmark for conversation"""
@@ -376,6 +385,7 @@ def create_bookmark(request, conversation_id):
     )
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['DELETE'])
 def delete_bookmark(request, bookmark_id):
     """Delete bookmark"""
@@ -390,6 +400,7 @@ def delete_bookmark(request, bookmark_id):
         )
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def add_reaction(request, conversation_id):
     """Add reaction to conversation"""
@@ -424,6 +435,7 @@ def add_reaction(request, conversation_id):
     )
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def conversation_reactions(request, conversation_id):
     """Get reactions for conversation"""
@@ -457,6 +469,7 @@ def conversation_reactions(request, conversation_id):
     })
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def tags_list(request):
     """Get all tags for organization"""
@@ -468,6 +481,7 @@ def tags_list(request):
     return Response(serializer.data)
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def close_conversation(request, conversation_id):
     """Close conversation with summary"""
@@ -493,6 +507,7 @@ def close_conversation(request, conversation_id):
     return Response(serializer.data)
 
 
+@permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def context_summary(request, conversation_id):
     """Get concise context summary"""
@@ -508,3 +523,153 @@ def context_summary(request, conversation_id):
         )
     
     return Response(summary)
+
+
+@permission_classes([IsAuthenticated])
+@api_view(['GET'])
+def export_conversation_pdf(request):
+    """Export conversation to PDF"""
+    conversation_id = request.GET.get('id')
+    if not conversation_id:
+        return Response(
+            {'error': 'id parameter required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        conversation = Conversation.objects.get(
+            id=conversation_id,
+            organization=request.user.organization
+        )
+    except Conversation.DoesNotExist:
+        return Response(
+            {'error': 'Conversation not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Generate PDF content
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor='#000000',
+        spaceAfter=30,
+    )
+    story.append(Paragraph(conversation.title, title_style))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Metadata
+    meta_style = ParagraphStyle(
+        'Meta',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor='#666666',
+    )
+    story.append(Paragraph(f"<b>Author:</b> {conversation.author.username}", meta_style))
+    story.append(Paragraph(f"<b>Created:</b> {conversation.created_at.strftime('%Y-%m-%d %H:%M')}", meta_style))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Content
+    content_style = styles['BodyText']
+    story.append(Paragraph(conversation.content.replace('\n', '<br/>'), content_style))
+    
+    doc.build(story)
+    buffer.seek(0)
+    
+    from django.http import FileResponse
+    return FileResponse(
+        buffer,
+        as_attachment=True,
+        filename=f"conversation_{conversation_id}.pdf",
+        content_type='application/pdf'
+    )
+
+
+@permission_classes([IsAuthenticated])
+@api_view(['GET'])
+def export_decision_pdf(request):
+    """Export decision to PDF"""
+    decision_id = request.GET.get('id')
+    if not decision_id:
+        return Response(
+            {'error': 'id parameter required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        decision = Decision.objects.get(
+            id=decision_id,
+            organization=request.user.organization
+        )
+    except Decision.DoesNotExist:
+        return Response(
+            {'error': 'Decision not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Generate PDF content
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor='#000000',
+        spaceAfter=30,
+    )
+    story.append(Paragraph(decision.title, title_style))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Metadata
+    meta_style = ParagraphStyle(
+        'Meta',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor='#666666',
+    )
+    story.append(Paragraph(f"<b>Status:</b> {decision.status}", meta_style))
+    story.append(Paragraph(f"<b>Impact:</b> {decision.impact_level}", meta_style))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Description
+    content_style = styles['BodyText']
+    story.append(Paragraph(f"<b>Description:</b>", styles['Heading2']))
+    story.append(Paragraph(decision.description.replace('\n', '<br/>'), content_style))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Rationale
+    story.append(Paragraph(f"<b>Rationale:</b>", styles['Heading2']))
+    story.append(Paragraph(decision.rationale.replace('\n', '<br/>'), content_style))
+    
+    doc.build(story)
+    buffer.seek(0)
+    
+    from django.http import FileResponse
+    return FileResponse(
+        buffer,
+        as_attachment=True,
+        filename=f"decision_{decision_id}.pdf",
+        content_type='application/pdf'
+    )

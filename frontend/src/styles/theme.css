@@ -1,0 +1,132 @@
+/* Unified Theme Styles */
+
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+  --hover-bg: #f3f4f6;
+}
+
+.dark {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #0f0f0f;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --border-color: #333333;
+  --hover-bg: #2a2a2a;
+}
+
+/* Override all page backgrounds */
+body, html {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Remove hardcoded backgrounds */
+.min-h-screen,
+.h-screen {
+  background-color: transparent !important;
+}
+
+.bg-white {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.bg-gray-50,
+.bg-gray-100 {
+  background-color: var(--hover-bg) !important;
+}
+
+.bg-gray-900 {
+  background-color: #111827 !important;
+}
+
+.dark .bg-gray-900 {
+  background-color: #333333 !important;
+}
+
+/* Text colors */
+.text-gray-900,
+.text-gray-800,
+.text-gray-700 {
+  color: var(--text-primary) !important;
+}
+
+.text-gray-600,
+.text-gray-500,
+.text-gray-400 {
+  color: var(--text-secondary) !important;
+}
+
+.text-white {
+  color: #ffffff !important;
+}
+
+/* Border colors */
+.border-gray-200,
+.border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+/* Form elements */
+input,
+textarea,
+select {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-secondary) !important;
+}
+
+/* Hover states */
+.hover\:bg-gray-50:hover,
+.hover\:bg-gray-100:hover {
+  background-color: var(--hover-bg) !important;
+}
+
+.hover\:text-gray-900:hover {
+  color: var(--text-primary) !important;
+}
+
+/* Cards */
+.border {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Ensure main content area is transparent */
+main {
+  background-color: transparent !important;
+}
+
+main > div {
+  background-color: transparent !important;
+}
+
+/* Override Tailwind classes */
+.dark .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+.dark .text-gray-900 {
+  color: var(--text-primary) !important;
+}
+
+.dark .border-gray-200 {
+  border-color: var(--border-color) !important;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}

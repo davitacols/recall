@@ -62,10 +62,13 @@ function IssueCreate() {
 
   const fetchTeamMembers = async () => {
     try {
-      const response = await api.get('/api/auth/team/');
-      setTeamMembers(response.data);
+      console.log('IssueCreate: Fetching team members');
+      const response = await api.get('/api/organizations/members/');
+      console.log('IssueCreate: Team members response:', response.data);
+      setTeamMembers(response.data || []);
     } catch (err) {
-      console.error('Failed to fetch team members:', err);
+      console.error('IssueCreate: Failed to fetch team members:', err);
+      setTeamMembers([]);
     }
   };
 
@@ -319,11 +322,15 @@ function IssueCreate() {
                 }}
               >
                 <option value="">Unassigned</option>
-                {teamMembers.map(member => (
-                  <option key={member.id} value={member.id}>
-                    {member.full_name}
-                  </option>
-                ))}
+                {teamMembers && teamMembers.length > 0 ? (
+                  teamMembers.map(member => (
+                    <option key={member.id} value={member.id}>
+                      {member.full_name || member.username}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>No team members available</option>
+                )}
               </select>
             </div>
 

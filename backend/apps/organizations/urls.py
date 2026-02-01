@@ -28,8 +28,9 @@ from .analytics_views import (
 urlpatterns = [
     path('current/', OrganizationDetailView.as_view(), name='current-org'),
     path('me/', OrganizationDetailView.as_view(), name='org-me'),
-    path('activity/', activity_feed, name='activity-feed'),
+    path('activity/feed/', activity_feed, name='activity-feed-explicit'),
     path('activity/stats/', activity_stats, name='activity-stats'),
+    path('activity/', activity_feed, name='activity-feed'),
     path('invitations/', list_invitations, name='list_invitations'),
     path('invitations/send/', invite_user, name='invite_user'),
     path('invitations/<uuid:token>/', verify_invitation, name='verify_invitation'),
@@ -57,12 +58,10 @@ urlpatterns = [
     path('settings/test-invitation/', get_invitation_link, name='test-invitation'),
     path('settings/invitation-links/', get_invitation_links, name='invitation-links'),
     
-    # Shorthand routes for frontend
-    path('members/', organization_members, name='members-list'),
-    path('members/<int:user_id>/', remove_member, name='member-detail'),
+    # Shorthand routes for frontend (more specific patterns first)
     path('members/invite/', invite_member, name='members-invite'),
-    
-    # Team management endpoints
+    path('members/<int:user_id>/', remove_member, name='member-detail'),
+    path('members/', organization_members, name='members-list'),
     path('team/members/', get_team_members, name='team-members'),
     path('team/users/<int:user_id>/', get_user_role_info, name='user-role-info'),
     path('team/users/<int:user_id>/role/', change_user_role, name='change-user-role'),

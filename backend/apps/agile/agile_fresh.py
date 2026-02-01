@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Count, Q
 from datetime import timedelta
-from apps.agile.models import Project, Sprint, Issue, Board, Column, IssueComment, IssueLabel, Blocker, Retrospective, SprintUpdate
+from apps.agile.models import Project, Sprint, Issue, Board, Column, IssueComment, IssueLabel, Blocker, Retrospective, SprintUpdate, DecisionImpact
 from apps.organizations.models import User
 from apps.conversations.models import Conversation
 
@@ -177,6 +177,7 @@ def sprint_detail(request, sprint_id):
                 'description': i.description,
                 'status': i.status,
                 'priority': i.priority,
+                'issue_type': i.issue_type,
                 'assignee': i.assignee.get_full_name() if i.assignee else None,
                 'assignee_id': i.assignee_id,
                 'story_points': i.story_points,
@@ -245,6 +246,7 @@ def issues(request, project_id):
             'description': i.description,
             'status': i.status,
             'priority': i.priority,
+            'issue_type': i.issue_type,
             'assignee': i.assignee.get_full_name() if i.assignee else None,
             'assignee_id': i.assignee_id,
             'reporter': i.reporter.get_full_name(),
@@ -303,9 +305,12 @@ def issue_detail(request, issue_id):
             'description': issue.description,
             'status': issue.status,
             'priority': issue.priority,
+            'issue_type': issue.issue_type,
             'assignee': issue.assignee.get_full_name() if issue.assignee else None,
             'assignee_id': issue.assignee_id,
+            'assignee_name': issue.assignee.get_full_name() if issue.assignee else None,
             'reporter': issue.reporter.get_full_name(),
+            'reporter_name': issue.reporter.get_full_name(),
             'story_points': issue.story_points,
             'sprint_id': issue.sprint_id,
             'sprint_name': issue.sprint.name if issue.sprint else None,
@@ -314,6 +319,13 @@ def issue_detail(request, issue_id):
             'created_at': issue.created_at.isoformat(),
             'updated_at': issue.updated_at.isoformat(),
             'labels': [l.name for l in issue.labels.all()],
+            'code_review_status': issue.code_review_status,
+            'pr_url': issue.pr_url,
+            'branch_name': issue.branch_name,
+            'commit_hash': issue.commit_hash,
+            'ci_status': issue.ci_status,
+            'ci_url': issue.ci_url,
+            'test_coverage': issue.test_coverage,
             'comments': [{
                 'id': c.id,
                 'author': c.author.get_full_name(),
@@ -482,6 +494,52 @@ def project_roadmap(request, project_id):
         'issue_count': s.issues.count(),
         'completed': s.issues.filter(status='done').count(),
     } for s in sprints])
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def backlog(request, project_id):
+    """Get or add issues to backlog"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
+    try:
+        project = Project.objects.get(id=project_id, organization=request.user.organization)
+    except Project.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+    
+    if request.method == 'GET':
+        issues = project.issues.filter(in_backlog=True, sprint__isnull=True).select_related('assignee').order_by('-created_at')
+        return Response({
+            'project_id': project.id,
+            'issue_count': issues.count(),
+            'issues': [{
+                'id': i.id,
+                'key': i.key,
+                'title': i.title,
+                'description': i.description,
+                'status': i.status,
+                'priority': i.priority,
+                'issue_type': i.issue_type,
+                'assignee': i.assignee.get_full_name() if i.assignee else None,
+                'assignee_id': i.assignee_id,
+                'assignee_name': i.assignee.get_full_name() if i.assignee else None,
+                'story_points': i.story_points,
+                'created_at': i.created_at.isoformat(),
+            } for i in issues]
+        })
+    
+    issue_id = request.data.get('issue_id')
+    if not issue_id:
+        return Response({'error': 'issue_id required'}, status=400)
+    
+    try:
+        issue = Issue.objects.get(id=issue_id, project=project)
+        issue.in_backlog = True
+        issue.sprint = None
+        issue.save()
+        return Response({'message': 'Issue added to backlog'})
+    except Issue.DoesNotExist:
+        return Response({'error': 'Issue not found'}, status=404)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -712,6 +770,35 @@ def current_sprint(request):
         'decisions': sprint.decisions_made
     })
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def sprint_decision_analysis(request, sprint_id):
+    """Get decision impact analysis for sprint"""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
+    try:
+        sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
+    except Sprint.DoesNotExist:
+        return Response({'error': 'Sprint not found'}, status=404)
+    
+    impacts = DecisionImpact.objects.filter(sprint=sprint).select_related('decision', 'issue')
+    
+    total_effort_added = sum(i.estimated_effort_change for i in impacts if i.estimated_effort_change > 0)
+    total_effort_removed = sum(abs(i.estimated_effort_change) for i in impacts if i.estimated_effort_change < 0)
+    blocked_issues = impacts.filter(impact_type='blocks').count()
+    enabled_issues = impacts.filter(impact_type='enables').count()
+    
+    return Response({
+        'sprint_id': sprint.id,
+        'sprint_name': sprint.name,
+        'total_effort_added': total_effort_added,
+        'total_effort_removed': total_effort_removed,
+        'blocked_issues': blocked_issues,
+        'enabled_issues': enabled_issues,
+        'decisions_impacting_sprint': impacts.values('decision').distinct().count()
+    })
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

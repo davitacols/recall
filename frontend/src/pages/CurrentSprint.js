@@ -10,6 +10,13 @@ function CurrentSprint() {
 
   useEffect(() => {
     fetchSprint();
+    
+    // Auto-refresh every 5 seconds
+    const interval = setInterval(() => {
+      fetchSprint();
+    }, 5000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchSprint = async () => {

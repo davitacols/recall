@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { LinkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import {
+  FavoriteButton,
+  ExportButton,
+  DecisionReminder,
+  UndoRedoButtons
+} from '../components/QuickWinFeatures';
 
 function DecisionDetail() {
   const { id } = useParams();
@@ -91,6 +97,9 @@ function DecisionDetail() {
             <span className={`px-4 py-2 text-xs font-bold uppercase tracking-wide ${status.bg} ${status.text}`}>
               {status.label}
             </span>
+            <FavoriteButton decisionId={id} />
+            <ExportButton decisionId={id} type="decision" />
+            <UndoRedoButtons />
           </div>
         </div>
 
@@ -268,6 +277,9 @@ function DecisionDetail() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Decision Reminder */}
+            <DecisionReminder decisionId={id} />
+
             {/* Confidence Score */}
             {decision.confidence && (
               <div className="p-8 bg-white border border-gray-200">

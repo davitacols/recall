@@ -7,11 +7,14 @@ from datetime import timedelta
 from apps.agile.models import (
     Sprint, Blocker, Retrospective, SprintUpdate, Issue, Project, 
     Board, Column, IssueComment, IssueLabel, DecisionIssueLink, 
-    ConversationIssueLink, BlockerIssueLink
+    ConversationIssueLink, BlockerIssueLink, Backlog, WorkflowTransition,
+    DecisionImpact, IssueDecisionHistory, SprintDecisionSummary
 )
 from apps.agile.serializers import (
     ProjectSerializer, SprintSerializer, IssueSerializer,
-    BlockerSerializer, IssueCommentSerializer, IssueLabelSerializer
+    BlockerSerializer, IssueCommentSerializer, IssueLabelSerializer,
+    BacklogSerializer, WorkflowTransitionSerializer, DecisionImpactSerializer,
+    IssueDecisionHistorySerializer, SprintDecisionSummarySerializer
 )
 from apps.agile.permissions import (
     IsOrgMember, CanDeleteProject, CanEditIssue, CanEditSprint
@@ -263,6 +266,18 @@ def issues(request, project_id):
                 sprint_id=serializer.validated_data.get('sprint_id'),
                 due_date=serializer.validated_data.get('due_date')
             )
+            
+            # Send notification if assigned
+            if issue.assignee_id:
+                from apps.notifications.models import Notification
+                Notification.objects.create(
+                    user_id=issue.assignee_id,
+                    notification_type='issue_assigned',
+                    title=f'Issue {issue.key} assigned to you',
+                    message=f'{request.user.get_full_name() or request.user.username} assigned {issue.title} to you',
+                    link=f'/issues/{issue.id}'
+                )
+            
             return Response(IssueSerializer(issue).data, status=201)
         except Exception as e:
             return Response({'error': str(e)}, status=400)
@@ -287,10 +302,24 @@ def issue_detail(request, issue_id):
         })
     
     elif request.method == 'PUT':
+        old_assignee_id = issue.assignee_id
         serializer = IssueSerializer(issue, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response({'error': serializer.errors}, status=400)
         serializer.save()
+        
+        # Send notification if assignee changed
+        new_assignee_id = issue.assignee_id
+        if new_assignee_id and new_assignee_id != old_assignee_id:
+            from apps.notifications.models import Notification
+            Notification.objects.create(
+                user_id=new_assignee_id,
+                notification_type='issue_assigned',
+                title=f'Issue {issue.key} assigned to you',
+                message=f'{request.user.get_full_name() or request.user.username} assigned {issue.title} to you',
+                link=f'/issues/{issue.id}'
+            )
+        
         return Response({'message': 'Issue updated', 'sprint_id': issue.sprint_id})
     
     elif request.method == 'DELETE':
@@ -537,3 +566,259 @@ def project_issues_unified(request, project_id):
         return Response(data)
     except Exception as e:
         return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated, IsOrgMember])
+def backlog(request, project_id):
+    org = _check_org(request)
+    if not org:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
+    try:
+        project = Project.objects.get(id=project_id, organization=org)
+    except Project.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+    
+    if request.method == 'GET':
+        issues = project.issues.filter(in_backlog=True, sprint__isnull=True).select_related('assignee').order_by('-created_at')
+        return Response({
+            'project_id': project.id,
+            'issue_count': issues.count(),
+            'issues': IssueSerializer(issues, many=True).data
+        })
+    
+    elif request.method == 'POST':
+        issue_id = request.data.get('issue_id')
+        if not issue_id:
+            return Response({'error': 'issue_id required'}, status=400)
+        
+        try:
+            issue = Issue.objects.get(id=issue_id, project=project)
+            issue.in_backlog = True
+            issue.sprint = None
+            issue.save()
+            return Response({'message': 'Issue added to backlog'})
+        except Issue.DoesNotExist:
+            return Response({'error': 'Issue not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsOrgMember])
+def workflow_transitions(request):
+    org = _check_org(request)
+    if not org:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
+    from_status = request.GET.get('from_status')
+    issue_type = request.GET.get('issue_type', '')
+    
+    transitions = WorkflowTransition.objects.filter(organization=org)
+    
+    if from_status:
+        transitions = transitions.filter(from_status=from_status)
+    
+    if issue_type:
+        transitions = transitions.filter(Q(issue_type=issue_type) | Q(issue_type=''))
+    
+    serializer = WorkflowTransitionSerializer(transitions, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsOrgMember])
+def validate_transition(request, issue_id):
+    org = _check_org(request)
+    if not org:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
+    try:
+        issue = Issue.objects.get(id=issue_id, organization=org)
+    except Issue.DoesNotExist:
+        return Response({'error': 'Issue not found'}, status=404)
+    
+    new_status = request.data.get('status')
+    if not new_status:
+        return Response({'error': 'status required'}, status=400)
+    
+    transitions = WorkflowTransition.objects.filter(
+        organization=org,
+        from_status=issue.status,
+        to_status=new_status
+    ).filter(Q(issue_type=issue.issue_type) | Q(issue_type=''))
+    
+    if not transitions.exists():
+        return Response({
+            'valid': False,
+            'message': f'Cannot transition from {issue.status} to {new_status}'
+        })
+    
+    transition = transitions.first()
+    errors = []
+    
+    if transition.requires_assignee and not issue.assignee:
+        errors.append('Issue must be assigned')
+    
+    if transition.requires_story_points and not issue.story_points:
+        errors.append('Issue must have story points')
+    
+    if errors:
+        return Response({
+            'valid': False,
+            'errors': errors
+        })
+    
+    return Response({'valid': True})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsOrgMember])
+def link_decision_to_issue(request, issue_id):
+    org = _check_org(request)
+    if not org:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
+    try:
+        issue = Issue.objects.get(id=issue_id, organization=org)
+    except Issue.DoesNotExist:
+        return Response({'error': 'Issue not found'}, status=404)
+    
+    decision_id = request.data.get('decision_id')
+    impact_type = request.data.get('impact_type')
+    description = request.data.get('description', '')
+    effort_change = request.data.get('estimated_effort_change', 0)
+    delay_days = request.data.get('estimated_delay_days', 0)
+    
+    if not decision_id or not impact_type:
+        return Response({'error': 'decision_id and impact_type required'}, status=400)
+    
+    try:
+        from apps.decisions.models import Decision
+        decision = Decision.objects.get(id=decision_id, organization=org)
+        
+        impact, created = DecisionImpact.objects.update_or_create(
+            decision=decision,
+            issue=issue,
+            defaults={
+                'organization': org,
+                'impact_type': impact_type,
+                'description': description,
+                'estimated_effort_change': effort_change,
+                'estimated_delay_days': delay_days,
+                'created_by': request.user
+            }
+        )
+        
+        # Update issue story points if effort changed
+        if effort_change != 0 and issue.story_points:
+            old_points = issue.story_points
+            issue.story_points = max(0, issue.story_points + effort_change)
+            issue.save()
+            
+            # Record history
+            IssueDecisionHistory.objects.create(
+                organization=org,
+                issue=issue,
+                decision=decision,
+                change_type='points_changed',
+                old_value=str(old_points),
+                new_value=str(issue.story_points),
+                reason=f'Decision impact: {impact_type}'
+            )
+        
+        return Response(DecisionImpactSerializer(impact).data, status=201 if created else 200)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsOrgMember])
+def issue_decision_impacts(request, issue_id):
+    org = _check_org(request)
+    if not org:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
+    try:
+        issue = Issue.objects.get(id=issue_id, organization=org)
+        impacts = issue.decision_impacts.select_related('decision', 'created_by')
+        history = issue.decision_history.select_related('decision').order_by('-created_at')
+        
+        return Response({
+            'impacts': DecisionImpactSerializer(impacts, many=True).data,
+            'history': IssueDecisionHistorySerializer(history, many=True).data
+        })
+    except Issue.DoesNotExist:
+        return Response({'error': 'Issue not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsOrgMember])
+def sprint_decision_analysis(request, sprint_id):
+    org = _check_org(request)
+    if not org:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
+    try:
+        sprint = Sprint.objects.get(id=sprint_id, organization=org)
+        
+        # Get all decision impacts for this sprint
+        impacts = DecisionImpact.objects.filter(
+            organization=org,
+            sprint=sprint
+        ).select_related('decision', 'issue', 'created_by')
+        
+        # Calculate metrics
+        total_effort_added = sum(i.estimated_effort_change for i in impacts if i.estimated_effort_change > 0)
+        total_effort_removed = sum(abs(i.estimated_effort_change) for i in impacts if i.estimated_effort_change < 0)
+        blocked_issues = impacts.filter(impact_type='blocks').count()
+        enabled_issues = impacts.filter(impact_type='enables').count()
+        
+        # Get or create summary
+        summary, _ = SprintDecisionSummary.objects.get_or_create(sprint=sprint)
+        summary.total_effort_added = total_effort_added
+        summary.total_effort_removed = total_effort_removed
+        summary.issues_blocked_by_decisions = blocked_issues
+        summary.issues_enabled_by_decisions = enabled_issues
+        summary.decisions_impacting_sprint = impacts.values('decision').distinct().count()
+        summary.save()
+        
+        return Response({
+            'sprint_id': sprint.id,
+            'sprint_name': sprint.name,
+            'summary': SprintDecisionSummarySerializer(summary).data,
+            'impacts': DecisionImpactSerializer(impacts, many=True).data,
+            'blocked_issues': blocked_issues,
+            'enabled_issues': enabled_issues,
+            'total_effort_added': total_effort_added,
+            'total_effort_removed': total_effort_removed
+        })
+    except Sprint.DoesNotExist:
+        return Response({'error': 'Sprint not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsOrgMember])
+def decision_impact_report(request):
+    org = _check_org(request)
+    if not org:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    
+    from apps.decisions.models import Decision
+    
+    # Get all decisions and their impacts
+    decisions = Decision.objects.filter(organization=org).prefetch_related('impacts')
+    
+    report_data = []
+    for decision in decisions:
+        impacts = decision.impacts.all()
+        if impacts.exists():
+            report_data.append({
+                'decision_id': decision.id,
+                'decision_title': decision.title,
+                'decision_status': decision.status,
+                'impact_count': impacts.count(),
+                'total_effort_change': sum(i.estimated_effort_change for i in impacts),
+                'blocked_issues': impacts.filter(impact_type='blocks').count(),
+                'enabled_issues': impacts.filter(impact_type='enables').count(),
+                'impacts': DecisionImpactSerializer(impacts, many=True).data
+            })
+    
+    return Response({
+        'total_decisions_with_impacts': len(report_data),
+        'decisions': report_data
+    })

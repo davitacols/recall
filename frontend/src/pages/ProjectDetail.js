@@ -11,6 +11,7 @@ function ProjectDetail() {
   const [boards, setBoards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('sprints');
+  const [teamMembers, setTeamMembers] = useState([]);
   const [showCreateSprint, setShowCreateSprint] = useState(false);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
   const [sprintForm, setSprintForm] = useState({ name: '', start_date: '', end_date: '', goal: '' });
@@ -22,7 +23,24 @@ function ProjectDetail() {
 
   useEffect(() => {
     fetchProject();
+    fetchTeamMembers();
+    
+    const interval = setInterval(() => {
+      fetchProject();
+    }, 5000);
+    
+    return () => clearInterval(interval);
   }, [projectId]);
+
+  const fetchTeamMembers = async () => {
+    try {
+      const response = await api.get('/api/organizations/members/');
+      setTeamMembers(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch team members:', error);
+      setTeamMembers([]);
+    }
+  };
 
   const fetchProject = async () => {
     try {
@@ -127,6 +145,18 @@ function ProjectDetail() {
           )}
         </div>
 
+        {/* Quick Links */}
+        <div className="flex gap-4 mb-12">
+          <Link to={`/projects/${projectId}/backlog`} className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 font-bold uppercase text-sm transition-all">
+            View Backlog
+          </Link>
+          {boards.length > 0 && (
+            <Link to={`/boards/${boards[0].id}`} className="px-6 py-3 bg-purple-600 text-white hover:bg-purple-700 font-bold uppercase text-sm transition-all">
+              View Kanban Board
+            </Link>
+          )}
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-4 gap-6 mb-12">
           <div className="p-6 bg-white border border-gray-200 text-center">
@@ -227,20 +257,13 @@ function ProjectDetail() {
           <div>
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-2xl font-black text-gray-900">Issues</h2>
-              <div className="flex gap-4">
-                {boards.length > 0 && (
-                  <a href={`/boards/${boards[0].id}`} className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all">
-                    View Kanban Board
-                  </a>
-                )}
-                <button
-                  onClick={() => setShowCreateIssue(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  New Issue
-                </button>
-              </div>
+              <button
+                onClick={() => setShowCreateIssue(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+              >
+                <PlusIcon className="w-4 h-4" />
+                New Issue
+              </button>
             </div>
 
             {issues.length === 0 ? (
@@ -456,13 +479,18 @@ function ProjectDetail() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Assignee</label>
-                  <input
-                    type="text"
+                  <select
                     value={issueForm.assignee_id}
-                    onChange={(e) => setIssueForm({ ...issueForm, assignee_id: e.target.value })}
-                    placeholder="User ID or name"
+                    onChange={(e) => setIssueForm({ ...issueForm, assignee_id: e.target.value ? parseInt(e.target.value) : '' })}
                     className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-                  />
+                  >
+                    <option value="">Unassigned</option>
+                    {teamMembers.map(member => (
+                      <option key={member.id} value={member.id}>
+                        {member.full_name || member.username}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex gap-3 justify-end pt-4">
                   <button

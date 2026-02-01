@@ -224,14 +224,19 @@ def organization_members(request):
     """Get organization members"""
     org = request.user.organization
     
-    members = User.objects.filter(organization=org, is_active=True)
+    if not org:
+        return Response([], status=status.HTTP_200_OK)
+    
+    # Include all users in organization, including inactive ones for now
+    members = User.objects.filter(organization=org).order_by('full_name')
     
     members_data = []
     for member in members:
+        display_name = member.full_name or member.get_full_name() or member.username
         members_data.append({
             'id': member.id,
             'username': member.username,
-            'full_name': member.full_name,
+            'full_name': display_name,
             'email': member.email,
             'role': member.role,
             'joined_at': member.date_joined,

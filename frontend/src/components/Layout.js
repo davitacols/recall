@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 import NotificationBell from './NotificationBell';
 import MobileBottomNav from './MobileBottomNav';
 import Search from './Search';
@@ -16,12 +17,13 @@ import {
   XMarkIcon,
   RectangleStackIcon,
   ChevronDownIcon,
-  InboxIcon
+  InboxIcon,
+  SunIcon,
+  MoonIcon
 } from '@heroicons/react/24/outline';
 
 function AvatarDisplay({ avatar, fullName }) {
   const initials = fullName?.charAt(0) || 'U';
-
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <span style={{ color: colors.surface, fontSize: '14px', fontWeight: 'bold' }}>{initials}</span>
@@ -31,6 +33,7 @@ function AvatarDisplay({ avatar, fullName }) {
 
 function Layout({ children }) {
   const { user, logout } = useAuth();
+  const { darkMode, toggleDarkMode } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -38,6 +41,13 @@ function Layout({ children }) {
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({ Sprint: true, Personal: true, Admin: true });
+
+  const bgColor = darkMode ? '#000000' : '#ffffff';
+  const textColor = darkMode ? '#f3f4f6' : '#111827';
+  const borderColor = darkMode ? '#1a1a1a' : '#e5e7eb';
+  const hoverBg = darkMode ? '#1a1a1a' : '#f3f4f6';
+  const secondaryText = darkMode ? '#d1d5db' : '#6b7280';
+  const mainBg = darkMode ? '#000000' : '#ffffff';
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -99,71 +109,51 @@ function Layout({ children }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: colors.background }}>
+    <div style={{ minHeight: '100vh', backgroundColor: mainBg, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 shadow-sm">
-        <div className="h-full flex items-center justify-between px-8">
-          <div className="flex items-center gap-8">
-            <button onClick={toggleSidebar} className="p-2 hover:bg-gray-100 transition-all">
+      <header style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '64px',
+        backgroundColor: bgColor,
+        borderBottom: `1px solid ${borderColor}`,
+        zIndex: 50,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '32px', paddingRight: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+            <button onClick={toggleSidebar} style={{ padding: '8px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>
               {sidebarCollapsed ? (
-                <Bars3Icon className="w-5 h-5 text-gray-900" />
+                <Bars3Icon style={{ width: '20px', height: '20px', color: textColor }} />
               ) : (
-                <XMarkIcon className="w-5 h-5 text-gray-900" />
+                <XMarkIcon style={{ width: '20px', height: '20px', color: textColor }} />
               )}
             </button>
-            <h1 className="text-2xl font-black text-gray-900">{getPageTitle()}</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: 900, color: textColor }}>{getPageTitle()}</h1>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
             <Search />
-            <Link to="/messages" className="p-2 text-gray-600 hover:text-gray-900 transition-colors" title="Messages">
-              <InboxIcon className="w-6 h-6" />
+            <Link to="/messages" style={{ padding: '8px', color: secondaryText, textDecoration: 'none', transition: 'color 0.2s' }} title="Messages" onMouseEnter={(e) => e.target.style.color = textColor} onMouseLeave={(e) => e.target.style.color = secondaryText}>
+              <InboxIcon style={{ width: '24px', height: '24px' }} />
             </Link>
             <NotificationBell />
             
-            <div className="relative">
-              <button
-                onClick={() => setShowNewMenu(!showNewMenu)}
-                className="px-6 py-2 bg-gray-900 text-white hover:bg-black font-bold uppercase text-xs transition-all"
-              >
-                New
-              </button>
-              {showNewMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-lg z-10">
-                  <Link
-                    to="/conversations/new"
-                    onClick={() => setShowNewMenu(false)}
-                    className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-b border-gray-200 transition-all"
-                  >
-                    New conversation
-                  </Link>
-                  <Link
-                    to="/decisions/new"
-                    onClick={() => setShowNewMenu(false)}
-                    className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-b border-gray-200 transition-all"
-                  >
-                    New decision
-                  </Link>
-                  <Link
-                    to="/issues/new"
-                    onClick={() => setShowNewMenu(false)}
-                    className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 transition-all"
-                  >
-                    New issue
-                  </Link>
-                </div>
-              )}
-            </div>
+            <button onClick={toggleDarkMode} style={{ padding: '8px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', color: secondaryText, fontSize: '18px', transition: 'color 0.2s' }} title="Toggle dark mode" onMouseEnter={(e) => e.target.style.color = textColor} onMouseLeave={(e) => e.target.style.color = secondaryText}>
+              {darkMode ? <SunIcon style={{ width: '20px', height: '20px' }} /> : <MoonIcon style={{ width: '20px', height: '20px' }} />}
+            </button>
 
-            <div className="relative">
-              <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="w-8 h-8 overflow-hidden border-none cursor-pointer">
+            <div style={{ position: 'relative' }}>
+              <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', overflow: 'hidden', border: 'none', cursor: 'pointer' }}>
                 <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
               </button>
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-lg z-10">
-                  <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-b border-gray-200 transition-all">Profile</Link>
-                  <Link to="/settings" onClick={() => setShowProfileMenu(false)} className="block px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-b border-gray-200 transition-all">Settings</Link>
-                  <button onClick={logout} className="w-full text-left px-6 py-3 text-sm text-gray-900 hover:bg-gray-50 border-none bg-transparent cursor-pointer transition-all">Sign out</button>
+                <div style={{ position: 'absolute', right: 0, marginTop: '8px', width: '192px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, boxShadow: '0 10px 15px rgba(0,0,0,0.1)', zIndex: 10 }}>
+                  <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', color: textColor, textDecoration: 'none', borderBottom: `1px solid ${borderColor}`, transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Profile</Link>
+                  <Link to="/settings" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', color: textColor, textDecoration: 'none', borderBottom: `1px solid ${borderColor}`, transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Settings</Link>
+                  <button onClick={logout} style={{ width: '100%', textAlign: 'left', paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', color: textColor, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Sign out</button>
                 </div>
               )}
             </div>
@@ -178,8 +168,8 @@ function Layout({ children }) {
         left: 0,
         bottom: 0,
         width: sidebarCollapsed ? '80px' : '320px',
-        backgroundColor: colors.surface,
-        borderRight: `1px solid ${colors.border}`,
+        backgroundColor: bgColor,
+        borderRight: `1px solid ${borderColor}`,
         display: 'flex',
         flexDirection: 'column',
         transition: motion.normal
@@ -203,9 +193,9 @@ function Layout({ children }) {
                       fontSize: '14px',
                       fontWeight: isActive ? 700 : 500,
                       textDecoration: 'none',
-                      color: isActive ? colors.primary : colors.secondary,
-                      backgroundColor: isActive ? '#f3f4f6' : 'transparent',
-                      borderLeft: isActive ? `4px solid ${colors.primary}` : '4px solid transparent',
+                      color: isActive ? textColor : secondaryText,
+                      backgroundColor: isActive ? hoverBg : 'transparent',
+                      borderLeft: isActive ? `4px solid ${textColor}` : '4px solid transparent',
                       paddingLeft: isActive ? '12px' : spacing.lg,
                       transition: motion.fast
                     }}
@@ -236,7 +226,7 @@ function Layout({ children }) {
                         padding: `${spacing.sm} ${spacing.lg}`,
                         fontSize: '11px',
                         fontWeight: 700,
-                        color: colors.secondary,
+                        color: secondaryText,
                         textTransform: 'uppercase',
                         letterSpacing: '0.08em',
                         backgroundColor: 'transparent',
@@ -244,8 +234,8 @@ function Layout({ children }) {
                         cursor: 'pointer',
                         transition: motion.fast
                       }}
-                      onMouseEnter={(e) => e.target.style.color = colors.primary}
-                      onMouseLeave={(e) => e.target.style.color = colors.secondary}
+                      onMouseEnter={(e) => e.target.style.color = textColor}
+                      onMouseLeave={(e) => e.target.style.color = secondaryText}
                     >
                       <span>{section.title}</span>
                       <ChevronDownIcon 
@@ -273,10 +263,10 @@ function Layout({ children }) {
                                 borderRadius: '0',
                                 fontSize: '13px',
                                 textDecoration: 'none',
-                                color: isActive ? colors.primary : colors.secondary,
-                                backgroundColor: isActive ? '#f3f4f6' : 'transparent',
+                                color: isActive ? textColor : secondaryText,
+                                backgroundColor: isActive ? hoverBg : 'transparent',
                                 fontWeight: isActive ? 600 : 'normal',
-                                borderLeft: isActive ? `4px solid ${colors.primary}` : '4px solid transparent',
+                                borderLeft: isActive ? `4px solid ${textColor}` : '4px solid transparent',
                                 paddingLeft: isActive ? '12px' : spacing.xl,
                                 transition: motion.fast
                               }}
@@ -293,15 +283,15 @@ function Layout({ children }) {
             )}
           </nav>
 
-          <div style={{ padding: spacing.lg, borderTop: `1px solid ${colors.border}`, flexShrink: 0 }}>
+          <div style={{ padding: spacing.lg, borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
             {!sidebarCollapsed ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
                 <div style={{ width: '36px', height: '36px', borderRadius: '0', overflow: 'hidden', flexShrink: 0 }}>
                   <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: colors.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name?.split(' ')[0]}</div>
-                  <div style={{ fontSize: '11px', color: colors.secondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.organization_name}</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: textColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name?.split(' ')[0]}</div>
+                  <div style={{ fontSize: '11px', color: secondaryText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.organization_name}</div>
                 </div>
               </div>
             ) : (
@@ -319,9 +309,13 @@ function Layout({ children }) {
       <main style={{
         paddingTop: '64px',
         paddingLeft: sidebarCollapsed ? '80px' : '320px',
-        transition: motion.normal
+        transition: motion.normal,
+        backgroundColor: mainBg,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column'
       }}>
-        <div style={{ padding: spacing.xl }}>
+        <div style={{ flex: 1, padding: spacing.xl, color: textColor, backgroundColor: mainBg }}>
           {children}
         </div>
       </main>

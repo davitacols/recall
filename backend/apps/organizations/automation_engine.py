@@ -1,296 +1,237 @@
+from django.db import models
 from django.utils import timezone
-from django.contrib.contenttypes.models import ContentType
-from .automation_models import AutomationRule, AutomationExecution, AutomationTemplate
-from .team_views import log_action
-import json
+from apps.organizations.models import Organization, User
+from apps.conversations.models import Conversation
+from apps.decisions.models import Decision
+
+class WorkflowTemplate(models.Model):
+    """Workflow templates for common processes"""
+    
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    trigger_type = models.CharField(max_length=50, choices=[
+        ('conversation_created', 'Conversation Created'),
+        ('decision_proposed', 'Decision Proposed'),
+        ('issue_created', 'Issue Created'),
+    ])
+    actions = models.JSONField(default=list)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'workflow_templates'
+
+
+class WorkflowExecution(models.Model):
+    """Track workflow executions"""
+    
+    template = models.ForeignKey(WorkflowTemplate, on_delete=models.CASCADE)
+    trigger_id = models.CharField(max_length=100)
+    status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending'),
+        ('running', 'Running'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ])
+    executed_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+    
+    class Meta:
+        db_table = 'workflow_executions'
+
 
 class AutomationEngine:
-    """Execute automation rules and actions"""
+    """Execute automated workflows"""
     
     @staticmethod
-    def check_trigger(rule, obj, trigger_type):
-        """Check if trigger conditions match"""
-        if rule.trigger_type != trigger_type:
-            return False
+    def execute_workflow(template, trigger_data):
+        """Execute workflow template"""
+        execution = WorkflowExecution.objects.create(
+            template=template,
+            trigger_id=trigger_data.get('id'),
+            status='running'
+        )
         
-        conditions = rule.trigger_conditions
-        if not conditions:
+        try:
+            for action in template.actions:
+                AutomationEngine.execute_action(action, trigger_data)
+            
+            execution.status = 'completed'
+            execution.completed_at = timezone.now()
+        except Exception as e:
+            execution.status = 'failed'
+            execution.error_message = str(e)
+        
+        execution.save()
+        return execution
+    
+    @staticmethod
+    def execute_action(action, trigger_data):
+        """Execute single action"""
+        action_type = action.get('type')
+        
+        if action_type == 'create_decision':
+            AutomationEngine.create_decision_from_conversation(
+                trigger_data.get('id'),
+                action.get('config', {})
+            )
+        elif action_type == 'notify_users':
+            AutomationEngine.notify_users(
+                action.get('user_ids', []),
+                action.get('message', '')
+            )
+        elif action_type == 'create_action_item':
+            AutomationEngine.create_action_item(
+                trigger_data.get('id'),
+                action.get('config', {})
+            )
+        elif action_type == 'tag_content':
+            AutomationEngine.tag_content(
+                trigger_data.get('id'),
+                action.get('tags', [])
+            )
+    
+    @staticmethod
+    def create_decision_from_conversation(conversation_id, config):
+        """Auto-create decision from conversation"""
+        conversation = Conversation.objects.get(id=conversation_id)
+        
+        Decision.objects.create(
+            organization=conversation.organization,
+            conversation=conversation,
+            title=config.get('title', conversation.title),
+            description=config.get('description', conversation.content),
+            decision_maker=conversation.author,
+            status='proposed',
+            rationale=config.get('rationale', '')
+        )
+    
+    @staticmethod
+    def notify_users(user_ids, message):
+        """Notify users"""
+        from apps.notifications.models import Notification
+        
+        for user_id in user_ids:
+            Notification.objects.create(
+                user_id=user_id,
+                title='Automated Notification',
+                message=message,
+                notification_type='automation'
+            )
+    
+    @staticmethod
+    def create_action_item(conversation_id, config):
+        """Create action item"""
+        from apps.conversations.models import ActionItem
+        
+        conversation = Conversation.objects.get(id=conversation_id)
+        ActionItem.objects.create(
+            conversation=conversation,
+            title=config.get('title', 'Follow-up Action'),
+            priority=config.get('priority', 'medium'),
+            due_date=config.get('due_date')
+        )
+    
+    @staticmethod
+    def tag_content(content_id, tags):
+        """Auto-tag content"""
+        from apps.conversations.models import Tag
+        
+        conversation = Conversation.objects.get(id=content_id)
+        for tag_name in tags:
+            tag, _ = Tag.objects.get_or_create(
+                name=tag_name,
+                organization=conversation.organization
+            )
+            conversation.tags.add(tag)
+
+
+class SmartNotificationEngine:
+    """Smart notification system"""
+    
+    @staticmethod
+    def should_notify(user, notification_type, context):
+        """Determine if user should be notified"""
+        from apps.conversations.models import UserPreferences
+        
+        try:
+            prefs = user.preferences
+        except UserPreferences.DoesNotExist:
             return True
         
-        # Simple condition matching
-        for field, expected_value in conditions.items():
-            if not hasattr(obj, field):
-                return False
-            
-            actual_value = getattr(obj, field)
-            operator = conditions.get(f'{field}_operator', 'equals')
-            
-            if operator == 'equals' and actual_value != expected_value:
-                return False
-            elif operator == 'contains' and expected_value not in str(actual_value):
-                return False
-            elif operator == 'gt' and actual_value <= expected_value:
-                return False
-            elif operator == 'lt' and actual_value >= expected_value:
-                return False
+        # Check quiet mode
+        if prefs.quiet_mode:
+            return False
+        
+        # Check muted topics
+        if context.get('topic') in prefs.muted_topics:
+            return False
+        
+        # Check muted post types
+        if context.get('post_type') in prefs.muted_post_types:
+            return False
         
         return True
     
     @staticmethod
-    def execute_rule(rule, obj, user=None):
-        """Execute a rule and its actions"""
-        if rule.status != 'active':
-            return None
+    def batch_notifications(user, notifications, batch_size=5):
+        """Batch notifications to reduce noise"""
+        if len(notifications) <= batch_size:
+            return notifications
         
-        content_type = ContentType.objects.get_for_model(obj)
-        execution = AutomationExecution.objects.create(
-            rule=rule,
-            content_type=content_type,
-            object_id=obj.id,
-            triggered_by=user,
-            status='running'
-        )
+        batches = []
+        for i in range(0, len(notifications), batch_size):
+            batch = notifications[i:i + batch_size]
+            batches.append({
+                'type': 'batch',
+                'count': len(batch),
+                'items': batch,
+                'summary': f"You have {len(batch)} new updates"
+            })
         
-        results = {}
-        try:
-            for action_config in rule.action_configs.all().order_by('order'):
-                result = AutomationEngine.execute_action(action_config, obj, user)
-                results[action_config.action_type] = result
-                
-                if not result.get('success'):
-                    execution.status = 'failed'
-                    execution.error_message = result.get('message', 'Action failed')
-                    execution.save()
-                    return execution
-            
-            execution.status = 'success'
-            execution.results = results
-            execution.completed_at = timezone.now()
-            execution.save()
-            
-            log_action(
-                rule.organization,
-                user,
-                'create',
-                execution,
-                f"Automation rule executed: {rule.name}"
-            )
-            
-        except Exception as e:
-            execution.status = 'failed'
-            execution.error_message = str(e)
-            execution.completed_at = timezone.now()
-            execution.save()
-        
-        return execution
+        return batches
     
     @staticmethod
-    def execute_action(action_config, obj, user):
-        """Execute a single action"""
-        action_type = action_config.action_type
-        config = action_config.config
+    def get_notification_priority(notification_type, context):
+        """Determine notification priority"""
+        priority_map = {
+            'decision_approved': 'high',
+            'decision_rejected': 'high',
+            'blocker_reported': 'critical',
+            'mentioned': 'high',
+            'reply': 'medium',
+            'reaction': 'low',
+        }
         
-        try:
-            if action_type == 'assign_issue':
-                return AutomationEngine._assign_issue(obj, config, user)
-            elif action_type == 'change_status':
-                return AutomationEngine._change_status(obj, config, user)
-            elif action_type == 'add_label':
-                return AutomationEngine._add_label(obj, config, user)
-            elif action_type == 'send_notification':
-                return AutomationEngine._send_notification(obj, config, user)
-            elif action_type == 'create_comment':
-                return AutomationEngine._create_comment(obj, config, user)
-            elif action_type == 'move_to_sprint':
-                return AutomationEngine._move_to_sprint(obj, config, user)
-            elif action_type == 'lock_decision':
-                return AutomationEngine._lock_decision(obj, config, user)
-            elif action_type == 'create_issue':
-                return AutomationEngine._create_issue(obj, config, user)
-            elif action_type == 'webhook':
-                return AutomationEngine._webhook(obj, config, user)
-            else:
-                return {'success': False, 'message': f'Unknown action type: {action_type}'}
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
-    
-    @staticmethod
-    def _assign_issue(obj, config, user):
-        """Assign issue to user"""
-        from apps.agile.models import Issue
-        if not isinstance(obj, Issue):
-            return {'success': False, 'message': 'Object is not an issue'}
-        
-        assignee_id = config.get('assignee_id')
-        if not assignee_id:
-            return {'success': False, 'message': 'No assignee specified'}
-        
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        try:
-            assignee = User.objects.get(id=assignee_id)
-            obj.assigned_to = assignee
-            obj.save()
-            return {'success': True, 'message': f'Assigned to {assignee.username}'}
-        except User.DoesNotExist:
-            return {'success': False, 'message': 'Assignee not found'}
-    
-    @staticmethod
-    def _change_status(obj, config, user):
-        """Change object status"""
-        new_status = config.get('status')
-        if not new_status:
-            return {'success': False, 'message': 'No status specified'}
-        
-        if hasattr(obj, 'status'):
-            obj.status = new_status
-            obj.save()
-            return {'success': True, 'message': f'Status changed to {new_status}'}
-        return {'success': False, 'message': 'Object has no status field'}
-    
-    @staticmethod
-    def _add_label(obj, config, user):
-        """Add label to object"""
-        label_name = config.get('label')
-        if not label_name:
-            return {'success': False, 'message': 'No label specified'}
-        
-        if hasattr(obj, 'labels'):
-            obj.labels.add(label_name)
-            return {'success': True, 'message': f'Added label: {label_name}'}
-        return {'success': False, 'message': 'Object does not support labels'}
-    
-    @staticmethod
-    def _send_notification(obj, config, user):
-        """Send notification"""
-        recipient_id = config.get('recipient_id')
-        message = config.get('message', f'Notification for {obj}')
-        
-        from apps.notifications.models import Notification
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        
-        try:
-            recipient = User.objects.get(id=recipient_id)
-            Notification.objects.create(
-                user=recipient,
-                title='Automation',
-                message=message,
-                notification_type='automation'
-            )
-            return {'success': True, 'message': f'Notification sent to {recipient.username}'}
-        except User.DoesNotExist:
-            return {'success': False, 'message': 'Recipient not found'}
-    
-    @staticmethod
-    def _create_comment(obj, config, user):
-        """Create comment on object"""
-        from apps.conversations.models import Comment
-        
-        comment_text = config.get('text', 'Automated comment')
-        
-        try:
-            Comment.objects.create(
-                conversation_id=obj.id if hasattr(obj, 'id') else None,
-                author=user,
-                text=comment_text
-            )
-            return {'success': True, 'message': 'Comment created'}
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
-    
-    @staticmethod
-    def _move_to_sprint(obj, config, user):
-        """Move issue to sprint"""
-        from apps.agile.models import Issue, Sprint
-        
-        if not isinstance(obj, Issue):
-            return {'success': False, 'message': 'Object is not an issue'}
-        
-        sprint_id = config.get('sprint_id')
-        if not sprint_id:
-            return {'success': False, 'message': 'No sprint specified'}
-        
-        try:
-            sprint = Sprint.objects.get(id=sprint_id)
-            obj.sprint = sprint
-            obj.save()
-            return {'success': True, 'message': f'Moved to sprint: {sprint.name}'}
-        except Sprint.DoesNotExist:
-            return {'success': False, 'message': 'Sprint not found'}
-    
-    @staticmethod
-    def _lock_decision(obj, config, user):
-        """Lock decision"""
-        from apps.decisions.models import Decision
-        
-        if not isinstance(obj, Decision):
-            return {'success': False, 'message': 'Object is not a decision'}
-        
-        obj.is_locked = True
-        obj.locked_by = user
-        obj.locked_at = timezone.now()
-        obj.save()
-        return {'success': True, 'message': 'Decision locked'}
-    
-    @staticmethod
-    def _create_issue(obj, config, user):
-        """Create new issue"""
-        from apps.agile.models import Issue
-        
-        title = config.get('title', 'Auto-created issue')
-        description = config.get('description', '')
-        
-        try:
-            issue = Issue.objects.create(
-                title=title,
-                description=description,
-                created_by=user,
-                organization=user.organization
-            )
-            return {'success': True, 'message': f'Issue created: {issue.id}'}
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
-    
-    @staticmethod
-    def _webhook(obj, config, user):
-        """Call webhook"""
-        import requests
-        
-        url = config.get('url')
-        if not url:
-            return {'success': False, 'message': 'No webhook URL specified'}
-        
-        try:
-            payload = {
-                'object_type': obj.__class__.__name__,
-                'object_id': obj.id,
-                'triggered_by': user.username if user else 'system'
-            }
-            response = requests.post(url, json=payload, timeout=5)
-            return {'success': response.status_code < 400, 'message': f'Webhook called: {response.status_code}'}
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
+        return priority_map.get(notification_type, 'medium')
 
-def trigger_automation(obj, trigger_type, user=None):
-    """Trigger automation rules for an object"""
-    from .models import Organization
+
+class DecisionTemplate(models.Model):
+    """Decision templates for common decisions"""
     
-    if not hasattr(obj, 'organization'):
-        return []
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    template_content = models.JSONField(default=dict)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
     
-    organization = obj.organization
-    rules = AutomationRule.objects.filter(
-        organization=organization,
-        trigger_type=trigger_type,
-        status='active'
-    )
+    class Meta:
+        db_table = 'decision_templates'
     
-    executions = []
-    for rule in rules:
-        if AutomationEngine.check_trigger(rule, obj, trigger_type):
-            execution = AutomationEngine.execute_rule(rule, obj, user)
-            if execution:
-                executions.append(execution)
-    
-    return executions
+    @staticmethod
+    def create_from_template(template_id, org_id, conversation_id, user):
+        """Create decision from template"""
+        template = DecisionTemplate.objects.get(id=template_id)
+        conversation = Conversation.objects.get(id=conversation_id)
+        
+        decision_data = template.template_content.copy()
+        decision_data.update({
+            'organization_id': org_id,
+            'conversation': conversation,
+            'decision_maker': user,
+        })
+        
+        return Decision.objects.create(**decision_data)

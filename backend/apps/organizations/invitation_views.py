@@ -78,7 +78,7 @@ def accept_invitation(request, token):
         if not invitation.is_valid():
             return Response({'error': 'Invitation expired or already used'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Create user
+        # Create user with the organization from the invitation
         user = User.objects.create_user(
             username=request.data.get('username'),
             email=invitation.email,
@@ -105,7 +105,8 @@ def accept_invitation(request, token):
                 'email': user.email,
                 'full_name': user.full_name,
                 'role': user.role,
-                'organization': user.organization.name
+                'organization': user.organization.name,
+                'organization_name': user.organization.name
             }
         })
     except Invitation.DoesNotExist:

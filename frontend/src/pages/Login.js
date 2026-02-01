@@ -3,7 +3,6 @@ import { useAuth } from '../hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import '../styles/auth.css';
 
 function Login() {
   const [searchParams] = useSearchParams();
@@ -59,214 +58,152 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex bg-white">
-      {/* Left side - Form */}
-      <div className="flex-1 lg:w-1/2 flex items-center justify-center px-6 py-12 sm:px-12">
-        <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="mb-12">
-            <div className="flex items-center space-x-3 mb-8">
-              <div className="w-10 h-10 bg-slate-700 flex items-center justify-center">
-                <span className="text-white font-bold text-xl">R</span>
-              </div>
-              <span className="text-2xl font-bold text-slate-900">Recall</span>
+    <div style={{ minHeight: '100vh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '420px' }}>
+        {/* Logo */}
+        <div style={{ marginBottom: '48px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
+            <div style={{ width: '40px', height: '40px', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}>
+              <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '20px' }}>R</span>
             </div>
-            
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">
-              {isLogin ? 'Welcome back' : (inviteToken ? 'Join the team' : 'Get started')}
-            </h1>
-            <p className="text-lg text-slate-600">
-              {isLogin ? 'Sign in to your account' : (inviteToken ? 'Complete your registration' : 'Create your organization')}
-            </p>
+            <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffffff' }}>Recall</span>
           </div>
+          
+          <h1 style={{ fontSize: '32px', fontWeight: 900, color: '#ffffff', marginBottom: '8px' }}>
+            {isLogin ? 'Welcome back' : (inviteToken ? 'Join the team' : 'Get started')}
+          </h1>
+          <p style={{ fontSize: '14px', color: '#d1d5db' }}>
+            {isLogin ? 'Sign in to your account' : (inviteToken ? 'Complete your registration' : 'Create your organization')}
+          </p>
+        </div>
 
-          {/* Toggle */}
-          {!inviteToken && (
-            <div className="flex gap-2 mb-8 bg-slate-100 p-1">
-              <button
-                type="button"
-                onClick={() => setIsLogin(true)}
-                className={`flex-1 py-2 px-4 font-medium transition-all ${
-                  isLogin 
-                    ? 'bg-slate-700 text-white' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsLogin(false)}
-                className={`flex-1 py-2 px-4 font-medium transition-all ${
-                  !isLogin 
-                    ? 'bg-slate-700 text-white' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Sign up
-              </button>
+        {/* Toggle */}
+        {!inviteToken && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', backgroundColor: '#1a1a1a', padding: '4px', borderRadius: '4px' }}>
+            <button
+              type="button"
+              onClick={() => setIsLogin(true)}
+              style={{ flex: 1, paddingTop: '12px', paddingBottom: '12px', fontWeight: 600, transition: 'all 0.2s', backgroundColor: isLogin ? '#374151' : 'transparent', color: isLogin ? '#ffffff' : '#9ca3af', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsLogin(false)}
+              style={{ flex: 1, paddingTop: '12px', paddingBottom: '12px', fontWeight: 600, transition: 'all 0.2s', backgroundColor: !isLogin ? '#374151' : 'transparent', color: !isLogin ? '#ffffff' : '#9ca3af', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+            >
+              Sign up
+            </button>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {error && (
+            <div style={{ backgroundColor: '#7f1d1d', border: '1px solid #dc2626', color: '#fca5a5', padding: '12px', fontSize: '14px', borderRadius: '4px' }}>
+              {error}
             </div>
           )}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 p-4 text-sm">
-                {error}
-              </div>
-            )}
-            
-            {!isLogin && !inviteToken && (
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 mb-2">
-                  Organization Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-3 border border-slate-300 text-sm focus:border-slate-700 focus:ring-1 focus:ring-slate-700 focus:outline-none transition"
-                  placeholder="Acme Inc."
-                  value={credentials.organization}
-                  onChange={(e) => setCredentials({...credentials, organization: e.target.value})}
-                />
-              </div>
-            )}
-            
+          
+          {!isLogin && !inviteToken && (
             <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Email address
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
+                Organization Name
               </label>
               <input
-                type="email"
+                type="text"
                 required
-                disabled={!!inviteToken}
-                className="w-full px-4 py-3 border border-slate-300 text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:border-slate-700 focus:ring-1 focus:ring-slate-700 focus:outline-none transition"
-                placeholder="you@company.com"
-                value={credentials.username}
-                onChange={(e) => setCredentials({...credentials, username: e.target.value})}
+                style={{ width: '100%', paddingLeft: '12px', paddingRight: '12px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: '#1a1a1a', border: '1px solid #374151', color: '#ffffff', fontSize: '14px', borderRadius: '4px', outline: 'none', transition: 'all 0.2s' }}
+                placeholder="Acme Inc."
+                value={credentials.organization}
+                onChange={(e) => setCredentials({...credentials, organization: e.target.value})}
+                onFocus={(e) => e.target.style.borderColor = '#4b5563'}
+                onBlur={(e) => e.target.style.borderColor = '#374151'}
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  className="w-full px-4 py-3 pr-12 border border-slate-300 text-sm focus:border-slate-700 focus:ring-1 focus:ring-slate-700 focus:outline-none transition"
-                  placeholder="••••••••"
-                  value={credentials.password}
-                  onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-                />
-                <button
-                  type="button"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-slate-700 hover:bg-slate-800 text-white py-3 px-4 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-8"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  {isLogin ? 'Signing in...' : 'Creating account...'}
-                </div>
-              ) : (
-                <span>{isLogin ? 'Sign in' : (inviteToken ? 'Create account' : 'Create account')}</span>
-              )}
-            </button>
-          </form>
-          
-          {isLogin && (
-            <div className="mt-8 text-center">
-              <p className="text-sm text-slate-600">
-                Don't have an account?{' '}
-                <button onClick={() => setIsLogin(false)} className="text-slate-700 font-semibold hover:text-slate-900">
-                  Sign up
-                </button>
-              </p>
-            </div>
           )}
-        </div>
-      </div>
-
-      {/* Right side - Hero */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 relative overflow-hidden items-center justify-center">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-white -mr-48 -mt-48"></div>
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-white -ml-48 -mb-48"></div>
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 px-12 text-white text-center max-w-lg">
-          <div className="mb-8 flex justify-center">
-            <svg className="w-20 h-20 opacity-90 hero-icon-3d" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+          
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
+              Email address
+            </label>
+            <input
+              type="email"
+              required
+              disabled={!!inviteToken}
+              style={{ width: '100%', paddingLeft: '12px', paddingRight: '12px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: inviteToken ? '#0f0f0f' : '#1a1a1a', border: '1px solid #374151', color: '#ffffff', fontSize: '14px', borderRadius: '4px', outline: 'none', transition: 'all 0.2s', opacity: inviteToken ? 0.6 : 1 }}
+              placeholder="you@company.com"
+              value={credentials.username}
+              onChange={(e) => setCredentials({...credentials, username: e.target.value})}
+              onFocus={(e) => !inviteToken && (e.target.style.borderColor = '#4b5563')}
+              onBlur={(e) => e.target.style.borderColor = '#374151'}
+            />
           </div>
           
-          <h2 className="text-5xl font-bold mb-6 leading-tight">
-            Organize your team's knowledge
-          </h2>
-          
-          <p className="text-xl text-slate-300 mb-12 leading-relaxed">
-            Centralized platform for conversations, decisions, projects, and sprints. Keep everything searchable and accessible.
-          </p>
-
-          {/* Features */}
-          <div className="space-y-4 text-left">
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-6 h-6 bg-slate-500 flex items-center justify-center mt-1">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Conversations & Decisions</h3>
-                <p className="text-slate-300 text-sm">Capture context and rationale</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-6 h-6 bg-slate-500 flex items-center justify-center mt-1">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Projects & Sprints</h3>
-                <p className="text-slate-300 text-sm">Plan and track work efficiently</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-6 h-6 bg-slate-500 flex items-center justify-center mt-1">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Search & Discover</h3>
-                <p className="text-slate-300 text-sm">Find answers instantly across everything</p>
-              </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
+              Password
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                style={{ width: '100%', paddingLeft: '12px', paddingRight: '40px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: '#1a1a1a', border: '1px solid #374151', color: '#ffffff', fontSize: '14px', borderRadius: '4px', outline: 'none', transition: 'all 0.2s' }}
+                placeholder="••••••••"
+                value={credentials.password}
+                onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+                onFocus={(e) => e.target.style.borderColor = '#4b5563'}
+                onBlur={(e) => e.target.style.borderColor = '#374151'}
+              />
+              <button
+                type="button"
+                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px' }}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeSlashIcon style={{ width: '18px', height: '18px' }} />
+                ) : (
+                  <EyeIcon style={{ width: '18px', height: '18px' }} />
+                )}
+              </button>
             </div>
           </div>
-        </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{ width: '100%', backgroundColor: loading ? '#4b5563' : '#374151', color: '#ffffff', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', fontWeight: 700, border: 'none', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', marginTop: '24px', opacity: loading ? 0.6 : 1 }}
+            onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4b5563')}
+            onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#374151')}
+          >
+            {loading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <div style={{ width: '14px', height: '14px', border: '2px solid #ffffff', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                {isLogin ? 'Signing in...' : 'Creating account...'}
+              </div>
+            ) : (
+              <span>{isLogin ? 'Sign in' : (inviteToken ? 'Create account' : 'Create account')}</span>
+            )}
+          </button>
+        </form>
+        
+        {isLogin && (
+          <div style={{ marginTop: '24px', textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', color: '#9ca3af' }}>
+              Don't have an account?{' '}
+              <button onClick={() => setIsLogin(false)} style={{ color: '#ffffff', fontWeight: 600, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                Sign up
+              </button>
+            </p>
+          </div>
+        )}
       </div>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

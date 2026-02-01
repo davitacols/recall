@@ -21,6 +21,9 @@ function Settings() {
   const [orgName, setOrgName] = useState('');
   const [orgDescription, setOrgDescription] = useState('');
   const [pendingInvitations, setPendingInvitations] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [generatedLink, setGeneratedLink] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -87,6 +90,7 @@ function Settings() {
   };
 
   const saveOrganization = async () => {
+    setLoading(true);
     try {
       await api.put('/api/organizations/me/', {
         name: orgName,
@@ -96,31 +100,48 @@ function Settings() {
       fetchOrganization();
     } catch (error) {
       addToast('Failed to update organization', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const inviteMember = async () => {
     if (!inviteEmail.trim()) return;
+    setLoading(true);
     try {
-      await api.post('/api/organizations/members/invite/', {
+      const response = await api.post('/api/organizations/invitations/send/', {
         email: inviteEmail,
         role: inviteRole
       });
-      addToast('Invitation sent', 'success');
+      setGeneratedLink(response.data.invite_link);
+      addToast('Invitation created', 'success');
       setInviteEmail('');
       setInviteRole('contributor');
       fetchPendingInvitations();
     } catch (error) {
       addToast('Failed to invite member', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelInvitation = async (invitationId) => {
+    try {
+      await api.delete(`/api/organizations/invitations/${invitationId}/revoke/`);
+      addToast('Invitation cancelled', 'success');
+      fetchPendingInvitations();
+      setConfirmDelete(null);
+    } catch (error) {
+      addToast('Failed to cancel invitation', 'error');
     }
   };
 
   const removeMember = async (memberId) => {
-    if (!window.confirm('Remove this member?')) return;
     try {
       await api.delete(`/api/organizations/members/${memberId}/`);
       addToast('Member removed', 'success');
       fetchMembers();
+      setConfirmDelete(null);
     } catch (error) {
       addToast('Failed to remove member', 'error');
     }
@@ -233,9 +254,10 @@ function Settings() {
                   </div>
                   <button
                     onClick={saveOrganization}
-                    className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+                    disabled={loading}
+                    className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Save Changes
+                    {loading ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               </div>
@@ -271,12 +293,46 @@ function Settings() {
                     </div>
                     <button
                       onClick={inviteMember}
-                      className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+                      disabled={loading}
+                      className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Send Invite
+                      {loading ? 'Sending...' : 'Send Invite'}
                     </button>
                   </div>
                 </div>
+
+                {generatedLink && (
+                  <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
+                    <h2 className="text-2xl font-black text-gray-900 mb-6">Invitation Link Generated</h2>
+                    <div className="bg-gray-50 p-4 border border-gray-200 rounded mb-4">
+                      <p className="text-sm font-bold text-gray-600 uppercase mb-2">Share this link</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={generatedLink}
+                          readOnly
+                          className="flex-1 px-3 py-2 border border-gray-300 bg-white text-sm font-mono"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedLink);
+                            addToast('Link copied!', 'success');
+                          }}
+                          className="px-4 py-2 bg-gray-900 text-white hover:bg-black font-bold text-sm transition-all"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-2">Expires in 7 days • Can only be used once</p>
+                    </div>
+                    <button
+                      onClick={() => setGeneratedLink(null)}
+                      className="px-4 py-2 border border-gray-300 text-gray-900 hover:bg-gray-50 font-bold text-sm transition-all"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
 
                 {pendingInvitations.length > 0 && (
                   <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
@@ -288,6 +344,12 @@ function Settings() {
                             <p className="font-bold text-gray-900">{invitation.email}</p>
                             <p className="text-sm text-gray-600">Role: {invitation.role}</p>
                           </div>
+                          <button
+                            onClick={() => setConfirmDelete({ type: 'invitation', id: invitation.id })}
+                            className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-bold text-sm transition-all"
+                          >
+                            Cancel
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -307,7 +369,7 @@ function Settings() {
                           <span className="text-xs font-bold uppercase text-gray-600 bg-gray-100 px-3 py-1">{member.role}</span>
                           {member.id !== user?.id && (
                             <button
-                              onClick={() => removeMember(member.id)}
+                              onClick={() => setConfirmDelete({ type: 'member', id: member.id })}
                               className="p-2 text-red-600 hover:bg-red-50 transition-all"
                             >
                               <TrashIcon className="w-5 h-5" />
@@ -331,6 +393,42 @@ function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-lg max-w-sm">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              {confirmDelete.type === 'invitation' ? 'Cancel Invitation?' : 'Remove Member?'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {confirmDelete.type === 'invitation' 
+                ? 'This invitation will be cancelled and cannot be used.' 
+                : 'This member will be removed from the organization.'}
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 border border-gray-300 text-gray-900 hover:bg-gray-50 font-bold transition-all"
+              >
+                Keep
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmDelete.type === 'invitation') {
+                    cancelInvitation(confirmDelete.id);
+                  } else {
+                    removeMember(confirmDelete.id);
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-bold transition-all"
+              >
+                {confirmDelete.type === 'invitation' ? 'Cancel' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

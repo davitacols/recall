@@ -1,23 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
-import { AddIssuesToSprintModal } from '../components/AddIssuesToSprintModal';
-import BurndownChart from '../components/BurndownChart';
 
 function SprintDetail() {
   const { id } = useParams();
   const [sprint, setSprint] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showAddIssues, setShowAddIssues] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [completing, setCompleting] = useState(false);
+  const [decisionImpact, setDecisionImpact] = useState(null);
+  const [draggedIssue, setDraggedIssue] = useState(null);
 
-  const fetchSprint = async () => {
+  useEffect(() => {
+    fetchData();
+  }, [id]);
+
+  const fetchData = async () => {
     try {
-      const response = await api.get(`/api/agile/sprints/${id}/detail/`);
-      const data = response.data.data || response.data;
-      setSprint(data);
+      const [sprintRes, impactRes] = await Promise.all([
+        api.get(`/api/agile/sprints/${id}/detail/`),
+        api.get(`/api/agile/sprints/${id}/decision-analysis/`).catch(() => null)
+      ]);
+      setSprint(sprintRes.data.data || sprintRes.data);
+      if (impactRes) setDecisionImpact(impactRes.data);
     } catch (error) {
       console.error('Failed to fetch sprint:', error);
     } finally {
@@ -25,38 +29,23 @@ function SprintDetail() {
     }
   };
 
-  const handleAssignIssues = async () => {
-    try {
-      await api.post(`/api/agile/sprints/${id}/assign-issues/`);
-      fetchSprint();
-    } catch (error) {
-      console.error('Failed to assign issues:', error);
-    }
+  const handleDragStart = (issue) => {
+    setDraggedIssue(issue);
   };
 
-  useEffect(() => {
-    fetchSprint();
-  }, [id]);
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
 
-  const handleCompleteSprint = async () => {
-    setCompleting(true);
+  const handleDrop = async (status) => {
+    if (!draggedIssue) return;
+    
     try {
-      if (sprint.issues) {
-        for (const issue of sprint.issues) {
-          if (issue.status !== 'done') {
-            await api.put(`/api/agile/issues/${issue.id}/`, { status: 'done' });
-          }
-        }
-      }
-
-      await api.put(`/api/agile/sprints/${id}/detail/`, { status: 'completed' });
-      
-      fetchSprint();
-      setShowConfirm(false);
+      await api.put(`/api/agile/issues/${draggedIssue.id}/`, { status });
+      setDraggedIssue(null);
+      fetchData();
     } catch (error) {
-      console.error('Failed to complete sprint:', error);
-    } finally {
-      setCompleting(false);
+      console.error('Failed to update issue:', error);
     }
   };
 
@@ -69,195 +58,119 @@ function SprintDetail() {
   }
 
   if (!sprint) {
-    return (
-      <div className="text-center py-20">
-        <h2 className="text-3xl font-black text-gray-900">Sprint not found</h2>
-      </div>
-    );
+    return <div className="text-center py-20"><h2 className="text-3xl font-black text-gray-900">Sprint not found</h2></div>;
   }
 
-  const issueCount = sprint.issue_count || sprint.issues?.length || 0;
-  const completedCount = sprint.completed || 0;
-  const completionPercentage = issueCount > 0 ? Math.round((completedCount / issueCount) * 100) : 0;
-  const isCompleted = sprint.status === 'completed';
+  const issues = sprint.issues || [];
+  const statuses = ['backlog', 'todo', 'in_progress', 'in_review', 'testing', 'done'];
+  const statusLabels = { backlog: 'Backlog', todo: 'To Do', in_progress: 'In Progress', in_review: 'In Review', testing: 'Testing', done: 'Done' };
+  const statusColors = { backlog: 'bg-gray-50', todo: 'bg-gray-100', in_progress: 'bg-blue-50', in_review: 'bg-purple-50', testing: 'bg-yellow-50', done: 'bg-green-50' };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         {/* Header */}
-        <div className="mb-12">
-          <a href="/sprint-history" className="text-sm text-gray-600 hover:text-gray-900 font-medium mb-4 inline-block">← Back to Sprint History</a>
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-6xl font-black text-gray-900 mb-3 tracking-tight">{sprint.name}</h1>
-              <p className="text-lg text-gray-600 font-light">{sprint.project_name} • {sprint.start_date} to {sprint.end_date}</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleAssignIssues}
-                className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 font-bold uppercase text-sm transition-all"
-              >
-                Link Unlinked Issues
-              </button>
-              {!isCompleted && (
-                <button
-                  onClick={() => setShowConfirm(true)}
-                  disabled={completing}
-                  className="px-8 py-4 bg-green-600 text-white hover:bg-green-700 font-bold uppercase text-sm transition-all disabled:opacity-50"
-                >
-                  {completing ? 'Completing...' : 'Complete Sprint'}
-                </button>
-              )}
-            </div>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-5xl font-black text-gray-900 mb-2">{sprint.name}</h1>
+          <p className="text-gray-600 font-medium">{sprint.project_name} • {sprint.start_date} to {sprint.end_date}</p>
         </div>
 
-        {/* Confirmation Dialog */}
-        {showConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-8 w-full max-w-md">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Complete Sprint?</h2>
-              <p className="text-gray-600 mb-8">This will mark all incomplete issues as done and close the sprint.</p>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  disabled={completing}
-                  className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCompleteSprint}
-                  disabled={completing}
-                  className="px-6 py-3 bg-green-600 text-white hover:bg-green-700 font-bold uppercase text-sm transition-all disabled:opacity-50"
-                >
-                  {completing ? 'Completing...' : 'Complete'}
-                </button>
+        {/* Metrics */}
+        <div className="grid grid-cols-5 gap-4 mb-8">
+          <MetricCard label="Total Issues" value={sprint.issue_count || 0} />
+          <MetricCard label="Completed" value={sprint.completed || 0} color="green" />
+          <MetricCard label="In Progress" value={sprint.in_progress || 0} color="blue" />
+          <MetricCard label="Blocked" value={sprint.blocked || 0} color="red" />
+          <MetricCard label="Decisions" value={sprint.decisions || 0} color="purple" />
+        </div>
+
+        {/* Decision Impact */}
+        {decisionImpact && (
+          <div className="p-6 bg-white border border-gray-200 mb-8">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Decision Impact</h3>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="p-4 bg-blue-50 border border-blue-200">
+                <p className="text-2xl font-black text-blue-600">{decisionImpact.total_effort_added || 0}</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase">Effort Added</p>
+              </div>
+              <div className="p-4 bg-green-50 border border-green-200">
+                <p className="text-2xl font-black text-green-600">{decisionImpact.total_effort_removed || 0}</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase">Effort Removed</p>
+              </div>
+              <div className="p-4 bg-red-50 border border-red-200">
+                <p className="text-2xl font-black text-red-600">{decisionImpact.blocked_issues || 0}</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase">Blocked Issues</p>
+              </div>
+              <div className="p-4 bg-purple-50 border border-purple-200">
+                <p className="text-2xl font-black text-purple-600">{decisionImpact.enabled_issues || 0}</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase">Enabled Issues</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Sprint Goal */}
-        {sprint.goal && (
-          <div className="p-8 bg-white border border-gray-200 mb-12">
-            <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">Sprint Goal</h3>
-            <p className="text-xl text-gray-900 font-light">{sprint.goal}</p>
-          </div>
-        )}
-
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-4 gap-6 mb-12">
-          <div className="p-8 bg-white border border-gray-200 text-center">
-            <p className="text-4xl font-black text-gray-900 mb-2">{issueCount}</p>
-            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Total Issues</p>
-          </div>
-
-          <div className="p-8 bg-white border border-gray-200 text-center">
-            <p className="text-4xl font-black text-green-600 mb-2">{completedCount}</p>
-            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Completed</p>
-          </div>
-
-          <div className="p-8 bg-white border border-gray-200 text-center">
-            <p className="text-4xl font-black text-amber-600 mb-2">{sprint.in_progress || 0}</p>
-            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">In Progress</p>
-          </div>
-
-          <div className="p-8 bg-white border border-gray-200 text-center">
-            <p className="text-4xl font-black text-red-600 mb-2">{sprint.blocked || 0}</p>
-            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Blocked</p>
-          </div>
-        </div>
-
-        {/* Burndown Chart */}
-        <div className="mb-12">
-          <BurndownChart sprint={sprint} />
-        </div>
-
-        {/* Completion Progress */}
-        <div className="p-8 bg-white border border-gray-200 mb-12">
-          <div className="flex justify-between mb-4">
-            <span className="text-sm font-bold text-gray-900 uppercase tracking-wide">Completion Rate</span>
-            <span className="text-sm font-bold text-gray-900">{completionPercentage}%</span>
-          </div>
-          <div className="w-full h-3 bg-gray-200">
-            <div
-              style={{ width: `${completionPercentage}%` }}
-              className="h-full bg-green-600 transition-all duration-300"
-            />
-          </div>
-        </div>
-
-        {/* Issues List */}
-        <div className="p-8 bg-white border border-gray-200">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-black text-gray-900">Sprint Issues ({sprint.issue_count || sprint.issues?.length || 0})</h2>
-            {!isCompleted && (
-              <button
-                onClick={() => setShowAddIssues(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
-              >
-                <PlusIcon className="w-4 h-4" />
-                Add Issues
-              </button>
-            )}
-          </div>
-
-          {!sprint.issues || sprint.issues.length === 0 ? (
-            <p className="text-gray-600 font-medium">No issues in this sprint</p>
-          ) : (
-            <div className="space-y-4">
-              {sprint.issues.map(issue => (
-                <div key={issue.id} className="p-6 bg-white border border-gray-200 hover:border-gray-900 transition-all">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">{issue.key}</div>
-                      <h3 className="text-lg font-bold text-gray-900">{issue.title}</h3>
-                    </div>
-                    <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${getStatusBgColor(issue.status)}`}>
-                      {issue.status.replace('_', ' ')}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-6 text-sm text-gray-600 font-medium">
-                    {issue.assignee && <div>Assigned to: {issue.assignee}</div>}
-                    {issue.story_points && <div>{issue.story_points} pts</div>}
-                  </div>
-                </div>
-              ))}
+        {/* Kanban Board */}
+        <div className="grid grid-cols-6 gap-4">
+          {statuses.map(status => (
+            <div 
+              key={status} 
+              className={`p-4 ${statusColors[status]} border border-gray-200 min-h-96 rounded`}
+              onDragOver={handleDragOver}
+              onDrop={() => handleDrop(status)}
+            >
+              <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
+                {statusLabels[status]} ({issues.filter(i => i.status === status).length})
+              </h3>
+              <div className="space-y-3">
+                {issues.filter(i => i.status === status).map(issue => (
+                  <IssueCard 
+                    key={issue.id} 
+                    issue={issue}
+                    onDragStart={() => handleDragStart(issue)}
+                  />
+                ))}
+              </div>
             </div>
-          )}
-        </div>
-
-        {showAddIssues && (
-          <AddIssuesToSprintModal
-            sprintId={id}
-            projectId={sprint.project_id}
-            onClose={() => setShowAddIssues(false)}
-            onSuccess={() => fetchSprint()}
-          />
-        )}
-        <div className="mt-12">
-          <a href={`/projects/${sprint.project_id}`} className="inline-block px-8 py-4 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all">
-            View Project →
-          </a>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function getStatusBgColor(status) {
-  switch (status) {
-    case 'done':
-      return 'bg-green-100 text-green-800';
-    case 'in_progress':
-      return 'bg-amber-100 text-amber-800';
-    case 'in_review':
-      return 'bg-blue-100 text-blue-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
+function MetricCard({ label, value, color = 'gray' }) {
+  const colors = {
+    gray: 'bg-gray-100 text-gray-900',
+    green: 'bg-green-100 text-green-900',
+    blue: 'bg-blue-100 text-blue-900',
+    red: 'bg-red-100 text-red-900',
+    purple: 'bg-purple-100 text-purple-900'
+  };
+  return (
+    <div className={`p-4 ${colors[color]} border border-gray-200 text-center`}>
+      <p className="text-3xl font-black mb-1">{value}</p>
+      <p className="text-xs font-semibold uppercase text-gray-600">{label}</p>
+    </div>
+  );
+}
+
+function IssueCard({ issue, onDragStart }) {
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      className="block p-3 bg-white border border-gray-200 hover:border-gray-900 hover:shadow-md transition-all cursor-move"
+    >
+      <a href={`/issues/${issue.id}`} onClick={(e) => e.stopPropagation()}>
+        <div className="text-xs font-bold text-gray-600 uppercase mb-1">{issue.key}</div>
+        <h4 className="font-bold text-gray-900 text-sm mb-2 line-clamp-2">{issue.title}</h4>
+        <div className="flex justify-between items-center text-xs text-gray-600">
+          <span>{issue.priority}</span>
+          {issue.story_points && <span className="font-semibold">{issue.story_points} pts</span>}
+        </div>
+      </a>
+    </div>
+  );
 }
 
 export default SprintDetail;

@@ -46,8 +46,9 @@ def login(request):
     
     if not user:
         try:
-            user_obj = User.objects.get(email__iexact=username)
-            user = authenticate(username=user_obj.username, password=password)
+            user_obj = User.objects.filter(email__iexact=username).first()
+            if user_obj:
+                user = authenticate(username=user_obj.username, password=password)
         except User.DoesNotExist:
             pass
     

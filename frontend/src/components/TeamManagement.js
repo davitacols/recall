@@ -13,7 +13,7 @@ export default function TeamManagement() {
 
   const fetchTeamMembers = async () => {
     try {
-      const response = await fetch('/api/team/members/', {
+      const response = await fetch('/api/organizations/team/members/', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
       });
       const data = await response.json();
@@ -27,7 +27,7 @@ export default function TeamManagement() {
 
   const changeUserRole = async (userId, newRole) => {
     try {
-      const response = await fetch(`/api/team/users/${userId}/role/`, {
+      const response = await fetch(`/api/organizations/team/users/${userId}/role/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -49,7 +49,7 @@ export default function TeamManagement() {
     if (!window.confirm('Are you sure you want to remove this user?')) return;
     
     try {
-      const response = await fetch(`/api/team/users/${userId}/remove/`, {
+      const response = await fetch(`/api/organizations/team/users/${userId}/remove/`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
       });

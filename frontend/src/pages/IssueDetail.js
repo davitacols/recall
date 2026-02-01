@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import DecisionImpactPanel from '../components/DecisionImpactPanel';
 
 function IssueDetail() {
   const { issueId } = useParams();
@@ -124,7 +125,7 @@ function IssueDetail() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto px-4 md:px-8 py-12 md:py-16">
+      <div className="max-w-6xl mx-auto px-4 md:px-8 py-12 md:py-16">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button
@@ -178,7 +179,7 @@ function IssueDetail() {
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-8">
+        <div className="grid grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="col-span-2 space-y-8">
             {/* Description */}
@@ -233,8 +234,11 @@ function IssueDetail() {
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
+          {/* Right Column */}
+          <div className="col-span-2 space-y-6">
+            {/* Decision Impacts */}
+            <DecisionImpactPanel issueId={issueId} issueTitle={issue.title} />
+
             {/* Status */}
             <div className="p-6 bg-white border border-gray-200">
               <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
@@ -246,9 +250,11 @@ function IssueDetail() {
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
                 >
+                  <option value="backlog">Backlog</option>
                   <option value="todo">To Do</option>
                   <option value="in_progress">In Progress</option>
                   <option value="in_review">In Review</option>
+                  <option value="testing">Testing</option>
                   <option value="done">Done</option>
                 </select>
               )}
@@ -274,11 +280,17 @@ function IssueDetail() {
               )}
             </div>
 
+            {/* Issue Type */}
+            <div className="p-6 bg-white border border-gray-200">
+              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Type</h3>
+              <p className="text-gray-600 capitalize">{issue.issue_type || 'task'}</p>
+            </div>
+
             {/* Assignee */}
             <div className="p-6 bg-white border border-gray-200">
               <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Assignee</h3>
               {!editing ? (
-                <p className="text-gray-600">{issue.assignee || 'Unassigned'}</p>
+                <p className="text-gray-600">{issue.assignee_name || 'Unassigned'}</p>
               ) : (
                 <select
                   value={formData.assignee_id || ''}
@@ -298,7 +310,7 @@ function IssueDetail() {
             {/* Reporter */}
             <div className="p-6 bg-white border border-gray-200">
               <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Reporter</h3>
-              <p className="text-gray-600">{issue.reporter}</p>
+              <p className="text-gray-600">{issue.reporter_name}</p>
             </div>
 
             {/* Story Points */}
@@ -342,6 +354,123 @@ function IssueDetail() {
               <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Created</h3>
               <p className="text-gray-600 text-sm">{new Date(issue.created_at).toLocaleString()}</p>
             </div>
+
+            {/* Code Review Section */}
+            {issue.status === 'in_review' && (
+              <>
+                {/* Code Review Status */}
+                <div className="p-6 bg-white border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Review Status</h3>
+                  {!editing ? (
+                    <p className={`capitalize font-semibold ${
+                      issue.code_review_status === 'approved' ? 'text-green-600' :
+                      issue.code_review_status === 'changes_requested' ? 'text-red-600' :
+                      issue.code_review_status === 'merged' ? 'text-blue-600' :
+                      'text-yellow-600'
+                    }`}>{issue.code_review_status || 'pending'}</p>
+                  ) : (
+                    <select
+                      value={formData.code_review_status || ''}
+                      onChange={(e) => setFormData({ ...formData, code_review_status: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    >
+                      <option value="pending">Pending Review</option>
+                      <option value="approved">Approved</option>
+                      <option value="changes_requested">Changes Requested</option>
+                      <option value="merged">Merged</option>
+                    </select>
+                  )}
+                </div>
+
+                {/* PR URL */}
+                <div className="p-6 bg-white border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Pull Request</h3>
+                  {!editing ? (
+                    issue.pr_url ? (
+                      <a href={issue.pr_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+                        {issue.pr_url}
+                      </a>
+                    ) : (
+                      <p className="text-gray-600">-</p>
+                    )
+                  ) : (
+                    <input
+                      type="url"
+                      value={formData.pr_url || ''}
+                      onChange={(e) => setFormData({ ...formData, pr_url: e.target.value })}
+                      placeholder="https://github.com/..."
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    />
+                  )}
+                </div>
+
+                {/* Branch Name */}
+                <div className="p-6 bg-white border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Branch</h3>
+                  {!editing ? (
+                    <p className="text-gray-600 font-mono text-sm">{issue.branch_name || '-'}</p>
+                  ) : (
+                    <input
+                      type="text"
+                      value={formData.branch_name || ''}
+                      onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
+                      placeholder="feature/branch-name"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    />
+                  )}
+                </div>
+
+                {/* CI Status */}
+                <div className="p-6 bg-white border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">CI/CD Status</h3>
+                  {!editing ? (
+                    <div className="space-y-2">
+                      <p className={`capitalize font-semibold ${
+                        issue.ci_status === 'passed' ? 'text-green-600' :
+                        issue.ci_status === 'failed' ? 'text-red-600' :
+                        issue.ci_status === 'running' ? 'text-blue-600' :
+                        'text-gray-600'
+                      }`}>{issue.ci_status || '-'}</p>
+                      {issue.ci_url && (
+                        <a href={issue.ci_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm break-all">
+                          View Pipeline
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.ci_status || ''}
+                      onChange={(e) => setFormData({ ...formData, ci_status: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    >
+                      <option value="">-</option>
+                      <option value="pending">Pending</option>
+                      <option value="running">Running</option>
+                      <option value="passed">Passed</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                  )}
+                </div>
+
+                {/* Test Coverage */}
+                <div className="p-6 bg-white border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Test Coverage</h3>
+                  {!editing ? (
+                    <p className="text-gray-600">{issue.test_coverage ? `${issue.test_coverage}%` : '-'}</p>
+                  ) : (
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.test_coverage || ''}
+                      onChange={(e) => setFormData({ ...formData, test_coverage: e.target.value ? parseInt(e.target.value) : null })}
+                      placeholder="0-100"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    />
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Save Button */}
             {editing && (

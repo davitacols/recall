@@ -19,7 +19,7 @@ export default function ActionItemManager({ conversationId, teamMembers }) {
   const fetchActionItems = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/conversations/${conversationId}/action-items/`);
+      const response = await api.get(`/api/recall/conversations/${conversationId}/action-items/`);
       setItems(response.data);
     } catch (error) {
       console.error('Failed to fetch action items:', error);
@@ -34,7 +34,7 @@ export default function ActionItemManager({ conversationId, teamMembers }) {
 
     try {
       const response = await api.post(
-        `/conversations/${conversationId}/action-items/`,
+        `/api/recall/conversations/${conversationId}/action-items/`,
         newItem
       );
       setItems([...items, response.data]);
@@ -52,7 +52,7 @@ export default function ActionItemManager({ conversationId, teamMembers }) {
 
   const handleUpdateItem = async (itemId, updates) => {
     try {
-      const response = await api.put(`/action-items/${itemId}/`, updates);
+      const response = await api.put(`/api/recall/action-items/${itemId}/`, updates);
       setItems(items.map(item => item.id === itemId ? response.data : item));
     } catch (error) {
       console.error('Failed to update action item:', error);
@@ -61,7 +61,7 @@ export default function ActionItemManager({ conversationId, teamMembers }) {
 
   const handleDeleteItem = async (itemId) => {
     try {
-      await api.delete(`/action-items/${itemId}/`);
+      await api.delete(`/api/recall/action-items/${itemId}/`);
       setItems(items.filter(item => item.id !== itemId));
     } catch (error) {
       console.error('Failed to delete action item:', error);

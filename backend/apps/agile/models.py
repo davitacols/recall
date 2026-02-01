@@ -103,32 +103,46 @@ class Issue(models.Model):
     ]
     
     STATUS_CHOICES = [
+        ('backlog', 'Backlog'),
         ('todo', 'To Do'),
         ('in_progress', 'In Progress'),
         ('in_review', 'In Review'),
+        ('testing', 'Testing'),
         ('done', 'Done'),
+    ]
+    
+    ISSUE_TYPE_CHOICES = [
+        ('epic', 'Epic'),
+        ('story', 'Story'),
+        ('task', 'Task'),
+        ('bug', 'Bug'),
+        ('subtask', 'Sub-task'),
     ]
     
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='issues')
     board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='issues')
     column = models.ForeignKey(Column, on_delete=models.SET_NULL, null=True, related_name='issues')
+    parent_issue = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='subtasks')
     
     key = models.CharField(max_length=20)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    issue_type = models.CharField(max_length=20, choices=ISSUE_TYPE_CHOICES, default='task')
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='todo', db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='backlog', db_index=True)
     
     assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_issues')
     reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reported_issues')
     
     story_points = models.IntegerField(null=True, blank=True)
     sprint = models.ForeignKey(Sprint, on_delete=models.SET_NULL, null=True, blank=True, related_name='issues')
+    in_backlog = models.BooleanField(default=True, db_index=True)
     
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     due_date = models.DateField(null=True, blank=True)
+    status_changed_at = models.DateTimeField(auto_now=True)
     
     # Developer-focused fields
     branch_name = models.CharField(max_length=255, blank=True, help_text='Git branch name')
@@ -160,6 +174,21 @@ class Issue(models.Model):
     
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        old_status = None
+        
+        if not is_new:
+            try:
+                old_issue = Issue.objects.get(pk=self.pk)
+                old_status = old_issue.status
+            except Issue.DoesNotExist:
+                pass
+        
+        if self.sprint and self.in_backlog:
+            self.in_backlog = False
+        
+        if not self.sprint and not self.in_backlog and self.status == 'backlog':
+            self.in_backlog = True
+        
         super().save(*args, **kwargs)
         
         try:
@@ -175,6 +204,8 @@ class Issue(models.Model):
                     {'project_id': self.project_id}
                 )
             else:
+                if old_status and old_status != self.status:
+                    trigger_automation(self, 'issue_status_changed', self.reporter, {'old_status': old_status, 'new_status': self.status})
                 trigger_automation(self, 'issue_updated', self.reporter)
         except Exception:
             pass
@@ -475,3 +506,122 @@ class Deployment(models.Model):
     class Meta:
         db_table = 'deployments'
         ordering = ['-created_at']
+
+
+class Backlog(models.Model):
+    """Product backlog for sprint planning"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='backlogs')
+    
+    issues = models.ManyToManyField(Issue, related_name='backlogs')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'backlogs'
+        unique_together = ['organization', 'project']
+
+class WorkflowTransition(models.Model):
+    """Define valid status transitions for issues"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    
+    from_status = models.CharField(max_length=20)
+    to_status = models.CharField(max_length=20)
+    issue_type = models.CharField(max_length=20, choices=Issue.ISSUE_TYPE_CHOICES, blank=True)
+    
+    requires_assignee = models.BooleanField(default=False)
+    requires_story_points = models.BooleanField(default=False)
+    requires_comment = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'workflow_transitions'
+        unique_together = ['organization', 'from_status', 'to_status', 'issue_type']
+        indexes = [
+            models.Index(fields=['organization', 'from_status']),
+        ]
+
+
+class DecisionImpact(models.Model):
+    """Track how decisions impact issues and sprints"""
+    IMPACT_TYPE_CHOICES = [
+        ('enables', 'Enables'),
+        ('blocks', 'Blocks'),
+        ('changes', 'Changes Requirements'),
+        ('accelerates', 'Accelerates'),
+        ('delays', 'Delays'),
+    ]
+    
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    decision = models.ForeignKey('decisions.Decision', on_delete=models.CASCADE, related_name='impacts')
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='decision_impacts')
+    sprint = models.ForeignKey(Sprint, on_delete=models.SET_NULL, null=True, blank=True, related_name='decision_impacts')
+    
+    impact_type = models.CharField(max_length=20, choices=IMPACT_TYPE_CHOICES)
+    description = models.TextField()
+    
+    # Metrics
+    estimated_effort_change = models.IntegerField(default=0, help_text='Story points added/removed')
+    estimated_delay_days = models.IntegerField(default=0, help_text='Days of delay if blocking')
+    
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'decision_impacts'
+        unique_together = ['decision', 'issue']
+        indexes = [
+            models.Index(fields=['organization', 'decision']),
+            models.Index(fields=['organization', 'issue']),
+        ]
+
+class IssueDecisionHistory(models.Model):
+    """Track how decisions changed issue status/requirements"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='decision_history')
+    decision = models.ForeignKey('decisions.Decision', on_delete=models.CASCADE)
+    
+    change_type = models.CharField(max_length=50, choices=[
+        ('status_changed', 'Status Changed'),
+        ('priority_changed', 'Priority Changed'),
+        ('points_changed', 'Story Points Changed'),
+        ('blocked', 'Blocked'),
+        ('unblocked', 'Unblocked'),
+    ])
+    
+    old_value = models.CharField(max_length=255, blank=True)
+    new_value = models.CharField(max_length=255, blank=True)
+    reason = models.TextField()
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'issue_decision_history'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', 'issue', '-created_at']),
+        ]
+
+class SprintDecisionSummary(models.Model):
+    """Summary of how decisions impacted sprint outcomes"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    sprint = models.OneToOneField(Sprint, on_delete=models.CASCADE, related_name='decision_summary')
+    
+    decisions_made = models.IntegerField(default=0)
+    decisions_impacting_sprint = models.IntegerField(default=0)
+    
+    total_effort_added = models.IntegerField(default=0, help_text='Total story points added by decisions')
+    total_effort_removed = models.IntegerField(default=0, help_text='Total story points removed by decisions')
+    
+    issues_blocked_by_decisions = models.IntegerField(default=0)
+    issues_enabled_by_decisions = models.IntegerField(default=0)
+    
+    velocity_impact_percent = models.FloatField(default=0.0, help_text='% change in velocity due to decisions')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'sprint_decision_summaries'

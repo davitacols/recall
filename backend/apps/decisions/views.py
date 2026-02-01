@@ -11,9 +11,8 @@ from apps.organizations.activity import log_activity
 @api_view(['GET', 'POST'])
 def decisions(request):
     if request.method == 'GET':
-        queryset = Decision.objects.filter(
-            organization=request.user.organization
-        )
+        # Get decisions for the user's organization only
+        queryset = Decision.objects.filter(organization=request.user.organization)
         
         # Filter by status
         decision_status = request.GET.get('status')

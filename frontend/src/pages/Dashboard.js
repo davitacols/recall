@@ -16,10 +16,8 @@ import {
 
 function Dashboard() {
   const { user } = useAuth();
-  const [conversations, setConversations] = useState([]);
-  const [decisions, setDecisions] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [currentSprint, setCurrentSprint] = useState(null);
-  const [todayActivity, setTodayActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalConversations: 0,
@@ -34,49 +32,29 @@ function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [convRes, decRes, sprintRes] = await Promise.all([
-        api.get('/api/conversations/').catch(() => ({ data: [] })),
-        api.get('/api/decisions/').catch(() => ({ data: [] })),
+      const [activityRes, sprintRes] = await Promise.all([
+        api.get('/api/organizations/activity/feed/').catch(() => ({ data: { activities: [] } })),
         api.get('/api/agile/current-sprint/').catch(() => ({ data: null }))
       ]);
       
-      const convData = convRes.data.results || convRes.data.data || convRes.data || [];
-      const allConvs = Array.isArray(convData) ? convData : [];
-      const decData = decRes.data.results || decRes.data.data || decRes.data || [];
-      const allDecs = Array.isArray(decData) ? decData : [];
-      
-      // Get today's activity
-      const today = new Date().toDateString();
-      const todayConvs = allConvs.filter(c => c && c.created_at && new Date(c.created_at).toDateString() === today);
-      const todayDecs = allDecs.filter(d => d && d.created_at && new Date(d.created_at).toDateString() === today);
-      
-      const activity = [
-        ...todayConvs.map(c => ({
-          type: 'conversation',
-          title: c.title,
-          author: c.author,
-          time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          postType: c.post_type
-        })),
-        ...todayDecs.map(d => ({
-          type: 'decision',
-          title: d.title,
-          author: d.decision_maker,
-          time: new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: d.status
-        }))
-      ].sort((a, b) => new Date(b.time) - new Date(a.time));
+      const allActivities = activityRes.data.activities || [];
+      const recentActivities = allActivities.slice(0, 15).map(activity => ({
+        type: activity.content?.type || activity.action_type,
+        title: activity.content?.title || activity.action_display,
+        author: activity.actor?.name,
+        time: new Date(activity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: activity.content?.status || activity.content?.post_type,
+        id: activity.content?.id
+      }));
       
       setStats({
-        totalConversations: allConvs.length,
-        totalDecisions: allDecs.length,
-        activeIssues: currentSprint?.issue_count || 0,
+        totalConversations: allActivities.filter(a => a.content?.type === 'conversation').length,
+        totalDecisions: allActivities.filter(a => a.content?.type === 'decision').length,
+        activeIssues: sprintRes.data?.issue_count || 0,
         teamMembers: 0
       });
       
-      setTodayActivity(activity);
-      setConversations(allConvs.filter(c => c && c.id).slice(0, 5));
-      setDecisions(allDecs.filter(d => d && d.id).slice(0, 5));
+      setActivities(recentActivities);
       setCurrentSprint(sprintRes.data);
     } catch (error) {
       console.error('Failed to fetch:', error);
@@ -87,95 +65,90 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '384px' }}>
+        <div style={{ width: '32px', height: '32px', border: '2px solid #111827', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Hero Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
+    <div>
+      <div style={{ borderBottom: '1px solid var(--border-color)', paddingLeft: '32px', paddingRight: '32px', paddingTop: '32px', paddingBottom: '32px' }}>
+        <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <h1 className="text-4xl font-black text-gray-900 mb-1">Welcome back, {user?.full_name?.split(' ')[0]}</h1>
-              <p className="text-gray-600">Your organizational memory at a glance</p>
+              <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '4px' }}>Welcome back, {user?.full_name?.split(' ')[0]}</h1>
+              <p style={{ color: 'var(--text-secondary)' }}>Your organizational memory at a glance</p>
             </div>
-            <Link to="/conversations/new" className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all">
+            <Link to="/conversations/new" style={{ paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', backgroundColor: '#111827', color: '#ffffff', textDecoration: 'none', fontWeight: 700, textTransform: 'uppercase', fontSize: '14px', transition: 'all 0.2s', display: 'inline-block' }}>
               + New Conversation
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white border-2 border-gray-900 p-6 hover:shadow-md transition-all shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Conversations</span>
-              <ChatBubbleLeftIcon className="w-5 h-5 text-blue-600" />
+      <div style={{ maxWidth: '80rem', margin: '0 auto', paddingLeft: '32px', paddingRight: '32px', paddingTop: '32px', paddingBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+          <div style={{ backgroundColor: 'var(--bg-primary)', border: '2px solid #111827', padding: '24px', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Conversations</span>
+              <ChatBubbleLeftIcon style={{ width: '20px', height: '20px', color: '#2563eb' }} />
             </div>
-            <p className="text-3xl font-black text-gray-900">{stats.totalConversations}</p>
-            <p className="text-xs text-gray-500 mt-2">Organizational knowledge</p>
+            <p style={{ fontSize: '30px', fontWeight: 900, color: 'var(--text-primary)' }}>{stats.totalConversations}</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Organizational knowledge</p>
           </div>
           
-          <div className="bg-white border-2 border-gray-900 p-6 hover:shadow-md transition-all shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Decisions</span>
-              <DocumentTextIcon className="w-5 h-5 text-purple-600" />
+          <div style={{ backgroundColor: 'var(--bg-primary)', border: '2px solid #111827', padding: '24px', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Decisions</span>
+              <DocumentTextIcon style={{ width: '20px', height: '20px', color: '#a855f7' }} />
             </div>
-            <p className="text-3xl font-black text-gray-900">{stats.totalDecisions}</p>
-            <p className="text-xs text-gray-500 mt-2">Tracked & documented</p>
+            <p style={{ fontSize: '30px', fontWeight: 900, color: 'var(--text-primary)' }}>{stats.totalDecisions}</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Tracked & documented</p>
           </div>
           
-          <div className="bg-white border-2 border-gray-900 p-6 hover:shadow-md transition-all shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Active Issues</span>
-              <ListBulletIcon className="w-5 h-5 text-orange-600" />
+          <div style={{ backgroundColor: 'var(--bg-primary)', border: '2px solid #111827', padding: '24px', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Issues</span>
+              <ListBulletIcon style={{ width: '20px', height: '20px', color: '#ea580c' }} />
             </div>
-            <p className="text-3xl font-black text-gray-900">{currentSprint?.issue_count || 0}</p>
-            <p className="text-xs text-gray-500 mt-2">In current sprint</p>
+            <p style={{ fontSize: '30px', fontWeight: 900, color: 'var(--text-primary)' }}>{currentSprint?.issue_count || 0}</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>In current sprint</p>
           </div>
           
-          <div className="bg-white border-2 border-gray-900 p-6 hover:shadow-md transition-all shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Memory Health</span>
-              <SparklesIcon className="w-5 h-5 text-green-600" />
+          <div style={{ backgroundColor: 'var(--bg-primary)', border: '2px solid #111827', padding: '24px', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Memory Health</span>
+              <SparklesIcon style={{ width: '20px', height: '20px', color: '#16a34a' }} />
             </div>
-            <p className="text-3xl font-black text-gray-900">85%</p>
-            <p className="text-xs text-gray-500 mt-2">Knowledge captured</p>
+            <p style={{ fontSize: '30px', fontWeight: 900, color: 'var(--text-primary)' }}>85%</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Knowledge captured</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Today's Activity */}
-            <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
-              <h2 className="text-xl font-black text-gray-900 mb-6">Today's Activity</h2>
-              
-              {todayActivity.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-600">No activity yet today</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <div style={{ backgroundColor: 'var(--bg-primary)', border: '2px solid #111827', padding: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '24px' }}>Organization Activity</h2>
+              {activities.length === 0 ? (
+                <div style={{ textAlign: 'center', paddingTop: '32px', paddingBottom: '32px' }}>
+                  <p style={{ color: 'var(--text-secondary)' }}>No activity yet</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {todayActivity.map((activity, idx) => (
-                    <div key={idx} className="flex items-start gap-4 p-4 border border-gray-200 hover:border-gray-900 transition-all">
-                      <div className="w-2 h-2 bg-gray-900 rounded-full mt-2 flex-shrink-0"></div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-gray-900 truncate">{activity.title}</h3>
-                          <span className="text-xs text-gray-500 flex-shrink-0">{activity.time}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {activities.map((activity, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px', border: '1px solid var(--border-color)', transition: 'all 0.2s' }}>
+                      <div style={{ width: '8px', height: '8px', backgroundColor: '#111827', borderRadius: '50%', marginTop: '8px', flexShrink: 0 }}></div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activity.title}</h3>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>{activity.time}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs font-bold uppercase bg-gray-100 text-gray-700 px-2 py-1">
-                            {activity.postType || activity.status}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', backgroundColor: 'var(--hover-bg)', color: 'var(--text-primary)', paddingLeft: '8px', paddingRight: '8px', paddingTop: '4px', paddingBottom: '4px' }}>
+                            {activity.status || activity.type}
                           </span>
-                          <span className="text-xs text-gray-600">by {activity.author}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>by {activity.author}</span>
                         </div>
                       </div>
                     </div>
@@ -183,112 +156,52 @@ function Dashboard() {
                 </div>
               )}
             </div>
-            {/* Current Sprint */}
+
             {currentSprint && (
-              <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
+              <div style={{ backgroundColor: 'var(--bg-primary)', border: '2px solid #111827', padding: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
                   <div>
-                    <h2 className="text-2xl font-black text-gray-900">{currentSprint.name}</h2>
-                    <p className="text-sm text-gray-600 mt-1">{currentSprint.start_date} → {currentSprint.end_date}</p>
+                    <h2 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--text-primary)' }}>{currentSprint.name}</h2>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>{currentSprint.start_date} → {currentSprint.end_date}</p>
                   </div>
-                  <Link to="/sprint" className="flex items-center gap-2 text-gray-900 hover:text-black font-bold text-sm">
-                    View <ArrowRightIcon className="w-4 h-4" />
+                  <Link to="/sprint" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#111827', textDecoration: 'none', fontWeight: 700, fontSize: '14px' }}>
+                    View <ArrowRightIcon style={{ width: '16px', height: '16px' }} />
                   </Link>
                 </div>
                 
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="bg-green-50 border border-green-200 p-4 text-center shadow-sm">
-                    <p className="text-2xl font-black text-green-600">{currentSprint.completed_count || currentSprint.completed || 0}</p>
-                    <p className="text-xs text-gray-600 mt-1">Completed</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+                  <div style={{ backgroundColor: '#dcfce7', border: '1px solid #86efac', padding: '16px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <p style={{ fontSize: '24px', fontWeight: 900, color: '#16a34a' }}>{currentSprint.completed_count || currentSprint.completed || 0}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Completed</p>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 p-4 text-center shadow-sm">
-                    <p className="text-2xl font-black text-blue-600">{currentSprint.in_progress || 0}</p>
-                    <p className="text-xs text-gray-600 mt-1">In Progress</p>
+                  <div style={{ backgroundColor: '#dbeafe', border: '1px solid #93c5fd', padding: '16px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <p style={{ fontSize: '24px', fontWeight: 900, color: '#2563eb' }}>{currentSprint.in_progress || 0}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>In Progress</p>
                   </div>
-                  <div className="bg-gray-50 border border-gray-200 p-4 text-center shadow-sm">
-                    <p className="text-2xl font-black text-gray-600">{(currentSprint.issue_count || 0) - (currentSprint.completed_count || currentSprint.completed || 0) - (currentSprint.in_progress || 0) - (currentSprint.blocked_count || currentSprint.blocked || 0)}</p>
-                    <p className="text-xs text-gray-600 mt-1">To Do</p>
+                  <div style={{ backgroundColor: 'var(--hover-bg)', border: '1px solid var(--border-color)', padding: '16px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <p style={{ fontSize: '24px', fontWeight: 900, color: 'var(--text-secondary)' }}>{(currentSprint.issue_count || 0) - (currentSprint.completed_count || currentSprint.completed || 0) - (currentSprint.in_progress || 0) - (currentSprint.blocked_count || currentSprint.blocked || 0)}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>To Do</p>
                   </div>
-                  <div className="bg-amber-50 border border-amber-200 p-4 text-center shadow-sm">
-                    <p className="text-2xl font-black text-amber-600">{currentSprint.blocked_count || currentSprint.blocked || 0}</p>
-                    <p className="text-xs text-gray-600 mt-1">Blocked</p>
+                  <div style={{ backgroundColor: '#fef3c7', border: '1px solid #fcd34d', padding: '16px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <p style={{ fontSize: '24px', fontWeight: 900, color: '#d97706' }}>{currentSprint.blocked_count || currentSprint.blocked || 0}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Blocked</p>
                   </div>
                 </div>
               </div>
             )}
-
-            {/* Recent Conversations */}
-            <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-black text-gray-900">Recent Conversations</h2>
-                <Link to="/conversations" className="text-gray-600 hover:text-gray-900 font-bold text-sm">View All →</Link>
-              </div>
-              
-              {conversations.length === 0 ? (
-                <div className="text-center py-8">
-                  <ChatBubbleLeftIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-600">No conversations yet</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {conversations.map(conv => (
-                    <Link key={conv.id} to={`/conversations/${conv.id}`} className="flex items-start gap-4 p-4 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all">
-                      <div className="w-2 h-2 bg-gray-900 rounded-full mt-2 flex-shrink-0"></div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-gray-900 truncate">{conv.title}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs font-bold uppercase bg-gray-100 text-gray-700 px-2 py-1">{conv.post_type}</span>
-                          <span className="text-xs text-gray-500">{conv.reply_count} replies</span>
-                        </div>
-                      </div>
-                      <span className="text-xs text-gray-500 flex-shrink-0">{new Date(conv.created_at).toLocaleDateString()}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
 
-          {/* Right Column - Sidebar */}
-          <div className="space-y-8">
-            {/* Recent Decisions */}
-            <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-black text-gray-900">Recent Decisions</h2>
-                <Link to="/decisions" className="text-gray-600 hover:text-gray-900 font-bold text-sm">All →</Link>
-              </div>
-              
-              {decisions.length === 0 ? (
-                <div className="text-center py-8">
-                  <DocumentTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-600 text-sm">No decisions yet</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {decisions.map(dec => (
-                    <Link key={dec.id} to={`/decisions/${dec.id}`} className="block p-3 border border-gray-200 hover:border-gray-900 hover:bg-gray-50 transition-all">
-                      <h3 className="font-bold text-sm text-gray-900 truncate">{dec.title}</h3>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs font-bold uppercase text-gray-600 bg-gray-100 px-2 py-1">{dec.status}</span>
-                        <span className="text-xs text-gray-500">{dec.impact_level}</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white border-2 border-gray-900 p-8 shadow-sm">
-              <h2 className="text-xl font-black text-gray-900 mb-4">Quick Actions</h2>
-              <div className="space-y-2">
-                <Link to="/conversations/new" className="block w-full px-4 py-3 bg-gray-900 text-white hover:bg-black font-bold text-sm text-center transition-all">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <div style={{ backgroundColor: 'var(--bg-primary)', border: '2px solid #111827', padding: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '16px' }}>Quick Actions</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <Link to="/conversations/new" style={{ display: 'block', paddingLeft: '16px', paddingRight: '16px', paddingTop: '12px', paddingBottom: '12px', backgroundColor: '#111827', color: '#ffffff', textDecoration: 'none', fontWeight: 700, fontSize: '14px', textAlign: 'center', transition: 'all 0.2s' }}>
                   New Conversation
                 </Link>
-                <Link to="/decisions/new" className="block w-full px-4 py-3 border border-gray-900 text-gray-900 hover:bg-gray-50 font-bold text-sm text-center transition-all">
+                <Link to="/decisions/new" style={{ display: 'block', paddingLeft: '16px', paddingRight: '16px', paddingTop: '12px', paddingBottom: '12px', border: '1px solid #111827', color: 'var(--text-primary)', textDecoration: 'none', fontWeight: 700, fontSize: '14px', textAlign: 'center', transition: 'all 0.2s', backgroundColor: 'transparent' }}>
                   New Decision
                 </Link>
-                <Link to="/sprint" className="block w-full px-4 py-3 border border-gray-200 text-gray-900 hover:bg-gray-50 font-bold text-sm text-center transition-all">
+                <Link to="/sprint" style={{ display: 'block', paddingLeft: '16px', paddingRight: '16px', paddingTop: '12px', paddingBottom: '12px', border: '1px solid var(--border-color)', color: 'var(--text-primary)', textDecoration: 'none', fontWeight: 700, fontSize: '14px', textAlign: 'center', transition: 'all 0.2s', backgroundColor: 'transparent' }}>
                   View Sprint
                 </Link>
               </div>

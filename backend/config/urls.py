@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/health/', health_check, name='health_check'),
     path('api/auth/', include('apps.users.urls')),
     path('api/conversations/', include('apps.conversations.urls')),
+    path('api/recall/', include('apps.conversations.unified_urls')),
     path('api/decisions/', include('apps.decisions.urls')),
     path('api/decisions/fresh/', include('apps.decisions.urls_fresh')),
     path('api/knowledge/', include('apps.knowledge.urls')),

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.agile.models import Project, Sprint, Issue, Blocker, IssueComment, IssueLabel
+from apps.agile.models import Project, Sprint, Issue, Blocker, IssueComment, IssueLabel, Backlog, WorkflowTransition
 
 class ProjectSerializer(serializers.ModelSerializer):
     lead_name = serializers.CharField(source='lead.get_full_name', read_only=True)
@@ -31,12 +31,17 @@ class SprintSerializer(serializers.ModelSerializer):
 class IssueSerializer(serializers.ModelSerializer):
     assignee_name = serializers.CharField(source='assignee.get_full_name', read_only=True)
     reporter_name = serializers.CharField(source='reporter.get_full_name', read_only=True)
+    subtask_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Issue
-        fields = ['id', 'key', 'title', 'description', 'priority', 'status', 'assignee', 'assignee_name', 
-                  'reporter', 'reporter_name', 'story_points', 'sprint', 'due_date', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'key', 'created_at', 'updated_at']
+        fields = ['id', 'key', 'title', 'description', 'issue_type', 'priority', 'status', 'assignee', 'assignee_name', 
+                  'reporter', 'reporter_name', 'story_points', 'sprint', 'parent_issue', 'subtask_count', 'due_date', 
+                  'in_backlog', 'created_at', 'updated_at', 'status_changed_at']
+        read_only_fields = ['id', 'key', 'created_at', 'updated_at', 'status_changed_at']
+    
+    def get_subtask_count(self, obj):
+        return obj.subtasks.count()
     
     def validate_priority(self, value):
         valid_priorities = ['lowest', 'low', 'medium', 'high', 'highest']
@@ -45,9 +50,15 @@ class IssueSerializer(serializers.ModelSerializer):
         return value
     
     def validate_status(self, value):
-        valid_statuses = ['todo', 'in_progress', 'in_review', 'done']
+        valid_statuses = ['backlog', 'todo', 'in_progress', 'in_review', 'testing', 'done']
         if value not in valid_statuses:
             raise serializers.ValidationError(f"Status must be one of {valid_statuses}")
+        return value
+    
+    def validate_issue_type(self, value):
+        valid_types = ['epic', 'story', 'task', 'bug', 'subtask']
+        if value not in valid_types:
+            raise serializers.ValidationError(f"Issue type must be one of {valid_types}")
         return value
 
 class BlockerSerializer(serializers.ModelSerializer):
@@ -84,3 +95,51 @@ class IssueLabelSerializer(serializers.ModelSerializer):
         if not value.startswith('#') or len(value) != 7:
             raise serializers.ValidationError("Color must be hex format (#RRGGBB)")
         return value
+
+class BacklogSerializer(serializers.ModelSerializer):
+    issue_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Backlog
+        fields = ['id', 'project', 'issue_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_issue_count(self, obj):
+        return obj.issues.count()
+
+class WorkflowTransitionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkflowTransition
+        fields = ['id', 'from_status', 'to_status', 'issue_type', 'requires_assignee', 
+                  'requires_story_points', 'requires_comment', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class DecisionImpactSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    issue_key = serializers.CharField(source='issue.key', read_only=True)
+    decision_title = serializers.CharField(source='decision.title', read_only=True)
+    
+    class Meta:
+        model = DecisionImpact
+        fields = ['id', 'decision', 'decision_title', 'issue', 'issue_key', 'sprint', 'impact_type', 
+                  'description', 'estimated_effort_change', 'estimated_delay_days', 'created_by', 
+                  'created_by_name', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+class IssueDecisionHistorySerializer(serializers.ModelSerializer):
+    decision_title = serializers.CharField(source='decision.title', read_only=True)
+    
+    class Meta:
+        model = IssueDecisionHistory
+        fields = ['id', 'issue', 'decision', 'decision_title', 'change_type', 'old_value', 
+                  'new_value', 'reason', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+class SprintDecisionSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SprintDecisionSummary
+        fields = ['id', 'sprint', 'decisions_made', 'decisions_impacting_sprint', 'total_effort_added',
+                  'total_effort_removed', 'issues_blocked_by_decisions', 'issues_enabled_by_decisions',
+                  'velocity_impact_percent', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']

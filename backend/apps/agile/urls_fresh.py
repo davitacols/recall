@@ -10,11 +10,13 @@ urlpatterns = [
     path('projects/<int:project_id>/issues/', agile_fresh.issues, name='issues'),
     path('projects/<int:project_id>/labels/', agile_fresh.labels, name='labels'),
     path('projects/<int:project_id>/roadmap/', agile_fresh.project_roadmap, name='project_roadmap'),
+    path('projects/<int:project_id>/backlog/', agile_fresh.backlog, name='backlog'),
     
     # Sprints
     path('sprints/<int:sprint_id>/detail/', agile_fresh.sprint_detail, name='sprint_detail'),
     path('sprints/<int:sprint_id>/assign-issues/', agile_fresh.assign_issues_to_sprint, name='assign_issues_to_sprint'),
     path('sprints/<int:sprint_id>/retrospective/', agile_fresh.retrospectives, name='retrospective'),
+    path('sprints/<int:sprint_id>/decision-analysis/', agile_fresh.sprint_decision_analysis, name='sprint_decision_analysis'),
     path('sprint-history/', agile_fresh.sprint_history, name='sprint_history'),
     path('current-sprint/', agile_fresh.current_sprint, name='current_sprint'),
     

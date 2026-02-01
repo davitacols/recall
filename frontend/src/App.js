@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './components/Toast';
+import { ThemeProvider } from './utils/ThemeAndAccessibility';
 import { useKeyboardShortcuts, CommandPalette } from './hooks/useKeyboardShortcuts';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout.js';
@@ -58,6 +59,7 @@ import DecisionProposals from './pages/DecisionProposals';
 import KnowledgeBase from './pages/KnowledgeBase';
 import Messages from './pages/Messages';
 import IssueDetail from './pages/IssueDetail';
+import Backlog from './pages/Backlog';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
@@ -356,6 +358,13 @@ function AppContent() {
             </Layout>
           </ProtectedRoute>
         } />
+        <Route path="/projects/:projectId/backlog" element={
+          <ProtectedRoute>
+            <Layout>
+              <Backlog />
+            </Layout>
+          </ProtectedRoute>
+        } />
         <Route path="/team" element={
           <ProtectedRoute adminOnly={true}>
             <Layout>
@@ -469,13 +478,15 @@ function AppContent() {
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ToastProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </ToastProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

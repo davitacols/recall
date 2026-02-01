@@ -9,6 +9,7 @@ urlpatterns = [
     path('projects/<int:project_id>/roadmap/', views.project_roadmap, name='project_roadmap'),
     path('projects/<int:project_id>/issues/', views.issues, name='issues'),
     path('projects/<int:project_id>/issues-unified/', views.project_issues_unified, name='project_issues_unified'),
+    path('projects/<int:project_id>/backlog/', views.backlog, name='backlog'),
     
     # Sprints
     path('projects/<int:project_id>/sprints/', views.sprints, name='sprints'),
@@ -21,6 +22,16 @@ urlpatterns = [
     path('issues/<int:issue_id>/move/', views.move_issue, name='move_issue'),
     path('issues/<int:issue_id>/comments/', views.add_comment, name='add_comment'),
     path('issues/<int:issue_id>/assign-sprint/', kanban_views.assign_issue_to_sprint, name='assign_issue_to_sprint'),
+    
+    # Workflow
+    path('workflow/transitions/', views.workflow_transitions, name='workflow_transitions'),
+    path('issues/<int:issue_id>/validate-transition/', views.validate_transition, name='validate_transition'),
+    
+    # Decision Impact Tracking (Unique Feature)
+    path('issues/<int:issue_id>/link-decision/', views.link_decision_to_issue, name='link_decision_to_issue'),
+    path('issues/<int:issue_id>/decision-impacts/', views.issue_decision_impacts, name='issue_decision_impacts'),
+    path('sprints/<int:sprint_id>/decision-analysis/', views.sprint_decision_analysis, name='sprint_decision_analysis'),
+    path('decisions/impact-report/', views.decision_impact_report, name='decision_impact_report'),
     
     # Board
     path('boards/<int:board_id>/', kanban_views.board_view, name='board'),

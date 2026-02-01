@@ -105,8 +105,13 @@ COGNITO_REGION = config('AWS_REGION', default='us-east-1')
 
 # Celery Configuration
 redis_url = config('REDIS_URL', default='redis://localhost:6379/0')
-if redis_url.startswith('rediss://'):
-    redis_url += '?ssl_cert_reqs=CERT_NONE'
+if DEBUG:
+    # Use synchronous task execution for local development
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+else:
+    if redis_url.startswith('rediss://'):
+        redis_url = redis_url.replace('rediss://', 'redis+sentinel://')
 CELERY_BROKER_URL = redis_url
 CELERY_RESULT_BACKEND = redis_url
 CELERY_ACCEPT_CONTENT = ['json']
@@ -190,14 +195,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [(redis_url if not redis_url.startswith('rediss://') else redis_url + '?ssl_cert_reqs=CERT_NONE')],
+# Parse Redis URL for CHANNEL_LAYERS
+if DEBUG and redis_url == 'redis://localhost:6379/0':
+    # Use in-memory channel layer for local development
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer'
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [redis_url],
+            },
         },
-    },
-}
+    }
 
 from datetime import timedelta
 SIMPLE_JWT = {

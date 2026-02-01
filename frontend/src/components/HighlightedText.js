@@ -2,6 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const HighlightedText = ({ text }) => {
+  if (!text) {
+    return <div></div>;
+  }
+  
   const parseText = (text) => {
     const lines = text.split('\n');
     const result = [];

@@ -389,14 +389,14 @@ function ConversationDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-full mx-auto px-8 py-8">
+    <div style={{ minHeight: '100vh' }}>
+      <div style={{ maxWidth: '100%', margin: '0 auto', paddingLeft: '32px', paddingRight: '32px', paddingTop: '32px' }}>
         <Link to="/conversations" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-8 font-medium">
           <ArrowLeftIcon className="w-4 h-4 mr-2" />
           Back
         </Link>
 
-        <div className="bg-white border border-gray-200 overflow-hidden">
+        <div>
           {/* Header */}
           <div className="bg-gray-900 px-8 py-8">
             <div className="flex items-start justify-between">

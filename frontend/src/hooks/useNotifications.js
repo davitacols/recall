@@ -3,10 +3,13 @@ import { useEffect } from 'react';
 export function useNotifications(onNotification) {
   useEffect(() => {
     // WebSocket connection for real-time notifications
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) return;
+
+    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
     const protocol = backendUrl.startsWith('https') ? 'wss:' : 'ws:';
     const host = backendUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    const wsUrl = `${protocol}//${host}/ws/notifications/`;
+    const wsUrl = `${protocol}//${host}/ws/notifications/?token=${token}`;
 
     try {
       const ws = new WebSocket(wsUrl);

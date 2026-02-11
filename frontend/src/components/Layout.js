@@ -42,14 +42,15 @@ function Layout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({ Sprint: true, Personal: true, Admin: true });
 
-  const bgColor = '#1c1917';
-  const textColor = '#ffffff';
-  const accentColor = '#d97706';
-  const accentLight = '#fbbf24';
-  const hoverBg = '#292415';
-  const secondaryText = '#d1d5db';
-  const mainBg = '#0f0f0f';
-  const borderColor = '#b45309';
+  const bgColor = '#141414';
+  const textColor = '#FFFFFF';
+  const accentColor = '#3B82F6';
+  const accentLight = '#60A5FA';
+  const hoverBg = 'rgba(255, 255, 255, 0.05)';
+  const secondaryText = '#A0A0A0';
+  const mainBg = '#0A0A0A';
+  const borderColor = 'rgba(255, 255, 255, 0.1)';
+  const sidebarBg = '#141414';
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -118,11 +119,10 @@ function Layout({ children }) {
         top: 0,
         left: 0,
         right: 0,
-        height: '64px',
-        backgroundColor: bgColor,
+        height: '60px',
+        background: bgColor,
         borderBottom: `1px solid ${borderColor}`,
-        zIndex: 50,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+        zIndex: 50
       }}>
         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '32px', paddingRight: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
@@ -142,10 +142,6 @@ function Layout({ children }) {
               <InboxIcon style={{ width: '24px', height: '24px' }} />
             </Link>
             <NotificationBell />
-            
-            <button onClick={toggleDarkMode} style={{ padding: '8px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', color: secondaryText, fontSize: '18px', transition: 'color 0.2s' }} title="Toggle dark mode" onMouseEnter={(e) => e.target.style.color = accentLight} onMouseLeave={(e) => e.target.style.color = secondaryText}>
-              {darkMode ? <SunIcon style={{ width: '20px', height: '20px' }} /> : <MoonIcon style={{ width: '20px', height: '20px' }} />}
-            </button>
 
             <div style={{ position: 'relative' }}>
               <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', overflow: 'hidden', border: 'none', cursor: 'pointer' }}>
@@ -166,15 +162,15 @@ function Layout({ children }) {
       {/* Desktop Sidebar */}
       <aside style={{
         position: 'fixed',
-        top: '64px',
+        top: '60px',
         left: 0,
         bottom: 0,
-        width: sidebarCollapsed ? '80px' : '320px',
-        backgroundColor: bgColor,
+        width: sidebarCollapsed ? '70px' : '260px',
+        background: sidebarBg,
         borderRight: `1px solid ${borderColor}`,
         display: 'flex',
         flexDirection: 'column',
-        transition: motion.normal
+        transition: 'width 0.2s ease'
       }}>
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           <nav style={{ flex: 1, padding: spacing.lg, overflowY: 'auto' }}>
@@ -197,7 +193,9 @@ function Layout({ children }) {
                       textDecoration: 'none',
                       color: isActive ? accentColor : secondaryText,
                       backgroundColor: isActive ? hoverBg : 'transparent',
-                      borderLeft: isActive ? `4px solid ${accentColor}` : '4px solid transparent',
+                      borderLeft: isActive ? `3px solid ${accentColor}` : '3px solid transparent',
+                      borderRadius: '0',
+                      marginBottom: '2px',
                       paddingLeft: isActive ? '12px' : spacing.lg,
                       transition: motion.fast
                     }}
@@ -309,13 +307,14 @@ function Layout({ children }) {
 
       {/* Main Content */}
       <main style={{
-        paddingTop: '64px',
-        paddingLeft: sidebarCollapsed ? '80px' : '320px',
-        transition: motion.normal,
+        paddingTop: '60px',
+        paddingLeft: sidebarCollapsed ? '70px' : '260px',
+        transition: 'padding-left 0.2s ease',
         backgroundColor: mainBg,
         flex: 1,
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        minHeight: '100vh'
       }}>
         <div style={{ flex: 1, padding: spacing.xl, color: textColor, backgroundColor: mainBg }}>
           {children}

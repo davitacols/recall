@@ -1,5 +1,9 @@
 from rest_framework import serializers
-from apps.agile.models import Project, Sprint, Issue, Blocker, IssueComment, IssueLabel, Backlog, WorkflowTransition
+from apps.agile.models import (
+    Project, Sprint, Issue, Blocker, IssueComment, IssueLabel, Backlog, WorkflowTransition,
+    DecisionImpact, IssueDecisionHistory, SprintDecisionSummary, IssueAttachment, SavedFilter,
+    IssueTemplate, Release, Component, ProjectCategory
+)
 
 class ProjectSerializer(serializers.ModelSerializer):
     lead_name = serializers.CharField(source='lead.get_full_name', read_only=True)
@@ -143,3 +147,59 @@ class SprintDecisionSummarySerializer(serializers.ModelSerializer):
                   'total_effort_removed', 'issues_blocked_by_decisions', 'issues_enabled_by_decisions',
                   'velocity_impact_percent', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class IssueAttachmentSerializer(serializers.ModelSerializer):
+    uploaded_by_name = serializers.CharField(source='uploaded_by.get_full_name', read_only=True)
+    
+    class Meta:
+        model = IssueAttachment
+        fields = ['id', 'issue', 'file', 'filename', 'uploaded_by', 'uploaded_by_name', 
+                  'uploaded_at', 'file_size', 'content_type']
+        read_only_fields = ['id', 'uploaded_at']
+
+
+class SavedFilterSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    
+    class Meta:
+        model = SavedFilter
+        fields = ['id', 'user', 'user_name', 'name', 'filter_params', 'is_public', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
+
+
+class IssueTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IssueTemplate
+        fields = ['id', 'organization', 'project', 'name', 'issue_type', 'title_template', 
+                  'description_template', 'default_priority', 'default_labels']
+        read_only_fields = ['id']
+
+
+class ReleaseSerializer(serializers.ModelSerializer):
+    issue_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Release
+        fields = ['id', 'project', 'name', 'version', 'release_date', 'status', 
+                  'description', 'issue_count', 'created_at']
+        read_only_fields = ['id', 'created_at']
+    
+    def get_issue_count(self, obj):
+        return obj.issues.count()
+
+
+class ComponentSerializer(serializers.ModelSerializer):
+    lead_name = serializers.CharField(source='lead.get_full_name', read_only=True)
+    
+    class Meta:
+        model = Component
+        fields = ['id', 'project', 'name', 'description', 'lead', 'lead_name']
+        read_only_fields = ['id']
+
+
+class ProjectCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectCategory
+        fields = ['id', 'organization', 'name', 'description', 'color']
+        read_only_fields = ['id']

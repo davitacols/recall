@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
 import DecisionImpactPanel from '../components/DecisionImpactPanel';
+import IssueAttachments from '../components/IssueAttachments';
+import WatchButton from '../components/WatchButton';
 
 function IssueDetail() {
   const { issueId } = useParams();
@@ -236,6 +238,12 @@ function IssueDetail() {
 
           {/* Right Column */}
           <div className="col-span-2 space-y-6">
+            {/* Watch Button */}
+            <WatchButton issueId={issueId} isWatching={issue.watchers?.includes(parseInt(localStorage.getItem('user_id')))} />
+            
+            {/* Attachments */}
+            <IssueAttachments issueId={issueId} />
+            
             {/* Decision Impacts */}
             <DecisionImpactPanel issueId={issueId} issueTitle={issue.title} />
 

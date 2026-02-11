@@ -42,15 +42,15 @@ function Layout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({ Sprint: true, Personal: true, Admin: true });
 
-  const bgColor = '#141414';
-  const textColor = '#FFFFFF';
-  const accentColor = '#3B82F6';
-  const accentLight = '#60A5FA';
-  const hoverBg = 'rgba(255, 255, 255, 0.05)';
-  const secondaryText = '#A0A0A0';
-  const mainBg = '#0A0A0A';
-  const borderColor = 'rgba(255, 255, 255, 0.1)';
-  const sidebarBg = '#141414';
+  const bgColor = '#1A1A1A';
+  const textColor = '#F5F5F5';
+  const accentColor = '#6B9FED';
+  const accentLight = '#8AB4F1';
+  const hoverBg = 'rgba(255, 255, 255, 0.06)';
+  const secondaryText = '#B8B8B8';
+  const mainBg = '#0F0F0F';
+  const borderColor = 'rgba(255, 255, 255, 0.08)';
+  const sidebarBg = '#1A1A1A';
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -113,68 +113,68 @@ function Layout({ children }) {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: mainBg, display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
+      {/* Jira-Style Header */}
       <header style={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
-        height: '60px',
+        height: '56px',
         background: bgColor,
         borderBottom: `1px solid ${borderColor}`,
-        zIndex: 50
+        zIndex: 50,
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 16px',
+        gap: '12px'
       }}>
-        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '32px', paddingRight: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-            <button onClick={toggleSidebar} style={{ padding: '8px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', transition: 'all 0.2s', color: secondaryText }} onMouseEnter={(e) => e.target.style.color = accentLight} onMouseLeave={(e) => e.target.style.color = secondaryText}>
-              {sidebarCollapsed ? (
-                <Bars3Icon style={{ width: '20px', height: '20px' }} />
-              ) : (
-                <XMarkIcon style={{ width: '20px', height: '20px' }} />
-              )}
+        {/* Left: Logo + Menu Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={toggleSidebar} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '6px', color: secondaryText, transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = hoverBg; e.target.style.color = textColor; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = secondaryText; }}>
+            <Bars3Icon style={{ width: '20px', height: '20px' }} />
+          </button>
+          <h1 style={{ fontSize: '16px', fontWeight: 600, color: textColor, margin: 0 }}>{getPageTitle()}</h1>
+        </div>
+
+        {/* Right: Actions */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Search />
+          <Link to="/messages" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: secondaryText, borderRadius: '6px', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = hoverBg; e.target.style.color = textColor; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = secondaryText; }}>
+            <InboxIcon style={{ width: '20px', height: '20px' }} />
+          </Link>
+          <NotificationBell />
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
             </button>
-            <h1 style={{ fontSize: '24px', fontWeight: 900, color: textColor }}>{getPageTitle()}</h1>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <Search />
-            <Link to="/messages" style={{ padding: '8px', color: secondaryText, textDecoration: 'none', transition: 'color 0.2s' }} title="Messages" onMouseEnter={(e) => e.target.style.color = accentLight} onMouseLeave={(e) => e.target.style.color = secondaryText}>
-              <InboxIcon style={{ width: '24px', height: '24px' }} />
-            </Link>
-            <NotificationBell />
-
-            <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', overflow: 'hidden', border: 'none', cursor: 'pointer' }}>
-                <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
-              </button>
-              {showProfileMenu && (
-                <div style={{ position: 'absolute', right: 0, marginTop: '8px', width: '192px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, boxShadow: '0 10px 15px rgba(0,0,0,0.3)', zIndex: 10 }}>
-                  <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', color: textColor, textDecoration: 'none', borderBottom: `1px solid ${borderColor}`, transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Profile</Link>
-                  <Link to="/settings" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', color: textColor, textDecoration: 'none', borderBottom: `1px solid ${borderColor}`, transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Settings</Link>
-                  <button onClick={logout} style={{ width: '100%', textAlign: 'left', paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', fontSize: '14px', color: textColor, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Sign out</button>
-                </div>
-              )}
-            </div>
+            {showProfileMenu && (
+              <div style={{ position: 'absolute', right: 0, marginTop: '8px', width: '200px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)', zIndex: 10, overflow: 'hidden' }}>
+                <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: '12px 16px', fontSize: '14px', color: textColor, textDecoration: 'none', transition: 'background 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Profile</Link>
+                <Link to="/settings" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: '12px 16px', fontSize: '14px', color: textColor, textDecoration: 'none', transition: 'background 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Settings</Link>
+                <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: '12px 16px', fontSize: '14px', color: textColor, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Sign out</button>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Desktop Sidebar */}
+      {/* Jira-Style Sidebar */}
       <aside style={{
         position: 'fixed',
-        top: '60px',
+        top: '56px',
         left: 0,
         bottom: 0,
-        width: sidebarCollapsed ? '70px' : '260px',
-        background: sidebarBg,
+        width: sidebarCollapsed ? '64px' : '240px',
+        background: bgColor,
         borderRight: `1px solid ${borderColor}`,
         display: 'flex',
         flexDirection: 'column',
-        transition: 'width 0.2s ease'
+        transition: 'width 0.2s ease',
+        overflowX: 'hidden'
       }}>
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <nav style={{ flex: 1, padding: spacing.lg, overflowY: 'auto' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
+          <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {primaryNav.map((item) => {
                 const isActive = location.pathname === item.href;
                 const Icon = item.icon;
@@ -185,20 +185,19 @@ function Layout({ children }) {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: spacing.md,
-                      padding: `${spacing.md} ${spacing.lg}`,
-                      borderRadius: '0',
+                      gap: '12px',
+                      padding: sidebarCollapsed ? '10px' : '10px 12px',
+                      borderRadius: '6px',
                       fontSize: '14px',
-                      fontWeight: isActive ? 700 : 500,
+                      fontWeight: isActive ? 600 : 500,
                       textDecoration: 'none',
                       color: isActive ? accentColor : secondaryText,
                       backgroundColor: isActive ? hoverBg : 'transparent',
-                      borderLeft: isActive ? `3px solid ${accentColor}` : '3px solid transparent',
-                      borderRadius: '0',
-                      marginBottom: '2px',
-                      paddingLeft: isActive ? '12px' : spacing.lg,
-                      transition: motion.fast
+                      transition: 'all 0.15s',
+                      justifyContent: sidebarCollapsed ? 'center' : 'flex-start'
                     }}
+                    onMouseEnter={(e) => { if (!isActive) { e.target.style.backgroundColor = hoverBg; e.target.style.color = textColor; } }}
+                    onMouseLeave={(e) => { if (!isActive) { e.target.style.backgroundColor = 'transparent'; e.target.style.color = secondaryText; } }}
                     title={sidebarCollapsed ? item.name : ''}
                   >
                     <Icon style={{ width: '20px', height: '20px', flexShrink: 0 }} />
@@ -307,13 +306,11 @@ function Layout({ children }) {
 
       {/* Main Content */}
       <main style={{
-        paddingTop: '60px',
-        paddingLeft: sidebarCollapsed ? '70px' : '260px',
+        paddingTop: '56px',
+        paddingLeft: sidebarCollapsed ? '64px' : '240px',
         transition: 'padding-left 0.2s ease',
         backgroundColor: mainBg,
         flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
         minHeight: '100vh'
       }}>
         <div style={{ flex: 1, padding: spacing.xl, color: textColor, backgroundColor: mainBg }}>

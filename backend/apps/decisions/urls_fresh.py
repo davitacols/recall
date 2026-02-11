@@ -1,9 +1,16 @@
 from django.urls import path
-from . import proposal_endpoints, template_endpoints, velocity_endpoints, impact_endpoints, vote_endpoints, ai_endpoints
+from . import proposal_endpoints, template_endpoints, velocity_endpoints, impact_endpoints, vote_endpoints, ai_endpoints, views
 
 app_name = 'decisions'
 
 urlpatterns = [
+    # Core Decisions
+    path('', views.decisions, name='decisions'),
+    path('<int:decision_id>/', views.decision_detail, name='decision_detail'),
+    path('<int:decision_id>/approve/', views.approve_decision, name='approve_decision'),
+    path('<int:decision_id>/implement/', views.implement_decision, name='implement_decision'),
+    path('timeline/', views.decisions_timeline, name='decisions_timeline'),
+    
     # Proposals
     path('proposals/', proposal_endpoints.proposals_list, name='proposals-list'),
     path('proposals/<int:proposal_id>/', proposal_endpoints.proposal_detail, name='proposal-detail'),

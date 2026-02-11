@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, kanban_views
+from . import views, kanban_views, views_missing_features
 
 urlpatterns = [
     # Projects
@@ -22,6 +22,38 @@ urlpatterns = [
     path('issues/<int:issue_id>/move/', views.move_issue, name='move_issue'),
     path('issues/<int:issue_id>/comments/', views.add_comment, name='add_comment'),
     path('issues/<int:issue_id>/assign-sprint/', kanban_views.assign_issue_to_sprint, name='assign_issue_to_sprint'),
+    
+    # Attachments
+    path('issues/<int:issue_id>/attachments/', views_missing_features.upload_attachment, name='upload_attachment'),
+    path('issues/<int:issue_id>/attachments/list/', views_missing_features.list_attachments, name='list_attachments'),
+    path('attachments/<int:attachment_id>/', views_missing_features.delete_attachment, name='delete_attachment'),
+    
+    # Watchers
+    path('issues/<int:issue_id>/watch/', views_missing_features.watch_issue, name='watch_issue'),
+    path('issues/<int:issue_id>/unwatch/', views_missing_features.unwatch_issue, name='unwatch_issue'),
+    
+    # Bulk Operations
+    path('issues/bulk-update/', views_missing_features.bulk_update_issues, name='bulk_update_issues'),
+    
+    # Saved Filters
+    path('filters/', views_missing_features.saved_filters, name='saved_filters'),
+    path('filters/<int:filter_id>/', views_missing_features.delete_saved_filter, name='delete_saved_filter'),
+    
+    # Issue Templates
+    path('templates/', views_missing_features.issue_templates, name='issue_templates'),
+    
+    # Releases
+    path('projects/<int:project_id>/releases/', views_missing_features.releases, name='releases'),
+    path('releases/<int:release_id>/', views_missing_features.update_release, name='update_release'),
+    
+    # Components
+    path('projects/<int:project_id>/components/', views_missing_features.components, name='components'),
+    
+    # Project Categories
+    path('categories/', views_missing_features.project_categories, name='project_categories'),
+    
+    # WIP Limits
+    path('columns/<int:column_id>/wip-check/', views_missing_features.check_wip_limit, name='check_wip_limit'),
     
     # Workflow
     path('workflow/transitions/', views.workflow_transitions, name='workflow_transitions'),

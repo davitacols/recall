@@ -87,6 +87,12 @@ class Column(models.Model):
     board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='columns')
     name = models.CharField(max_length=100)
     order = models.IntegerField(default=0)
+    wip_limit = models.IntegerField(null=True, blank=True, help_text='Work In Progress limit')
+    
+    def is_at_wip_limit(self):
+        if not self.wip_limit:
+            return False
+        return self.issues.filter(status__in=['in_progress', 'in_review']).count() >= self.wip_limit
     
     class Meta:
         db_table = 'columns'
@@ -162,6 +168,7 @@ class Issue(models.Model):
     ], blank=True, help_text='CI/CD pipeline status')
     ci_url = models.URLField(blank=True, help_text='CI/CD pipeline URL')
     test_coverage = models.IntegerField(null=True, blank=True, help_text='Test coverage percentage')
+    watchers = models.ManyToManyField(User, related_name='watched_issues', blank=True)
     
     class Meta:
         db_table = 'issues'
@@ -625,3 +632,96 @@ class SprintDecisionSummary(models.Model):
     
     class Meta:
         db_table = 'sprint_decision_summaries'
+
+
+class IssueAttachment(models.Model):
+    """File attachments for issues"""
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(upload_to='issue_attachments/%Y/%m/')
+    filename = models.CharField(max_length=255)
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    file_size = models.IntegerField()
+    content_type = models.CharField(max_length=100)
+    
+    class Meta:
+        db_table = 'issue_attachments'
+        ordering = ['-uploaded_at']
+
+
+class SavedFilter(models.Model):
+    """Saved search filters for issues"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_filters')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    filter_params = models.JSONField()
+    is_public = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'saved_filters'
+        ordering = ['name']
+
+
+class IssueTemplate(models.Model):
+    """Templates for quick issue creation"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=100)
+    issue_type = models.CharField(max_length=20, choices=Issue.ISSUE_TYPE_CHOICES)
+    title_template = models.CharField(max_length=255)
+    description_template = models.TextField()
+    default_priority = models.CharField(max_length=20, default='medium')
+    default_labels = models.JSONField(default=list)
+    
+    class Meta:
+        db_table = 'issue_templates'
+        ordering = ['name']
+
+
+class Release(models.Model):
+    """Release/version management"""
+    STATUS_CHOICES = [
+        ('unreleased', 'Unreleased'),
+        ('released', 'Released'),
+        ('archived', 'Archived'),
+    ]
+    
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='releases')
+    name = models.CharField(max_length=100)
+    version = models.CharField(max_length=50)
+    release_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unreleased')
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'releases'
+        ordering = ['-release_date']
+        unique_together = ['project', 'version']
+
+
+class Component(models.Model):
+    """Project components/modules"""
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='components')
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    lead = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    class Meta:
+        db_table = 'components'
+        unique_together = ['project', 'name']
+        ordering = ['name']
+
+
+class ProjectCategory(models.Model):
+    """Categories for organizing projects"""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    color = models.CharField(max_length=7, default='#4F46E5')
+    
+    class Meta:
+        db_table = 'project_categories'
+        unique_together = ['organization', 'name']
+        ordering = ['name']

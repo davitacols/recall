@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { PlusIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import BulkEditBar from '../components/BulkEditBar';
 
 function Backlog() {
   const { projectId } = useParams();
@@ -63,13 +64,13 @@ function Backlog() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
         <div className="flex justify-between items-center mb-12">
-          <h1 className="text-5xl font-black text-gray-900">Product Backlog</h1>
+          <h1 className="text-5xl font-black text-white">Product Backlog</h1>
           <button
             onClick={() => setShowCreateIssue(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+            className="flex items-center gap-2 px-6 py-3 bg-gray-800 text-white hover:bg-gray-700 font-bold uppercase text-sm transition-all border border-gray-600"
           >
             <PlusIcon className="w-4 h-4" />
             New Issue
@@ -79,16 +80,16 @@ function Backlog() {
         <div className="grid grid-cols-3 gap-8">
           {/* Backlog Column */}
           <div className="col-span-2">
-            <div className="p-8 bg-white border border-gray-200">
+            <div className="p-8 bg-gray-800 border border-gray-700">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-black text-gray-900">Backlog ({backlog?.issue_count || 0})</h2>
+                <h2 className="text-2xl font-black text-white">Backlog ({backlog?.issue_count || 0})</h2>
                 {selectedIssues.size > 0 && (
-                  <span className="text-sm font-bold text-gray-600">{selectedIssues.size} selected</span>
+                  <span className="text-sm font-bold text-gray-400">{selectedIssues.size} selected</span>
                 )}
               </div>
 
               {!backlog?.issues || backlog.issues.length === 0 ? (
-                <p className="text-gray-600 font-medium py-8">No issues in backlog</p>
+                <p className="text-gray-400 font-medium py-8">No issues in backlog</p>
               ) : (
                 <div className="space-y-3">
                   {backlog.issues.map(issue => (
@@ -96,8 +97,8 @@ function Backlog() {
                       key={issue.id}
                       className={`p-4 border-l-4 cursor-pointer transition-all ${
                         selectedIssues.has(issue.id)
-                          ? 'bg-gray-100 border-l-gray-900'
-                          : 'bg-white border-l-gray-300 hover:border-l-gray-900'
+                          ? 'bg-gray-700 border-l-gray-400'
+                          : 'bg-gray-800 border-l-gray-600 hover:border-l-gray-400'
                       }`}
                       onClick={() => toggleIssueSelection(issue.id)}
                     >
@@ -110,13 +111,13 @@ function Backlog() {
                         />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-bold text-gray-600 uppercase">{issue.key}</span>
-                            <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 font-semibold rounded">
+                            <span className="text-xs font-bold text-gray-400 uppercase">{issue.key}</span>
+                            <span className="text-xs px-2 py-1 bg-gray-700 text-gray-300 font-semibold rounded">
                               {issue.issue_type}
                             </span>
                           </div>
-                          <h3 className="font-bold text-gray-900 mb-2">{issue.title}</h3>
-                          <div className="flex gap-4 text-xs text-gray-600">
+                          <h3 className="font-bold text-white mb-2">{issue.title}</h3>
+                          <div className="flex gap-4 text-xs text-gray-400">
                             {issue.assignee_name && <div>Assigned: {issue.assignee_name}</div>}
                             {issue.story_points && <div>{issue.story_points} pts</div>}
                             <div className={`font-semibold ${getPriorityColor(issue.priority)}`}>
@@ -134,10 +135,10 @@ function Backlog() {
 
           {/* Sprints Column */}
           <div className="space-y-6">
-            <div className="p-8 bg-white border border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Active Sprints</h3>
+            <div className="p-8 bg-gray-800 border border-gray-700">
+              <h3 className="text-lg font-bold text-white mb-4">Active Sprints</h3>
               {sprints.length === 0 ? (
-                <p className="text-sm text-gray-600">No sprints</p>
+                <p className="text-sm text-gray-400">No sprints</p>
               ) : (
                 <div className="space-y-3">
                   {sprints.map(sprint => (
@@ -145,14 +146,14 @@ function Backlog() {
                       key={sprint.id}
                       onClick={() => handleMoveToSprint(sprint.id)}
                       disabled={selectedIssues.size === 0}
-                      className="w-full p-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full p-4 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-bold text-gray-900 text-sm">{sprint.name}</div>
-                          <div className="text-xs text-gray-600">{sprint.start_date}</div>
+                          <div className="font-bold text-white text-sm">{sprint.name}</div>
+                          <div className="text-xs text-gray-400">{sprint.start_date}</div>
                         </div>
-                        <ArrowRightIcon className="w-4 h-4 text-gray-400" />
+                        <ArrowRightIcon className="w-4 h-4 text-gray-500" />
                       </div>
                     </button>
                   ))}
@@ -161,8 +162,8 @@ function Backlog() {
             </div>
 
             {selectedIssues.size > 0 && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded">
-                <p className="text-sm text-blue-900 font-medium">
+              <div className="p-4 bg-blue-900/30 border border-blue-700 rounded">
+                <p className="text-sm text-blue-300 font-medium">
                   Select a sprint above to move {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''}
                 </p>
               </div>
@@ -181,6 +182,12 @@ function Backlog() {
           }}
         />
       )}
+      
+      <BulkEditBar 
+        selectedIssues={Array.from(selectedIssues)}
+        onUpdate={fetchData}
+        onClear={() => setSelectedIssues(new Set())}
+      />
     </div>
   );
 }

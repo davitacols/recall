@@ -277,7 +277,8 @@ def issues(request, project_id):
         status='todo',
         reporter=request.user,
         assignee_id=request.data.get('assignee_id'),
-        story_points=request.data.get('story_points'),`n        issue_type=request.data.get('issue_type', 'task'),
+        story_points=request.data.get('story_points'),
+        issue_type=request.data.get('issue_type', 'task'),
         sprint_id=request.data.get('sprint_id'),
         due_date=request.data.get('due_date')
     )

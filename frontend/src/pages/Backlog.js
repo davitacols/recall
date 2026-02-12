@@ -142,7 +142,7 @@ function Backlog() {
                             </div>
                           </div>
                         </div>
-                        {issue.issue_type === 'epic' && (
+                        {(issue.issue_type === 'epic' || issue.issue_type === 'story') && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -262,7 +262,7 @@ function getPriorityColor(priority) {
 function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [issueType, setIssueType] = useState(parentIssueId ? 'story' : 'task');
+  const [issueType, setIssueType] = useState(parentIssueId ? 'task' : 'task');
   const [priority, setPriority] = useState('medium');
   const [submitting, setSubmitting] = useState(false);
 
@@ -287,29 +287,35 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">{parentIssueId ? 'Create Child Issue' : 'Create Issue'}</h2>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
+      <div style={{ backgroundColor: '#1c1917', border: '1px solid #b45309', padding: '32px', width: '100%', maxWidth: '32rem' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 900, color: '#ffffff', marginBottom: '24px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {parentIssueId ? 'Create Child Issue' : 'Create Issue'}
+        </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Title</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#d1d5db', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Issue title"
-              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s' }}
+              onFocus={(e) => e.target.style.borderColor = '#ffffff'}
+              onBlur={(e) => e.target.style.borderColor = '#b45309'}
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Type</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#d1d5db', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Type</label>
             <select
               value={issueType}
               onChange={(e) => setIssueType(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
+              onFocus={(e) => e.target.style.borderColor = '#ffffff'}
+              onBlur={(e) => e.target.style.borderColor = '#b45309'}
             >
               <option value="epic">Epic</option>
               <option value="story">Story</option>
@@ -319,11 +325,13 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Priority</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#d1d5db', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Priority</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
+              onFocus={(e) => e.target.style.borderColor = '#ffffff'}
+              onBlur={(e) => e.target.style.borderColor = '#b45309'}
             >
               <option value="lowest">Lowest</option>
               <option value="low">Low</option>
@@ -334,31 +342,37 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Description</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#d1d5db', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Issue description"
-              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all min-h-24"
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', minHeight: '96px', fontFamily: 'inherit', resize: 'vertical' }}
+              onFocus={(e) => e.target.style.borderColor = '#ffffff'}
+              onBlur={(e) => e.target.style.borderColor = '#b45309'}
             />
           </div>
 
-          <div className="flex gap-3 justify-end pt-4">
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', paddingTop: '16px' }}>
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all disabled:opacity-50"
+              style={{ padding: '12px 24px', border: '1px solid #b45309', backgroundColor: 'transparent', color: '#ffffff', fontWeight: 700, textTransform: 'uppercase', fontSize: '14px', transition: 'all 0.2s', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1, letterSpacing: '0.05em' }}
+              onMouseEnter={(e) => !submitting && (e.currentTarget.style.borderColor = '#ffffff')}
+              onMouseLeave={(e) => !submitting && (e.currentTarget.style.borderColor = '#b45309')}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              style={{ padding: '12px 24px', border: 'none', backgroundColor: '#d97706', color: '#ffffff', fontWeight: 700, textTransform: 'uppercase', fontSize: '14px', transition: 'all 0.2s', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.05em' }}
+              onMouseEnter={(e) => !submitting && (e.currentTarget.style.backgroundColor = '#fbbf24')}
+              onMouseLeave={(e) => !submitting && (e.currentTarget.style.backgroundColor = '#d97706')}
             >
               {submitting && (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div style={{ width: '16px', height: '16px', border: '2px solid #ffffff', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
               )}
               {submitting ? 'Creating...' : 'Create Issue'}
             </button>

@@ -218,15 +218,17 @@ function CreateIssueModal({ projectId, onClose, onSuccess }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.post(`/api/agile/projects/${projectId}/issues/`, {
+      await api.post('/api/agile/issues/', {
         title,
         description,
         issue_type: issueType,
-        priority
+        priority,
+        project: projectId
       });
       onSuccess();
     } catch (error) {
       console.error('Failed to create issue:', error);
+      alert('Failed to create issue: ' + (error.response?.data?.detail || error.message));
     } finally {
       setSubmitting(false);
     }

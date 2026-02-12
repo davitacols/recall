@@ -21,22 +21,32 @@ from .serializers import (
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def upload_attachment(request, issue_id):
-    issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
-    file = request.FILES.get('file')
-    
-    if not file:
-        return Response({'error': 'No file provided'}, status=400)
-    
-    attachment = IssueAttachment.objects.create(
-        issue=issue,
-        file=file,
-        filename=file.name,
-        uploaded_by=request.user,
-        file_size=file.size,
-        content_type=file.content_type
-    )
-    
-    return Response(IssueAttachmentSerializer(attachment).data, status=201)
+    try:
+        issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
+        file = request.FILES.get('file')
+        
+        if not file:
+            return Response({'error': 'No file provided'}, status=400)
+        
+        # Ensure media directory exists
+        import os
+        from django.conf import settings
+        media_root = settings.MEDIA_ROOT
+        if not os.path.exists(media_root):
+            os.makedirs(media_root, exist_ok=True)
+        
+        attachment = IssueAttachment.objects.create(
+            issue=issue,
+            file=file,
+            filename=file.name,
+            uploaded_by=request.user,
+            file_size=file.size,
+            content_type=file.content_type
+        )
+        
+        return Response(IssueAttachmentSerializer(attachment).data, status=201)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 
 @api_view(['GET'])

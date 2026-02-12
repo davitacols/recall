@@ -11,6 +11,7 @@ import Signup from './pages/Signup';
 import AcceptInvite from './pages/AcceptInvite';
 import Dashboard from './pages/Dashboard';
 import Conversations from './pages/Conversations';
+import CreateConversation from './pages/CreateConversation';
 import ConversationDetail from './pages/ConversationDetail';
 import Decisions from './pages/Decisions';
 import DecisionDetail from './pages/DecisionDetail';
@@ -124,6 +125,13 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <Conversations />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/conversations/new" element={
+          <ProtectedRoute>
+            <Layout>
+              <CreateConversation />
             </Layout>
           </ProtectedRoute>
         } />

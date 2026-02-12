@@ -87,6 +87,7 @@ function ConversationDetail() {
   const [selectedType, setSelectedType] = useState(null);
   const [formData, setFormData] = useState({ title: '', content: '', post_type: '', priority: 'medium' });
   const [creating, setCreating] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   const bgColor = darkMode ? '#1a1a1a' : '#ffffff';
   const textColor = darkMode ? '#ffffff' : '#111827';
@@ -236,6 +237,25 @@ function ConversationDetail() {
       alert('Failed to create conversation');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleConvertToDecision = async () => {
+    if (!window.confirm('Convert this conversation to a decision? This will create a new decision with the conversation content.')) return;
+    setConverting(true);
+    try {
+      const response = await api.post('/api/decisions/', {
+        title: conversation.title,
+        description: conversation.content,
+        status: 'proposed',
+        context: `Converted from conversation #${id}`
+      });
+      navigate(`/decisions/${response.data.id}`);
+    } catch (error) {
+      console.error('Failed to convert to decision:', error);
+      alert('Failed to convert to decision');
+    } finally {
+      setConverting(false);
     }
   };
 
@@ -421,6 +441,9 @@ function ConversationDetail() {
                 </div>
               </div>
               <div className="flex gap-2 ml-4">
+                <button onClick={handleConvertToDecision} className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 text-sm font-semibold disabled:opacity-50" disabled={converting || savingPost || deletingPost}>
+                  {converting ? 'Converting...' : 'Convert to Decision'}
+                </button>
                 <FavoriteButton conversationId={id} />
                 <ExportButton conversationId={id} type="conversation" />
                 <UndoRedoButtons />

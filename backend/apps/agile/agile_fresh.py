@@ -280,7 +280,8 @@ def issues(request, project_id):
         story_points=request.data.get('story_points'),
         issue_type=request.data.get('issue_type', 'task'),
         sprint_id=request.data.get('sprint_id'),
-        due_date=request.data.get('due_date')
+        due_date=request.data.get('due_date'),
+        parent_issue_id=request.data.get('parent_issue_id')
     )
     
     return Response({'id': issue.id, 'key': issue.key, 'title': issue.title})

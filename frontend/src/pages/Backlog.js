@@ -100,9 +100,8 @@ function Backlog() {
                           ? 'bg-gray-700 border-l-gray-400'
                           : 'bg-gray-800 border-l-gray-600 hover:border-l-gray-400'
                       }`}
-                      onClick={() => toggleIssueSelection(issue.id)}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-3" onClick={() => toggleIssueSelection(issue.id)}>
                         <input
                           type="checkbox"
                           checked={selectedIssues.has(issue.id)}
@@ -125,6 +124,17 @@ function Backlog() {
                             </div>
                           </div>
                         </div>
+                        {issue.issue_type === 'epic' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowCreateIssue(issue.id);
+                            }}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase transition-all"
+                          >
+                            + Add Child
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -175,6 +185,7 @@ function Backlog() {
       {showCreateIssue && (
         <CreateIssueModal
           projectId={projectId}
+          parentIssueId={typeof showCreateIssue === 'number' ? showCreateIssue : null}
           onClose={() => setShowCreateIssue(false)}
           onSuccess={() => {
             setShowCreateIssue(false);
@@ -207,10 +218,10 @@ function getPriorityColor(priority) {
   }
 }
 
-function CreateIssueModal({ projectId, onClose, onSuccess }) {
+function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [issueType, setIssueType] = useState('task');
+  const [issueType, setIssueType] = useState(parentIssueId ? 'story' : 'task');
   const [priority, setPriority] = useState('medium');
   const [submitting, setSubmitting] = useState(false);
 
@@ -222,7 +233,8 @@ function CreateIssueModal({ projectId, onClose, onSuccess }) {
         title,
         description,
         issue_type: issueType,
-        priority
+        priority,
+        parent_issue_id: parentIssueId
       });
       onSuccess();
     } catch (error) {
@@ -236,7 +248,7 @@ function CreateIssueModal({ projectId, onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Issue</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">{parentIssueId ? 'Create Child Issue' : 'Create Issue'}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>

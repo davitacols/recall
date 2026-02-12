@@ -65,157 +65,169 @@ function Backlog() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#111827' }}>
-      <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '48px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '64px' }}>
-          <div>
-            <h1 style={{ fontSize: '56px', fontWeight: 900, color: '#ffffff', marginBottom: '12px', letterSpacing: '-0.02em' }}>Product Backlog</h1>
-            <p style={{ fontSize: '20px', color: '#d1d5db', fontWeight: 300 }}>Plan and prioritize your work</p>
-          </div>
-          <button
-            onClick={() => setShowCreateIssue(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 32px', backgroundColor: '#d97706', color: '#ffffff', border: 'none', fontWeight: 700, textTransform: 'uppercase', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', letterSpacing: '0.05em' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fbbf24'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
-          >
-            <PlusIcon style={{ width: '20px', height: '20px' }} />
-            New Issue
-          </button>
+      <div style={{ maxWidth: '90rem', margin: '0 auto', padding: '32px 24px' }}>
+        {/* Header */}
+        <div style={{ marginBottom: '48px' }}>
+          <h1 style={{ fontSize: '48px', fontWeight: 900, color: '#ffffff', marginBottom: '8px', letterSpacing: '-0.02em' }}>Backlog</h1>
+          <p style={{ fontSize: '16px', color: '#9ca3af', fontWeight: 300 }}>Plan and prioritize your work</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
-          {/* Backlog Column */}
+        {/* Main Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
+          {/* Left: Backlog Issues */}
           <div>
-            <div style={{ backgroundColor: '#1c1917', border: '1px solid #b45309', padding: '32px', transition: 'all 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.borderColor = '#b45309'}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 900, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Backlog ({backlog?.issue_count || 0})</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <h2 style={{ fontSize: '14px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Issues ({backlog?.issue_count || 0})</h2>
                 {selectedIssues.size > 0 && (
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#d1d5db' }}>{selectedIssues.size} selected</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#d97706', backgroundColor: '#292415', padding: '4px 12px', border: '1px solid #b45309' }}>
+                    {selectedIssues.size} selected
+                  </span>
                 )}
               </div>
+              <button
+                onClick={() => setShowCreateIssue(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', backgroundColor: '#d97706', color: '#ffffff', border: 'none', fontWeight: 700, textTransform: 'uppercase', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s', letterSpacing: '0.05em' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fbbf24'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
+              >
+                <PlusIcon style={{ width: '16px', height: '16px' }} />
+                New Issue
+              </button>
+            </div>
 
-              {!backlog?.issues || backlog.issues.length === 0 ? (
-                <p style={{ color: '#9ca3af', fontWeight: 500, padding: '32px 0', textAlign: 'center' }}>No issues in backlog</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {backlog.issues.map(issue => (
+            {!backlog?.issues || backlog.issues.length === 0 ? (
+              <div style={{ padding: '64px 32px', textAlign: 'center', backgroundColor: '#1c1917', border: '1px solid #374151' }}>
+                <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '16px' }}>No issues in backlog</p>
+                <button
+                  onClick={() => setShowCreateIssue(true)}
+                  style={{ padding: '8px 16px', backgroundColor: '#374151', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                >
+                  Create First Issue
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {backlog.issues.map(issue => {
+                  const isChild = issue.parent_issue_id != null;
+                  return (
                     <div
                       key={issue.id}
                       style={{
-                        padding: '16px',
-                        borderLeft: '4px solid',
-                        borderLeftColor: selectedIssues.has(issue.id) ? '#d97706' : '#374151',
-                        backgroundColor: selectedIssues.has(issue.id) ? '#292415' : '#1c1917',
+                        padding: '12px 16px',
+                        paddingLeft: isChild ? '56px' : '16px',
+                        backgroundColor: selectedIssues.has(issue.id) ? '#1e293b' : '#1c1917',
+                        borderLeft: selectedIssues.has(issue.id) ? '3px solid #d97706' : '3px solid transparent',
                         cursor: 'pointer',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px'
                       }}
                       onMouseEnter={(e) => {
                         if (!selectedIssues.has(issue.id)) {
-                          e.currentTarget.style.borderLeftColor = '#d97706';
+                          e.currentTarget.style.backgroundColor = '#1e293b';
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!selectedIssues.has(issue.id)) {
-                          e.currentTarget.style.borderLeftColor = '#374151';
+                          e.currentTarget.style.backgroundColor = '#1c1917';
                         }
                       }}
+                      onClick={() => toggleIssueSelection(issue.id)}
                     >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }} onClick={() => toggleIssueSelection(issue.id)}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIssues.has(issue.id)}
-                          onChange={() => toggleIssueSelection(issue.id)}
-                          style={{ marginTop: '4px', cursor: 'pointer' }}
-                        />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>{issue.key}</span>
-                            <span style={{ padding: '4px 12px', fontSize: '12px', fontWeight: 700, border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff' }}>
-                              {issue.issue_type}
-                            </span>
-                          </div>
-                          <h3 style={{ fontWeight: 700, color: '#ffffff', marginBottom: '8px', fontSize: '16px' }}>{issue.title}</h3>
-                          <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#9ca3af' }}>
-                            {issue.assignee_name && <div>Assigned: {issue.assignee_name}</div>}
-                            {issue.story_points && <div>{issue.story_points} pts</div>}
-                            <div style={{ fontWeight: 600, color: getPriorityColor(issue.priority) }}>
-                              {issue.priority}
-                            </div>
-                          </div>
+                      <input
+                        type="checkbox"
+                        checked={selectedIssues.has(issue.id)}
+                        onChange={() => toggleIssueSelection(issue.id)}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          {isChild && <span style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1 }}>↳</span>}
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{issue.key}</span>
+                          <span style={{ padding: '2px 8px', fontSize: '10px', fontWeight: 700, backgroundColor: '#374151', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {issue.issue_type}
+                          </span>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: getPriorityColor(issue.priority) }}></span>
                         </div>
-                        {(issue.issue_type === 'epic' || issue.issue_type === 'story') && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowCreateIssue(issue.id);
-                            }}
-                            style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.2s', letterSpacing: '0.05em' }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
-                          >
-                            + Add Child
-                          </button>
-                        )}
+                        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{issue.title}</h3>
                       </div>
+
+                      {(issue.issue_type === 'epic' || issue.issue_type === 'story') && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowCreateIssue(issue.id);
+                          }}
+                          style={{ padding: '6px 12px', backgroundColor: '#374151', color: '#ffffff', border: 'none', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.2s', letterSpacing: '0.05em', flexShrink: 0 }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                        >
+                          + Child
+                        </button>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Sprints Column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ backgroundColor: '#1c1917', border: '1px solid #b45309', padding: '32px', transition: 'all 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.borderColor = '#b45309'}>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Sprints</h3>
-              {sprints.length === 0 ? (
-                <p style={{ fontSize: '14px', color: '#9ca3af' }}>No sprints</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {sprints.map(sprint => (
-                    <button
-                      key={sprint.id}
-                      onClick={() => handleMoveToSprint(sprint.id)}
-                      disabled={selectedIssues.size === 0}
-                      style={{
-                        width: '100%',
-                        padding: '16px',
-                        backgroundColor: '#292415',
-                        border: '1px solid #b45309',
-                        textAlign: 'left',
-                        transition: 'all 0.2s',
-                        cursor: selectedIssues.size === 0 ? 'not-allowed' : 'pointer',
-                        opacity: selectedIssues.size === 0 ? 0.5 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        if (selectedIssues.size > 0) {
-                          e.currentTarget.style.backgroundColor = '#1c1917';
-                          e.currentTarget.style.borderColor = '#ffffff';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (selectedIssues.size > 0) {
-                          e.currentTarget.style.backgroundColor = '#292415';
-                          e.currentTarget.style.borderColor = '#b45309';
-                        }
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '14px', marginBottom: '4px' }}>{sprint.name}</div>
-                          <div style={{ fontSize: '12px', color: '#9ca3af' }}>{sprint.start_date}</div>
-                        </div>
-                        <ArrowRightIcon style={{ width: '16px', height: '16px', color: '#9ca3af' }} />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* Right: Sprints Sidebar */}
+          <div>
+            <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px' }}>Sprints</h3>
+            
+            {sprints.length === 0 ? (
+              <div style={{ padding: '24px', backgroundColor: '#1c1917', border: '1px solid #374151', textAlign: 'center' }}>
+                <p style={{ fontSize: '12px', color: '#6b7280' }}>No active sprints</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {sprints.map(sprint => (
+                  <button
+                    key={sprint.id}
+                    onClick={() => handleMoveToSprint(sprint.id)}
+                    disabled={selectedIssues.size === 0}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: '#1c1917',
+                      border: '1px solid #374151',
+                      textAlign: 'left',
+                      transition: 'all 0.2s',
+                      cursor: selectedIssues.size === 0 ? 'not-allowed' : 'pointer',
+                      opacity: selectedIssues.size === 0 ? 0.5 : 1
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedIssues.size > 0) {
+                        e.currentTarget.style.backgroundColor = '#292524';
+                        e.currentTarget.style.borderColor = '#d97706';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedIssues.size > 0) {
+                        e.currentTarget.style.backgroundColor = '#1c1917';
+                        e.currentTarget.style.borderColor = '#374151';
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>{sprint.name}</span>
+                      <ArrowRightIcon style={{ width: '14px', height: '14px', color: '#6b7280' }} />
+                    </div>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>{sprint.start_date}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {selectedIssues.size > 0 && (
-              <div style={{ padding: '16px', backgroundColor: '#1e3a8a', border: '1px solid #3b82f6' }}>
-                <p style={{ fontSize: '14px', color: '#93c5fd', fontWeight: 500 }}>
-                  Select a sprint above to move {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''}
+              <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#1e3a8a', border: '1px solid #3b82f6' }}>
+                <p style={{ fontSize: '12px', color: '#93c5fd', fontWeight: 500 }}>
+                  Click sprint to move {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''}
                 </p>
               </div>
             )}
@@ -288,77 +300,79 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
-      <div style={{ backgroundColor: '#1c1917', border: '1px solid #b45309', padding: '32px', width: '100%', maxWidth: '32rem' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: 900, color: '#ffffff', marginBottom: '24px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div style={{ backgroundColor: '#1c1917', border: '1px solid #b45309', padding: '24px', width: '100%', maxWidth: '28rem' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#ffffff', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {parentIssueId ? 'Create Child Issue' : 'Create Issue'}
         </h2>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#d1d5db', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#d1d5db', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Issue title"
-              style={{ width: '100%', padding: '12px 16px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s' }}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', fontSize: '14px' }}
               onFocus={(e) => e.target.style.borderColor = '#ffffff'}
               onBlur={(e) => e.target.style.borderColor = '#b45309'}
               required
             />
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#d1d5db', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Type</label>
-            <select
-              value={issueType}
-              onChange={(e) => setIssueType(e.target.value)}
-              style={{ width: '100%', padding: '12px 16px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
-              onFocus={(e) => e.target.style.borderColor = '#ffffff'}
-              onBlur={(e) => e.target.style.borderColor = '#b45309'}
-            >
-              <option value="epic">Epic</option>
-              <option value="story">Story</option>
-              <option value="task">Task</option>
-              <option value="bug">Bug</option>
-            </select>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#d1d5db', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Type</label>
+              <select
+                value={issueType}
+                onChange={(e) => setIssueType(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', cursor: 'pointer', fontSize: '14px' }}
+                onFocus={(e) => e.target.style.borderColor = '#ffffff'}
+                onBlur={(e) => e.target.style.borderColor = '#b45309'}
+              >
+                <option value="epic">Epic</option>
+                <option value="story">Story</option>
+                <option value="task">Task</option>
+                <option value="bug">Bug</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#d1d5db', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Priority</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', cursor: 'pointer', fontSize: '14px' }}
+                onFocus={(e) => e.target.style.borderColor = '#ffffff'}
+                onBlur={(e) => e.target.style.borderColor = '#b45309'}
+              >
+                <option value="lowest">Lowest</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="highest">Highest</option>
+              </select>
+            </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#d1d5db', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Priority</label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              style={{ width: '100%', padding: '12px 16px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
-              onFocus={(e) => e.target.style.borderColor = '#ffffff'}
-              onBlur={(e) => e.target.style.borderColor = '#b45309'}
-            >
-              <option value="lowest">Lowest</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="highest">Highest</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#d1d5db', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#d1d5db', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Issue description"
-              style={{ width: '100%', padding: '12px 16px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', minHeight: '96px', fontFamily: 'inherit', resize: 'vertical' }}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', minHeight: '80px', fontFamily: 'inherit', resize: 'vertical', fontSize: '14px' }}
               onFocus={(e) => e.target.style.borderColor = '#ffffff'}
               onBlur={(e) => e.target.style.borderColor = '#b45309'}
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', paddingTop: '16px' }}>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '8px' }}>
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              style={{ padding: '12px 24px', border: '1px solid #b45309', backgroundColor: 'transparent', color: '#ffffff', fontWeight: 700, textTransform: 'uppercase', fontSize: '14px', transition: 'all 0.2s', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1, letterSpacing: '0.05em' }}
+              style={{ padding: '10px 20px', border: '1px solid #b45309', backgroundColor: 'transparent', color: '#ffffff', fontWeight: 700, textTransform: 'uppercase', fontSize: '12px', transition: 'all 0.2s', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1, letterSpacing: '0.05em' }}
               onMouseEnter={(e) => !submitting && (e.currentTarget.style.borderColor = '#ffffff')}
               onMouseLeave={(e) => !submitting && (e.currentTarget.style.borderColor = '#b45309')}
             >
@@ -367,14 +381,14 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
             <button
               type="submit"
               disabled={submitting}
-              style={{ padding: '12px 24px', border: 'none', backgroundColor: '#d97706', color: '#ffffff', fontWeight: 700, textTransform: 'uppercase', fontSize: '14px', transition: 'all 0.2s', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.05em' }}
+              style={{ padding: '10px 20px', border: 'none', backgroundColor: '#d97706', color: '#ffffff', fontWeight: 700, textTransform: 'uppercase', fontSize: '12px', transition: 'all 0.2s', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.05em' }}
               onMouseEnter={(e) => !submitting && (e.currentTarget.style.backgroundColor = '#fbbf24')}
               onMouseLeave={(e) => !submitting && (e.currentTarget.style.backgroundColor = '#d97706')}
             >
               {submitting && (
-                <div style={{ width: '16px', height: '16px', border: '2px solid #ffffff', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <div style={{ width: '14px', height: '14px', border: '2px solid #ffffff', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
               )}
-              {submitting ? 'Creating...' : 'Create Issue'}
+              {submitting ? 'Creating...' : 'Create'}
             </button>
           </div>
         </form>

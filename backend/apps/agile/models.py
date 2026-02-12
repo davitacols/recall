@@ -144,6 +144,7 @@ class Issue(models.Model):
     story_points = models.IntegerField(null=True, blank=True)
     sprint = models.ForeignKey(Sprint, on_delete=models.SET_NULL, null=True, blank=True, related_name='issues')
     in_backlog = models.BooleanField(default=True, db_index=True)
+    time_spent = models.IntegerField(default=0)
     
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)

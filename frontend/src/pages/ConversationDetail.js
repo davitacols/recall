@@ -294,108 +294,110 @@ function ConversationDetail() {
   if (id === 'new') {
     if (!selectedType) {
       return (
-        <div>
-          <div style={{ maxWidth: '100%', margin: '0 auto', paddingLeft: '32px', paddingRight: '32px', paddingTop: '48px' }}>
-            <Link to="/conversations" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', color: secondaryText, textDecoration: 'none', marginBottom: '32px', fontWeight: 500 }}>
-              <ArrowLeftIcon style={{ width: '16px', height: '16px', marginRight: '8px' }} />
-              Back to Conversations
-            </Link>
-            <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, padding: '32px' }}>
-              <h1 style={{ fontSize: '36px', fontWeight: 700, color: textColor, marginBottom: '8px' }}>Create New Conversation</h1>
-              <p style={{ color: secondaryText, marginBottom: '32px' }}>Start a new conversation to capture team discussions and decisions.</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-                {[
-                  { type: 'update', label: 'Update', desc: 'Team announcements and status updates' },
-                  { type: 'decision', label: 'Decision', desc: 'Formal decisions with rationale' },
-                  { type: 'question', label: 'Question', desc: 'Questions seeking answers' },
-                  { type: 'proposal', label: 'Proposal', desc: 'Proposals for discussion' }
-                ].map(({ type, label, desc }) => (
-                  <button
-                    key={type}
-                    onClick={() => {
-                      setSelectedType(type);
-                      setFormData({ ...formData, post_type: type });
-                    }}
-                    style={{ padding: '16px', border: `1px solid ${borderColor}`, backgroundColor: bgColor, color: textColor, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => { e.target.style.borderColor = '#111827'; e.target.style.backgroundColor = hoverBg; }}
-                    onMouseLeave={(e) => { e.target.style.borderColor = borderColor; e.target.style.backgroundColor = bgColor; }}
-                  >
-                    <p style={{ fontWeight: 600, color: textColor }}>{label}</p>
-                    <p style={{ fontSize: '14px', color: secondaryText }}>{desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '48px 24px' }}>
+          <Link to="/conversations" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', color: '#6B778C', textDecoration: 'none', marginBottom: '40px', fontWeight: 500, transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>
+            <ArrowLeftIcon style={{ width: '16px', height: '16px', marginRight: '8px' }} />
+            Back to Conversations
+          </Link>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <h1 style={{ fontSize: '32px', fontWeight: 700, color: '#172B4D', marginBottom: '12px' }}>Create New Conversation</h1>
+            <p style={{ fontSize: '16px', color: '#6B778C' }}>Choose a conversation type to get started</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', maxWidth: '1000px', margin: '0 auto' }}>
+            {[
+              { type: 'update', label: 'Update', desc: 'Team announcements and status updates' },
+              { type: 'decision', label: 'Decision', desc: 'Formal decisions with rationale' },
+              { type: 'question', label: 'Question', desc: 'Questions seeking answers' },
+              { type: 'proposal', label: 'Proposal', desc: 'Proposals for discussion' }
+            ].map(({ type, label, desc }) => (
+              <button
+                key={type}
+                onClick={() => {
+                  setSelectedType(type);
+                  setFormData({ ...formData, post_type: type });
+                }}
+                style={{ padding: '24px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0052CC'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,82,204,0.1)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#DFE1E6'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.04)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
+                <p style={{ fontWeight: 600, color: '#172B4D', fontSize: '16px', marginBottom: '8px' }}>{label}</p>
+                <p style={{ fontSize: '14px', color: '#6B778C', lineHeight: '1.5' }}>{desc}</p>
+              </button>
+            ))}
           </div>
         </div>
       );
     }
 
     return (
-      <div>
-        <div style={{ maxWidth: '100%', margin: '0 auto', paddingLeft: '32px', paddingRight: '32px', paddingTop: '48px' }}>
-          <button
-            onClick={() => setSelectedType(null)}
-            style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', color: secondaryText, textDecoration: 'none', marginBottom: '32px', fontWeight: 500, backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
-          >
-            <ArrowLeftIcon style={{ width: '16px', height: '16px', marginRight: '8px' }} />
-            Back
-          </button>
-          <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, padding: '32px', maxWidth: '40rem' }}>
-            <h1 style={{ fontSize: '36px', fontWeight: 700, color: textColor, marginBottom: '32px' }}>Create {formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}</h1>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Title</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Enter conversation title"
-                  style={{ width: '100%', paddingLeft: '16px', paddingRight: '16px', paddingTop: '12px', paddingBottom: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor, color: textColor, outline: 'none', transition: 'all 0.2s' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Content</label>
-                <textarea
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  placeholder="Enter conversation content"
-                  rows={8}
-                  style={{ width: '100%', paddingLeft: '16px', paddingRight: '16px', paddingTop: '12px', paddingBottom: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor, color: textColor, outline: 'none', transition: 'all 0.2s' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Priority</label>
-                <select
-                  value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                  style={{ width: '100%', paddingLeft: '16px', paddingRight: '16px', paddingTop: '12px', paddingBottom: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor, color: textColor, outline: 'none', transition: 'all 0.2s' }}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: '16px', paddingTop: '16px' }}>
-                <button
-                  onClick={handleCreateConversation}
-                  disabled={creating}
-                  style={{ flex: 1, paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', backgroundColor: '#111827', color: '#ffffff', border: 'none', fontWeight: 600, cursor: 'pointer', opacity: creating ? 0.5 : 1, transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => !creating && (e.target.style.backgroundColor = '#000000')}
-                  onMouseLeave={(e) => !creating && (e.target.style.backgroundColor = '#111827')}
-                >
-                  {creating ? 'Creating...' : 'Create Conversation'}
-                </button>
-                <button
-                  onClick={() => setSelectedType(null)}
-                  style={{ flex: 1, paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor, color: textColor, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = bgColor}
-                >
-                  Cancel
-                </button>
-              </div>
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '48px 24px' }}>
+        <button
+          onClick={() => setSelectedType(null)}
+          style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', color: '#6B778C', marginBottom: '40px', fontWeight: 500, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', transition: 'color 0.2s' }}
+          onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'}
+          onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}
+        >
+          <ArrowLeftIcon style={{ width: '16px', height: '16px', marginRight: '8px' }} />
+          Back
+        </button>
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #DFE1E6', borderRadius: '8px', padding: '40px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#172B4D', marginBottom: '32px' }}>Create {formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}</h1>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '8px' }}>Title</label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Enter conversation title"
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', color: '#172B4D', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}
+                onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '8px' }}>Content</label>
+              <textarea
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                placeholder="Enter conversation content"
+                rows={8}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', color: '#172B4D', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border 0.2s', resize: 'vertical' }}
+                onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '8px' }}>Priority</label>
+              <select
+                value={formData.priority}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', color: '#172B4D', borderRadius: '6px', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', paddingTop: '16px' }}>
+              <button
+                onClick={handleCreateConversation}
+                disabled={creating}
+                style={{ flex: 1, padding: '12px 24px', backgroundColor: '#0052CC', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', opacity: creating ? 0.6 : 1, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,82,204,0.2)' }}
+                onMouseEnter={(e) => !creating && (e.currentTarget.style.backgroundColor = '#0747A6')}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0052CC'}
+              >
+                {creating ? 'Creating...' : 'Create Conversation'}
+              </button>
+              <button
+                onClick={() => setSelectedType(null)}
+                style={{ flex: 1, padding: '12px 24px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', color: '#6B778C', borderRadius: '6px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F4F5F7'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

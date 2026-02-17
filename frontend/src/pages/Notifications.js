@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BellIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import { getAvatarUrl } from '../utils/avatarUtils';
 
 function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -139,15 +140,24 @@ function Notifications() {
                 <div style={{ display: 'flex', gap: '10px', flex: 1 }}>
                   {/* Avatar */}
                   <div style={{ flexShrink: 0 }}>
-                    {notification.user_avatar ? (
-                      <img src={notification.user_avatar} alt={notification.user_name || 'User'} style={{ width: '32px', height: '32px', borderRadius: '5px', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ width: '32px', height: '32px', borderRadius: '5px', backgroundColor: '#292524', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#e7e5e4', fontSize: '13px', fontWeight: 600 }}>
-                          {(notification.user_name || notification.title)?.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
+                    {(() => {
+                      const avatarUrl = getAvatarUrl(notification.user_avatar);
+                      return avatarUrl ? (
+                        <img src={avatarUrl} alt={notification.user_name || 'User'} style={{ width: '32px', height: '32px', borderRadius: '5px', objectFit: 'cover' }} onError={(e) => {
+                          e.target.style.display = 'none';
+                          const fallback = document.createElement('div');
+                          fallback.style.cssText = 'width: 32px; height: 32px; border-radius: 5px; background-color: #292524; display: flex; align-items: center; justify-content: center;';
+                          fallback.innerHTML = `<span style="color: #e7e5e4; font-size: 13px; font-weight: 600;">${(notification.user_name || notification.title)?.charAt(0).toUpperCase()}</span>`;
+                          e.target.parentElement.appendChild(fallback);
+                        }} />
+                      ) : (
+                        <div style={{ width: '32px', height: '32px', borderRadius: '5px', backgroundColor: '#292524', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ color: '#e7e5e4', fontSize: '13px', fontWeight: 600 }}>
+                            {(notification.user_name || notification.title)?.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                   
                   {/* Content */}

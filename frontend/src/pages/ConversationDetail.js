@@ -8,6 +8,7 @@ import api from '../services/api';
 import MentionTagInput from '../components/MentionTagInput';
 import HighlightedText from '../components/HighlightedText';
 import { FavoriteButton, ExportButton, UndoRedoButtons } from '../components/QuickWinFeatures';
+import { getAvatarUrl } from '../utils/avatarUtils';
 
 const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -19,7 +20,7 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
   };
 
   const authorName = typeof reply.author === 'string' ? reply.author : reply.author?.username;
-  const authorAvatar = reply.author?.avatar || reply.author_avatar;
+  const avatarUrl = getAvatarUrl(reply.author?.avatar || reply.author_avatar);
 
   return (
     <div style={{ marginLeft: depth > 0 ? '32px' : '0' }}>
@@ -27,8 +28,11 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '28px', height: '28px', backgroundColor: '#3b82f6', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-              {authorAvatar ? (
-                <img src={authorAvatar} alt={authorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={authorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.parentElement.innerHTML = `<span style="color: #ffffff; font-size: 11px; font-weight: 600;">${authorName?.charAt(0).toUpperCase()}</span>`;
+                }} />
               ) : (
                 <span style={{ color: '#ffffff', fontSize: '11px', fontWeight: 600 }}>
                   {authorName?.charAt(0).toUpperCase()}
@@ -439,17 +443,25 @@ function ConversationDetail() {
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '32px', height: '32px', backgroundColor: '#3b82f6', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  {conversation.author_avatar || conversation.author?.avatar ? (
-                    <img 
-                      src={conversation.author_avatar || conversation.author?.avatar} 
-                      alt={typeof conversation.author === 'string' ? conversation.author : conversation.author?.username} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    />
-                  ) : (
-                    <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '13px' }}>
-                      {typeof conversation.author === 'string' ? conversation.author.charAt(0).toUpperCase() : conversation.author?.username?.charAt(0).toUpperCase()}
-                    </span>
-                  )}
+                  {(() => {
+                    const avatarUrl = getAvatarUrl(conversation.author_avatar || conversation.author?.avatar);
+                    return avatarUrl ? (
+                      <img 
+                        src={avatarUrl} 
+                        alt={typeof conversation.author === 'string' ? conversation.author : conversation.author?.username} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          const initial = typeof conversation.author === 'string' ? conversation.author.charAt(0).toUpperCase() : conversation.author?.username?.charAt(0).toUpperCase();
+                          e.target.parentElement.innerHTML = `<span style="color: #ffffff; font-weight: 600; font-size: 13px;">${initial}</span>`;
+                        }}
+                      />
+                    ) : (
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '13px' }}>
+                        {typeof conversation.author === 'string' ? conversation.author.charAt(0).toUpperCase() : conversation.author?.username?.charAt(0).toUpperCase()}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div>
                   <p style={{ color: textColor, fontWeight: 600, fontSize: '13px' }}>

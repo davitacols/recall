@@ -6,6 +6,7 @@ import NotificationBell from './NotificationBell';
 import MobileBottomNav from './MobileBottomNav';
 import Search from './Search';
 import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
+import { getAvatarUrl } from '../utils/avatarUtils';
 import '../styles/mobile.css';
 import { 
   HomeIcon,
@@ -24,13 +25,19 @@ import {
 
 function AvatarDisplay({ avatar, fullName }) {
   const initials = fullName?.charAt(0) || 'U';
+  const avatarUrl = getAvatarUrl(avatar);
   
-  if (avatar) {
+  if (avatarUrl) {
     return (
       <img 
-        src={avatar} 
+        src={avatarUrl} 
         alt={fullName || 'User'} 
         style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+        onError={(e) => {
+          // Fallback to initials if image fails to load
+          e.target.style.display = 'none';
+          e.target.parentElement.innerHTML = `<div style="width: 100%; height: 100%; background-color: #3b82f6; display: flex; align-items: center; justify-content: center;"><span style="color: #ffffff; font-size: 14px; font-weight: bold;">${initials}</span></div>`;
+        }}
       />
     );
   }

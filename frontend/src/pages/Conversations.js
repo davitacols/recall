@@ -4,6 +4,7 @@ import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
+import { getAvatarUrl } from '../utils/avatarUtils';
 
 function Conversations() {
   const navigate = useNavigate();
@@ -206,15 +207,24 @@ function Conversations() {
                   </div>
                 </div>
                 <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                  {(conv.author_avatar || conv.author?.avatar) ? (
-                    <img src={conv.author_avatar || conv.author?.avatar} alt={conv.author} style={{ width: '36px', height: '36px', borderRadius: '5px', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '36px', height: '36px', borderRadius: '5px', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: 600 }}>
-                        {(conv.author || conv.author_name || 'U')?.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
+                  {(() => {
+                    const avatarUrl = getAvatarUrl(conv.author_avatar || conv.author?.avatar);
+                    return avatarUrl ? (
+                      <img src={avatarUrl} alt={conv.author} style={{ width: '36px', height: '36px', borderRadius: '5px', objectFit: 'cover' }} onError={(e) => {
+                        e.target.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.style.cssText = 'width: 36px; height: 36px; border-radius: 5px; background-color: #3b82f6; display: flex; align-items: center; justify-content: center;';
+                        fallback.innerHTML = `<span style="color: #ffffff; font-size: 13px; font-weight: 600;">${(conv.author || conv.author_name || 'U')?.charAt(0).toUpperCase()}</span>`;
+                        e.target.parentElement.appendChild(fallback);
+                      }} />
+                    ) : (
+                      <div style={{ width: '36px', height: '36px', borderRadius: '5px', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: 600 }}>
+                          {(conv.author || conv.author_name || 'U')?.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <p style={{ fontSize: '11px', color: secondaryText, marginTop: '6px', fontWeight: 500 }}>{conv.author || conv.author_name}</p>
                 </div>
               </div>

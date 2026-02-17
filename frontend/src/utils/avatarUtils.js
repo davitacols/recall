@@ -11,11 +11,26 @@ export const getAvatarUrl = (avatarPath) => {
     return avatarPath;
   }
   
+  // If it's a data URL (base64), return as is
+  if (avatarPath.startsWith('data:')) {
+    return avatarPath;
+  }
+  
   // If it's a relative path, prepend the API base URL
   const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
   
-  // Remove leading slash if present to avoid double slashes
-  const cleanPath = avatarPath.startsWith('/') ? avatarPath.slice(1) : avatarPath;
+  // Remove trailing slash from baseURL if present
+  const cleanBaseURL = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
   
-  return `${baseURL}/${cleanPath}`;
+  // Ensure path starts with slash
+  const cleanPath = avatarPath.startsWith('/') ? avatarPath : `/${avatarPath}`;
+  
+  const fullUrl = `${cleanBaseURL}${cleanPath}`;
+  
+  // Debug log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Avatar] Original:', avatarPath, '→ Full URL:', fullUrl);
+  }
+  
+  return fullUrl;
 };

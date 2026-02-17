@@ -58,50 +58,55 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-stone-950">
-      {/* Header */}
-      <header className="border-b border-amber-700 px-6 lg:px-12 py-4 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-3 hover:opacity-80 transition">
-            <img src="/recalljpg.jpg" alt="RECALL" className="h-8" />
-            <span className="text-xl font-bold text-white">RECALL</span>
+    <div style={{ height: '100vh', backgroundColor: '#F4F5F7', fontFamily: 'Inter, system-ui, sans-serif', display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden' }}>
+      {/* Left Side - Branding */}
+      <div style={{ backgroundColor: '#0052CC', padding: '48px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', color: '#ffffff', overflow: 'auto' }}>
+        <div>
+          <button onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', marginBottom: '64px' }}>
+            <img src="/recalljpg.jpg" alt="RECALL" style={{ height: '32px', filter: 'brightness(0) invert(1)' }} />
+            <span style={{ fontSize: '20px', fontWeight: 600, color: '#ffffff' }}>RECALL</span>
           </button>
+          <h1 style={{ fontSize: '48px', fontWeight: 700, lineHeight: '1.2', marginBottom: '24px' }}>
+            Never lose a decision again
+          </h1>
+          <p style={{ fontSize: '20px', lineHeight: '1.6', color: '#DEEBFF', maxWidth: '500px' }}>
+            Capture conversations, track decisions, and build institutional memory that preserves your team's knowledge forever.
+          </p>
         </div>
-      </header>
+        <div style={{ fontSize: '14px', color: '#DEEBFF' }}>
+          © 2026 RECALL. All rights reserved.
+        </div>
+      </div>
 
-      {/* Main Content */}
-      <div className="px-6 lg:px-12 py-20">
-        <div className="max-w-2xl mx-auto">
-          {/* Title Section */}
-          <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-white mb-4">
+      {/* Right Side - Form */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px', overflow: 'auto' }}>
+        <div style={{ width: '100%', maxWidth: '440px' }}>
+          {/* Title */}
+          <div style={{ marginBottom: '40px' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#172B4D', marginBottom: '8px' }}>
               {isLogin ? 'Welcome back' : (inviteToken ? 'Join the team' : 'Get started')}
-            </h1>
-            <p className="text-xl text-amber-100">
-              {isLogin ? 'Sign in to your account' : (inviteToken ? 'Complete your registration' : 'Create your organization')}
+            </h2>
+            <p style={{ fontSize: '15px', color: '#6B778C' }}>
+              {isLogin ? 'Sign in to continue to RECALL' : (inviteToken ? 'Complete your registration' : 'Create your organization')}
             </p>
           </div>
 
           {/* Form Card */}
-          <div className="border border-amber-700 rounded-2xl p-8 lg:p-12 backdrop-blur-sm">
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', padding: '40px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
             {/* Toggle Buttons */}
             {!inviteToken && (
-              <div className="flex gap-2 mb-8 bg-stone-900 p-1 rounded-lg border border-amber-700">
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '32px' }}>
                 <button
                   type="button"
                   onClick={() => setIsLogin(true)}
-                  className={`flex-1 py-2 px-4 text-sm font-semibold rounded-md transition ${
-                    isLogin ? 'bg-amber-700 text-white' : 'text-amber-100 hover:text-white'
-                  }`}
+                  style={{ flex: 1, padding: '12px 24px', fontSize: '15px', fontWeight: 600, borderRadius: '6px', border: isLogin ? 'none' : '1px solid #DFE1E6', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: isLogin ? '#0052CC' : '#ffffff', color: isLogin ? '#ffffff' : '#6B778C' }}
                 >
                   Sign in
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsLogin(false)}
-                  className={`flex-1 py-2 px-4 text-sm font-semibold rounded-md transition ${
-                    !isLogin ? 'bg-amber-700 text-white' : 'text-amber-100 hover:text-white'
-                  }`}
+                  style={{ flex: 1, padding: '12px 24px', fontSize: '15px', fontWeight: 600, borderRadius: '6px', border: !isLogin ? 'none' : '1px solid #DFE1E6', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: !isLogin ? '#0052CC' : '#ffffff', color: !isLogin ? '#ffffff' : '#6B778C' }}
                 >
                   Sign up
                 </button>
@@ -109,69 +114,69 @@ function Login() {
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {error && (
-                <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-4 text-sm rounded-lg">
+                <div style={{ backgroundColor: '#FFEBE6', border: '1px solid #FF5630', color: '#BF2600', padding: '12px', fontSize: '14px', borderRadius: '6px' }}>
                   {error}
                 </div>
               )}
 
               {!isLogin && !inviteToken && (
                 <div>
-                  <label className="block text-sm font-semibold text-white mb-2">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>
                     Organization Name
                   </label>
                   <input
                     type="text"
                     required
-                    className="w-full px-4 py-3 bg-stone-900 border border-amber-700 text-white placeholder-amber-100 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                    style={{ width: '100%', padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #DFE1E6', color: '#172B4D', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}
                     placeholder="Acme Inc."
                     value={credentials.organization}
                     onChange={(e) => setCredentials({...credentials, organization: e.target.value})}
+                    onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                    onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-semibold text-white mb-2">
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>
                   Email address
                 </label>
                 <input
                   type="email"
                   required
                   disabled={!!inviteToken}
-                  className={`w-full px-4 py-3 bg-stone-900 border border-amber-700 text-white placeholder-amber-100 rounded-lg focus:outline-none focus:border-amber-600 transition ${
-                    inviteToken ? 'opacity-60' : ''
-                  }`}
+                  style={{ width: '100%', padding: '10px 12px', backgroundColor: '#ffffff', border: '1px solid #DFE1E6', color: '#172B4D', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border 0.2s', opacity: inviteToken ? 0.6 : 1 }}
                   placeholder="you@company.com"
                   value={credentials.username}
                   onChange={(e) => setCredentials({...credentials, username: e.target.value})}
+                  onFocus={(e) => !inviteToken && (e.target.style.borderColor = '#0052CC')}
+                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-white mb-2">
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>
                   Password
                 </label>
-                <div className="relative">
+                <div style={{ position: 'relative' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    className="w-full px-4 py-3 pr-12 bg-stone-900 border border-amber-700 text-white placeholder-amber-100 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                    style={{ width: '100%', padding: '10px 12px', paddingRight: '40px', backgroundColor: '#ffffff', border: '1px solid #DFE1E6', color: '#172B4D', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}
                     placeholder="••••••••"
                     value={credentials.password}
                     onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+                    onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                    onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-amber-100 hover:text-white transition"
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', backgroundColor: 'transparent', border: 'none', color: '#6B778C', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? (
-                      <EyeSlashIcon className="w-5 h-5" />
-                    ) : (
-                      <EyeIcon className="w-5 h-5" />
-                    )}
+                    {showPassword ? <EyeSlashIcon style={{ width: '20px', height: '20px' }} /> : <EyeIcon style={{ width: '20px', height: '20px' }} />}
                   </button>
                 </div>
               </div>
@@ -179,11 +184,13 @@ function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-8 px-8 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-full font-semibold transition disabled:opacity-50"
+                style={{ width: '100%', marginTop: '8px', padding: '14px 24px', backgroundColor: '#0052CC', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,82,204,0.2)' }}
+                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#0747A6')}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0052CC'}
               >
                 {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '16px', height: '16px', border: '2px solid #ffffff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
                     {isLogin ? 'Signing in...' : 'Creating account...'}
                   </div>
                 ) : (
@@ -193,13 +200,13 @@ function Login() {
             </form>
 
             {/* Footer Links */}
-            <div className="mt-8 space-y-4 text-center">
+            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'center' }}>
               {isLogin && !inviteToken && (
-                <p className="text-sm text-amber-100">
+                <p style={{ fontSize: '14px', color: '#6B778C' }}>
                   Don't have an account?{' '}
                   <button 
                     onClick={() => setIsLogin(false)} 
-                    className="text-white font-semibold hover:underline"
+                    style={{ color: '#0052CC', fontWeight: 600, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
                   >
                     Sign up
                   </button>
@@ -207,7 +214,9 @@ function Login() {
               )}
               <button
                 onClick={() => navigate('/')}
-                className="text-sm text-amber-100 hover:text-white transition"
+                style={{ fontSize: '14px', color: '#6B778C', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', transition: 'color 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}
               >
                 ← Back to homepage
               </button>

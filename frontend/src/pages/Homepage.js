@@ -1,216 +1,233 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PrimaryButton, GlassButton } from '../components/Buttons';
-import './Homepage.css';
+import { CheckIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 export default function Homepage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen homepage-gradient">
+    <div style={{ minHeight: '100vh', backgroundColor: '#ffffff', fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Navigation */}
-      <nav className="border-b border-amber-700 px-6 lg:px-12 py-4 flex justify-between items-center bg-stone-950 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <img src="/recalljpg.jpg" alt="RECALL" className="h-10" />
-          <span className="text-2xl font-bold text-white">RECALL</span>
+      <nav style={{ position: 'sticky', top: 0, backgroundColor: '#ffffff', borderBottom: '1px solid #DFE1E6', padding: '16px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 50 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img src="/recalljpg.jpg" alt="RECALL" style={{ height: '28px' }} />
+          <span style={{ fontSize: '18px', fontWeight: 600, color: '#0052CC' }}>RECALL</span>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => navigate('/login')} className="px-6 py-2 text-amber-100 hover:text-white font-medium">
-            Sign In
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button onClick={() => navigate('/login')} style={{ padding: '8px 16px', color: '#6B778C', backgroundColor: 'transparent', border: 'none', fontSize: '15px', fontWeight: 500, cursor: 'pointer', transition: 'color 0.2s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>
+            Sign in
           </button>
-          <button onClick={() => navigate('/signup')} className="px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-full font-semibold transition">
-            Get Started
+          <button onClick={() => navigate('/signup')} style={{ padding: '9px 20px', backgroundColor: '#0052CC', color: '#ffffff', border: 'none', borderRadius: '20px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#0747A6'; e.currentTarget.style.transform = 'scale(1.02)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#0052CC'; e.currentTarget.style.transform = 'scale(1)'; }}>
+            Get it free
           </button>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="px-6 lg:px-12 py-24">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+      {/* Hero Section */}
+      <section style={{ padding: '120px 48px', backgroundColor: '#ffffff', textAlign: 'center' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6B778C', marginBottom: '24px' }}>
+            TRUSTED BY 300,000+ TEAMS
+          </div>
+          <h1 style={{ fontSize: '60px', fontWeight: 700, color: '#172B4D', lineHeight: '1.1', marginBottom: '24px', letterSpacing: '-0.02em' }}>
+            Never lose a decision again
+          </h1>
+          <p style={{ fontSize: '20px', color: '#6B778C', lineHeight: '1.6', maxWidth: '600px', margin: '0 auto 40px' }}>
+            Capture conversations, track decisions, and build institutional memory that preserves your team's knowledge forever.
+          </p>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '16px' }}>
+            <button onClick={() => navigate('/signup')} style={{ padding: '12px 32px', backgroundColor: '#0052CC', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,82,204,0.2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#0747A6'; e.currentTarget.style.transform = 'scale(1.02)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#0052CC'; e.currentTarget.style.transform = 'scale(1)'; }}>
+              Get started free
+            </button>
+            <button onClick={() => navigate('/login')} style={{ padding: '12px 32px', backgroundColor: 'transparent', color: '#0052CC', border: '2px solid #0052CC', borderRadius: '6px', fontSize: '16px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#DEEBFF'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
+              View demo
+            </button>
+          </div>
+          <p style={{ fontSize: '14px', color: '#6B778C' }}>Free forever. No credit card needed.</p>
+        </div>
+        <div style={{ maxWidth: '1100px', margin: '60px auto 0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}>
+          <img src="/hero.png" alt="Product Dashboard" style={{ width: '100%', display: 'block' }} />
+        </div>
+      </section>
+
+      {/* Trust Bar */}
+      <section style={{ padding: '60px 48px', backgroundColor: '#F4F5F7', textAlign: 'center', overflow: 'hidden' }}>
+        <p style={{ fontSize: '14px', color: '#6B778C', marginBottom: '32px', fontWeight: 500 }}>
+          Used by 300,000+ companies worldwide
+        </p>
+        <style>
+          {`
+            @keyframes scroll {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+          `}
+        </style>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '64px', animation: 'scroll 20s linear infinite', width: 'max-content' }}>
+          {[
+            'https://upload.wikimedia.org/wikipedia/commons/e/e5/NASA_logo.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/6/6e/Adobe_Corporate_logo.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/0/0e/Shopify_logo_2018.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/e/e5/NASA_logo.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/6/6e/Adobe_Corporate_logo.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg',
+            'https://upload.wikimedia.org/wikipedia/commons/0/0e/Shopify_logo_2018.svg'
+          ].map((logo, i) => (
+            <img key={i} src={logo} alt="Company logo" style={{ height: '40px', opacity: 0.5, filter: 'grayscale(100%)' }} onError={(e) => e.target.style.display = 'none'} />
+          ))}
+        </div>
+      </section>
+
+      {/* Feature Section 1 */}
+      <section style={{ padding: '80px 48px', backgroundColor: '#ffffff' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
           <div>
-            <h1 className="text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-              Organizational Memory & Decision Management
-            </h1>
-            <p className="text-xl text-amber-100 mb-8 max-w-2xl">
-              Retain conversations. Establish decisions. Capture context. Link knowledge. Learn from experience.
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#0052CC', marginBottom: '12px', letterSpacing: '0.05em' }}>CONVERSATIONS</div>
+            <h2 style={{ fontSize: '40px', fontWeight: 700, color: '#172B4D', marginBottom: '20px', lineHeight: '1.2' }}>
+              Capture every discussion with full context
+            </h2>
+            <p style={{ fontSize: '18px', color: '#6B778C', lineHeight: '1.6', marginBottom: '24px' }}>
+              Never lose important conversations again. RECALL preserves team discussions with complete context, making it easy to reference decisions and reasoning months later.
             </p>
-            <div className="flex gap-4">
-              <button onClick={() => navigate('/signup')} className="px-8 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-full font-semibold transition">
-                Get Started Free
-              </button>
-              <button onClick={() => navigate('/login')} className="px-8 py-3 border border-amber-600 text-white rounded-full font-semibold hover:bg-amber-800 transition">
-                Learn More
-              </button>
+            <a href="#" style={{ color: '#0052CC', fontSize: '16px', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              Learn more <ArrowRightIcon style={{ width: '16px', height: '16px' }} />
+            </a>
+          </div>
+          <div style={{ borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+            <div style={{ backgroundColor: '#F4F5F7', padding: '40px', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ fontSize: '14px', color: '#6B778C' }}>Feature Screenshot</div>
             </div>
           </div>
-          <div className="rounded-2xl overflow-hidden shadow-xl border border-amber-600 h-96 image-card-glow">
-            <img src="/hero.png" alt="Dashboard Preview" className="w-full h-full object-contain" />
+        </div>
+      </section>
+
+      {/* Feature Section 2 */}
+      <section style={{ padding: '80px 48px', backgroundColor: '#F4F5F7' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+          <div style={{ borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+            <div style={{ backgroundColor: '#ffffff', padding: '40px', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ fontSize: '14px', color: '#6B778C' }}>Feature Screenshot</div>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#0052CC', marginBottom: '12px', letterSpacing: '0.05em' }}>DECISIONS</div>
+            <h2 style={{ fontSize: '40px', fontWeight: 700, color: '#172B4D', marginBottom: '20px', lineHeight: '1.2' }}>
+              Track decisions with confidence
+            </h2>
+            <p style={{ fontSize: '18px', color: '#6B778C', lineHeight: '1.6', marginBottom: '24px' }}>
+              Formalize decisions with clear rationale and track implementation progress. Build team alignment with confidence voting and transparent decision-making.
+            </p>
+            <a href="#" style={{ color: '#0052CC', fontSize: '16px', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              Learn more <ArrowRightIcon style={{ width: '16px', height: '16px' }} />
+            </a>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="px-6 lg:px-12 py-20 bg-stone-950">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl font-bold text-white mb-4">Powerful features</h2>
-            <p className="text-xl text-amber-100 max-w-2xl mx-auto">Everything you need to capture, organize, and leverage organizational knowledge</p>
+      {/* Product Cards */}
+      <section style={{ padding: '80px 48px', backgroundColor: '#ffffff' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+            <h2 style={{ fontSize: '40px', fontWeight: 700, color: '#172B4D', marginBottom: '16px' }}>Everything you need</h2>
+            <p style={{ fontSize: '18px', color: '#6B778C', maxWidth: '600px', margin: '0 auto' }}>
+              Powerful features to capture, organize, and leverage organizational knowledge
+            </p>
           </div>
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2px', backgroundColor: '#DFE1E6' }}>
             {[
-              { title: 'Conversations', desc: 'Capture team discussions with full context and reasoning', features: ['Full context preservation', 'Emotional tracking', 'Team mentions'] },
-              { title: 'Decisions', desc: 'Formalize decisions with rationale and track implementation', features: ['Decision rationale', 'Implementation tracking', 'Confidence voting'] },
-              { title: 'Knowledge Search', desc: 'Semantic search across all organizational content', features: ['Semantic search', 'Trending topics', 'FAQ generation'] },
-              { title: 'Action Items', desc: 'Track and execute decisions through actionable tasks', features: ['Task assignment', 'Due dates', 'Status tracking'] }
-            ].map((feature, i) => (
-              <div key={i} className="feature-card rounded-2xl p-10 border border-amber-700 hover:border-amber-600 transition duration-300 h-full flex flex-col">
-                <h3 className="text-2xl font-bold text-white mb-3">{feature.title}</h3>
-                <p className="text-white mb-6 flex-grow">{feature.desc}</p>
-                <ul className="space-y-2">
-                  {feature.features.map((f, j) => (
-                    <li key={j} className="text-sm text-white flex items-center gap-2">
-                      <span className="text-amber-300">•</span> {f}
-                    </li>
-                  ))}
-                </ul>
+              { name: 'Knowledge Search', desc: 'Semantic search across all content' },
+              { name: 'Sprint Management', desc: 'Link decisions to execution' },
+              { name: 'Team Collaboration', desc: 'Real-time discussions and voting' },
+              { name: 'Analytics', desc: 'Track decision quality over time' },
+              { name: 'Integrations', desc: 'Connect with Slack, Jira, GitHub' },
+              { name: 'API Access', desc: 'Build custom workflows' }
+            ].map((product) => (
+              <div key={product.name} style={{ padding: '40px 32px', backgroundColor: '#ffffff', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F4F5F7'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#172B4D', marginBottom: '12px' }}>{product.name}</h3>
+                <p style={{ fontSize: '15px', color: '#6B778C', lineHeight: '1.6' }}>{product.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Benefits */}
-      <section className="px-6 lg:px-12 py-20 bg-stone-950">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-4xl font-bold text-white mb-16">Why RECALL?</h2>
-          <div className="space-y-12">
-            {[
-              { title: 'Preserve Institutional Memory', desc: 'Never lose the reasoning behind decisions. Enable team members to understand context even after team changes.' },
-              { title: 'Make Better Decisions', desc: 'Learn from past experiences. Avoid repeating mistakes. Make informed decisions based on organizational history.' },
-              { title: 'Accelerate Execution', desc: 'Link decisions to sprints and action items. Ensure accountability and track implementation progress.' },
-              { title: 'Measure Consensus', desc: 'Use reactions and voting to gauge team alignment. Surface concerns early and build shared understanding.' }
-            ].map((benefit, i) => (
-              <div key={i}>
-                <h3 className="text-2xl font-bold text-white mb-3">{benefit.title}</h3>
-                <p className="text-lg text-amber-100">{benefit.desc}</p>
-              </div>
-            ))}
+      {/* CTA Banner */}
+      <section style={{ padding: '100px 48px', backgroundColor: '#F4F5F7', textAlign: 'center' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '48px', fontWeight: 700, color: '#172B4D', marginBottom: '20px', lineHeight: '1.2' }}>
+            Ready to transform your team's memory?
+          </h2>
+          <p style={{ fontSize: '20px', color: '#6B778C', marginBottom: '40px' }}>
+            Join 300,000+ teams building better organizational knowledge
+          </p>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+            <button onClick={() => navigate('/signup')} style={{ padding: '14px 32px', backgroundColor: '#0052CC', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#0747A6'; e.currentTarget.style.transform = 'scale(1.02)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#0052CC'; e.currentTarget.style.transform = 'scale(1)'; }}>
+              Start free trial
+            </button>
+            <button style={{ padding: '14px 32px', backgroundColor: 'transparent', color: '#0052CC', border: '2px solid #0052CC', borderRadius: '6px', fontSize: '16px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#DEEBFF'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
+              Contact sales
+            </button>
           </div>
         </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="px-6 lg:px-12 py-20 bg-stone-950">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl font-bold text-white mb-4">Simple pricing</h2>
-            <p className="text-xl text-amber-100 max-w-2xl mx-auto">Choose the plan that fits your team</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { name: 'Starter', price: '$29', period: '/month', desc: 'Perfect for small teams', features: ['Up to 10 team members', 'Basic conversations', 'Decision tracking', 'Search'] },
-              { name: 'Professional', price: '$99', period: '/month', desc: 'For growing organizations', features: ['Up to 50 team members', 'All Starter features', 'Sprint management', 'Advanced analytics', 'API access'], popular: true },
-              { name: 'Enterprise', price: 'Custom', period: '', desc: 'For large organizations', features: ['Unlimited team members', 'All Professional features', 'Custom integrations', 'Dedicated support', 'SSO'] }
-            ].map((plan, i) => (
-              <div key={i} className={`feature-card rounded-2xl p-10 border transition duration-300 h-full flex flex-col ${plan.popular ? 'border-amber-600 ring-2 ring-amber-600' : 'border-amber-700 hover:border-amber-600'}`}>
-                {plan.popular && <div className="text-xs font-bold mb-4 text-amber-300 uppercase tracking-wider">Most Popular</div>}
-                <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-white mb-6 text-sm">{plan.desc}</p>
-                <div className="mb-8">
-                  <span className="text-4xl font-bold text-white">{plan.price}</span>
-                  <span className="text-amber-300 text-sm">{plan.period}</span>
-                </div>
-                <button className="w-full mb-8 px-8 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-full font-semibold transition">
-                  Get Started
-                </button>
-                <ul className="space-y-3">
-                  {plan.features.map((f, j) => (
-                    <li key={j} className="text-sm text-white flex items-center gap-2">
-                      <span className="text-amber-300">✓</span> {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="px-6 lg:px-12 py-20 bg-stone-950">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl font-bold text-white mb-4">Frequently asked questions</h2>
-            <p className="text-xl text-amber-100 max-w-2xl mx-auto">Find answers to common questions about RECALL</p>
-          </div>
-          <div className="space-y-4">
-            {[
-              { q: 'How does RECALL help preserve institutional memory?', a: 'RECALL captures conversations, decisions, and context automatically, making it easy to search and reference past discussions even after team changes.' },
-              { q: 'Can I integrate RECALL with my existing tools?', a: 'Yes, RECALL integrates with Slack, GitHub, Jira, and other popular tools. Enterprise plans include custom integrations.' },
-              { q: 'Is my data secure?', a: 'We use enterprise-grade encryption, regular security audits, and comply with SOC 2 and GDPR standards.' },
-              { q: 'How do I get started?', a: 'Sign up for free, create your organization, and invite your team. You can start capturing conversations immediately.' },
-              { q: 'What happens to my data if I cancel?', a: 'You can export all your data at any time. We provide a 30-day grace period to download everything.' }
-            ].map((faq, i) => (
-              <details key={i} className="feature-card rounded-2xl p-6 cursor-pointer group border border-amber-700 hover:border-amber-600 transition">
-                <summary className="font-semibold text-white flex justify-between items-center">
-                  {faq.q}
-                  <span className="text-amber-300 group-open:rotate-180 transition">▼</span>
-                </summary>
-                <p className="text-white mt-4">{faq.a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="px-6 lg:px-12 py-20 bg-stone-950 text-white text-center shadow-lg rounded-2xl mx-6 lg:mx-12 my-8">
-        <h2 className="text-4xl font-bold mb-6">Ready to get started?</h2>
-        <p className="text-xl text-amber-100 mb-8 max-w-2xl mx-auto">
-          Start capturing conversations and building organizational memory today.
-        </p>
-        <button onClick={() => navigate('/signup')} className="px-10 py-4 rounded-full font-semibold text-lg bg-white text-amber-700 hover:bg-amber-50 transition-all duration-300 hover:shadow-lg">
-          Get Started Free
-        </button>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-amber-700 px-6 lg:px-12 py-12 bg-stone-950 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-8 mb-8">
-        <div className="flex items-center gap-3">
-          <img src="/recalljpg.jpg" alt="RECALL" className="h-12" />
-          <div>
-            <h4 className="font-bold text-white">RECALL</h4>
-            <p className="text-amber-300 text-xs">Organizational memory & decision management</p>
+      <footer style={{ padding: '60px 48px 40px', backgroundColor: '#ffffff', borderTop: '1px solid #DFE1E6' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '40px', marginBottom: '40px' }}>
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '16px' }}>Products</h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Conversations</a></li>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Decisions</a></li>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Knowledge</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '16px' }}>Solutions</h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>For Teams</a></li>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>For Enterprise</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '16px' }}>Resources</h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Documentation</a></li>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Blog</a></li>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Support</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '16px' }}>Company</h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>About</a></li>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Careers</a></li>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Contact</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '16px' }}>Legal</h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Privacy</a></li>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Terms</a></li>
+                <li><a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>Security</a></li>
+              </ul>
+            </div>
           </div>
-        </div>
-          <div>
-            <h4 className="font-bold text-white mb-4">Product</h4>
-            <ul className="space-y-2 text-amber-300 text-sm">
-              <li><a href="#" className="hover:text-white">Features</a></li>
-              <li><a href="#" className="hover:text-white">Pricing</a></li>
-              <li><a href="#" className="hover:text-white">Security</a></li>
-            </ul>
+          <div style={{ borderTop: '1px solid #DFE1E6', paddingTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ fontSize: '14px', color: '#6B778C' }}>&copy; 2026 RECALL. All rights reserved.</p>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none' }}>Twitter</a>
+              <a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none' }}>LinkedIn</a>
+              <a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none' }}>GitHub</a>
+            </div>
           </div>
-          <div>
-            <h4 className="font-bold text-white mb-4">Company</h4>
-            <ul className="space-y-2 text-amber-300 text-sm">
-              <li><a href="#" className="hover:text-white">About</a></li>
-              <li><a href="#" className="hover:text-white">Blog</a></li>
-              <li><a href="#" className="hover:text-white">Contact</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold text-white mb-4">Legal</h4>
-            <ul className="space-y-2 text-amber-300 text-sm">
-              <li><a href="#" className="hover:text-white">Privacy</a></li>
-              <li><a href="#" className="hover:text-white">Terms</a></li>
-              <li><a href="#" className="hover:text-white">Cookies</a></li>
-            </ul>
-          </div>
-        </div>
-        <div className="border-t border-amber-700 pt-8 text-center text-amber-300 text-sm">
-          <p>&copy; 2026 RECALL. All rights reserved.</p>
         </div>
       </footer>
     </div>

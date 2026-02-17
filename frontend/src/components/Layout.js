@@ -24,8 +24,19 @@ import {
 
 function AvatarDisplay({ avatar, fullName }) {
   const initials = fullName?.charAt(0) || 'U';
+  
+  if (avatar) {
+    return (
+      <img 
+        src={avatar} 
+        alt={fullName || 'User'} 
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+      />
+    );
+  }
+  
   return (
-    <div style={{ width: '100%', height: '100%', backgroundColor: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ width: '100%', height: '100%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>{initials}</span>
     </div>
   );
@@ -42,15 +53,14 @@ function Layout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({ Sprint: true, Personal: true, Admin: true });
 
-  const bgColor = '#1A1A1A';
-  const textColor = '#F5F5F5';
-  const accentColor = '#6B9FED';
-  const accentLight = '#8AB4F1';
-  const hoverBg = 'rgba(255, 255, 255, 0.06)';
-  const secondaryText = '#B8B8B8';
-  const mainBg = '#0F0F0F';
-  const borderColor = 'rgba(255, 255, 255, 0.08)';
-  const sidebarBg = '#1A1A1A';
+  const bgColor = '#1c1917';
+  const textColor = '#e7e5e4';
+  const accentColor = '#3b82f6';
+  const hoverBg = '#292524';
+  const secondaryText = '#a8a29e';
+  const mainBg = '#0c0a09';
+  const borderColor = '#292524';
+  const activeBg = '#1f2937';
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -113,58 +123,59 @@ function Layout({ children }) {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: mainBg, display: 'flex', flexDirection: 'column' }}>
-      {/* Jira-Style Header */}
+      {/* Header */}
       <header style={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
-        height: '56px',
+        height: '60px',
         background: bgColor,
         borderBottom: `1px solid ${borderColor}`,
         zIndex: 50,
         display: 'flex',
         alignItems: 'center',
-        padding: '0 16px',
-        gap: '12px'
+        padding: '0 20px',
+        gap: '16px'
       }}>
-        {/* Left: Logo + Menu Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={toggleSidebar} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '6px', color: secondaryText, transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = hoverBg; e.target.style.color = textColor; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = secondaryText; }}>
-            <Bars3Icon style={{ width: '20px', height: '20px' }} />
+        {/* Left: Logo + Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button onClick={toggleSidebar} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', border: `1px solid ${borderColor}`, cursor: 'pointer', borderRadius: '6px', color: secondaryText, transition: 'all 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; }}>
+            <Bars3Icon style={{ width: '18px', height: '18px' }} />
           </button>
-          <h1 style={{ fontSize: '16px', fontWeight: 600, color: textColor, margin: 0 }}>{getPageTitle()}</h1>
+          <h1 style={{ fontSize: '15px', fontWeight: 600, color: textColor, margin: 0, letterSpacing: '-0.01em' }}>{getPageTitle()}</h1>
         </div>
 
         {/* Right: Actions */}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Search />
-          <Link to="/messages" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: secondaryText, borderRadius: '6px', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = hoverBg; e.target.style.color = textColor; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = secondaryText; }}>
-            <InboxIcon style={{ width: '20px', height: '20px' }} />
+          <Link to="/messages" style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: secondaryText, borderRadius: '6px', transition: 'all 0.15s', border: `1px solid transparent` }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; e.currentTarget.style.borderColor = borderColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; e.currentTarget.style.borderColor = 'transparent'; }}>
+            <InboxIcon style={{ width: '18px', height: '18px' }} />
           </Link>
           <NotificationBell />
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <div style={{ position: 'relative', marginLeft: '8px' }}>
+            <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${borderColor}`, cursor: 'pointer', padding: 0, transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = secondaryText} onMouseLeave={(e) => e.currentTarget.style.borderColor = borderColor}>
               <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
             </button>
             {showProfileMenu && (
-              <div style={{ position: 'absolute', right: 0, marginTop: '8px', width: '200px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)', zIndex: 10, overflow: 'hidden' }}>
-                <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: '12px 16px', fontSize: '14px', color: textColor, textDecoration: 'none', transition: 'background 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Profile</Link>
-                <Link to="/settings" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: '12px 16px', fontSize: '14px', color: textColor, textDecoration: 'none', transition: 'background 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Settings</Link>
-                <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: '12px 16px', fontSize: '14px', color: textColor, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>Sign out</button>
+              <div style={{ position: 'absolute', right: 0, marginTop: '8px', width: '180px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '6px', zIndex: 10, overflow: 'hidden' }}>
+                <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: '10px 14px', fontSize: '13px', color: textColor, textDecoration: 'none', transition: 'background 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>Profile</Link>
+                <Link to="/settings" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: '10px 14px', fontSize: '13px', color: textColor, textDecoration: 'none', transition: 'background 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>Settings</Link>
+                <div style={{ height: '1px', backgroundColor: borderColor, margin: '4px 0' }} />
+                <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: '10px 14px', fontSize: '13px', color: '#ef4444', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>Sign out</button>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* Jira-Style Sidebar */}
+      {/* Sidebar */}
       <aside style={{
         position: 'fixed',
-        top: '56px',
+        top: '60px',
         left: 0,
         bottom: 0,
-        width: sidebarCollapsed ? '64px' : '240px',
+        width: sidebarCollapsed ? '60px' : '220px',
         background: bgColor,
         borderRight: `1px solid ${borderColor}`,
         display: 'flex',
@@ -173,8 +184,8 @@ function Layout({ children }) {
         overflowX: 'hidden'
       }}>
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <nav style={{ flex: 1, padding: '16px 10px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
               {primaryNav.map((item) => {
                 const isActive = location.pathname === item.href;
                 const Icon = item.icon;
@@ -185,22 +196,23 @@ function Layout({ children }) {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '12px',
-                      padding: sidebarCollapsed ? '10px' : '10px 12px',
-                      borderRadius: '6px',
-                      fontSize: '14px',
+                      gap: '10px',
+                      padding: sidebarCollapsed ? '10px' : '9px 12px',
+                      borderRadius: '5px',
+                      fontSize: '13px',
                       fontWeight: isActive ? 600 : 500,
                       textDecoration: 'none',
-                      color: isActive ? accentColor : secondaryText,
-                      backgroundColor: isActive ? hoverBg : 'transparent',
+                      color: isActive ? textColor : secondaryText,
+                      backgroundColor: isActive ? activeBg : 'transparent',
                       transition: 'all 0.15s',
-                      justifyContent: sidebarCollapsed ? 'center' : 'flex-start'
+                      justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                      border: `1px solid ${isActive ? borderColor : 'transparent'}`
                     }}
-                    onMouseEnter={(e) => { if (!isActive) { e.target.style.backgroundColor = hoverBg; e.target.style.color = textColor; } }}
-                    onMouseLeave={(e) => { if (!isActive) { e.target.style.backgroundColor = 'transparent'; e.target.style.color = secondaryText; } }}
+                    onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; } }}
+                    onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; } }}
                     title={sidebarCollapsed ? item.name : ''}
                   >
-                    <Icon style={{ width: '20px', height: '20px', flexShrink: 0 }} />
+                    <Icon style={{ width: '18px', height: '18px', flexShrink: 0 }} />
                     {!sidebarCollapsed && <span>{item.name}</span>}
                   </Link>
                 );
@@ -214,7 +226,7 @@ function Layout({ children }) {
                   { title: 'Personal', items: personalNav },
                   ...(user?.role === 'admin' ? [{ title: 'Admin', items: adminNav }] : [])
                 ].map((section) => (
-                  <div key={section.title} style={{ marginTop: spacing.xl }}>
+                  <div key={section.title} style={{ marginTop: '20px' }}>
                     <button
                       onClick={() => toggleGroup(section.title)}
                       style={{
@@ -222,33 +234,33 @@ function Layout({ children }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: `${spacing.sm} ${spacing.lg}`,
+                        padding: '6px 12px',
                         fontSize: '11px',
-                        fontWeight: 700,
-                        color: accentColor,
+                        fontWeight: 600,
+                        color: secondaryText,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
+                        letterSpacing: '0.05em',
                         backgroundColor: 'transparent',
                         border: 'none',
                         cursor: 'pointer',
-                        transition: motion.fast
+                        transition: 'all 0.15s'
                       }}
-                      onMouseEnter={(e) => e.target.style.color = accentLight}
-                      onMouseLeave={(e) => e.target.style.color = accentColor}
+                      onMouseEnter={(e) => e.currentTarget.style.color = textColor}
+                      onMouseLeave={(e) => e.currentTarget.style.color = secondaryText}
                     >
                       <span>{section.title}</span>
                       <ChevronDownIcon 
                         style={{ 
-                          width: '14px', 
-                          height: '14px',
+                          width: '12px', 
+                          height: '12px',
                           transform: expandedGroups[section.title] ? 'rotate(0deg)' : 'rotate(-90deg)',
-                          transition: motion.fast
+                          transition: 'transform 0.15s'
                         }} 
                       />
                     </button>
                     
                     {expandedGroups[section.title] && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs, marginTop: spacing.sm }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', marginTop: '6px' }}>
                         {section.items.map((item) => {
                           const isActive = location.pathname === item.href;
                           return (
@@ -257,18 +269,19 @@ function Layout({ children }) {
                               to={item.href}
                               style={{
                                 display: 'block',
-                                padding: `${spacing.sm} ${spacing.lg}`,
-                                paddingLeft: spacing.xl,
-                                borderRadius: '0',
+                                padding: '8px 12px',
+                                paddingLeft: '24px',
+                                borderRadius: '5px',
                                 fontSize: '13px',
                                 textDecoration: 'none',
-                                color: isActive ? accentColor : secondaryText,
-                                backgroundColor: isActive ? hoverBg : 'transparent',
+                                color: isActive ? textColor : secondaryText,
+                                backgroundColor: isActive ? activeBg : 'transparent',
                                 fontWeight: isActive ? 600 : 'normal',
-                                borderLeft: isActive ? `4px solid ${accentColor}` : '4px solid transparent',
-                                paddingLeft: isActive ? '12px' : spacing.xl,
-                                transition: motion.fast
+                                border: `1px solid ${isActive ? borderColor : 'transparent'}`,
+                                transition: 'all 0.15s'
                               }}
+                              onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; } }}
+                              onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; } }}
                             >
                               {item.name}
                             </Link>
@@ -282,10 +295,10 @@ function Layout({ children }) {
             )}
           </nav>
 
-          <div style={{ padding: spacing.lg, borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
+          <div style={{ padding: '14px 10px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
             {!sidebarCollapsed ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '0', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px', borderRadius: '5px', backgroundColor: hoverBg, border: `1px solid ${borderColor}` }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '5px', overflow: 'hidden', flexShrink: 0 }}>
                   <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -295,7 +308,7 @@ function Layout({ children }) {
               </div>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '0', overflow: 'hidden' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '5px', overflow: 'hidden', border: `1px solid ${borderColor}` }}>
                   <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
                 </div>
               </div>
@@ -306,14 +319,14 @@ function Layout({ children }) {
 
       {/* Main Content */}
       <main style={{
-        paddingTop: '56px',
-        paddingLeft: sidebarCollapsed ? '64px' : '240px',
+        paddingTop: '60px',
+        paddingLeft: sidebarCollapsed ? '60px' : '220px',
         transition: 'padding-left 0.2s ease',
         backgroundColor: mainBg,
         flex: 1,
         minHeight: '100vh'
       }}>
-        <div style={{ flex: 1, padding: spacing.xl, color: textColor, backgroundColor: mainBg }}>
+        <div style={{ flex: 1, padding: '24px', color: textColor, backgroundColor: mainBg }}>
           {children}
         </div>
       </main>

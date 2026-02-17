@@ -51,50 +51,56 @@ function DecisionDetail() {
     }
   };
 
+  const bgColor = '#1c1917';
+  const textColor = '#e7e5e4';
+  const borderColor = '#292524';
+  const hoverBg = '#292524';
+  const secondaryText = '#a8a29e';
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
+        <div style={{ width: '24px', height: '24px', border: '2px solid #292524', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       </div>
     );
   }
 
   if (!decision) {
-    return <div className="text-center py-8 text-gray-600">Decision not found</div>;
+    return <div style={{ textAlign: 'center', padding: '32px', color: secondaryText, fontSize: '14px' }}>Decision not found</div>;
   }
 
   const impactConfig = {
-    low: { bg: 'bg-blue-50', text: 'text-blue-900', label: 'Low' },
-    medium: { bg: 'bg-amber-50', text: 'text-amber-900', label: 'Medium' },
-    high: { bg: 'bg-orange-50', text: 'text-orange-900', label: 'High' },
-    critical: { bg: 'bg-red-50', text: 'text-red-900', label: 'Critical' }
+    low: { bg: '#1e3a8a', text: '#93c5fd', label: 'Low' },
+    medium: { bg: '#78350f', text: '#fcd34d', label: 'Medium' },
+    high: { bg: '#7c2d12', text: '#fdba74', label: 'High' },
+    critical: { bg: '#7f1d1d', text: '#fca5a5', label: 'Critical' }
   };
 
   const statusConfig = {
-    proposed: { bg: 'bg-gray-100', text: 'text-gray-900', label: 'Proposed' },
-    under_review: { bg: 'bg-blue-100', text: 'text-blue-900', label: 'Under Review' },
-    approved: { bg: 'bg-green-100', text: 'text-green-900', label: 'Approved' },
-    rejected: { bg: 'bg-red-100', text: 'text-red-900', label: 'Rejected' },
-    implemented: { bg: 'bg-emerald-100', text: 'text-emerald-900', label: 'Implemented' },
-    cancelled: { bg: 'bg-gray-100', text: 'text-gray-900', label: 'Cancelled' }
+    proposed: { bg: hoverBg, text: secondaryText, label: 'Proposed' },
+    under_review: { bg: '#1e3a8a', text: '#93c5fd', label: 'Under Review' },
+    approved: { bg: '#065f46', text: '#6ee7b7', label: 'Approved' },
+    rejected: { bg: '#7f1d1d', text: '#fca5a5', label: 'Rejected' },
+    implemented: { bg: '#065f46', text: '#6ee7b7', label: 'Implemented' },
+    cancelled: { bg: hoverBg, text: secondaryText, label: 'Cancelled' }
   };
 
   const impact = impactConfig[decision.impact_level] || impactConfig.medium;
   const status = statusConfig[decision.status] || statusConfig.proposed;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
       {/* Header */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
-        <a href="/decisions" className="text-sm text-gray-600 hover:text-gray-900 font-medium mb-4 inline-block">← Back to Decisions</a>
+      <div style={{ marginBottom: '24px' }}>
+        <a href="/decisions" style={{ fontSize: '13px', color: secondaryText, textDecoration: 'none', fontWeight: 500, marginBottom: '12px', display: 'inline-block' }}>← Back to Decisions</a>
         
-        <div className="mb-12">
-          <h1 className="text-6xl font-black text-gray-900 mb-4 tracking-tight">{decision.title}</h1>
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className={`px-4 py-2 text-xs font-bold uppercase tracking-wide ${impact.bg} ${impact.text}`}>
+        <div style={{ marginBottom: '16px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 600, color: textColor, marginBottom: '12px', letterSpacing: '-0.01em' }}>{decision.title}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', borderRadius: '3px', backgroundColor: impact.bg, color: impact.text }}>
               {impact.label} Impact
             </span>
-            <span className={`px-4 py-2 text-xs font-bold uppercase tracking-wide ${status.bg} ${status.text}`}>
+            <span style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', borderRadius: '3px', backgroundColor: status.bg, color: status.text }}>
               {status.label}
             </span>
             <FavoriteButton decisionId={id} />
@@ -104,36 +110,44 @@ function DecisionDetail() {
         </div>
 
         {/* Metadata Grid */}
-        <div className="grid grid-cols-4 gap-6 mb-16">
-          <div className="p-6 bg-white border border-gray-200">
-            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Owner</p>
-            <p className="text-lg font-bold text-gray-900">{decision.decision_maker_name}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ padding: '14px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+            <p style={{ fontSize: '10px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Owner</p>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: textColor }}>{decision.decision_maker_name}</p>
           </div>
-          <div className="p-6 bg-white border border-gray-200">
-            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Created</p>
-            <p className="text-lg font-bold text-gray-900">{new Date(decision.created_at).toLocaleDateString()}</p>
+          <div style={{ padding: '14px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+            <p style={{ fontSize: '10px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Created</p>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: textColor }}>{new Date(decision.created_at).toLocaleDateString()}</p>
           </div>
-          <div className="p-6 bg-white border border-gray-200">
-            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Decided</p>
-            <p className="text-lg font-bold text-gray-900">{decision.decided_at ? new Date(decision.decided_at).toLocaleDateString() : '−'}</p>
+          <div style={{ padding: '14px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+            <p style={{ fontSize: '10px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Decided</p>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: textColor }}>{decision.decided_at ? new Date(decision.decided_at).toLocaleDateString() : '−'}</p>
           </div>
-          <div className="p-6 bg-white border border-gray-200">
-            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Confidence</p>
-            <p className="text-lg font-bold text-gray-900">{decision.confidence?.score || '−'}%</p>
+          <div style={{ padding: '14px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+            <p style={{ fontSize: '10px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Confidence</p>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: textColor }}>{decision.confidence?.score || '−'}%</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-8 mb-12 border-b border-gray-200 pb-4">
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', borderBottom: `1px solid ${borderColor}`, paddingBottom: '0' }}>
           {['overview', 'rationale', 'code', 'details'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`text-sm font-bold uppercase tracking-wide transition-all ${
-                activeTab === tab
-                  ? 'text-gray-900 border-b-2 border-gray-900 pb-4'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+                padding: '10px 0',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === tab ? `2px solid ${textColor}` : '2px solid transparent',
+                color: activeTab === tab ? textColor : secondaryText,
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -141,62 +155,64 @@ function DecisionDetail() {
         </div>
 
         {/* Content */}
-        <div className="grid grid-cols-3 gap-12">
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
           {/* Main Content */}
-          <div className="col-span-2">
+          <div>
             {activeTab === 'overview' && (
-              <div className="p-8 bg-white border border-gray-200">
-                <h2 className="text-2xl font-black text-gray-900 mb-6">Overview</h2>
-                <div className="space-y-4 text-gray-700 font-light">
+              <div style={{ padding: '20px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>Overview</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: secondaryText, fontSize: '14px', lineHeight: '1.6' }}>
                   {decision.description.split('\n\n').map((paragraph, idx) => (
-                    <p key={idx} className="leading-relaxed">{paragraph}</p>
+                    <p key={idx}>{paragraph}</p>
                   ))}
                 </div>
               </div>
             )}
 
             {activeTab === 'rationale' && (
-              <div className="p-8 bg-white border border-gray-200">
-                <h2 className="text-2xl font-black text-gray-900 mb-6">Rationale</h2>
+              <div style={{ padding: '20px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>Rationale</h2>
                 {decision.rationale ? (
-                  <div className="space-y-4 text-gray-700 font-light">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: secondaryText, fontSize: '14px', lineHeight: '1.6' }}>
                     {decision.rationale.split('\n\n').map((paragraph, idx) => (
-                      <p key={idx} className="leading-relaxed">{paragraph}</p>
+                      <p key={idx}>{paragraph}</p>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-600">No rationale provided</p>
+                  <p style={{ color: secondaryText, fontSize: '13px' }}>No rationale provided</p>
                 )}
               </div>
             )}
 
             {activeTab === 'code' && (
-              <div className="p-8 bg-white border border-gray-200">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-2xl font-black text-gray-900">Related Code</h2>
+              <div style={{ padding: '20px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor }}>Related Code</h2>
                   <button
                     onClick={() => setShowLinkPR(!showLinkPR)}
-                    className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all"
+                    style={{ padding: '7px 12px', border: `1px solid ${borderColor}`, borderRadius: '4px', backgroundColor: bgColor, color: textColor, fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgColor}
                   >
                     {showLinkPR ? 'Cancel' : 'Link PR'}
                   </button>
                 </div>
 
                 {showLinkPR && (
-                  <form onSubmit={handleLinkPR} className="mb-8 p-6 bg-gray-50 border border-gray-200">
-                    <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">PR URL</label>
-                    <div className="flex gap-3">
+                  <form onSubmit={handleLinkPR} style={{ marginBottom: '16px', padding: '14px', backgroundColor: hoverBg, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: textColor, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>PR URL</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       <input
                         type="url"
                         value={prUrl}
                         onChange={(e) => setPrUrl(e.target.value)}
                         placeholder="https://github.com/owner/repo/pull/123"
-                        className="flex-1 px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                        style={{ flex: 1, padding: '8px 12px', border: `1px solid ${borderColor}`, borderRadius: '4px', backgroundColor: '#0c0a09', color: textColor, fontSize: '13px', outline: 'none' }}
                       />
                       <button
                         type="submit"
                         disabled={!prUrl.trim() || linking}
-                        className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50"
+                        style={{ padding: '8px 14px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (!prUrl.trim() || linking) ? 0.5 : 1 }}
                       >
                         {linking ? 'Linking...' : 'Link'}
                       </button>
@@ -205,66 +221,68 @@ function DecisionDetail() {
                 )}
 
                 {decision.code_links && decision.code_links.length > 0 ? (
-                  <div className="space-y-3">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {decision.code_links.map((link, idx) => (
                       <a
                         key={idx}
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between p-6 border border-gray-200 hover:border-gray-900 hover:shadow-md transition-all"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px', border: `1px solid ${borderColor}`, borderRadius: '5px', textDecoration: 'none', transition: 'all 0.15s' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = hoverBg; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = 'transparent'; }}
                       >
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <LinkIcon className="w-5 h-5 text-gray-600 flex-shrink-0" />
-                          <div className="min-w-0">
-                            <div className="font-bold text-gray-900 truncate">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                          <LinkIcon style={{ width: '16px', height: '16px', color: secondaryText, flexShrink: 0 }} />
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, color: textColor, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {link.title || `PR #${link.number}`}
                             </div>
-                            <div className="text-xs text-gray-600 truncate">{link.url}</div>
+                            <div style={{ fontSize: '11px', color: secondaryText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{link.url}</div>
                           </div>
                         </div>
-                        <span className="text-gray-600 ml-4">→</span>
+                        <span style={{ color: secondaryText, marginLeft: '12px' }}>→</span>
                       </a>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-16">
-                    <LinkIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600 font-medium">No linked PRs</p>
-                    <p className="text-sm text-gray-500 mt-2">Link PRs to track implementation</p>
+                  <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+                    <LinkIcon style={{ width: '40px', height: '40px', color: borderColor, margin: '0 auto 12px' }} />
+                    <p style={{ color: secondaryText, fontWeight: 500, fontSize: '13px', marginBottom: '4px' }}>No linked PRs</p>
+                    <p style={{ fontSize: '12px', color: secondaryText }}>Link PRs to track implementation</p>
                   </div>
                 )}
               </div>
             )}
 
             {activeTab === 'details' && (
-              <div className="space-y-6">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {decision.context_reason && (
-                  <div className="p-8 bg-white border border-gray-200">
-                    <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-4">Context</h3>
-                    <p className="text-gray-700 font-light">{decision.context_reason}</p>
+                  <div style={{ padding: '20px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+                    <h3 style={{ fontSize: '10px', fontWeight: 600, color: secondaryText, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '10px' }}>Context</h3>
+                    <p style={{ color: secondaryText, fontSize: '14px', lineHeight: '1.6' }}>{decision.context_reason}</p>
                   </div>
                 )}
 
                 {decision.if_this_fails && (
-                  <div className="p-8 bg-red-50 border border-red-200">
-                    <div className="flex gap-4">
-                      <ExclamationTriangleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
+                  <div style={{ padding: '20px', backgroundColor: '#7f1d1d', border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <ExclamationTriangleIcon style={{ width: '16px', height: '16px', color: '#fca5a5', flexShrink: 0, marginTop: '2px' }} />
                       <div>
-                        <h3 className="text-xs font-bold text-red-900 uppercase tracking-wide mb-2">If This Fails</h3>
-                        <p className="text-red-800 font-light">{decision.if_this_fails}</p>
+                        <h3 style={{ fontSize: '10px', fontWeight: 600, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '8px' }}>If This Fails</h3>
+                        <p style={{ color: '#fca5a5', fontSize: '14px', lineHeight: '1.6' }}>{decision.if_this_fails}</p>
                       </div>
                     </div>
                   </div>
                 )}
 
                 {decision.alternatives_considered && decision.alternatives_considered.length > 0 && (
-                  <div className="p-8 bg-white border border-gray-200">
-                    <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-4">Alternatives Considered</h3>
-                    <ul className="space-y-3">
+                  <div style={{ padding: '20px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+                    <h3 style={{ fontSize: '10px', fontWeight: 600, color: secondaryText, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '10px' }}>Alternatives Considered</h3>
+                    <ul style={{ display: 'flex', flexDirection: 'column', gap: '8px', listStyle: 'none', padding: 0, margin: 0 }}>
                       {(Array.isArray(decision.alternatives_considered) ? decision.alternatives_considered : [decision.alternatives_considered]).map((alt, idx) => (
-                        <li key={idx} className="flex gap-3 text-gray-700 font-light">
-                          <span className="text-gray-400 flex-shrink-0">•</span>
+                        <li key={idx} style={{ display: 'flex', gap: '8px', color: secondaryText, fontSize: '14px', lineHeight: '1.6' }}>
+                          <span style={{ color: borderColor, flexShrink: 0 }}>•</span>
                           <span>{alt}</span>
                         </li>
                       ))}
@@ -276,42 +294,46 @@ function DecisionDetail() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {/* Decision Reminder */}
             <DecisionReminder decisionId={id} />
 
             {/* Confidence Score */}
             {decision.confidence && (
-              <div className="p-8 bg-white border border-gray-200">
-                <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-6">Confidence</h3>
-                <div className="space-y-4">
+              <div style={{ padding: '20px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+                <h3 style={{ fontSize: '10px', fontWeight: 600, color: secondaryText, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '12px' }}>Confidence</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
-                    <div className="flex items-end justify-between mb-3">
-                      <span className="text-4xl font-black text-gray-900">{decision.confidence.score}%</span>
-                      <span className={`text-xs font-bold uppercase px-3 py-1 ${
-                        decision.confidence.level === 'High' ? 'bg-green-100 text-green-900' :
-                        decision.confidence.level === 'Medium' ? 'bg-amber-100 text-amber-900' :
-                        'bg-red-100 text-red-900'
-                      }`}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '28px', fontWeight: 600, color: textColor }}>{decision.confidence.score}%</span>
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        padding: '3px 8px',
+                        borderRadius: '3px',
+                        backgroundColor: decision.confidence.level === 'High' ? '#065f46' : decision.confidence.level === 'Medium' ? '#78350f' : '#7f1d1d',
+                        color: decision.confidence.level === 'High' ? '#6ee7b7' : decision.confidence.level === 'Medium' ? '#fcd34d' : '#fca5a5'
+                      }}>
                         {decision.confidence.level}
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-gray-200">
+                    <div style={{ width: '100%', height: '6px', backgroundColor: borderColor, borderRadius: '3px', overflow: 'hidden' }}>
                       <div
-                        className={`h-2 transition-all ${
-                          decision.confidence.level === 'High' ? 'bg-green-600' :
-                          decision.confidence.level === 'Medium' ? 'bg-amber-600' :
-                          'bg-red-600'
-                        }`}
-                        style={{ width: `${decision.confidence.score}%` }}
+                        style={{
+                          height: '6px',
+                          width: `${decision.confidence.score}%`,
+                          transition: 'all 0.3s',
+                          backgroundColor: decision.confidence.level === 'High' ? '#10b981' : decision.confidence.level === 'Medium' ? '#f59e0b' : '#ef4444'
+                        }}
                       ></div>
                     </div>
                   </div>
                   {decision.confidence.factors && (
-                    <div className="pt-4 border-t border-gray-200 space-y-2">
+                    <div style={{ paddingTop: '12px', borderTop: `1px solid ${borderColor}`, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {decision.confidence.factors.map((factor, idx) => (
-                        <div key={idx} className="text-xs text-gray-600 font-light">
-                          <span className="text-gray-400">•</span> {factor}
+                        <div key={idx} style={{ fontSize: '11px', color: secondaryText, lineHeight: '1.5' }}>
+                          <span style={{ color: borderColor }}>•</span> {factor}
                         </div>
                       ))}
                     </div>
@@ -321,25 +343,25 @@ function DecisionDetail() {
             )}
 
             {/* Quick Info */}
-            <div className="p-8 bg-white border border-gray-200">
-              <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-6">Quick Info</h3>
-              <div className="space-y-4">
+            <div style={{ padding: '20px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
+              <h3 style={{ fontSize: '10px', fontWeight: 600, color: secondaryText, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '12px' }}>Quick Info</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Status</p>
-                  <span className={`inline-block px-3 py-1 text-xs font-bold uppercase ${status.bg} ${status.text}`}>
+                  <p style={{ fontSize: '10px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Status</p>
+                  <span style={{ display: 'inline-block', padding: '3px 8px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', borderRadius: '3px', backgroundColor: status.bg, color: status.text }}>
                     {status.label}
                   </span>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Impact</p>
-                  <span className={`inline-block px-3 py-1 text-xs font-bold uppercase ${impact.bg} ${impact.text}`}>
+                  <p style={{ fontSize: '10px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Impact</p>
+                  <span style={{ display: 'inline-block', padding: '3px 8px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', borderRadius: '3px', backgroundColor: impact.bg, color: impact.text }}>
                     {impact.label}
                   </span>
                 </div>
                 {decision.implementation_deadline && (
                   <div>
-                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-2">Deadline</p>
-                    <p className="text-sm font-bold text-gray-900">{new Date(decision.implementation_deadline).toLocaleDateString()}</p>
+                    <p style={{ fontSize: '10px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Deadline</p>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: textColor }}>{new Date(decision.implementation_deadline).toLocaleDateString()}</p>
                   </div>
                 )}
               </div>

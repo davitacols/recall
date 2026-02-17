@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { PlusIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { useParams, useNavigate } from 'react-router-dom';
+import { PlusIcon, Bars3Icon, ChevronRightIcon, ChevronDownIcon, ArrowLeftIcon, LightBulbIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
-import BulkEditBar from '../components/BulkEditBar';
 
 function Backlog() {
   const { projectId } = useParams();
-  const [backlog, setBacklog] = useState(null);
+  const navigate = useNavigate();
+  const [backlogIssues, setBacklogIssues] = useState([]);
   const [sprints, setSprints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateIssue, setShowCreateIssue] = useState(false);
-  const [selectedIssues, setSelectedIssues] = useState(new Set());
+  const [expandedEpics, setExpandedEpics] = useState(new Set());
+  const [draggedIssue, setDraggedIssue] = useState(null);
+  const [dragOverIssue, setDragOverIssue] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [parentIssueId, setParentIssueId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -22,259 +26,390 @@ function Backlog() {
         api.get(`/api/agile/projects/${projectId}/backlog/`),
         api.get(`/api/agile/projects/${projectId}/sprints/`)
       ]);
-      setBacklog(backlogRes.data);
-      setSprints(sprintsRes.data);
+      // Only show issues NOT in any sprint (backlog = future work)
+      const issues = (backlogRes.data.issues || []).filter(i => !i.sprint_id);
+      setBacklogIssues(issues);
+      setSprints(sprintsRes.data || []);
     } catch (error) {
-      console.error('Failed to fetch backlog:', error);
+      console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMoveToSprint = async (sprintId) => {
-    if (selectedIssues.size === 0) return;
+  const toggleEpic = (epicId) => {
+    const newExpanded = new Set(expandedEpics);
+    newExpanded.has(epicId) ? newExpanded.delete(epicId) : newExpanded.add(epicId);
+    setExpandedEpics(newExpanded);
+  };
 
-    try {
-      for (const issueId of selectedIssues) {
-        await api.put(`/api/agile/issues/${issueId}/`, { sprint_id: sprintId });
-      }
-      setSelectedIssues(new Set());
-      fetchData();
-    } catch (error) {
-      console.error('Failed to move issues:', error);
+  const handleDragStart = (e, issue) => {
+    setDraggedIssue(issue);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOverIssue = (e, targetIssue) => {
+    e.preventDefault();
+    if (draggedIssue && draggedIssue.id !== targetIssue.id) {
+      setDragOverIssue(targetIssue.id);
     }
   };
 
-  const toggleIssueSelection = (issueId) => {
-    const newSelected = new Set(selectedIssues);
-    if (newSelected.has(issueId)) {
-      newSelected.delete(issueId);
-    } else {
-      newSelected.add(issueId);
+  const handleDropOnIssue = async (e, targetIssue) => {
+    e.preventDefault();
+    if (!draggedIssue || draggedIssue.id === targetIssue.id) return;
+
+    // Reorder: move draggedIssue to position of targetIssue
+    const newOrder = [...backlogIssues];
+    const dragIndex = newOrder.findIndex(i => i.id === draggedIssue.id);
+    const dropIndex = newOrder.findIndex(i => i.id === targetIssue.id);
+    
+    newOrder.splice(dragIndex, 1);
+    newOrder.splice(dropIndex, 0, draggedIssue);
+    
+    setBacklogIssues(newOrder);
+    setDraggedIssue(null);
+    setDragOverIssue(null);
+
+    // TODO: Send new order to backend
+    // await api.post(`/api/agile/projects/${projectId}/backlog/reorder/`, { order: newOrder.map(i => i.id) });
+  };
+
+  const handleDragOverSprint = (e, sprintId) => {
+    e.preventDefault();
+    setDropTarget(sprintId);
+  };
+
+  const handleDropOnSprint = async (e, sprintId) => {
+    e.preventDefault();
+    if (!draggedIssue) return;
+
+    try {
+      await api.put(`/api/agile/issues/${draggedIssue.id}/`, { sprint_id: sprintId });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to move issue:', error);
+    } finally {
+      setDraggedIssue(null);
+      setDropTarget(null);
     }
-    setSelectedIssues(newSelected);
+  };
+
+  const buildHierarchy = () => {
+    const epics = backlogIssues.filter(i => i.issue_type === 'epic');
+    const stories = backlogIssues.filter(i => i.issue_type === 'story');
+    const tasks = backlogIssues.filter(i => i.issue_type === 'task' || i.issue_type === 'bug');
+
+    return epics.map(epic => ({
+      ...epic,
+      children: stories.filter(s => s.parent_issue_id === epic.id).map(story => ({
+        ...story,
+        children: tasks.filter(t => t.parent_issue_id === story.id)
+      })).concat(tasks.filter(t => t.parent_issue_id === epic.id))
+    })).concat(
+      stories.filter(s => !s.parent_issue_id).map(story => ({
+        ...story,
+        children: tasks.filter(t => t.parent_issue_id === story.id)
+      }))
+    ).concat(tasks.filter(t => !t.parent_issue_id));
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#111827' }}>
-        <div style={{ width: '32px', height: '32px', border: '2px solid #374151', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <div className="min-h-screen bg-stone-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-stone-700 border-t-stone-400 rounded-full animate-spin"></div>
       </div>
     );
   }
 
+  const hierarchy = buildHierarchy();
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#111827' }}>
-      <div style={{ maxWidth: '90rem', margin: '0 auto', padding: '32px 24px' }}>
+    <div className="min-h-screen bg-stone-950">
+      <div className="max-w-[1600px] mx-auto px-6 py-8">
         {/* Header */}
-        <div style={{ marginBottom: '48px' }}>
-          <h1 style={{ fontSize: '48px', fontWeight: 900, color: '#ffffff', marginBottom: '8px', letterSpacing: '-0.02em' }}>Backlog</h1>
-          <p style={{ fontSize: '16px', color: '#9ca3af', fontWeight: 300 }}>Plan and prioritize your work</p>
+        <div className="mb-8">
+          <button onClick={() => navigate(-1)} className="mb-4 px-3 py-2 hover:bg-stone-900 rounded transition-all border border-stone-800 bg-stone-900/50 inline-flex items-center gap-2 text-stone-400 hover:text-stone-200">
+            <ArrowLeftIcon className="w-4 h-4" />
+            <span className="text-sm">Back</span>
+          </button>
+          <div className="bg-stone-900 border border-stone-800 rounded-lg p-6">
+            <h1 className="text-2xl font-bold text-stone-100 mb-1">Backlog</h1>
+            <p className="text-sm text-stone-500">Prioritize future work • {backlogIssues.length} unstarted issues</p>
+          </div>
         </div>
 
-        {/* Main Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
-          {/* Left: Backlog Issues */}
+        <div className="grid grid-cols-[1fr_320px] gap-6">
+          {/* Backlog List */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <h2 style={{ fontSize: '14px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Issues ({backlog?.issue_count || 0})</h2>
-                {selectedIssues.size > 0 && (
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#d97706', backgroundColor: '#292415', padding: '4px 12px', border: '1px solid #b45309' }}>
-                    {selectedIssues.size} selected
-                  </span>
-                )}
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-xs font-semibold text-stone-500 uppercase">
+                Priority Order (Top = Most Important)
               </div>
               <button
-                onClick={() => setShowCreateIssue(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', backgroundColor: '#d97706', color: '#ffffff', border: 'none', fontWeight: 700, textTransform: 'uppercase', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s', letterSpacing: '0.05em' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fbbf24'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
+                onClick={() => {
+                  setParentIssueId(null);
+                  setShowCreateModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-stone-800 text-stone-200 rounded hover:bg-stone-700 font-medium text-sm transition-all border border-stone-700"
               >
-                <PlusIcon style={{ width: '16px', height: '16px' }} />
+                <PlusIcon className="w-4 h-4" />
                 New Issue
               </button>
             </div>
 
-            {!backlog?.issues || backlog.issues.length === 0 ? (
-              <div style={{ padding: '64px 32px', textAlign: 'center', backgroundColor: '#1c1917', border: '1px solid #374151' }}>
-                <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '16px' }}>No issues in backlog</p>
-                <button
-                  onClick={() => setShowCreateIssue(true)}
-                  style={{ padding: '8px 16px', backgroundColor: '#374151', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                >
-                  Create First Issue
-                </button>
+            <div className="bg-stone-900 border border-stone-800 rounded-lg overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-[32px_40px_1fr_90px_80px_110px_120px] gap-3 px-4 py-3 border-b border-stone-800 bg-stone-900/80">
+                <div></div>
+                <div></div>
+                <div className="text-xs font-semibold text-stone-500 uppercase">Issue</div>
+                <div className="text-xs font-semibold text-stone-500 uppercase">Type</div>
+                <div className="text-xs font-semibold text-stone-500 uppercase">Priority</div>
+                <div className="text-xs font-semibold text-stone-500 uppercase">Assignee</div>
+                <div className="text-xs font-semibold text-stone-500 uppercase text-right">Actions</div>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                {backlog.issues.map(issue => {
-                  const isChild = issue.parent_issue_id != null;
-                  return (
-                    <div
-                      key={issue.id}
-                      style={{
-                        padding: '12px 16px',
-                        paddingLeft: isChild ? '56px' : '16px',
-                        backgroundColor: selectedIssues.has(issue.id) ? '#1e293b' : '#1c1917',
-                        borderLeft: selectedIssues.has(issue.id) ? '3px solid #d97706' : '3px solid transparent',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!selectedIssues.has(issue.id)) {
-                          e.currentTarget.style.backgroundColor = '#1e293b';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!selectedIssues.has(issue.id)) {
-                          e.currentTarget.style.backgroundColor = '#1c1917';
-                        }
-                      }}
-                      onClick={() => toggleIssueSelection(issue.id)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedIssues.has(issue.id)}
-                        onChange={() => toggleIssueSelection(issue.id)}
-                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          {isChild && <span style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1 }}>↳</span>}
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{issue.key}</span>
-                          <span style={{ padding: '2px 8px', fontSize: '10px', fontWeight: 700, backgroundColor: '#374151', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {issue.issue_type}
-                          </span>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: getPriorityColor(issue.priority) }}></span>
-                        </div>
-                        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{issue.title}</h3>
-                      </div>
 
-                      {(issue.issue_type === 'epic' || issue.issue_type === 'story') && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowCreateIssue(issue.id);
-                          }}
-                          style={{ padding: '6px 12px', backgroundColor: '#374151', color: '#ffffff', border: 'none', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.2s', letterSpacing: '0.05em', flexShrink: 0 }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#374151'}
-                        >
-                          + Child
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+              {/* Issues */}
+              {backlogIssues.length === 0 ? (
+                <div className="p-12 text-center">
+                  <p className="text-sm text-stone-500 mb-4">Backlog is empty</p>
+                  <button
+                    onClick={() => {
+                      setParentIssueId(null);
+                      setShowCreateModal(true);
+                    }}
+                    className="px-5 py-2 bg-stone-800 text-stone-200 rounded hover:bg-stone-700 font-medium text-sm transition-all border border-stone-700"
+                  >
+                    Create First Issue
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  {hierarchy.map((item, index) => (
+                    <IssueRow
+                      key={item.id}
+                      issue={item}
+                      index={index}
+                      level={0}
+                      expanded={expandedEpics.has(item.id)}
+                      onToggle={() => toggleEpic(item.id)}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOverIssue}
+                      onDrop={handleDropOnIssue}
+                      isDragging={draggedIssue?.id === item.id}
+                      isDragOver={dragOverIssue === item.id}
+                      navigate={navigate}
+                      onAddChild={(parentId) => {
+                        setParentIssueId(parentId);
+                        setShowCreateModal(true);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Right: Sprints Sidebar */}
+          {/* Sprint Planning Sidebar */}
           <div>
-            <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px' }}>Sprints</h3>
+            <h3 className="text-xs font-semibold text-stone-500 uppercase mb-4">
+              Move to Sprint
+            </h3>
             
             {sprints.length === 0 ? (
-              <div style={{ padding: '24px', backgroundColor: '#1c1917', border: '1px solid #374151', textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: '#6b7280' }}>No active sprints</p>
+              <div className="p-6 bg-stone-900 border border-stone-800 rounded-lg text-center">
+                <p className="text-xs text-stone-600">No active sprints</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="flex flex-col gap-3">
                 {sprints.map(sprint => (
-                  <button
+                  <div
                     key={sprint.id}
-                    onClick={() => handleMoveToSprint(sprint.id)}
-                    disabled={selectedIssues.size === 0}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      backgroundColor: '#1c1917',
-                      border: '1px solid #374151',
-                      textAlign: 'left',
-                      transition: 'all 0.2s',
-                      cursor: selectedIssues.size === 0 ? 'not-allowed' : 'pointer',
-                      opacity: selectedIssues.size === 0 ? 0.5 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedIssues.size > 0) {
-                        e.currentTarget.style.backgroundColor = '#292524';
-                        e.currentTarget.style.borderColor = '#d97706';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedIssues.size > 0) {
-                        e.currentTarget.style.backgroundColor = '#1c1917';
-                        e.currentTarget.style.borderColor = '#374151';
-                      }
-                    }}
+                    onDragOver={(e) => handleDragOverSprint(e, sprint.id)}
+                    onDragLeave={() => setDropTarget(null)}
+                    onDrop={(e) => handleDropOnSprint(e, sprint.id)}
+                    className={`p-4 rounded-lg transition-all ${
+                      dropTarget === sprint.id
+                        ? 'bg-stone-800 border-2 border-stone-600'
+                        : 'bg-stone-900 border border-stone-800 hover:border-stone-700'
+                    } ${draggedIssue ? 'cursor-pointer' : ''}`}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>{sprint.name}</span>
-                      <ArrowRightIcon style={{ width: '14px', height: '14px', color: '#6b7280' }} />
+                    <div className="text-sm font-semibold text-stone-200 mb-1">{sprint.name}</div>
+                    <div className="text-xs text-stone-600 mb-2">
+                      {sprint.start_date} - {sprint.end_date}
                     </div>
-                    <span style={{ fontSize: '11px', color: '#6b7280' }}>{sprint.start_date}</span>
-                  </button>
+                    {sprint.issue_count > 0 && (
+                      <div className="text-xs text-stone-500 font-medium">
+                        {sprint.issue_count} issues
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
 
-            {selectedIssues.size > 0 && (
-              <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#1e3a8a', border: '1px solid #3b82f6' }}>
-                <p style={{ fontSize: '12px', color: '#93c5fd', fontWeight: 500 }}>
-                  Click sprint to move {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''}
+            {draggedIssue && (
+              <div className="mt-4 p-3 bg-stone-900 border border-stone-800 rounded-lg">
+                <p className="text-xs text-stone-500 leading-relaxed">
+                  ↑ Drop on sprint to plan<br/>
+                  ↑ Drop on issue to reorder
                 </p>
               </div>
             )}
+
+            {/* Backlog Tips */}
+            <div className="mt-6 p-4 bg-stone-900 border border-stone-800 rounded-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <LightBulbIcon className="w-4 h-4 text-stone-500" />
+                <h4 className="text-xs font-semibold text-stone-500 uppercase">Tips</h4>
+              </div>
+              <ul className="text-xs text-stone-600 leading-relaxed space-y-1 pl-4 list-disc">
+                <li>Top = highest priority</li>
+                <li>Drag to reorder</li>
+                <li>Drag to sprint to plan</li>
+                <li>Groom regularly</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
 
-      {showCreateIssue && (
+      {showCreateModal && (
         <CreateIssueModal
           projectId={projectId}
-          parentIssueId={typeof showCreateIssue === 'number' ? showCreateIssue : null}
-          onClose={() => setShowCreateIssue(false)}
+          parentIssueId={parentIssueId}
+          onClose={() => {
+            setShowCreateModal(false);
+            setParentIssueId(null);
+          }}
           onSuccess={() => {
-            setShowCreateIssue(false);
+            setShowCreateModal(false);
+            setParentIssueId(null);
             fetchData();
           }}
         />
       )}
-      
-      <BulkEditBar 
-        selectedIssues={Array.from(selectedIssues)}
-        onUpdate={fetchData}
-        onClear={() => setSelectedIssues(new Set())}
-      />
     </div>
   );
 }
 
-function getPriorityColor(priority) {
-  switch (priority) {
-    case 'highest':
-      return '#ef4444';
-    case 'high':
-      return '#f97316';
-    case 'medium':
-      return '#eab308';
-    case 'low':
-      return '#3b82f6';
-    default:
-      return '#6b7280';
-  }
+function IssueRow({ issue, index, level, expanded, onToggle, onDragStart, onDragOver, onDrop, isDragging, isDragOver, navigate, onAddChild }) {
+  const hasChildren = issue.children && issue.children.length > 0;
+  const canHaveChildren = issue.issue_type === 'epic' || issue.issue_type === 'story';
+  const indent = level * 20;
+
+  return (
+    <>
+      <div
+        draggable
+        onDragStart={(e) => onDragStart(e, issue)}
+        onDragOver={(e) => onDragOver(e, issue)}
+        onDrop={(e) => onDrop(e, issue)}
+        onClick={() => navigate(`/issues/${issue.id}`)}
+        className={`grid grid-cols-[32px_40px_1fr_90px_80px_110px_120px] gap-3 px-4 py-3 border-b border-stone-800 transition-all ${
+          isDragging ? 'opacity-40 cursor-grabbing' : 'cursor-grab hover:bg-stone-900/50'
+        } ${isDragOver ? 'border-t-2 border-t-stone-600 bg-stone-900' : ''}`}
+        style={{ paddingLeft: `${16 + indent}px` }}
+      >
+        {/* Rank */}
+        <div className="flex items-center justify-center">
+          <span className="text-xs font-bold text-stone-500">{index + 1}</span>
+        </div>
+
+        {/* Expand/Drag Handle */}
+        <div className="flex items-center gap-1">
+          <Bars3Icon className="w-4 h-4 text-stone-500" />
+          {hasChildren && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="p-0.5 bg-transparent border-none cursor-pointer text-stone-400 hover:text-amber-400 transition-colors"
+            >
+              {expanded ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
+            </button>
+          )}
+        </div>
+
+        {/* Issue */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-bold text-stone-500 font-mono">{issue.key}</span>
+          <span className="text-sm font-semibold text-stone-200 overflow-hidden text-ellipsis whitespace-nowrap">{issue.title}</span>
+        </div>
+
+        {/* Type */}
+        <div className="flex items-center">
+          <span className="text-xs font-bold text-stone-400 uppercase px-2 py-1 bg-stone-800/60 rounded">{issue.issue_type}</span>
+        </div>
+
+        {/* Priority */}
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getPriorityColor(issue.priority) }}></span>
+          <span className="text-xs text-stone-400 capitalize">{issue.priority}</span>
+        </div>
+
+        {/* Assignee */}
+        <div className="flex items-center gap-2">
+          {issue.assignee_name ? (
+            <>
+              <div className="w-6 h-6 rounded-full bg-stone-700 flex items-center justify-center text-xs font-semibold text-stone-200">
+                {issue.assignee_name.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-xs text-stone-400 overflow-hidden text-ellipsis whitespace-nowrap">{issue.assignee_name.split(' ')[0]}</span>
+            </>
+          ) : (
+            <span className="text-xs text-stone-600">-</span>
+          )}
+        </div>
+
+        {/* Story Points / Add Child Button */}
+        <div className="flex items-center justify-end gap-2">
+          {canHaveChildren && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddChild(issue.id);
+              }}
+              className="px-2 py-1 bg-stone-800 text-stone-300 border border-stone-700 rounded text-xs font-medium cursor-pointer transition-all hover:bg-stone-700 hover:text-stone-200"
+            >
+              + Child
+            </button>
+          )}
+          {issue.story_points ? (
+            <span className="text-xs font-semibold text-stone-400 bg-stone-800 border border-stone-700 px-2 py-1 rounded">{issue.story_points}</span>
+          ) : (
+            <span className="text-xs text-stone-600">-</span>
+          )}
+        </div>
+      </div>
+
+      {/* Children */}
+      {expanded && hasChildren && issue.children.map((child, childIndex) => (
+        <IssueRow
+          key={child.id}
+          issue={child}
+          index={index}
+          level={level + 1}
+          expanded={false}
+          onToggle={() => {}}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          isDragging={isDragging}
+          isDragOver={isDragOver}
+          navigate={navigate}
+          onAddChild={onAddChild}
+        />
+      ))}
+    </>
+  );
 }
 
 function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [issueType, setIssueType] = useState(parentIssueId ? 'task' : 'task');
+  const [issueType, setIssueType] = useState(parentIssueId ? 'story' : 'story');
   const [priority, setPriority] = useState('medium');
   const [submitting, setSubmitting] = useState(false);
 
@@ -284,7 +419,6 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
     try {
       await api.post(`/api/agile/projects/${projectId}/issues/`, {
         title,
-        description,
         issue_type: issueType,
         priority,
         parent_issue_id: parentIssueId
@@ -292,43 +426,34 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
       onSuccess();
     } catch (error) {
       console.error('Failed to create issue:', error);
-      alert('Failed to create issue: ' + (error.response?.data?.detail || error.message));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
-      <div style={{ backgroundColor: '#1c1917', border: '1px solid #b45309', padding: '24px', width: '100%', maxWidth: '28rem' }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#ffffff', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {parentIssueId ? 'Create Child Issue' : 'Create Issue'}
-        </h2>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-stone-900 border border-stone-800 rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-bold text-stone-100 mb-5">{parentIssueId ? 'Create Child Issue' : 'Create Issue'}</h2>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#d1d5db', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</label>
+            <label className="block text-sm font-medium text-stone-400 mb-2">Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Issue title"
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', fontSize: '14px' }}
-              onFocus={(e) => e.target.style.borderColor = '#ffffff'}
-              onBlur={(e) => e.target.style.borderColor = '#b45309'}
+              placeholder="e.g. User can reset password"
+              className="w-full px-3 py-2 bg-stone-800 text-stone-200 border border-stone-700 rounded focus:outline-none focus:border-stone-600 transition-all"
               required
             />
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#d1d5db', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Type</label>
+              <label className="block text-sm font-medium text-stone-400 mb-2">Type</label>
               <select
                 value={issueType}
                 onChange={(e) => setIssueType(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', cursor: 'pointer', fontSize: '14px' }}
-                onFocus={(e) => e.target.style.borderColor = '#ffffff'}
-                onBlur={(e) => e.target.style.borderColor = '#b45309'}
+                className="w-full px-3 py-2 bg-stone-800 text-stone-200 border border-stone-700 rounded focus:outline-none focus:border-stone-600 transition-all"
               >
                 <option value="epic">Epic</option>
                 <option value="story">Story</option>
@@ -336,58 +461,34 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
                 <option value="bug">Bug</option>
               </select>
             </div>
-
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#d1d5db', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Priority</label>
+              <label className="block text-sm font-medium text-stone-400 mb-2">Priority</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', cursor: 'pointer', fontSize: '14px' }}
-                onFocus={(e) => e.target.style.borderColor = '#ffffff'}
-                onBlur={(e) => e.target.style.borderColor = '#b45309'}
+                className="w-full px-3 py-2 bg-stone-800 text-stone-200 border border-stone-700 rounded focus:outline-none focus:border-stone-600 transition-all"
               >
-                <option value="lowest">Lowest</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
                 <option value="highest">Highest</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="lowest">Lowest</option>
               </select>
             </div>
           </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#d1d5db', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Issue description"
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #b45309', backgroundColor: '#292415', color: '#ffffff', outline: 'none', transition: 'all 0.2s', minHeight: '80px', fontFamily: 'inherit', resize: 'vertical', fontSize: '14px' }}
-              onFocus={(e) => e.target.style.borderColor = '#ffffff'}
-              onBlur={(e) => e.target.style.borderColor = '#b45309'}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '8px' }}>
+          <div className="flex gap-3 justify-end pt-3">
             <button
               type="button"
               onClick={onClose}
-              disabled={submitting}
-              style={{ padding: '10px 20px', border: '1px solid #b45309', backgroundColor: 'transparent', color: '#ffffff', fontWeight: 700, textTransform: 'uppercase', fontSize: '12px', transition: 'all 0.2s', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1, letterSpacing: '0.05em' }}
-              onMouseEnter={(e) => !submitting && (e.currentTarget.style.borderColor = '#ffffff')}
-              onMouseLeave={(e) => !submitting && (e.currentTarget.style.borderColor = '#b45309')}
+              className="px-4 py-2 bg-stone-800 text-stone-300 border border-stone-700 rounded hover:bg-stone-700 font-medium text-sm transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              style={{ padding: '10px 20px', border: 'none', backgroundColor: '#d97706', color: '#ffffff', fontWeight: 700, textTransform: 'uppercase', fontSize: '12px', transition: 'all 0.2s', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.05em' }}
-              onMouseEnter={(e) => !submitting && (e.currentTarget.style.backgroundColor = '#fbbf24')}
-              onMouseLeave={(e) => !submitting && (e.currentTarget.style.backgroundColor = '#d97706')}
+              className="px-4 py-2 bg-stone-700 text-stone-100 rounded hover:bg-stone-600 font-medium text-sm transition-all disabled:opacity-50 border border-stone-600"
             >
-              {submitting && (
-                <div style={{ width: '14px', height: '14px', border: '2px solid #ffffff', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              )}
               {submitting ? 'Creating...' : 'Create'}
             </button>
           </div>
@@ -395,6 +496,16 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
       </div>
     </div>
   );
+}
+
+function getPriorityColor(priority) {
+  switch (priority) {
+    case 'highest': return '#ef4444';
+    case 'high': return '#f97316';
+    case 'medium': return '#eab308';
+    case 'low': return '#3b82f6';
+    default: return '#6b7280';
+  }
 }
 
 export default Backlog;

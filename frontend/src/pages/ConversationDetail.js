@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, ChatBubbleLeftIcon, HandThumbUpIcon, ExclamationTriangleIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+import { useToast } from '../components/Toast';
 import api from '../services/api';
 import MentionTagInput from '../components/MentionTagInput';
 import HighlightedText from '../components/HighlightedText';
@@ -17,31 +18,38 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
     setIsEditing(false);
   };
 
+  const authorName = typeof reply.author === 'string' ? reply.author : reply.author?.username;
+  const authorAvatar = reply.author?.avatar || reply.author_avatar;
+
   return (
-    <div className={`${depth > 0 ? 'ml-8' : ''}`}>
-      <div className="bg-gray-50 border border-gray-200 p-4 hover:border-gray-300 transition-colors">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">
-                {typeof reply.author === 'string' ? reply.author.charAt(0).toUpperCase() : reply.author?.username?.charAt(0).toUpperCase()}
-              </span>
+    <div style={{ marginLeft: depth > 0 ? '32px' : '0' }}>
+      <div style={{ backgroundColor: '#1c1917', border: '1px solid #292524', borderRadius: '5px', padding: '12px', transition: 'all 0.15s' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '28px', height: '28px', backgroundColor: '#3b82f6', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+              {authorAvatar ? (
+                <img src={authorAvatar} alt={authorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ color: '#ffffff', fontSize: '11px', fontWeight: 600 }}>
+                  {authorName?.charAt(0).toUpperCase()}
+                </span>
+              )}
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">
-                {typeof reply.author === 'string' ? reply.author : reply.author?.username}
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#e7e5e4' }}>
+                {authorName}
               </p>
-              <p className="text-xs text-gray-500">
+              <p style={{ fontSize: '11px', color: '#a8a29e' }}>
                 {new Date(reply.created_at).toLocaleDateString()}
               </p>
             </div>
           </div>
           {reply.author_id === currentUserId && (
-            <div className="flex gap-2">
-              <button onClick={() => setIsEditing(!isEditing)} className="text-xs text-gray-600 hover:text-gray-900">
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button onClick={() => setIsEditing(!isEditing)} style={{ fontSize: '11px', color: '#a8a29e', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}>
                 {isEditing ? 'Cancel' : 'Edit'}
               </button>
-              <button onClick={() => onDelete(reply.id)} className="text-xs text-gray-600 hover:text-gray-900">
+              <button onClick={() => onDelete(reply.id)} style={{ fontSize: '11px', color: '#a8a29e', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}>
                 Delete
               </button>
             </div>
@@ -49,13 +57,13 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
         </div>
         {isEditing ? (
           <div>
-            <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="w-full p-2 border border-gray-300 text-sm" rows={2} />
-            <button onClick={handleSave} className="mt-2 px-3 py-1 bg-gray-900 text-white text-xs hover:bg-black">
+            <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #292524', borderRadius: '5px', backgroundColor: '#0c0a09', color: '#e7e5e4', fontSize: '13px' }} rows={2} />
+            <button onClick={handleSave} style={{ marginTop: '8px', padding: '6px 12px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>
               Save
             </button>
           </div>
         ) : (
-          <p className="text-sm text-gray-700">{reply.content}</p>
+          <p style={{ fontSize: '13px', color: '#e7e5e4' }}>{reply.content}</p>
         )}
       </div>
       {reply.children?.map(child => (
@@ -70,6 +78,7 @@ function ConversationDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { darkMode } = useTheme();
+  const { addToast } = useToast();
   const [conversation, setConversation] = useState(null);
   const [replies, setReplies] = useState([]);
   const [newReply, setNewReply] = useState('');
@@ -89,11 +98,11 @@ function ConversationDetail() {
   const [creating, setCreating] = useState(false);
   const [converting, setConverting] = useState(false);
 
-  const bgColor = darkMode ? '#1a1a1a' : '#ffffff';
-  const textColor = darkMode ? '#ffffff' : '#111827';
-  const borderColor = darkMode ? '#333333' : '#e5e7eb';
-  const hoverBg = darkMode ? '#2a2a2a' : '#f3f4f6';
-  const secondaryText = darkMode ? '#9ca3af' : '#6b7280';
+  const bgColor = '#1c1917';
+  const textColor = '#e7e5e4';
+  const borderColor = '#292524';
+  const hoverBg = '#292524';
+  const secondaryText = '#a8a29e';
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -162,13 +171,14 @@ function ConversationDetail() {
   };
 
   const handleDeletePost = async () => {
-    if (!window.confirm('Delete this conversation?')) return;
     setDeletingPost(true);
     try {
       await api.delete(`/api/recall/conversations/${id}/`);
+      addToast('Conversation deleted successfully', 'success');
       window.location.href = '/conversations';
     } catch (error) {
       console.error('Failed to delete:', error);
+      addToast('Failed to delete conversation', 'error');
       setDeletingPost(false);
     }
   };
@@ -183,12 +193,13 @@ function ConversationDetail() {
   };
 
   const handleDeleteReply = async (replyId) => {
-    if (!window.confirm('Delete this reply?')) return;
     try {
       await api.delete(`/api/recall/conversations/replies/${replyId}/`);
+      addToast('Reply deleted successfully', 'success');
       fetchReplies();
     } catch (error) {
       console.error('Failed to delete reply:', error);
+      addToast('Failed to delete reply', 'error');
     }
   };
 
@@ -241,19 +252,20 @@ function ConversationDetail() {
   };
 
   const handleConvertToDecision = async () => {
-    if (!window.confirm('Convert this conversation to a decision? This will create a new decision with the conversation content.')) return;
     setConverting(true);
     try {
       const response = await api.post('/api/decisions/', {
         title: conversation.title,
         description: conversation.content,
         status: 'proposed',
-        context: `Converted from conversation #${id}`
+        context: `Converted from conversation #${id}`,
+        conversation_id: id
       });
+      addToast('Successfully converted to decision', 'success');
       navigate(`/decisions/${response.data.id}`);
     } catch (error) {
       console.error('Failed to convert to decision:', error);
-      alert('Failed to convert to decision');
+      addToast('Failed to convert to decision', 'error');
     } finally {
       setConverting(false);
     }
@@ -389,18 +401,18 @@ function ConversationDetail() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <div style={{ width: '32px', height: '32px', border: '3px solid #111827', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
+        <div style={{ width: '24px', height: '24px', border: '2px solid #292524', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       </div>
     );
   }
 
   if (!conversation) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <h3 style={{ fontSize: '24px', fontWeight: 700, color: textColor, marginBottom: '16px' }}>Conversation Not Found</h3>
-          <Link to="/conversations" style={{ color: secondaryText, textDecoration: 'none', fontWeight: 500 }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>Conversation Not Found</h3>
+          <Link to="/conversations" style={{ color: secondaryText, textDecoration: 'none', fontSize: '13px', fontWeight: 500 }}>
             ← Back to Conversations
           </Link>
         </div>
@@ -409,129 +421,145 @@ function ConversationDetail() {
   }
 
   return (
-    <div style={{ minHeight: '100vh' }}>
-      <div style={{ maxWidth: '100%', margin: '0 auto', paddingLeft: '32px', paddingRight: '32px', paddingTop: '32px' }}>
-        <Link to="/conversations" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-8 font-medium">
-          <ArrowLeftIcon className="w-4 h-4 mr-2" />
-          Back
-        </Link>
+    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
+      <Link to="/conversations" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '13px', color: secondaryText, textDecoration: 'none', marginBottom: '16px', fontWeight: 500 }}>
+        <ArrowLeftIcon style={{ width: '14px', height: '14px', marginRight: '6px' }} />
+        Back
+      </Link>
 
-        <div>
-          {/* Header */}
-          <div className="bg-gray-900 px-8 py-8">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                {isEditingPost ? (
-                  <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full text-4xl font-bold text-white bg-gray-900 border-0 focus:outline-none mb-4" />
-                ) : (
-                  <h1 className="text-4xl font-bold text-white mb-4">{conversation.title}</h1>
-                )}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">
+      <div>
+        {/* Header */}
+        <div style={{ backgroundColor: bgColor, padding: '20px', borderRadius: '5px', border: `1px solid ${borderColor}`, marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div style={{ flex: 1 }}>
+              {isEditingPost ? (
+                <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={{ width: '100%', fontSize: '20px', fontWeight: 600, color: textColor, backgroundColor: bgColor, border: 'none', outline: 'none', marginBottom: '12px' }} />
+              ) : (
+                <h1 style={{ fontSize: '20px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>{conversation.title}</h1>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '32px', height: '32px', backgroundColor: '#3b82f6', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  {conversation.author_avatar || conversation.author?.avatar ? (
+                    <img 
+                      src={conversation.author_avatar || conversation.author?.avatar} 
+                      alt={typeof conversation.author === 'string' ? conversation.author : conversation.author?.username} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  ) : (
+                    <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '13px' }}>
                       {typeof conversation.author === 'string' ? conversation.author.charAt(0).toUpperCase() : conversation.author?.username?.charAt(0).toUpperCase()}
                     </span>
-                  </div>
-                  <div>
-                    <p className="text-white font-semibold">
-                      {typeof conversation.author === 'string' ? conversation.author : conversation.author?.username}
-                    </p>
-                    <p className="text-gray-400 text-sm">{new Date(conversation.created_at).toLocaleDateString()}</p>
-                  </div>
+                  )}
+                </div>
+                <div>
+                  <p style={{ color: textColor, fontWeight: 600, fontSize: '13px' }}>
+                    {typeof conversation.author === 'string' ? conversation.author : conversation.author?.username}
+                  </p>
+                  <p style={{ color: secondaryText, fontSize: '11px' }}>{new Date(conversation.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
-              <div className="flex gap-2 ml-4">
-                <button onClick={handleConvertToDecision} className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 text-sm font-semibold disabled:opacity-50" disabled={converting || savingPost || deletingPost}>
-                  {converting ? 'Converting...' : 'Convert to Decision'}
-                </button>
-                <FavoriteButton conversationId={id} />
-                <ExportButton conversationId={id} type="conversation" />
-                <UndoRedoButtons />
-                {conversation.author_id === currentUserId && (
-                  <>
-                    <button onClick={() => setIsEditingPost(!isEditingPost)} className="px-4 py-2 bg-white text-gray-900 hover:bg-gray-100 text-sm font-semibold disabled:opacity-50" disabled={savingPost || deletingPost}>
-                      {isEditingPost ? 'Cancel' : 'Edit'}
-                    </button>
-                    <button onClick={handleDeletePost} className="px-4 py-2 bg-gray-700 text-white hover:bg-gray-800 text-sm font-semibold disabled:opacity-50" disabled={savingPost || deletingPost}>
-                      {deletingPost ? 'Deleting...' : 'Delete'}
-                    </button>
-                  </>
-                )}
-              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', marginLeft: '16px', flexWrap: 'wrap' }}>
+              <button onClick={handleConvertToDecision} style={{ padding: '7px 12px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (converting || savingPost || deletingPost) ? 0.5 : 1 }} disabled={converting || savingPost || deletingPost}>
+                {converting ? 'Converting...' : 'Convert to Decision'}
+              </button>
+              <FavoriteButton conversationId={id} />
+              <ExportButton conversationId={id} type="conversation" />
+              <UndoRedoButtons />
+              {conversation.author_id === currentUserId && (
+                <>
+                  <button onClick={() => setIsEditingPost(!isEditingPost)} style={{ padding: '7px 12px', backgroundColor: bgColor, color: textColor, border: `1px solid ${borderColor}`, borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (savingPost || deletingPost) ? 0.5 : 1 }} disabled={savingPost || deletingPost}>
+                    {isEditingPost ? 'Cancel' : 'Edit'}
+                  </button>
+                  <button onClick={handleDeletePost} style={{ padding: '7px 12px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (savingPost || deletingPost) ? 0.5 : 1 }} disabled={savingPost || deletingPost}>
+                    {deletingPost ? 'Deleting...' : 'Delete'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Content */}
-          <div className="px-8 py-8 border-b border-gray-200">
-            {isEditingPost ? (
-              <div>
-                <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="w-full p-4 border border-gray-300 focus:outline-none focus:border-gray-900 text-lg" rows={10} />
-                <button onClick={handleEditPost} className="mt-4 px-6 py-2 bg-gray-900 text-white hover:bg-black font-semibold disabled:opacity-50" disabled={savingPost}>
-                  {savingPost ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            ) : (
-              <div className="text-lg leading-relaxed text-gray-800">
-                <HighlightedText text={conversation.content} />
-              </div>
-            )}
+        {/* Content */}
+        <div style={{ padding: '20px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor, marginBottom: '12px' }}>
+          {isEditingPost ? (
+            <div>
+              <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ width: '100%', padding: '12px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: '#0c0a09', color: textColor, fontSize: '14px', outline: 'none' }} rows={10} />
+              <button onClick={handleEditPost} style={{ marginTop: '12px', padding: '8px 14px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', opacity: savingPost ? 0.5 : 1 }} disabled={savingPost}>
+                {savingPost ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          ) : (
+            <div style={{ fontSize: '14px', lineHeight: '1.6', color: textColor }}>
+              <HighlightedText text={conversation.content} />
+            </div>
+          )}
+        </div>
+
+        {/* Reactions */}
+        <div style={{ padding: '16px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor, marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {[
+              { type: 'agree', icon: HandThumbUpIcon, label: 'Agree' },
+              { type: 'unsure', icon: QuestionMarkCircleIcon, label: 'Unsure' },
+              { type: 'concern', icon: ExclamationTriangleIcon, label: 'Concern' }
+            ].map(({ type, icon: Icon, label }) => (
+              <button
+                key={type}
+                onClick={() => handleReaction(type)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  fontWeight: 500,
+                  fontSize: '12px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  opacity: reactionLoading ? 0.5 : 1,
+                  backgroundColor: reactions.user_reaction === type ? '#3b82f6' : bgColor,
+                  color: reactions.user_reaction === type ? '#ffffff' : textColor,
+                  border: `1px solid ${reactions.user_reaction === type ? '#3b82f6' : borderColor}`
+                }}
+                disabled={reactionLoading}
+              >
+                <Icon style={{ width: '14px', height: '14px' }} />
+                {label} ({reactions.reactions.find(r => r.reaction_type === type)?.count || 0})
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Reactions */}
-          <div className="px-8 py-6 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center gap-3">
-              {[
-                { type: 'agree', icon: HandThumbUpIcon, label: 'Agree' },
-                { type: 'unsure', icon: QuestionMarkCircleIcon, label: 'Unsure' },
-                { type: 'concern', icon: ExclamationTriangleIcon, label: 'Concern' }
-              ].map(({ type, icon: Icon, label }) => (
-                <button
-                  key={type}
-                  onClick={() => handleReaction(type)}
-                  className={`flex items-center gap-2 px-4 py-2 font-semibold text-sm transition-colors disabled:opacity-50 ${
-                    reactions.user_reaction === type
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-white border border-gray-300 text-gray-700 hover:border-gray-900'
-                  }`}
-                  disabled={reactionLoading}
-                >
-                  <Icon className="w-4 h-4" />
-                  {label} ({reactions.reactions.find(r => r.reaction_type === type)?.count || 0})
-                </button>
+        {/* Replies */}
+        <div style={{ padding: '20px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ChatBubbleLeftIcon style={{ width: '18px', height: '18px', color: textColor }} />
+            Replies ({replies.length})
+          </h2>
+
+          {replies.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: hoverBg, border: `1px solid ${borderColor}`, borderRadius: '5px', marginBottom: '16px' }}>
+              <ChatBubbleLeftIcon style={{ width: '40px', height: '40px', color: borderColor, margin: '0 auto 12px' }} />
+              <p style={{ color: secondaryText, fontWeight: 500, fontSize: '13px' }}>No replies yet. Be the first to comment.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              {buildReplyTree(replies).map((reply) => (
+                <ReplyItem key={reply.id} reply={reply} onReply={() => {}} onEdit={handleEditReply} onDelete={handleDeleteReply} currentUserId={currentUserId} />
               ))}
             </div>
-          </div>
+          )}
 
-          {/* Replies */}
-          <div className="px-8 py-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8 flex items-center gap-2">
-              <ChatBubbleLeftIcon className="w-6 h-6 text-gray-900" />
-              Replies ({replies.length})
-            </h2>
-
-            {replies.length === 0 ? (
-              <div className="text-center py-16 bg-gray-50 border border-gray-200">
-                <ChatBubbleLeftIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 font-medium">No replies yet. Be the first to comment.</p>
-              </div>
-            ) : (
-              <div className="space-y-4 mb-8">
-                {buildReplyTree(replies).map((reply) => (
-                  <ReplyItem key={reply.id} reply={reply} onReply={() => {}} onEdit={handleEditReply} onDelete={handleDeleteReply} currentUserId={currentUserId} />
-                ))}
-              </div>
-            )}
-
-            {/* Add Reply */}
-            <div className="bg-gray-50 border border-gray-200 p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Add a comment</h3>
-              <form onSubmit={handleSubmitReply}>
-                <MentionTagInput value={newReply} onChange={(e) => setNewReply(e.target.value)} placeholder="Share your thoughts..." rows={4} />
-                <button type="submit" disabled={submitting || !newReply.trim()} className="mt-4 px-6 py-2 bg-gray-900 text-white hover:bg-black font-semibold disabled:opacity-50 transition-colors">
-                  {submitting ? 'Posting...' : 'Reply'}
-                </button>
-              </form>
-            </div>
+          {/* Add Reply */}
+          <div style={{ backgroundColor: hoverBg, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '10px' }}>Add a comment</h3>
+            <form onSubmit={handleSubmitReply}>
+              <MentionTagInput value={newReply} onChange={(e) => setNewReply(e.target.value)} placeholder="Share your thoughts..." rows={4} />
+              <button type="submit" disabled={submitting || !newReply.trim()} style={{ marginTop: '10px', padding: '8px 14px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', opacity: (submitting || !newReply.trim()) ? 0.5 : 1, transition: 'all 0.15s' }}>
+                {submitting ? 'Posting...' : 'Reply'}
+              </button>
+            </form>
           </div>
         </div>
       </div>

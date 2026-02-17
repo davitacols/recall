@@ -9,6 +9,13 @@ function Decisions() {
   const [filter, setFilter] = useState('all');
   const [viewMode, setViewMode] = useState('timeline');
 
+  const bgColor = '#1c1917';
+  const textColor = '#e7e5e4';
+  const borderColor = '#292524';
+  const hoverBg = '#292524';
+  const secondaryText = '#a8a29e';
+  const mainBg = '#0c0a09';
+
   useEffect(() => {
     fetchDecisions();
   }, []);
@@ -43,67 +50,68 @@ function Decisions() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '24rem' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #d97706', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
+        <div style={{ width: '24px', height: '24px', border: '2px solid #292524', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       </div>
     );
   }
 
   return (
-    <div style={{ backgroundColor: '#0f0f0f', minHeight: '100vh', padding: '24px' }}>
+    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '48px', fontWeight: 900, color: '#ffffff', marginBottom: '12px' }}>Decisions</h1>
-        <p style={{ fontSize: '20px', color: '#d1d5db', marginBottom: '8px' }}>The brain of your organization</p>
-        <p style={{ fontSize: '16px', color: '#d1d5db' }}>Track decisions, their status, and impact across your team. Convert conversations into decisions to maintain a searchable record.</p>
+        <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px', letterSpacing: '-0.01em' }}>Decisions</h1>
+        <p style={{ fontSize: '14px', color: secondaryText, marginBottom: '2px' }}>The brain of your organization</p>
+        <p style={{ fontSize: '13px', color: secondaryText }}>Track decisions, their status, and impact across your team</p>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '32px' }}>
-        <div style={{ border: '1px solid #b45309', padding: '24px', backgroundColor: '#1c1917' }}>
-          <div style={{ fontSize: '36px', fontWeight: 900, color: '#ffffff', marginBottom: '8px' }}>{decisions.length}</div>
-          <div style={{ fontSize: '14px', fontWeight: 500, color: '#d1d5db' }}>Total Decisions</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', backgroundColor: bgColor }}>
+          <div style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px' }}>{decisions.length}</div>
+          <div style={{ fontSize: '12px', color: secondaryText }}>Total Decisions</div>
         </div>
-        <div style={{ border: '1px solid #b45309', padding: '24px', backgroundColor: '#1c1917' }}>
-          <div style={{ fontSize: '36px', fontWeight: 900, color: '#fbbf24', marginBottom: '8px' }}>{statusCounts.approved || 0}</div>
-          <div style={{ fontSize: '14px', fontWeight: 500, color: '#d1d5db' }}>Approved</div>
+        <div style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', backgroundColor: bgColor }}>
+          <div style={{ fontSize: '24px', fontWeight: 600, color: '#3b82f6', marginBottom: '4px' }}>{statusCounts.approved || 0}</div>
+          <div style={{ fontSize: '12px', color: secondaryText }}>Approved</div>
         </div>
-        <div style={{ border: '1px solid #b45309', padding: '24px', backgroundColor: '#1c1917' }}>
-          <div style={{ fontSize: '36px', fontWeight: 900, color: '#fbbf24', marginBottom: '8px' }}>{statusCounts.under_review || 0}</div>
-          <div style={{ fontSize: '14px', fontWeight: 500, color: '#d1d5db' }}>Under Review</div>
+        <div style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', backgroundColor: bgColor }}>
+          <div style={{ fontSize: '24px', fontWeight: 600, color: '#f59e0b', marginBottom: '4px' }}>{statusCounts.under_review || 0}</div>
+          <div style={{ fontSize: '12px', color: secondaryText }}>Under Review</div>
         </div>
-        <div style={{ border: '1px solid #b45309', padding: '24px', backgroundColor: '#1c1917' }}>
-          <div style={{ fontSize: '36px', fontWeight: 900, color: '#ffffff', marginBottom: '8px' }}>{statusCounts.implemented || 0}</div>
-          <div style={{ fontSize: '14px', fontWeight: 500, color: '#d1d5db' }}>Implemented</div>
+        <div style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', backgroundColor: bgColor }}>
+          <div style={{ fontSize: '24px', fontWeight: 600, color: '#10b981', marginBottom: '4px' }}>{statusCounts.implemented || 0}</div>
+          <div style={{ fontSize: '12px', color: secondaryText }}>Implemented</div>
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {['all', 'proposed', 'under_review', 'approved', 'implemented'].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
               style={{
-                padding: '8px 16px',
-                fontSize: '14px',
+                padding: '7px 12px',
+                fontSize: '13px',
                 fontWeight: 500,
                 textTransform: 'capitalize',
-                backgroundColor: filter === status ? '#d97706' : 'transparent',
-                color: filter === status ? '#ffffff' : '#d97706',
-                border: filter === status ? 'none' : '1px solid #b45309',
+                backgroundColor: filter === status ? '#3b82f6' : 'transparent',
+                color: filter === status ? '#ffffff' : textColor,
+                border: `1px solid ${filter === status ? '#3b82f6' : borderColor}`,
+                borderRadius: '5px',
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.15s'
               }}
               onMouseEnter={(e) => {
                 if (filter !== status) {
-                  e.target.style.backgroundColor = '#292415';
+                  e.currentTarget.style.backgroundColor = hoverBg;
                 }
               }}
               onMouseLeave={(e) => {
                 if (filter !== status) {
-                  e.target.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.backgroundColor = 'transparent';
                 }
               }}
             >
@@ -115,43 +123,43 @@ function Decisions() {
 
       {/* Timeline View */}
       {filteredDecisions.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 24px', border: '1px solid #b45309', backgroundColor: '#1c1917' }}>
-          <h3 style={{ fontSize: '24px', fontWeight: 900, color: '#ffffff', marginBottom: '12px' }}>No decisions yet</h3>
-          <p style={{ fontSize: '18px', color: '#d1d5db', marginBottom: '8px' }}>
+        <div style={{ textAlign: 'center', padding: '48px 24px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>No decisions yet</h3>
+          <p style={{ fontSize: '14px', color: secondaryText, marginBottom: '6px' }}>
             Convert conversations into decisions to track outcomes.
           </p>
-          <p style={{ fontSize: '16px', color: '#d1d5db', marginBottom: '32px' }}>
+          <p style={{ fontSize: '13px', color: secondaryText, marginBottom: '20px' }}>
             Decisions help your team understand what was decided, why, and what the impact was.
           </p>
-          <a href="/conversations" style={{ display: 'inline-block', padding: '8px 24px', backgroundColor: '#d97706', color: '#ffffff', fontWeight: 600, textDecoration: 'none' }}>
+          <a href="/conversations" style={{ display: 'inline-block', padding: '8px 16px', backgroundColor: '#3b82f6', color: '#ffffff', borderRadius: '5px', fontWeight: 500, fontSize: '13px', textDecoration: 'none', transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}>
             View conversations
           </a>
         </div>
       ) : (
         <div style={{ position: 'relative' }}>
           {/* Timeline Line */}
-          <div style={{ position: 'absolute', left: '32px', top: 0, bottom: 0, width: '2px', backgroundColor: '#b45309' }}></div>
+          <div style={{ position: 'absolute', left: '20px', top: 0, bottom: 0, width: '2px', backgroundColor: borderColor }}></div>
           
           {/* Timeline Items */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {filteredDecisions.map((decision, index) => (
-              <div key={decision.id} style={{ position: 'relative', paddingLeft: '80px' }}>
+              <div key={decision.id} style={{ position: 'relative', paddingLeft: '52px' }}>
                 {/* Timeline Dot */}
-                <div style={{ position: 'absolute', left: '24px', top: '8px', width: '20px', height: '20px', borderRadius: '50%', border: '4px solid #0f0f0f', backgroundColor: '#d97706' }}></div>
+                <div style={{ position: 'absolute', left: '14px', top: '16px', width: '14px', height: '14px', borderRadius: '50%', border: `3px solid ${mainBg}`, backgroundColor: '#3b82f6' }}></div>
                 
                 {/* Decision Card */}
                 <a href={`/decisions/${decision.id}`} style={{ textDecoration: 'none' }}>
-                  <div style={{ border: '1px solid #b45309', padding: '24px', backgroundColor: '#1c1917', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = '#d97706'} onMouseLeave={(e) => e.currentTarget.style.borderColor = '#b45309'}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ padding: '4px 12px', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#fbbf24' }}>
+                  <div style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', backgroundColor: bgColor, cursor: 'pointer', transition: 'all 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#1f2937'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = bgColor; }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', borderRadius: '3px', backgroundColor: hoverBg, border: `1px solid ${borderColor}`, color: textColor }}>
                           {decision.status.replace('_', ' ')}
                         </span>
-                        <span style={{ padding: '4px 12px', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', backgroundColor: '#292415', color: '#d1d5db' }}>
+                        <span style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', borderRadius: '3px', backgroundColor: hoverBg, border: `1px solid ${borderColor}`, color: secondaryText }}>
                           {decision.impact_level} impact
                         </span>
                       </div>
-                      <span style={{ fontSize: '14px', color: '#d1d5db' }}>
+                      <span style={{ fontSize: '12px', color: secondaryText }}>
                         {new Date(decision.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -160,17 +168,17 @@ function Decisions() {
                       </span>
                     </div>
                     
-                    <h3 style={{ fontSize: '24px', fontWeight: 900, color: '#ffffff', marginBottom: '12px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>
                       {decision.title}
                     </h3>
                     
                     {decision.description && (
-                      <p style={{ fontSize: '16px', color: '#d1d5db', marginBottom: '16px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                      <p style={{ fontSize: '13px', color: secondaryText, marginBottom: '10px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                         {decision.description}
                       </p>
                     )}
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '24px', fontSize: '14px', color: '#d1d5db' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12px', color: secondaryText }}>
                       <div>
                         <span style={{ fontWeight: 500 }}>Decision Maker:</span> {decision.decision_maker_name}
                       </div>

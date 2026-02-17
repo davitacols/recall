@@ -4,121 +4,243 @@ import api from '../services/api';
 
 function KanbanBoard() {
   const { projectId } = useParams();
-  const [board, setBoard] = useState(null);
+  const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draggedIssue, setDraggedIssue] = useState(null);
+  const [groupBy, setGroupBy] = useState('assignee');
+
+  const statuses = ['todo', 'in_progress', 'in_review', 'testing', 'done'];
+  const statusLabels = {
+    todo: 'To Do',
+    in_progress: 'In Progress',
+    in_review: 'In Review',
+    testing: 'Testing',
+    done: 'Done'
+  };
 
   useEffect(() => {
-    fetchBoard();
+    fetchIssues();
   }, [projectId]);
 
-  const fetchBoard = async () => {
+  const fetchIssues = async () => {
     try {
-      const response = await api.get(`/api/agile/projects/${projectId}/board/`);
-      setBoard(response.data);
+      const response = await api.get(`/api/agile/projects/${projectId}/backlog/`);
+      // Only show issues IN SPRINTS (not backlog items)
+      const sprintIssues = (response.data.issues || []).filter(i => i.sprint_id != null);
+      setIssues(sprintIssues);
     } catch (error) {
-      console.error('Failed to fetch board:', error);
+      console.error('Failed to fetch issues:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDragStart = (issue) => {
+  const handleDragStart = (e, issue) => {
     setDraggedIssue(issue);
+    e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = async (columnId) => {
+  const handleDrop = async (status) => {
     if (!draggedIssue) return;
     
     try {
-      await api.post(`/api/agile/issues/${draggedIssue.id}/move/`, {
-        column_id: columnId
-      });
-      fetchBoard();
+      await api.put(`/api/agile/issues/${draggedIssue.id}/`, { status });
+      setDraggedIssue(null);
+      fetchIssues();
     } catch (error) {
       console.error('Failed to move issue:', error);
-    } finally {
-      setDraggedIssue(null);
     }
+  };
+
+  const getSwimLanes = () => {
+    if (groupBy === 'assignee') {
+      const assignees = [...new Set(issues.map(i => i.assignee_name || 'Unassigned'))];
+      return assignees.map(assignee => ({
+        id: assignee,
+        name: assignee,
+        issues: issues.filter(i => (i.assignee_name || 'Unassigned') === assignee)
+      }));
+    }
+    return [{ id: 'all', name: 'All Issues', issues }];
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
+      <div style={{ minHeight: '100vh', backgroundColor: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '32px', height: '32px', border: '2px solid #d97706', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       </div>
     );
   }
 
-  if (!board) {
-    return (
-      <div className="text-center py-20">
-        <h2 className="text-4xl font-black text-gray-900 mb-4">Board not found</h2>
-      </div>
-    );
-  }
+  const swimLanes = getSwimLanes();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full px-4 md:px-8 py-12">
-        <h1 className="text-5xl font-black text-gray-900 mb-12">{board.name}</h1>
-
-        <div className="flex gap-6 overflow-x-auto pb-6">
-          {board.columns.map(column => (
-            <div
-              key={column.id}
-              className="flex-shrink-0 w-80 bg-white border border-gray-200 rounded-lg overflow-hidden"
+    <div style={{ minHeight: '100vh', backgroundColor: '#111827' }}>
+      <div style={{ maxWidth: '100%', padding: '24px' }}>
+        {/* Header */}
+        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={{ fontSize: '36px', fontWeight: 900, color: '#ffffff', marginBottom: '4px', letterSpacing: '-0.02em' }}>Kanban Board</h1>
+            <p style={{ fontSize: '14px', color: '#9ca3af' }}>Active sprint work • {issues.length} issues</p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>Group by:</span>
+            <button
+              onClick={() => setGroupBy('assignee')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: groupBy === 'assignee' ? '#d97706' : '#1c1917',
+                color: '#ffffff',
+                border: '1px solid ' + (groupBy === 'assignee' ? '#d97706' : '#374151'),
+                fontSize: '12px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
             >
-              {/* Column Header */}
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <h2 className="font-bold text-gray-900 uppercase text-sm tracking-wide">{column.name}</h2>
-                <p className="text-xs text-gray-600 mt-1">{column.issues.length} issues</p>
+              Assignee
+            </button>
+            <button
+              onClick={() => setGroupBy('none')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: groupBy === 'none' ? '#d97706' : '#1c1917',
+                color: '#ffffff',
+                border: '1px solid ' + (groupBy === 'none' ? '#d97706' : '#374151'),
+                fontSize: '12px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              None
+            </button>
+          </div>
+        </div>
+
+        {/* Kanban Board */}
+        <div style={{ overflowX: 'auto' }}>
+          {/* Column Headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: '200px repeat(5, 280px)', gap: '12px', marginBottom: '12px', minWidth: 'fit-content' }}>
+            <div style={{ padding: '12px', backgroundColor: '#1c1917', border: '1px solid #374151' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Swimlane</span>
+            </div>
+            {statuses.map(status => (
+              <div key={status} style={{ padding: '12px', backgroundColor: '#1c1917', border: '1px solid #374151', textAlign: 'center' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase' }}>{statusLabels[status]}</span>
+                <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px' }}>
+                  {issues.filter(i => i.status === status).length}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Swim Lanes */}
+          {swimLanes.map(lane => (
+            <div key={lane.id} style={{ display: 'grid', gridTemplateColumns: '200px repeat(5, 280px)', gap: '12px', marginBottom: '12px', minWidth: 'fit-content' }}>
+              {/* Lane Header */}
+              <div style={{ padding: '12px', backgroundColor: '#1c1917', border: '1px solid #374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#ffffff', flexShrink: 0 }}>
+                  {lane.name.charAt(0).toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lane.name}</div>
+                  <div style={{ fontSize: '11px', color: '#6b7280' }}>{lane.issues.length} issues</div>
+                </div>
               </div>
 
-              {/* Issues */}
-              <div
-                onDragOver={handleDragOver}
-                onDrop={() => handleDrop(column.id)}
-                className="p-4 space-y-3 min-h-96"
-              >
-                {column.issues.map(issue => (
+              {/* Status Columns */}
+              {statuses.map(status => {
+                const columnIssues = lane.issues.filter(i => i.status === status);
+                return (
                   <div
-                    key={issue.id}
-                    draggable
-                    onDragStart={() => handleDragStart(issue)}
-                    className="p-4 bg-white border border-gray-200 rounded cursor-move hover:shadow-md transition-all"
+                    key={status}
+                    onDragOver={handleDragOver}
+                    onDrop={() => handleDrop(status)}
+                    style={{
+                      padding: '8px',
+                      backgroundColor: '#1c1917',
+                      border: '1px solid #374151',
+                      minHeight: '120px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="text-xs font-bold text-gray-600 uppercase">{issue.key}</span>
-                      <span className={`text-xs font-bold px-2 py-1 rounded ${
-                        issue.priority === 'highest' ? 'bg-red-100 text-red-700' :
-                        issue.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                        issue.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {issue.priority}
-                      </span>
-                    </div>
-                    <h3 className="font-bold text-gray-900 text-sm mb-3">{issue.title}</h3>
-                    <div className="flex items-center justify-between text-xs text-gray-600">
-                      <span>{issue.assignee || 'Unassigned'}</span>
-                      {issue.story_points && (
-                        <span className="bg-gray-100 px-2 py-1 rounded">{issue.story_points} pts</span>
-                      )}
-                    </div>
+                    {columnIssues.map(issue => {
+                      const isDragging = draggedIssue?.id === issue.id;
+                      return (
+                        <div
+                          key={issue.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, issue)}
+                          onDragEnd={() => setDraggedIssue(null)}
+                          onClick={() => window.location.href = `/issues/${issue.id}`}
+                          style={{
+                            padding: '10px',
+                            backgroundColor: '#111827',
+                            border: '1px solid #374151',
+                            cursor: isDragging ? 'grabbing' : 'grab',
+                            opacity: isDragging ? 0.5 : 1,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isDragging) {
+                              e.currentTarget.style.backgroundColor = '#1e293b';
+                              e.currentTarget.style.borderColor = '#b45309';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isDragging) {
+                              e.currentTarget.style.backgroundColor = '#111827';
+                              e.currentTarget.style.borderColor = '#374151';
+                            }
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>{issue.key}</span>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: getPriorityColor(issue.priority) }}></span>
+                          </div>
+                          <h3 style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', lineHeight: '1.4', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{issue.title}</h3>
+                          {issue.story_points && (
+                            <div style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', backgroundColor: '#374151', padding: '2px 6px', display: 'inline-block' }}>
+                              {issue.story_points} pts
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           ))}
         </div>
       </div>
     </div>
   );
+}
+
+function getPriorityColor(priority) {
+  switch (priority) {
+    case 'highest':
+      return '#ef4444';
+    case 'high':
+      return '#f97316';
+    case 'medium':
+      return '#eab308';
+    case 'low':
+      return '#3b82f6';
+    default:
+      return '#6b7280';
+  }
 }
 
 export default KanbanBoard;

@@ -55,48 +55,48 @@ function Projects() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
+      <div className="min-h-screen bg-stone-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-stone-700 border-t-stone-400 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+    <div className="min-h-screen bg-stone-950">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex justify-between items-start mb-16">
+        <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-7xl font-black text-gray-900 mb-3 tracking-tight">Projects</h1>
-            <p className="text-xl text-gray-600 font-light">Manage your projects and boards</p>
+            <h1 className="text-3xl font-bold text-stone-100 mb-2">Projects</h1>
+            <p className="text-sm text-stone-500">Manage your projects and boards</p>
           </div>
           <button
             onClick={() => {
               setShowCreateForm(true);
               setError('');
             }}
-            className="flex items-center gap-2 px-8 py-4 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all shadow-lg hover:shadow-xl"
+            className="flex items-center gap-2 px-4 py-2 bg-stone-800 text-stone-200 rounded hover:bg-stone-700 font-medium text-sm transition-all border border-stone-700"
           >
-            <PlusIcon className="w-5 h-5" />
+            <PlusIcon className="w-4 h-4" />
             New Project
           </button>
         </div>
 
         {/* Create Form Modal */}
         {showCreateForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-8 w-full max-w-md">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New Project</h2>
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-stone-900 border border-stone-800 rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold text-stone-100 mb-5">Create New Project</h2>
 
               {error && (
-                <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm font-medium mb-6">
+                <div className="px-3 py-2 bg-red-900/20 border border-red-800 text-red-400 text-sm mb-4 rounded">
                   {error}
                 </div>
               )}
 
-              <form onSubmit={handleCreateProject} className="space-y-6">
+              <form onSubmit={handleCreateProject} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                  <label className="block text-sm font-medium text-stone-400 mb-2">
                     Project Name *
                   </label>
                   <input
@@ -104,12 +104,12 @@ function Projects() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g., Mobile App"
-                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    className="w-full px-3 py-2 bg-stone-800 text-stone-200 border border-stone-700 rounded focus:outline-none focus:border-stone-600 transition-all"
                     disabled={submitting}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                  <label className="block text-sm font-medium text-stone-400 mb-2">
                     Project Key *
                   </label>
                   <input
@@ -118,13 +118,13 @@ function Projects() {
                     onChange={(e) => setFormData({ ...formData, key: e.target.value.toUpperCase() })}
                     placeholder="e.g., MOBILE"
                     maxLength="10"
-                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    className="w-full px-3 py-2 bg-stone-800 text-stone-200 border border-stone-700 rounded focus:outline-none focus:border-stone-600 transition-all"
                     disabled={submitting}
                   />
-                  <p className="text-xs text-gray-600 mt-2">Used for issue IDs (e.g., MOBILE-1, MOBILE-2)</p>
+                  <p className="text-xs text-stone-600 mt-1">Used for issue IDs (e.g., MOBILE-1, MOBILE-2)</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                  <label className="block text-sm font-medium text-stone-400 mb-2">
                     Description
                   </label>
                   <textarea
@@ -132,11 +132,11 @@ function Projects() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Project description..."
                     rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+                    className="w-full px-3 py-2 bg-stone-800 text-stone-200 border border-stone-700 rounded focus:outline-none focus:border-stone-600 transition-all"
                     disabled={submitting}
                   />
                 </div>
-                <div className="flex gap-3 justify-end pt-4">
+                <div className="flex gap-3 justify-end pt-3">
                   <button
                     type="button"
                     onClick={() => {
@@ -144,14 +144,14 @@ function Projects() {
                       setError('');
                     }}
                     disabled={submitting}
-                    className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all disabled:opacity-50"
+                    className="px-4 py-2 bg-stone-800 text-stone-300 border border-stone-700 rounded hover:bg-stone-700 font-medium text-sm transition-all disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 flex items-center gap-2"
+                    className="px-4 py-2 bg-stone-700 text-stone-100 rounded hover:bg-stone-600 font-medium text-sm transition-all disabled:opacity-50 border border-stone-600 flex items-center gap-2"
                   >
                     {submitting ? 'Creating...' : 'Create Project'}
                   </button>
@@ -163,41 +163,41 @@ function Projects() {
 
         {/* Empty State */}
         {projects.length === 0 ? (
-          <div className="text-center py-24 border border-gray-200 bg-white">
-            <h3 className="text-3xl font-black text-gray-900 mb-3">No projects yet</h3>
-            <p className="text-lg text-gray-600 mb-8">Create your first project to get started with Kanban boards</p>
+          <div className="text-center py-20 bg-stone-900 border border-stone-800 rounded-lg">
+            <h3 className="text-xl font-semibold text-stone-200 mb-2">No projects yet</h3>
+            <p className="text-sm text-stone-500 mb-6">Create your first project to get started with Kanban boards</p>
             <button
               onClick={() => {
                 setShowCreateForm(true);
                 setError('');
               }}
-              className="px-8 py-4 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
+              className="px-5 py-2 bg-stone-800 text-stone-200 rounded hover:bg-stone-700 font-medium text-sm transition-all border border-stone-700"
             >
               Create First Project
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project) => (
               <Link
                 key={project.id}
                 to={`/projects/${project.id}`}
                 className="no-underline"
               >
-                <div className="p-8 bg-white border border-gray-200 hover:border-gray-900 hover:shadow-lg transition-all h-full flex flex-col">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 bg-gray-900 flex items-center justify-center text-white font-black text-lg">
+                <div className="p-6 bg-stone-900 border border-stone-800 rounded-lg hover:border-stone-700 hover:bg-stone-900/80 transition-all h-full flex flex-col">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-stone-800 rounded-lg flex items-center justify-center text-stone-200 font-bold text-base border border-stone-700">
                       {project.key.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900">{project.name}</h3>
-                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">{project.key}</p>
+                      <h3 className="text-base font-semibold text-stone-100">{project.name}</h3>
+                      <p className="text-xs text-stone-500 font-mono">{project.key}</p>
                     </div>
                   </div>
-                  <p className="text-gray-700 text-sm mb-6 flex-1 font-light">
+                  <p className="text-stone-400 text-sm mb-4 flex-1">
                     {project.description || 'No description'}
                   </p>
-                  <div className="flex justify-between text-xs text-gray-600 font-medium uppercase tracking-wide pt-6 border-t border-gray-200">
+                  <div className="flex justify-between text-xs text-stone-500 pt-4 border-t border-stone-800">
                     <span>{project.issue_count} Issues</span>
                     <span>Lead: {project.lead || 'Unassigned'}</span>
                   </div>

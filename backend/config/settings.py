@@ -8,7 +8,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 if not DEBUG:
-    ALLOWED_HOSTS.extend(['.onrender.com', '.vercel.app'])
+    ALLOWED_HOSTS.extend(['.onrender.com', '.vercel.app', '*'])
 
 # Security Settings
 SECURE_BROWSER_XSS_FILTER = True

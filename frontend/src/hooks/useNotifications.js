@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function useNotifications(onNotification) {
+  const retryCount = useRef(0);
+  const maxRetries = 3;
+
   useEffect(() => {
-    // WebSocket connection for real-time notifications
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     if (!token) return;
 
@@ -11,31 +13,52 @@ export function useNotifications(onNotification) {
     const host = backendUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
     const wsUrl = `${protocol}//${host}/ws/notifications/?token=${token}`;
 
-    try {
-      const ws = new WebSocket(wsUrl);
+    let ws;
+    let reconnectTimeout;
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'notification' && onNotification) {
-            onNotification(data.notification);
+    const connect = () => {
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          retryCount.current = 0;
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'notification' && onNotification) {
+              onNotification(data.notification);
+            }
+          } catch (e) {
+            console.warn('Failed to parse notification:', e);
           }
-        } catch (e) {
-          console.error('Failed to parse notification:', e);
-        }
-      };
+        };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
+        ws.onerror = () => {
+          if (retryCount.current === 0) {
+            console.warn('WebSocket unavailable, using polling fallback');
+          }
+        };
 
-      return () => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.close();
-        }
-      };
-    } catch (error) {
-      console.error('Failed to connect to notifications:', error);
-    }
+        ws.onclose = () => {
+          if (retryCount.current < maxRetries) {
+            retryCount.current++;
+            reconnectTimeout = setTimeout(connect, 5000 * retryCount.current);
+          }
+        };
+      } catch (error) {
+        console.warn('WebSocket connection failed, notifications will use polling');
+      }
+    };
+
+    connect();
+
+    return () => {
+      clearTimeout(reconnectTimeout);
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
   }, [onNotification]);
 }

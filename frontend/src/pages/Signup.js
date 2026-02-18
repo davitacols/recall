@@ -35,112 +35,145 @@ function Signup() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-amber-950 flex items-center justify-center p-6">
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center">
-        {/* Hero Image */}
-        <div className="hidden lg:block rounded-2xl overflow-hidden border border-amber-700/40 h-96">
-          <img src="/hero.png" alt="Dashboard Preview" className="w-full h-full object-contain" />
-        </div>
-
-        {/* Signup Form */}
-        <div className="w-full">
-          <div className="bg-amber-900/80 backdrop-blur-sm border border-amber-700/40 rounded-2xl p-8 shadow-2xl">
-            {/* Logo */}
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <img src="/recalljpg.jpg" alt="RECALL" className="h-10" />
-                <span className="text-2xl font-bold text-white">RECALL</span>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+      {/* Left Panel - Branding */}
+      <div style={{ flex: 1, backgroundColor: '#0052CC', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#ffffff' }}>
+        <div style={{ maxWidth: '480px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
+            <img src="/recalljpg.jpg" alt="RECALL" style={{ height: '40px' }} />
+            <span style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em' }}>RECALL</span>
+          </div>
+          <h1 style={{ fontSize: '40px', fontWeight: 700, lineHeight: '1.2', marginBottom: '24px', letterSpacing: '-0.02em' }}>
+            Create your organization
+          </h1>
+          <p style={{ fontSize: '18px', lineHeight: '1.6', opacity: 0.9, marginBottom: '48px' }}>
+            Start capturing and organizing your team's knowledge. Build a shared memory that grows with your organization.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+                <span style={{ fontSize: '14px' }}>✓</span>
               </div>
-              <h1 className="text-2xl font-bold text-white mb-2">Create Organization</h1>
-              <p className="text-amber-100/60 text-sm">Start your team's knowledge hub</p>
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Centralized knowledge</div>
+                <div style={{ fontSize: '14px', opacity: 0.8 }}>Keep all conversations and decisions in one place</div>
+              </div>
             </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+                <span style={{ fontSize: '14px' }}>✓</span>
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Team collaboration</div>
+                <div style={{ fontSize: '14px', opacity: 0.8 }}>Work together seamlessly across your organization</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+                <span style={{ fontSize: '14px' }}>✓</span>
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Instant insights</div>
+                <div style={{ fontSize: '14px', opacity: 0.8 }}>Find information quickly with powerful search</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Form */}
+      <div style={{ flex: 1, backgroundColor: '#F4F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', overflowY: 'auto' }}>
+        <div style={{ width: '100%', maxWidth: '440px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', padding: '48px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#172B4D', marginBottom: '8px', letterSpacing: '-0.01em' }}>Get started</h2>
+            <p style={{ fontSize: '14px', color: '#6B778C', marginBottom: '32px' }}>Create your organization account</p>
 
             {error && (
-              <div className="mb-6 bg-red-500/20 border border-red-500/50 text-red-200 p-3 text-sm rounded-lg">
+              <div style={{ marginBottom: '24px', padding: '12px 16px', backgroundColor: '#FFEBE6', border: '1px solid #FF5630', borderRadius: '6px', color: '#BF2600', fontSize: '14px' }}>
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  Organization Name
-                </label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Organization Name</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-4 py-3 bg-stone-800/40 border border-amber-700/30 text-white placeholder-amber-100/40 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
                   placeholder="Acme Inc."
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  Organization Slug
-                </label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Organization Slug</label>
                 <input
                   type="text"
                   value={formData.slug}
                   onChange={(e) => setFormData({...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
-                  className="w-full px-4 py-3 bg-stone-800/40 border border-amber-700/30 text-white placeholder-amber-100/40 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
                   placeholder="your-company"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  Your Full Name
-                </label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Your Full Name</label>
                 <input
                   type="text"
                   value={formData.full_name}
                   onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  className="w-full px-4 py-3 bg-stone-800/40 border border-amber-700/30 text-white placeholder-amber-100/40 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
                   placeholder="John Doe"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  Email
-                </label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Email</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full px-4 py-3 bg-stone-800/40 border border-amber-700/30 text-white placeholder-amber-100/40 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
                   placeholder="you@company.com"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  Username
-                </label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Username</label>
                 <input
                   type="text"
                   value={formData.username}
                   onChange={(e) => setFormData({...formData, username: e.target.value})}
-                  className="w-full px-4 py-3 bg-stone-800/40 border border-amber-700/30 text-white placeholder-amber-100/40 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
                   placeholder="johndoe"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  Password
-                </label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Password</label>
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full px-4 py-3 bg-stone-800/40 border border-amber-700/30 text-white placeholder-amber-100/40 rounded-lg focus:outline-none focus:border-amber-600 transition"
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
+                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
                   placeholder="••••••••"
                   required
                 />
@@ -149,33 +182,34 @@ function Signup() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-6 px-8 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-full font-semibold transition disabled:opacity-50"
+                style={{ width: '100%', marginTop: '8px', padding: '12px', backgroundColor: '#0052CC', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, boxShadow: '0 1px 2px rgba(0,0,0,0.08)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1' }}
+                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#0747A6')}
+                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#0052CC')}
               >
                 {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <>
+                    <div style={{ width: '16px', height: '16px', border: '2px solid #ffffff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite', marginRight: '8px' }}></div>
                     Creating...
-                  </div>
+                  </>
                 ) : (
                   'Create Organization'
                 )}
               </button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-amber-100/60">
-                Already have an account?{' '}
-                <Link to="/login" className="text-white font-semibold hover:underline">
-                  Sign in
-                </Link>
-              </p>
+            <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: '#6B778C' }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: '#0052CC', fontWeight: 600, textDecoration: 'none' }}>
+                Sign in
+              </Link>
             </div>
 
-            {/* Back to Homepage */}
-            <div className="mt-4 text-center">
+            <div style={{ marginTop: '16px', textAlign: 'center' }}>
               <button
                 onClick={() => navigate('/')}
-                className="text-sm text-amber-100/60 hover:text-white transition"
+                style={{ fontSize: '14px', color: '#6B778C', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#172B4D'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}
               >
                 ← Back to homepage
               </button>

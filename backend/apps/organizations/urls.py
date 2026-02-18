@@ -25,6 +25,10 @@ from .analytics_views import (
     create_integration, get_integrations, test_integration, delete_integration, get_integration_logs
 )
 
+from .apikey_views import api_keys_list, api_key_delete, api_key_toggle
+from .auditlog_views import audit_logs_list, audit_log_stats
+from .export_views import export_data_endpoint
+
 urlpatterns = [
     path('current/', OrganizationDetailView.as_view(), name='current-org'),
     path('me/', OrganizationDetailView.as_view(), name='org-me'),
@@ -51,7 +55,11 @@ urlpatterns = [
     path('settings/members/invite/', invite_member, name='invite-member'),
     path('settings/api-keys/', api_keys, name='api-keys'),
     path('settings/api-keys/generate/', generate_api_key, name='generate-api-key'),
+    path('api-keys/', api_keys_list, name='api-keys-list'),
+    path('api-keys/<int:key_id>/', api_key_delete, name='api-key-delete'),
+    path('api-keys/<int:key_id>/toggle/', api_key_toggle, name='api-key-toggle'),
     path('settings/export/', export_data, name='export-data'),
+    path('export/', export_data_endpoint, name='export-endpoint'),
     path('settings/delete-account/', delete_account, name='delete-account'),
     path('settings/activity-log/', activity_log, name='activity-log'),
     path('settings/security-log/', security_log, name='security-log'),
@@ -70,6 +78,8 @@ urlpatterns = [
     
     # Audit log endpoints
     path('audit-logs/', get_audit_logs, name='audit-logs'),
+    path('audit/', audit_logs_list, name='audit-logs-list'),
+    path('audit/stats/', audit_log_stats, name='audit-stats'),
     
     # Workflow endpoints
     path('workflows/', get_team_workflows, name='workflows-list'),

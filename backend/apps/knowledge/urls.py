@@ -1,8 +1,12 @@
 from django.urls import path
 from . import views
 from apps.decisions.phase2_views import knowledge_health
+from .ai_views import ai_search, ai_insights, ai_summarize
 
 urlpatterns = [
+    path('ai/search/', ai_search, name='ai_search'),
+    path('ai/insights/', ai_insights, name='ai_insights'),
+    path('ai/summarize/', ai_summarize, name='ai_summarize'),
     path('health/', knowledge_health, name='knowledge_health'),
     path('search/', views.search_knowledge, name='search_knowledge'),
     path('search/suggestions/', views.search_suggestions, name='search_suggestions'),

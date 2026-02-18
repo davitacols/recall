@@ -20,6 +20,8 @@ urlpatterns = [
     path('api/recall/search/', include('apps.knowledge.bm25_urls')),
     path('api/organizations/', include('apps.organizations.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
+    path('api/files/', include('apps.notifications.file_urls')),
+    path('api/analytics/', include('apps.agile.analytics_urls')),
     path('api/agile/', include('apps.agile.urls_fresh')),
     path('api/integrations/', include('apps.integrations.urls')),
     path('api/integrations/fresh/', include('apps.integrations.urls_fresh')),

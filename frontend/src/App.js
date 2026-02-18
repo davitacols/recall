@@ -8,6 +8,7 @@ import { GlobalSearch } from './components/GlobalSearch';
 import { OnboardingFlow } from './components/OnboardingFlow';
 import { MobileNav } from './components/MobileNav';
 import { AIAssistant } from './components/AIFeatures';
+import { CommandBar } from './components/GestureControls';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout.js';
 import Login from './pages/Login';
@@ -143,6 +144,13 @@ function AppContent() {
       {showOnboarding && user && <OnboardingFlow onComplete={() => setShowOnboarding(false)} />}
       <MobileNav onSearchOpen={() => setShowSearch(true)} />
       {user && <AIAssistant />}
+      {user && <CommandBar onCommand={(cmd) => {
+        if (cmd === 'create-issue') window.location.href = '/projects';
+        else if (cmd === 'new-sprint') window.location.href = '/sprint-history';
+        else if (cmd === 'show-blockers') window.location.href = '/blockers';
+        else if (cmd === 'my-tasks') window.location.href = '/projects';
+        else if (cmd === 'goto-dashboard') window.location.href = '/';
+      }} />}
       <Routes>
         <Route path="/home" element={<Homepage />} />
         <Route path="/login" element={<Login />} />

@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast';
 import { CameraIcon, ChatBubbleLeftIcon, CheckCircleIcon, DocumentTextIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 function Profile() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { addToast } = useToast();
   const [profile, setProfile] = useState({
     full_name: '',
@@ -105,6 +105,7 @@ function Profile() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       addToast('Profile updated successfully', 'success');
+      await refreshUser();
       fetchProfile();
     } catch (err) {
       addToast('Failed to update profile', 'error');

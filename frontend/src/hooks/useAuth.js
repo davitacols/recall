@@ -89,6 +89,17 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await api.get('/api/auth/profile/');
+      const profileData = response.data.data || response.data;
+      setUser(profileData);
+      localStorage.setItem('user', JSON.stringify(profileData));
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  };
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -98,6 +109,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    refreshUser,
     loading
   };
 

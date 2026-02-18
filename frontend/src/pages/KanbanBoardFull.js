@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PlusIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 
 function KanbanBoard() {
   const { boardId } = useParams();
   const navigate = useNavigate();
+  const { darkMode } = useTheme();
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [draggedIssue, setDraggedIssue] = useState(null);
@@ -130,32 +132,43 @@ function KanbanBoard() {
     }
   };
 
+  const bgColor = darkMode ? 'bg-stone-950' : 'bg-white';
+  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  const columnBg = darkMode ? 'bg-gray-700' : 'bg-gray-50';
+  const borderColor = darkMode ? 'border-gray-600' : 'border-gray-200';
+  const textColor = darkMode ? 'text-white' : 'text-gray-900';
+  const textSecondary = darkMode ? 'text-gray-300' : 'text-gray-600';
+  const textTertiary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  const hoverBg = darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
+  const buttonBg = darkMode ? 'bg-gray-700' : 'bg-gray-100';
+  const buttonHover = darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-200';
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
+        <div className={`w-8 h-8 border-2 ${darkMode ? 'border-gray-900 border-t-transparent' : 'border-gray-300 border-t-gray-600'} animate-spin`}></div>
       </div>
     );
   }
 
   if (!board) {
-    return <div className="text-center py-20">Board not found</div>;
+    return <div className={`text-center py-20 ${textColor}`}>Board not found</div>;
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className={`min-h-screen p-6 ${bgColor}`}>
       <div className="max-w-[1600px] mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate(-1)}
-              className="p-2 hover:bg-gray-700 rounded-lg transition-all border border-gray-600 bg-gray-800 shadow-sm"
+              className={`p-2 ${hoverBg} rounded-lg transition-all border ${borderColor} ${darkMode ? 'bg-gray-800' : 'bg-gray-50'} shadow-sm`}
             >
-              <ArrowLeftIcon className="w-5 h-5 text-gray-300" />
+              <ArrowLeftIcon className={`w-5 h-5 ${textSecondary}`} />
             </button>
             <div>
-              <h1 className="text-3xl font-black text-white">{board.name}</h1>
-              <p className="text-sm text-gray-300 mt-1">Project: {board.project_name}</p>
+              <h1 className={`text-3xl font-black ${textColor}`}>{board.name}</h1>
+              <p className={`text-sm ${textSecondary} mt-1`}>Project: {board.project_name}</p>
             </div>
           </div>
         </div>
@@ -164,12 +177,12 @@ function KanbanBoard() {
           {board.columns && board.columns.map((column) => (
             <div
               key={column.id}
-              className={`bg-gray-800 rounded-xl shadow-sm flex flex-col min-h-[600px] ${getColumnColor(column.name)}`}
+              className={`${cardBg} rounded-xl shadow-sm flex flex-col min-h-[600px] border ${borderColor} ${getColumnColor(column.name)}`}
             >
               <div className="p-4 pb-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-white uppercase tracking-wide">{column.name}</h2>
-                  <span className="px-2.5 py-1 bg-gray-700 text-gray-200 text-xs font-bold rounded-full">
+                  <h2 className={`text-base font-bold ${textColor} uppercase tracking-wide`}>{column.name}</h2>
+                  <span className={`px-2.5 py-1 ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} text-xs font-bold rounded-full`}>
                     {column.issue_count}
                   </span>
                 </div>
@@ -181,7 +194,7 @@ function KanbanBoard() {
                 className="flex-1 px-3 pb-3 space-y-2.5 overflow-y-auto min-h-[400px]"
               >
                 {column.issues && column.issues.length === 0 && (
-                  <div className="flex items-center justify-center h-32 text-gray-500 text-sm">
+                  <div className={`flex items-center justify-center h-32 ${textTertiary} text-sm`}>
                     No issues
                   </div>
                 )}
@@ -191,17 +204,17 @@ function KanbanBoard() {
                     draggable
                     onDragStart={(e) => handleDragStart(e, issue)}
                     onClick={() => navigate(`/issues/${issue.id}`)}
-                    className="group p-3.5 bg-gray-700 border border-gray-600 rounded-lg cursor-pointer hover:bg-gray-600 hover:border-gray-500 transition-all duration-200 hover:-translate-y-0.5"
+                    className={`group p-3.5 ${darkMode ? 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'} border rounded-lg cursor-pointer transition-all duration-200 hover:-translate-y-0.5`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-xs font-bold text-gray-400 uppercase">{issue.key}</span>
+                          <span className={`text-xs font-bold ${textTertiary} uppercase`}>{issue.key}</span>
                           {issue.priority && (
                             <span className={`w-2 h-2 rounded-full ${getPriorityColor(issue.priority)}`} title={issue.priority}></span>
                           )}
                         </div>
-                        <p className="text-sm font-semibold text-white line-clamp-2 leading-snug">{issue.title}</p>
+                        <p className={`text-sm font-semibold ${textColor} line-clamp-2 leading-snug`}>{issue.title}</p>
                       </div>
                       <button
                         onClick={(e) => {
@@ -213,14 +226,14 @@ function KanbanBoard() {
                         <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-600">
+                    <div className={`flex items-center justify-between mt-3 pt-2.5 border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
                       <div className="flex items-center gap-2">
                         {issue.assignee && (
                           <div className="flex items-center gap-1.5">
                             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
                               {issue.assignee.charAt(0).toUpperCase()}
                             </div>
-                            <span className="text-xs text-gray-400 truncate max-w-[80px]">{issue.assignee}</span>
+                            <span className={`text-xs ${textTertiary} truncate max-w-[80px]`}>{issue.assignee}</span>
                           </div>
                         )}
                       </div>
@@ -234,13 +247,13 @@ function KanbanBoard() {
                 ))}
               </div>
 
-              <div className="p-3 border-t border-gray-100">
+              <div className={`p-3 border-t ${borderColor}`}>
                 <button
                   onClick={() => {
                     setNewIssueColumn(column.id);
                     setShowCreateIssue(true);
                   }}
-                  className="w-full px-3 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-200 font-semibold text-sm rounded-lg transition-all flex items-center justify-center gap-2 border border-gray-600 hover:border-gray-500"
+                  className={`w-full px-3 py-2.5 ${buttonBg} ${buttonHover} ${darkMode ? 'text-gray-200 border-gray-600 hover:border-gray-500' : 'text-gray-700 border-gray-300 hover:border-gray-400'} font-semibold text-sm rounded-lg transition-all flex items-center justify-center gap-2 border`}
                 >
                   <PlusIcon className="w-4 h-4" />
                   Add Issue

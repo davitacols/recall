@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PlusIcon, Bars3Icon, ChevronRightIcon, ChevronDownIcon, ArrowLeftIcon, LightBulbIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 
 function Backlog() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const { darkMode } = useTheme();
   const [backlogIssues, setBacklogIssues] = useState([]);
   const [sprints, setSprints] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -114,10 +116,23 @@ function Backlog() {
     ).concat(tasks.filter(t => !t.parent_issue_id));
   };
 
+  const bgColor = darkMode ? 'bg-stone-950' : 'bg-white';
+  const cardBg = darkMode ? 'bg-stone-900' : 'bg-white';
+  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
+  const textColor = darkMode ? 'text-stone-100' : 'text-gray-900';
+  const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
+  const textTertiary = darkMode ? 'text-stone-500' : 'text-gray-500';
+  const hoverBg = darkMode ? 'hover:bg-stone-900' : 'hover:bg-gray-50';
+  const inputBg = darkMode ? 'bg-stone-800' : 'bg-gray-50';
+  const inputBorder = darkMode ? 'border-stone-700' : 'border-gray-300';
+  const inputText = darkMode ? 'text-stone-200' : 'text-gray-900';
+  const buttonBg = darkMode ? 'bg-stone-800' : 'bg-gray-100';
+  const buttonText = darkMode ? 'text-stone-200' : 'text-gray-700';
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-stone-700 border-t-stone-400 rounded-full animate-spin"></div>
+      <div className={`min-h-screen ${bgColor} flex items-center justify-center`}>
+        <div className={`w-8 h-8 border-2 ${darkMode ? 'border-stone-700 border-t-stone-400' : 'border-gray-300 border-t-gray-600'} rounded-full animate-spin`}></div>
       </div>
     );
   }
@@ -125,17 +140,17 @@ function Backlog() {
   const hierarchy = buildHierarchy();
 
   return (
-    <div className="min-h-screen bg-stone-950">
+    <div className={`min-h-screen ${bgColor}`}>
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <button onClick={() => navigate(-1)} className="mb-4 px-3 py-2 hover:bg-stone-900 rounded transition-all border border-stone-800 bg-stone-900/50 inline-flex items-center gap-2 text-stone-400 hover:text-stone-200">
+          <button onClick={() => navigate(-1)} className={`mb-4 px-3 py-2 ${hoverBg} rounded transition-all border ${borderColor} ${darkMode ? 'bg-stone-900/50' : 'bg-gray-50'} inline-flex items-center gap-2 ${textSecondary} ${darkMode ? 'hover:text-stone-200' : 'hover:text-gray-900'}`}>
             <ArrowLeftIcon className="w-4 h-4" />
             <span className="text-sm">Back</span>
           </button>
-          <div className="bg-stone-900 border border-stone-800 rounded-lg p-6">
-            <h1 className="text-2xl font-bold text-stone-100 mb-1">Backlog</h1>
-            <p className="text-sm text-stone-500">Prioritize future work • {backlogIssues.length} unstarted issues</p>
+          <div className={`${cardBg} border ${borderColor} rounded-lg p-6`}>
+            <h1 className={`text-2xl font-bold ${textColor} mb-1`}>Backlog</h1>
+            <p className={`text-sm ${textTertiary}`}>Prioritize future work • {backlogIssues.length} unstarted issues</p>
           </div>
         </div>
 
@@ -143,7 +158,7 @@ function Backlog() {
           {/* Backlog List */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="text-xs font-semibold text-stone-500 uppercase">
+              <div className={`text-xs font-semibold ${textTertiary} uppercase`}>
                 Priority Order (Top = Most Important)
               </div>
               <button
@@ -151,35 +166,35 @@ function Backlog() {
                   setParentIssueId(null);
                   setShowCreateModal(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-stone-800 text-stone-200 rounded hover:bg-stone-700 font-medium text-sm transition-all border border-stone-700"
+                className={`flex items-center gap-2 px-4 py-2 ${buttonBg} ${buttonText} rounded ${darkMode ? 'hover:bg-stone-700' : 'hover:bg-gray-200'} font-medium text-sm transition-all border ${borderColor}`}
               >
                 <PlusIcon className="w-4 h-4" />
                 New Issue
               </button>
             </div>
 
-            <div className="bg-stone-900 border border-stone-800 rounded-lg overflow-hidden">
+            <div className={`${cardBg} border ${borderColor} rounded-lg overflow-hidden`}>
               {/* Table Header */}
-              <div className="grid grid-cols-[32px_40px_1fr_90px_80px_110px_120px] gap-3 px-4 py-3 border-b border-stone-800 bg-stone-900/80">
+              <div className={`grid grid-cols-[32px_40px_1fr_90px_80px_110px_120px] gap-3 px-4 py-3 border-b ${borderColor} ${darkMode ? 'bg-stone-900/80' : 'bg-gray-50'}`}>
                 <div></div>
                 <div></div>
-                <div className="text-xs font-semibold text-stone-500 uppercase">Issue</div>
-                <div className="text-xs font-semibold text-stone-500 uppercase">Type</div>
-                <div className="text-xs font-semibold text-stone-500 uppercase">Priority</div>
-                <div className="text-xs font-semibold text-stone-500 uppercase">Assignee</div>
-                <div className="text-xs font-semibold text-stone-500 uppercase text-right">Actions</div>
+                <div className={`text-xs font-semibold ${textTertiary} uppercase`}>Issue</div>
+                <div className={`text-xs font-semibold ${textTertiary} uppercase`}>Type</div>
+                <div className={`text-xs font-semibold ${textTertiary} uppercase`}>Priority</div>
+                <div className={`text-xs font-semibold ${textTertiary} uppercase`}>Assignee</div>
+                <div className={`text-xs font-semibold ${textTertiary} uppercase text-right`}>Actions</div>
               </div>
 
               {/* Issues */}
               {backlogIssues.length === 0 ? (
                 <div className="p-12 text-center">
-                  <p className="text-sm text-stone-500 mb-4">Backlog is empty</p>
+                  <p className={`text-sm ${textTertiary} mb-4`}>Backlog is empty</p>
                   <button
                     onClick={() => {
                       setParentIssueId(null);
                       setShowCreateModal(true);
                     }}
-                    className="px-5 py-2 bg-stone-800 text-stone-200 rounded hover:bg-stone-700 font-medium text-sm transition-all border border-stone-700"
+                    className={`px-5 py-2 ${buttonBg} ${buttonText} rounded ${darkMode ? 'hover:bg-stone-700' : 'hover:bg-gray-200'} font-medium text-sm transition-all border ${borderColor}`}
                   >
                     Create First Issue
                   </button>
@@ -204,6 +219,14 @@ function Backlog() {
                         setParentIssueId(parentId);
                         setShowCreateModal(true);
                       }}
+                      darkMode={darkMode}
+                      borderColor={borderColor}
+                      textColor={textColor}
+                      textSecondary={textSecondary}
+                      textTertiary={textTertiary}
+                      inputBg={inputBg}
+                      inputBorder={inputBorder}
+                      buttonBg={buttonBg}
                     />
                   ))}
                 </div>
@@ -213,13 +236,13 @@ function Backlog() {
 
           {/* Sprint Planning Sidebar */}
           <div>
-            <h3 className="text-xs font-semibold text-stone-500 uppercase mb-4">
+            <h3 className={`text-xs font-semibold ${textTertiary} uppercase mb-4`}>
               Move to Sprint
             </h3>
             
             {sprints.length === 0 ? (
-              <div className="p-6 bg-stone-900 border border-stone-800 rounded-lg text-center">
-                <p className="text-xs text-stone-600">No active sprints</p>
+              <div className={`p-6 ${cardBg} border ${borderColor} rounded-lg text-center`}>
+                <p className={`text-xs ${darkMode ? 'text-stone-600' : 'text-gray-400'}`}>No active sprints</p>
               </div>
             ) : (
               <div className="flex flex-col gap-3">
@@ -231,16 +254,16 @@ function Backlog() {
                     onDrop={(e) => handleDropOnSprint(e, sprint.id)}
                     className={`p-4 rounded-lg transition-all ${
                       dropTarget === sprint.id
-                        ? 'bg-stone-800 border-2 border-stone-600'
-                        : 'bg-stone-900 border border-stone-800 hover:border-stone-700'
+                        ? `${inputBg} border-2 ${darkMode ? 'border-stone-600' : 'border-gray-400'}`
+                        : `${cardBg} border ${borderColor} ${darkMode ? 'hover:border-stone-700' : 'hover:border-gray-300'}`
                     } ${draggedIssue ? 'cursor-pointer' : ''}`}
                   >
-                    <div className="text-sm font-semibold text-stone-200 mb-1">{sprint.name}</div>
-                    <div className="text-xs text-stone-600 mb-2">
+                    <div className={`text-sm font-semibold ${darkMode ? 'text-stone-200' : 'text-gray-900'} mb-1`}>{sprint.name}</div>
+                    <div className={`text-xs ${darkMode ? 'text-stone-600' : 'text-gray-400'} mb-2`}>
                       {sprint.start_date} - {sprint.end_date}
                     </div>
                     {sprint.issue_count > 0 && (
-                      <div className="text-xs text-stone-500 font-medium">
+                      <div className={`text-xs ${textTertiary} font-medium`}>
                         {sprint.issue_count} issues
                       </div>
                     )}
@@ -250,8 +273,8 @@ function Backlog() {
             )}
 
             {draggedIssue && (
-              <div className="mt-4 p-3 bg-stone-900 border border-stone-800 rounded-lg">
-                <p className="text-xs text-stone-500 leading-relaxed">
+              <div className={`mt-4 p-3 ${cardBg} border ${borderColor} rounded-lg`}>
+                <p className={`text-xs ${textTertiary} leading-relaxed`}>
                   ↑ Drop on sprint to plan<br/>
                   ↑ Drop on issue to reorder
                 </p>
@@ -259,12 +282,12 @@ function Backlog() {
             )}
 
             {/* Backlog Tips */}
-            <div className="mt-6 p-4 bg-stone-900 border border-stone-800 rounded-lg">
+            <div className={`mt-6 p-4 ${cardBg} border ${borderColor} rounded-lg`}>
               <div className="flex items-center gap-2 mb-3">
-                <LightBulbIcon className="w-4 h-4 text-stone-500" />
-                <h4 className="text-xs font-semibold text-stone-500 uppercase">Tips</h4>
+                <LightBulbIcon className={`w-4 h-4 ${textTertiary}`} />
+                <h4 className={`text-xs font-semibold ${textTertiary} uppercase`}>Tips</h4>
               </div>
-              <ul className="text-xs text-stone-600 leading-relaxed space-y-1 pl-4 list-disc">
+              <ul className={`text-xs ${darkMode ? 'text-stone-600' : 'text-gray-500'} leading-relaxed space-y-1 pl-4 list-disc`}>
                 <li>Top = highest priority</li>
                 <li>Drag to reorder</li>
                 <li>Drag to sprint to plan</li>
@@ -288,13 +311,22 @@ function Backlog() {
             setParentIssueId(null);
             fetchData();
           }}
+          darkMode={darkMode}
+          cardBg={cardBg}
+          borderColor={borderColor}
+          textColor={textColor}
+          textSecondary={textSecondary}
+          inputBg={inputBg}
+          inputText={inputText}
+          inputBorder={inputBorder}
+          buttonBg={buttonBg}
         />
       )}
     </div>
   );
 }
 
-function IssueRow({ issue, index, level, expanded, onToggle, onDragStart, onDragOver, onDrop, isDragging, isDragOver, navigate, onAddChild }) {
+function IssueRow({ issue, index, level, expanded, onToggle, onDragStart, onDragOver, onDrop, isDragging, isDragOver, navigate, onAddChild, darkMode, borderColor, textColor, textSecondary, textTertiary, inputBg, inputBorder, buttonBg }) {
   const hasChildren = issue.children && issue.children.length > 0;
   const canHaveChildren = issue.issue_type === 'epic' || issue.issue_type === 'story';
   const indent = level * 20;
@@ -307,26 +339,26 @@ function IssueRow({ issue, index, level, expanded, onToggle, onDragStart, onDrag
         onDragOver={(e) => onDragOver(e, issue)}
         onDrop={(e) => onDrop(e, issue)}
         onClick={() => navigate(`/issues/${issue.id}`)}
-        className={`grid grid-cols-[32px_40px_1fr_90px_80px_110px_120px] gap-3 px-4 py-3 border-b border-stone-800 transition-all ${
-          isDragging ? 'opacity-40 cursor-grabbing' : 'cursor-grab hover:bg-stone-900/50'
-        } ${isDragOver ? 'border-t-2 border-t-stone-600 bg-stone-900' : ''}`}
+        className={`grid grid-cols-[32px_40px_1fr_90px_80px_110px_120px] gap-3 px-4 py-3 border-b ${borderColor} transition-all ${
+          isDragging ? 'opacity-40 cursor-grabbing' : `cursor-grab ${darkMode ? 'hover:bg-stone-900/50' : 'hover:bg-gray-50'}`
+        } ${isDragOver ? `border-t-2 ${darkMode ? 'border-t-stone-600 bg-stone-900' : 'border-t-gray-400 bg-gray-100'}` : ''}`}
         style={{ paddingLeft: `${16 + indent}px` }}
       >
         {/* Rank */}
         <div className="flex items-center justify-center">
-          <span className="text-xs font-bold text-stone-500">{index + 1}</span>
+          <span className={`text-xs font-bold ${textTertiary}`}>{index + 1}</span>
         </div>
 
         {/* Expand/Drag Handle */}
         <div className="flex items-center gap-1">
-          <Bars3Icon className="w-4 h-4 text-stone-500" />
+          <Bars3Icon className={`w-4 h-4 ${textTertiary}`} />
           {hasChildren && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onToggle();
               }}
-              className="p-0.5 bg-transparent border-none cursor-pointer text-stone-400 hover:text-amber-400 transition-colors"
+              className={`p-0.5 bg-transparent border-none cursor-pointer ${textSecondary} hover:text-amber-400 transition-colors`}
             >
               {expanded ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
             </button>
@@ -335,32 +367,32 @@ function IssueRow({ issue, index, level, expanded, onToggle, onDragStart, onDrag
 
         {/* Issue */}
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-bold text-stone-500 font-mono">{issue.key}</span>
-          <span className="text-sm font-semibold text-stone-200 overflow-hidden text-ellipsis whitespace-nowrap">{issue.title}</span>
+          <span className={`text-xs font-bold ${textTertiary} font-mono`}>{issue.key}</span>
+          <span className={`text-sm font-semibold ${darkMode ? 'text-stone-200' : 'text-gray-900'} overflow-hidden text-ellipsis whitespace-nowrap`}>{issue.title}</span>
         </div>
 
         {/* Type */}
         <div className="flex items-center">
-          <span className="text-xs font-bold text-stone-400 uppercase px-2 py-1 bg-stone-800/60 rounded">{issue.issue_type}</span>
+          <span className={`text-xs font-bold ${textSecondary} uppercase px-2 py-1 ${darkMode ? 'bg-stone-800/60' : 'bg-gray-100'} rounded`}>{issue.issue_type}</span>
         </div>
 
         {/* Priority */}
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getPriorityColor(issue.priority) }}></span>
-          <span className="text-xs text-stone-400 capitalize">{issue.priority}</span>
+          <span className={`text-xs ${textSecondary} capitalize`}>{issue.priority}</span>
         </div>
 
         {/* Assignee */}
         <div className="flex items-center gap-2">
           {issue.assignee_name ? (
             <>
-              <div className="w-6 h-6 rounded-full bg-stone-700 flex items-center justify-center text-xs font-semibold text-stone-200">
+              <div className={`w-6 h-6 rounded-full ${darkMode ? 'bg-stone-700' : 'bg-gray-300'} flex items-center justify-center text-xs font-semibold ${darkMode ? 'text-stone-200' : 'text-gray-700'}`}>
                 {issue.assignee_name.charAt(0).toUpperCase()}
               </div>
-              <span className="text-xs text-stone-400 overflow-hidden text-ellipsis whitespace-nowrap">{issue.assignee_name.split(' ')[0]}</span>
+              <span className={`text-xs ${textSecondary} overflow-hidden text-ellipsis whitespace-nowrap`}>{issue.assignee_name.split(' ')[0]}</span>
             </>
           ) : (
-            <span className="text-xs text-stone-600">-</span>
+            <span className={`text-xs ${darkMode ? 'text-stone-600' : 'text-gray-400'}`}>-</span>
           )}
         </div>
 
@@ -372,15 +404,15 @@ function IssueRow({ issue, index, level, expanded, onToggle, onDragStart, onDrag
                 e.stopPropagation();
                 onAddChild(issue.id);
               }}
-              className="px-2 py-1 bg-stone-800 text-stone-300 border border-stone-700 rounded text-xs font-medium cursor-pointer transition-all hover:bg-stone-700 hover:text-stone-200"
+              className={`px-2 py-1 ${buttonBg} ${darkMode ? 'text-stone-300 border-stone-700 hover:bg-stone-700 hover:text-stone-200' : 'text-gray-700 border-gray-300 hover:bg-gray-200 hover:text-gray-900'} border rounded text-xs font-medium cursor-pointer transition-all`}
             >
               + Child
             </button>
           )}
           {issue.story_points ? (
-            <span className="text-xs font-semibold text-stone-400 bg-stone-800 border border-stone-700 px-2 py-1 rounded">{issue.story_points}</span>
+            <span className={`text-xs font-semibold ${textSecondary} ${inputBg} border ${inputBorder} px-2 py-1 rounded`}>{issue.story_points}</span>
           ) : (
-            <span className="text-xs text-stone-600">-</span>
+            <span className={`text-xs ${darkMode ? 'text-stone-600' : 'text-gray-400'}`}>-</span>
           )}
         </div>
       </div>
@@ -401,13 +433,21 @@ function IssueRow({ issue, index, level, expanded, onToggle, onDragStart, onDrag
           isDragOver={isDragOver}
           navigate={navigate}
           onAddChild={onAddChild}
+          darkMode={darkMode}
+          borderColor={borderColor}
+          textColor={textColor}
+          textSecondary={textSecondary}
+          textTertiary={textTertiary}
+          inputBg={inputBg}
+          inputBorder={inputBorder}
+          buttonBg={buttonBg}
         />
       ))}
     </>
   );
 }
 
-function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
+function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess, darkMode, cardBg, borderColor, textColor, textSecondary, inputBg, inputText, inputBorder, buttonBg }) {
   const [title, setTitle] = useState('');
   const [issueType, setIssueType] = useState(parentIssueId ? 'story' : 'story');
   const [priority, setPriority] = useState('medium');
@@ -433,27 +473,27 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-stone-900 border border-stone-800 rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold text-stone-100 mb-5">{parentIssueId ? 'Create Child Issue' : 'Create Issue'}</h2>
+      <div className={`${cardBg} border ${borderColor} rounded-lg p-6 w-full max-w-md`}>
+        <h2 className={`text-xl font-bold ${textColor} mb-5`}>{parentIssueId ? 'Create Child Issue' : 'Create Issue'}</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-stone-400 mb-2">Title</label>
+            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. User can reset password"
-              className="w-full px-3 py-2 bg-stone-800 text-stone-200 border border-stone-700 rounded focus:outline-none focus:border-stone-600 transition-all"
+              className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
               required
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-stone-400 mb-2">Type</label>
+              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Type</label>
               <select
                 value={issueType}
                 onChange={(e) => setIssueType(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-800 text-stone-200 border border-stone-700 rounded focus:outline-none focus:border-stone-600 transition-all"
+                className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
               >
                 <option value="epic">Epic</option>
                 <option value="story">Story</option>
@@ -462,11 +502,11 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-stone-400 mb-2">Priority</label>
+              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Priority</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-800 text-stone-200 border border-stone-700 rounded focus:outline-none focus:border-stone-600 transition-all"
+                className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
               >
                 <option value="highest">Highest</option>
                 <option value="high">High</option>
@@ -480,14 +520,14 @@ function CreateIssueModal({ projectId, parentIssueId, onClose, onSuccess }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-stone-800 text-stone-300 border border-stone-700 rounded hover:bg-stone-700 font-medium text-sm transition-all"
+              className={`px-4 py-2 ${buttonBg} ${darkMode ? 'text-stone-300 border-stone-700 hover:bg-stone-700' : 'text-gray-700 border-gray-300 hover:bg-gray-200'} border rounded font-medium text-sm transition-all`}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 bg-stone-700 text-stone-100 rounded hover:bg-stone-600 font-medium text-sm transition-all disabled:opacity-50 border border-stone-600"
+              className={`px-4 py-2 ${darkMode ? 'bg-stone-700 text-stone-100 border-stone-600 hover:bg-stone-600' : 'bg-gray-200 text-gray-900 border-gray-300 hover:bg-gray-300'} rounded font-medium text-sm transition-all disabled:opacity-50 border`}
             >
               {submitting ? 'Creating...' : 'Create'}
             </button>

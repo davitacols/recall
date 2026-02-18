@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircleIcon, ClockIcon, XCircleIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
 import { ListSkeleton } from '../components/Skeleton';
 import { NoData } from '../components/EmptyState';
 
 function Decisions() {
+  const { darkMode } = useTheme();
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [viewMode, setViewMode] = useState('timeline');
 
-  const bgColor = '#1c1917';
-  const textColor = '#e7e5e4';
-  const borderColor = '#292524';
-  const hoverBg = '#292524';
-  const secondaryText = '#a8a29e';
-  const mainBg = '#0c0a09';
+  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
+  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const mainBg = darkMode ? '#0c0a09' : '#f9fafb';
 
   useEffect(() => {
     fetchDecisions();

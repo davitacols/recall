@@ -192,7 +192,7 @@ function Profile() {
               />
             </div>
           </div>
-          <button type="submit" className="mt-6 px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800">
+          <button type="submit" className="mt-6 px-6 py-2 bg-transparent border-2 border-gray-900 text-gray-900 text-sm font-medium hover:bg-gray-900 hover:text-white transition-colors">
             Save changes
           </button>
         </form>
@@ -276,7 +276,7 @@ function Profile() {
               className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:border-gray-900"
             />
           </div>
-          <button type="submit" className="px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800">
+          <button type="submit" className="px-6 py-2 bg-transparent border-2 border-gray-900 text-gray-900 text-sm font-medium hover:bg-gray-900 hover:text-white transition-colors">
             Change password
           </button>
         </form>

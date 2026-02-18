@@ -2,7 +2,11 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
 from apps.organizations.health import health_check
+
+def websocket_unavailable(request):
+    return HttpResponse(status=404)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -19,6 +23,8 @@ urlpatterns = [
     path('api/agile/', include('apps.agile.urls_fresh')),
     path('api/integrations/', include('apps.integrations.urls')),
     path('api/integrations/fresh/', include('apps.integrations.urls_fresh')),
+    path('ws/notifications/', websocket_unavailable),
+    path('ws/boards/<int:board_id>/', websocket_unavailable),
 ]
 
 if settings.DEBUG:

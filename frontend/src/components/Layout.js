@@ -20,7 +20,8 @@ import {
   ChevronDownIcon,
   InboxIcon,
   SunIcon,
-  MoonIcon
+  MoonIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline';
 
 function AvatarDisplay({ avatar, fullName }) {
@@ -60,14 +61,14 @@ function Layout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({ Sprint: true, Personal: true, Admin: true });
 
-  const bgColor = '#1c1917';
-  const textColor = '#e7e5e4';
+  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const textColor = darkMode ? '#e7e5e4' : '#111827';
   const accentColor = '#3b82f6';
-  const hoverBg = '#292524';
-  const secondaryText = '#a8a29e';
-  const mainBg = '#0c0a09';
-  const borderColor = '#292524';
-  const activeBg = '#1f2937';
+  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
+  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const mainBg = darkMode ? '#0c0a09' : '#f9fafb';
+  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const activeBg = darkMode ? '#1f2937' : '#e5e7eb';
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -93,6 +94,7 @@ function Layout({ children }) {
     { name: 'Decisions', href: '/decisions', icon: DocumentTextIcon },
     { name: 'Knowledge', href: '/knowledge', icon: BookOpenIcon },
     { name: 'Projects', href: '/projects', icon: RectangleStackIcon },
+    { name: 'Team', href: '/team', icon: UsersIcon },
     { name: 'Notifications', href: '/notifications', icon: BellIcon },
   ];
 
@@ -303,6 +305,28 @@ function Layout({ children }) {
           </nav>
 
           <div style={{ padding: '14px 10px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
+            {!sidebarCollapsed && (
+              <button
+                onClick={toggleDarkMode}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '5px', fontSize: '13px', fontWeight: 500, textDecoration: 'none', color: secondaryText, backgroundColor: 'transparent', transition: 'all 0.15s', border: `1px solid transparent`, marginBottom: '10px', cursor: 'pointer' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; }}
+              >
+                {darkMode ? <SunIcon style={{ width: '18px', height: '18px', flexShrink: 0 }} /> : <MoonIcon style={{ width: '18px', height: '18px', flexShrink: 0 }} />}
+                <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+              </button>
+            )}
+            {sidebarCollapsed && (
+              <button
+                onClick={toggleDarkMode}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', borderRadius: '5px', fontSize: '13px', fontWeight: 500, textDecoration: 'none', color: secondaryText, backgroundColor: 'transparent', transition: 'all 0.15s', border: `1px solid transparent`, marginBottom: '10px', cursor: 'pointer' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; }}
+                title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {darkMode ? <SunIcon style={{ width: '18px', height: '18px', flexShrink: 0 }} /> : <MoonIcon style={{ width: '18px', height: '18px', flexShrink: 0 }} />}
+              </button>
+            )}
             {!sidebarCollapsed ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px', borderRadius: '5px', backgroundColor: hoverBg, border: `1px solid ${borderColor}` }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '5px', overflow: 'hidden', flexShrink: 0 }}>

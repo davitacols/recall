@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 
 function KanbanBoard() {
   const { projectId } = useParams();
+  const { darkMode } = useTheme();
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draggedIssue, setDraggedIssue] = useState(null);
@@ -69,10 +71,19 @@ function KanbanBoard() {
     return [{ id: 'all', name: 'All Issues', issues }];
   };
 
+  const bgColor = darkMode ? '#0c0a09' : '#ffffff';
+  const cardBg = darkMode ? '#1c1917' : '#ffffff';
+  const borderColor = darkMode ? '#374151' : '#e5e7eb';
+  const textColor = darkMode ? '#ffffff' : '#111827';
+  const textSecondary = darkMode ? '#9ca3af' : '#6b7280';
+  const hoverBg = darkMode ? '#1e293b' : '#f3f4f6';
+  const hoverBorder = darkMode ? '#b45309' : '#9ca3af';
+  const spinnerBorder = darkMode ? '#d97706' : '#6b7280';
+
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: '32px', height: '32px', border: '2px solid #d97706', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <div style={{ minHeight: '100vh', backgroundColor: bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '32px', height: '32px', border: `2px solid ${spinnerBorder}`, borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       </div>
     );
   }
@@ -80,23 +91,23 @@ function KanbanBoard() {
   const swimLanes = getSwimLanes();
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#111827' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: bgColor }}>
       <div style={{ maxWidth: '100%', padding: '24px' }}>
         {/* Header */}
         <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h1 style={{ fontSize: '36px', fontWeight: 900, color: '#ffffff', marginBottom: '4px', letterSpacing: '-0.02em' }}>Kanban Board</h1>
-            <p style={{ fontSize: '14px', color: '#9ca3af' }}>Active sprint work • {issues.length} issues</p>
+            <h1 style={{ fontSize: '36px', fontWeight: 900, color: textColor, marginBottom: '4px', letterSpacing: '-0.02em' }}>Kanban Board</h1>
+            <p style={{ fontSize: '14px', color: textSecondary }}>Active sprint work • {issues.length} issues</p>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>Group by:</span>
+            <span style={{ fontSize: '12px', color: textSecondary, fontWeight: 600, textTransform: 'uppercase' }}>Group by:</span>
             <button
               onClick={() => setGroupBy('assignee')}
               style={{
                 padding: '8px 16px',
-                backgroundColor: groupBy === 'assignee' ? '#d97706' : '#1c1917',
-                color: '#ffffff',
-                border: '1px solid ' + (groupBy === 'assignee' ? '#d97706' : '#374151'),
+                backgroundColor: groupBy === 'assignee' ? '#d97706' : cardBg,
+                color: textColor,
+                border: '1px solid ' + (groupBy === 'assignee' ? '#d97706' : borderColor),
                 fontSize: '12px',
                 fontWeight: 700,
                 textTransform: 'uppercase',
@@ -110,9 +121,9 @@ function KanbanBoard() {
               onClick={() => setGroupBy('none')}
               style={{
                 padding: '8px 16px',
-                backgroundColor: groupBy === 'none' ? '#d97706' : '#1c1917',
-                color: '#ffffff',
-                border: '1px solid ' + (groupBy === 'none' ? '#d97706' : '#374151'),
+                backgroundColor: groupBy === 'none' ? '#d97706' : cardBg,
+                color: textColor,
+                border: '1px solid ' + (groupBy === 'none' ? '#d97706' : borderColor),
                 fontSize: '12px',
                 fontWeight: 700,
                 textTransform: 'uppercase',
@@ -129,13 +140,13 @@ function KanbanBoard() {
         <div style={{ overflowX: 'auto' }}>
           {/* Column Headers */}
           <div style={{ display: 'grid', gridTemplateColumns: '200px repeat(5, 280px)', gap: '12px', marginBottom: '12px', minWidth: 'fit-content' }}>
-            <div style={{ padding: '12px', backgroundColor: '#1c1917', border: '1px solid #374151' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Swimlane</span>
+            <div style={{ padding: '12px', backgroundColor: cardBg, border: `1px solid ${borderColor}` }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: textSecondary, textTransform: 'uppercase' }}>Swimlane</span>
             </div>
             {statuses.map(status => (
-              <div key={status} style={{ padding: '12px', backgroundColor: '#1c1917', border: '1px solid #374151', textAlign: 'center' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase' }}>{statusLabels[status]}</span>
-                <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px' }}>
+              <div key={status} style={{ padding: '12px', backgroundColor: cardBg, border: `1px solid ${borderColor}`, textAlign: 'center' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: textColor, textTransform: 'uppercase' }}>{statusLabels[status]}</span>
+                <div style={{ fontSize: '10px', color: textSecondary, marginTop: '4px' }}>
                   {issues.filter(i => i.status === status).length}
                 </div>
               </div>
@@ -146,13 +157,13 @@ function KanbanBoard() {
           {swimLanes.map(lane => (
             <div key={lane.id} style={{ display: 'grid', gridTemplateColumns: '200px repeat(5, 280px)', gap: '12px', marginBottom: '12px', minWidth: 'fit-content' }}>
               {/* Lane Header */}
-              <div style={{ padding: '12px', backgroundColor: '#1c1917', border: '1px solid #374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ padding: '12px', backgroundColor: cardBg, border: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#ffffff', flexShrink: 0 }}>
                   {lane.name.charAt(0).toUpperCase()}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lane.name}</div>
-                  <div style={{ fontSize: '11px', color: '#6b7280' }}>{lane.issues.length} issues</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: textColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lane.name}</div>
+                  <div style={{ fontSize: '11px', color: textSecondary }}>{lane.issues.length} issues</div>
                 </div>
               </div>
 
@@ -166,8 +177,8 @@ function KanbanBoard() {
                     onDrop={() => handleDrop(status)}
                     style={{
                       padding: '8px',
-                      backgroundColor: '#1c1917',
-                      border: '1px solid #374151',
+                      backgroundColor: cardBg,
+                      border: `1px solid ${borderColor}`,
                       minHeight: '120px',
                       display: 'flex',
                       flexDirection: 'column',
@@ -185,32 +196,32 @@ function KanbanBoard() {
                           onClick={() => window.location.href = `/issues/${issue.id}`}
                           style={{
                             padding: '10px',
-                            backgroundColor: '#111827',
-                            border: '1px solid #374151',
+                            backgroundColor: darkMode ? '#111827' : '#f9fafb',
+                            border: `1px solid ${borderColor}`,
                             cursor: isDragging ? 'grabbing' : 'grab',
                             opacity: isDragging ? 0.5 : 1,
                             transition: 'all 0.2s'
                           }}
                           onMouseEnter={(e) => {
                             if (!isDragging) {
-                              e.currentTarget.style.backgroundColor = '#1e293b';
-                              e.currentTarget.style.borderColor = '#b45309';
+                              e.currentTarget.style.backgroundColor = hoverBg;
+                              e.currentTarget.style.borderColor = hoverBorder;
                             }
                           }}
                           onMouseLeave={(e) => {
                             if (!isDragging) {
-                              e.currentTarget.style.backgroundColor = '#111827';
-                              e.currentTarget.style.borderColor = '#374151';
+                              e.currentTarget.style.backgroundColor = darkMode ? '#111827' : '#f9fafb';
+                              e.currentTarget.style.borderColor = borderColor;
                             }
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>{issue.key}</span>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: textSecondary, textTransform: 'uppercase' }}>{issue.key}</span>
                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: getPriorityColor(issue.priority) }}></span>
                           </div>
-                          <h3 style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', lineHeight: '1.4', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{issue.title}</h3>
+                          <h3 style={{ fontSize: '13px', fontWeight: 600, color: textColor, lineHeight: '1.4', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{issue.title}</h3>
                           {issue.story_points && (
-                            <div style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', backgroundColor: '#374151', padding: '2px 6px', display: 'inline-block' }}>
+                            <div style={{ fontSize: '10px', fontWeight: 700, color: textSecondary, backgroundColor: darkMode ? '#374151' : '#e5e7eb', padding: '2px 6px', display: 'inline-block' }}>
                               {issue.story_points} pts
                             </div>
                           )}

@@ -102,11 +102,11 @@ function ConversationDetail() {
   const [creating, setCreating] = useState(false);
   const [converting, setConverting] = useState(false);
 
-  const bgColor = '#1c1917';
-  const textColor = '#e7e5e4';
-  const borderColor = '#292524';
-  const hoverBg = '#292524';
-  const secondaryText = '#a8a29e';
+  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
+  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -474,7 +474,7 @@ function ConversationDetail() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '6px', marginLeft: '16px', flexWrap: 'wrap' }}>
-              <button onClick={handleConvertToDecision} style={{ padding: '7px 12px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (converting || savingPost || deletingPost) ? 0.5 : 1 }} disabled={converting || savingPost || deletingPost}>
+              <button onClick={handleConvertToDecision} style={{ padding: '7px 12px', backgroundColor: 'transparent', border: '2px solid #10b981', color: '#10b981', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (converting || savingPost || deletingPost) ? 0.5 : 1, transition: 'all 0.15s' }} disabled={converting || savingPost || deletingPost} onMouseEnter={(e) => { if (!converting && !savingPost && !deletingPost) { e.currentTarget.style.backgroundColor = '#10b981'; e.currentTarget.style.color = '#ffffff'; } }} onMouseLeave={(e) => { if (!converting && !savingPost && !deletingPost) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#10b981'; } }}>
                 {converting ? 'Converting...' : 'Convert to Decision'}
               </button>
               <FavoriteButton conversationId={id} />
@@ -499,7 +499,7 @@ function ConversationDetail() {
           {isEditingPost ? (
             <div>
               <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ width: '100%', padding: '12px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: '#0c0a09', color: textColor, fontSize: '14px', outline: 'none' }} rows={10} />
-              <button onClick={handleEditPost} style={{ marginTop: '12px', padding: '8px 14px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', opacity: savingPost ? 0.5 : 1 }} disabled={savingPost}>
+              <button onClick={handleEditPost} style={{ marginTop: '12px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', opacity: savingPost ? 0.5 : 1, transition: 'all 0.15s' }} disabled={savingPost} onMouseEnter={(e) => { if (!savingPost) { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; } }} onMouseLeave={(e) => { if (!savingPost) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; } }}>
                 {savingPost ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
@@ -570,7 +570,7 @@ function ConversationDetail() {
             <h3 style={{ fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '10px' }}>Add a comment</h3>
             <form onSubmit={handleSubmitReply}>
               <MentionTagInput value={newReply} onChange={(e) => setNewReply(e.target.value)} placeholder="Share your thoughts..." rows={4} />
-              <button type="submit" disabled={submitting || !newReply.trim()} style={{ marginTop: '10px', padding: '8px 14px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', opacity: (submitting || !newReply.trim()) ? 0.5 : 1, transition: 'all 0.15s' }}>
+              <button type="submit" disabled={submitting || !newReply.trim()} style={{ marginTop: '10px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', opacity: (submitting || !newReply.trim()) ? 0.5 : 1, transition: 'all 0.15s' }} onMouseEnter={(e) => { if (!submitting && newReply.trim()) { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; } }} onMouseLeave={(e) => { if (!submitting && newReply.trim()) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; } }}>
                 {submitting ? 'Posting...' : 'Reply'}
               </button>
             </form>

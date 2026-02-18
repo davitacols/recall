@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
 import { BellIcon, UserIcon, ShieldCheckIcon, UsersIcon, BuildingOfficeIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 function Settings() {
   const { user } = useAuth();
+  const { darkMode, toggleDarkMode } = useTheme();
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState('notifications');
   const [notifications, setNotifications] = useState({
@@ -149,6 +151,7 @@ function Settings() {
 
   const sections = [
     { id: 'notifications', label: 'Notifications', icon: BellIcon },
+    { id: 'appearance', label: 'Appearance', icon: Cog6ToothIcon },
     ...(user?.role === 'admin' ? [
       { id: 'organization', label: 'Organization', icon: BuildingOfficeIcon },
       { id: 'team', label: 'Team', icon: UsersIcon }
@@ -245,6 +248,40 @@ function Settings() {
                   </div>
                 </div>
               </>
+            )}
+
+            {activeSection === 'appearance' && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Theme</h2>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-gray-900 cursor-pointer transition-all">
+                    <input
+                      type="radio"
+                      name="theme"
+                      checked={darkMode}
+                      onChange={() => !darkMode && toggleDarkMode()}
+                      className="w-4 h-4 text-gray-900"
+                    />
+                    <div>
+                      <div className="font-semibold text-gray-900">Dark</div>
+                      <div className="text-sm text-gray-500">Dark theme with stone colors</div>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-gray-900 cursor-pointer transition-all">
+                    <input
+                      type="radio"
+                      name="theme"
+                      checked={!darkMode}
+                      onChange={() => darkMode && toggleDarkMode()}
+                      className="w-4 h-4 text-gray-900"
+                    />
+                    <div>
+                      <div className="font-semibold text-gray-900">Light</div>
+                      <div className="text-sm text-gray-500">Light theme with white backgrounds</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
             )}
 
             {activeSection === 'organization' && user?.role === 'admin' && organization && (

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
 import BM25 from '../utils/bm25';
 
 function Knowledge() {
+  const { darkMode } = useTheme();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -74,12 +76,12 @@ function Knowledge() {
     }
   };
 
-  const bgColor = '#1c1917';
-  const textColor = '#e7e5e4';
-  const borderColor = '#292524';
-  const hoverBg = '#292524';
-  const secondaryText = '#a8a29e';
-  const mainBg = '#0c0a09';
+  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
+  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const mainBg = darkMode ? '#0c0a09' : '#f9fafb';
 
   return (
     <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
@@ -105,9 +107,9 @@ function Knowledge() {
           <button
             type="submit"
             disabled={loading || !query.trim()}
-            style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', padding: '6px 14px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s', opacity: (loading || !query.trim()) ? 0.5 : 1 }}
-            onMouseEnter={(e) => { if (!loading && query.trim()) e.currentTarget.style.backgroundColor = '#2563eb'; }}
-            onMouseLeave={(e) => { if (!loading && query.trim()) e.currentTarget.style.backgroundColor = '#3b82f6'; }}
+            style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', padding: '6px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s', opacity: (loading || !query.trim()) ? 0.5 : 1 }}
+            onMouseEnter={(e) => { if (!loading && query.trim()) { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; } }}
+            onMouseLeave={(e) => { if (!loading && query.trim()) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; } }}
           >
             {loading ? 'Searching...' : 'Search'}
           </button>
@@ -126,9 +128,9 @@ function Knowledge() {
                   setQuery(suggestion);
                   performSearch(suggestion);
                 }}
-                style={{ padding: '6px 12px', border: `1px solid ${borderColor}`, borderRadius: '4px', backgroundColor: bgColor, color: textColor, fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+                style={{ padding: '6px 12px', border: `2px solid ${borderColor}`, borderRadius: '4px', backgroundColor: 'transparent', color: textColor, fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = hoverBg; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = bgColor; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 {suggestion}
               </button>
@@ -168,9 +170,9 @@ function Knowledge() {
                 setResults([]);
                 setHasSearched(false);
               }}
-              style={{ padding: '7px 12px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor, color: textColor, fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+              style={{ padding: '7px 12px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = hoverBg; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = bgColor; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
               New Search
             </button>

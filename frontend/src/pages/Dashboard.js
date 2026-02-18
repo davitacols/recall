@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { CardSkeleton } from '../components/Skeleton';
@@ -17,6 +18,7 @@ import {
 
 function Dashboard() {
   const { user } = useAuth();
+  const { darkMode } = useTheme();
   const [activities, setActivities] = useState([]);
   const [currentSprint, setCurrentSprint] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,11 +66,11 @@ function Dashboard() {
     }
   };
 
-  const bgColor = '#1c1917';
-  const textColor = '#e7e5e4';
-  const borderColor = '#292524';
-  const hoverBg = '#292524';
-  const secondaryText = '#a8a29e';
+  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
+  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
 
   if (loading) {
     return (
@@ -92,7 +94,7 @@ function Dashboard() {
             <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px', letterSpacing: '-0.01em' }}>Welcome back, {user?.full_name?.split(' ')[0]}</h1>
             <p style={{ fontSize: '14px', color: secondaryText }}>Your organizational memory at a glance</p>
           </div>
-          <Link to="/conversations/new" style={{ padding: '8px 14px', backgroundColor: '#3b82f6', color: '#ffffff', textDecoration: 'none', borderRadius: '5px', fontWeight: 500, fontSize: '13px', transition: 'all 0.15s', display: 'inline-block' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}>
+          <Link to="/conversations/new" style={{ padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', textDecoration: 'none', borderRadius: '5px', fontWeight: 500, fontSize: '13px', transition: 'all 0.15s', display: 'inline-block' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; }}>
             New Conversation
           </Link>
         </div>
@@ -205,13 +207,13 @@ function Dashboard() {
           <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
             <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>Quick Actions</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Link to="/conversations/new" style={{ display: 'block', padding: '10px 14px', backgroundColor: '#3b82f6', color: '#ffffff', textDecoration: 'none', borderRadius: '5px', fontWeight: 500, fontSize: '13px', textAlign: 'center', transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}>
+              <Link to="/conversations/new" style={{ display: 'block', padding: '10px 14px', backgroundColor: 'transparent', border: `2px solid #3b82f6`, color: '#3b82f6', textDecoration: 'none', borderRadius: '5px', fontWeight: 500, fontSize: '13px', textAlign: 'center', transition: 'all 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; }}>
                 New Conversation
               </Link>
-              <Link to="/decisions/new" style={{ display: 'block', padding: '10px 14px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor, color: textColor, textDecoration: 'none', fontWeight: 500, fontSize: '13px', textAlign: 'center', transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgColor}>
+              <Link to="/decisions/new" style={{ display: 'block', padding: '10px 14px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, textDecoration: 'none', fontWeight: 500, fontSize: '13px', textAlign: 'center', transition: 'all 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.borderColor = textColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderColor = borderColor; }}>
                 New Decision
               </Link>
-              <Link to="/sprint" style={{ display: 'block', padding: '10px 14px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor, color: textColor, textDecoration: 'none', fontWeight: 500, fontSize: '13px', textAlign: 'center', transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgColor}>
+              <Link to="/sprint" style={{ display: 'block', padding: '10px 14px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, textDecoration: 'none', fontWeight: 500, fontSize: '13px', textAlign: 'center', transition: 'all 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.borderColor = textColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderColor = borderColor; }}>
                 View Sprint
               </Link>
             </div>

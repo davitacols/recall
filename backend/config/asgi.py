@@ -19,6 +19,13 @@ websocket_urlpatterns = [
     path('ws/notifications/', NotificationsConsumer.as_asgi()),
 ]
 
+# Fallback for when WebSocket is not available
+try:
+    from channels.layers import get_channel_layer
+    channel_layer = get_channel_layer()
+except Exception:
+    channel_layer = None
+
 application = ProtocolTypeRouter({
     'http': django_asgi_app,
     'websocket': AllowedHostsOriginValidator(

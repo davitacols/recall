@@ -262,7 +262,7 @@ function IssueDetail() {
                 <button
                   type="submit"
                   disabled={submitting || !newComment.trim()}
-                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg hover:from-amber-400 hover:to-orange-500 transition-all text-sm font-semibold disabled:opacity-50 shadow-lg shadow-amber-500/20"
+                  className="px-5 py-2.5 bg-transparent border-2 border-amber-500 text-amber-500 rounded-lg hover:bg-amber-500 hover:text-white transition-all text-sm font-semibold disabled:opacity-50"
                 >
                   {submitting ? 'Posting...' : 'Add Comment'}
                 </button>

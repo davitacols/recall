@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
 import { LinkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import {
@@ -11,6 +12,7 @@ import {
 
 function DecisionDetail() {
   const { id } = useParams();
+  const { darkMode } = useTheme();
   const [decision, setDecision] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -51,11 +53,11 @@ function DecisionDetail() {
     }
   };
 
-  const bgColor = '#1c1917';
-  const textColor = '#e7e5e4';
-  const borderColor = '#292524';
-  const hoverBg = '#292524';
-  const secondaryText = '#a8a29e';
+  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
+  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
 
   if (loading) {
     return (
@@ -212,7 +214,9 @@ function DecisionDetail() {
                       <button
                         type="submit"
                         disabled={!prUrl.trim() || linking}
-                        style={{ padding: '8px 14px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (!prUrl.trim() || linking) ? 0.5 : 1 }}
+                        style={{ padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (!prUrl.trim() || linking) ? 0.5 : 1, transition: 'all 0.15s' }}
+                        onMouseEnter={(e) => { if (prUrl.trim() && !linking) { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; } }}
+                        onMouseLeave={(e) => { if (prUrl.trim() && !linking) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; } }}
                       >
                         {linking ? 'Linking...' : 'Link'}
                       </button>

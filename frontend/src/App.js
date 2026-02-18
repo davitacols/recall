@@ -108,7 +108,7 @@ function AppContent() {
 
   useEffect(() => {
     // Show onboarding for authenticated users only (not on public pages)
-    const isPublicPage = ['/home', '/login', '/signup'].some(path => 
+    const isPublicPage = ['/home', '/login', '/signup', '/invite'].some(path => 
       window.location.pathname.startsWith(path)
     );
     if (user && !user.onboarding_completed && !isPublicPage) {

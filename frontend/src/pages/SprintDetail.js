@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, CalendarIcon, FlagIcon, ChartBarIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import { BurndownChart, SprintTimeTracking } from '../components/BurndownChart';
 
 function SprintDetail() {
   const { id } = useParams();
@@ -146,6 +147,16 @@ function SprintDetail() {
             </div>
           </div>
         )}
+
+        {/* Burndown Chart */}
+        <div className="mb-8">
+          <BurndownChart sprintId={id} />
+        </div>
+
+        {/* Time Tracking Summary */}
+        <div className="mb-8">
+          <SprintTimeTracking sprintId={id} />
+        </div>
 
         {/* Kanban Board */}
         <div>

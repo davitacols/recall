@@ -3,7 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './components/Toast';
 import { ThemeProvider } from './utils/ThemeAndAccessibility';
-import { useKeyboardShortcuts, CommandPalette } from './hooks/useKeyboardShortcuts';
+import { CommandPalette } from './components/CommandPalette';
+import { GlobalSearch } from './components/GlobalSearch';
+import { OnboardingFlow } from './components/OnboardingFlow';
+import { MobileNav } from './components/MobileNav';
+import { AIAssistant } from './components/AIFeatures';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout.js';
 import Login from './pages/Login';
@@ -83,19 +87,14 @@ function RootRoute() {
 }
 
 function AppContent() {
-  const { showCommandPalette, setShowCommandPalette } = useKeyboardShortcuts();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      console.log('Back online');
-    };
-    
-    const handleOffline = () => {
-      setIsOnline(false);
-      console.log('Offline');
-    };
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -106,6 +105,32 @@ function AppContent() {
     };
   }, []);
 
+  useEffect(() => {
+    // Show onboarding for authenticated users only (not on public pages)
+    const isPublicPage = ['/home', '/login', '/signup'].some(path => 
+      window.location.pathname.startsWith(path)
+    );
+    if (user && !user.onboarding_completed && !isPublicPage) {
+      setShowOnboarding(true);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    // Global keyboard shortcut for search
+    const handleKeyDown = (e) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+      
+      if (modKey && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <>
       {!isOnline && (
@@ -113,7 +138,11 @@ function AppContent() {
           You are offline. Some features may be limited.
         </div>
       )}
-      <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+      <CommandPalette />
+      <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+      {showOnboarding && user && <OnboardingFlow onComplete={() => setShowOnboarding(false)} />}
+      <MobileNav onSearchOpen={() => setShowSearch(true)} />
+      {user && <AIAssistant />}
       <Routes>
         <Route path="/home" element={<Homepage />} />
         <Route path="/login" element={<Login />} />

@@ -1,0 +1,55 @@
+# Generated migration for time tracking
+
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('agile', '0017_issue_time_spent'),
+        ('organizations', '0001_initial'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='WorkLog',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('time_spent_minutes', models.IntegerField(help_text='Time spent in minutes')),
+                ('description', models.TextField(blank=True)),
+                ('started_at', models.DateTimeField()),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('issue', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='work_logs', to='agile.issue')),
+                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='organizations.organization')),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='work_logs', to='organizations.user')),
+            ],
+            options={
+                'db_table': 'work_logs',
+                'ordering': ['-started_at'],
+            },
+        ),
+        migrations.CreateModel(
+            name='TimeEstimate',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('original_estimate_minutes', models.IntegerField(blank=True, null=True)),
+                ('remaining_estimate_minutes', models.IntegerField(blank=True, null=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('issue', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='time_estimate', to='agile.issue')),
+            ],
+            options={
+                'db_table': 'time_estimates',
+            },
+        ),
+        migrations.AddIndex(
+            model_name='worklog',
+            index=models.Index(fields=['organization', 'issue', '-started_at'], name='work_logs_org_issue_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='worklog',
+            index=models.Index(fields=['user', '-started_at'], name='work_logs_user_idx'),
+        ),
+    ]

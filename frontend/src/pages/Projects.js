@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import { CardSkeleton } from '../components/Skeleton';
+import { NoData } from '../components/EmptyState';
 
 function Projects() {
   const [projects, setProjects] = useState([]);
@@ -55,8 +57,12 @@ function Projects() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-stone-700 border-t-stone-400 rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-stone-950">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1,2,3].map(i => <CardSkeleton key={i} />)}
+          </div>
+        </div>
       </div>
     );
   }
@@ -163,19 +169,7 @@ function Projects() {
 
         {/* Empty State */}
         {projects.length === 0 ? (
-          <div className="text-center py-20 bg-stone-900 border border-stone-800 rounded-lg">
-            <h3 className="text-xl font-semibold text-stone-200 mb-2">No projects yet</h3>
-            <p className="text-sm text-stone-500 mb-6">Create your first project to get started with Kanban boards</p>
-            <button
-              onClick={() => {
-                setShowCreateForm(true);
-                setError('');
-              }}
-              className="px-5 py-2 bg-stone-800 text-stone-200 rounded hover:bg-stone-700 font-medium text-sm transition-all border border-stone-700"
-            >
-              Create First Project
-            </button>
-          </div>
+          <NoData type="projects" onCreate={() => { setShowCreateForm(true); setError(''); }} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project) => (

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircleIcon, ClockIcon, XCircleIcon, EyeIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import { ListSkeleton } from '../components/Skeleton';
+import { NoData } from '../components/EmptyState';
 
 function Decisions() {
   const [decisions, setDecisions] = useState([]);
@@ -49,11 +51,7 @@ function Decisions() {
   }, {});
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #292524', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-      </div>
-    );
+    return <ListSkeleton count={5} />;
   }
 
   return (
@@ -123,18 +121,10 @@ function Decisions() {
 
       {/* Timeline View */}
       {filteredDecisions.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '48px 24px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>No decisions yet</h3>
-          <p style={{ fontSize: '14px', color: secondaryText, marginBottom: '6px' }}>
-            Convert conversations into decisions to track outcomes.
-          </p>
-          <p style={{ fontSize: '13px', color: secondaryText, marginBottom: '20px' }}>
-            Decisions help your team understand what was decided, why, and what the impact was.
-          </p>
-          <a href="/conversations" style={{ display: 'inline-block', padding: '8px 16px', backgroundColor: '#3b82f6', color: '#ffffff', borderRadius: '5px', fontWeight: 500, fontSize: '13px', textDecoration: 'none', transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}>
-            View conversations
-          </a>
-        </div>
+        <NoData 
+          type="decisions" 
+          onCreate={() => window.location.href = '/conversations'}
+        />
       ) : (
         <div style={{ position: 'relative' }}>
           {/* Timeline Line */}

@@ -1,154 +1,269 @@
 import React, { useState, useEffect } from 'react';
-import { colors, spacing, radius } from '../utils/designTokens';
+import { ChartBarIcon } from '@heroicons/react/24/outline';
+import api from '../services/api';
 
-function BurndownChart({ sprint }) {
-  const [chartData, setChartData] = useState(null);
+export const BurndownChart = ({ sprintId }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (sprint) {
-      const totalIssues = sprint.issue_count || 0;
-      const completedIssues = sprint.completed || 0;
-      const remainingIssues = totalIssues - completedIssues;
+    loadBurndownData();
+  }, [sprintId]);
 
-      const startDate = new Date(sprint.start_date);
-      const endDate = new Date(sprint.end_date);
-      const today = new Date();
-      const daysTotal = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
-      const daysElapsed = Math.max(0, Math.ceil((today - startDate) / (1000 * 60 * 60 * 24)));
-      const daysRemaining = Math.max(0, daysTotal - daysElapsed);
-
-      const idealBurnPerDay = totalIssues > 0 ? totalIssues / daysTotal : 0;
-      const idealRemaining = Math.max(0, totalIssues - (idealBurnPerDay * daysElapsed));
-
-      setChartData({
-        totalIssues,
-        completedIssues,
-        remainingIssues,
-        daysElapsed,
-        daysTotal,
-        daysRemaining,
-        idealRemaining,
-        completionPercentage: totalIssues > 0 ? Math.round((completedIssues / totalIssues) * 100) : 0
-      });
+  const loadBurndownData = async () => {
+    try {
+      const response = await api.get(`/api/agile/sprints/${sprintId}/burndown/`);
+      setData(response.data);
+    } catch (error) {
+      console.error('Failed to load burndown data:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [sprint]);
+  };
 
-  if (!chartData) {
-    return <div style={{ padding: spacing.lg, color: colors.secondary }}>Loading chart...</div>;
+  if (loading) {
+    return <div className="text-center py-8 text-gray-500">Loading burndown chart...</div>;
   }
 
-  const maxIssues = Math.max(chartData.totalIssues, 1);
-  const chartHeight = 200;
-  const chartWidth = 400;
+  if (!data) {
+    return <div className="text-center py-8 text-gray-500">No data available</div>;
+  }
 
-  const actualY = (chartData.remainingIssues / maxIssues) * chartHeight;
-  const xPos = chartData.daysTotal > 0 ? (chartData.daysElapsed / chartData.daysTotal) * chartWidth : 0;
+  const maxPoints = data.total_points;
+  const chartHeight = 300;
+  const chartWidth = 600;
+  const padding = 40;
+
+  const getY = (points) => {
+    return chartHeight - padding - ((points / maxPoints) * (chartHeight - 2 * padding));
+  };
+
+  const getX = (index, total) => {
+    return padding + ((index / (total - 1)) * (chartWidth - 2 * padding));
+  };
+
+  const idealPoints = data.ideal_line.map((point, i) => ({
+    x: getX(i, data.ideal_line.length),
+    y: getY(point.remaining),
+    date: point.date
+  }));
+
+  const actualPoints = data.actual_line.map((point, i) => ({
+    x: getX(i, data.ideal_line.length),
+    y: getY(point.remaining),
+    date: point.date
+  }));
+
+  const idealPath = idealPoints.map((p, i) => 
+    `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+  ).join(' ');
+
+  const actualPath = actualPoints.map((p, i) => 
+    `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+  ).join(' ');
 
   return (
-    <div style={{
-      backgroundColor: colors.surface,
-      border: `1px solid ${colors.border}`,
-      borderRadius: radius.md,
-      padding: spacing.lg
-    }}>
-      <h3 style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, marginBottom: spacing.lg }}>
-        Sprint Burndown
-      </h3>
-
-      <div style={{ display: 'flex', gap: spacing.xl }}>
-        <div style={{ flex: 1 }}>
-          <svg width={chartWidth} height={chartHeight} style={{ border: `1px solid ${colors.border}` }}>
-            {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => (
-              <line
-                key={`grid-${i}`}
-                x1={pct * chartWidth}
-                y1={0}
-                x2={pct * chartWidth}
-                y2={chartHeight}
-                stroke={colors.border}
-                strokeDasharray="4"
-                strokeWidth="1"
-              />
-            ))}
-
-            <line
-              x1={0}
-              y1={chartHeight}
-              x2={chartWidth}
-              y2={0}
-              stroke="#9CA3AF"
-              strokeWidth="2"
-              strokeDasharray="5"
-            />
-
-            <circle
-              cx={xPos}
-              cy={chartHeight - actualY}
-              r="4"
-              fill={chartData.remainingIssues <= chartData.idealRemaining ? '#10B981' : '#F59E0B'}
-            />
-
-            <line x1={0} y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke={colors.primary} strokeWidth="2" />
-            <line x1={0} y1={0} x2={0} y2={chartHeight} stroke={colors.primary} strokeWidth="2" />
-          </svg>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: spacing.md, fontSize: '11px', color: colors.secondary }}>
-            <span>Day 0</span>
-            <span>Day {chartData.daysTotal}</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg, minWidth: '150px' }}>
-          <div>
-            <div style={{ fontSize: '11px', color: colors.secondary, marginBottom: '4px' }}>Completion</div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: colors.primary }}>
-              {chartData.completionPercentage}%
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '11px', color: colors.secondary, marginBottom: '4px' }}>Remaining</div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#F59E0B' }}>
-              {chartData.remainingIssues}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '11px', color: colors.secondary, marginBottom: '4px' }}>Days Left</div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: colors.primary }}>
-              {chartData.daysRemaining}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '11px', color: colors.secondary, marginBottom: '4px' }}>Status</div>
-            <div style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: chartData.remainingIssues <= chartData.idealRemaining ? '#10B981' : '#F59E0B',
-              padding: `${spacing.sm} ${spacing.md}`,
-              backgroundColor: chartData.remainingIssues <= chartData.idealRemaining ? '#D1FAE5' : '#FEF3C7',
-              borderRadius: radius.md,
-              textAlign: 'center'
-            }}>
-              {chartData.remainingIssues <= chartData.idealRemaining ? 'On Track' : 'Behind'}
-            </div>
-          </div>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <ChartBarIcon className="w-5 h-5 text-gray-500" />
+        <h3 className="font-semibold text-gray-900">Burndown Chart</h3>
       </div>
 
-      <div style={{ marginTop: spacing.lg, fontSize: '11px', color: colors.secondary }}>
-        <div style={{ marginBottom: '4px' }}>
-          <span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#9CA3AF', marginRight: '4px' }}></span>
-          Ideal burndown
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="flex items-center gap-4 mb-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-0.5 bg-gray-400"></div>
+            <span className="text-gray-600">Ideal</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-0.5 bg-purple-600"></div>
+            <span className="text-gray-600">Actual</span>
+          </div>
+          <div className="ml-auto text-gray-600">
+            Total: <span className="font-semibold">{data.total_points} points</span>
+          </div>
         </div>
-        <div>
-          <span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#F59E0B', borderRadius: '50%', marginRight: '4px' }}></span>
-          Actual progress
+
+        <svg width={chartWidth} height={chartHeight} className="w-full">
+          {/* Grid lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+            const y = getY(maxPoints * (1 - ratio));
+            return (
+              <g key={ratio}>
+                <line
+                  x1={padding}
+                  y1={y}
+                  x2={chartWidth - padding}
+                  y2={y}
+                  stroke="#e5e7eb"
+                  strokeWidth="1"
+                />
+                <text
+                  x={padding - 10}
+                  y={y + 5}
+                  textAnchor="end"
+                  fontSize="12"
+                  fill="#6b7280"
+                >
+                  {Math.round(maxPoints * (1 - ratio))}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Ideal line */}
+          <path
+            d={idealPath}
+            fill="none"
+            stroke="#9ca3af"
+            strokeWidth="2"
+            strokeDasharray="5,5"
+          />
+
+          {/* Actual line */}
+          <path
+            d={actualPath}
+            fill="none"
+            stroke="#9333ea"
+            strokeWidth="3"
+          />
+
+          {/* Actual points */}
+          {actualPoints.map((point, i) => (
+            <circle
+              key={i}
+              cx={point.x}
+              cy={point.y}
+              r="4"
+              fill="#9333ea"
+            />
+          ))}
+
+          {/* X-axis labels */}
+          {idealPoints.map((point, i) => {
+            if (i % Math.ceil(idealPoints.length / 5) === 0 || i === idealPoints.length - 1) {
+              return (
+                <text
+                  key={i}
+                  x={point.x}
+                  y={chartHeight - padding + 20}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fill="#6b7280"
+                >
+                  {new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </text>
+              );
+            }
+            return null;
+          })}
+        </svg>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="text-xs text-gray-600">Start Date</div>
+          <div className="text-sm font-semibold">{new Date(data.start_date).toLocaleDateString()}</div>
+        </div>
+        <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="text-xs text-gray-600">End Date</div>
+          <div className="text-sm font-semibold">{new Date(data.end_date).toLocaleDateString()}</div>
+        </div>
+        <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="text-xs text-gray-600">Remaining</div>
+          <div className="text-sm font-semibold text-purple-600">
+            {actualPoints[actualPoints.length - 1] ? 
+              Math.round(data.total_points - (data.total_points - actualPoints[actualPoints.length - 1].y * maxPoints / (chartHeight - 2 * padding))) : 
+              data.total_points} points
+          </div>
         </div>
       </div>
     </div>
   );
-}
+};
 
-export default BurndownChart;
+export const SprintTimeTracking = ({ sprintId }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadTimeTracking();
+  }, [sprintId]);
+
+  const loadTimeTracking = async () => {
+    try {
+      const response = await api.get(`/api/agile/sprints/${sprintId}/time-tracking/`);
+      setData(response.data);
+    } catch (error) {
+      console.error('Failed to load time tracking:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTime = (minutes) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  if (loading) return <div className="text-center py-4 text-gray-500">Loading...</div>;
+  if (!data) return null;
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-gray-900">Time Tracking Summary</h3>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="text-sm text-blue-600 mb-1">Estimated</div>
+          <div className="text-2xl font-bold text-blue-900">{formatTime(data.total_estimated_minutes)}</div>
+        </div>
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <div className="text-sm text-purple-600 mb-1">Logged</div>
+          <div className="text-2xl font-bold text-purple-900">{formatTime(data.total_logged_minutes)}</div>
+        </div>
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="text-sm text-green-600 mb-1">Remaining</div>
+          <div className="text-2xl font-bold text-green-900">{formatTime(data.total_remaining_minutes)}</div>
+        </div>
+      </div>
+
+      <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">Issue</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">Status</th>
+              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">Estimated</th>
+              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">Logged</th>
+              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">Remaining</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {data.issues.map((issue) => (
+              <tr key={issue.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3">
+                  <div className="text-sm font-medium text-gray-900">{issue.key}</div>
+                  <div className="text-xs text-gray-500 truncate max-w-xs">{issue.title}</div>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-xs px-2 py-1 bg-gray-100 rounded">{issue.status}</span>
+                </td>
+                <td className="px-4 py-3 text-right text-sm">
+                  {issue.estimated_minutes ? formatTime(issue.estimated_minutes) : '-'}
+                </td>
+                <td className="px-4 py-3 text-right text-sm font-medium text-purple-600">
+                  {formatTime(issue.logged_minutes)}
+                </td>
+                <td className="px-4 py-3 text-right text-sm">
+                  {issue.remaining_minutes ? formatTime(issue.remaining_minutes) : '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};

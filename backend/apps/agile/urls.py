@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, kanban_views, views_missing_features
+from . import views, kanban_views, views_missing_features, ml_endpoints, time_tracking_endpoints, custom_fields_endpoints, ai_endpoints
 
 urlpatterns = [
     # Projects
@@ -22,6 +22,13 @@ urlpatterns = [
     path('issues/<int:issue_id>/move/', views.move_issue, name='move_issue'),
     path('issues/<int:issue_id>/comments/', views.add_comment, name='add_comment'),
     path('issues/<int:issue_id>/assign-sprint/', kanban_views.assign_issue_to_sprint, name='assign_issue_to_sprint'),
+    
+    # ML/AI Features
+    path('ml/suggest-assignee/', ml_endpoints.suggest_assignee, name='ml_suggest_assignee'),
+    path('ml/predict-sprint/<int:sprint_id>/', ml_endpoints.predict_sprint, name='ml_predict_sprint'),
+    path('ml/auto-tag/', ml_endpoints.auto_tag, name='ml_auto_tag'),
+    path('ml/analyze-issue/', ml_endpoints.analyze_issue, name='ml_analyze_issue'),
+    path('ml/sprint-insights/<int:sprint_id>/', ml_endpoints.sprint_insights, name='ml_sprint_insights'),
     
     # Attachments
     path('issues/<int:issue_id>/attachments/', views_missing_features.upload_attachment, name='upload_attachment'),
@@ -74,4 +81,34 @@ urlpatterns = [
     # Blockers
     path('blockers/', views.blockers, name='blockers'),
     path('blockers/<int:blocker_id>/resolve/', views.resolve_blocker, name='resolve_blocker'),
+    
+    # Time Tracking
+    path('issues/<int:issue_id>/log-work/', time_tracking_endpoints.log_work, name='log_work'),
+    path('issues/<int:issue_id>/work-logs/', time_tracking_endpoints.get_work_logs, name='get_work_logs'),
+    path('issues/<int:issue_id>/time-estimate/', time_tracking_endpoints.set_time_estimate, name='set_time_estimate'),
+    path('sprints/<int:sprint_id>/burndown/', time_tracking_endpoints.get_burndown_chart, name='get_burndown_chart'),
+    path('sprints/<int:sprint_id>/time-tracking/', time_tracking_endpoints.get_sprint_time_tracking, name='get_sprint_time_tracking'),
+    
+    # Custom Fields
+    path('projects/<int:project_id>/custom-fields/', custom_fields_endpoints.custom_fields, name='custom_fields'),
+    path('custom-fields/<int:field_id>/', custom_fields_endpoints.delete_custom_field, name='delete_custom_field'),
+    path('issues/<int:issue_id>/custom-fields/', custom_fields_endpoints.get_issue_custom_fields, name='get_issue_custom_fields'),
+    path('issues/<int:issue_id>/set-custom-field/', custom_fields_endpoints.set_custom_field_value, name='set_custom_field_value'),
+    
+    # Custom Issue Types
+    path('projects/<int:project_id>/issue-types/', custom_fields_endpoints.custom_issue_types, name='custom_issue_types'),
+    path('issue-types/<int:type_id>/', custom_fields_endpoints.delete_custom_issue_type, name='delete_custom_issue_type'),
+    
+    # Advanced Filters
+    path('filter-issues/', custom_fields_endpoints.filter_issues, name='filter_issues'),
+    path('saved-filters/', custom_fields_endpoints.saved_filters, name='saved_filters'),
+    path('saved-filters/<int:filter_id>/', custom_fields_endpoints.manage_saved_filter, name='manage_saved_filter'),
+    path('boards/<int:board_id>/filters/', custom_fields_endpoints.board_filters, name='board_filters'),
+    
+    # AI Features
+    path('ai/chat/', ai_endpoints.ai_chat, name='ai_chat'),
+    path('ai/suggestions/', ai_endpoints.ai_suggestions, name='ai_suggestions'),
+    path('ai/categorize/', ai_endpoints.ai_categorize, name='ai_categorize'),
+    path('ai/search/', ai_endpoints.ai_smart_search, name='ai_smart_search'),
+    path('ai/insights/', ai_endpoints.ai_insights, name='ai_insights'),
 ]

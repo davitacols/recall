@@ -1,5 +1,5 @@
 from django.urls import path
-from . import agile_fresh, retrospective_endpoints, views_missing_features, views
+from . import agile_fresh, retrospective_endpoints, views_missing_features, views, ai_endpoints
 
 urlpatterns = [
     # Projects
@@ -70,4 +70,11 @@ urlpatterns = [
     path('sprints/<int:sprint_id>/auto-retrospective/', retrospective_endpoints.auto_generate_retrospective, name='auto-retrospective'),
     path('sprints/<int:sprint_id>/analytics/', retrospective_endpoints.sprint_analytics, name='sprint-analytics'),
     path('sprints/trends/', retrospective_endpoints.sprint_trends, name='sprint-trends'),
+    
+    # AI Features
+    path('ai/chat/', ai_endpoints.ai_chat, name='ai_chat'),
+    path('ai/suggestions/', ai_endpoints.ai_suggestions, name='ai_suggestions'),
+    path('ai/categorize/', ai_endpoints.ai_categorize, name='ai_categorize'),
+    path('ai/search/', ai_endpoints.ai_smart_search, name='ai_smart_search'),
+    path('ai/insights/', ai_endpoints.ai_insights, name='ai_insights'),
 ]

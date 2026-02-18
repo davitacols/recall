@@ -5,6 +5,8 @@ import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
 import { getAvatarUrl } from '../utils/avatarUtils';
+import { ListSkeleton } from '../components/Skeleton';
+import { NoData, NoResults } from '../components/EmptyState';
 
 function Conversations() {
   const navigate = useNavigate();
@@ -71,11 +73,7 @@ function Conversations() {
   };
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #292524', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-      </div>
-    );
+    return <ListSkeleton count={5} />;
   }
 
   return (
@@ -168,12 +166,11 @@ function Conversations() {
 
       {/* Conversations List */}
       {filteredConversations.length === 0 ? (
-        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '48px', textAlign: 'center' }}>
-          <p style={{ color: textColor, fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>No conversations found</p>
-          <p style={{ color: secondaryText, fontSize: '13px' }}>
-            {searchQuery ? 'Try adjusting your search' : 'Start a new conversation to get started'}
-          </p>
-        </div>
+        searchQuery ? (
+          <NoResults searchTerm={searchQuery} onClear={() => setSearchQuery('')} />
+        ) : (
+          <NoData type="conversations" onCreate={() => navigate('/conversations/new')} />
+        )
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {filteredConversations.map(conv => (

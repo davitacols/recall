@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -10,11 +11,4 @@ root.render(
   </React.StrictMode>
 );
 
-// Register service worker for offline support
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(reg => console.log('Service Worker registered'))
-      .catch(err => console.log('Service Worker registration failed:', err));
-  });
-}
+serviceWorkerRegistration.register();

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { CardSkeleton } from '../components/Skeleton';
 import { 
   DocumentTextIcon,
   ChatBubbleLeftIcon,
@@ -71,8 +72,14 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #292524', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ height: '32px', width: '300px', backgroundColor: '#292524', borderRadius: '5px', marginBottom: '8px', animation: 'pulse 2s infinite' }}></div>
+          <div style={{ height: '20px', width: '200px', backgroundColor: '#292524', borderRadius: '5px', animation: 'pulse 2s infinite' }}></div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+          {[1,2,3,4].map(i => <CardSkeleton key={i} />)}
+        </div>
       </div>
     );
   }

@@ -5,6 +5,7 @@ import api from '../services/api';
 import DecisionImpactPanel from '../components/DecisionImpactPanel';
 import IssueAttachments from '../components/IssueAttachments';
 import WatchButton from '../components/WatchButton';
+import { TimeTracker, TimeEstimate } from '../components/TimeTracker';
 
 function IssueDetail() {
   const { issueId } = useParams();
@@ -271,6 +272,11 @@ function IssueDetail() {
             {/* Attachments */}
             <IssueAttachments issueId={issueId} />
 
+            {/* Time Tracking */}
+            <div className="bg-gradient-to-br from-stone-900/60 to-stone-800/40 backdrop-blur-sm border border-stone-700/50 rounded-xl p-6 hover:border-stone-600/50 transition-all">
+              <TimeTracker issueId={issueId} />
+            </div>
+
             {/* Decision Impacts */}
             <DecisionImpactPanel issueId={issueId} issueTitle={issue.title} />
           </div>
@@ -375,6 +381,10 @@ function IssueDetail() {
             <MetadataCard title="Created" icon={ClockIcon}>
               <p className="text-stone-300 text-xs">{new Date(issue.created_at).toLocaleString()}</p>
             </MetadataCard>
+
+            <div className="bg-stone-900 border border-stone-800 rounded p-3">
+              <TimeEstimate issueId={issueId} estimate={issue.time_estimate} onUpdate={fetchIssue} />
+            </div>
           </div>
 
           {/* Code Review Sidebar */}

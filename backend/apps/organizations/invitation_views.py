@@ -43,7 +43,9 @@ def invite_user(request):
         print(f"Email send failed: {e}")
     
     # Always return the invite link for UI display
-    invite_link = f"{request.build_absolute_uri('/').rstrip('/')}/invite/{invitation.token}"
+    from django.conf import settings
+    frontend_url = settings.FRONTEND_URL
+    invite_link = f"{frontend_url}/invite/{invitation.token}"
     
     return Response({
         'message': 'Invitation created',
@@ -118,6 +120,8 @@ def list_invitations(request):
     if request.user.role != 'admin':
         return Response({'error': 'Only admins can view invitations'}, status=status.HTTP_403_FORBIDDEN)
     
+    from django.conf import settings
+    
     invitations = Invitation.objects.filter(
         organization=request.user.organization,
         is_accepted=False
@@ -132,7 +136,7 @@ def list_invitations(request):
         'created_at': inv.created_at,
         'expires_at': inv.expires_at,
         'is_valid': inv.is_valid(),
-        'invite_link': f"{request.build_absolute_uri('/').rstrip('/')}/invite/{inv.token}"
+        'invite_link': f"{settings.FRONTEND_URL}/invite/{inv.token}"
     }) for inv in invitations]
     
     return Response(data)

@@ -207,20 +207,20 @@ function Layout({ children }) {
       }}>
         {/* Left: Logo + Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={toggleSidebar} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', border: `1px solid ${borderColor}`, cursor: 'pointer', borderRadius: '6px', color: secondaryText, transition: 'all 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; }}>
-            <Bars3Icon style={{ width: '18px', height: '18px' }} />
+          <button onClick={() => window.innerWidth < 768 ? setMobileMenuOpen(!mobileMenuOpen) : toggleSidebar()} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', border: `1px solid ${borderColor}`, cursor: 'pointer', borderRadius: '6px', color: secondaryText, transition: 'all 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; }}>
+            {mobileMenuOpen ? <XMarkIcon style={{ width: '18px', height: '18px' }} /> : <Bars3Icon style={{ width: '18px', height: '18px' }} />}
           </button>
           <h1 style={{ fontSize: '15px', fontWeight: 600, color: textColor, margin: 0, letterSpacing: '-0.01em' }}>{getPageTitle()}</h1>
         </div>
 
         {/* Right: Actions */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Search />
-          <Link to="/messages" style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: secondaryText, borderRadius: '6px', transition: 'all 0.15s', border: `1px solid transparent` }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; e.currentTarget.style.borderColor = borderColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; e.currentTarget.style.borderColor = 'transparent'; }}>
+          <div style={{ display: window.innerWidth < 640 ? 'none' : 'block' }}><Search /></div>
+          <Link to="/messages" style={{ width: '36px', height: '36px', display: window.innerWidth < 640 ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', color: secondaryText, borderRadius: '6px', transition: 'all 0.15s', border: `1px solid transparent` }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; e.currentTarget.style.borderColor = borderColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; e.currentTarget.style.borderColor = 'transparent'; }}>
             <InboxIcon style={{ width: '18px', height: '18px' }} />
           </Link>
           <NotificationBell />
-          <div style={{ position: 'relative', marginLeft: '8px' }}>
+          <div style={{ position: 'relative', marginLeft: '8px', display: window.innerWidth < 640 ? 'none' : 'block' }}>
             <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${borderColor}`, cursor: 'pointer', padding: 0, transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = secondaryText} onMouseLeave={(e) => e.currentTarget.style.borderColor = borderColor}>
               <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
             </button>
@@ -236,20 +236,26 @@ function Layout({ children }) {
         </div>
       </header>
 
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div onClick={() => setMobileMenuOpen(false)} style={{ position: 'fixed', top: '60px', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 40, display: window.innerWidth >= 768 ? 'none' : 'block' }} />
+      )}
+
       {/* Sidebar */}
       <aside style={{
         position: 'fixed',
         top: '60px',
-        left: 0,
+        left: mobileMenuOpen || window.innerWidth >= 768 ? 0 : '-100%',
         bottom: 0,
-        width: sidebarCollapsed ? '60px' : `${sidebarWidth}px`,
+        width: window.innerWidth < 768 ? '280px' : (sidebarCollapsed ? '60px' : `${sidebarWidth}px`),
         background: bgColor,
         borderRight: `1px solid ${borderColor}`,
         display: 'flex',
         flexDirection: 'column',
-        transition: sidebarCollapsed ? 'width 0.2s ease' : 'none',
+        transition: window.innerWidth < 768 ? 'left 0.3s ease' : (sidebarCollapsed ? 'width 0.2s ease' : 'none'),
         overflowX: 'hidden',
-        userSelect: isResizing ? 'none' : 'auto'
+        userSelect: isResizing ? 'none' : 'auto',
+        zIndex: 45
       }}>
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           <nav style={{ flex: 1, padding: '16px 10px', overflowY: 'auto' }}>
@@ -397,13 +403,14 @@ function Layout({ children }) {
       {/* Main Content */}
       <main style={{
         paddingTop: '60px',
-        paddingLeft: sidebarCollapsed ? '60px' : `${sidebarWidth}px`,
+        paddingLeft: window.innerWidth < 768 ? '0' : (sidebarCollapsed ? '60px' : `${sidebarWidth}px`),
+        paddingBottom: window.innerWidth < 768 ? '70px' : '0',
         transition: sidebarCollapsed ? 'padding-left 0.2s ease' : 'none',
         backgroundColor: mainBg,
         flex: 1,
         minHeight: '100vh'
       }}>
-        <div style={{ flex: 1, padding: '24px', color: textColor, backgroundColor: mainBg }}>
+        <div style={{ flex: 1, padding: window.innerWidth < 640 ? '16px' : '24px', color: textColor, backgroundColor: mainBg }}>
           {children}
         </div>
       </main>

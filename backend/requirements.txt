@@ -13,3 +13,5 @@ rank-bm25==0.2.2
 cloudinary==1.44.1
 django-cloudinary-storage==0.3.0
 gunicorn==21.2.0
+celery==5.3.4
+redis==5.0.1

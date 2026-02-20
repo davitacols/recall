@@ -124,7 +124,7 @@ export default function Goals() {
                   <p className={`text-sm ${textTertiary} line-clamp-2`}>{goal.description}</p>
                 </div>
               </div>
-              <div className="flex justify-between items-center pt-4 border-t ${borderColor}">
+              <div className={`flex justify-between items-center pt-4 border-t ${borderColor}`}>
                 <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[goal.status]}`}>
                   {goal.status.replace('_', ' ')}
                 </span>

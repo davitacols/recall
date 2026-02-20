@@ -143,7 +143,7 @@ export default function DocumentDetail() {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>{document.title}</h1>
-                  <div className="flex gap-4 text-sm ${textSecondary}">
+                  <div className={`flex gap-4 text-sm ${textSecondary}`}>
                     <span>Type: {document.document_type}</span>
                     <span>Version: {document.version}</span>
                     <span>Updated: {new Date(document.updated_at).toLocaleDateString()}</span>
@@ -172,7 +172,7 @@ export default function DocumentDetail() {
                     {document.file_type?.includes('pdf') ? (
                       <iframe
                         src={fileUrl}
-                        className="w-full h-[600px] border ${borderColor} rounded"
+                        className={`w-full h-[600px] border ${borderColor} rounded`}
                         title="Document Preview"
                       />
                     ) : (

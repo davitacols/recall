@@ -124,15 +124,19 @@ export default function AIAssistant({ content, contentType = 'conversation', onA
       {showPanel && (
         <div className={`mt-4 ${bgSecondary} border ${borderColor} rounded-lg overflow-hidden`}>
           {summary && (
-            <div className="p-4 border-b ${borderColor}">
-              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-2`}>Summary</h3>
+            <div className={`p-4 border-b ${borderColor}`}>
+              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-2`}>
+                Summary
+              </h3>
               <p className={`${textPrimary} text-sm leading-relaxed`}>{summary}</p>
             </div>
           )}
 
           {suggestions.length > 0 && (
-            <div className="p-4 border-b ${borderColor}">
-              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-3`}>Related Topics</h3>
+            <div className={`p-4 border-b ${borderColor}`}>
+              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-3`}>
+                Related Topics
+              </h3>
               <div className="space-y-2">
                 {suggestions.map((s, i) => (
                   <div key={i} className={`${textPrimary} text-sm flex items-start gap-2`}>
@@ -145,8 +149,10 @@ export default function AIAssistant({ content, contentType = 'conversation', onA
           )}
 
           {actionItems.length > 0 && (
-            <div className="p-4 border-b ${borderColor}">
-              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-3`}>Action Items</h3>
+            <div className={`p-4 border-b ${borderColor}`}>
+              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-3`}>
+                Action Items
+              </h3>
               <div className="space-y-2">
                 {actionItems.map((item, i) => (
                   <div key={i} className={`${textPrimary} text-sm flex items-start gap-2`}>

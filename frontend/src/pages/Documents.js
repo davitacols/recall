@@ -202,7 +202,7 @@ export default function Documents() {
                   )}
                 </div>
               </div>
-              <div className="flex justify-between items-center pt-3 border-t ${borderColor}">
+              <div className={`flex justify-between items-center pt-3 border-t ${borderColor}`}>
                 <span className={`px-2 py-1 rounded text-xs font-medium ${typeColors[doc.document_type]}`}>
                   {doc.document_type}
                 </span>

@@ -145,7 +145,7 @@ function AuditLogs() {
                   <th className={`px-4 py-3 text-left text-xs font-semibold ${textSecondary} uppercase`}>IP Address</th>
                 </tr>
               </thead>
-              <tbody className="divide-y ${borderColor}">
+              <tbody className={`divide-y ${borderColor}`}>
                 {logs.map(log => (
                   <tr key={log.id} className={`${darkMode ? 'hover:bg-stone-800' : 'hover:bg-gray-50'} transition-colors`}>
                     <td className={`px-4 py-3 text-sm ${textSecondary}`}>

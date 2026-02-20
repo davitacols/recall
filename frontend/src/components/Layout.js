@@ -56,10 +56,12 @@ function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(220);
+  const [isResizing, setIsResizing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState({ Sprint: true, Personal: true, Admin: true });
+  const [expandedGroups, setExpandedGroups] = useState({ Main: true, Work: true, Business: true, Personal: true, Admin: true });
 
   const bgColor = darkMode ? '#1c1917' : '#ffffff';
   const textColor = darkMode ? '#e7e5e4' : '#111827';
@@ -73,6 +75,8 @@ function Layout({ children }) {
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
     if (saved) setSidebarCollapsed(JSON.parse(saved));
+    const savedWidth = localStorage.getItem('sidebarWidth');
+    if (savedWidth) setSidebarWidth(parseInt(savedWidth));
   }, []);
 
   const toggleSidebar = () => {
@@ -81,6 +85,36 @@ function Layout({ children }) {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
   };
 
+  const handleMouseDown = (e) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      const newWidth = e.clientX;
+      if (newWidth >= 180 && newWidth <= 400) {
+        setSidebarWidth(newWidth);
+        localStorage.setItem('sidebarWidth', newWidth.toString());
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
   const toggleGroup = (groupName) => {
     setExpandedGroups(prev => ({
       ...prev,
@@ -88,32 +122,56 @@ function Layout({ children }) {
     }));
   };
 
-  const primaryNav = [
-    { name: 'Home', href: '/', icon: HomeIcon },
-    { name: 'Conversations', href: '/conversations', icon: ChatBubbleLeftIcon },
-    { name: 'Decisions', href: '/decisions', icon: DocumentTextIcon },
-    { name: 'Knowledge', href: '/knowledge', icon: BookOpenIcon },
-    { name: 'Projects', href: '/projects', icon: RectangleStackIcon },
-    { name: 'Team', href: '/team', icon: UsersIcon },
-    { name: 'Notifications', href: '/notifications', icon: BellIcon },
-  ];
-
-  const sprintNav = [
-    { name: 'Current Sprint', href: '/sprint' },
-    { name: 'Sprint History', href: '/sprint-history' },
-    { name: 'Blockers', href: '/blockers' },
-    { name: 'Retrospectives', href: '/retrospectives' },
-  ];
-
-  const personalNav = [
-    { name: 'My Decisions', href: '/my-decisions' },
-    { name: 'My Questions', href: '/my-questions' },
-    { name: 'Knowledge Health', href: '/knowledge-health' },
-  ];
-
-  const adminNav = [
-    { name: 'Analytics', href: '/analytics' },
-    { name: 'Integrations', href: '/integrations' },
+  const navSections = [
+    {
+      title: 'Main',
+      items: [
+        { name: 'Home', href: '/', icon: HomeIcon },
+        { name: 'Conversations', href: '/conversations', icon: ChatBubbleLeftIcon },
+        { name: 'Decisions', href: '/decisions', icon: DocumentTextIcon },
+        { name: 'Knowledge', href: '/knowledge', icon: BookOpenIcon },
+      ]
+    },
+    {
+      title: 'Work',
+      items: [
+        { name: 'Projects', href: '/projects', icon: RectangleStackIcon },
+        { name: 'Current Sprint', href: '/sprint' },
+        { name: 'Sprint History', href: '/sprint-history' },
+        { name: 'Blockers', href: '/blockers' },
+        { name: 'Retrospectives', href: '/retrospectives' },
+      ]
+    },
+    {
+      title: 'Business',
+      items: [
+        { name: 'Overview', href: '/business' },
+        { name: 'Goals', href: '/business/goals' },
+        { name: 'Meetings', href: '/business/meetings' },
+        { name: 'Tasks', href: '/business/tasks' },
+        { name: 'Documents', href: '/business/documents' },
+        { name: 'Templates', href: '/business/templates' },
+      ]
+    },
+    {
+      title: 'Personal',
+      items: [
+        { name: 'My Decisions', href: '/my-decisions' },
+        { name: 'My Questions', href: '/my-questions' },
+        { name: 'Knowledge Health', href: '/knowledge-health' },
+      ]
+    },
+    ...(user?.role === 'admin' ? [{
+      title: 'Admin',
+      items: [
+        { name: 'Team', href: '/team', icon: UsersIcon },
+        { name: 'Analytics', href: '/analytics' },
+        { name: 'Integrations', href: '/integrations' },
+        { name: 'Subscription', href: '/subscription' },
+        { name: 'Enterprise', href: '/enterprise' },
+        { name: 'Import/Export', href: '/import-export' },
+      ]
+    }] : [])
   ];
 
   const getPageTitle = () => {
@@ -184,124 +242,92 @@ function Layout({ children }) {
         top: '60px',
         left: 0,
         bottom: 0,
-        width: sidebarCollapsed ? '60px' : '220px',
+        width: sidebarCollapsed ? '60px' : `${sidebarWidth}px`,
         background: bgColor,
         borderRight: `1px solid ${borderColor}`,
         display: 'flex',
         flexDirection: 'column',
-        transition: 'width 0.2s ease',
-        overflowX: 'hidden'
+        transition: sidebarCollapsed ? 'width 0.2s ease' : 'none',
+        overflowX: 'hidden',
+        userSelect: isResizing ? 'none' : 'auto'
       }}>
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           <nav style={{ flex: 1, padding: '16px 10px', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-              {primaryNav.map((item) => {
-                const isActive = location.pathname === item.href;
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
+            {navSections.map((section, idx) => (
+              <div key={section.title} style={{ marginBottom: idx < navSections.length - 1 ? '20px' : 0 }}>
+                {!sidebarCollapsed && (
+                  <button
+                    onClick={() => toggleGroup(section.title)}
                     style={{
+                      width: '100%',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '10px',
-                      padding: sidebarCollapsed ? '10px' : '9px 12px',
-                      borderRadius: '5px',
-                      fontSize: '13px',
-                      fontWeight: isActive ? 600 : 500,
-                      textDecoration: 'none',
-                      color: isActive ? textColor : secondaryText,
-                      backgroundColor: isActive ? activeBg : 'transparent',
+                      justifyContent: 'space-between',
+                      padding: '6px 12px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: secondaryText,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
                       transition: 'all 0.15s',
-                      justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                      border: `1px solid ${isActive ? borderColor : 'transparent'}`
+                      marginBottom: '6px'
                     }}
-                    onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; } }}
-                    onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; } }}
-                    title={sidebarCollapsed ? item.name : ''}
+                    onMouseEnter={(e) => e.currentTarget.style.color = textColor}
+                    onMouseLeave={(e) => e.currentTarget.style.color = secondaryText}
                   >
-                    <Icon style={{ width: '18px', height: '18px', flexShrink: 0 }} />
-                    {!sidebarCollapsed && <span>{item.name}</span>}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {!sidebarCollapsed && (
-              <>
-                {[
-                  { title: 'Sprint', items: sprintNav },
-                  { title: 'Personal', items: personalNav },
-                  ...(user?.role === 'admin' ? [{ title: 'Admin', items: adminNav }] : [])
-                ].map((section) => (
-                  <div key={section.title} style={{ marginTop: '20px' }}>
-                    <button
-                      onClick={() => toggleGroup(section.title)}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '6px 12px',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        color: secondaryText,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = textColor}
-                      onMouseLeave={(e) => e.currentTarget.style.color = secondaryText}
-                    >
-                      <span>{section.title}</span>
-                      <ChevronDownIcon 
-                        style={{ 
-                          width: '12px', 
-                          height: '12px',
-                          transform: expandedGroups[section.title] ? 'rotate(0deg)' : 'rotate(-90deg)',
-                          transition: 'transform 0.15s'
-                        }} 
-                      />
-                    </button>
-                    
-                    {expandedGroups[section.title] && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', marginTop: '6px' }}>
-                        {section.items.map((item) => {
-                          const isActive = location.pathname === item.href;
-                          return (
-                            <Link
-                              key={item.name}
-                              to={item.href}
-                              style={{
-                                display: 'block',
-                                padding: '8px 12px',
-                                paddingLeft: '24px',
-                                borderRadius: '5px',
-                                fontSize: '13px',
-                                textDecoration: 'none',
-                                color: isActive ? textColor : secondaryText,
-                                backgroundColor: isActive ? activeBg : 'transparent',
-                                fontWeight: isActive ? 600 : 'normal',
-                                border: `1px solid ${isActive ? borderColor : 'transparent'}`,
-                                transition: 'all 0.15s'
-                              }}
-                              onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; } }}
-                              onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; } }}
-                            >
-                              {item.name}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <span>{section.title}</span>
+                    <ChevronDownIcon 
+                      style={{ 
+                        width: '12px', 
+                        height: '12px',
+                        transform: expandedGroups[section.title] ? 'rotate(0deg)' : 'rotate(-90deg)',
+                        transition: 'transform 0.15s'
+                      }} 
+                    />
+                  </button>
+                )}
+                
+                {(sidebarCollapsed || expandedGroups[section.title]) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                    {section.items.map((item) => {
+                      const isActive = location.pathname === item.href;
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: sidebarCollapsed ? '10px' : '8px 12px',
+                            paddingLeft: sidebarCollapsed ? '10px' : (Icon ? '12px' : '24px'),
+                            borderRadius: '5px',
+                            fontSize: '13px',
+                            fontWeight: isActive ? 600 : 500,
+                            textDecoration: 'none',
+                            color: isActive ? textColor : secondaryText,
+                            backgroundColor: isActive ? activeBg : 'transparent',
+                            transition: 'all 0.15s',
+                            justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                            border: `1px solid ${isActive ? borderColor : 'transparent'}`
+                          }}
+                          onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; } }}
+                          onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; } }}
+                          title={sidebarCollapsed ? item.name : ''}
+                        >
+                          {Icon && <Icon style={{ width: '18px', height: '18px', flexShrink: 0 }} />}
+                          {!sidebarCollapsed && <span>{item.name}</span>}
+                        </Link>
+                      );
+                    })}
                   </div>
-                ))}
-              </>
-            )}
+                )}
+              </div>
+            ))}
           </nav>
 
           <div style={{ padding: '14px 10px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
@@ -346,13 +372,33 @@ function Layout({ children }) {
             )}
           </div>
         </div>
+        
+        {/* Resize Handle */}
+        {!sidebarCollapsed && (
+          <div
+            onMouseDown={handleMouseDown}
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: '4px',
+              cursor: 'ew-resize',
+              backgroundColor: isResizing ? '#3b82f6' : 'transparent',
+              transition: 'background-color 0.15s',
+              zIndex: 10
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+            onMouseLeave={(e) => !isResizing && (e.currentTarget.style.backgroundColor = 'transparent')}
+          />
+        )}
       </aside>
 
       {/* Main Content */}
       <main style={{
         paddingTop: '60px',
-        paddingLeft: sidebarCollapsed ? '60px' : '220px',
-        transition: 'padding-left 0.2s ease',
+        paddingLeft: sidebarCollapsed ? '60px' : `${sidebarWidth}px`,
+        transition: sidebarCollapsed ? 'padding-left 0.2s ease' : 'none',
         backgroundColor: mainBg,
         flex: 1,
         minHeight: '100vh'

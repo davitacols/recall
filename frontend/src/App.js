@@ -67,6 +67,19 @@ import Messages from './pages/Messages';
 import IssueDetail from './pages/IssueDetail';
 import Backlog from './pages/Backlog';
 import Homepage from './pages/Homepage';
+import BusinessDashboard from './pages/BusinessDashboard';
+import Goals from './pages/Goals';
+import GoalDetail from './pages/GoalDetail';
+import Meetings from './pages/Meetings';
+import MeetingDetail from './pages/MeetingDetail';
+import TasksBoard from './pages/TasksBoard';
+import Templates from './pages/Templates';
+import Documents from './pages/Documents';
+import DocumentDetail from './pages/DocumentDetail';
+import Subscription from './pages/Subscription';
+import Security from './pages/Security';
+import Enterprise from './pages/Enterprise';
+import ImportExport from './pages/ImportExport';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
@@ -522,6 +535,95 @@ function AppContent() {
               <IssueDetail />
             </Layout>
           </ProtectedRoute>
+        } />
+        <Route path="/business/goals" element={
+          <ProtectedRoute>
+            <Layout>
+              <Goals />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business" element={
+          <ProtectedRoute>
+            <Layout>
+              <BusinessDashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/goals/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <GoalDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/meetings" element={
+          <ProtectedRoute>
+            <Layout>
+              <Meetings />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/meetings/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <MeetingDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/tasks" element={
+          <ProtectedRoute>
+            <Layout>
+              <TasksBoard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/templates" element={
+          <ProtectedRoute>
+            <Layout>
+              <Templates />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/documents" element={
+          <ProtectedRoute>
+            <Layout>
+              <Documents />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/documents/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <DocumentDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/subscription" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <Subscription />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/enterprise" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <Enterprise />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/import-export" element={
+          <ProtectedRoute adminOnly={true}>
+            <Layout>
+              <ImportExport />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/security" element={
+          <Layout>
+            <Security />
+          </Layout>
         } />
       </Routes>
     </>

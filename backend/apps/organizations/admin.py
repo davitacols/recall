@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import Organization, User
+from .enterprise_models import SSOConfig, AccountManager, TrainingProgram, SLAGuarantee, OnPremiseDeployment
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
@@ -46,3 +47,27 @@ class UserAdmin(BaseUserAdmin):
             'fields': ['organization', 'role']
         }),
     )
+
+@admin.register(SSOConfig)
+class SSOConfigAdmin(admin.ModelAdmin):
+    list_display = ['organization', 'provider', 'enabled', 'created_at']
+    list_filter = ['provider', 'enabled']
+
+@admin.register(AccountManager)
+class AccountManagerAdmin(admin.ModelAdmin):
+    list_display = ['user', 'phone', 'timezone']
+
+@admin.register(TrainingProgram)
+class TrainingProgramAdmin(admin.ModelAdmin):
+    list_display = ['title', 'organization', 'training_date', 'status']
+    list_filter = ['status', 'training_date']
+
+@admin.register(SLAGuarantee)
+class SLAGuaranteeAdmin(admin.ModelAdmin):
+    list_display = ['organization', 'metric', 'guaranteed_value', 'actual_value', 'met']
+    list_filter = ['metric', 'met']
+
+@admin.register(OnPremiseDeployment)
+class OnPremiseDeploymentAdmin(admin.ModelAdmin):
+    list_display = ['organization', 'status', 'server_location', 'deployment_date']
+    list_filter = ['status']

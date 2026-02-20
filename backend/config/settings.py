@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'apps.users',
     'apps.notifications',
     'apps.agile',
+    'apps.business',
     'apps.integrations',
 ]
 
@@ -131,6 +132,14 @@ ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 RESEND_API_KEY = config('RESEND_API_KEY', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Recall <onboarding@resend.dev>')
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+
+# Stripe Configuration
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
+STRIPE_STARTER_PRICE_ID = config('STRIPE_STARTER_PRICE_ID', default='')
+STRIPE_PROFESSIONAL_PRICE_ID = config('STRIPE_PROFESSIONAL_PRICE_ID', default='')
+STRIPE_ENTERPRISE_PRICE_ID = config('STRIPE_ENTERPRISE_PRICE_ID', default='')
 
 # Vector Database
 CHROMA_PERSIST_DIRECTORY = config('CHROMA_PERSIST_DIRECTORY', default='./chroma_db')

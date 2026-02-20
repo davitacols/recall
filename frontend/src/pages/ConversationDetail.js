@@ -9,6 +9,7 @@ import MentionTagInput from '../components/MentionTagInput';
 import HighlightedText from '../components/HighlightedText';
 import { FavoriteButton, ExportButton, UndoRedoButtons } from '../components/QuickWinFeatures';
 import { getAvatarUrl } from '../utils/avatarUtils';
+import AIAssistant from '../components/AIAssistant';
 
 const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -495,6 +496,8 @@ function ConversationDetail() {
         </div>
 
         {/* Content */}
+        <AIAssistant content={conversation?.content} contentType="conversation" />
+        
         <div style={{ padding: '20px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor, marginBottom: '12px' }}>
           {isEditingPost ? (
             <div>

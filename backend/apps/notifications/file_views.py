@@ -16,11 +16,13 @@ def upload_file(request):
     file = request.FILES['file']
     
     try:
-        # Upload to Cloudinary
+        # Upload to Cloudinary with public access
         result = cloudinary.uploader.upload(
             file,
             folder=f"recall/{request.user.organization.slug}",
-            resource_type="auto"
+            resource_type="auto",
+            type="upload",
+            access_mode="public"
         )
         
         return Response({

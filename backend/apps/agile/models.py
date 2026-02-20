@@ -350,7 +350,7 @@ class PullRequest(models.Model):
         ('closed', 'Closed'),
     ]
     
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True, related_name='agile_pull_requests')
     issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='pull_requests', null=True, blank=True)
     
     pr_number = models.IntegerField()

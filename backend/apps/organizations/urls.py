@@ -28,6 +28,7 @@ from .analytics_views import (
 from .apikey_views import api_keys_list, api_key_delete, api_key_toggle
 from .auditlog_views import audit_logs_list, audit_log_stats
 from .export_views import export_data_endpoint
+from . import subscription_views, stripe_views, ai_views, enterprise_views, import_export_views
 
 urlpatterns = [
     path('current/', OrganizationDetailView.as_view(), name='current-org'),
@@ -121,4 +122,38 @@ urlpatterns = [
     path('integrations/<int:integration_id>/test/', test_integration, name='test-integration'),
     path('integrations/<int:integration_id>/delete/', delete_integration, name='delete-integration'),
     path('integrations/<int:integration_id>/logs/', get_integration_logs, name='integration-logs'),
+    
+    # Subscription & Billing
+    path('plans/', subscription_views.plans_list),
+    path('subscription/', subscription_views.subscription_detail),
+    path('subscription/upgrade/', subscription_views.upgrade_plan),
+    path('subscription/cancel/', subscription_views.cancel_subscription),
+    path('invoices/', subscription_views.invoices_list),
+    path('usage/', subscription_views.usage_stats),
+    path('check-limits/', subscription_views.check_limits),
+    
+    # Stripe Payment
+    path('stripe/checkout/', stripe_views.create_checkout_session),
+    path('stripe/subscribe/', stripe_views.subscribe_with_payment_method),
+    path('stripe/payment-method/', stripe_views.update_payment_method),
+    path('stripe/payment-methods/', stripe_views.payment_methods),
+    path('stripe/webhook/', stripe_views.stripe_webhook),
+    
+    # AI Features
+    path('ai/summary/', ai_views.generate_summary),
+    path('ai/suggestions/', ai_views.suggest_related),
+    path('ai/actions/', ai_views.extract_actions),
+    path('ai/tags/', ai_views.suggest_tags),
+    
+    # Enterprise Features
+    path('enterprise/sso/', enterprise_views.sso_config),
+    path('enterprise/account-manager/', enterprise_views.account_manager_info),
+    path('enterprise/training/', enterprise_views.training_programs),
+    path('enterprise/training/<int:pk>/', enterprise_views.training_program_detail),
+    path('enterprise/sla/', enterprise_views.sla_guarantees),
+    path('enterprise/on-premise/', enterprise_views.on_premise_deployment),
+    
+    # Import/Export
+    path('import/', import_export_views.import_data),
+    path('data-export/', import_export_views.export_data),
 ]

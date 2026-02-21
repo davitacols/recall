@@ -1,64 +1,42 @@
-import resend
+import requests
 from django.conf import settings
-import logging
 
-logger = logging.getLogger(__name__)
-
-resend.api_key = settings.RESEND_API_KEY
-
-def send_welcome_email(user):
-    """Send welcome email to new user"""
+def send_email(to_email, subject, html_content):
+    if not settings.RESEND_API_KEY:
+        return False
+    
     try:
-        if not settings.RESEND_API_KEY:
-            logger.error("RESEND_API_KEY not configured")
-            return False
-        
-        resend.Emails.send({
-            "from": settings.DEFAULT_FROM_EMAIL,
-            "to": user.email,
-            "subject": "Welcome to Recall!",
-            "html": f"""
-                <h1>Welcome to Recall, {user.get_full_name()}!</h1>
-                <p>Your account has been successfully created for <strong>{user.organization.name}</strong>.</p>
-                <p>You can now start collaborating with your team and building your company's knowledge base.</p>
-                <p><a href="{settings.FRONTEND_URL}/login">Login to Recall</a></p>
-                <br>
-                <p>Best regards,<br>The Recall Team</p>
-            """
-        })
-        logger.info(f"Welcome email sent to {user.email}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to send welcome email to {user.email}: {e}")
+        response = requests.post(
+            'https://api.resend.com/emails',
+            headers={
+                'Authorization': f'Bearer {settings.RESEND_API_KEY}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'from': settings.DEFAULT_FROM_EMAIL,
+                'to': [to_email],
+                'subject': subject,
+                'html': html_content
+            }
+        )
+        return response.status_code == 200
+    except:
         return False
 
-def send_invitation_email(invitation):
-    """Send invitation email"""
-    try:
-        if not settings.RESEND_API_KEY:
-            logger.error("RESEND_API_KEY not configured")
-            return False
-        
-        invite_link = f"{settings.FRONTEND_URL}/invite/{invitation.token}"
-        invited_by_name = invitation.invited_by.get_full_name() if invitation.invited_by else "Your team"
-        
-        resend.Emails.send({
-            "from": settings.DEFAULT_FROM_EMAIL,
-            "to": invitation.email,
-            "subject": f"You're invited to join {invitation.organization.name} on Recall",
-            "html": f"""
-                <h1>You've been invited to Recall!</h1>
-                <p>{invited_by_name} has invited you to join <strong>{invitation.organization.name}</strong> on Recall.</p>
-                <p>Role: <strong>{invitation.get_role_display()}</strong></p>
-                <p><a href="{invite_link}" style="background: #000; color: #fff; padding: 12px 24px; text-decoration: none; display: inline-block; margin: 20px 0;">Accept Invitation</a></p>
-                <p>Or copy this link: {invite_link}</p>
-                <p><small>This invitation expires in 7 days.</small></p>
-                <br>
-                <p>Best regards,<br>The Recall Team</p>
-            """
-        })
-        logger.info(f"Invitation email sent to {invitation.email}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to send invitation email to {invitation.email}: {e}")
-        return False
+def send_notification_email(user, notification):
+    subject = f'New Notification: {notification.title}'
+    html = f'''
+    <h2>{notification.title}</h2>
+    <p>{notification.message}</p>
+    <p><a href="{settings.FRONTEND_URL}/notifications">View in Recall</a></p>
+    '''
+    return send_email(user.email, subject, html)
+
+def send_invitation_email(email, token, inviter):
+    subject = f'{inviter.full_name} invited you to Recall'
+    html = f'''
+    <h2>You've been invited to join Recall</h2>
+    <p>{inviter.full_name} has invited you to join their organization on Recall.</p>
+    <p><a href="{settings.FRONTEND_URL}/invite/{token}">Accept Invitation</a></p>
+    '''
+    return send_email(email, subject, html)

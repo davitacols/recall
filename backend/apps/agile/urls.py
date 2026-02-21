@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, kanban_views, views_missing_features, ml_endpoints, time_tracking_endpoints, custom_fields_endpoints, ai_endpoints
+from . import views, kanban_views, views_missing_features, ml_endpoints, time_tracking_endpoints, custom_fields_endpoints, ai_endpoints, sprint_views, blocker_views, retrospective_views
 
 urlpatterns = [
     # Projects
@@ -13,7 +13,9 @@ urlpatterns = [
     
     # Sprints
     path('projects/<int:project_id>/sprints/', views.sprints, name='sprints'),
-    path('sprints/<int:sprint_id>/', views.sprint_detail, name='sprint_detail'),
+    path('sprints/', sprint_views.sprints_list, name='sprints_list'),
+    path('sprints/<int:pk>/', sprint_views.sprint_detail, name='sprint_detail_new'),
+    path('sprints/current/', sprint_views.current_sprint, name='current_sprint_new'),
     path('current-sprint/', views.current_sprint_summary, name='current_sprint'),
     path('sprint-history/', views.sprint_history, name='sprint_history'),
     
@@ -79,8 +81,13 @@ urlpatterns = [
     path('projects/<int:project_id>/labels/', kanban_views.labels, name='labels'),
     
     # Blockers
-    path('blockers/', views.blockers, name='blockers'),
-    path('blockers/<int:blocker_id>/resolve/', views.resolve_blocker, name='resolve_blocker'),
+    path('blockers/', blocker_views.blockers_list, name='blockers_list'),
+    path('blockers/<int:pk>/', blocker_views.blocker_detail, name='blocker_detail'),
+    
+    # Retrospectives
+    path('retrospectives/', retrospective_views.retrospectives_list, name='retrospectives_list'),
+    path('retrospectives/<int:pk>/', retrospective_views.retrospective_detail, name='retrospective_detail'),
+    path('retrospectives/<int:pk>/items/', retrospective_views.retrospective_add_item, name='retrospective_add_item'),
     
     # Time Tracking
     path('issues/<int:issue_id>/log-work/', time_tracking_endpoints.log_work, name='log_work'),

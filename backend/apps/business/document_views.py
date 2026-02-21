@@ -5,7 +5,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 import base64
-from .document_models import Document
+from .document_models import Document, DocumentComment
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -42,6 +42,9 @@ def documents_list(request):
         
         if 'file' in request.FILES:
             uploaded_file = request.FILES['file']
+            # Validate file size (10MB limit)
+            if uploaded_file.size > 10 * 1024 * 1024:
+                return Response({'error': 'File size exceeds 10MB limit'}, status=status.HTTP_400_BAD_REQUEST)
             file_data = uploaded_file.read()
             file_name = uploaded_file.name
             file_type = uploaded_file.content_type
@@ -136,3 +139,56 @@ def document_file(request, pk):
     response = HttpResponse(bytes(document.file_data), content_type=document.file_type or 'application/octet-stream')
     response['Content-Disposition'] = f'inline; filename="{document.file_name}"'
     return response
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def document_comments(request, pk):
+    document = get_object_or_404(Document, pk=pk, organization=request.user.organization)
+    
+    if request.method == 'GET':
+        comments = DocumentComment.objects.filter(document=document)
+        data = [{
+            'id': c.id,
+            'content': c.content,
+            'user': {'id': c.user.id, 'full_name': c.user.full_name},
+            'created_at': c.created_at
+        } for c in comments]
+        return Response(data)
+    
+    elif request.method == 'POST':
+        content = request.data['content']
+        comment = DocumentComment.objects.create(
+            document=document,
+            user=request.user,
+            content=content
+        )
+        
+        # Parse @mentions
+        import re
+        mentions = re.findall(r'@(\w+)', content)
+        if mentions:
+            from apps.organizations.models import User
+            mentioned_users = User.objects.filter(
+                organization=request.user.organization,
+                username__in=mentions
+            )
+            comment.mentioned_users.set(mentioned_users)
+            
+            # Send notifications
+            from apps.notifications.utils import create_notification
+            for user in mentioned_users:
+                if user != request.user:
+                    create_notification(
+                        user=user,
+                        notification_type='mention',
+                        title=f'{request.user.full_name} mentioned you',
+                        message=f'In document: {document.title}',
+                        link=f'/business/documents/{document.id}'
+                    )
+        
+        return Response({
+            'id': comment.id,
+            'content': comment.content,
+            'user': {'id': request.user.id, 'full_name': request.user.full_name},
+            'created_at': comment.created_at
+        }, status=status.HTTP_201_CREATED)

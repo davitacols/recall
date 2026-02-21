@@ -28,6 +28,15 @@ from .analytics_views import (
 from .apikey_views import api_keys_list, api_key_delete, api_key_toggle
 from .auditlog_views import audit_logs_list, audit_log_stats
 from .export_views import export_data_endpoint
+from .search_views import global_search
+from .bulk_operations import (
+    bulk_delete_conversations, bulk_archive_conversations, bulk_update_status,
+    bulk_delete_documents, bulk_assign_issues, bulk_update_priority
+)
+from .pdf_export import export_document_pdf, export_conversation_pdf, export_decision_pdf, export_bulk_pdf
+from .ai_enhancements import (
+    auto_summarize, smart_suggestions, sentiment_analysis, auto_tag, batch_ai_process, apply_ai_to_item
+)
 from . import subscription_views, stripe_views, ai_views, enterprise_views, import_export_views
 
 urlpatterns = [
@@ -135,10 +144,9 @@ urlpatterns = [
     
     # Stripe Payment
     path('stripe/checkout/', stripe_views.create_checkout_session),
-    path('stripe/subscribe/', stripe_views.subscribe_with_payment_method),
-    path('stripe/payment-method/', stripe_views.update_payment_method),
-    path('stripe/payment-methods/', stripe_views.payment_methods),
+    path('stripe/portal/', stripe_views.create_portal_session),
     path('stripe/webhook/', stripe_views.stripe_webhook),
+    path('stripe/status/', stripe_views.subscription_status),
     
     # AI Features
     path('ai/summary/', ai_views.generate_summary),
@@ -157,4 +165,29 @@ urlpatterns = [
     # Import/Export
     path('import/', import_export_views.import_data),
     path('data-export/', import_export_views.export_data),
+    
+    # Global Search
+    path('search/', global_search, name='global-search'),
+    
+    # Bulk Operations
+    path('bulk/conversations/delete/', bulk_delete_conversations),
+    path('bulk/conversations/archive/', bulk_archive_conversations),
+    path('bulk/decisions/status/', bulk_update_status),
+    path('bulk/documents/delete/', bulk_delete_documents),
+    path('bulk/issues/assign/', bulk_assign_issues),
+    path('bulk/issues/priority/', bulk_update_priority),
+    
+    # PDF Export
+    path('pdf/document/<int:pk>/', export_document_pdf),
+    path('pdf/conversation/<int:pk>/', export_conversation_pdf),
+    path('pdf/decision/<int:pk>/', export_decision_pdf),
+    path('pdf/bulk/', export_bulk_pdf),
+    
+    # AI Enhancements
+    path('ai/summarize/', auto_summarize),
+    path('ai/suggestions/', smart_suggestions),
+    path('ai/sentiment/', sentiment_analysis),
+    path('ai/tags/', auto_tag),
+    path('ai/batch/', batch_ai_process),
+    path('ai/<str:item_type>/<int:item_id>/process/', apply_ai_to_item),
 ]

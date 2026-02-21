@@ -120,16 +120,6 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    // Show onboarding for authenticated users only (not on public pages)
-    const isPublicPage = ['/home', '/login', '/signup', '/invite'].some(path => 
-      window.location.pathname.startsWith(path)
-    );
-    if (user && !user.onboarding_completed && !isPublicPage) {
-      setShowOnboarding(true);
-    }
-  }, [user]);
-
-  useEffect(() => {
     // Global keyboard shortcut for search
     const handleKeyDown = (e) => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -154,7 +144,6 @@ function AppContent() {
       )}
       <CommandPalette />
       <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
-      {showOnboarding && user && <OnboardingFlow onComplete={() => setShowOnboarding(false)} />}
       <MobileNav onSearchOpen={() => setShowSearch(true)} />
       {user && <AIAssistant />}
       {user && <CommandBar onCommand={(cmd) => {

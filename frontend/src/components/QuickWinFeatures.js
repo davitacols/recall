@@ -99,10 +99,10 @@ export const ExportButton = ({ conversationId, decisionId, type }) => {
   return (
     <button
       onClick={handleExport}
-      className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded hover:bg-gray-200"
+      className="p-2 border-2 border-gray-600 text-gray-600 dark:border-gray-400 dark:text-gray-400 rounded hover:bg-gray-600 hover:text-white dark:hover:bg-gray-400 dark:hover:text-gray-900 transition"
+      title="Export PDF"
     >
-      <ArrowDownTrayIcon className="w-5 h-5" />
-      Export PDF
+      <ArrowDownTrayIcon className="w-4 h-4" />
     </button>
   );
 };
@@ -354,17 +354,17 @@ export const UndoRedoButtons = () => {
     <div className="flex gap-2">
       <button
         onClick={handleUndo}
-        className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300"
+        className="px-3 py-1.5 border-2 border-gray-600 text-gray-600 dark:border-gray-400 dark:text-gray-400 rounded hover:bg-gray-600 hover:text-white dark:hover:bg-gray-400 dark:hover:text-gray-900 transition text-sm font-medium"
         title="Undo (Ctrl+Z)"
       >
-        ↶ Undo
+        ↶
       </button>
       <button
         onClick={handleRedo}
-        className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300"
+        className="px-3 py-1.5 border-2 border-gray-600 text-gray-600 dark:border-gray-400 dark:text-gray-400 rounded hover:bg-gray-600 hover:text-white dark:hover:bg-gray-400 dark:hover:text-gray-900 transition text-sm font-medium"
         title="Redo (Ctrl+Y)"
       >
-        ↷ Redo
+        ↷
       </button>
     </div>
   );

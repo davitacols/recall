@@ -10,7 +10,7 @@ from .advanced_views import (
     comments_list, comment_detail,
     reminders_list
 )
-from .document_views import documents_list, document_detail, document_search, document_file
+from .document_views import documents_list, document_detail, document_search, document_file, document_comments
 
 urlpatterns = [
     path('goals/', goals_list, name='goals_list'),
@@ -32,5 +32,6 @@ urlpatterns = [
     path('documents/', documents_list, name='documents_list'),
     path('documents/<int:pk>/', document_detail, name='document_detail'),
     path('documents/<int:pk>/file/', document_file, name='document_file'),
+    path('documents/<int:pk>/comments/', document_comments, name='document_comments'),
     path('documents/search/', document_search, name='document_search'),
 ]

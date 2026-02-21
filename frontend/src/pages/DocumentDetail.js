@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
-import { ArrowLeftIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { useToast } from '../components/Toast';
+import { MentionInput } from '../components/MentionInput';
+import { AIEnhancementButton, AIResultsPanel } from '../components/AIEnhancements';
+import { ArrowLeftIcon, TrashIcon, PencilIcon, ChatBubbleLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 export default function DocumentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { darkMode } = useTheme();
+  const { success, error } = useToast();
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [fileUrl, setFileUrl] = useState('');
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [aiResults, setAiResults] = useState(null);
 
   const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
   const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
@@ -27,6 +34,7 @@ export default function DocumentDetail() {
 
   useEffect(() => {
     fetchDocument();
+    fetchComments();
   }, [id]);
 
   const fetchDocument = async () => {
@@ -54,6 +62,59 @@ export default function DocumentDetail() {
     }
   };
 
+  const fetchComments = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:8000/api/business/documents/${id}/comments/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setComments(data);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:8000/api/business/documents/${id}/comments/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: newComment })
+      });
+      const data = await res.json();
+      setComments([...comments, data]);
+      setNewComment('');
+      success('Comment added');
+    } catch (err) {
+      error('Failed to add comment');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:8000/api/organizations/pdf/document/${id}/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${document.title}.pdf`;
+      a.click();
+      success('PDF downloaded');
+    } catch (err) {
+      error('Failed to export PDF');
+    }
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
@@ -68,8 +129,9 @@ export default function DocumentDetail() {
       });
       setEditing(false);
       fetchDocument();
-    } catch (error) {
-      console.error('Error:', error);
+      success('Document updated successfully');
+    } catch (err) {
+      error('Failed to update document');
     }
   };
 
@@ -81,9 +143,10 @@ export default function DocumentDetail() {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      success('Document deleted');
       navigate('/business/documents');
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (err) {
+      error('Failed to delete document');
     }
   };
 
@@ -150,6 +213,19 @@ export default function DocumentDetail() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <AIEnhancementButton
+                    content={document.content}
+                    title={document.title}
+                    type="document"
+                    onResult={(feature, data) => setAiResults(data)}
+                  />
+                  <button
+                    onClick={handleExportPDF}
+                    className={`p-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} transition-all`}
+                    title="Export to PDF"
+                  >
+                    <ArrowDownTrayIcon className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={() => setEditing(true)}
                     className={`p-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} transition-all`}
@@ -206,10 +282,53 @@ export default function DocumentDetail() {
                   Created by {document.created_by.full_name} • Last updated by {document.updated_by?.full_name || 'Unknown'}
                 </div>
               )}
+
+              {/* Comments Section */}
+              <div className={`mt-8 pt-6 border-t ${borderColor}`}>
+                <h3 className={`text-lg font-semibold ${textPrimary} mb-4 flex items-center gap-2`}>
+                  <ChatBubbleLeftIcon className="w-5 h-5" />
+                  Comments ({comments.length})
+                </h3>
+                
+                <form onSubmit={handleAddComment} className="mb-6">
+                  <MentionInput
+                    value={newComment}
+                    onChange={setNewComment}
+                    placeholder="Add a comment... (Type @ to mention someone)"
+                    rows={3}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newComment.trim()}
+                    className={`mt-2 px-4 py-2 bg-transparent border-2 ${inputBorder} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    Post Comment
+                  </button>
+                </form>
+
+                <div className="space-y-4">
+                  {comments.map(comment => (
+                    <div key={comment.id} className={`p-4 ${inputBg} border ${borderColor} rounded`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`font-medium ${textPrimary}`}>{comment.user.full_name}</span>
+                        <span className={`text-xs ${textTertiary}`}>
+                          {new Date(comment.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className={`${textSecondary} whitespace-pre-wrap`}>{comment.content}</p>
+                    </div>
+                  ))}
+                  {comments.length === 0 && (
+                    <p className={`text-center ${textTertiary} py-8`}>No comments yet. Be the first to comment!</p>
+                  )}
+                </div>
+              </div>
             </>
           )}
         </div>
       </div>
+      
+      <AIResultsPanel results={aiResults} onClose={() => setAiResults(null)} />
     </div>
   );
 }

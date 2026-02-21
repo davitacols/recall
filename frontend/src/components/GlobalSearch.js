@@ -63,16 +63,15 @@ export const GlobalSearch = ({ isOpen, onClose }) => {
   const search = async () => {
     setLoading(true);
     try {
-      const [issuesRes, convsRes, decisionsRes] = await Promise.all([
-        api.get(`/api/agile/projects/1/issues/?search=${query}`).catch(() => ({ data: [] })),
-        api.get(`/api/conversations/?search=${query}`).catch(() => ({ data: [] })),
-        api.get(`/api/decisions/?search=${query}`).catch(() => ({ data: [] }))
-      ]);
-
+      const res = await api.get(`/api/organizations/search/?q=${query}`);
+      const data = res.data || [];
+      
       setResults({
-        issues: (issuesRes.data.results || issuesRes.data || []).slice(0, 5),
-        conversations: (convsRes.data.results || convsRes.data || []).slice(0, 5),
-        decisions: (decisionsRes.data.results || decisionsRes.data || []).slice(0, 5),
+        issues: data.filter(r => r.type === 'project'),
+        conversations: data.filter(r => r.type === 'conversation'),
+        decisions: data.filter(r => r.type === 'decision'),
+        goals: data.filter(r => r.type === 'goal'),
+        documents: data.filter(r => r.type === 'document'),
         recent: results.recent
       });
     } catch (error) {
@@ -83,7 +82,8 @@ export const GlobalSearch = ({ isOpen, onClose }) => {
   };
 
   const getTotalResults = () => {
-    return results.issues.length + results.conversations.length + results.decisions.length + results.recent.length;
+    return results.issues.length + results.conversations.length + results.decisions.length + 
+           (results.goals?.length || 0) + (results.documents?.length || 0) + results.recent.length;
   };
 
   const navigateToSelected = () => {
@@ -91,7 +91,9 @@ export const GlobalSearch = ({ isOpen, onClose }) => {
       ...results.recent.map(r => ({ ...r, type: 'recent' })),
       ...results.issues.map(i => ({ ...i, type: 'issue' })),
       ...results.conversations.map(c => ({ ...c, type: 'conversation' })),
-      ...results.decisions.map(d => ({ ...d, type: 'decision' }))
+      ...results.decisions.map(d => ({ ...d, type: 'decision' })),
+      ...(results.goals || []).map(g => ({ ...g, type: 'goal' })),
+      ...(results.documents || []).map(d => ({ ...d, type: 'document' }))
     ];
 
     const item = allResults[selected];
@@ -102,6 +104,8 @@ export const GlobalSearch = ({ isOpen, onClose }) => {
     if (item.type === 'issue') navigate(`/issues/${item.id}`);
     else if (item.type === 'conversation') navigate(`/conversations/${item.id}`);
     else if (item.type === 'decision') navigate(`/decisions/${item.id}`);
+    else if (item.type === 'goal') navigate(`/business/goals/${item.id}`);
+    else if (item.type === 'document') navigate(`/business/documents/${item.id}`);
     else if (item.url) navigate(item.url);
 
     onClose();

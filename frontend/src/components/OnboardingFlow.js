@@ -171,6 +171,7 @@ export const OnboardingFlow = ({ onComplete }) => {
   };
 
   const handleComplete = () => {
+    localStorage.setItem('onboarding_completed', 'true');
     onComplete?.();
   };
 

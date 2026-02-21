@@ -1,6 +1,17 @@
 from django.db import models
 from apps.organizations.models import Organization, User
 
+class DocumentComment(models.Model):
+    document = models.ForeignKey('Document', on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    mentioned_users = models.ManyToManyField(User, related_name='document_mentions', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'document_comments'
+        ordering = ['created_at']
+
 class Document(models.Model):
     DOCUMENT_TYPES = [
         ('policy', 'Policy'),

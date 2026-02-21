@@ -4,6 +4,7 @@ import { ArrowLeftIcon, ChatBubbleLeftIcon, HandThumbUpIcon, ExclamationTriangle
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { useToast } from '../components/Toast';
+import { AIEnhancementButton, AIResultsPanel } from '../components/AIEnhancements';
 import api from '../services/api';
 import MentionTagInput from '../components/MentionTagInput';
 import HighlightedText from '../components/HighlightedText';
@@ -102,6 +103,7 @@ function ConversationDetail() {
   const [formData, setFormData] = useState({ title: '', content: '', post_type: '', priority: 'medium' });
   const [creating, setCreating] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [aiResults, setAiResults] = useState(null);
 
   const bgColor = darkMode ? '#1c1917' : '#ffffff';
   const textColor = darkMode ? '#e7e5e4' : '#111827';
@@ -224,9 +226,28 @@ function ConversationDetail() {
   };
 
   const handleReaction = async (type) => {
+    if (reactionLoading) return;
+    
+    // Optimistic update
+    const wasSelected = reactions.user_reaction === type;
+    const newReactions = reactions.reactions.map(r => {
+      if (r.reaction_type === type) {
+        return { ...r, count: wasSelected ? r.count - 1 : r.count + 1 };
+      }
+      if (r.reaction_type === reactions.user_reaction) {
+        return { ...r, count: r.count - 1 };
+      }
+      return r;
+    });
+    
+    setReactions({
+      reactions: newReactions,
+      user_reaction: wasSelected ? null : type
+    });
+    
     setReactionLoading(true);
     try {
-      if (reactions.user_reaction === type) {
+      if (wasSelected) {
         await api.delete(`/api/recall/conversations/${id}/reactions/remove/`);
       } else {
         await api.post(`/api/recall/conversations/${id}/reactions/add/`, { reaction_type: type });
@@ -234,6 +255,8 @@ function ConversationDetail() {
       fetchReactions();
     } catch (error) {
       console.error('Failed to update reaction:', error);
+      // Revert on error
+      fetchReactions();
     } finally {
       setReactionLoading(false);
     }
@@ -478,6 +501,12 @@ function ConversationDetail() {
               <button onClick={handleConvertToDecision} style={{ padding: '7px 12px', backgroundColor: 'transparent', border: '2px solid #10b981', color: '#10b981', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (converting || savingPost || deletingPost) ? 0.5 : 1, transition: 'all 0.15s' }} disabled={converting || savingPost || deletingPost} onMouseEnter={(e) => { if (!converting && !savingPost && !deletingPost) { e.currentTarget.style.backgroundColor = '#10b981'; e.currentTarget.style.color = '#ffffff'; } }} onMouseLeave={(e) => { if (!converting && !savingPost && !deletingPost) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#10b981'; } }}>
                 {converting ? 'Converting...' : 'Convert to Decision'}
               </button>
+              <AIEnhancementButton
+                content={conversation?.content}
+                title={conversation?.title}
+                type="conversation"
+                onResult={(feature, data) => setAiResults(data)}
+              />
               <FavoriteButton conversationId={id} />
               <ExportButton conversationId={id} type="conversation" />
               <UndoRedoButtons />
@@ -580,6 +609,8 @@ function ConversationDetail() {
           </div>
         </div>
       </div>
+      
+      <AIResultsPanel results={aiResults} onClose={() => setAiResults(null)} />
     </div>
   );
 }

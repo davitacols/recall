@@ -20,7 +20,7 @@ from .automation_views import (
     create_rule_from_template, get_rule_details, update_automation_rule
 )
 from .analytics_views import (
-    get_metrics, get_dashboard_data, create_report, get_reports, get_report_data, publish_report,
+    get_analytics, get_metrics, get_dashboard_data, create_report, get_reports, get_report_data, publish_report,
     create_dashboard, get_dashboards, get_dashboard, update_dashboard,
     create_integration, get_integrations, test_integration, delete_integration, get_integration_logs
 )
@@ -103,6 +103,7 @@ urlpatterns = [
     path('automation/templates/<int:template_id>/create/', create_rule_from_template, name='create-from-template'),
     
     # Analytics endpoints
+    path('analytics/', get_analytics, name='analytics-overview'),
     path('analytics/metrics/', get_metrics, name='analytics-metrics'),
     path('analytics/dashboard/', get_dashboard_data, name='dashboard-data'),
     path('analytics/reports/', get_reports, name='reports-list'),

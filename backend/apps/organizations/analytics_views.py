@@ -12,6 +12,67 @@ User = get_user_model()
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def get_analytics(request):
+    """Get organization analytics overview"""
+    organization = request.user.organization
+    time_range = request.query_params.get('range', '30d')
+    
+    from apps.decisions.models import Decision
+    from apps.conversations.models import Conversation
+    from django.db.models import Count, Q
+    from datetime import timedelta
+    from django.utils import timezone
+    
+    days = int(time_range.replace('d', ''))
+    start_date = timezone.now() - timedelta(days=days)
+    prev_start = start_date - timedelta(days=days)
+    
+    total_users = User.objects.filter(organization=organization, is_active=True).count()
+    prev_users = User.objects.filter(organization=organization, is_active=True, date_joined__lt=start_date).count()
+    
+    total_decisions = Decision.objects.filter(organization=organization).count()
+    recent_decisions = Decision.objects.filter(organization=organization, created_at__gte=start_date).count()
+    prev_decisions = Decision.objects.filter(organization=organization, created_at__gte=prev_start, created_at__lt=start_date).count()
+    
+    conversations = Conversation.objects.filter(organization=organization, created_at__gte=start_date).count()
+    
+    implemented = Decision.objects.filter(organization=organization, status='implemented').count()
+    knowledge_score = int((implemented / max(total_decisions, 1)) * 100)
+    
+    active_users = User.objects.filter(
+        organization=organization,
+        is_active=True,
+        last_login__gte=start_date
+    ).count()
+    
+    top_contributors = [
+        {'name': user.full_name, 'contributions': count}
+        for user, count in User.objects.filter(
+            organization=organization
+        ).annotate(
+            decision_count=Count('decisions_made', filter=Q(decisions_made__created_at__gte=start_date))
+        ).filter(decision_count__gt=0).order_by('-decision_count')[:5].values_list('full_name', 'decision_count')
+    ]
+    
+    data = {
+        'total_users': total_users,
+        'user_growth': int(((total_users - prev_users) / max(prev_users, 1)) * 100) if prev_users else 0,
+        'total_decisions': total_decisions,
+        'decision_growth': int(((recent_decisions - prev_decisions) / max(prev_decisions, 1)) * 100) if prev_decisions else 0,
+        'avg_response_time': 0,
+        'response_improvement': 0,
+        'knowledge_score': knowledge_score,
+        'score_improvement': 0,
+        'dau': active_users,
+        'decisions_per_user': round(total_decisions / max(total_users, 1), 1),
+        'engagement_rate': int((active_users / max(total_users, 1)) * 100) if total_users else 0,
+        'top_contributors': top_contributors
+    }
+    
+    return Response(data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_metrics(request):
     """Get organization metrics"""
     organization = request.user.organization

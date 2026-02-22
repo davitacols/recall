@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
@@ -11,7 +11,7 @@ import { NoData, NoResults } from '../components/EmptyState';
 function Conversations() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
-  const { addToast } = useToast();
+  const { addToast, confirm } = useToast();
   const [conversations, setConversations] = useState([]);
   const [filteredConversations, setFilteredConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +45,19 @@ function Conversations() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const deleteConversation = async (id, e) => {
+    e.stopPropagation();
+    confirm('Delete this conversation?', async () => {
+      try {
+        await api.delete(`/api/conversations/${id}/`);
+        setConversations(conversations.filter(c => c.id !== id));
+        addToast('Conversation deleted', 'success');
+      } catch (error) {
+        addToast('Failed to delete conversation', 'error');
+      }
+    });
   };
 
   const applyFiltersAndSort = () => {
@@ -182,7 +195,7 @@ function Conversations() {
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = bgColor; }}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
                     <span style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 600, border: `1px solid ${borderColor}`, borderRadius: '3px', backgroundColor: hoverBg, color: textColor, textTransform: 'capitalize' }}>
                       {conv.post_type || 'Discussion'}
@@ -203,7 +216,7 @@ function Conversations() {
                     <div>{conv.view_count || 0} views</div>
                   </div>
                 </div>
-                <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                <div style={{ flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                   {(() => {
                     const avatarUrl = getAvatarUrl(conv.author_avatar || conv.author?.avatar);
                     return avatarUrl ? (
@@ -222,7 +235,15 @@ function Conversations() {
                       </div>
                     );
                   })()}
-                  <p style={{ fontSize: '11px', color: secondaryText, marginTop: '6px', fontWeight: 500 }}>{conv.author || conv.author_name}</p>
+                  <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 500 }}>{conv.author || conv.author_name}</p>
+                  <button
+                    onClick={(e) => deleteConversation(conv.id, e)}
+                    style={{ padding: '6px', backgroundColor: 'transparent', border: `1px solid #ef4444`, color: '#ef4444', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ef4444'; e.currentTarget.style.color = '#ffffff'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#ef4444'; }}
+                  >
+                    <TrashIcon style={{ width: '14px', height: '14px' }} />
+                  </button>
                 </div>
               </div>
             </div>

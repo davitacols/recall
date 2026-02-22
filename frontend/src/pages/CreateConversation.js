@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+import RichTextEditor from '../components/RichTextEditor';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
 
@@ -41,7 +42,9 @@ function CreateConversation() {
       navigate(`/conversations/${response.data.id}`);
     } catch (error) {
       console.error('Failed to create conversation:', error);
-      addToast('Failed to create conversation', 'error');
+      console.error('Error response:', error.response);
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to create conversation';
+      addToast(errorMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -145,25 +148,11 @@ function CreateConversation() {
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: secondaryText, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Description *
             </label>
-            <textarea
+            <RichTextEditor
               value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, content: value })}
               placeholder="Provide details, context, or ask your question..."
-              rows={8}
-              style={{
-                width: '100%',
-                padding: '16px',
-                backgroundColor: hoverBg,
-                border: `1px solid ${borderColor}`,
-                color: textColor,
-                fontSize: '16px',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                resize: 'vertical',
-                fontFamily: 'inherit'
-              }}
-              onFocus={(e) => e.target.style.borderColor = textColor}
-              onBlur={(e) => e.target.style.borderColor = borderColor}
+              darkMode={darkMode}
             />
           </div>
 

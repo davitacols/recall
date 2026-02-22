@@ -40,6 +40,7 @@ import SampleDecision from './pages/SampleDecision';
 import KnowledgeHealthDashboard from './pages/KnowledgeHealthDashboard';
 import CurrentSprint from './pages/CurrentSprint';
 import SprintHistory from './pages/SprintHistory';
+import SprintManagement from './pages/SprintManagement';
 import SprintDetail from './pages/SprintDetail';
 import BlockerTracker from './pages/BlockerTracker';
 import RetrospectiveMemory from './pages/RetrospectiveMemory';
@@ -76,6 +77,10 @@ import TasksBoard from './pages/TasksBoard';
 import Templates from './pages/Templates';
 import Documents from './pages/Documents';
 import DocumentDetail from './pages/DocumentDetail';
+import Milestones from './pages/Milestones';
+import Reminders from './pages/Reminders';
+import AdvancedSearch from './pages/AdvancedSearch';
+import BookmarksAndDrafts from './pages/BookmarksAndDrafts';
 import Subscription from './pages/Subscription';
 import Security from './pages/Security';
 import Enterprise from './pages/Enterprise';
@@ -216,6 +221,20 @@ function AppContent() {
             </Layout>
           </ProtectedRoute>
         } />
+        <Route path="/search" element={
+          <ProtectedRoute>
+            <Layout>
+              <AdvancedSearch />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/bookmarks-drafts" element={
+          <ProtectedRoute>
+            <Layout>
+              <BookmarksAndDrafts />
+            </Layout>
+          </ProtectedRoute>
+        } />
         <Route path="/activity" element={
           <ProtectedRoute>
             <Layout>
@@ -332,6 +351,13 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <SprintHistory />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/sprint-management" element={
+          <ProtectedRoute>
+            <Layout>
+              <SprintManagement />
             </Layout>
           </ProtectedRoute>
         } />
@@ -564,6 +590,27 @@ function AppContent() {
           <ProtectedRoute>
             <Layout>
               <TasksBoard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/goals/:goalId/milestones" element={
+          <ProtectedRoute>
+            <Layout>
+              <Milestones />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/reminders" element={
+          <ProtectedRoute>
+            <Layout>
+              <Reminders />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/analytics" element={
+          <ProtectedRoute>
+            <Layout>
+              <Analytics />
             </Layout>
           </ProtectedRoute>
         } />

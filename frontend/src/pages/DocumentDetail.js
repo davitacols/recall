@@ -296,6 +296,7 @@ export default function DocumentDetail() {
                     onChange={setNewComment}
                     placeholder="Add a comment... (Type @ to mention someone)"
                     rows={3}
+                    darkMode={darkMode}
                   />
                   <button
                     type="submit"

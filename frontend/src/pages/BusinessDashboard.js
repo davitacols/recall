@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
-import { FlagIcon, CalendarIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { FlagIcon, CalendarIcon, CheckCircleIcon, ClockIcon, DocumentTextIcon, BellIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 
 export default function BusinessDashboard() {
   const { darkMode } = useTheme();
@@ -77,27 +77,27 @@ export default function BusinessDashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg`}>
+          <Link to="/business/goals" className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg hover:border-blue-500 transition-all`}>
             <div className="flex items-center gap-3 mb-2">
               <FlagIcon className={`w-5 h-5 ${textSecondary}`} />
               <span className={`text-sm ${textSecondary}`}>Goals</span>
             </div>
             <p className={`text-3xl font-bold ${textPrimary}`}>{stats.goals}</p>
-          </div>
-          <div className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg`}>
+          </Link>
+          <Link to="/business/meetings" className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg hover:border-blue-500 transition-all`}>
             <div className="flex items-center gap-3 mb-2">
               <CalendarIcon className={`w-5 h-5 ${textSecondary}`} />
               <span className={`text-sm ${textSecondary}`}>Meetings</span>
             </div>
             <p className={`text-3xl font-bold ${textPrimary}`}>{stats.meetings}</p>
-          </div>
-          <div className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg`}>
+          </Link>
+          <Link to="/business/tasks" className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg hover:border-blue-500 transition-all`}>
             <div className="flex items-center gap-3 mb-2">
               <ClockIcon className={`w-5 h-5 ${textSecondary}`} />
               <span className={`text-sm ${textSecondary}`}>Tasks</span>
             </div>
             <p className={`text-3xl font-bold ${textPrimary}`}>{stats.tasks}</p>
-          </div>
+          </Link>
           <div className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg`}>
             <div className="flex items-center gap-3 mb-2">
               <CheckCircleIcon className={`w-5 h-5 ${textSecondary}`} />
@@ -105,6 +105,25 @@ export default function BusinessDashboard() {
             </div>
             <p className={`text-3xl font-bold ${textPrimary}`}>{stats.completed}</p>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Link to="/business/documents" className={`p-4 ${bgSecondary} border ${borderColor} rounded-lg hover:border-blue-500 transition-all flex items-center gap-3`}>
+            <DocumentTextIcon className={`w-5 h-5 ${textSecondary}`} />
+            <span className={`text-sm font-medium ${textPrimary}`}>Documents</span>
+          </Link>
+          <Link to="/business/templates" className={`p-4 ${bgSecondary} border ${borderColor} rounded-lg hover:border-blue-500 transition-all flex items-center gap-3`}>
+            <DocumentTextIcon className={`w-5 h-5 ${textSecondary}`} />
+            <span className={`text-sm font-medium ${textPrimary}`}>Templates</span>
+          </Link>
+          <Link to="/business/reminders" className={`p-4 ${bgSecondary} border ${borderColor} rounded-lg hover:border-blue-500 transition-all flex items-center gap-3`}>
+            <BellIcon className={`w-5 h-5 ${textSecondary}`} />
+            <span className={`text-sm font-medium ${textPrimary}`}>Reminders</span>
+          </Link>
+          <Link to="/business/analytics" className={`p-4 ${bgSecondary} border ${borderColor} rounded-lg hover:border-blue-500 transition-all flex items-center gap-3`}>
+            <ChartBarIcon className={`w-5 h-5 ${textSecondary}`} />
+            <span className={`text-sm font-medium ${textPrimary}`}>Analytics</span>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

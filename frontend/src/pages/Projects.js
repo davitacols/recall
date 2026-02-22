@@ -1,31 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+import { PlusIcon, FolderIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
-import { CardSkeleton } from '../components/Skeleton';
-import { NoData } from '../components/EmptyState';
 
-function Projects() {
+export default function Projects() {
   const { darkMode } = useTheme();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newProject, setNewProject] = useState({ name: '', key: '', description: '' });
   const [loading, setLoading] = useState(true);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState({ name: '', key: '', description: '' });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
 
-  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-500' : 'text-gray-600';
-  const textTertiary = darkMode ? 'text-stone-400' : 'text-gray-500';
-  const hoverBg = darkMode ? 'hover:bg-stone-700' : 'hover:bg-gray-100';
-  const hoverBorder = darkMode ? 'hover:border-stone-700' : 'hover:border-gray-300';
-  const inputBg = darkMode ? 'bg-stone-800' : 'bg-white';
-  const inputBorder = darkMode ? 'border-stone-700' : 'border-gray-300';
-  const inputText = darkMode ? 'text-stone-200' : 'text-gray-900';
+  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const cardBg = darkMode ? '#0c0a09' : '#ffffff';
+  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
 
   useEffect(() => {
     fetchProjects();
@@ -33,8 +24,8 @@ function Projects() {
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/api/agile/projects/');
-      setProjects(response.data.results || response.data || []);
+      const res = await api.get('/api/agile/projects/');
+      setProjects(res.data);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
     } finally {
@@ -42,181 +33,160 @@ function Projects() {
     }
   };
 
-  const handleCreateProject = async (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
-    setError('');
-
-    if (!formData.name.trim()) {
-      setError('Project name is required');
-      return;
-    }
-    if (!formData.key.trim()) {
-      setError('Project key is required');
-      return;
-    }
-
-    setSubmitting(true);
     try {
-      await api.post('/api/agile/projects/', formData);
-      setShowCreateForm(false);
-      setFormData({ name: '', key: '', description: '' });
+      await api.post('/api/agile/projects/', newProject);
+      setShowCreate(false);
+      setNewProject({ name: '', key: '', description: '' });
       fetchProjects();
     } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Failed to create project';
-      setError(errorMessage);
-    } finally {
-      setSubmitting(false);
+      console.error('Failed to create project:', error);
     }
   };
 
   if (loading) {
-    return (
-      <div className={`min-h-screen ${bgPrimary}`}>
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1,2,3].map(i => <CardSkeleton key={i} />)}
-          </div>
-        </div>
-      </div>
-    );
+    return <div style={{ textAlign: 'center', padding: '60px', color: secondaryText }}>Loading...</div>;
   }
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Projects</h1>
-            <p className={`text-sm ${textSecondary}`}>Manage your projects and boards</p>
-          </div>
-          <button
-            onClick={() => {
-              setShowCreateForm(true);
-              setError('');
-            }}
-            className={`flex items-center gap-2 px-4 py-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm transition-all`}
-          >
-            <PlusIcon className="w-4 h-4" />
-            New Project
-          </button>
+    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
+        <div>
+          <h1 style={{ fontSize: '32px', fontWeight: 700, color: textColor, marginBottom: '8px' }}>Projects</h1>
+          <p style={{ fontSize: '15px', color: secondaryText }}>Manage your team's projects and boards</p>
         </div>
-
-        {/* Create Form Modal */}
-        {showCreateForm && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 w-full max-w-md`}>
-              <h2 className={`text-xl font-bold ${textPrimary} mb-5`}>Create New Project</h2>
-
-              {error && (
-                <div className="px-3 py-2 bg-red-900/20 border border-red-800 text-red-400 text-sm mb-4 rounded">
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleCreateProject} className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium ${textTertiary} mb-2`}>
-                    Project Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Mobile App"
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600 transition-all`}
-                    disabled={submitting}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textTertiary} mb-2`}>
-                    Project Key *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.key}
-                    onChange={(e) => setFormData({ ...formData, key: e.target.value.toUpperCase() })}
-                    placeholder="e.g., MOBILE"
-                    maxLength="10"
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600 transition-all`}
-                    disabled={submitting}
-                  />
-                  <p className={`text-xs ${textTertiary} mt-1`}>Used for issue IDs (e.g., MOBILE-1, MOBILE-2)</p>
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textTertiary} mb-2`}>
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Project description..."
-                    rows="4"
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600 transition-all`}
-                    disabled={submitting}
-                  />
-                </div>
-                <div className="flex gap-3 justify-end pt-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateForm(false);
-                      setError('');
-                    }}
-                    disabled={submitting}
-                    className={`px-4 py-2 bg-transparent ${textTertiary} border-2 ${borderColor} rounded ${hoverBg} font-medium text-sm transition-all disabled:opacity-50`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className={`px-4 py-2 bg-transparent border-2 ${inputBorder} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-2`}
-                  >
-                    {submitting ? 'Creating...' : 'Create Project'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {projects.length === 0 ? (
-          <NoData type="projects" onCreate={() => { setShowCreateForm(true); setError(''); }} />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project) => (
-              <Link
-                key={project.id}
-                to={`/projects/${project.id}`}
-                className="no-underline"
-              >
-                <div className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg ${hoverBorder} hover:bg-opacity-80 transition-all h-full flex flex-col`}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={`w-10 h-10 ${inputBg} rounded-lg flex items-center justify-center ${textPrimary} font-bold text-base border ${inputBorder}`}>
-                      {project.key.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className={`text-base font-semibold ${textPrimary}`}>{project.name}</h3>
-                      <p className={`text-xs ${textSecondary} font-mono`}>{project.key}</p>
-                    </div>
-                  </div>
-                  <p className={`${textTertiary} text-sm mb-4 flex-1`}>
-                    {project.description || 'No description'}
-                  </p>
-                  <div className={`flex justify-between text-xs ${textSecondary} pt-4 border-t ${borderColor}`}>
-                    <span>{project.issue_count} Issues</span>
-                    <span>Lead: {project.lead || 'Unassigned'}</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        <button
+          onClick={() => setShowCreate(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 20px',
+            backgroundColor: '#3b82f6',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+        >
+          <PlusIcon style={{ width: '18px', height: '18px' }} />
+          New Project
+        </button>
       </div>
+
+      {/* Create Modal */}
+      {showCreate && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ backgroundColor: bgColor, borderRadius: '12px', padding: '32px', width: '100%', maxWidth: '500px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '24px' }}>Create Project</h2>
+            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Project Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newProject.name}
+                  onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                  style={{ width: '100%', padding: '12px', border: `2px solid ${borderColor}`, borderRadius: '8px', backgroundColor: bgColor, color: textColor, fontSize: '15px' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Project Key</label>
+                <input
+                  type="text"
+                  required
+                  value={newProject.key}
+                  onChange={(e) => setNewProject({ ...newProject, key: e.target.value.toUpperCase() })}
+                  placeholder="PROJ"
+                  maxLength={10}
+                  style={{ width: '100%', padding: '12px', border: `2px solid ${borderColor}`, borderRadius: '8px', backgroundColor: bgColor, color: textColor, fontSize: '15px' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Description</label>
+                <textarea
+                  value={newProject.description}
+                  onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                  rows={3}
+                  style={{ width: '100%', padding: '12px', border: `2px solid ${borderColor}`, borderRadius: '8px', backgroundColor: bgColor, color: textColor, fontSize: '15px', resize: 'vertical' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  style={{ padding: '12px 20px', border: `1px solid ${borderColor}`, borderRadius: '8px', backgroundColor: 'transparent', color: textColor, fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: '12px 20px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Projects Grid */}
+      {projects.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px', color: secondaryText }}>
+          <FolderIcon style={{ width: '48px', height: '48px', margin: '0 auto 16px', color: borderColor }} />
+          <p>No projects yet. Create your first project to get started.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+          {projects.map((project) => (
+            <div
+              key={project.id}
+              onClick={() => navigate(`/projects/${project.id}`)}
+              style={{
+                padding: '24px',
+                backgroundColor: cardBg,
+                border: `1px solid ${borderColor}`,
+                borderRadius: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#3b82f6';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = borderColor;
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ width: '48px', height: '48px', backgroundColor: '#3b82f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '18px', fontWeight: 700 }}>
+                  {project.key}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 600, color: textColor }}>{project.name}</h3>
+                </div>
+              </div>
+              {project.description && (
+                <p style={{ fontSize: '14px', color: secondaryText, marginBottom: '16px', lineHeight: '1.6' }}>
+                  {project.description}
+                </p>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '16px', borderTop: `1px solid ${borderColor}`, fontSize: '13px', color: secondaryText }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <UserGroupIcon style={{ width: '16px', height: '16px' }} />
+                  <span>{project.lead_name || 'No lead'}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-
-export default Projects;

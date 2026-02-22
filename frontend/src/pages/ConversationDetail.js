@@ -8,6 +8,7 @@ import { AIEnhancementButton, AIResultsPanel } from '../components/AIEnhancement
 import api from '../services/api';
 import MentionTagInput from '../components/MentionTagInput';
 import HighlightedText from '../components/HighlightedText';
+import RichTextRenderer from '../components/RichTextRenderer';
 import { FavoriteButton, ExportButton, UndoRedoButtons } from '../components/QuickWinFeatures';
 import { getAvatarUrl } from '../utils/avatarUtils';
 import AIAssistant from '../components/AIAssistant';
@@ -69,7 +70,7 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
             </button>
           </div>
         ) : (
-          <p style={{ fontSize: '13px', color: '#e7e5e4' }}>{reply.content}</p>
+          <RichTextRenderer content={reply.content} darkMode={true} />
         )}
       </div>
       {reply.children?.map(child => (
@@ -536,9 +537,7 @@ function ConversationDetail() {
               </button>
             </div>
           ) : (
-            <div style={{ fontSize: '14px', lineHeight: '1.6', color: textColor }}>
-              <HighlightedText text={conversation.content} />
-            </div>
+            <RichTextRenderer content={conversation.content} darkMode={darkMode} />
           )}
         </div>
 
@@ -601,7 +600,7 @@ function ConversationDetail() {
           <div style={{ backgroundColor: hoverBg, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px' }}>
             <h3 style={{ fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '10px' }}>Add a comment</h3>
             <form onSubmit={handleSubmitReply}>
-              <MentionTagInput value={newReply} onChange={(e) => setNewReply(e.target.value)} placeholder="Share your thoughts..." rows={4} />
+              <MentionTagInput value={newReply} onChange={(e) => setNewReply(e.target.value)} placeholder="Share your thoughts..." rows={4} darkMode={darkMode} />
               <button type="submit" disabled={submitting || !newReply.trim()} style={{ marginTop: '10px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', opacity: (submitting || !newReply.trim()) ? 0.5 : 1, transition: 'all 0.15s' }} onMouseEnter={(e) => { if (!submitting && newReply.trim()) { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; } }} onMouseLeave={(e) => { if (!submitting && newReply.trim()) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; } }}>
                 {submitting ? 'Posting...' : 'Reply'}
               </button>

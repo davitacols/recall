@@ -1,11 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export function MentionInput({ value, onChange, placeholder, rows = 3 }) {
+export function MentionInput({ value, onChange, placeholder, rows = 3, darkMode = false }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mentionQuery, setMentionQuery] = useState('');
   const textareaRef = useRef(null);
+
+  const bgColor = darkMode ? '#292524' : '#ffffff';
+  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const borderColor = darkMode ? '#44403c' : '#d1d5db';
+  const hoverBg = darkMode ? '#44403c' : '#f3f4f6';
+  const selectedBg = darkMode ? '#57534e' : '#e5e7eb';
 
   useEffect(() => {
     if (mentionQuery) {
@@ -92,27 +98,57 @@ export function MentionInput({ value, onChange, placeholder, rows = 3 }) {
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         rows={rows}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 resize-none"
+        style={{
+          width: '100%',
+          padding: '12px',
+          backgroundColor: bgColor,
+          color: textColor,
+          border: `1px solid ${borderColor}`,
+          borderRadius: '8px',
+          outline: 'none',
+          resize: 'none'
+        }}
       />
       
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute bottom-full mb-1 left-0 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10 w-64">
+        <div style={{
+          position: 'absolute',
+          bottom: '100%',
+          marginBottom: '4px',
+          left: 0,
+          backgroundColor: bgColor,
+          border: `1px solid ${borderColor}`,
+          borderRadius: '8px',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          maxHeight: '192px',
+          overflowY: 'auto',
+          zIndex: 10,
+          width: '256px'
+        }}>
           {suggestions.map((user, index) => (
             <button
               key={user.id}
               onClick={() => insertMention(user)}
-              className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-                index === selectedIndex ? 'bg-gray-100' : ''
-              }`}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '12px 16px',
+                backgroundColor: index === selectedIndex ? selectedBg : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index === selectedIndex ? selectedBg : 'transparent'}
             >
-              <div className="font-medium text-gray-900">@{user.username}</div>
-              <div className="text-sm text-gray-600">{user.full_name}</div>
+              <div style={{ fontWeight: 500, color: textColor }}>@{user.username}</div>
+              <div style={{ fontSize: '13px', color: darkMode ? '#a8a29e' : '#6b7280' }}>{user.full_name}</div>
             </button>
           ))}
         </div>
       )}
       
-      <div className="mt-1 text-xs text-gray-500">
+      <div style={{ marginTop: '4px', fontSize: '12px', color: darkMode ? '#a8a29e' : '#6b7280' }}>
         Type @ to mention someone
       </div>
     </div>

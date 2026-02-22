@@ -6,12 +6,14 @@ const ToastContext = createContext();
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
-  const addToast = useCallback((message, type = 'info') => {
+  const addToast = useCallback((message, type = 'info', options = {}) => {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
+    setToasts(prev => [...prev, { id, message, type, ...options }]);
+    if (!options.persistent) {
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, 4000);
+    }
   }, []);
 
   const success = useCallback((message) => addToast(message, 'success'), [addToast]);
@@ -21,6 +23,11 @@ export function ToastProvider({ children }) {
 
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const confirm = useCallback((message, onConfirm) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type: 'confirm', onConfirm, persistent: true }]);
   }, []);
 
   const icons = {
@@ -38,10 +45,37 @@ export function ToastProvider({ children }) {
   };
 
   return (
-    <ToastContext.Provider value={{ addToast, success, error, info, warning }}>
+    <ToastContext.Provider value={{ addToast, success, error, info, warning, confirm }}>
       {children}
       <div className="fixed bottom-4 right-4 z-50 space-y-2">
         {toasts.map(toast => {
+          if (toast.type === 'confirm') {
+            return (
+              <div
+                key={toast.id}
+                className="px-4 py-3 rounded-lg shadow-lg border min-w-[320px] animate-slideIn bg-gray-800 text-white border-gray-700"
+              >
+                <p className="font-medium mb-3">{toast.message}</p>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => removeToast(toast.id)}
+                    className="px-3 py-1.5 text-sm border border-gray-600 rounded hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      toast.onConfirm();
+                      removeToast(toast.id);
+                    }}
+                    className="px-3 py-1.5 text-sm bg-red-600 border border-red-600 rounded hover:bg-red-700 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            );
+          }
           const Icon = icons[toast.type];
           return (
             <div

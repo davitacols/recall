@@ -156,6 +156,8 @@ function Layout({ children }) {
     {
       title: 'Personal',
       items: [
+        { name: 'Activity Feed', href: '/activity' },
+        { name: 'Bookmarks & Drafts', href: '/bookmarks-drafts' },
         { name: 'My Decisions', href: '/my-decisions' },
         { name: 'My Questions', href: '/my-questions' },
         { name: 'Knowledge Health', href: '/knowledge-health' },
@@ -166,7 +168,10 @@ function Layout({ children }) {
       items: [
         { name: 'Team', href: '/team', icon: UsersIcon },
         { name: 'Analytics', href: '/analytics' },
+        { name: 'Advanced Search', href: '/search' },
         { name: 'Integrations', href: '/integrations' },
+        { name: 'API Keys', href: '/api-keys' },
+        { name: 'Audit Logs', href: '/audit-logs' },
         { name: 'Subscription', href: '/subscription' },
         { name: 'Enterprise', href: '/enterprise' },
         { name: 'Import/Export', href: '/import-export' },

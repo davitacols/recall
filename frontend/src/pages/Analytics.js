@@ -1,129 +1,137 @@
 import React, { useState, useEffect } from 'react';
+import { ChartBarIcon, CalendarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
+import { useToast } from '../components/Toast';
 
-function Analytics() {
-  const [metrics, setMetrics] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('30d');
+export default function Analytics() {
+  const { darkMode } = useTheme();
+  const { addToast } = useToast();
+  const [analytics, setAnalytics] = useState(null);
+
+  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
 
   useEffect(() => {
-    fetchMetrics();
-  }, [timeRange]);
+    loadAnalytics();
+  }, []);
 
-  const fetchMetrics = async () => {
+  const loadAnalytics = async () => {
     try {
-      const response = await api.get(`/api/organizations/analytics/?range=${timeRange}`);
-      setMetrics(response.data);
+      const res = await api.get('/api/business/analytics/');
+      setAnalytics(res.data);
     } catch (error) {
-      console.error('Failed to fetch metrics:', error);
-    } finally {
-      setLoading(false);
+      addToast('Failed to load analytics', 'error');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (!analytics) return <div style={{ color: textColor }}>Loading...</div>;
 
-  if (!metrics) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-gray-600">Failed to load analytics data</div>
-      </div>
-    );
-  }
+  const statusColors = {
+    not_started: '#6b7280',
+    in_progress: '#3b82f6',
+    completed: '#10b981',
+    on_hold: '#f59e0b'
+  };
+
+  const priorityColors = {
+    low: '#6b7280',
+    medium: '#3b82f6',
+    high: '#f59e0b',
+    critical: '#ef4444'
+  };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-3">Analytics</h1>
-          <p className="text-xl text-gray-600">Usage metrics and trends</p>
-        </div>
-        <select
-          value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value)}
-          className="px-4 py-2 border border-gray-900 focus:outline-none"
-        >
-          <option value="7d">Last 7 days</option>
-          <option value="30d">Last 30 days</option>
-          <option value="90d">Last 90 days</option>
-        </select>
+    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
+      <div style={{ marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px' }}>Business Analytics</h1>
+        <p style={{ fontSize: '14px', color: secondaryText }}>Overview of goals, meetings, and tasks</p>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-4 gap-6 mb-8">
-        <div className="border border-gray-200 p-6">
-          <div className="text-4xl font-bold text-gray-900 mb-2">{metrics.total_users}</div>
-          <div className="text-sm text-gray-600 font-medium">Active Users</div>
-          <div className="text-xs text-green-600 mt-2">+{metrics.user_growth}% growth</div>
+      {/* Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircleIcon style={{ width: '20px', height: '20px', color: '#ffffff' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Goals</p>
+              <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>{analytics.goals.total}</p>
+            </div>
+          </div>
+          <p style={{ fontSize: '12px', color: secondaryText }}>+{analytics.goals.recent} this week</p>
         </div>
-        <div className="border border-gray-200 p-6">
-          <div className="text-4xl font-bold text-gray-900 mb-2">{metrics.total_decisions}</div>
-          <div className="text-sm text-gray-600 font-medium">Decisions Made</div>
-          <div className="text-xs text-green-600 mt-2">+{metrics.decision_growth}% growth</div>
-        </div>
-        <div className="border border-gray-200 p-6">
-          <div className="text-4xl font-bold text-gray-900 mb-2">{metrics.avg_response_time}h</div>
-          <div className="text-sm text-gray-600 font-medium">Avg Response Time</div>
-          <div className="text-xs text-green-600 mt-2">-{metrics.response_improvement}% faster</div>
-        </div>
-        <div className="border border-gray-200 p-6">
-          <div className="text-4xl font-bold text-gray-900 mb-2">{metrics.knowledge_score}</div>
-          <div className="text-sm text-gray-600 font-medium">Knowledge Score</div>
-          <div className="text-xs text-green-600 mt-2">+{metrics.score_improvement} points</div>
-        </div>
-      </div>
 
-      {/* Usage Trends */}
-      <div className="border border-gray-200 p-6 mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-6">Usage Trends</h2>
-        <div className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-900">Daily Active Users</span>
-              <span className="text-sm font-bold text-gray-900">{metrics.dau}</span>
+        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CalendarIcon style={{ width: '20px', height: '20px', color: '#ffffff' }} />
             </div>
-            <div className="w-full bg-gray-200 h-2">
-              <div className="bg-gray-900 h-2" style={{ width: `${(metrics.dau / metrics.total_users) * 100}%` }} />
+            <div>
+              <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Meetings</p>
+              <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>{analytics.meetings.total}</p>
             </div>
           </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-900">Decisions per User</span>
-              <span className="text-sm font-bold text-gray-900">{metrics.decisions_per_user}</span>
+          <p style={{ fontSize: '12px', color: secondaryText }}>{analytics.meetings.upcoming} upcoming</p>
+        </div>
+
+        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ChartBarIcon style={{ width: '20px', height: '20px', color: '#ffffff' }} />
             </div>
-            <div className="w-full bg-gray-200 h-2">
-              <div className="bg-gray-900 h-2" style={{ width: `${Math.min(metrics.decisions_per_user * 10, 100)}%` }} />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-900">Engagement Rate</span>
-              <span className="text-sm font-bold text-gray-900">{metrics.engagement_rate}%</span>
-            </div>
-            <div className="w-full bg-gray-200 h-2">
-              <div className="bg-gray-900 h-2" style={{ width: `${metrics.engagement_rate}%` }} />
+            <div>
+              <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Tasks</p>
+              <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>{analytics.tasks.total}</p>
             </div>
           </div>
+          <p style={{ fontSize: '12px', color: secondaryText }}>+{analytics.tasks.recent} this week</p>
         </div>
       </div>
 
-      {/* Top Contributors */}
-      <div className="border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-6">Top Contributors</h2>
-        <div className="space-y-3">
-          {metrics.top_contributors.map((user, idx) => (
-            <div key={idx} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-gray-500">#{idx + 1}</span>
-                <span className="text-base text-gray-900">{user.name}</span>
+      {/* Goals by Status */}
+      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '16px' }}>Goals by Status</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+          {Object.entries(analytics.goals.by_status || {}).map(([status, count]) => (
+            <div key={status} style={{ textAlign: 'center', padding: '12px', backgroundColor: darkMode ? '#292524' : '#f9fafb', borderRadius: '5px' }}>
+              <div style={{ width: '48px', height: '48px', margin: '0 auto 8px', borderRadius: '50%', backgroundColor: statusColors[status], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff' }}>{count}</span>
               </div>
-              <span className="text-sm text-gray-600">{user.contributions} contributions</span>
+              <p style={{ fontSize: '12px', color: textColor, fontWeight: 500, textTransform: 'capitalize' }}>{status.replace('_', ' ')}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tasks by Status */}
+      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '16px' }}>Tasks by Status</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          {Object.entries(analytics.tasks.by_status || {}).map(([status, count]) => (
+            <div key={status} style={{ textAlign: 'center', padding: '12px', backgroundColor: darkMode ? '#292524' : '#f9fafb', borderRadius: '5px' }}>
+              <div style={{ width: '48px', height: '48px', margin: '0 auto 8px', borderRadius: '50%', backgroundColor: statusColors[status] || '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff' }}>{count}</span>
+              </div>
+              <p style={{ fontSize: '12px', color: textColor, fontWeight: 500, textTransform: 'capitalize' }}>{status.replace('_', ' ')}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tasks by Priority */}
+      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '16px' }}>Tasks by Priority</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+          {Object.entries(analytics.tasks.by_priority || {}).map(([priority, count]) => (
+            <div key={priority} style={{ textAlign: 'center', padding: '12px', backgroundColor: darkMode ? '#292524' : '#f9fafb', borderRadius: '5px' }}>
+              <div style={{ width: '48px', height: '48px', margin: '0 auto 8px', borderRadius: '50%', backgroundColor: priorityColors[priority], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff' }}>{count}</span>
+              </div>
+              <p style={{ fontSize: '12px', color: textColor, fontWeight: 500, textTransform: 'capitalize' }}>{priority}</p>
             </div>
           ))}
         </div>
@@ -131,5 +139,3 @@ function Analytics() {
     </div>
   );
 }
-
-export default Analytics;

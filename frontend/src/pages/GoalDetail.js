@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
-import { ArrowLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, TrashIcon, FlagIcon } from '@heroicons/react/24/outline';
 
 export default function GoalDetail() {
   const { id } = useParams();
@@ -203,6 +203,23 @@ export default function GoalDetail() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1.5rem' }}>
                 <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>{goal.title}</h1>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => navigate(`/business/goals/${id}/milestones`)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: 'transparent',
+                      border: `2px solid #10b981`,
+                      color: '#10b981',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <FlagIcon style={{ width: '1rem', height: '1rem' }} />
+                    Milestones
+                  </button>
                   <button
                     onClick={() => setEditing(true)}
                     style={{

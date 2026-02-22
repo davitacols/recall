@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const MentionTagInput = ({ value, onChange, placeholder, rows = 4 }) => {
+const MentionTagInput = ({ value, onChange, placeholder, rows = 4, darkMode = false }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionType, setSuggestionType] = useState(null); // 'mention' or 'tag'
@@ -147,32 +147,59 @@ const MentionTagInput = ({ value, onChange, placeholder, rows = 4 }) => {
         onSelect={(e) => setCursorPosition(e.target.selectionStart)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full px-4 py-3 border-2 border-black focus:outline-none focus:border-gray-600 font-mono text-sm resize-none"
+        style={{
+          width: '100%',
+          padding: '12px',
+          backgroundColor: darkMode ? '#292524' : '#ffffff',
+          color: darkMode ? '#e7e5e4' : '#111827',
+          border: `2px solid ${darkMode ? '#44403c' : '#111827'}`,
+          borderRadius: '4px',
+          fontSize: '14px',
+          outline: 'none',
+          resize: 'none',
+          fontFamily: 'monospace'
+        }}
       />
 
       {showSuggestions && (
-        <div className="absolute z-50 bg-white border-2 border-black shadow-lg mt-1 max-h-48 overflow-y-auto w-full">
+        <div style={{
+          position: 'absolute',
+          zIndex: 50,
+          backgroundColor: darkMode ? '#292524' : '#ffffff',
+          border: `2px solid ${darkMode ? '#44403c' : '#111827'}`,
+          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          marginTop: '4px',
+          maxHeight: '192px',
+          overflowY: 'auto',
+          width: '100%'
+        }}>
           {suggestions.map((suggestion, index) => (
             <button
               key={suggestion.id}
               onClick={() => insertSuggestion(suggestion)}
-              className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                index === selectedIndex
-                  ? 'bg-black text-white'
-                  : 'hover:bg-gray-100'
-              }`}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '12px 16px',
+                fontSize: '14px',
+                transition: 'all 0.2s',
+                backgroundColor: index === selectedIndex ? (darkMode ? '#44403c' : '#111827') : 'transparent',
+                color: index === selectedIndex ? '#ffffff' : (darkMode ? '#e7e5e4' : '#111827'),
+                border: 'none',
+                cursor: 'pointer'
+              }}
             >
-              <span className="font-bold uppercase tracking-wide">
+              <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {suggestionType === 'mention' ? '@' : '#'}
                 {suggestionType === 'mention' ? (suggestion.full_name || suggestion.username) : suggestion.name}
               </span>
               {suggestionType === 'mention' && suggestion.username && (
-                <span className="ml-2 text-xs text-gray-500">
+                <span style={{ marginLeft: '8px', fontSize: '12px', color: darkMode ? '#a8a29e' : '#6b7280' }}>
                   @{suggestion.username.split('@')[0]}
                 </span>
               )}
               {suggestionType === 'tag' && (
-                <span className="ml-2 text-xs text-gray-500">
+                <span style={{ marginLeft: '8px', fontSize: '12px', color: darkMode ? '#a8a29e' : '#6b7280' }}>
                   {suggestion.usage_count} uses
                 </span>
               )}
@@ -181,7 +208,7 @@ const MentionTagInput = ({ value, onChange, placeholder, rows = 4 }) => {
         </div>
       )}
 
-      <div className="mt-2 text-xs text-gray-500 font-bold tracking-wide">
+      <div style={{ marginTop: '8px', fontSize: '12px', color: darkMode ? '#a8a29e' : '#6b7280', fontWeight: 700, letterSpacing: '0.05em' }}>
         TYPE @ TO MENTION USERS • TYPE # TO ADD TAGS
       </div>
     </div>

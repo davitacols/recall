@@ -292,31 +292,31 @@ function Settings() {
             )}
 
             {activeSection === 'organization' && user?.role === 'admin' && organization && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Organization Profile</h2>
+              <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
+                <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Organization Profile</h2>
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Organization Name</label>
+                    <label className={`block text-sm font-semibold ${textPrimary} mb-2`}>Organization Name</label>
                     <input
                       type="text"
                       value={orgName}
                       onChange={(e) => setOrgName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none transition-all"
+                      className={`w-full px-4 py-3 rounded-lg border ${borderColor} ${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-white text-gray-900'} focus:border-stone-600 focus:ring-2 focus:ring-stone-600 focus:ring-opacity-20 outline-none transition-all`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                    <label className={`block text-sm font-semibold ${textPrimary} mb-2`}>Description</label>
                     <textarea
                       value={orgDescription}
                       onChange={(e) => setOrgDescription(e.target.value)}
                       rows="4"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none transition-all"
+                      className={`w-full px-4 py-3 rounded-lg border ${borderColor} ${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-white text-gray-900'} focus:border-stone-600 focus:ring-2 focus:ring-stone-600 focus:ring-opacity-20 outline-none transition-all`}
                     />
                   </div>
                   <button
                     onClick={saveOrganization}
                     disabled={loading}
-                    className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`px-6 py-3 ${darkMode ? 'bg-stone-800 text-stone-100 hover:bg-stone-700' : 'bg-gray-900 text-white hover:bg-gray-800'} rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     {loading ? 'Saving...' : 'Save Changes'}
                   </button>
@@ -326,25 +326,25 @@ function Settings() {
 
             {activeSection === 'team' && user?.role === 'admin' && (
               <>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Invite Team Member</h2>
+                <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
+                  <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Invite Team Member</h2>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                      <label className={`block text-sm font-semibold ${textPrimary} mb-2`}>Email Address</label>
                       <input
                         type="email"
                         placeholder="member@example.com"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none transition-all"
+                        className={`w-full px-4 py-3 rounded-lg border ${borderColor} ${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-white text-gray-900'} focus:border-stone-600 focus:ring-2 focus:ring-stone-600 focus:ring-opacity-20 outline-none transition-all`}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+                      <label className={`block text-sm font-semibold ${textPrimary} mb-2`}>Role</label>
                       <select
                         value={inviteRole}
                         onChange={(e) => setInviteRole(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none transition-all"
+                        className={`w-full px-4 py-3 rounded-lg border ${borderColor} ${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-white text-gray-900'} focus:border-stone-600 focus:ring-2 focus:ring-stone-600 focus:ring-opacity-20 outline-none transition-all`}
                       >
                         <option value="contributor">Contributor</option>
                         <option value="manager">Manager</option>
@@ -354,7 +354,7 @@ function Settings() {
                     <button
                       onClick={inviteMember}
                       disabled={loading}
-                      className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`px-6 py-3 ${darkMode ? 'bg-stone-800 text-stone-100 hover:bg-stone-700' : 'bg-gray-900 text-white hover:bg-gray-800'} rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {loading ? 'Sending...' : 'Send Invite'}
                     </button>
@@ -362,29 +362,29 @@ function Settings() {
                 </div>
 
                 {generatedLink && (
-                  <div className="bg-green-50 rounded-xl border border-green-200 p-8">
-                    <h2 className="text-xl font-bold text-green-900 mb-4">Invitation Link Generated</h2>
+                  <div className={`${darkMode ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'} rounded-xl border p-8`}>
+                    <h2 className={`text-xl font-bold ${darkMode ? 'text-green-400' : 'text-green-900'} mb-4`}>Invitation Link Generated</h2>
                     <div className="flex gap-2 mb-3">
                       <input
                         type="text"
                         value={generatedLink}
                         readOnly
-                        className="flex-1 px-4 py-2 rounded-lg border border-green-300 bg-white text-sm font-mono"
+                        className={`flex-1 px-4 py-2 rounded-lg border ${darkMode ? 'border-green-800 bg-stone-800 text-stone-100' : 'border-green-300 bg-white text-gray-900'} text-sm font-mono`}
                       />
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(generatedLink);
                           addToast('Link copied!', 'success');
                         }}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-all"
+                        className={`px-4 py-2 ${darkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg font-semibold transition-all`}
                       >
                         Copy
                       </button>
                     </div>
-                    <p className="text-sm text-green-700 mb-3">Expires in 7 days • Single use only</p>
+                    <p className={`text-sm ${darkMode ? 'text-green-400' : 'text-green-700'} mb-3`}>Expires in 7 days • Single use only</p>
                     <button
                       onClick={() => setGeneratedLink(null)}
-                      className="text-sm text-green-700 hover:text-green-900 font-semibold"
+                      className={`text-sm ${darkMode ? 'text-green-400 hover:text-green-300' : 'text-green-700 hover:text-green-900'} font-semibold`}
                     >
                       Dismiss
                     </button>
@@ -392,14 +392,14 @@ function Settings() {
                 )}
 
                 {pendingInvitations.length > 0 && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Pending Invitations ({pendingInvitations.length})</h2>
+                  <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
+                    <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Pending Invitations ({pendingInvitations.length})</h2>
                     <div className="space-y-3">
                       {pendingInvitations.map((invitation) => (
-                        <div key={invitation.id} className="flex items-center justify-between p-4 rounded-lg border border-gray-200">
+                        <div key={invitation.id} className={`flex items-center justify-between p-4 rounded-lg border ${borderColor}`}>
                           <div>
-                            <p className="font-semibold text-gray-900">{invitation.email}</p>
-                            <p className="text-sm text-gray-500">Role: {invitation.role}</p>
+                            <p className={`font-semibold ${textPrimary}`}>{invitation.email}</p>
+                            <p className={`text-sm ${textSecondary}`}>Role: {invitation.role}</p>
                           </div>
                           <button
                             onClick={() => setConfirmDelete({ type: 'invitation', id: invitation.id })}
@@ -413,21 +413,21 @@ function Settings() {
                   </div>
                 )}
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Team Members ({members.length})</h2>
+                <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
+                  <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Team Members ({members.length})</h2>
                   <div className="space-y-3">
                     {members.map((member) => (
-                      <div key={member.id} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+                      <div key={member.id} className={`flex items-center justify-between p-4 rounded-lg border ${borderColor} ${hoverBg} transition-all`}>
                         <div>
-                          <p className="font-semibold text-gray-900">{member.full_name}</p>
-                          <p className="text-sm text-gray-500">{member.email}</p>
+                          <p className={`font-semibold ${textPrimary}`}>{member.full_name}</p>
+                          <p className={`text-sm ${textSecondary}`}>{member.email}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold uppercase">{member.role}</span>
+                          <span className={`px-3 py-1 ${darkMode ? 'bg-stone-800 text-stone-300' : 'bg-gray-100 text-gray-700'} rounded-full text-xs font-semibold uppercase`}>{member.role}</span>
                           {member.id !== user?.id && (
                             <button
                               onClick={() => setConfirmDelete({ type: 'member', id: member.id })}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              className={`p-2 text-red-600 ${darkMode ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} rounded-lg transition-all`}
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -443,9 +443,9 @@ function Settings() {
             )}
 
             {activeSection === 'advanced' && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Data & Privacy</h2>
-                <div className="space-y-4 text-gray-600">
+              <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
+                <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Data & Privacy</h2>
+                <div className={`space-y-4 ${textSecondary}`}>
                   <p>AI assistance helps summarize conversations and extract action items.</p>
                   <p>Your data stays private to your organization and is never shared with third parties.</p>
                   <p>You can export or delete your data at any time by contacting support.</p>

@@ -289,11 +289,15 @@ def remove_member(request, user_id):
     
     try:
         member = User.objects.get(id=user_id, organization=request.user.organization)
-        member.delete()
+        member_name = member.full_name or member.username
+        member.is_active = False
+        member.save()
         
-        return Response({'message': 'Member removed'})
+        return Response({'message': f'{member_name} removed successfully'})
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

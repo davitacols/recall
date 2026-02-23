@@ -132,7 +132,11 @@ class Invitation(models.Model):
         super().save(*args, **kwargs)
     
     def is_valid(self):
-        return not self.is_accepted and timezone.now() < self.expires_at
+        if self.is_accepted:
+            return False
+        if timezone.now() > self.expires_at:
+            return False
+        return True
 
 class SavedSearch(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_searches')

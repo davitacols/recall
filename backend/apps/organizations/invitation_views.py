@@ -61,8 +61,12 @@ def invite_user(request):
 def verify_invitation(request, token):
     try:
         invitation = Invitation.objects.get(token=token)
-        if not invitation.is_valid():
-            return Response({'error': 'Invitation expired or already used'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if invitation.is_accepted:
+            return Response({'error': 'This invitation has already been used'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if timezone.now() > invitation.expires_at:
+            return Response({'error': 'This invitation has expired'}, status=status.HTTP_400_BAD_REQUEST)
         
         return Response({
             'organization': invitation.organization.name,

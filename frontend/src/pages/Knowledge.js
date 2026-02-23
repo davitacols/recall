@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ChartBarIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { Link } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
 import BM25 from '../utils/bm25';
@@ -86,9 +87,21 @@ function Knowledge() {
   return (
     <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px', letterSpacing: '-0.01em' }}>Knowledge</h1>
-        <p style={{ fontSize: '14px', color: secondaryText }}>Search through your organization's collective memory</p>
+      <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px', letterSpacing: '-0.01em' }}>Knowledge</h1>
+          <p style={{ fontSize: '14px', color: secondaryText }}>Search through your organization's collective memory</p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Link to="/knowledge/graph" style={{ padding: '8px 14px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, fontSize: '13px', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }}>
+            <DocumentTextIcon style={{ width: '16px', height: '16px' }} />
+            Graph
+          </Link>
+          <Link to="/knowledge/analytics" style={{ padding: '8px 14px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, fontSize: '13px', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }}>
+            <ChartBarIcon style={{ width: '16px', height: '16px' }} />
+            Analytics
+          </Link>
+        </div>
       </div>
 
       {/* Search Form */}

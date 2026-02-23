@@ -9,12 +9,20 @@ import { OnboardingFlow } from './components/OnboardingFlow';
 import { MobileNav } from './components/MobileNav';
 import { AIAssistant } from './components/AIFeatures';
 import { CommandBar } from './components/GestureControls';
+import NLPCommandBar from './components/NLPCommandBar';
+import ImpactAnalysisModal from './components/ImpactAnalysisModal';
+import SuccessRateTracker from './components/SuccessRateTracker';
+import OnboardingTour from './components/OnboardingTour';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout.js';
+import UnifiedLayout from './components/UnifiedLayout';
+import UnifiedNav from './components/UnifiedNav';
+import SmartSearch from './components/SmartSearch';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AcceptInvite from './pages/AcceptInvite';
 import Dashboard from './pages/Dashboard';
+import UnifiedDashboard from './pages/UnifiedDashboard';
 import Conversations from './pages/Conversations';
 import CreateConversation from './pages/CreateConversation';
 import ConversationDetail from './pages/ConversationDetail';
@@ -77,6 +85,8 @@ import TasksBoard from './pages/TasksBoard';
 import Templates from './pages/Templates';
 import Documents from './pages/Documents';
 import DocumentDetail from './pages/DocumentDetail';
+import KnowledgeGraph from './pages/KnowledgeGraph';
+import KnowledgeAnalytics from './pages/KnowledgeAnalytics';
 import Milestones from './pages/Milestones';
 import Reminders from './pages/Reminders';
 import AdvancedSearch from './pages/AdvancedSearch';
@@ -98,9 +108,9 @@ function RootRoute() {
   if (!user) return <Homepage />;
   return (
     <ProtectedRoute>
-      <Layout>
-        <Dashboard />
-      </Layout>
+      <UnifiedLayout>
+        <UnifiedDashboard />
+      </UnifiedLayout>
     </ProtectedRoute>
   );
 }
@@ -142,6 +152,9 @@ function AppContent() {
 
   return (
     <>
+      <OnboardingTour />
+      <SmartSearch />
+      <NLPCommandBar />
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white p-2 text-center z-50">
           You are offline. Some features may be limited.
@@ -167,499 +180,492 @@ function AppContent() {
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/conversations" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Conversations />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/conversations/new" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <CreateConversation />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/conversations/:id" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <ConversationDetail />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/decisions" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Decisions />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/decisions/:id" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <DecisionDetail />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/knowledge" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Knowledge />
-            </Layout>
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/knowledge/graph" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <KnowledgeGraph />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/knowledge/analytics" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <KnowledgeAnalytics />
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/ask" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <AskRecall />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/insights" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Insights />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/search" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <AdvancedSearch />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/bookmarks-drafts" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <BookmarksAndDrafts />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/activity" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <ActivityFeed />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/settings" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <Settings />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/invitations" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <StaffInvitations />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/profile" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Profile />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/onboarding" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Onboarding />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/faq" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <FAQ />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/reflection" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <PersonalReflection />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/notifications" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Notifications />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/bookmarks" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Bookmarks />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/drafts" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Drafts />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/files" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Files />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/my-decisions" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <MyDecisions />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/my-questions" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <MyQuestions />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/sample-decision" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <SampleDecision />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/knowledge-health" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <KnowledgeHealthDashboard />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/sprint" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <CurrentSprint />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/sprint-history" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <SprintHistory />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/sprint-management" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <SprintManagement />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/sprints" element={<Navigate to="/sprint-history" replace />} />
         <Route path="/sprints/:id" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <SprintDetail />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/blockers" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <BlockerTracker />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/retrospectives" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <RetrospectiveMemory />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/integrations" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <Integrations />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/proposals" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Proposals />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/analytics" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <Analytics />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/projects" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Projects />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/projects/:projectId" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <ProjectDetail />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/boards/:boardId" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <KanbanBoard />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/projects/:projectId/manage" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <ProjectManagement />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/projects/:projectId/roadmap" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <ProjectRoadmap />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/projects/:projectId/backlog" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Backlog />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/team" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <TeamManagement />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/automation" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <AutomationRules />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/workflows" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <Workflows />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/reports" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <Reports />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/dashboards" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <Dashboards />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/api-keys" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <APIKeys />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/audit-logs" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <AuditLogs />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/export" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <DataExport />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/account-settings" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <AccountSettings />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/integrations-manage" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <IntegrationManagement />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/decision-proposals" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <DecisionProposals />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/knowledge-base" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <KnowledgeBase />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/messages" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Messages />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/messages/:userId" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Messages />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/issues/:issueId" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <IssueDetail />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/business/goals" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Goals />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/business" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <BusinessDashboard />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/business/goals/:id" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <GoalDetail />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/business/meetings" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Meetings />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/business/meetings/:id" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <MeetingDetail />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/business/tasks" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <TasksBoard />
-            </Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/business/goals/:goalId/milestones" element={
-          <ProtectedRoute>
-            <Layout>
-              <Milestones />
-            </Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/business/reminders" element={
-          <ProtectedRoute>
-            <Layout>
-              <Reminders />
-            </Layout>
-          </ProtectedRoute>
-        } />
-        <Route path="/business/analytics" element={
-          <ProtectedRoute>
-            <Layout>
-              <Analytics />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/business/templates" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Templates />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/business/documents" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <Documents />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/business/documents/:id" element={
           <ProtectedRoute>
-            <Layout>
+            <UnifiedLayout>
               <DocumentDetail />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/subscription" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <Subscription />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/enterprise" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <Enterprise />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/import-export" element={
           <ProtectedRoute adminOnly={true}>
-            <Layout>
+            <UnifiedLayout>
               <ImportExport />
-            </Layout>
+            </UnifiedLayout>
           </ProtectedRoute>
         } />
         <Route path="/security" element={
-          <Layout>
+          <UnifiedLayout>
             <Security />
-          </Layout>
+          </UnifiedLayout>
         } />
       </Routes>
     </>

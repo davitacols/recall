@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { ArrowLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
 import AIAssistant from '../components/AIAssistant';
+import ContextPanel from '../components/ContextPanel';
 
 export default function MeetingDetail() {
   const { id } = useParams();
@@ -76,7 +77,7 @@ export default function MeetingDetail() {
 
   return (
     <div style={{ padding: '2rem', backgroundColor: bgColor, minHeight: '100vh', color: textColor }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         <button
           onClick={() => navigate('/business/meetings')}
           style={{
@@ -96,7 +97,8 @@ export default function MeetingDetail() {
           Back
         </button>
 
-        <div style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, borderRadius: '0.75rem', padding: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '1.5rem' }}>
+          <div style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, borderRadius: '0.75rem', padding: '2rem' }}>
           <AIAssistant content={meeting?.notes} contentType="meeting" />
           
           {editing ? (
@@ -246,6 +248,11 @@ export default function MeetingDetail() {
             </>
           )}
         </div>
+        
+        <div>
+          <ContextPanel contentType="business.meeting" objectId={id} />
+        </div>
+      </div>
       </div>
     </div>
   );

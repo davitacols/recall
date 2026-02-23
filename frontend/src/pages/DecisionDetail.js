@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { AIEnhancementButton, AIResultsPanel } from '../components/AIEnhancements';
 import api from '../services/api';
+import ContextPanel from '../components/ContextPanel';
+import QuickLink from '../components/QuickLink';
 import { 
   LinkIcon, 
   ExclamationTriangleIcon,
@@ -170,6 +172,7 @@ function DecisionDetail() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <QuickLink sourceType="decisions.decision" sourceId={id} />
             <AIEnhancementButton
               content={decision?.description}
               title={decision?.title}
@@ -186,6 +189,7 @@ function DecisionDetail() {
       {/* Main Content */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '32px' }}>
         {/* Left Column */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
         <div>
           {/* Tabs */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: `1px solid ${borderColor}` }}>
@@ -379,6 +383,12 @@ function DecisionDetail() {
               </div>
             )}
           </div>
+        </div>
+        
+        {/* Context Panel */}
+        <div>
+          <ContextPanel contentType="decisions.decision" objectId={id} />
+        </div>
         </div>
 
         {/* Right Sidebar */}

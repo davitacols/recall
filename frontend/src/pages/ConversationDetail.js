@@ -12,6 +12,8 @@ import RichTextRenderer from '../components/RichTextRenderer';
 import { FavoriteButton, ExportButton, UndoRedoButtons } from '../components/QuickWinFeatures';
 import { getAvatarUrl } from '../utils/avatarUtils';
 import AIAssistant from '../components/AIAssistant';
+import ContextPanel from '../components/ContextPanel';
+import QuickLink from '../components/QuickLink';
 
 const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -452,13 +454,15 @@ function ConversationDetail() {
   }
 
   return (
-    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
+    <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1rem' }}>
       <Link to="/conversations" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '13px', color: secondaryText, textDecoration: 'none', marginBottom: '16px', fontWeight: 500 }}>
         <ArrowLeftIcon style={{ width: '14px', height: '14px', marginRight: '6px' }} />
         Back
       </Link>
 
-      <div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '1.5rem' }}>
+        {/* Main Content */}
+        <div>
         {/* Header */}
         <div style={{ backgroundColor: bgColor, padding: '20px', borderRadius: '5px', border: `1px solid ${borderColor}`, marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -499,6 +503,7 @@ function ConversationDetail() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '6px', marginLeft: '16px', flexWrap: 'wrap' }}>
+              <QuickLink sourceType="conversations.conversation" sourceId={id} />
               <button onClick={handleConvertToDecision} style={{ padding: '7px 12px', backgroundColor: 'transparent', border: '2px solid #10b981', color: '#10b981', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (converting || savingPost || deletingPost) ? 0.5 : 1, transition: 'all 0.15s' }} disabled={converting || savingPost || deletingPost} onMouseEnter={(e) => { if (!converting && !savingPost && !deletingPost) { e.currentTarget.style.backgroundColor = '#10b981'; e.currentTarget.style.color = '#ffffff'; } }} onMouseLeave={(e) => { if (!converting && !savingPost && !deletingPost) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#10b981'; } }}>
                 {converting ? 'Converting...' : 'Convert to Decision'}
               </button>
@@ -606,6 +611,12 @@ function ConversationDetail() {
               </button>
             </form>
           </div>
+        </div>
+        </div>
+        
+        {/* Context Panel */}
+        <div>
+          <ContextPanel contentType="conversations.conversation" objectId={id} />
         </div>
       </div>
       

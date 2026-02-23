@@ -1,6 +1,8 @@
 from django.db import models
 from django.core.validators import MinLengthValidator
 from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from apps.organizations.models import User, Organization
 from apps.conversations.models import Conversation
 
@@ -262,3 +264,14 @@ class Proposal(models.Model):
         indexes = [
             models.Index(fields=['organization', 'status', '-created_at']),
         ]
+
+# Auto-linking signal for decisions
+@receiver(post_save, sender=Decision)
+def auto_link_decision(sender, instance, created, **kwargs):
+    if created:
+        try:
+            from apps.knowledge.context_engine import ContextEngine
+            engine = ContextEngine()
+            engine.auto_link_content('decisions.decision', instance.id, instance.organization)
+        except Exception:
+            pass

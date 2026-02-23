@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.validators import MinLengthValidator
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from apps.organizations.models import User, Organization
 
 class Tag(models.Model):
@@ -317,3 +319,14 @@ class Document(models.Model):
     class Meta:
         db_table = 'documents'
         ordering = ['-created_at']
+
+# Auto-linking signal for conversations
+@receiver(post_save, sender=Conversation)
+def auto_link_conversation(sender, instance, created, **kwargs):
+    if created and instance.ai_processed:
+        try:
+            from apps.knowledge.context_engine import ContextEngine
+            engine = ContextEngine()
+            engine.auto_link_content('conversations.conversation', instance.id, instance.organization)
+        except Exception:
+            pass

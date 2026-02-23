@@ -104,7 +104,7 @@ export default function NLPCommandBar() {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-32 z-50" onClick={() => setIsOpen(false)}>
       <div className={`${bgSecondary} border ${borderColor} rounded-lg shadow-2xl w-full max-w-2xl`} onClick={(e) => e.stopPropagation()}>
-        <div className="p-4 border-b ${borderColor}">
+        <div className={`p-4 border-b ${borderColor}`}>
           <div className="flex items-center gap-3">
             <MagnifyingGlassIcon className={`w-5 h-5 ${textSecondary}`} />
             <input

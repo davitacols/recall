@@ -159,12 +159,19 @@ function Settings() {
     { id: 'advanced', label: 'Privacy', icon: ShieldCheckIcon }
   ];
 
+  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
+  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
+  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
+  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
+  const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
+  const hoverBg = darkMode ? 'hover:bg-stone-800' : 'hover:bg-gray-100';
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen ${bgPrimary}`}>
       <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Settings</h1>
-          <p className="text-lg text-gray-600">Manage your account and preferences</p>
+          <h1 className={`text-4xl font-bold ${textPrimary} mb-2`}>Settings</h1>
+          <p className={`text-lg ${textSecondary}`}>Manage your account and preferences</p>
         </div>
 
         <div className="flex gap-8">
@@ -178,8 +185,8 @@ function Settings() {
                     onClick={() => setActiveSection(section.id)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                       activeSection === section.id
-                        ? 'bg-gray-900 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? `${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-gray-900 text-white'}`
+                        : `${textSecondary} ${hoverBg}`
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -193,23 +200,23 @@ function Settings() {
           <div className="flex-1 space-y-6">
             {activeSection === 'notifications' && (
               <>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Notification Preferences</h2>
+                <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
+                  <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Notification Preferences</h2>
                   <div className="space-y-4">
                     {[
                       { key: 'mention_notifications', label: 'Mentions', desc: 'Get notified when someone mentions you' },
                       { key: 'reply_notifications', label: 'Replies', desc: 'Get notified when someone replies to your posts' },
                       { key: 'decision_notifications', label: 'Decisions', desc: 'Get notified about decision updates' }
                     ].map(({ key, label, desc }) => (
-                      <div key={key} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
+                      <div key={key} className={`flex items-center justify-between py-4 border-b ${borderColor} last:border-0`}>
                         <div>
-                          <div className="font-semibold text-gray-900">{label}</div>
-                          <div className="text-sm text-gray-500">{desc}</div>
+                          <div className={`font-semibold ${textPrimary}`}>{label}</div>
+                          <div className={`text-sm ${textSecondary}`}>{desc}</div>
                         </div>
                         <button
                           onClick={() => handleToggle(key)}
                           className={`relative w-11 h-6 rounded-full transition-colors ${
-                            notifications[key] ? 'bg-gray-900' : 'bg-gray-300'
+                            notifications[key] ? (darkMode ? 'bg-stone-700' : 'bg-gray-900') : (darkMode ? 'bg-stone-700' : 'bg-gray-300')
                           }`}
                         >
                           <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -221,8 +228,8 @@ function Settings() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Email Digest</h2>
+                <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
+                  <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Email Digest</h2>
                   <div className="space-y-3">
                     {[
                       { value: 'realtime', label: 'Real-time', desc: 'Instant notifications' },
@@ -231,17 +238,17 @@ function Settings() {
                       { value: 'weekly', label: 'Weekly', desc: 'Weekly summary' },
                       { value: 'never', label: 'Never', desc: 'No email notifications' }
                     ].map(({ value, label, desc }) => (
-                      <label key={value} className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-gray-900 cursor-pointer transition-all">
+                      <label key={value} className={`flex items-center gap-3 p-4 rounded-lg border ${borderColor} ${hoverBg} cursor-pointer transition-all`}>
                         <input
                           type="radio"
                           name="digest"
                           checked={notifications.digest_frequency === value}
                           onChange={() => handleDigestChange(value)}
-                          className="w-4 h-4 text-gray-900"
+                          className="w-4 h-4"
                         />
                         <div>
-                          <div className="font-semibold text-gray-900">{label}</div>
-                          <div className="text-sm text-gray-500">{desc}</div>
+                          <div className={`font-semibold ${textPrimary}`}>{label}</div>
+                          <div className={`text-sm ${textSecondary}`}>{desc}</div>
                         </div>
                       </label>
                     ))}
@@ -251,33 +258,33 @@ function Settings() {
             )}
 
             {activeSection === 'appearance' && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Theme</h2>
+              <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
+                <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Theme</h2>
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-gray-900 cursor-pointer transition-all">
+                  <label className={`flex items-center gap-3 p-4 rounded-lg border ${borderColor} ${hoverBg} cursor-pointer transition-all`}>
                     <input
                       type="radio"
                       name="theme"
                       checked={darkMode}
                       onChange={() => !darkMode && toggleDarkMode()}
-                      className="w-4 h-4 text-gray-900"
+                      className="w-4 h-4"
                     />
                     <div>
-                      <div className="font-semibold text-gray-900">Dark</div>
-                      <div className="text-sm text-gray-500">Dark theme with stone colors</div>
+                      <div className={`font-semibold ${textPrimary}`}>Dark</div>
+                      <div className={`text-sm ${textSecondary}`}>Dark theme with stone colors</div>
                     </div>
                   </label>
-                  <label className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-gray-900 cursor-pointer transition-all">
+                  <label className={`flex items-center gap-3 p-4 rounded-lg border ${borderColor} ${hoverBg} cursor-pointer transition-all`}>
                     <input
                       type="radio"
                       name="theme"
                       checked={!darkMode}
                       onChange={() => darkMode && toggleDarkMode()}
-                      className="w-4 h-4 text-gray-900"
+                      className="w-4 h-4"
                     />
                     <div>
-                      <div className="font-semibold text-gray-900">Light</div>
-                      <div className="text-sm text-gray-500">Light theme with white backgrounds</div>
+                      <div className={`font-semibold ${textPrimary}`}>Light</div>
+                      <div className={`text-sm ${textSecondary}`}>Light theme with white backgrounds</div>
                     </div>
                   </label>
                 </div>

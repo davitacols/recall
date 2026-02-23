@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../services/api';
 
 function AcceptInvite() {
   const { token } = useParams();
@@ -20,10 +19,18 @@ function AcceptInvite() {
 
   const verifyInvitation = async () => {
     try {
-      const response = await api.get(`/api/organizations/invitations/${token}/`);
-      setInvitation(response.data);
+      const response = await fetch(`http://localhost:8000/api/organizations/invitations/${token}/`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setInvitation(data);
+      } else {
+        setError(data.error || 'Invalid invitation');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid invitation');
+      setError('Invalid invitation');
     } finally {
       setLoading(false);
     }
@@ -32,16 +39,25 @@ function AcceptInvite() {
   const handleAccept = async (e) => {
     e.preventDefault();
     try {
-      const response = await api.post(`/api/organizations/invitations/${token}/accept/`, formData);
+      const response = await fetch(`http://localhost:8000/api/organizations/invitations/${token}/accept/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await response.json();
       
-      // Store token and user data
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      // Redirect to dashboard
-      window.location.href = '/';
+      if (response.ok) {
+        // Store token and user data
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        // Redirect to dashboard
+        window.location.href = '/';
+      } else {
+        setError(data.error || 'Failed to accept invitation');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to accept invitation');
+      setError('Failed to accept invitation');
     }
   };
 

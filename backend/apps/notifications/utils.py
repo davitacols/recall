@@ -28,7 +28,14 @@ def create_notification(user, notification_type, title, message, link=''):
     except Exception as e:
         print(f"Failed to send WebSocket notification: {e}")
     
-    # Send email notification asynchronously
-    send_notification_email.delay(notification.id)
+    # Send email notification
+    try:
+        from django.conf import settings
+        if settings.DEBUG or not hasattr(settings, 'CELERY_BROKER_URL'):
+            send_notification_email(notification.id)
+        else:
+            send_notification_email.delay(notification.id)
+    except Exception as e:
+        print(f"Failed to send email notification: {e}")
     
     return notification

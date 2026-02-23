@@ -58,9 +58,13 @@ def invite_user(request):
 
 @csrf_exempt
 @api_view(['GET'])
+@permission_classes([])
 def verify_invitation(request, token):
+    print(f"Verifying invitation with token: {token}")
+    print(f"Token type: {type(token)}")
     try:
         invitation = Invitation.objects.get(token=token)
+        print(f"Found invitation: {invitation.id}, accepted: {invitation.is_accepted}")
         
         if invitation.is_accepted:
             return Response({'error': 'This invitation has already been used'}, status=status.HTTP_400_BAD_REQUEST)
@@ -74,10 +78,15 @@ def verify_invitation(request, token):
             'role': invitation.role
         })
     except Invitation.DoesNotExist:
+        print(f"Invitation not found for token: {token}")
         return Response({'error': 'Invalid invitation'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print(f"Error verifying invitation: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
 @api_view(['POST'])
+@permission_classes([])
 def accept_invitation(request, token):
     try:
         invitation = Invitation.objects.get(token=token)
@@ -163,6 +172,7 @@ def revoke_invitation(request, invitation_id):
 
 @csrf_exempt
 @api_view(['POST'])
+@permission_classes([])
 def create_organization(request):
     name = request.data.get('name')
     slug = request.data.get('slug')

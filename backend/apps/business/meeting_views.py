@@ -38,6 +38,18 @@ def meetings_list(request):
         )
         if 'attendee_ids' in request.data:
             meeting.attendees.set(request.data['attendee_ids'])
+            
+            # Notify attendees
+            from apps.notifications.utils import create_notification
+            for attendee in meeting.attendees.exclude(id=request.user.id):
+                create_notification(
+                    user=attendee,
+                    notification_type='meeting',
+                    title='New meeting invitation',
+                    message=f'{request.user.full_name or request.user.username} invited you to: {meeting.title}',
+                    link=f'/business/meetings/{meeting.id}'
+                )
+        
         return Response({'id': meeting.id}, status=status.HTTP_201_CREATED)
 
 @api_view(['GET', 'PUT', 'DELETE'])

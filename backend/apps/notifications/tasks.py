@@ -21,6 +21,12 @@ def send_notification_email(notification_id):
             return
         if notification.notification_type == 'decision' and not user.decision_notifications:
             return
+        if notification.notification_type == 'task' and not getattr(user, 'task_notifications', True):
+            return
+        if notification.notification_type == 'goal' and not getattr(user, 'goal_notifications', True):
+            return
+        if notification.notification_type == 'meeting' and not getattr(user, 'meeting_notifications', True):
+            return
         
         # Configure Resend
         resend.api_key = settings.RESEND_API_KEY

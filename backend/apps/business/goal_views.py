@@ -36,6 +36,18 @@ def goals_list(request):
             target_date=request.data.get('target_date'),
             progress=request.data.get('progress', 0),
         )
+        
+        # Notify owner
+        if goal.owner and goal.owner != request.user:
+            from apps.notifications.utils import create_notification
+            create_notification(
+                user=goal.owner,
+                notification_type='goal',
+                title='New goal assigned',
+                message=f'{request.user.full_name or request.user.username} assigned you a goal: {goal.title}',
+                link=f'/business/goals/{goal.id}'
+            )
+        
         return Response({'id': goal.id, 'title': goal.title}, status=status.HTTP_201_CREATED)
 
 @api_view(['GET', 'PUT', 'DELETE'])
@@ -59,6 +71,9 @@ def goal_detail(request, pk):
         })
     
     elif request.method == 'PUT':
+        old_status = goal.status
+        old_owner = goal.owner
+        
         goal.title = request.data.get('title', goal.title)
         goal.description = request.data.get('description', goal.description)
         goal.status = request.data.get('status', goal.status)
@@ -67,6 +82,29 @@ def goal_detail(request, pk):
         if 'owner_id' in request.data:
             goal.owner_id = request.data['owner_id']
         goal.save()
+        
+        # Notify on status change
+        if old_status != goal.status and goal.owner and goal.owner != request.user:
+            from apps.notifications.utils import create_notification
+            create_notification(
+                user=goal.owner,
+                notification_type='goal',
+                title='Goal status updated',
+                message=f'{request.user.full_name or request.user.username} changed goal "{goal.title}" to {goal.status}',
+                link=f'/business/goals/{goal.id}'
+            )
+        
+        # Notify on reassignment
+        if old_owner != goal.owner and goal.owner and goal.owner != request.user:
+            from apps.notifications.utils import create_notification
+            create_notification(
+                user=goal.owner,
+                notification_type='goal',
+                title='Goal assigned to you',
+                message=f'{request.user.full_name or request.user.username} assigned you goal: {goal.title}',
+                link=f'/business/goals/{goal.id}'
+            )
+        
         return Response({'message': 'Goal updated'})
     
     elif request.method == 'DELETE':

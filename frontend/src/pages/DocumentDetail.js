@@ -214,9 +214,10 @@ export default function DocumentDetail() {
                 </div>
                 <div className="flex gap-2">
                   <AIEnhancementButton
-                    content={document.content}
+                    content={document.content || document.description || ''}
                     title={document.title}
                     type="document"
+                    documentId={document.id}
                     onResult={(feature, data) => setAiResults(data)}
                   />
                   <button

@@ -20,12 +20,23 @@ def auto_summarize(request):
     content = request.data.get('content', '')
     title = request.data.get('title', '')
     
-    if not content:
-        return Response({'error': 'Content required'}, status=status.HTTP_400_BAD_REQUEST)
+    # Combine title and content
+    full_content = f"{title}\n\n{content}" if title else content
+    
+    if not full_content.strip():
+        return Response({
+            'summary': 'No content available to summarize.',
+            'word_count': 0,
+            'summary_word_count': 0
+        })
     
     client = get_ai_client()
     if not client:
-        return Response({'error': 'AI not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({
+            'summary': 'AI service not configured.',
+            'word_count': len(content.split()),
+            'summary_word_count': 0
+        })
     
     try:
         message = client.messages.create(
@@ -45,7 +56,12 @@ def auto_summarize(request):
             'summary_word_count': len(summary.split())
         })
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({
+            'summary': 'Unable to generate summary.',
+            'error': str(e),
+            'word_count': len(content.split()),
+            'summary_word_count': 0
+        })
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -184,14 +200,27 @@ def batch_ai_process(request):
     """Process content with all AI features at once"""
     content = request.data.get('content', '')
     title = request.data.get('title', '')
-    item_type = request.data.get('type', 'conversation')
+    item_type = request.data.get('content_type', 'conversation')
     
-    if not content:
-        return Response({'error': 'Content required'}, status=status.HTTP_400_BAD_REQUEST)
+    # Combine title and content
+    full_content = f"{title}\n\n{content}" if title else content
+    
+    if not full_content.strip():
+        return Response({
+            'summary': 'No content available.',
+            'tags': [],
+            'sentiment': 'neutral',
+            'actions': []
+        })
     
     client = get_ai_client()
     if not client:
-        return Response({'error': 'AI not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({
+            'summary': 'AI service not configured.',
+            'tags': [],
+            'sentiment': 'neutral',
+            'actions': []
+        })
     
     try:
         message = client.messages.create(

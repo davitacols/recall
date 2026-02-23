@@ -269,8 +269,8 @@ export const DecisionReminder = ({ decisionId }) => {
   };
 
   return (
-    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
-      <label className="block text-sm font-medium mb-2">
+    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+      <label className="block text-sm font-medium mb-2 text-yellow-900 dark:text-yellow-200">
         Remind me in (days):
       </label>
       <div className="flex gap-2">
@@ -278,12 +278,12 @@ export const DecisionReminder = ({ decisionId }) => {
           type="number"
           value={days}
           onChange={(e) => setDays(parseInt(e.target.value))}
-          className="flex-1 px-3 py-2 border rounded"
+          className="flex-1 px-3 py-2 border border-yellow-300 dark:border-yellow-700 rounded bg-white dark:bg-stone-900 text-gray-900 dark:text-stone-100"
           min="1"
         />
         <button
           onClick={handleSetReminder}
-          className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+          className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition"
         >
           Set
         </button>

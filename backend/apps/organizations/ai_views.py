@@ -9,13 +9,26 @@ from .ai_service import AIService
 def generate_summary(request):
     """Generate AI summary of content"""
     content = request.data.get('content', '')
+    title = request.data.get('title', '')
     content_type = request.data.get('content_type', 'conversation')
     
-    if not content:
-        return Response({'error': 'Content required'}, status=status.HTTP_400_BAD_REQUEST)
+    # Combine title and content
+    full_content = f"{title}\n\n{content}" if title else content
     
-    summary = AIService.generate_summary(content, content_type)
-    return Response({'summary': summary})
+    if not full_content or len(full_content.strip()) < 10:
+        return Response({
+            'summary': 'Content too short to summarize.',
+            'error': 'Insufficient content'
+        })
+    
+    try:
+        summary = AIService.generate_summary(full_content, content_type)
+        return Response({'summary': summary})
+    except Exception as e:
+        return Response({
+            'summary': 'Unable to generate summary at this time.',
+            'error': str(e)
+        })
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

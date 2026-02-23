@@ -65,6 +65,9 @@ class User(AbstractUser):
     mention_notifications = models.BooleanField(default=True)
     reply_notifications = models.BooleanField(default=True)
     decision_notifications = models.BooleanField(default=True)
+    task_notifications = models.BooleanField(default=True)
+    goal_notifications = models.BooleanField(default=True)
+    meeting_notifications = models.BooleanField(default=True)
     digest_frequency = models.CharField(
         max_length=20,
         choices=[

@@ -45,6 +45,18 @@ def tasks_list(request):
             decision_id=request.data.get('decision_id'),
             due_date=request.data.get('due_date'),
         )
+        
+        # Notify assignee
+        if task.assigned_to and task.assigned_to != request.user:
+            from apps.notifications.utils import create_notification
+            create_notification(
+                user=task.assigned_to,
+                notification_type='task',
+                title='New task assigned',
+                message=f'{request.user.full_name or request.user.username} assigned you: {task.title}',
+                link=f'/business/tasks'
+            )
+        
         return Response({'id': task.id}, status=status.HTTP_201_CREATED)
 
 @api_view(['GET', 'PUT', 'DELETE'])
@@ -68,9 +80,11 @@ def task_detail(request, pk):
         })
     
     elif request.method == 'PUT':
+        old_assignee = task.assigned_to
+        old_status = task.status
+        
         task.title = request.data.get('title', task.title)
         task.description = request.data.get('description', task.description)
-        old_status = task.status
         task.status = request.data.get('status', task.status)
         task.priority = request.data.get('priority', task.priority)
         task.due_date = request.data.get('due_date', task.due_date)
@@ -85,6 +99,18 @@ def task_detail(request, pk):
             task.completed_at = None
         
         task.save()
+        
+        # Notify on reassignment
+        if old_assignee != task.assigned_to and task.assigned_to and task.assigned_to != request.user:
+            from apps.notifications.utils import create_notification
+            create_notification(
+                user=task.assigned_to,
+                notification_type='task',
+                title='Task assigned to you',
+                message=f'{request.user.full_name or request.user.username} assigned you: {task.title}',
+                link=f'/business/tasks'
+            )
+        
         return Response({'message': 'Task updated'})
     
     elif request.method == 'DELETE':

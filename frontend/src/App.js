@@ -91,6 +91,7 @@ import Milestones from './pages/Milestones';
 import Reminders from './pages/Reminders';
 import AdvancedSearch from './pages/AdvancedSearch';
 import BookmarksAndDrafts from './pages/BookmarksAndDrafts';
+import NotificationSettings from './pages/NotificationSettings';
 import Subscription from './pages/Subscription';
 import Security from './pages/Security';
 import Enterprise from './pages/Enterprise';
@@ -315,6 +316,13 @@ function AppContent() {
           <ProtectedRoute>
             <UnifiedLayout>
               <Notifications />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/notification-settings" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <NotificationSettings />
             </UnifiedLayout>
           </ProtectedRoute>
         } />

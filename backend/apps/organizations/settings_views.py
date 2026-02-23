@@ -131,6 +131,9 @@ def notification_settings(request):
             'mention_notifications': getattr(user, 'mention_notifications', True),
             'reply_notifications': getattr(user, 'reply_notifications', True),
             'decision_notifications': getattr(user, 'decision_notifications', True),
+            'task_notifications': getattr(user, 'task_notifications', True),
+            'goal_notifications': getattr(user, 'goal_notifications', True),
+            'meeting_notifications': getattr(user, 'meeting_notifications', True),
             'digest_frequency': getattr(user, 'digest_frequency', 'daily')
         })
     
@@ -143,6 +146,12 @@ def notification_settings(request):
             user.reply_notifications = request.data['reply_notifications']
         if 'decision_notifications' in request.data:
             user.decision_notifications = request.data['decision_notifications']
+        if 'task_notifications' in request.data:
+            user.task_notifications = request.data['task_notifications']
+        if 'goal_notifications' in request.data:
+            user.goal_notifications = request.data['goal_notifications']
+        if 'meeting_notifications' in request.data:
+            user.meeting_notifications = request.data['meeting_notifications']
         if 'digest_frequency' in request.data:
             user.digest_frequency = request.data['digest_frequency']
         

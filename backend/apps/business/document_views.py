@@ -140,6 +140,31 @@ def document_file(request, pk):
     response['Content-Disposition'] = f'inline; filename="{document.file_name}"'
     return response
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def extract_pdf_text(request, pk):
+    document = get_object_or_404(Document, pk=pk, organization=request.user.organization)
+    
+    if not document.file_data:
+        return Response({'text': ''}, status=status.HTTP_200_OK)
+    
+    if not document.file_type or 'pdf' not in document.file_type.lower():
+        return Response({'text': ''}, status=status.HTTP_200_OK)
+    
+    try:
+        import PyPDF2
+        import io
+        pdf_file = io.BytesIO(bytes(document.file_data))
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ''
+        for page in pdf_reader.pages:
+            text += page.extract_text() + '\n'
+        return Response({'text': text.strip()})
+    except ImportError:
+        return Response({'text': '', 'error': 'PyPDF2 not installed'})
+    except Exception as e:
+        return Response({'text': '', 'error': str(e)})
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def document_comments(request, pk):

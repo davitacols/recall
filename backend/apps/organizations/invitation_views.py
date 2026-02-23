@@ -38,7 +38,7 @@ def invite_user(request):
     email_sent = False
     try:
         from apps.notifications.email_service import send_invitation_email
-        email_sent = send_invitation_email(invitation)
+        email_sent = send_invitation_email(email, invitation.token, request.user)
     except Exception as e:
         print(f"Email send failed: {e}")
     

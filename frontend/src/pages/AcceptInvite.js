@@ -33,7 +33,13 @@ function AcceptInvite() {
     e.preventDefault();
     try {
       const response = await api.post(`/api/organizations/invitations/${token}/accept/`, formData);
-      navigate('/login');
+      
+      // Store token and user data
+      localStorage.setItem('token', response.data.access_token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      
+      // Redirect to dashboard
+      window.location.href = '/';
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to accept invitation');
     }

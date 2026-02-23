@@ -19,7 +19,7 @@ function AcceptInvite() {
 
   const verifyInvitation = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/organizations/invitations/${token}/`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/invitations/${token}/`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -39,7 +39,7 @@ function AcceptInvite() {
   const handleAccept = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://localhost:8000/api/organizations/invitations/${token}/accept/`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/invitations/${token}/accept/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

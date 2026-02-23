@@ -31,7 +31,7 @@ export default function NotificationSettings() {
   const fetchSettings = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/organizations/settings/notifications/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/settings/notifications/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -49,7 +49,7 @@ export default function NotificationSettings() {
 
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:8000/api/organizations/settings/notifications/', {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/settings/notifications/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -69,7 +69,7 @@ export default function NotificationSettings() {
 
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:8000/api/organizations/settings/notifications/', {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/settings/notifications/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

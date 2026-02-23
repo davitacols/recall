@@ -35,7 +35,7 @@ export default function Documents() {
   const fetchDocuments = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/business/documents/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -54,7 +54,7 @@ export default function Documents() {
     }
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/business/documents/search/?q=${searchQuery}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/search/?q=${searchQuery}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -68,7 +68,7 @@ export default function Documents() {
     if (doc.has_file) {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:8000/api/business/documents/${doc.id}/file/`, {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/${doc.id}/file/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const blob = await res.blob();
@@ -106,7 +106,7 @@ export default function Documents() {
         formDataToSend.append('file', uploadFile);
       }
       
-      await fetch('http://localhost:8000/api/business/documents/', {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formDataToSend

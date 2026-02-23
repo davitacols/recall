@@ -26,9 +26,9 @@ export default function BusinessDashboard() {
     try {
       const token = localStorage.getItem('token');
       const [goalsRes, meetingsRes, tasksRes] = await Promise.all([
-        fetch('http://localhost:8000/api/business/goals/', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:8000/api/business/meetings/', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:8000/api/business/tasks/', { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${process.env.REACT_APP_API_URL}/api/business/goals/`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/business/meetings/`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       const goals = await goalsRes.json();

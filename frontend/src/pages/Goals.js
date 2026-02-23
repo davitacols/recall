@@ -30,7 +30,7 @@ export default function Goals() {
   const fetchGoals = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/business/goals/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/goals/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) {
@@ -52,7 +52,7 @@ export default function Goals() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:8000/api/business/goals/', {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/business/goals/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

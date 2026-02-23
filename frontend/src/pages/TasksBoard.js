@@ -28,7 +28,7 @@ export default function TasksBoard() {
   const fetchBoard = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/business/tasks/board/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/board/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) {
@@ -50,7 +50,7 @@ export default function TasksBoard() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:8000/api/business/tasks/', {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -69,7 +69,7 @@ export default function TasksBoard() {
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:8000/api/business/tasks/${taskId}/`, {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/${taskId}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

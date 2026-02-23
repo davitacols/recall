@@ -31,7 +31,7 @@ function Login() {
       const result = await login(credentials);
       if (result.success) {
         addToast('Welcome back!', 'success');
-        navigate('/');
+        window.location.href = '/';
       } else {
         setError(result.error);
         addToast(result.error, 'error');

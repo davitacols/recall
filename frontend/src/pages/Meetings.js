@@ -30,7 +30,7 @@ export default function Meetings() {
   const fetchMeetings = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/business/meetings/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/meetings/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) {
@@ -52,7 +52,7 @@ export default function Meetings() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:8000/api/business/meetings/', {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/business/meetings/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

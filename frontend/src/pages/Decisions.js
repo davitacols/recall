@@ -1,18 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { 
-  CheckCircleIcon, 
-  ClockIcon, 
-  XCircleIcon, 
-  PlusIcon,
-  FunnelIcon,
-  Squares2X2Icon,
-  ListBulletIcon
-} from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import { PlusIcon, Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import api from '../services/api';
-import { ListSkeleton } from '../components/Skeleton';
-import { NoData } from '../components/EmptyState';
 
 function Decisions() {
   const { darkMode } = useTheme();
@@ -22,12 +12,13 @@ function Decisions() {
   const [filter, setFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const hoverBg = darkMode ? '#292524' : '#f9fafb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
-  const cardBg = darkMode ? '#0c0a09' : '#ffffff';
+  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
+  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
+  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
+  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
+  const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
+  const hoverBg = darkMode ? 'hover:bg-stone-800' : 'hover:bg-gray-50';
+  const hoverBorder = darkMode ? 'hover:border-stone-700' : 'hover:border-gray-300';
 
   useEffect(() => {
     fetchDecisions();
@@ -78,236 +69,183 @@ function Decisions() {
   };
 
   if (loading) {
-    return <ListSkeleton count={5} />;
+    return (
+      <div className={`min-h-screen ${bgPrimary}`}>
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg animate-pulse`}>
+                <div className={`h-4 ${bgPrimary} rounded w-3/4 mb-3`}></div>
+                <div className={`h-3 ${bgPrimary} rounded w-full mb-2`}></div>
+                <div className={`h-3 ${bgPrimary} rounded w-2/3`}></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
-        <div>
-          <h1 style={{ fontSize: '32px', fontWeight: 700, color: textColor, marginBottom: '8px', letterSpacing: '-0.02em' }}>Decisions</h1>
-          <p style={{ fontSize: '15px', color: secondaryText }}>Track decisions, their status, and impact across your team</p>
+    <div className={`min-h-screen ${bgPrimary}`}>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Decisions</h1>
+            <p className={`text-sm ${textSecondary}`}>Track decisions, their status, and impact across your team</p>
+          </div>
+          <button
+            onClick={() => navigate('/conversations')}
+            className={`flex items-center gap-2 px-4 py-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm transition-all`}
+          >
+            <PlusIcon className="w-4 h-4" />
+            New Decision
+          </button>
         </div>
-        <button
-          onClick={() => navigate('/conversations')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 20px',
-            backgroundColor: '#3b82f6',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
-          <PlusIcon style={{ width: '18px', height: '18px' }} />
-          New Decision
-        </button>
-      </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <div style={{ border: `1px solid ${borderColor}`, borderRadius: '12px', padding: '20px', backgroundColor: cardBg }}>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: textColor, marginBottom: '4px' }}>{decisions.length}</div>
-          <div style={{ fontSize: '13px', color: secondaryText, fontWeight: 500 }}>Total Decisions</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
+            <div className={`text-3xl font-bold ${textPrimary} mb-1`}>{decisions.length}</div>
+            <div className={`text-xs ${textSecondary} font-medium`}>Total Decisions</div>
+          </div>
+          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
+            <div className="text-3xl font-bold text-blue-500 mb-1">{statusCounts.approved || 0}</div>
+            <div className={`text-xs ${textSecondary} font-medium`}>Approved</div>
+          </div>
+          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
+            <div className="text-3xl font-bold text-amber-500 mb-1">{statusCounts.under_review || 0}</div>
+            <div className={`text-xs ${textSecondary} font-medium`}>Under Review</div>
+          </div>
+          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
+            <div className="text-3xl font-bold text-green-500 mb-1">{statusCounts.implemented || 0}</div>
+            <div className={`text-xs ${textSecondary} font-medium`}>Implemented</div>
+          </div>
         </div>
-        <div style={{ border: `1px solid ${borderColor}`, borderRadius: '12px', padding: '20px', backgroundColor: cardBg }}>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: '#3b82f6', marginBottom: '4px' }}>{statusCounts.approved || 0}</div>
-          <div style={{ fontSize: '13px', color: secondaryText, fontWeight: 500 }}>Approved</div>
-        </div>
-        <div style={{ border: `1px solid ${borderColor}`, borderRadius: '12px', padding: '20px', backgroundColor: cardBg }}>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: '#f59e0b', marginBottom: '4px' }}>{statusCounts.under_review || 0}</div>
-          <div style={{ fontSize: '13px', color: secondaryText, fontWeight: 500 }}>Under Review</div>
-        </div>
-        <div style={{ border: `1px solid ${borderColor}`, borderRadius: '12px', padding: '20px', backgroundColor: cardBg }}>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: '#10b981', marginBottom: '4px' }}>{statusCounts.implemented || 0}</div>
-          <div style={{ fontSize: '13px', color: secondaryText, fontWeight: 500 }}>Implemented</div>
-        </div>
-      </div>
 
-      {/* Filters & View Toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {['all', 'proposed', 'under_review', 'approved', 'implemented'].map((status) => (
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            {['all', 'proposed', 'under_review', 'approved', 'implemented'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`px-4 py-2 text-xs font-semibold rounded transition-all capitalize ${
+                  filter === status
+                    ? 'bg-blue-600 text-white'
+                    : `${bgSecondary} ${textSecondary} border ${borderColor} ${hoverBg}`
+                }`}
+              >
+                {status === 'all' ? 'All' : status.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
             <button
-              key={status}
-              onClick={() => setFilter(status)}
-              style={{
-                padding: '8px 16px',
-                fontSize: '13px',
-                fontWeight: 600,
-                textTransform: 'capitalize',
-                backgroundColor: filter === status ? '#3b82f6' : 'transparent',
-                color: filter === status ? '#ffffff' : textColor,
-                border: `1px solid ${filter === status ? '#3b82f6' : borderColor}`,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
+              onClick={() => setViewMode('grid')}
+              className={`p-2 border ${borderColor} rounded transition-all ${
+                viewMode === 'grid' ? bgSecondary : 'bg-transparent'
+              }`}
             >
-              {status === 'all' ? 'All' : status.replace('_', ' ')}
+              <Squares2X2Icon className="w-5 h-5" />
             </button>
-          ))}
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 border ${borderColor} rounded transition-all ${
+                viewMode === 'list' ? bgSecondary : 'bg-transparent'
+              }`}
+            >
+              <ListBulletIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => setViewMode('grid')}
-            style={{
-              padding: '8px',
-              backgroundColor: viewMode === 'grid' ? hoverBg : 'transparent',
-              border: `1px solid ${borderColor}`,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              color: textColor
-            }}
-          >
-            <Squares2X2Icon style={{ width: '18px', height: '18px' }} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            style={{
-              padding: '8px',
-              backgroundColor: viewMode === 'list' ? hoverBg : 'transparent',
-              border: `1px solid ${borderColor}`,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              color: textColor
-            }}
-          >
-            <ListBulletIcon style={{ width: '18px', height: '18px' }} />
-          </button>
-        </div>
-      </div>
 
-      {/* Decisions Grid/List */}
-      {filteredDecisions.length === 0 ? (
-        <NoData 
-          type="decisions" 
-          onCreate={() => navigate('/conversations')}
-        />
-      ) : viewMode === 'grid' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-          {filteredDecisions.map((decision) => {
-            const status = statusConfig[decision.status] || statusConfig.proposed;
-            const impact = impactConfig[decision.impact_level] || impactConfig.medium;
-            
-            return (
-              <div
-                key={decision.id}
-                onClick={() => navigate(`/decisions/${decision.id}`)}
-                style={{
-                  border: `1px solid ${borderColor}`,
-                  borderRadius: '12px',
-                  padding: '24px',
-                  backgroundColor: cardBg,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '16px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = borderColor;
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 600, borderRadius: '6px', backgroundColor: status.bg, color: status.text }}>
-                    {status.label}
-                  </span>
-                  <span style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 600, borderRadius: '6px', backgroundColor: impact.bg, color: impact.text, textTransform: 'capitalize' }}>
-                    {decision.impact_level}
-                  </span>
-                </div>
-
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 600, color: textColor, marginBottom: '8px', lineHeight: '1.4' }}>
-                    {decision.title}
-                  </h3>
-                  {decision.description && (
-                    <p style={{ fontSize: '14px', color: secondaryText, lineHeight: '1.6', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                      {decision.description}
-                    </p>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: `1px solid ${borderColor}`, fontSize: '13px', color: secondaryText }}>
-                  <span>{decision.decision_maker_name}</span>
-                  <span>{new Date(decision.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {filteredDecisions.map((decision) => {
-            const status = statusConfig[decision.status] || statusConfig.proposed;
-            const impact = impactConfig[decision.impact_level] || impactConfig.medium;
-            
-            return (
-              <div
-                key={decision.id}
-                onClick={() => navigate(`/decisions/${decision.id}`)}
-                style={{
-                  border: `1px solid ${borderColor}`,
-                  borderRadius: '12px',
-                  padding: '20px',
-                  backgroundColor: cardBg,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '20px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.backgroundColor = hoverBg;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = borderColor;
-                  e.currentTarget.style.backgroundColor = cardBg;
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <span style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 600, borderRadius: '6px', backgroundColor: status.bg, color: status.text }}>
+        {filteredDecisions.length === 0 ? (
+          <div className={`text-center py-20 ${textSecondary}`}>
+            <p className="text-lg mb-4">No decisions found</p>
+            <button
+              onClick={() => navigate('/conversations')}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all"
+            >
+              Create Decision
+            </button>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredDecisions.map((decision) => {
+              const status = statusConfig[decision.status] || statusConfig.proposed;
+              const impact = impactConfig[decision.impact_level] || impactConfig.medium;
+              
+              return (
+                <div
+                  key={decision.id}
+                  onClick={() => navigate(`/decisions/${decision.id}`)}
+                  className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg cursor-pointer transition-all ${hoverBorder} hover:-translate-y-1`}
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="px-3 py-1 text-xs font-semibold rounded" style={{ backgroundColor: status.bg, color: status.text }}>
                       {status.label}
                     </span>
-                    <span style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 600, borderRadius: '6px', backgroundColor: impact.bg, color: impact.text, textTransform: 'capitalize' }}>
+                    <span className="px-3 py-1 text-xs font-semibold rounded capitalize" style={{ backgroundColor: impact.bg, color: impact.text }}>
                       {decision.impact_level}
                     </span>
                   </div>
-                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '4px' }}>
+
+                  <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
                     {decision.title}
                   </h3>
                   {decision.description && (
-                    <p style={{ fontSize: '13px', color: secondaryText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p className={`text-sm ${textSecondary} line-clamp-2 mb-4`}>
                       {decision.description}
                     </p>
                   )}
+
+                  <div className={`flex items-center justify-between pt-4 border-t ${borderColor} text-xs ${textSecondary}`}>
+                    <span>{decision.decision_maker_name}</span>
+                    <span>{new Date(decision.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '13px', color: secondaryText }}>{decision.decision_maker_name}</span>
-                  <span style={{ fontSize: '12px', color: secondaryText }}>{new Date(decision.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredDecisions.map((decision) => {
+              const status = statusConfig[decision.status] || statusConfig.proposed;
+              const impact = impactConfig[decision.impact_level] || impactConfig.medium;
+              
+              return (
+                <div
+                  key={decision.id}
+                  onClick={() => navigate(`/decisions/${decision.id}`)}
+                  className={`p-5 ${bgSecondary} border ${borderColor} rounded-lg cursor-pointer transition-all ${hoverBg} ${hoverBorder} flex items-center gap-5`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: status.bg, color: status.text }}>
+                        {status.label}
+                      </span>
+                      <span className="px-2 py-1 text-xs font-semibold rounded capitalize" style={{ backgroundColor: impact.bg, color: impact.text }}>
+                        {decision.impact_level}
+                      </span>
+                    </div>
+                    <h3 className={`text-base font-semibold ${textPrimary} mb-1`}>
+                      {decision.title}
+                    </h3>
+                    {decision.description && (
+                      <p className={`text-sm ${textSecondary} truncate`}>
+                        {decision.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className={`text-sm ${textSecondary}`}>{decision.decision_maker_name}</span>
+                    <span className={`text-xs ${textSecondary}`}>{new Date(decision.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

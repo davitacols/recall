@@ -63,8 +63,8 @@ function Login() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <button onClick={() => navigate('/')} style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', marginBottom: '24px' }}>
-            <img src="/recalljpg.jpg" alt="RECALL" style={{ height: '40px' }} />
-            <span style={{ fontSize: '24px', fontWeight: 700, color: '#172b4d' }}>RECALL</span>
+            <img src="/recalljpg.jpg" alt="Knowledgr" style={{ height: '40px' }} />
+            <span style={{ fontSize: '24px', fontWeight: 700, color: '#172b4d' }}>Knowledgr</span>
           </button>
           <h1 style={{ fontSize: '24px', fontWeight: 500, color: '#172b4d', marginBottom: '8px' }}>
             {isLogin ? 'Log in to your account' : (inviteToken ? 'Join your team' : 'Sign up for your account')}
@@ -273,7 +273,7 @@ function Login() {
 
         {/* Bottom Text */}
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '12px', color: '#5e6c84' }}>
-          <p>One account for RECALL, Conversations, and Decisions</p>
+          <p>One account for Knowledgr, Conversations, and Decisions</p>
         </div>
       </div>
     </div>

@@ -89,7 +89,7 @@ export default function UnifiedNav({ darkMode }) {
         marginRight: '24px',
         letterSpacing: '-0.02em'
       }}>
-        Recall
+        Knowledgr
       </Link>
 
       {/* Nav Items */}

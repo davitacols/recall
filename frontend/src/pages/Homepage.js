@@ -10,8 +10,8 @@ export default function Homepage() {
       {/* Navigation */}
       <nav style={{ position: 'sticky', top: 0, backgroundColor: '#ffffff', borderBottom: '1px solid #DFE1E6', padding: '16px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img src="/recalljpg.jpg" alt="RECALL" style={{ height: '28px' }} />
-          <span style={{ fontSize: '18px', fontWeight: 600, color: '#0052CC' }}>RECALL</span>
+          <img src="/recalljpg.jpg" alt="Knowledgr" style={{ height: '28px' }} />
+          <span style={{ fontSize: '18px', fontWeight: 600, color: '#0052CC' }}>Knowledgr</span>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button onClick={() => navigate('/login')} style={{ padding: '8px 16px', color: '#6B778C', backgroundColor: 'transparent', border: 'none', fontSize: '15px', fontWeight: 500, cursor: 'pointer', transition: 'color 0.2s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>
@@ -92,7 +92,7 @@ export default function Homepage() {
               Capture every discussion with full context
             </h2>
             <p style={{ fontSize: '18px', color: '#6B778C', lineHeight: '1.6', marginBottom: '24px' }}>
-              Never lose important conversations again. RECALL preserves team discussions with complete context, making it easy to reference decisions and reasoning months later.
+              Knowledgr preserves team discussions with complete context, making it easy to reference decisions and reasoning months later.
             </p>
             <a href="#" style={{ color: '#0052CC', fontSize: '16px', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
               Learn more <ArrowRightIcon style={{ width: '16px', height: '16px' }} />
@@ -221,7 +221,7 @@ export default function Homepage() {
             </div>
           </div>
           <div style={{ borderTop: '1px solid #DFE1E6', paddingTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <p style={{ fontSize: '14px', color: '#6B778C' }}>&copy; 2026 RECALL. All rights reserved.</p>
+            <p style={{ fontSize: '14px', color: '#6B778C' }}>&copy; 2026 Knowledgr. All rights reserved.</p>
             <div style={{ display: 'flex', gap: '16px' }}>
               <a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none' }}>Twitter</a>
               <a href="#" style={{ fontSize: '14px', color: '#6B778C', textDecoration: 'none' }}>LinkedIn</a>

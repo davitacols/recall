@@ -190,7 +190,7 @@ function Layout({ children }) {
     if (location.pathname.startsWith('/sprint')) return 'Sprint';
     if (location.pathname.startsWith('/blockers')) return 'Blockers';
     if (location.pathname.startsWith('/retrospectives')) return 'Retrospectives';
-    return 'Recall';
+    return 'Knowledgr';
   };
 
   return (

@@ -40,7 +40,7 @@ function Signup() {
       <div style={{ flex: 1, backgroundColor: '#0052CC', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#ffffff' }}>
         <div style={{ maxWidth: '480px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
-            <img src="/recalljpg.jpg" alt="RECALL" style={{ height: '40px' }} />
+            <img src="/recalljpg.jpg" alt="Knowledgr" style={{ height: '40px' }} />
             <span style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em' }}>RECALL</span>
           </div>
           <h1 style={{ fontSize: '40px', fontWeight: 700, lineHeight: '1.2', marginBottom: '24px', letterSpacing: '-0.02em' }}>

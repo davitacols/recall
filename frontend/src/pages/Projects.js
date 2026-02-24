@@ -9,8 +9,9 @@ export default function Projects() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', key: '', description: '' });
+  const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
   const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
@@ -38,13 +39,22 @@ export default function Projects() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    setCreating(true);
     try {
       await api.post('/api/agile/projects/', newProject);
       setShowCreate(false);
-      setNewProject({ name: '', key: '', description: '' });
+      setNewProject({ name: '', description: '' });
       fetchProjects();
+      // Show success toast
+      const toast = document.createElement('div');
+      toast.className = `fixed top-4 right-4 ${bgSecondary} border ${borderColor} px-6 py-3 rounded-lg shadow-lg z-50 ${textPrimary}`;
+      toast.textContent = 'Project created successfully!';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
     } catch (error) {
       console.error('Failed to create project:', error);
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -100,18 +110,6 @@ export default function Projects() {
                   />
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Project Key</label>
-                  <input
-                    type="text"
-                    required
-                    value={newProject.key}
-                    onChange={(e) => setNewProject({ ...newProject, key: e.target.value.toUpperCase() })}
-                    placeholder="PROJ"
-                    maxLength={10}
-                    className={`w-full px-3 py-2 ${inputBg} ${textPrimary} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                  />
-                </div>
-                <div>
                   <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Description</label>
                   <textarea
                     value={newProject.description}
@@ -130,8 +128,12 @@ export default function Projects() {
                   </button>
                   <button
                     type="submit"
-                    className={`px-4 py-2 bg-transparent border-2 ${inputBorder} ${textPrimary} rounded ${hoverBg} hover:border-stone-700 font-medium text-sm`}
+                    disabled={creating}
+                    className={`px-4 py-2 bg-transparent border-2 ${inputBorder} ${textPrimary} rounded ${hoverBg} hover:border-stone-700 font-medium text-sm disabled:opacity-50 flex items-center gap-2`}
                   >
+                    {creating && (
+                      <div className={`w-4 h-4 border-2 ${darkMode ? 'border-stone-400 border-t-transparent' : 'border-gray-600 border-t-transparent'} rounded-full animate-spin`} />
+                    )}
                     Create
                   </button>
                 </div>

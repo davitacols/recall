@@ -667,7 +667,7 @@ class SavedFilter(models.Model):
 class IssueTemplate(models.Model):
     """Templates for quick issue creation"""
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True, related_name='issue_templates')
     name = models.CharField(max_length=100)
     issue_type = models.CharField(max_length=20, choices=Issue.ISSUE_TYPE_CHOICES)
     title_template = models.CharField(max_length=255)

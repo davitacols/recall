@@ -45,14 +45,19 @@ def projects(request):
         if not serializer.is_valid():
             return Response({'error': serializer.errors}, status=400)
         
-        key = serializer.validated_data['key']
-        if Project.objects.filter(key=key).exists():
-            return Response({'error': f'Project key "{key}" already exists'}, status=400)
+        # Auto-generate key from project name
+        name = serializer.validated_data['name']
+        base_key = ''.join(word[0].upper() for word in name.split()[:3])
+        key = base_key
+        counter = 1
+        while Project.objects.filter(key=key).exists():
+            key = f"{base_key}{counter}"
+            counter += 1
         
         try:
             project = Project.objects.create(
                 organization=org,
-                name=serializer.validated_data['name'],
+                name=name,
                 key=key,
                 description=serializer.validated_data.get('description', ''),
                 lead=request.user
@@ -125,11 +130,35 @@ def delete_project(request, project_id):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     try:
+        from django.db import connection
+        from django.db.utils import ProgrammingError
+        
         project = Project.objects.get(id=project_id, organization=org)
+        project_name = project.name
+        
+        # Delete related data manually to avoid missing table errors
+        with connection.cursor() as cursor:
+            # Try to delete from tables that may not exist
+            for table, column in [
+                ('issue_templates', 'project_id'),
+                ('releases', 'project_id'),
+                ('components', 'project_id'),
+            ]:
+                try:
+                    cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [project_id])
+                except ProgrammingError:
+                    pass  # Table doesn't exist, skip
+        
+        # Delete DecisionImpacts
+        DecisionImpact.objects.filter(issue__project=project).delete()
+        
+        # Delete the project
         project.delete()
-        return Response({'message': 'Project deleted successfully'})
+        return Response({'message': f'Project {project_name} deleted successfully'})
     except Project.DoesNotExist:
         return Response({'error': 'Project not found'}, status=404)
+    except Exception as e:
+        return Response({'error': f'Failed to delete project: {str(e)}'}, status=500)
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated, IsOrgMember])
@@ -258,6 +287,7 @@ def issues(request, project_id):
                 key=issue_key,
                 title=serializer.validated_data['title'],
                 description=serializer.validated_data.get('description', ''),
+                issue_type=serializer.validated_data.get('issue_type', 'task'),
                 priority=serializer.validated_data.get('priority', 'medium'),
                 status='todo',
                 reporter=request.user,

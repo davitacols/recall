@@ -11,12 +11,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['id', 'name', 'key', 'description', 'lead', 'lead_name', 'created_at']
-        read_only_fields = ['id', 'created_at']
-    
-    def validate_key(self, value):
-        if not value or len(value) > 10:
-            raise serializers.ValidationError("Key must be 1-10 characters")
-        return value.upper()
+        read_only_fields = ['id', 'key', 'created_at']
 
 class SprintSerializer(serializers.ModelSerializer):
     project_name = serializers.CharField(source='project.name', read_only=True)

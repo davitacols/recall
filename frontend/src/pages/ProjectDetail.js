@@ -81,7 +81,15 @@ function ProjectDetail() {
     e.preventDefault();
     setIsCreatingIssue(true);
     try {
-      await api.post(`/api/agile/projects/${projectId}/issues/`, issueForm);
+      const payload = {
+        title: issueForm.title,
+        description: issueForm.description,
+        priority: issueForm.priority
+      };
+      if (issueForm.sprint_id) payload.sprint_id = parseInt(issueForm.sprint_id);
+      if (issueForm.assignee_id) payload.assignee_id = parseInt(issueForm.assignee_id);
+      
+      await api.post(`/api/agile/projects/${projectId}/issues/`, payload);
       setShowCreateIssue(false);
       setIssueForm({ title: '', description: '', priority: 'medium', sprint_id: '', assignee_id: '' });
       fetchProject();

@@ -67,7 +67,7 @@ export const AIAssistant = () => {
                 <SparklesIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-stone-100">Recall</h3>
+                <h3 className="font-semibold text-stone-100">AI Assistant</h3>
                 <p className="text-xs text-stone-500">AI Assistant</p>
               </div>
             </div>

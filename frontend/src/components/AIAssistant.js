@@ -118,7 +118,7 @@ export default function AIAssistant({ content, contentType = 'conversation', onA
         disabled={loading}
         className={`px-4 py-2 ${darkMode ? 'bg-stone-800 hover:bg-stone-700 text-stone-100 border-stone-700' : 'bg-white hover:bg-gray-50 text-gray-900 border-gray-200'} border rounded-lg transition-all disabled:opacity-50 font-medium text-sm`}
       >
-        {loading ? 'Analyzing...' : 'Recall Insights'}
+        {loading ? 'Analyzing...' : 'AI Insights'}
       </button>
 
       {showPanel && (

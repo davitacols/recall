@@ -1,107 +1,179 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import api from '../services/api';
-import { useToast } from '../components/Toast';
-import { BellIcon, UserIcon, ShieldCheckIcon, UsersIcon, BuildingOfficeIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  BellIcon,
+  BuildingOffice2Icon,
+  Cog6ToothIcon,
+  MoonIcon,
+  ShieldCheckIcon,
+  SunIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
+import { useAuth } from "../hooks/useAuth";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import api from "../services/api";
+import { useToast } from "../components/Toast";
+
+async function requestWithFallback(requests) {
+  let lastError = null;
+  for (let i = 0; i < requests.length; i += 1) {
+    try {
+      return await requests[i]();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
 
 function Settings() {
   const { user } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const { addToast } = useToast();
-  const [activeSection, setActiveSection] = useState('notifications');
+  const [isCompact, setIsCompact] = useState(window.innerWidth < 980);
+
+  const [activeSection, setActiveSection] = useState("notifications");
   const [notifications, setNotifications] = useState({
     mention_notifications: true,
     reply_notifications: true,
     decision_notifications: true,
-    digest_frequency: 'daily'
+    digest_frequency: "daily",
   });
   const [organization, setOrganization] = useState(null);
   const [members, setMembers] = useState([]);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('contributor');
-  const [orgName, setOrgName] = useState('');
-  const [orgDescription, setOrgDescription] = useState('');
   const [pendingInvitations, setPendingInvitations] = useState([]);
-  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("contributor");
   const [generatedLink, setGeneratedLink] = useState(null);
+  const [orgName, setOrgName] = useState("");
+  const [orgDescription, setOrgDescription] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchSettings();
-    if (user?.role === 'admin') {
+    if (user?.role === "admin") {
       fetchOrganization();
       fetchMembers();
       fetchPendingInvitations();
     }
-  }, [user]);
+  }, [user?.role]);
+
+  useEffect(() => {
+    const onResize = () => setIsCompact(window.innerWidth < 980);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const palette = useMemo(
+    () =>
+      darkMode
+        ? {
+            pageBg: "#0f0b0d",
+            panelBg: "#171215",
+            panelAlt: "#1f171c",
+            border: "rgba(255,225,193,0.14)",
+            text: "#f4ece0",
+            muted: "#b8a994",
+            accent: "#ffb476",
+            softAccent: "rgba(255,180,118,0.13)",
+            danger: "#ff8e8e",
+          }
+        : {
+            pageBg: "#f6f1ea",
+            panelBg: "#fffaf3",
+            panelAlt: "#ffffff",
+            border: "#eadfce",
+            text: "#231814",
+            muted: "#7c6d5a",
+            accent: "#d9692e",
+            softAccent: "rgba(217,105,46,0.11)",
+            danger: "#d14343",
+          },
+    [darkMode]
+  );
+
+  const sections = [
+    { id: "notifications", label: "Notifications", icon: BellIcon },
+    { id: "appearance", label: "Appearance", icon: Cog6ToothIcon },
+    ...(user?.role === "admin"
+      ? [
+          { id: "organization", label: "Organization", icon: BuildingOffice2Icon },
+          { id: "team", label: "Team", icon: UserGroupIcon },
+        ]
+      : []),
+    { id: "privacy", label: "Privacy", icon: ShieldCheckIcon },
+  ];
 
   const fetchSettings = async () => {
     try {
-      const response = await api.get('/api/auth/profile/');
+      const response = await requestWithFallback([
+        () => api.get("/api/organizations/settings/notifications/"),
+        () => api.get("/api/auth/profile/"),
+      ]);
       setNotifications({
         mention_notifications: response.data.mention_notifications ?? true,
         reply_notifications: response.data.reply_notifications ?? true,
         decision_notifications: response.data.decision_notifications ?? true,
-        digest_frequency: response.data.digest_frequency || 'daily'
+        digest_frequency: response.data.digest_frequency || "daily",
       });
     } catch (error) {
-      addToast('Failed to fetch settings', 'error');
+      addToast("Failed to fetch settings", "error");
+    }
+  };
+
+  const saveNotificationSettings = async (updated) => {
+    setNotifications(updated);
+    try {
+      await requestWithFallback([
+        () => api.put("/api/organizations/settings/notifications/", updated),
+        () => api.put("/api/auth/profile/update/", updated),
+      ]);
+    } catch (error) {
+      addToast("Failed to save settings", "error");
+      fetchSettings();
     }
   };
 
   const fetchOrganization = async () => {
     try {
-      const response = await api.get('/api/organizations/me/');
-      setOrganization(response.data);
-      setOrgName(response.data.name || '');
-      setOrgDescription(response.data.description || '');
+      const response = await api.get("/api/organizations/me/");
+      setOrganization(response.data || null);
+      setOrgName(response.data?.name || "");
+      setOrgDescription(response.data?.description || "");
     } catch (error) {
-      addToast('Failed to fetch organization', 'error');
+      addToast("Failed to fetch organization", "error");
     }
   };
 
   const fetchMembers = async () => {
     try {
-      const response = await api.get('/api/organizations/members/');
-      setMembers(response.data);
+      const response = await api.get("/api/organizations/members/");
+      setMembers(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      addToast('Failed to fetch members', 'error');
+      addToast("Failed to fetch members", "error");
     }
   };
 
   const fetchPendingInvitations = async () => {
     try {
-      const response = await api.get('/api/organizations/settings/invitation-links/');
-      setPendingInvitations(response.data);
+      const response = await api.get("/api/organizations/settings/invitation-links/");
+      setPendingInvitations(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      addToast('Failed to fetch pending invitations', 'error');
+      setPendingInvitations([]);
     }
-  };
-
-  const handleToggle = (key) => {
-    const updated = { ...notifications, [key]: !notifications[key] };
-    setNotifications(updated);
-    api.put('/api/auth/profile/update/', updated).catch(() => addToast('Failed to save', 'error'));
-  };
-
-  const handleDigestChange = (value) => {
-    const updated = { ...notifications, digest_frequency: value };
-    setNotifications(updated);
-    api.put('/api/auth/profile/update/', updated).catch(() => addToast('Failed to save', 'error'));
   };
 
   const saveOrganization = async () => {
     setLoading(true);
     try {
-      await api.put('/api/organizations/me/', {
+      await api.put("/api/organizations/me/", {
         name: orgName,
-        description: orgDescription
+        description: orgDescription,
       });
-      addToast('Organization updated', 'success');
-      fetchOrganization();
+      addToast("Organization updated", "success");
+      await fetchOrganization();
     } catch (error) {
-      addToast('Failed to update organization', 'error');
+      addToast("Failed to update organization", "error");
     } finally {
       setLoading(false);
     }
@@ -111,17 +183,17 @@ function Settings() {
     if (!inviteEmail.trim()) return;
     setLoading(true);
     try {
-      const response = await api.post('/api/organizations/invitations/send/', {
+      const response = await api.post("/api/organizations/invitations/send/", {
         email: inviteEmail,
-        role: inviteRole
+        role: inviteRole,
       });
-      setGeneratedLink(response.data.invite_link);
-      addToast('Invitation created', 'success');
-      setInviteEmail('');
-      setInviteRole('contributor');
+      setGeneratedLink(response.data?.invite_link || null);
+      setInviteEmail("");
+      setInviteRole("contributor");
+      addToast("Invitation sent", "success");
       fetchPendingInvitations();
     } catch (error) {
-      addToast('Failed to invite member', 'error');
+      addToast("Failed to invite member", "error");
     } finally {
       setLoading(false);
     }
@@ -130,367 +202,514 @@ function Settings() {
   const cancelInvitation = async (invitationId) => {
     try {
       await api.delete(`/api/organizations/invitations/${invitationId}/revoke/`);
-      addToast('Invitation cancelled', 'success');
-      fetchPendingInvitations();
+      addToast("Invitation canceled", "success");
       setConfirmDelete(null);
+      fetchPendingInvitations();
     } catch (error) {
-      addToast('Failed to cancel invitation', 'error');
+      addToast("Failed to cancel invitation", "error");
     }
   };
 
   const removeMember = async (memberId) => {
     try {
       await api.delete(`/api/organizations/members/${memberId}/`);
-      addToast('Member removed', 'success');
-      fetchMembers();
+      addToast("Member removed", "success");
       setConfirmDelete(null);
+      fetchMembers();
     } catch (error) {
-      addToast('Failed to remove member', 'error');
+      addToast("Failed to remove member", "error");
     }
   };
 
-  const sections = [
-    { id: 'notifications', label: 'Notifications', icon: BellIcon },
-    { id: 'appearance', label: 'Appearance', icon: Cog6ToothIcon },
-    ...(user?.role === 'admin' ? [
-      { id: 'organization', label: 'Organization', icon: BuildingOfficeIcon },
-      { id: 'team', label: 'Team', icon: UsersIcon }
-    ] : []),
-    { id: 'advanced', label: 'Privacy', icon: ShieldCheckIcon }
-  ];
+  const toggleNotification = (key) => {
+    saveNotificationSettings({ ...notifications, [key]: !notifications[key] });
+  };
 
-  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
-  const hoverBg = darkMode ? 'hover:bg-stone-800' : 'hover:bg-gray-100';
+  const changeDigest = (value) => {
+    saveNotificationSettings({ ...notifications, digest_frequency: value });
+  };
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="mb-12">
-          <h1 className={`text-4xl font-bold ${textPrimary} mb-2`}>Settings</h1>
-          <p className={`text-lg ${textSecondary}`}>Manage your account and preferences</p>
+    <div style={{ display: "grid", gap: 14 }}>
+      <section
+        style={{
+          borderRadius: 18,
+          padding: "clamp(16px, 3vw, 24px)",
+          background: `linear-gradient(120deg, ${palette.softAccent}, transparent)`,
+          border: `1px solid ${palette.border}`,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <p style={{ margin: 0, color: palette.muted, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          Knoledgr Controls
+        </p>
+        <h1 style={{ margin: 0, color: palette.text, fontSize: "clamp(1.35rem, 2.8vw, 2rem)", lineHeight: 1.1 }}>
+          Settings
+        </h1>
+        <p style={{ margin: 0, color: palette.muted, maxWidth: 760, fontSize: 14 }}>
+          Manage notifications, appearance, organization, and team operations from one place.
+        </p>
+      </section>
+
+      <section style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {sections.map((section) => {
+            const Icon = section.icon;
+            const active = section.id === activeSection;
+            return (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                style={{
+                  borderRadius: 999,
+                  border: `1px solid ${palette.border}`,
+                  background: active ? palette.panelAlt : "transparent",
+                  color: active ? palette.text : palette.muted,
+                  padding: "9px 12px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  cursor: "pointer",
+                }}
+              >
+                <Icon style={{ width: 15, height: 15 }} />
+                {section.label}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="flex gap-8">
-          <aside className="w-64 flex-shrink-0">
-            <nav className="space-y-1 sticky top-8">
-              {sections.map((section) => {
-                const Icon = section.icon;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      activeSection === section.id
-                        ? `${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-gray-900 text-white'}`
-                        : `${textSecondary} ${hoverBg}`
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {section.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </aside>
-
-          <div className="flex-1 space-y-6">
-            {activeSection === 'notifications' && (
-              <>
-                <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
-                  <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Notification Preferences</h2>
-                  <div className="space-y-4">
-                    {[
-                      { key: 'mention_notifications', label: 'Mentions', desc: 'Get notified when someone mentions you' },
-                      { key: 'reply_notifications', label: 'Replies', desc: 'Get notified when someone replies to your posts' },
-                      { key: 'decision_notifications', label: 'Decisions', desc: 'Get notified about decision updates' }
-                    ].map(({ key, label, desc }) => (
-                      <div key={key} className={`flex items-center justify-between py-4 border-b ${borderColor} last:border-0`}>
-                        <div>
-                          <div className={`font-semibold ${textPrimary}`}>{label}</div>
-                          <div className={`text-sm ${textSecondary}`}>{desc}</div>
-                        </div>
-                        <button
-                          onClick={() => handleToggle(key)}
-                          className={`relative w-11 h-6 rounded-full transition-colors ${
-                            notifications[key] ? (darkMode ? 'bg-stone-700' : 'bg-gray-900') : (darkMode ? 'bg-stone-700' : 'bg-gray-300')
-                          }`}
-                        >
-                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                            notifications[key] ? 'translate-x-5' : 'translate-x-0'
-                          }`} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
-                  <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Email Digest</h2>
-                  <div className="space-y-3">
-                    {[
-                      { value: 'realtime', label: 'Real-time', desc: 'Instant notifications' },
-                      { value: 'hourly', label: 'Hourly', desc: 'Summary every hour' },
-                      { value: 'daily', label: 'Daily', desc: 'One digest per day' },
-                      { value: 'weekly', label: 'Weekly', desc: 'Weekly summary' },
-                      { value: 'never', label: 'Never', desc: 'No email notifications' }
-                    ].map(({ value, label, desc }) => (
-                      <label key={value} className={`flex items-center gap-3 p-4 rounded-lg border ${borderColor} ${hoverBg} cursor-pointer transition-all`}>
-                        <input
-                          type="radio"
-                          name="digest"
-                          checked={notifications.digest_frequency === value}
-                          onChange={() => handleDigestChange(value)}
-                          className="w-4 h-4"
-                        />
-                        <div>
-                          <div className={`font-semibold ${textPrimary}`}>{label}</div>
-                          <div className={`text-sm ${textSecondary}`}>{desc}</div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activeSection === 'appearance' && (
-              <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
-                <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Theme</h2>
-                <div className="space-y-3">
-                  <label className={`flex items-center gap-3 p-4 rounded-lg border ${borderColor} ${hoverBg} cursor-pointer transition-all`}>
-                    <input
-                      type="radio"
-                      name="theme"
-                      checked={darkMode}
-                      onChange={() => !darkMode && toggleDarkMode()}
-                      className="w-4 h-4"
-                    />
+        {activeSection === "notifications" && (
+          <div style={{ display: "grid", gap: 12, gridTemplateColumns: isCompact ? "minmax(0,1fr)" : "minmax(0,1.2fr) minmax(300px,1fr)" }}>
+            <article style={panel(palette)}>
+              <h2 style={title(palette)}>In-App Alerts</h2>
+              <p style={subtitle(palette)}>Choose what should trigger an in-app and email notification.</p>
+              <div style={{ display: "grid", gap: 8 }}>
+                {[
+                  { key: "mention_notifications", label: "Mentions", desc: "When someone mentions your name." },
+                  { key: "reply_notifications", label: "Replies", desc: "When someone responds to your threads." },
+                  { key: "decision_notifications", label: "Decisions", desc: "When decisions are created or updated." },
+                ].map((item) => (
+                  <div key={item.key} style={row(palette)}>
                     <div>
-                      <div className={`font-semibold ${textPrimary}`}>Dark</div>
-                      <div className={`text-sm ${textSecondary}`}>Dark theme with stone colors</div>
-                    </div>
-                  </label>
-                  <label className={`flex items-center gap-3 p-4 rounded-lg border ${borderColor} ${hoverBg} cursor-pointer transition-all`}>
-                    <input
-                      type="radio"
-                      name="theme"
-                      checked={!darkMode}
-                      onChange={() => darkMode && toggleDarkMode()}
-                      className="w-4 h-4"
-                    />
-                    <div>
-                      <div className={`font-semibold ${textPrimary}`}>Light</div>
-                      <div className={`text-sm ${textSecondary}`}>Light theme with white backgrounds</div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'organization' && user?.role === 'admin' && organization && (
-              <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
-                <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Organization Profile</h2>
-                <div className="space-y-6">
-                  <div>
-                    <label className={`block text-sm font-semibold ${textPrimary} mb-2`}>Organization Name</label>
-                    <input
-                      type="text"
-                      value={orgName}
-                      onChange={(e) => setOrgName(e.target.value)}
-                      className={`w-full px-4 py-3 rounded-lg border ${borderColor} ${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-white text-gray-900'} focus:border-stone-600 focus:ring-2 focus:ring-stone-600 focus:ring-opacity-20 outline-none transition-all`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-semibold ${textPrimary} mb-2`}>Description</label>
-                    <textarea
-                      value={orgDescription}
-                      onChange={(e) => setOrgDescription(e.target.value)}
-                      rows="4"
-                      className={`w-full px-4 py-3 rounded-lg border ${borderColor} ${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-white text-gray-900'} focus:border-stone-600 focus:ring-2 focus:ring-stone-600 focus:ring-opacity-20 outline-none transition-all`}
-                    />
-                  </div>
-                  <button
-                    onClick={saveOrganization}
-                    disabled={loading}
-                    className={`px-6 py-3 ${darkMode ? 'bg-stone-800 text-stone-100 hover:bg-stone-700' : 'bg-gray-900 text-white hover:bg-gray-800'} rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {loading ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'team' && user?.role === 'admin' && (
-              <>
-                <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
-                  <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Invite Team Member</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label className={`block text-sm font-semibold ${textPrimary} mb-2`}>Email Address</label>
-                      <input
-                        type="email"
-                        placeholder="member@example.com"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        className={`w-full px-4 py-3 rounded-lg border ${borderColor} ${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-white text-gray-900'} focus:border-stone-600 focus:ring-2 focus:ring-stone-600 focus:ring-opacity-20 outline-none transition-all`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-semibold ${textPrimary} mb-2`}>Role</label>
-                      <select
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value)}
-                        className={`w-full px-4 py-3 rounded-lg border ${borderColor} ${darkMode ? 'bg-stone-800 text-stone-100' : 'bg-white text-gray-900'} focus:border-stone-600 focus:ring-2 focus:ring-stone-600 focus:ring-opacity-20 outline-none transition-all`}
-                      >
-                        <option value="contributor">Contributor</option>
-                        <option value="manager">Manager</option>
-                        <option value="admin">Admin</option>
-                      </select>
+                      <p style={rowLabel(palette)}>{item.label}</p>
+                      <p style={rowDesc(palette)}>{item.desc}</p>
                     </div>
                     <button
-                      onClick={inviteMember}
-                      disabled={loading}
-                      className={`px-6 py-3 ${darkMode ? 'bg-stone-800 text-stone-100 hover:bg-stone-700' : 'bg-gray-900 text-white hover:bg-gray-800'} rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                      onClick={() => toggleNotification(item.key)}
+                      style={toggleButton(notifications[item.key], palette)}
+                      aria-label={`Toggle ${item.label}`}
                     >
-                      {loading ? 'Sending...' : 'Send Invite'}
+                      <span style={toggleKnob(notifications[item.key])} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article style={panel(palette)}>
+              <h2 style={title(palette)}>Email Digest</h2>
+              <p style={subtitle(palette)}>Control how often you get email summaries.</p>
+              <div style={{ display: "grid", gap: 7 }}>
+                {["realtime", "hourly", "daily", "weekly", "never"].map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => changeDigest(value)}
+                    style={{
+                      borderRadius: 10,
+                      border: `1px solid ${palette.border}`,
+                      padding: "10px 11px",
+                      textAlign: "left",
+                      background: notifications.digest_frequency === value ? palette.panelAlt : "transparent",
+                      color: notifications.digest_frequency === value ? palette.text : palette.muted,
+                      fontWeight: 700,
+                      textTransform: "capitalize",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            </article>
+          </div>
+        )}
+
+        {activeSection === "appearance" && (
+          <article style={panel(palette)}>
+            <h2 style={title(palette)}>Theme</h2>
+            <p style={subtitle(palette)}>Use one-click theme switching across all pages.</p>
+            <div style={{ display: "grid", gap: 8, gridTemplateColumns: isCompact ? "minmax(0,1fr)" : "repeat(2,minmax(0,1fr))" }}>
+              <button onClick={() => darkMode && toggleDarkMode()} style={themeCard(!darkMode, palette)}>
+                <SunIcon style={{ width: 18, height: 18 }} />
+                <span>Light Mode</span>
+              </button>
+              <button onClick={() => !darkMode && toggleDarkMode()} style={themeCard(darkMode, palette)}>
+                <MoonIcon style={{ width: 18, height: 18 }} />
+                <span>Dark Mode</span>
+              </button>
+            </div>
+          </article>
+        )}
+
+        {activeSection === "organization" && user?.role === "admin" && (
+          <article style={panel(palette)}>
+            <h2 style={title(palette)}>Organization Profile</h2>
+            <p style={subtitle(palette)}>Update your workspace identity and description.</p>
+            <div style={{ display: "grid", gap: 10 }}>
+              <Input label="Organization Name" value={orgName} onChange={(event) => setOrgName(event.target.value)} palette={palette} />
+              <Input
+                label="Description"
+                as="textarea"
+                rows={4}
+                value={orgDescription}
+                onChange={(event) => setOrgDescription(event.target.value)}
+                palette={palette}
+              />
+              <button
+                onClick={saveOrganization}
+                disabled={loading}
+                style={{
+                  width: "fit-content",
+                  borderRadius: 10,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.accent,
+                  color: "#1d130f",
+                  padding: "10px 14px",
+                  fontWeight: 700,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.7 : 1,
+                }}
+              >
+                {loading ? "Saving..." : "Save Organization"}
+              </button>
+            </div>
+            {organization && (
+              <p style={{ margin: "10px 0 0", color: palette.muted, fontSize: 12 }}>
+                Workspace slug: {organization.slug || "n/a"}
+              </p>
+            )}
+          </article>
+        )}
+
+        {activeSection === "team" && user?.role === "admin" && (
+          <div style={{ display: "grid", gap: 12 }}>
+            <article style={panel(palette)}>
+              <h2 style={title(palette)}>Invite Team Member</h2>
+              <p style={subtitle(palette)}>Create an invite by email and role.</p>
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: isCompact ? "minmax(0,1fr)" : "minmax(0,1.4fr) minmax(160px,1fr) auto" }}>
+                <Input label="Email" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} palette={palette} />
+                <Input as="select" label="Role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value)} palette={palette}>
+                  <option value="contributor">Contributor</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
+                </Input>
+                <button
+                  onClick={inviteMember}
+                  disabled={loading}
+                  style={{
+                    marginTop: isCompact ? 0 : 26,
+                    height: 40,
+                    borderRadius: 10,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.accent,
+                    color: "#1d130f",
+                    padding: "0 14px",
+                    fontWeight: 700,
+                    cursor: loading ? "not-allowed" : "pointer",
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                >
+                  Send Invite
+                </button>
+              </div>
+              {generatedLink && (
+                <div style={{ marginTop: 12, borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 10 }}>
+                  <p style={{ margin: "0 0 6px", color: palette.text, fontWeight: 700 }}>Invitation Link</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8 }}>
+                    <input readOnly value={generatedLink} style={linkInput(palette)} />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedLink);
+                        addToast("Link copied", "success");
+                      }}
+                      style={{ ...copyButton(palette), cursor: "pointer" }}
+                    >
+                      Copy
                     </button>
                   </div>
                 </div>
+              )}
+            </article>
 
-                {generatedLink && (
-                  <div className={`${darkMode ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'} rounded-xl border p-8`}>
-                    <h2 className={`text-xl font-bold ${darkMode ? 'text-green-400' : 'text-green-900'} mb-4`}>Invitation Link Generated</h2>
-                    <div className="flex gap-2 mb-3">
-                      <input
-                        type="text"
-                        value={generatedLink}
-                        readOnly
-                        className={`flex-1 px-4 py-2 rounded-lg border ${darkMode ? 'border-green-800 bg-stone-800 text-stone-100' : 'border-green-300 bg-white text-gray-900'} text-sm font-mono`}
-                      />
+            {pendingInvitations.length > 0 && (
+              <article style={panel(palette)}>
+                <h2 style={title(palette)}>Pending Invitations ({pendingInvitations.length})</h2>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {pendingInvitations.map((invitation) => (
+                    <div key={invitation.id} style={memberRow(palette)}>
+                      <div>
+                        <p style={rowLabel(palette)}>{invitation.email}</p>
+                        <p style={rowDesc(palette)}>Role: {invitation.role}</p>
+                      </div>
                       <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(generatedLink);
-                          addToast('Link copied!', 'success');
-                        }}
-                        className={`px-4 py-2 ${darkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg font-semibold transition-all`}
+                        onClick={() => setConfirmDelete({ type: "invitation", id: invitation.id })}
+                        style={dangerButton(palette)}
                       >
-                        Copy
+                        Cancel
                       </button>
                     </div>
-                    <p className={`text-sm ${darkMode ? 'text-green-400' : 'text-green-700'} mb-3`}>Expires in 7 days • Single use only</p>
-                    <button
-                      onClick={() => setGeneratedLink(null)}
-                      className={`text-sm ${darkMode ? 'text-green-400 hover:text-green-300' : 'text-green-700 hover:text-green-900'} font-semibold`}
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                )}
+                  ))}
+                </div>
+              </article>
+            )}
 
-                {pendingInvitations.length > 0 && (
-                  <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
-                    <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Pending Invitations ({pendingInvitations.length})</h2>
-                    <div className="space-y-3">
-                      {pendingInvitations.map((invitation) => (
-                        <div key={invitation.id} className={`flex items-center justify-between p-4 rounded-lg border ${borderColor}`}>
-                          <div>
-                            <p className={`font-semibold ${textPrimary}`}>{invitation.email}</p>
-                            <p className={`text-sm ${textSecondary}`}>Role: {invitation.role}</p>
-                          </div>
-                          <button
-                            onClick={() => setConfirmDelete({ type: 'invitation', id: invitation.id })}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm transition-all"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ))}
+            <article style={panel(palette)}>
+              <h2 style={title(palette)}>Team Members ({members.length})</h2>
+              <div style={{ display: "grid", gap: 8 }}>
+                {members.map((member) => (
+                  <div key={member.id} style={memberRow(palette)}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={rowLabel(palette)}>{member.full_name || member.username || "Member"}</p>
+                      <p style={rowDesc(palette)}>{member.email}</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={chip(palette)}>{member.role}</span>
+                      {member.id !== user?.id && (
+                        <button onClick={() => setConfirmDelete({ type: "member", id: member.id })} style={dangerButton(palette)}>
+                          Remove
+                        </button>
+                      )}
                     </div>
                   </div>
-                )}
-
-                <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
-                  <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Team Members ({members.length})</h2>
-                  <div className="space-y-3">
-                    {members.map((member) => (
-                      <div key={member.id} className={`flex items-center justify-between p-4 rounded-lg border ${borderColor} ${hoverBg} transition-all`}>
-                        <div>
-                          <p className={`font-semibold ${textPrimary}`}>{member.full_name}</p>
-                          <p className={`text-sm ${textSecondary}`}>{member.email}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-3 py-1 ${darkMode ? 'bg-stone-800 text-stone-300' : 'bg-gray-100 text-gray-700'} rounded-full text-xs font-semibold uppercase`}>{member.role}</span>
-                          {member.id !== user?.id && (
-                            <button
-                              onClick={() => setConfirmDelete({ type: 'member', id: member.id })}
-                              className={`p-2 text-red-600 ${darkMode ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} rounded-lg transition-all`}
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activeSection === 'advanced' && (
-              <div className={`${bgSecondary} rounded-xl shadow-sm border ${borderColor} p-8`}>
-                <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Data & Privacy</h2>
-                <div className={`space-y-4 ${textSecondary}`}>
-                  <p>AI assistance helps summarize conversations and extract action items.</p>
-                  <p>Your data stays private to your organization and is never shared with third parties.</p>
-                  <p>You can export or delete your data at any time by contacting support.</p>
-                </div>
+                ))}
               </div>
-            )}
+            </article>
           </div>
-        </div>
-      </div>
+        )}
+
+        {activeSection === "privacy" && (
+          <article style={panel(palette)}>
+            <h2 style={title(palette)}>Privacy & Data</h2>
+            <p style={subtitle(palette)}>Your data is scoped to your workspace. Contact support for data export and deletion requests.</p>
+          </article>
+        )}
+      </section>
 
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              {confirmDelete.type === 'invitation' ? 'Cancel Invitation?' : 'Remove Member?'}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.52)", display: "grid", placeItems: "center", zIndex: 90, padding: 16 }}>
+          <div style={{ width: "min(460px,100%)", borderRadius: 16, background: palette.panelBg, border: `1px solid ${palette.border}`, padding: 16 }}>
+            <h3 style={{ margin: 0, color: palette.text, fontSize: 20 }}>
+              {confirmDelete.type === "invitation" ? "Cancel Invitation?" : "Remove Member?"}
             </h3>
-            <p className="text-gray-600 mb-6">
-              {confirmDelete.type === 'invitation' 
-                ? 'This invitation will be cancelled and cannot be used.' 
-                : 'This member will be removed from the organization.'}
+            <p style={{ margin: "6px 0 14px", color: palette.muted, fontSize: 13 }}>
+              {confirmDelete.type === "invitation"
+                ? "This invitation can no longer be used."
+                : "This user will lose access to your workspace."}
             </p>
-            <div className="flex gap-3 justify-end">
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-all"
+                style={{ borderRadius: 9, border: `1px solid ${palette.border}`, background: "transparent", color: palette.text, padding: "8px 12px", cursor: "pointer" }}
               >
                 Keep
               </button>
               <button
                 onClick={() => {
-                  if (confirmDelete.type === 'invitation') {
+                  if (confirmDelete.type === "invitation") {
                     cancelInvitation(confirmDelete.id);
                   } else {
                     removeMember(confirmDelete.id);
                   }
                 }}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition-all"
+                style={{ ...dangerButton(palette), padding: "8px 12px" }}
               >
-                {confirmDelete.type === 'invitation' ? 'Cancel' : 'Remove'}
+                {confirmDelete.type === "invitation" ? "Cancel Invite" : "Remove"}
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function panel(palette) {
+  return {
+    borderRadius: 16,
+    background: palette.panelBg,
+    border: `1px solid ${palette.border}`,
+    padding: 16,
+    display: "grid",
+    gap: 10,
+  };
+}
+
+function title(palette) {
+  return { margin: 0, color: palette.text, fontSize: 19 };
+}
+
+function subtitle(palette) {
+  return { margin: "0 0 2px", color: palette.muted, fontSize: 13 };
+}
+
+function row(palette) {
+  return {
+    borderRadius: 11,
+    border: `1px solid ${palette.border}`,
+    background: palette.panelAlt,
+    padding: "10px 11px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+  };
+}
+
+function rowLabel(palette) {
+  return { margin: 0, color: palette.text, fontSize: 14, fontWeight: 700 };
+}
+
+function rowDesc(palette) {
+  return { margin: "2px 0 0", color: palette.muted, fontSize: 12 };
+}
+
+function toggleButton(active, palette) {
+  return {
+    width: 44,
+    height: 24,
+    borderRadius: 999,
+    border: `1px solid ${palette.border}`,
+    background: active ? palette.accent : palette.pageBg,
+    cursor: "pointer",
+    padding: 2,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: active ? "flex-end" : "flex-start",
+  };
+}
+
+function toggleKnob(active) {
+  return {
+    width: 18,
+    height: 18,
+    borderRadius: "50%",
+    background: active ? "#1d130f" : "#ffffff",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.22)",
+  };
+}
+
+function themeCard(active, palette) {
+  return {
+    borderRadius: 12,
+    border: `1px solid ${palette.border}`,
+    background: active ? palette.panelAlt : "transparent",
+    color: active ? palette.text : palette.muted,
+    padding: "12px 14px",
+    fontWeight: 700,
+    fontSize: 14,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    cursor: "pointer",
+    justifyContent: "center",
+  };
+}
+
+function memberRow(palette) {
+  return {
+    borderRadius: 11,
+    border: `1px solid ${palette.border}`,
+    background: palette.panelAlt,
+    padding: "10px 11px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+  };
+}
+
+function chip(palette) {
+  return {
+    borderRadius: 999,
+    border: `1px solid ${palette.border}`,
+    color: palette.muted,
+    padding: "4px 8px",
+    fontSize: 11,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  };
+}
+
+function dangerButton(palette) {
+  return {
+    borderRadius: 9,
+    border: `1px solid ${palette.danger}`,
+    background: "transparent",
+    color: palette.danger,
+    padding: "6px 10px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  };
+}
+
+function linkInput(palette) {
+  return {
+    borderRadius: 9,
+    border: `1px solid ${palette.border}`,
+    background: palette.pageBg,
+    color: palette.text,
+    padding: "8px 9px",
+    fontSize: 12,
+    width: "100%",
+  };
+}
+
+function copyButton(palette) {
+  return {
+    borderRadius: 9,
+    border: `1px solid ${palette.border}`,
+    background: palette.accent,
+    color: "#1d130f",
+    padding: "8px 11px",
+    fontWeight: 700,
+  };
+}
+
+function Input({ label, as = "input", palette, children, ...props }) {
+  const style = {
+    width: "100%",
+    borderRadius: 10,
+    border: `1px solid ${palette.border}`,
+    background: palette.panelAlt,
+    color: palette.text,
+    padding: "10px 11px",
+    fontSize: 14,
+    outline: "none",
+  };
+
+  return (
+    <label style={{ display: "grid", gap: 6 }}>
+      {label && (
+        <span style={{ color: palette.muted, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          {label}
+        </span>
+      )}
+      {as === "textarea" ? (
+        <textarea {...props} style={style} />
+      ) : as === "select" ? (
+        <select {...props} style={style}>
+          {children}
+        </select>
+      ) : (
+        <input {...props} style={style} />
+      )}
+    </label>
   );
 }
 

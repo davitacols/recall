@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { UserGroupIcon, ChartBarIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline';
+import { buildApiUrl } from '../utils/apiBase';
 
 export function TeamExpertiseMap() {
   const { darkMode } = useTheme();
@@ -19,7 +20,7 @@ export function TeamExpertiseMap() {
   const fetchTeamExpertise = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/knowledge/team-expertise/', {
+      const res = await fetch(buildApiUrl('/api/knowledge/team-expertise/'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -83,7 +84,7 @@ export function TrendAnalysis() {
   const fetchTrends = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/knowledge/trends/?days=30', {
+      const res = await fetch(buildApiUrl('/api/knowledge/trends/?days=30'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -153,7 +154,7 @@ export function MetricsTracker() {
   const fetchMetrics = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/knowledge/metrics/', {
+      const res = await fetch(buildApiUrl('/api/knowledge/metrics/'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();

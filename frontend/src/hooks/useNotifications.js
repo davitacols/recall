@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { getApiBaseUrl } from '../utils/apiBase';
 
 export function useNotifications(onNotification) {
   const retryCount = useRef(0);
@@ -8,10 +9,10 @@ export function useNotifications(onNotification) {
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     if (!token) return;
 
-    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+    const backendUrl = getApiBaseUrl();
     const protocol = backendUrl.startsWith('https') ? 'wss:' : 'ws:';
     const host = backendUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    const wsUrl = `${protocol}//${host}/ws/notifications/?token=${token}`;
+    const wsUrl = `${protocol}//${host}/ws/notifications/?token=${encodeURIComponent(token)}`;
 
     let ws;
     let reconnectTimeout;

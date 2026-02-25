@@ -17,6 +17,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+import { buildApiUrl } from "../utils/apiBase";
 
 export default function UnifiedDashboard() {
   const { darkMode } = useTheme();
@@ -42,7 +43,7 @@ export default function UnifiedDashboard() {
       const token = localStorage.getItem("token");
 
       const timelineRes = await fetch(
-        `http://localhost:8000/api/knowledge/timeline/?days=7&page=${page}&per_page=10`,
+        buildApiUrl(`/api/knowledge/timeline/?days=7&page=${page}&per_page=10`),
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const timelineData = await timelineRes.json();
@@ -50,7 +51,7 @@ export default function UnifiedDashboard() {
       setTimeline((prev) => (page === 1 ? results : [...prev, ...results]));
       setHasMore(timelineData.pagination?.has_next || false);
 
-      const statsRes = await fetch("http://localhost:8000/api/knowledge/ai/success-rates/", {
+      const statsRes = await fetch(buildApiUrl("/api/knowledge/ai/success-rates/"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const statsData = await statsRes.json();

@@ -1,15 +1,12 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.db import database_sync_to_async
-from rest_framework_simplejwt.tokens import AccessToken
-from apps.organizations.models import User
+from django.contrib.auth.models import AnonymousUser
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         try:
-            token = self.scope['query_string'].decode().split('token=')[1]
-            self.user = await self.get_user_from_token(token)
-            if not self.user:
+            self.user = self.scope.get("user")
+            if not self.user or isinstance(self.user, AnonymousUser) or not getattr(self.user, "is_authenticated", False):
                 await self.close()
                 return
             
@@ -29,12 +26,3 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
     async def notification_message(self, event):
         await self.send(text_data=json.dumps(event['message']))
-
-    @database_sync_to_async
-    def get_user_from_token(self, token):
-        try:
-            access_token = AccessToken(token)
-            user = User.objects.get(id=access_token['user_id'])
-            return user
-        except:
-            return None

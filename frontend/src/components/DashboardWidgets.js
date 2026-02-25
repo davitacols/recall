@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+import { buildApiUrl } from '../utils/apiBase';
 import { 
   ClipboardDocumentCheckIcon, 
   DocumentCheckIcon, 
@@ -29,7 +30,7 @@ export default function DashboardWidgets() {
   const fetchDigest = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/knowledge/daily-digest/', {
+      const res = await fetch(buildApiUrl('/api/knowledge/daily-digest/'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();

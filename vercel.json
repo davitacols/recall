@@ -1,7 +1,9 @@
-﻿{
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+{
+  "rewrites": [
+    {
+      "source": "/((?!sitemap\\.xml$|robots\\.txt$).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {

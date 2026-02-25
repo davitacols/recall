@@ -8,8 +8,10 @@ export const useKeyboardShortcuts = () => {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.defaultPrevented) return;
       // Cmd/Ctrl + K - Open command palette
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        if (document.querySelector('[data-unified-nav-search="true"]')) return;
         e.preventDefault();
         setShowCommandPalette(true);
       }

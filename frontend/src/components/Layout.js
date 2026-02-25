@@ -1,51 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import NotificationBell from './NotificationBell';
-import MobileBottomNav from './MobileBottomNav';
-import Search from './Search';
-import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
-import { getAvatarUrl } from '../utils/avatarUtils';
-import '../styles/mobile.css';
-import { 
-  HomeIcon,
-  ChatBubbleLeftIcon,
-  DocumentTextIcon,
-  BookOpenIcon,
-  BellIcon,
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
   Bars3Icon,
-  XMarkIcon,
-  RectangleStackIcon,
+  BookOpenIcon,
+  ChatBubbleLeftIcon,
   ChevronDownIcon,
+  DocumentTextIcon,
+  HomeIcon,
   InboxIcon,
-  SunIcon,
   MoonIcon,
-  UsersIcon
-} from '@heroicons/react/24/outline';
+  RectangleStackIcon,
+  SunIcon,
+  UsersIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { useAuth } from "../hooks/useAuth";
+import { getAvatarUrl } from "../utils/avatarUtils";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import MobileBottomNav from "./MobileBottomNav";
+import NotificationBell from "./NotificationBell";
+import Search from "./Search";
+import "../styles/mobile.css";
 
 function AvatarDisplay({ avatar, fullName }) {
-  const initials = fullName?.charAt(0) || 'U';
+  const [failed, setFailed] = useState(false);
   const avatarUrl = getAvatarUrl(avatar);
-  
-  if (avatarUrl) {
+  const initial = fullName?.charAt(0)?.toUpperCase() || "U";
+
+  if (avatarUrl && !failed) {
     return (
-      <img 
-        src={avatarUrl} 
-        alt={fullName || 'User'} 
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-        onError={(e) => {
-          // Fallback to initials if image fails to load
-          e.target.style.display = 'none';
-          e.target.parentElement.innerHTML = `<div style="width: 100%; height: 100%; background-color: #3b82f6; display: flex; align-items: center; justify-content: center;"><span style="color: #ffffff; font-size: 14px; font-weight: bold;">${initials}</span></div>`;
-        }}
+      <img
+        src={avatarUrl}
+        alt={fullName || "User"}
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        onError={() => setFailed(true)}
       />
     );
   }
-  
+
   return (
-    <div style={{ width: '100%', height: '100%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>{initials}</span>
+    <div style={avatarFallback}>
+      <span style={avatarInitial}>{initial}</span>
     </div>
   );
 }
@@ -54,283 +49,294 @@ function Layout({ children }) {
   const { user, logout } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const location = useLocation();
-  const navigate = useNavigate();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(220);
-  const [isResizing, setIsResizing] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showNewMenu, setShowNewMenu] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState({ Main: true, Work: true, Business: true, Personal: true, Admin: true });
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const accentColor = '#3b82f6';
-  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
-  const mainBg = darkMode ? '#0c0a09' : '#f9fafb';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const activeBg = darkMode ? '#1f2937' : '#e5e7eb';
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 1024);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(250);
+  const [isResizing, setIsResizing] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState({
+    Main: true,
+    Work: true,
+    Business: true,
+    Personal: true,
+    Admin: true,
+  });
 
   useEffect(() => {
-    const saved = localStorage.getItem('sidebarCollapsed');
-    if (saved) setSidebarCollapsed(JSON.parse(saved));
-    const savedWidth = localStorage.getItem('sidebarWidth');
-    if (savedWidth) setSidebarWidth(parseInt(savedWidth));
+    const savedCollapsed = localStorage.getItem("sidebarCollapsed");
+    const savedWidth = localStorage.getItem("sidebarWidth");
+    if (savedCollapsed) setSidebarCollapsed(JSON.parse(savedCollapsed));
+    if (savedWidth) setSidebarWidth(parseInt(savedWidth, 10));
   }, []);
 
-  const toggleSidebar = () => {
-    const newState = !sidebarCollapsed;
-    setSidebarCollapsed(newState);
-    localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
-  };
+  useEffect(() => {
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setIsSmallScreen(window.innerWidth < 1024);
+      if (window.innerWidth >= 768) setMobileMenuOpen(false);
+    };
 
-  const handleMouseDown = (e) => {
-    setIsResizing(true);
-    e.preventDefault();
-  };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const onMouseMove = (event) => {
       if (!isResizing) return;
-      const newWidth = e.clientX;
-      if (newWidth >= 180 && newWidth <= 400) {
-        setSidebarWidth(newWidth);
-        localStorage.setItem('sidebarWidth', newWidth.toString());
-      }
+      const nextWidth = Math.min(Math.max(event.clientX, 210), 360);
+      setSidebarWidth(nextWidth);
+      localStorage.setItem("sidebarWidth", String(nextWidth));
     };
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
+    const onMouseUp = () => setIsResizing(false);
 
     if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
     };
   }, [isResizing]);
 
-  const toggleGroup = (groupName) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [groupName]: !prev[groupName]
-    }));
+  useEffect(() => {
+    setProfileMenuOpen(false);
+    if (isMobile) setMobileMenuOpen(false);
+  }, [location.pathname, isMobile]);
+
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    localStorage.setItem("sidebarCollapsed", JSON.stringify(next));
   };
 
-  const navSections = [
-    {
-      title: 'Main',
-      items: [
-        { name: 'Home', href: '/', icon: HomeIcon },
-        { name: 'Conversations', href: '/conversations', icon: ChatBubbleLeftIcon },
-        { name: 'Decisions', href: '/decisions', icon: DocumentTextIcon },
-        { name: 'Knowledge', href: '/knowledge', icon: BookOpenIcon },
-      ]
-    },
-    {
-      title: 'Work',
-      items: [
-        { name: 'Projects', href: '/projects', icon: RectangleStackIcon },
-        { name: 'Current Sprint', href: '/sprint' },
-        { name: 'Sprint History', href: '/sprint-history' },
-        { name: 'Blockers', href: '/blockers' },
-        { name: 'Retrospectives', href: '/retrospectives' },
-      ]
-    },
-    {
-      title: 'Business',
-      items: [
-        { name: 'Overview', href: '/business' },
-        { name: 'Goals', href: '/business/goals' },
-        { name: 'Meetings', href: '/business/meetings' },
-        { name: 'Tasks', href: '/business/tasks' },
-        { name: 'Documents', href: '/business/documents' },
-        { name: 'Templates', href: '/business/templates' },
-      ]
-    },
-    {
-      title: 'Personal',
-      items: [
-        { name: 'Activity Feed', href: '/activity' },
-        { name: 'Bookmarks & Drafts', href: '/bookmarks-drafts' },
-        { name: 'My Decisions', href: '/my-decisions' },
-        { name: 'My Questions', href: '/my-questions' },
-        { name: 'Knowledge Health', href: '/knowledge-health' },
-      ]
-    },
-    ...(user?.role === 'admin' ? [{
-      title: 'Admin',
-      items: [
-        { name: 'Team', href: '/team', icon: UsersIcon },
-        { name: 'Analytics', href: '/analytics' },
-        { name: 'Advanced Search', href: '/search' },
-        { name: 'Integrations', href: '/integrations' },
-        { name: 'API Keys', href: '/api-keys' },
-        { name: 'Audit Logs', href: '/audit-logs' },
-        { name: 'Subscription', href: '/subscription' },
-        { name: 'Enterprise', href: '/enterprise' },
-        { name: 'Import/Export', href: '/import-export' },
-      ]
-    }] : [])
-  ];
+  const toggleGroup = (groupName) => {
+    setExpandedGroups((prev) => ({ ...prev, [groupName]: !prev[groupName] }));
+  };
+
+  const navSections = useMemo(
+    () => [
+      {
+        title: "Main",
+        items: [
+          { name: "Home", href: "/", icon: HomeIcon },
+          { name: "Conversations", href: "/conversations", icon: ChatBubbleLeftIcon },
+          { name: "Decisions", href: "/decisions", icon: DocumentTextIcon },
+          { name: "Knowledge", href: "/knowledge", icon: BookOpenIcon },
+        ],
+      },
+      {
+        title: "Work",
+        items: [
+          { name: "Projects", href: "/projects", icon: RectangleStackIcon },
+          { name: "Current Sprint", href: "/sprint" },
+          { name: "Sprint History", href: "/sprint-history" },
+          { name: "Blockers", href: "/blockers" },
+          { name: "Retrospectives", href: "/retrospectives" },
+        ],
+      },
+      {
+        title: "Business",
+        items: [
+          { name: "Overview", href: "/business" },
+          { name: "Goals", href: "/business/goals" },
+          { name: "Meetings", href: "/business/meetings" },
+          { name: "Tasks", href: "/business/tasks" },
+          { name: "Documents", href: "/business/documents" },
+          { name: "Templates", href: "/business/templates" },
+        ],
+      },
+      {
+        title: "Personal",
+        items: [
+          { name: "Activity Feed", href: "/activity" },
+          { name: "Bookmarks & Drafts", href: "/bookmarks-drafts" },
+          { name: "My Decisions", href: "/my-decisions" },
+          { name: "My Questions", href: "/my-questions" },
+          { name: "Knowledge Health", href: "/knowledge-health" },
+        ],
+      },
+      ...(user?.role === "admin"
+        ? [
+            {
+              title: "Admin",
+              items: [
+                { name: "Team", href: "/team", icon: UsersIcon },
+                { name: "Analytics", href: "/analytics" },
+                { name: "Advanced Search", href: "/search" },
+                { name: "Integrations", href: "/integrations" },
+                { name: "API Keys", href: "/api-keys" },
+                { name: "Audit Logs", href: "/audit-logs" },
+                { name: "Subscription", href: "/subscription" },
+                { name: "Enterprise", href: "/enterprise" },
+                { name: "Import/Export", href: "/import-export" },
+              ],
+            },
+          ]
+        : []),
+    ],
+    [user?.role]
+  );
 
   const getPageTitle = () => {
-    if (location.pathname === '/') return 'Home';
-    if (location.pathname.startsWith('/conversations')) return 'Conversations';
-    if (location.pathname.startsWith('/decisions')) return 'Decisions';
-    if (location.pathname.startsWith('/knowledge')) return 'Knowledge';
-    if (location.pathname.startsWith('/projects')) return 'Projects';
-    if (location.pathname.startsWith('/boards')) return 'Board';
-    if (location.pathname.startsWith('/notifications')) return 'Notifications';
-    if (location.pathname.startsWith('/sprint')) return 'Sprint';
-    if (location.pathname.startsWith('/blockers')) return 'Blockers';
-    if (location.pathname.startsWith('/retrospectives')) return 'Retrospectives';
-    return 'Knowledgr';
+    if (location.pathname === "/") return "Home";
+    if (location.pathname.startsWith("/conversations")) return "Conversations";
+    if (location.pathname.startsWith("/decisions")) return "Decisions";
+    if (location.pathname.startsWith("/knowledge")) return "Knowledge";
+    if (location.pathname.startsWith("/projects")) return "Projects";
+    if (location.pathname.startsWith("/boards")) return "Board";
+    if (location.pathname.startsWith("/notifications")) return "Notifications";
+    if (location.pathname.startsWith("/sprint")) return "Sprint";
+    if (location.pathname.startsWith("/blockers")) return "Blockers";
+    if (location.pathname.startsWith("/retrospectives")) return "Retrospectives";
+    return "Knoledgr";
   };
 
+  const palette = darkMode
+    ? {
+        appBg: "#0f0b0d",
+        headerBg: "rgba(22,16,19,0.86)",
+        panelBg: "#171215",
+        panelBgAlt: "#1d171b",
+        border: "rgba(255,225,193,0.14)",
+        text: "#f4ece0",
+        textMuted: "#b9ab97",
+        active: "rgba(255,170,99,0.18)",
+        accent: "#ffb477",
+      }
+    : {
+        appBg: "#f6f1ea",
+        headerBg: "rgba(255,250,243,0.92)",
+        panelBg: "#fffaf3",
+        panelBgAlt: "#ffffff",
+        border: "#eadfce",
+        text: "#231814",
+        textMuted: "#796a58",
+        active: "rgba(255,150,82,0.18)",
+        accent: "#db6b2e",
+      };
+
+  const computedSidebarWidth = isMobile
+    ? 290
+    : sidebarCollapsed
+      ? 74
+      : sidebarWidth;
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: mainBg, display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <header style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '60px',
-        background: bgColor,
-        borderBottom: `1px solid ${borderColor}`,
-        zIndex: 50,
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 20px',
-        gap: '16px'
-      }}>
-        {/* Left: Logo + Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => window.innerWidth < 768 ? setMobileMenuOpen(!mobileMenuOpen) : toggleSidebar()} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', border: `1px solid ${borderColor}`, cursor: 'pointer', borderRadius: '6px', color: secondaryText, transition: 'all 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; }}>
-            {mobileMenuOpen ? <XMarkIcon style={{ width: '18px', height: '18px' }} /> : <Bars3Icon style={{ width: '18px', height: '18px' }} />}
+    <div style={{ ...appShell, background: palette.appBg }}>
+      <header style={{ ...header, background: palette.headerBg, borderBottom: `1px solid ${palette.border}` }}>
+        <div style={headerLeft}>
+          <button
+            onClick={() => (isMobile ? setMobileMenuOpen((v) => !v) : toggleSidebar())}
+            style={{ ...iconButton, color: palette.textMuted, border: `1px solid ${palette.border}` }}
+            aria-label="Toggle navigation"
+          >
+            {mobileMenuOpen ? <XMarkIcon style={icon18} /> : <Bars3Icon style={icon18} />}
           </button>
-          <h1 style={{ fontSize: '15px', fontWeight: 600, color: textColor, margin: 0, letterSpacing: '-0.01em' }}>{getPageTitle()}</h1>
+
+          <div>
+            <p style={{ ...headerEyebrow, color: palette.textMuted }}>Workspace</p>
+            <h1 style={{ ...headerTitle, color: palette.text }}>{getPageTitle()}</h1>
+          </div>
         </div>
 
-        {/* Right: Actions */}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ display: window.innerWidth < 640 ? 'none' : 'block' }}><Search /></div>
-          <Link to="/messages" style={{ width: '36px', height: '36px', display: window.innerWidth < 640 ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', color: secondaryText, borderRadius: '6px', transition: 'all 0.15s', border: `1px solid transparent` }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; e.currentTarget.style.borderColor = borderColor; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; e.currentTarget.style.borderColor = 'transparent'; }}>
-            <InboxIcon style={{ width: '18px', height: '18px' }} />
+        <div style={headerActions}>
+          {!isSmallScreen && <Search />}
+
+          <Link to="/messages" style={{ ...iconButton, color: palette.textMuted, border: `1px solid ${palette.border}` }}>
+            <InboxIcon style={icon18} />
           </Link>
+
           <NotificationBell />
-          <div style={{ position: 'relative', marginLeft: '8px', display: window.innerWidth < 640 ? 'none' : 'block' }}>
-            <button onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ width: '32px', height: '32px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${borderColor}`, cursor: 'pointer', padding: 0, transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = secondaryText} onMouseLeave={(e) => e.currentTarget.style.borderColor = borderColor}>
+
+          <button
+            onClick={toggleDarkMode}
+            style={{ ...iconButton, color: palette.textMuted, border: `1px solid ${palette.border}` }}
+            aria-label="Toggle theme"
+          >
+            {darkMode ? <SunIcon style={icon18} /> : <MoonIcon style={icon18} />}
+          </button>
+
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setProfileMenuOpen((v) => !v)}
+              style={{ ...avatarButton, border: `1px solid ${palette.border}` }}
+            >
               <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
             </button>
-            {showProfileMenu && (
-              <div style={{ position: 'absolute', right: 0, marginTop: '8px', width: '180px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '6px', zIndex: 10, overflow: 'hidden' }}>
-                <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: '10px 14px', fontSize: '13px', color: textColor, textDecoration: 'none', transition: 'background 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>Profile</Link>
-                <Link to="/settings" onClick={() => setShowProfileMenu(false)} style={{ display: 'block', padding: '10px 14px', fontSize: '13px', color: textColor, textDecoration: 'none', transition: 'background 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>Settings</Link>
-                <div style={{ height: '1px', backgroundColor: borderColor, margin: '4px 0' }} />
-                <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: '10px 14px', fontSize: '13px', color: '#ef4444', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>Sign out</button>
+            {profileMenuOpen && (
+              <div style={{ ...profileMenu, background: palette.panelBgAlt, border: `1px solid ${palette.border}` }}>
+                <Link to="/profile" style={{ ...menuItem, color: palette.text }}>Profile</Link>
+                <Link to="/settings" style={{ ...menuItem, color: palette.text }}>Settings</Link>
+                <button onClick={logout} style={{ ...menuItemButton, color: "#f87171" }}>
+                  Sign out
+                </button>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div onClick={() => setMobileMenuOpen(false)} style={{ position: 'fixed', top: '60px', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 40, display: window.innerWidth >= 768 ? 'none' : 'block' }} />
+      {isMobile && mobileMenuOpen && (
+        <button
+          onClick={() => setMobileMenuOpen(false)}
+          style={mobileOverlay}
+          aria-label="Close navigation menu"
+        />
       )}
 
-      {/* Sidebar */}
-      <aside style={{
-        position: 'fixed',
-        top: '60px',
-        left: mobileMenuOpen || window.innerWidth >= 768 ? 0 : '-100%',
-        bottom: 0,
-        width: window.innerWidth < 768 ? '280px' : (sidebarCollapsed ? '60px' : `${sidebarWidth}px`),
-        background: bgColor,
-        borderRight: `1px solid ${borderColor}`,
-        display: 'flex',
-        flexDirection: 'column',
-        transition: window.innerWidth < 768 ? 'left 0.3s ease' : (sidebarCollapsed ? 'width 0.2s ease' : 'none'),
-        overflowX: 'hidden',
-        userSelect: isResizing ? 'none' : 'auto',
-        zIndex: 45
-      }}>
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <nav style={{ flex: 1, padding: '16px 10px', overflowY: 'auto' }}>
-            {navSections.map((section, idx) => (
-              <div key={section.title} style={{ marginBottom: idx < navSections.length - 1 ? '20px' : 0 }}>
+      <aside
+        style={{
+          ...sidebar,
+          width: computedSidebarWidth,
+          left: isMobile && !mobileMenuOpen ? -320 : 0,
+          background: palette.panelBg,
+          borderRight: `1px solid ${palette.border}`,
+        }}
+      >
+        <nav style={navWrap}>
+          {navSections.map((section) => {
+            const expanded = sidebarCollapsed ? true : expandedGroups[section.title];
+            return (
+              <div key={section.title} style={sectionBlock}>
                 {!sidebarCollapsed && (
                   <button
                     onClick={() => toggleGroup(section.title)}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '6px 12px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: secondaryText,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      marginBottom: '6px'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = textColor}
-                    onMouseLeave={(e) => e.currentTarget.style.color = secondaryText}
+                    style={{ ...sectionHeader, color: palette.textMuted }}
                   >
                     <span>{section.title}</span>
-                    <ChevronDownIcon 
-                      style={{ 
-                        width: '12px', 
-                        height: '12px',
-                        transform: expandedGroups[section.title] ? 'rotate(0deg)' : 'rotate(-90deg)',
-                        transition: 'transform 0.15s'
-                      }} 
-                    />
+                    <ChevronDownIcon style={{ ...icon14, transform: expanded ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }} />
                   </button>
                 )}
-                
-                {(sidebarCollapsed || expandedGroups[section.title]) && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+
+                {expanded && (
+                  <div style={linkStack}>
                     {section.items.map((item) => {
-                      const isActive = location.pathname === item.href;
+                      const isActive =
+                        item.href === "/"
+                          ? location.pathname === "/"
+                          : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
                       const Icon = item.icon;
                       return (
                         <Link
                           key={item.name}
                           to={item.href}
+                          title={sidebarCollapsed ? item.name : undefined}
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            padding: sidebarCollapsed ? '10px' : '8px 12px',
-                            paddingLeft: sidebarCollapsed ? '10px' : (Icon ? '12px' : '24px'),
-                            borderRadius: '5px',
-                            fontSize: '13px',
-                            fontWeight: isActive ? 600 : 500,
-                            textDecoration: 'none',
-                            color: isActive ? textColor : secondaryText,
-                            backgroundColor: isActive ? activeBg : 'transparent',
-                            transition: 'all 0.15s',
-                            justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                            border: `1px solid ${isActive ? borderColor : 'transparent'}`
+                            ...navLink,
+                            justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                            color: isActive ? palette.text : palette.textMuted,
+                            background: isActive ? palette.active : "transparent",
+                            border: `1px solid ${isActive ? palette.border : "transparent"}`,
+                            paddingLeft: sidebarCollapsed ? 10 : Icon ? 12 : 26,
                           }}
-                          onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; } }}
-                          onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; } }}
-                          title={sidebarCollapsed ? item.name : ''}
                         >
-                          {Icon && <Icon style={{ width: '18px', height: '18px', flexShrink: 0 }} />}
+                          {Icon && <Icon style={icon16} />}
                           {!sidebarCollapsed && <span>{item.name}</span>}
                         </Link>
                       );
@@ -338,91 +344,286 @@ function Layout({ children }) {
                   </div>
                 )}
               </div>
-            ))}
-          </nav>
+            );
+          })}
+        </nav>
 
-          <div style={{ padding: '14px 10px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
-            {!sidebarCollapsed && (
-              <button
-                onClick={toggleDarkMode}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '5px', fontSize: '13px', fontWeight: 500, textDecoration: 'none', color: secondaryText, backgroundColor: 'transparent', transition: 'all 0.15s', border: `1px solid transparent`, marginBottom: '10px', cursor: 'pointer' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; }}
-              >
-                {darkMode ? <SunIcon style={{ width: '18px', height: '18px', flexShrink: 0 }} /> : <MoonIcon style={{ width: '18px', height: '18px', flexShrink: 0 }} />}
-                <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-              </button>
-            )}
-            {sidebarCollapsed && (
-              <button
-                onClick={toggleDarkMode}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', borderRadius: '5px', fontSize: '13px', fontWeight: 500, textDecoration: 'none', color: secondaryText, backgroundColor: 'transparent', transition: 'all 0.15s', border: `1px solid transparent`, marginBottom: '10px', cursor: 'pointer' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = textColor; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = secondaryText; }}
-                title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {darkMode ? <SunIcon style={{ width: '18px', height: '18px', flexShrink: 0 }} /> : <MoonIcon style={{ width: '18px', height: '18px', flexShrink: 0 }} />}
-              </button>
-            )}
-            {!sidebarCollapsed ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px', borderRadius: '5px', backgroundColor: hoverBg, border: `1px solid ${borderColor}` }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '5px', overflow: 'hidden', flexShrink: 0 }}>
-                  <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: textColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name?.split(' ')[0]}</div>
-                  <div style={{ fontSize: '11px', color: secondaryText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.organization_name}</div>
-                </div>
+        <div style={{ ...sidebarFooter, borderTop: `1px solid ${palette.border}` }}>
+          {!sidebarCollapsed ? (
+            <div style={{ ...userCard, background: palette.panelBgAlt, border: `1px solid ${palette.border}` }}>
+              <div style={userAvatarSlot}>
+                <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
               </div>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '5px', overflow: 'hidden', border: `1px solid ${borderColor}` }}>
-                  <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
-                </div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ ...userName, color: palette.text }}>{user?.full_name || "User"}</p>
+                <p style={{ ...userOrg, color: palette.textMuted }}>{user?.organization_name || "Organization"}</p>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div style={collapsedAvatarWrap}>
+              <div style={{ ...userAvatarSlot, border: `1px solid ${palette.border}` }}>
+                <AvatarDisplay avatar={user?.avatar} fullName={user?.full_name} />
+              </div>
+            </div>
+          )}
         </div>
-        
-        {/* Resize Handle */}
-        {!sidebarCollapsed && (
+
+        {!isMobile && !sidebarCollapsed && (
           <div
-            onMouseDown={handleMouseDown}
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: '4px',
-              cursor: 'ew-resize',
-              backgroundColor: isResizing ? '#3b82f6' : 'transparent',
-              transition: 'background-color 0.15s',
-              zIndex: 10
+            onMouseDown={(event) => {
+              event.preventDefault();
+              setIsResizing(true);
             }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
-            onMouseLeave={(e) => !isResizing && (e.currentTarget.style.backgroundColor = 'transparent')}
+            style={{ ...resizeHandle, background: isResizing ? palette.accent : "transparent" }}
           />
         )}
       </aside>
 
-      {/* Main Content */}
-      <main style={{
-        paddingTop: '60px',
-        paddingLeft: window.innerWidth < 768 ? '0' : (sidebarCollapsed ? '60px' : `${sidebarWidth}px`),
-        paddingBottom: window.innerWidth < 768 ? '70px' : '0',
-        transition: sidebarCollapsed ? 'padding-left 0.2s ease' : 'none',
-        backgroundColor: mainBg,
-        flex: 1,
-        minHeight: '100vh'
-      }}>
-        <div style={{ flex: 1, padding: window.innerWidth < 640 ? '16px' : '24px', color: textColor, backgroundColor: mainBg }}>
-          {children}
-        </div>
+      <main
+        style={{
+          ...main,
+          paddingLeft: isMobile ? 0 : computedSidebarWidth,
+          paddingBottom: isMobile ? 74 : 0,
+        }}
+      >
+        <div style={mainInner}>{children}</div>
       </main>
-      
+
       <MobileBottomNav />
     </div>
   );
 }
 
+const appShell = {
+  minHeight: "100vh",
+};
+
+const header = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  height: 64,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "0 16px",
+  backdropFilter: "blur(10px)",
+  zIndex: 60,
+};
+
+const headerLeft = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+};
+
+const headerEyebrow = {
+  margin: 0,
+  fontSize: 11,
+  textTransform: "uppercase",
+  letterSpacing: "0.14em",
+};
+
+const headerTitle = {
+  margin: "2px 0 0",
+  fontSize: 16,
+  lineHeight: 1,
+};
+
+const headerActions = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
+
+const iconButton = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  display: "grid",
+  placeItems: "center",
+  background: "transparent",
+  cursor: "pointer",
+  textDecoration: "none",
+};
+
+const avatarButton = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  overflow: "hidden",
+  padding: 0,
+  background: "transparent",
+  cursor: "pointer",
+};
+
+const profileMenu = {
+  position: "absolute",
+  right: 0,
+  top: 44,
+  minWidth: 170,
+  borderRadius: 12,
+  overflow: "hidden",
+  boxShadow: "0 18px 40px rgba(0,0,0,0.25)",
+  zIndex: 80,
+};
+
+const menuItem = {
+  display: "block",
+  padding: "10px 12px",
+  textDecoration: "none",
+  fontSize: 14,
+};
+
+const menuItemButton = {
+  width: "100%",
+  textAlign: "left",
+  padding: "10px 12px",
+  fontSize: 14,
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const mobileOverlay = {
+  position: "fixed",
+  inset: "64px 0 0 0",
+  border: "none",
+  background: "rgba(0,0,0,0.45)",
+  zIndex: 50,
+};
+
+const sidebar = {
+  position: "fixed",
+  top: 64,
+  bottom: 0,
+  zIndex: 55,
+  display: "flex",
+  flexDirection: "column",
+  transition: "left 0.2s ease, width 0.18s ease",
+  overflow: "hidden",
+};
+
+const navWrap = {
+  flex: 1,
+  padding: "14px 10px",
+  overflowY: "auto",
+};
+
+const sectionBlock = {
+  marginBottom: 16,
+};
+
+const sectionHeader = {
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  padding: "8px 10px",
+};
+
+const linkStack = {
+  display: "grid",
+  gap: 3,
+};
+
+const navLink = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  textDecoration: "none",
+  borderRadius: 10,
+  fontSize: 13,
+  padding: "9px 10px",
+  fontWeight: 600,
+};
+
+const sidebarFooter = {
+  padding: 10,
+};
+
+const userCard = {
+  borderRadius: 12,
+  padding: 8,
+  display: "grid",
+  gridTemplateColumns: "34px 1fr",
+  gap: 8,
+  alignItems: "center",
+};
+
+const userAvatarSlot = {
+  width: 34,
+  height: 34,
+  borderRadius: 10,
+  overflow: "hidden",
+};
+
+const collapsedAvatarWrap = {
+  display: "flex",
+  justifyContent: "center",
+};
+
+const userName = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 700,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const userOrg = {
+  margin: "2px 0 0",
+  fontSize: 11,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const resizeHandle = {
+  position: "absolute",
+  right: 0,
+  top: 0,
+  bottom: 0,
+  width: 4,
+  cursor: "ew-resize",
+};
+
+const main = {
+  paddingTop: 64,
+  transition: "padding-left 0.18s ease",
+};
+
+const mainInner = {
+  padding: "clamp(14px, 2vw, 24px)",
+};
+
+const avatarFallback = {
+  width: "100%",
+  height: "100%",
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(135deg, #ffcb8c, #ff905d)",
+};
+
+const avatarInitial = {
+  color: "#20140f",
+  fontWeight: 800,
+  fontSize: 13,
+};
+
+const icon18 = { width: 18, height: 18 };
+const icon16 = { width: 16, height: 16, flexShrink: 0 };
+const icon14 = { width: 14, height: 14, flexShrink: 0 };
+
 export default Layout;
+

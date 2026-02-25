@@ -1,33 +1,30 @@
-import React, { useState } from 'react';
-import { SparklesIcon } from '@heroicons/react/24/outline';
+import React, { useMemo, useState } from "react";
+import { SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { aiButtonPrimary, aiButtonSecondary, aiCard, getAIPalette } from "./aiUi";
 
 export default function AISummaryButton({ content, darkMode }) {
+  const palette = useMemo(() => getAIPalette(Boolean(darkMode)), [darkMode]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
-
   const generateSummary = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/knowledge/ai/summarize-v2/', {
-        method: 'POST',
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/knowledge/ai/summarize-v2/`, {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ content, type: 'text' })
+        body: JSON.stringify({ content, type: "text" }),
       });
       const data = await res.json();
       setSummary(data);
       setShow(true);
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
     } finally {
       setLoading(false);
     }
@@ -35,124 +32,43 @@ export default function AISummaryButton({ content, darkMode }) {
 
   return (
     <>
-      <button
-        onClick={generateSummary}
-        disabled={loading}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '7px 12px',
-          backgroundColor: 'transparent',
-          border: '2px solid #f59e0b',
-          color: '#f59e0b',
-          borderRadius: '4px',
-          fontSize: '12px',
-          fontWeight: 500,
-          cursor: 'pointer',
-          transition: 'all 0.15s',
-          opacity: loading ? 0.5 : 1
-        }}
-        onMouseEnter={(e) => {
-          if (!loading) {
-            e.currentTarget.style.backgroundColor = '#f59e0b';
-            e.currentTarget.style.color = '#ffffff';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!loading) {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#f59e0b';
-          }
-        }}
-      >
-        <SparklesIcon style={{ width: '14px', height: '14px' }} />
-        {loading ? 'Generating...' : 'AI Summary'}
+      <button onClick={generateSummary} disabled={loading} style={{ ...aiButtonPrimary(), opacity: loading ? 0.7 : 1 }}>
+        <SparklesIcon style={{ width: 14, height: 14 }} /> {loading ? "Generating..." : "AI Summary"}
       </button>
 
       {show && summary && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          padding: '20px'
-        }} onClick={() => setShow(false)}>
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: bgColor,
-              border: `1px solid ${borderColor}`,
-              borderRadius: '8px',
-              padding: '24px',
-              maxWidth: '600px',
-              width: '100%',
-              maxHeight: '80vh',
-              overflow: 'auto'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <SparklesIcon style={{ width: '20px', height: '20px', color: '#f59e0b' }} />
-              <h3 style={{ fontSize: '18px', fontWeight: 600, color: textColor, margin: 0 }}>
-                AI Summary
-              </h3>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }} onClick={() => setShow(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ ...aiCard(palette), width: "min(640px,100%)", maxHeight: "80vh", overflow: "auto", padding: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: palette.text, display: "inline-flex", alignItems: "center", gap: 6 }}><SparklesIcon style={{ width: 16, height: 16, color: palette.warm }} /> AI Summary</h3>
+              <button onClick={() => setShow(false)} style={{ ...aiButtonSecondary(palette), padding: "6px 8px" }}><XMarkIcon style={{ width: 13, height: 13 }} /></button>
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', color: secondaryText, marginBottom: '8px', textTransform: 'uppercase', fontWeight: 600 }}>
-                Summary
-              </div>
-              <p style={{ fontSize: '14px', color: textColor, lineHeight: '1.6' }}>
-                {summary.summary}
-              </p>
-            </div>
+            <Block title="Summary"><p style={p}>{summary.summary}</p></Block>
 
-            {summary.key_points && summary.key_points.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '11px', color: secondaryText, marginBottom: '8px', textTransform: 'uppercase', fontWeight: 600 }}>
-                  Key Points
-                </div>
-                <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                  {summary.key_points.map((point, idx) => (
-                    <li key={idx} style={{ fontSize: '13px', color: textColor, marginBottom: '6px' }}>
-                      {point}
-                    </li>
-                  ))}
+            {summary.key_points?.length > 0 && (
+              <Block title="Key Points">
+                <ul style={{ margin: 0, paddingLeft: 18, color: "#d9cdbf", fontSize: 12 }}>
+                  {summary.key_points.map((point, idx) => <li key={idx} style={{ marginBottom: 4 }}>{point}</li>)}
                 </ul>
-              </div>
+              </Block>
             )}
 
-            <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: secondaryText }}>
-              <span>{summary.word_count} words</span>
-              <span>â€¢</span>
-              <span>{summary.reading_time} min read</span>
-            </div>
-
-            <button
-              onClick={() => setShow(false)}
-              style={{
-                marginTop: '20px',
-                padding: '8px 16px',
-                backgroundColor: 'transparent',
-                border: `2px solid ${borderColor}`,
-                color: textColor,
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: 500,
-                cursor: 'pointer'
-              }}
-            >
-              Close
-            </button>
+            <p style={{ margin: "10px 0 0", fontSize: 11, color: palette.muted }}>{summary.word_count || 0} words • {summary.reading_time || 0} min read</p>
           </div>
         </div>
       )}
     </>
   );
 }
+
+function Block({ title, children }) {
+  return (
+    <section style={{ borderRadius: 9, border: "1px solid rgba(120,120,120,0.3)", background: "#1f181c", padding: 8, marginBottom: 8 }}>
+      <p style={{ margin: "0 0 6px", fontSize: 11, color: "#baa892", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</p>
+      {children}
+    </section>
+  );
+}
+
+const p = { margin: 0, fontSize: 13, color: "#d9cdbf", lineHeight: 1.5 };

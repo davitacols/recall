@@ -1,18 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { ChartBarIcon, CalendarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import api from '../services/api';
-import { useToast } from '../components/Toast';
+import React, { useEffect, useMemo, useState } from "react";
+import { CalendarIcon, ChartBarIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import api from "../services/api";
+import { useToast } from "../components/Toast";
 
 export default function Analytics() {
   const { darkMode } = useTheme();
   const { addToast } = useToast();
-  const [analytics, setAnalytics] = useState(null);
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const [analytics, setAnalytics] = useState(null);
 
   useEffect(() => {
     loadAnalytics();
@@ -20,122 +19,101 @@ export default function Analytics() {
 
   const loadAnalytics = async () => {
     try {
-      const res = await api.get('/api/business/analytics/');
+      const res = await api.get("/api/business/analytics/");
       setAnalytics(res.data);
     } catch (error) {
-      addToast('Failed to load analytics', 'error');
+      addToast("Failed to load analytics", "error");
+      setAnalytics(null);
     }
   };
 
-  if (!analytics) return <div style={{ color: textColor }}>Loading...</div>;
-
-  const statusColors = {
-    not_started: '#6b7280',
-    in_progress: '#3b82f6',
-    completed: '#10b981',
-    on_hold: '#f59e0b'
-  };
-
-  const priorityColors = {
-    low: '#6b7280',
-    medium: '#3b82f6',
-    high: '#f59e0b',
-    critical: '#ef4444'
-  };
+  if (!analytics) {
+    return (
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <div style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 14, color: palette.muted, fontSize: 13 }}>Loading analytics...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px' }}>Business Analytics</h1>
-        <p style={{ fontSize: '14px', color: secondaryText }}>Overview of goals, meetings, and tasks</p>
-      </div>
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 12 }}>
+          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>BUSINESS ANALYTICS</p>
+          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Analytics</h1>
+          <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Goals, meetings, and task delivery in one operational view.</p>
+        </section>
 
-      {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CheckCircleIcon style={{ width: '20px', height: '20px', color: '#ffffff' }} />
-            </div>
-            <div>
-              <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Goals</p>
-              <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>{analytics.goals.total}</p>
-            </div>
-          </div>
-          <p style={{ fontSize: '12px', color: secondaryText }}>+{analytics.goals.recent} this week</p>
-        </div>
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8, marginBottom: 12 }}>
+          <SummaryCard icon={CheckCircleIcon} label="Goals" value={analytics.goals?.total || 0} sub={`+${analytics.goals?.recent || 0} this week`} />
+          <SummaryCard icon={CalendarIcon} label="Meetings" value={analytics.meetings?.total || 0} sub={`${analytics.meetings?.upcoming || 0} upcoming`} />
+          <SummaryCard icon={ChartBarIcon} label="Tasks" value={analytics.tasks?.total || 0} sub={`+${analytics.tasks?.recent || 0} this week`} />
+        </section>
 
-        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CalendarIcon style={{ width: '20px', height: '20px', color: '#ffffff' }} />
-            </div>
-            <div>
-              <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Meetings</p>
-              <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>{analytics.meetings.total}</p>
-            </div>
-          </div>
-          <p style={{ fontSize: '12px', color: secondaryText }}>{analytics.meetings.upcoming} upcoming</p>
-        </div>
+        <section style={ui.responsiveSplit}>
+          <BreakdownCard title="Goals by Status" rows={analytics.goals?.by_status || {}} colorMap={statusColorMap} />
+          <BreakdownCard title="Tasks by Status" rows={analytics.tasks?.by_status || {}} colorMap={statusColorMap} />
+        </section>
 
-        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ChartBarIcon style={{ width: '20px', height: '20px', color: '#ffffff' }} />
-            </div>
-            <div>
-              <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Tasks</p>
-              <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>{analytics.tasks.total}</p>
-            </div>
-          </div>
-          <p style={{ fontSize: '12px', color: secondaryText }}>+{analytics.tasks.recent} this week</p>
-        </div>
-      </div>
-
-      {/* Goals by Status */}
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px', marginBottom: '16px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '16px' }}>Goals by Status</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-          {Object.entries(analytics.goals.by_status || {}).map(([status, count]) => (
-            <div key={status} style={{ textAlign: 'center', padding: '12px', backgroundColor: darkMode ? '#292524' : '#f9fafb', borderRadius: '5px' }}>
-              <div style={{ width: '48px', height: '48px', margin: '0 auto 8px', borderRadius: '50%', backgroundColor: statusColors[status], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff' }}>{count}</span>
-              </div>
-              <p style={{ fontSize: '12px', color: textColor, fontWeight: 500, textTransform: 'capitalize' }}>{status.replace('_', ' ')}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Tasks by Status */}
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px', marginBottom: '16px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '16px' }}>Tasks by Status</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-          {Object.entries(analytics.tasks.by_status || {}).map(([status, count]) => (
-            <div key={status} style={{ textAlign: 'center', padding: '12px', backgroundColor: darkMode ? '#292524' : '#f9fafb', borderRadius: '5px' }}>
-              <div style={{ width: '48px', height: '48px', margin: '0 auto 8px', borderRadius: '50%', backgroundColor: statusColors[status] || '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff' }}>{count}</span>
-              </div>
-              <p style={{ fontSize: '12px', color: textColor, fontWeight: 500, textTransform: 'capitalize' }}>{status.replace('_', ' ')}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Tasks by Priority */}
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '16px' }}>Tasks by Priority</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-          {Object.entries(analytics.tasks.by_priority || {}).map(([priority, count]) => (
-            <div key={priority} style={{ textAlign: 'center', padding: '12px', backgroundColor: darkMode ? '#292524' : '#f9fafb', borderRadius: '5px' }}>
-              <div style={{ width: '48px', height: '48px', margin: '0 auto 8px', borderRadius: '50%', backgroundColor: priorityColors[priority], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff' }}>{count}</span>
-              </div>
-              <p style={{ fontSize: '12px', color: textColor, fontWeight: 500, textTransform: 'capitalize' }}>{priority}</p>
-            </div>
-          ))}
-        </div>
+        <section style={{ marginTop: 10 }}>
+          <BreakdownCard title="Tasks by Priority" rows={analytics.tasks?.by_priority || {}} colorMap={priorityColorMap} cols={4} />
+        </section>
       </div>
     </div>
   );
 }
+
+function SummaryCard({ icon: Icon, label, value, sub }) {
+  return (
+    <article style={{ borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <Icon style={{ width: 18, height: 18, color: "#93c5fd" }} />
+        <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#f4ece0" }}>{value}</p>
+      </div>
+      <p style={{ margin: 0, fontSize: 12, color: "#baa892", fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: "#baa892" }}>{sub}</p>
+    </article>
+  );
+}
+
+function BreakdownCard({ title, rows, colorMap, cols = 4 }) {
+  const entries = Object.entries(rows || {});
+
+  return (
+    <article style={{ borderRadius: 12, border: "1px solid rgba(255,225,193,0.14)", background: "#171215", padding: 12 }}>
+      <h2 style={{ margin: "0 0 10px", fontSize: 16, color: "#f4ece0" }}>{title}</h2>
+      {entries.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 12, color: "#baa892" }}>No data</p>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(90px,1fr))`, gap: 8 }}>
+          {entries.map(([key, count]) => (
+            <div key={key} style={{ borderRadius: 10, border: "1px solid rgba(120,120,120,0.35)", background: "#1f181c", padding: 10, textAlign: "center" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 999, background: colorMap[key] || "#6b7280", margin: "0 auto 6px", display: "grid", placeItems: "center", color: "#fff", fontWeight: 800, fontSize: 16 }}>
+                {count}
+              </div>
+              <p style={{ margin: 0, fontSize: 11, color: "#baa892", textTransform: "capitalize" }}>{key.replace("_", " ")}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
+const statusColorMap = {
+  not_started: "#6b7280",
+  in_progress: "#3b82f6",
+  completed: "#10b981",
+  on_hold: "#f59e0b",
+  todo: "#6b7280",
+  done: "#10b981",
+};
+
+const priorityColorMap = {
+  low: "#6b7280",
+  medium: "#3b82f6",
+  high: "#f59e0b",
+  critical: "#ef4444",
+};

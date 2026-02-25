@@ -1,46 +1,55 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { PlusIcon, TrashIcon, ChartBarIcon, RocketLaunchIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
-import { useTheme } from '../utils/ThemeAndAccessibility';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import {
+  ChartBarIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  PlusIcon,
+  RocketLaunchIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 function ProjectDetail() {
   const { projectId } = useParams();
   const { darkMode } = useTheme();
+
   const [project, setProject] = useState(null);
   const [sprints, setSprints] = useState([]);
   const [issues, setIssues] = useState([]);
   const [boards, setBoards] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('sprints');
   const [teamMembers, setTeamMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("sprints");
+
   const [showCreateSprint, setShowCreateSprint] = useState(false);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
-  const [sprintForm, setSprintForm] = useState({ name: '', start_date: '', end_date: '', goal: '' });
-  const [issueForm, setIssueForm] = useState({ title: '', description: '', priority: 'medium', sprint_id: '', assignee_id: '' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingSprint, setIsCreatingSprint] = useState(false);
   const [isCreatingIssue, setIsCreatingIssue] = useState(false);
 
+  const [sprintForm, setSprintForm] = useState({ name: "", start_date: "", end_date: "", goal: "" });
+  const [issueForm, setIssueForm] = useState({ title: "", description: "", priority: "medium", sprint_id: "", assignee_id: "" });
+
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   useEffect(() => {
     fetchProject();
     fetchTeamMembers();
-    
-    const interval = setInterval(() => {
-      fetchProject();
-    }, 5000);
-    
+    const interval = setInterval(fetchProject, 6000);
     return () => clearInterval(interval);
   }, [projectId]);
 
   const fetchTeamMembers = async () => {
     try {
-      const response = await api.get('/api/organizations/members/');
+      const response = await api.get("/api/organizations/members/");
       setTeamMembers(response.data || []);
     } catch (error) {
-      console.error('Failed to fetch team members:', error);
-      setTeamMembers([]);
+      console.error("Failed to fetch team members:", error);
     }
   };
 
@@ -49,52 +58,52 @@ function ProjectDetail() {
       const [projectRes, sprintsRes, issuesRes] = await Promise.all([
         api.get(`/api/agile/projects/${projectId}/`),
         api.get(`/api/agile/projects/${projectId}/sprints/`),
-        api.get(`/api/agile/projects/${projectId}/issues/`)
+        api.get(`/api/agile/projects/${projectId}/issues/`),
       ]);
       setProject(projectRes.data);
-      setSprints(sprintsRes.data);
-      setIssues(issuesRes.data);
+      setSprints(sprintsRes.data || []);
+      setIssues(issuesRes.data || []);
       setBoards(projectRes.data.boards || []);
     } catch (error) {
-      console.error('Failed to fetch project:', error);
+      console.error("Failed to fetch project:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateSprint = async (e) => {
-    e.preventDefault();
+  const handleCreateSprint = async (event) => {
+    event.preventDefault();
     setIsCreatingSprint(true);
     try {
       await api.post(`/api/agile/projects/${projectId}/sprints/`, sprintForm);
       setShowCreateSprint(false);
-      setSprintForm({ name: '', start_date: '', end_date: '', goal: '' });
+      setSprintForm({ name: "", start_date: "", end_date: "", goal: "" });
       fetchProject();
     } catch (error) {
-      console.error('Failed to create sprint:', error);
+      console.error("Failed to create sprint:", error);
     } finally {
       setIsCreatingSprint(false);
     }
   };
 
-  const handleCreateIssue = async (e) => {
-    e.preventDefault();
+  const handleCreateIssue = async (event) => {
+    event.preventDefault();
     setIsCreatingIssue(true);
     try {
       const payload = {
         title: issueForm.title,
         description: issueForm.description,
-        priority: issueForm.priority
+        priority: issueForm.priority,
       };
-      if (issueForm.sprint_id) payload.sprint_id = parseInt(issueForm.sprint_id);
-      if (issueForm.assignee_id) payload.assignee_id = parseInt(issueForm.assignee_id);
-      
+      if (issueForm.sprint_id) payload.sprint_id = parseInt(issueForm.sprint_id, 10);
+      if (issueForm.assignee_id) payload.assignee_id = parseInt(issueForm.assignee_id, 10);
+
       await api.post(`/api/agile/projects/${projectId}/issues/`, payload);
       setShowCreateIssue(false);
-      setIssueForm({ title: '', description: '', priority: 'medium', sprint_id: '', assignee_id: '' });
+      setIssueForm({ title: "", description: "", priority: "medium", sprint_id: "", assignee_id: "" });
       fetchProject();
     } catch (error) {
-      console.error('Failed to create issue:', error);
+      console.error("Failed to create issue:", error);
     } finally {
       setIsCreatingIssue(false);
     }
@@ -104,488 +113,257 @@ function ProjectDetail() {
     setIsDeleting(true);
     try {
       await api.delete(`/api/agile/projects/${projectId}/delete/`);
-      window.location.href = '/projects';
+      window.location.href = "/projects";
     } catch (error) {
-      console.error('Failed to delete project:', error);
+      console.error("Failed to delete project:", error);
       setIsDeleting(false);
     }
   };
 
-  const bgColor = darkMode ? 'bg-stone-950' : 'bg-white';
-  const cardBg = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textColor = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
-  const textTertiary = darkMode ? 'text-stone-500' : 'text-gray-500';
-  const hoverBorder = darkMode ? 'hover:border-stone-700' : 'hover:border-gray-300';
-  const hoverBg = darkMode ? 'hover:bg-stone-700' : 'hover:bg-gray-100';
-  const inputBg = darkMode ? 'bg-stone-800' : 'bg-gray-50';
-  const inputBorder = darkMode ? 'border-stone-700' : 'border-gray-300';
-  const inputText = darkMode ? 'text-stone-200' : 'text-gray-900';
-  const modalBg = darkMode ? 'bg-stone-900' : 'bg-white';
-  const buttonBg = darkMode ? 'bg-stone-800' : 'bg-gray-100';
-  const buttonText = darkMode ? 'text-stone-200' : 'text-gray-700';
-
   if (loading) {
     return (
-      <div className={`min-h-screen ${bgColor} flex items-center justify-center`}>
-        <div className={`w-8 h-8 border-2 ${darkMode ? 'border-stone-700 border-t-stone-400' : 'border-gray-300 border-t-gray-600'} rounded-full animate-spin`}></div>
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+        <div style={spinner} />
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className={`min-h-screen ${bgColor} flex items-center justify-center`}>
-        <h2 className={`text-xl font-semibold ${textTertiary}`}>Project not found</h2>
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+        <h2 style={{ color: palette.muted }}>Project not found</h2>
       </div>
     );
   }
 
+  const tabs = ["sprints", "issues", "roadmap"];
+
   return (
-    <div className={`min-h-screen ${bgColor}`}>
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className={`${cardBg} border ${borderColor} rounded-lg p-6`}>
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 ${inputBg} rounded-lg flex items-center justify-center text-white font-bold text-xl border ${inputBorder}`}>
-                  {project.key.charAt(0)}
-                </div>
-                <div>
-                  <h1 className={`text-2xl font-bold ${textColor} mb-1`}>{project.name}</h1>
-                  <p className={`text-sm ${textTertiary} font-mono`}>{project.key}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="p-2 hover:bg-red-900/20 text-red-400 rounded transition-all border border-transparent hover:border-red-900/30"
-                title="Delete project"
-              >
-                <TrashIcon className="w-5 h-5" />
-              </button>
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section style={{ ...hero, border: `1px solid ${palette.border}`, background: palette.card }}>
+          <div style={heroTop}>
+            <div style={projectBadge}>{project.key?.charAt(0) || "P"}</div>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ ...title, color: palette.text }}>{project.name}</h1>
+              <p style={{ ...sub, color: palette.muted }}>{project.key}</p>
+              {project.description && <p style={{ ...sub, marginTop: 8, color: palette.muted }}>{project.description}</p>}
             </div>
-            {project.description && (
-              <p className={`${textSecondary} leading-relaxed`}>{project.description}</p>
-            )}
           </div>
+          <button onClick={() => setShowDeleteConfirm(true)} style={dangerIconButton}>
+            <TrashIcon style={icon18} />
+          </button>
+        </section>
+
+        <div style={quickLinkRow}>
+          <Link to={`/projects/${projectId}/backlog`} style={quickButton}>View Backlog</Link>
+          {boards.length > 0 && <Link to={`/boards/${boards[0].id}`} style={quickButton}>View Kanban Board</Link>}
+          <Link to="/sprint" style={quickButton}>Sprint Center</Link>
         </div>
 
-        {/* Quick Links */}
-        <div className="flex gap-4 mb-8">
-          <Link to={`/projects/${projectId}/backlog`} className={`px-5 py-2 ${buttonBg} ${buttonText} rounded ${hoverBg} font-medium text-sm transition-all border ${borderColor}`}>
-            View Backlog
-          </Link>
-          {boards.length > 0 && (
-            <Link to={`/boards/${boards[0].id}`} className={`px-5 py-2 ${buttonBg} ${buttonText} rounded ${hoverBg} font-medium text-sm transition-all border ${borderColor}`}>
-              View Kanban Board
-            </Link>
-          )}
-        </div>
+        <section style={statsGrid}>
+          <Stat icon={ChartBarIcon} label="Total Issues" value={project.issue_count || 0} />
+          <Stat icon={CheckCircleIcon} label="Completed" value={project.completed_issues || 0} />
+          <Stat icon={ClockIcon} label="Active" value={project.active_issues || 0} />
+          <Stat icon={RocketLaunchIcon} label="Sprints" value={sprints.length} />
+        </section>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={ChartBarIcon} label="Total Issues" value={project.issue_count} />
-          <StatCard icon={CheckCircleIcon} label="Completed" value={project.completed_issues} color="green" />
-          <StatCard icon={ClockIcon} label="Active" value={project.active_issues} color="blue" />
-          <StatCard icon={RocketLaunchIcon} label="Sprints" value={sprints.length} color="purple" />
-        </div>
-
-        {/* Tabs */}
-        <div className={`flex gap-2 mb-8 ${cardBg} border ${borderColor} rounded-lg p-1`}>
-          {['sprints', 'issues', 'roadmap'].map(tab => (
+        <section style={{ ...tabWrap, border: `1px solid ${palette.border}`, background: palette.card }}>
+          {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 px-4 py-2 font-medium text-sm transition-all rounded ${
-                activeTab === tab
-                  ? `${inputBg} ${textColor} border ${inputBorder}`
-                  : `${textTertiary} hover:${textSecondary}`
-              }`}
+              style={{
+                ...tabButton,
+                color: activeTab === tab ? palette.text : palette.muted,
+                background: activeTab === tab ? palette.cardAlt : "transparent",
+                border: `1px solid ${activeTab === tab ? palette.border : "transparent"}`,
+              }}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
-        </div>
+        </section>
 
-        {/* Sprints Tab */}
-        {activeTab === 'sprints' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-xl font-bold ${textColor}`}>Sprints</h2>
-              <button
-                onClick={() => setShowCreateSprint(true)}
-                className={`flex items-center gap-2 px-4 py-2 ${buttonBg} ${buttonText} rounded ${hoverBg} font-medium text-sm transition-all border ${borderColor}`}
-              >
-                <PlusIcon className="w-4 h-4" />
-                New Sprint
-              </button>
+        {activeTab === "sprints" && (
+          <section>
+            <div style={sectionHeader}>
+              <h2 style={{ ...h2, color: palette.text }}>Sprints</h2>
+              <button onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Sprint</button>
             </div>
-
             {sprints.length === 0 ? (
-              <div className={`p-12 ${cardBg} border ${borderColor} rounded-lg text-center`}>
-                <p className={`${textTertiary} mb-6`}>No sprints yet</p>
-                <button
-                  onClick={() => setShowCreateSprint(true)}
-                  className={`px-5 py-2 ${buttonBg} ${buttonText} rounded ${hoverBg} font-medium text-sm transition-all border ${borderColor}`}
-                >
-                  Create First Sprint
-                </button>
-              </div>
+              <Empty text="No sprints yet" />
             ) : (
-              <div className="space-y-4">
-                {sprints.map(sprint => (
-                  <Link
-                    key={sprint.id}
-                    to={`/sprints/${sprint.id}`}
-                    className={`block p-5 ${cardBg} border ${borderColor} rounded-lg ${hoverBorder} ${darkMode ? 'hover:bg-stone-900/80' : 'hover:bg-gray-50'} transition-all`}
-                  >
-                    <div className="flex justify-between items-start mb-3">
+              <div style={list}>
+                {sprints.map((sprint) => (
+                  <Link key={sprint.id} to={`/sprints/${sprint.id}`} style={{ ...itemCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                       <div>
-                        <h3 className={`text-base font-semibold ${textColor} mb-1`}>{sprint.name}</h3>
-                        <p className={`text-sm ${textTertiary}`}>{sprint.start_date} to {sprint.end_date}</p>
-                        {sprint.goal && <p className={`text-sm ${textTertiary} mt-2 italic`}>{sprint.goal}</p>}
+                        <p style={{ ...itemTitle, color: palette.text }}>{sprint.name}</p>
+                        <p style={{ ...itemMeta, color: palette.muted }}>{sprint.start_date} to {sprint.end_date}</p>
+                        {sprint.goal && <p style={{ ...itemMeta, marginTop: 5, color: palette.muted }}>{sprint.goal}</p>}
                       </div>
-                      <span className={`px-3 py-1 text-xs font-semibold rounded border ${
-                        sprint.status === 'active' ? 'bg-green-900/20 text-green-400 border-green-800' :
-                        sprint.status === 'completed' ? `${inputBg} ${textSecondary} border ${inputBorder}` :
-                        'bg-blue-900/20 text-blue-400 border-blue-800'
-                      }`}>
-                        {sprint.status}
-                      </span>
-                    </div>
-                    <div className={`flex gap-6 text-sm ${textTertiary}`}>
-                      <span>{sprint.issue_count} issues</span>
-                      <span className="text-green-400">{sprint.completed_count} completed</span>
-                      {sprint.blocked_count > 0 && <span className="text-red-400">{sprint.blocked_count} blocked</span>}
+                      <span style={statusPill}>{sprint.status}</span>
                     </div>
                   </Link>
                 ))}
               </div>
             )}
-          </div>
+          </section>
         )}
 
-        {/* Issues Tab */}
-        {activeTab === 'issues' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-xl font-bold ${textColor}`}>Issues</h2>
-              <button
-                onClick={() => setShowCreateIssue(true)}
-                className={`flex items-center gap-2 px-4 py-2 ${buttonBg} ${buttonText} rounded ${hoverBg} font-medium text-sm transition-all border ${borderColor}`}
-              >
-                <PlusIcon className="w-4 h-4" />
-                New Issue
-              </button>
+        {activeTab === "issues" && (
+          <section>
+            <div style={sectionHeader}>
+              <h2 style={{ ...h2, color: palette.text }}>Issues</h2>
+              <button onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Issue</button>
             </div>
-
             {issues.length === 0 ? (
-              <div className={`p-12 ${cardBg} border ${borderColor} rounded-lg text-center`}>
-                <p className={`${textTertiary} mb-6`}>No issues yet</p>
-                <button
-                  onClick={() => setShowCreateIssue(true)}
-                  className={`px-5 py-2 ${buttonBg} ${buttonText} rounded ${hoverBg} font-medium text-sm transition-all border ${borderColor}`}
-                >
-                  Create First Issue
-                </button>
-              </div>
+              <Empty text="No issues yet" />
             ) : (
-              <div className="space-y-3">
-                {issues.map(issue => (
-                  <Link
-                    key={issue.id}
-                    to={`/issues/${issue.id}`}
-                    className={`block p-4 ${cardBg} border ${borderColor} rounded-lg ${hoverBorder} ${darkMode ? 'hover:bg-stone-900/80' : 'hover:bg-gray-50'} transition-all`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className={`font-semibold ${darkMode ? 'text-stone-300' : 'text-gray-700'} font-mono text-sm`}>{issue.key}</span>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded border ${
-                            issue.priority === 'highest' ? 'bg-red-900/20 text-red-400 border-red-800' :
-                            issue.priority === 'high' ? 'bg-orange-900/20 text-orange-400 border-orange-800' :
-                            issue.priority === 'medium' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-800' :
-                            `${inputBg} ${textSecondary} border ${inputBorder}`
-                          }`}>
-                            {issue.priority}
-                          </span>
-                        </div>
-                        <h4 className={`text-base font-semibold ${textColor} mb-2`}>{issue.title}</h4>
-                        <div className={`flex gap-4 text-xs ${textTertiary}`}>
-                          <span>Status: {issue.status}</span>
-                          {issue.assignee && <span>Assigned: {issue.assignee}</span>}
-                          {issue.sprint_name && <span>Sprint: {issue.sprint_name}</span>}
-                        </div>
+              <div style={list}>
+                {issues.slice(0, 20).map((issue) => (
+                  <Link key={issue.id} to={`/issues/${issue.id}`} style={{ ...itemCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                      <div>
+                        <p style={{ ...itemTitle, color: palette.text }}>{issue.title}</p>
+                        <p style={{ ...itemMeta, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} • {issue.priority || "medium"}</p>
                       </div>
-                      {issue.story_points && (
-                        <div className="text-right ml-4">
-                          <p className={`text-xl font-bold ${textSecondary}`}>{issue.story_points}</p>
-                          <p className={`text-xs ${darkMode ? 'text-stone-600' : 'text-gray-400'}`}>points</p>
-                        </div>
-                      )}
+                      <span style={statusPill}>{issue.status || "todo"}</span>
                     </div>
                   </Link>
                 ))}
               </div>
             )}
-          </div>
+          </section>
         )}
 
-        {/* Roadmap Tab */}
-        {activeTab === 'roadmap' && (
-          <div>
-            <h2 className={`text-xl font-bold ${textColor} mb-6`}>Project Roadmap</h2>
-            {sprints.length === 0 ? (
-              <div className={`p-12 ${cardBg} border ${borderColor} rounded-lg text-center`}>
-                <p className={textTertiary}>No sprints to display</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {sprints.map(sprint => (
-                  <div key={sprint.id} className={`p-5 ${cardBg} border ${borderColor} rounded-lg ${hoverBorder} transition-all`}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className={`text-base font-semibold ${textColor}`}>{sprint.name}</h3>
-                        <p className={`text-sm ${textTertiary}`}>{sprint.start_date} to {sprint.end_date}</p>
-                      </div>
-                      <span className={`text-sm font-medium ${textSecondary}`}>{sprint.completed_count}/{sprint.issue_count} completed</span>
-                    </div>
-                    <div className={`w-full h-2 ${inputBg} rounded-full overflow-hidden`}>
-                      <div
-                        style={{ width: `${sprint.issue_count > 0 ? (sprint.completed_count / sprint.issue_count) * 100 : 0}%` }}
-                        className="h-full bg-green-600 transition-all rounded-full"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        {activeTab === "roadmap" && (
+          <section style={{ ...emptyBlock, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <h3 style={{ margin: 0, color: palette.text }}>Roadmap</h3>
+            <p style={{ ...sub, marginTop: 8, color: palette.muted }}>Use milestones and releases pages to manage roadmap planning.</p>
+          </section>
         )}
 
-        {/* Create Sprint Modal */}
         {showCreateSprint && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className={`${modalBg} border ${borderColor} rounded-lg p-6 w-full max-w-md`}>
-              <h2 className={`text-xl font-bold ${textColor} mb-5`}>Create Sprint</h2>
-              <form onSubmit={handleCreateSprint} className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Name *</label>
-                  <input
-                    type="text"
-                    value={sprintForm.name}
-                    onChange={(e) => setSprintForm({ ...sprintForm, name: e.target.value })}
-                    placeholder="e.g., Sprint 1"
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Start Date *</label>
-                    <input
-                      type="date"
-                      value={sprintForm.start_date}
-                      onChange={(e) => setSprintForm({ ...sprintForm, start_date: e.target.value })}
-                      className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>End Date *</label>
-                    <input
-                      type="date"
-                      value={sprintForm.end_date}
-                      onChange={(e) => setSprintForm({ ...sprintForm, end_date: e.target.value })}
-                      className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Goal</label>
-                  <textarea
-                    value={sprintForm.goal}
-                    onChange={(e) => setSprintForm({ ...sprintForm, goal: e.target.value })}
-                    placeholder="Sprint goal..."
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all min-h-20`}
-                  />
-                </div>
-                <div className="flex gap-3 justify-end pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateSprint(false)}
-                    className={`px-4 py-2 ${buttonBg} ${darkMode ? 'text-stone-300' : 'text-gray-700'} border ${borderColor} rounded ${hoverBg} font-medium text-sm transition-all`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreatingSprint}
-                    className={`px-4 py-2 ${darkMode ? 'bg-stone-700 text-stone-100 border-stone-600 hover:bg-stone-600' : 'bg-gray-200 text-gray-900 border-gray-300 hover:bg-gray-300'} rounded font-medium text-sm transition-all disabled:opacity-50 border flex items-center gap-2`}
-                  >
-                    {isCreatingSprint && (
-                      <div className={`w-4 h-4 border-2 ${darkMode ? 'border-stone-400 border-t-transparent' : 'border-gray-600 border-t-transparent'} rounded-full animate-spin`} />
-                    )}
-                    Create Sprint
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Create Issue Modal */}
-        {showCreateIssue && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className={`${modalBg} border ${borderColor} rounded-lg p-6 w-full max-w-md`}>
-              <h2 className={`text-xl font-bold ${textColor} mb-5`}>Create Issue</h2>
-              <form onSubmit={handleCreateIssue} className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Title *</label>
-                  <input
-                    type="text"
-                    value={issueForm.title}
-                    onChange={(e) => setIssueForm({ ...issueForm, title: e.target.value })}
-                    placeholder="Issue title"
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Description</label>
-                  <textarea
-                    value={issueForm.description}
-                    onChange={(e) => setIssueForm({ ...issueForm, description: e.target.value })}
-                    placeholder="Issue description"
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all min-h-20`}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Priority</label>
-                    <select
-                      value={issueForm.priority}
-                      onChange={(e) => setIssueForm({ ...issueForm, priority: e.target.value })}
-                      className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
-                    >
-                      <option value="lowest">Lowest</option>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="highest">Highest</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Sprint</label>
-                    <select
-                      value={issueForm.sprint_id}
-                      onChange={(e) => setIssueForm({ ...issueForm, sprint_id: e.target.value ? parseInt(e.target.value) : '' })}
-                      className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
-                    >
-                      <option value="">Backlog</option>
-                      {sprints.map(sprint => (
-                        <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Assignee</label>
-                  <select
-                    value={issueForm.assignee_id}
-                    onChange={(e) => setIssueForm({ ...issueForm, assignee_id: e.target.value ? parseInt(e.target.value) : '' })}
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none ${darkMode ? 'focus:border-stone-600' : 'focus:border-gray-400'} transition-all`}
-                  >
-                    <option value="">Unassigned</option>
-                    {teamMembers.map(member => (
-                      <option key={member.id} value={member.id}>
-                        {member.full_name || member.username}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex gap-3 justify-end pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateIssue(false)}
-                    className={`px-4 py-2 ${buttonBg} ${darkMode ? 'text-stone-300' : 'text-gray-700'} border ${borderColor} rounded ${hoverBg} font-medium text-sm transition-all`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreatingIssue}
-                    className={`px-4 py-2 ${darkMode ? 'bg-stone-700 text-stone-100 border-stone-600 hover:bg-stone-600' : 'bg-gray-200 text-gray-900 border-gray-300 hover:bg-gray-300'} rounded font-medium text-sm transition-all disabled:opacity-50 border flex items-center gap-2`}
-                  >
-                    {isCreatingIssue && (
-                      <div className={`w-4 h-4 border-2 ${darkMode ? 'border-stone-400 border-t-transparent' : 'border-gray-600 border-t-transparent'} rounded-full animate-spin`} />
-                    )}
-                    Create Issue
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className={`${modalBg} border ${borderColor} rounded-lg p-6 w-full max-w-md`}>
-              <h2 className={`text-xl font-bold ${textColor} mb-3`}>Delete Project?</h2>
-              <p className={`${textSecondary} mb-6`}>This will permanently delete the project and all associated sprints, issues, and data.</p>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className={`px-4 py-2 ${buttonBg} ${darkMode ? 'text-stone-300' : 'text-gray-700'} border ${borderColor} rounded ${hoverBg} font-medium text-sm transition-all`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteProject}
-                  disabled={isDeleting}
-                  className="px-4 py-2 bg-red-900 text-red-200 rounded hover:bg-red-800 font-medium text-sm transition-all disabled:opacity-50 border border-red-800 flex items-center gap-2"
-                >
-                  {isDeleting && (
-                    <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                  )}
-                  Delete Project
-                </button>
+          <Modal title="Create Sprint" onClose={() => setShowCreateSprint(false)}>
+            <form onSubmit={handleCreateSprint} style={formStack}>
+              <input required placeholder="Sprint name" value={sprintForm.name} onChange={(e) => setSprintForm({ ...sprintForm, name: e.target.value })} style={ui.input} />
+              <div style={ui.twoCol}>
+                <input type="date" required value={sprintForm.start_date} onChange={(e) => setSprintForm({ ...sprintForm, start_date: e.target.value })} style={ui.input} />
+                <input type="date" required value={sprintForm.end_date} onChange={(e) => setSprintForm({ ...sprintForm, end_date: e.target.value })} style={ui.input} />
               </div>
+              <textarea rows={4} placeholder="Sprint goal" value={sprintForm.goal} onChange={(e) => setSprintForm({ ...sprintForm, goal: e.target.value })} style={ui.input} />
+              <div style={modalButtons}>
+                <button type="button" onClick={() => setShowCreateSprint(false)} style={ui.secondaryButton}>Cancel</button>
+                <button type="submit" style={ui.primaryButton}>{isCreatingSprint ? "Creating..." : "Create"}</button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {showCreateIssue && (
+          <Modal title="Create Issue" onClose={() => setShowCreateIssue(false)}>
+            <form onSubmit={handleCreateIssue} style={formStack}>
+              <input required placeholder="Issue title" value={issueForm.title} onChange={(e) => setIssueForm({ ...issueForm, title: e.target.value })} style={ui.input} />
+              <textarea rows={4} placeholder="Description" value={issueForm.description} onChange={(e) => setIssueForm({ ...issueForm, description: e.target.value })} style={ui.input} />
+              <div style={ui.twoCol}>
+                <select value={issueForm.priority} onChange={(e) => setIssueForm({ ...issueForm, priority: e.target.value })} style={ui.input}>
+                  <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
+                </select>
+                <select value={issueForm.sprint_id} onChange={(e) => setIssueForm({ ...issueForm, sprint_id: e.target.value })} style={ui.input}>
+                  <option value="">No Sprint</option>
+                  {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <select value={issueForm.assignee_id} onChange={(e) => setIssueForm({ ...issueForm, assignee_id: e.target.value })} style={ui.input}>
+                <option value="">Unassigned</option>
+                {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name || m.username}</option>)}
+              </select>
+              <div style={modalButtons}>
+                <button type="button" onClick={() => setShowCreateIssue(false)} style={ui.secondaryButton}>Cancel</button>
+                <button type="submit" style={ui.primaryButton}>{isCreatingIssue ? "Creating..." : "Create"}</button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {showDeleteConfirm && (
+          <Modal title="Delete Project" onClose={() => setShowDeleteConfirm(false)}>
+            <p style={{ fontSize: 14, color: "#9e8d7b", marginBottom: 12 }}>This action cannot be undone.</p>
+            <div style={modalButtons}>
+              <button onClick={() => setShowDeleteConfirm(false)} style={ui.secondaryButton}>Cancel</button>
+              <button onClick={handleDeleteProject} style={dangerButton}>{isDeleting ? "Deleting..." : "Delete"}</button>
             </div>
-          </div>
+          </Modal>
         )}
       </div>
     </div>
   );
 }
 
-function StatCard({ icon: Icon, label, value, color = 'stone' }) {
-  const { darkMode } = useTheme();
-  const colors = darkMode ? {
-    stone: { bg: 'bg-stone-900', border: 'border-stone-800', text: 'text-stone-100', icon: 'text-stone-500' },
-    green: { bg: 'bg-green-900/20', border: 'border-green-800', text: 'text-green-400', icon: 'text-green-500' },
-    blue: { bg: 'bg-blue-900/20', border: 'border-blue-800', text: 'text-blue-400', icon: 'text-blue-500' },
-    purple: { bg: 'bg-purple-900/20', border: 'border-purple-800', text: 'text-purple-400', icon: 'text-purple-500' }
-  } : {
-    stone: { bg: 'bg-white', border: 'border-gray-200', text: 'text-gray-900', icon: 'text-gray-500' },
-    green: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-600', icon: 'text-green-500' },
-    blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', icon: 'text-blue-500' },
-    purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-600', icon: 'text-purple-500' }
-  };
-  const style = colors[color];
+function Modal({ title, onClose, children }) {
   return (
-    <div className={`p-5 ${style.bg} border ${style.border} rounded-lg ${darkMode ? 'hover:border-stone-700' : 'hover:border-gray-300'} transition-all`}>
-      <div className="flex items-center justify-between mb-3">
-        {Icon && <Icon className={`w-5 h-5 ${style.icon}`} />}
-        <p className={`text-2xl font-bold ${style.text}`}>{value}</p>
+    <div style={overlay}>
+      <div style={modalCard}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ margin: 0, fontSize: 20 }}>{title}</h3>
+          <button onClick={onClose} style={closeBtn}>Close</button>
+        </div>
+        {children}
       </div>
-      <p className={`text-xs font-semibold uppercase ${darkMode ? 'text-stone-500' : 'text-gray-500'}`}>{label}</p>
     </div>
   );
 }
+
+function Empty({ text }) {
+  return <div style={emptyBlock}><p style={{ margin: 0, color: "#9e8d7b" }}>{text}</p></div>;
+}
+
+function Stat({ icon: Icon, label, value }) {
+  return (
+    <article style={statCard}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <p style={statLabel}>{label}</p>
+        <Icon style={icon16} />
+      </div>
+      <p style={statValue}>{value}</p>
+    </article>
+  );
+}
+
+const spinner = { width: 28, height: 28, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const hero = { borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12 };
+const heroTop = { display: "grid", gridTemplateColumns: "56px 1fr", gap: 10, alignItems: "start" };
+const projectBadge = { width: 56, height: 56, borderRadius: 14, display: "grid", placeItems: "center", background: "linear-gradient(135deg,#ffcc8b,#ff935d)", color: "#20140f", fontWeight: 800, fontSize: 18 };
+const title = { margin: "0 0 2px", fontSize: "clamp(1.5rem,3vw,2.1rem)", letterSpacing: "-0.02em" };
+const sub = { margin: 0, fontSize: 13 };
+const dangerIconButton = { border: "1px solid rgba(239,68,68,0.45)", borderRadius: 10, width: 36, height: 36, color: "#ef4444", background: "rgba(239,68,68,0.08)", display: "grid", placeItems: "center", cursor: "pointer" };
+const quickLinkRow = { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 };
+const quickButton = { padding: "9px 12px", borderRadius: 10, border: "1px solid rgba(120,120,120,0.4)", textDecoration: "none", fontSize: 13, fontWeight: 700, color: "#7d6d5a", background: "transparent" };
+const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 };
+const statCard = { borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#171215", color: "#f4ece0" };
+const statLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "#baa892", fontWeight: 700 };
+const statValue = { margin: "7px 0 0", fontSize: 30, fontWeight: 800 };
+const tabWrap = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, borderRadius: 12, padding: 6, marginBottom: 12 };
+const tabButton = { borderRadius: 9, padding: "9px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 };
+const h2 = { margin: 0, fontSize: 20 };
+const dangerButton = { border: "1px solid rgba(239,68,68,0.45)", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#ef4444", background: "rgba(239,68,68,0.08)" };
+const list = { display: "grid", gap: 8 };
+const itemCard = { borderRadius: 12, padding: 12, textDecoration: "none" };
+const itemTitle = { margin: 0, fontSize: 15, fontWeight: 700 };
+const itemMeta = { margin: "3px 0 0", fontSize: 12 };
+const statusPill = { border: "1px solid rgba(120,120,120,0.45)", borderRadius: 999, padding: "4px 8px", fontSize: 11, textTransform: "capitalize", fontWeight: 700, color: "#9e8d7b" };
+const emptyBlock = { borderRadius: 12, padding: "24px 14px", textAlign: "center" };
+const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
+const modalCard = { width: "min(560px,100%)", background: "#fffaf3", borderRadius: 14, padding: 16 };
+const closeBtn = { border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, cursor: "pointer" };
+const formStack = { display: "grid", gap: 8 };
+const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
+const icon18 = { width: 18, height: 18 };
+const icon16 = { width: 16, height: 16 };
+const icon14 = { width: 14, height: 14 };
 
 export default ProjectDetail;
+

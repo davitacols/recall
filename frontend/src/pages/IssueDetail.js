@@ -1,518 +1,440 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, ClockIcon, UserIcon, CalendarIcon, ChartBarIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
-import DecisionImpactPanel from '../components/DecisionImpactPanel';
-import IssueAttachments from '../components/IssueAttachments';
-import WatchButton from '../components/WatchButton';
-import { TimeTracker, TimeEstimate } from '../components/TimeTracker';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeftIcon,
+  CalendarDaysIcon,
+  CheckIcon,
+  ChatBubbleBottomCenterTextIcon,
+  ClockIcon,
+  PencilIcon,
+  SparklesIcon,
+  TrashIcon,
+  UserCircleIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import api from "../services/api";
+import DecisionImpactPanel from "../components/DecisionImpactPanel";
+import IssueAttachments from "../components/IssueAttachments";
+import WatchButton from "../components/WatchButton";
+import { TimeEstimate, TimeTracker } from "../components/TimeTracker";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+
+const STATUSES = ["backlog", "todo", "in_progress", "in_review", "testing", "done"];
+const PRIORITIES = ["lowest", "low", "medium", "high", "highest"];
+
+const getApiErrorMessage = (error, fallback) =>
+  error?.response?.data?.detail ||
+  error?.response?.data?.error ||
+  error?.response?.data?.message ||
+  error?.message ||
+  fallback;
+
+const formatLabel = (value) => (value ? value.replaceAll("_", " ") : "-");
+const formatDateTime = (value) => (value ? new Date(value).toLocaleString() : "-");
+const formatDateOnly = (value) => (value ? new Date(value).toLocaleDateString() : "-");
+
+const getSemanticChipStyle = (value, type, darkMode) => {
+  const statusStyles = {
+    backlog: { border: "rgba(148,163,184,0.55)", text: "#94a3b8", bgDark: "rgba(148,163,184,0.14)", bgLight: "rgba(148,163,184,0.16)" },
+    todo: { border: "rgba(59,130,246,0.55)", text: "#60a5fa", bgDark: "rgba(59,130,246,0.14)", bgLight: "rgba(59,130,246,0.14)" },
+    in_progress: { border: "rgba(245,158,11,0.55)", text: "#f59e0b", bgDark: "rgba(245,158,11,0.16)", bgLight: "rgba(245,158,11,0.16)" },
+    in_review: { border: "rgba(168,85,247,0.55)", text: "#a78bfa", bgDark: "rgba(168,85,247,0.16)", bgLight: "rgba(168,85,247,0.14)" },
+    testing: { border: "rgba(236,72,153,0.55)", text: "#f472b6", bgDark: "rgba(236,72,153,0.16)", bgLight: "rgba(236,72,153,0.14)" },
+    done: { border: "rgba(34,197,94,0.55)", text: "#22c55e", bgDark: "rgba(34,197,94,0.16)", bgLight: "rgba(34,197,94,0.14)" },
+  };
+  const priorityStyles = {
+    lowest: { border: "rgba(34,197,94,0.55)", text: "#22c55e", bgDark: "rgba(34,197,94,0.16)", bgLight: "rgba(34,197,94,0.14)" },
+    low: { border: "rgba(132,204,22,0.55)", text: "#84cc16", bgDark: "rgba(132,204,22,0.16)", bgLight: "rgba(132,204,22,0.14)" },
+    medium: { border: "rgba(245,158,11,0.55)", text: "#f59e0b", bgDark: "rgba(245,158,11,0.16)", bgLight: "rgba(245,158,11,0.14)" },
+    high: { border: "rgba(249,115,22,0.55)", text: "#f97316", bgDark: "rgba(249,115,22,0.16)", bgLight: "rgba(249,115,22,0.14)" },
+    highest: { border: "rgba(239,68,68,0.55)", text: "#ef4444", bgDark: "rgba(239,68,68,0.16)", bgLight: "rgba(239,68,68,0.14)" },
+  };
+  const token = (type === "status" ? statusStyles : priorityStyles)[value];
+  if (!token) return {};
+  return {
+    border: `1px solid ${token.border}`,
+    color: token.text,
+    background: darkMode ? token.bgDark : token.bgLight,
+  };
+};
 
 function IssueDetail() {
   const { issueId } = useParams();
   const navigate = useNavigate();
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [issue, setIssue] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
-  const [newComment, setNewComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [sprints, setSprints] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [commenting, setCommenting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState("");
+
+  const fetchIssue = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/api/agile/issues/${issueId}/`);
+      setIssue(response.data);
+      setFormData({
+        title: response.data.title || "",
+        description: response.data.description || "",
+        status: response.data.status || "todo",
+        priority: response.data.priority || "medium",
+        issue_type: response.data.issue_type || "task",
+        assignee_id: response.data.assignee_id ?? "",
+        sprint_id: response.data.sprint_id ?? "",
+        story_points: response.data.story_points ?? "",
+        due_date: response.data.due_date || "",
+      });
+      setError("");
+
+      if (response.data.project_id) {
+        const sprintResponse = await api.get(`/api/agile/projects/${response.data.project_id}/sprints/`);
+        setSprints(sprintResponse.data || []);
+      }
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to load issue"));
+    } finally {
+      setLoading(false);
+    }
+  }, [issueId]);
+
+  const fetchTeamMembers = useCallback(async () => {
+    try {
+      const response = await api.get("/api/organizations/members/");
+      setTeamMembers(response.data || []);
+    } catch (err) {
+      setTeamMembers([]);
+    }
+  }, []);
 
   useEffect(() => {
     fetchIssue();
     fetchTeamMembers();
-  }, [issueId]);
+  }, [fetchIssue, fetchTeamMembers]);
 
-  const fetchTeamMembers = async () => {
-    try {
-      const response = await api.get('/api/team/members/');
-      setTeamMembers(response.data);
-    } catch (error) {
-      console.error('Failed to fetch team members:', error);
+  const handleSave = async () => {
+    if (!formData.title?.trim()) {
+      setError("Title is required");
+      return;
     }
-  };
 
-  const fetchIssue = async () => {
+    setSaving(true);
     try {
-      setLoading(true);
-      setError(null);
-      const response = await api.get(`/api/agile/issues/${issueId}/`);
-      setIssue(response.data);
-      setFormData(response.data);
-    } catch (err) {
-      console.error('Failed to fetch issue:', err);
-      setError(err.response?.data?.error || 'Failed to load issue');
-    } finally {
-      setLoading(false);
-    }
-  };
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description || "",
+        status: formData.status || "todo",
+        priority: formData.priority || "medium",
+        issue_type: formData.issue_type || "task",
+        assignee_id: formData.assignee_id === "" ? null : Number(formData.assignee_id),
+        sprint_id: formData.sprint_id === "" ? null : Number(formData.sprint_id),
+        story_points: formData.story_points === "" ? null : Number(formData.story_points),
+        due_date: formData.due_date || null,
+      };
 
-  const handleUpdate = async () => {
-    setSubmitting(true);
-    try {
-      await api.put(`/api/agile/issues/${issueId}/`, formData);
+      await api.put(`/api/agile/issues/${issueId}/`, payload);
       setEditing(false);
-      fetchIssue();
-    } catch (error) {
-      console.error('Failed to update issue:', error);
-      setError(error.response?.data?.error || 'Failed to update issue');
+      await fetchIssue();
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to update issue"));
     } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleAddComment = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    setSubmitting(true);
-    try {
-      await api.post(`/api/agile/issues/${issueId}/comments/`, { content: newComment });
-      setNewComment('');
-      fetchIssue();
-    } catch (error) {
-      console.error('Failed to add comment:', error);
-      setError(error.response?.data?.error || 'Failed to add comment');
-    } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this issue?')) return;
+    if (!window.confirm("Delete this issue? This action cannot be undone.")) return;
     try {
       await api.delete(`/api/agile/issues/${issueId}/`);
-      navigate(`/projects/${issue.project_id}`);
-    } catch (error) {
-      console.error('Failed to delete issue:', error);
-      setError(error.response?.data?.error || 'Failed to delete issue');
+      navigate(issue?.project_id ? `/projects/${issue.project_id}` : "/projects");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to delete issue"));
+    }
+  };
+
+  const handleAddComment = async (event) => {
+    event.preventDefault();
+    if (!newComment.trim()) return;
+    setCommenting(true);
+    try {
+      await api.post(`/api/agile/issues/${issueId}/comments/`, { content: newComment.trim() });
+      setNewComment("");
+      await fetchIssue();
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to add comment"));
+    } finally {
+      setCommenting(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-stone-700 border-t-stone-400 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-stone-950 p-6">
-        <button onClick={() => navigate(-1)} className="mb-4 px-3 py-2 hover:bg-stone-900 rounded transition-all border border-stone-800 bg-stone-900/50 inline-flex items-center gap-2 text-stone-400 hover:text-stone-200">
-          <ArrowLeftIcon className="w-4 h-4" />
-          <span className="text-sm">Back</span>
-        </button>
-        <div className="p-5 bg-red-900/20 border border-red-800 rounded">
-          <h2 className="text-lg font-semibold text-red-400 mb-2">Error Loading Issue</h2>
-          <p className="text-red-300/80 text-sm">{error}</p>
-        </div>
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+        <div style={spinner} />
       </div>
     );
   }
 
   if (!issue) {
     return (
-      <div className="min-h-screen bg-stone-950 flex items-center justify-center">
-        <h2 className="text-xl font-semibold text-stone-500">Issue not found</h2>
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <button onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
+            <ArrowLeftIcon style={icon14} /> Back
+          </button>
+          <section style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <h1 style={{ margin: 0, color: palette.text }}>Issue not found</h1>
+          </section>
+        </div>
       </div>
     );
   }
 
-  const priorityColors = {
-    highest: 'bg-red-500/20 text-red-400 border-red-500/30',
-    high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    low: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    lowest: 'bg-stone-700/40 text-stone-400 border-stone-600/30'
-  };
-
-  const statusColors = {
-    backlog: 'bg-stone-700/40 text-stone-300 border-stone-600/30',
-    todo: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    in_progress: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    in_review: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    testing: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    done: 'bg-green-500/20 text-green-400 border-green-500/30'
-  };
-
   return (
-    <div className="min-h-screen bg-stone-950">
-      <div className="max-w-[1600px] mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <button onClick={() => navigate(-1)} className="mb-4 px-3 py-2 hover:bg-stone-900 rounded transition-all border border-stone-800 bg-stone-900/50 inline-flex items-center gap-2 text-stone-400 hover:text-stone-200">
-            <ArrowLeftIcon className="w-4 h-4" />
-            <span className="text-sm">Back</span>
-          </button>
-          
-          <div className="bg-stone-900 border border-stone-800 rounded-lg p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="px-2 py-1 text-xs font-semibold text-stone-500 bg-stone-800 rounded border border-stone-700 font-mono">{issue.key}</span>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded border ${priorityColors[issue.priority] || priorityColors.low}`}>
-                    {issue.priority}
-                  </span>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded border ${statusColors[issue.status] || statusColors.backlog}`}>
-                    {issue.status.replace('_', ' ')}
-                  </span>
-                </div>
-                {!editing ? (
-                  <h1 className="text-2xl font-bold text-stone-100">{issue.title}</h1>
-                ) : (
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full text-2xl font-bold bg-stone-800 text-stone-100 border border-stone-700 rounded px-3 py-2 focus:outline-none focus:border-stone-600"
-                  />
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {!editing ? (
-                  <button onClick={() => setEditing(true)} className="px-4 py-2 bg-stone-800 text-stone-300 border border-stone-700 rounded hover:bg-stone-700 transition-all flex items-center gap-2">
-                    <PencilIcon className="w-4 h-4" />
-                    <span className="font-medium">Edit</span>
-                  </button>
-                ) : (
-                  <>
-                    <button onClick={handleUpdate} disabled={submitting} className="px-4 py-2 bg-stone-700 text-stone-100 rounded hover:bg-stone-600 transition-all flex items-center gap-2 disabled:opacity-50 border border-stone-600">
-                      <CheckIcon className="w-4 h-4" />
-                      <span className="font-medium">Save</span>
-                    </button>
-                    <button onClick={() => setEditing(false)} className="px-4 py-2 bg-stone-800 text-stone-300 border border-stone-700 rounded hover:bg-stone-700 transition-all flex items-center gap-2">
-                      <XMarkIcon className="w-4 h-4" />
-                      <span className="font-medium">Cancel</span>
-                    </button>
-                  </>
-                )}
-                <button onClick={handleDelete} className="p-2 hover:bg-red-900/20 text-red-400 rounded transition-all border border-transparent hover:border-red-900/30">
-                  <TrashIcon className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div style={{ minHeight: "100vh", background: palette.bg, fontFamily: "Space Grotesk, ui-sans-serif, system-ui" }}>
+      <div style={{ ...ambientGlow, background: darkMode ? "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.18),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.16),transparent 36%)" : "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.1),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.08),transparent 36%)" }} />
+      <div style={{ ...ui.container, width: "min(1420px,100%)", position: "relative", zIndex: 1 }}>
+        <button onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
+          <ArrowLeftIcon style={icon14} /> Back To Board
+        </button>
 
-        {/* 3-Column Layout */}
-        <div className="grid grid-cols-[1fr_280px_320px] gap-6">
-          {/* Main Content */}
-          <div className="space-y-6">
-            {/* Description */}
-            <div className="bg-gradient-to-br from-stone-900/60 to-stone-800/40 backdrop-blur-sm border border-stone-700/50 rounded-xl p-6 hover:border-stone-600/50 transition-all">
-              <div className="flex items-center gap-2 mb-4">
-                <ChartBarIcon className="w-5 h-5 text-amber-400" />
-                <h2 className="text-sm font-bold text-stone-300 uppercase tracking-wider">Description</h2>
-              </div>
-              {!editing ? (
-                <p className="text-stone-200 whitespace-pre-wrap text-sm leading-relaxed">{issue.description || 'No description provided'}</p>
-              ) : (
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-4 py-3 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 min-h-32 text-sm"
-                  placeholder="Describe the issue..."
-                />
-              )}
-            </div>
+        {error && <div style={errorBanner}>{error}</div>}
 
-            {/* Activity & Comments */}
-            <div className="bg-gradient-to-br from-stone-900/60 to-stone-800/40 backdrop-blur-sm border border-stone-700/50 rounded-xl p-6 hover:border-stone-600/50 transition-all">
-              <div className="flex items-center gap-2 mb-5">
-                <ClockIcon className="w-5 h-5 text-amber-400" />
-                <h2 className="text-sm font-bold text-stone-300 uppercase tracking-wider">Activity</h2>
-              </div>
-
-              {issue.comments && issue.comments.length > 0 ? (
-                <div className="space-y-3 mb-5">
-                  {issue.comments.map(comment => (
-                    <div key={comment.id} className="bg-stone-800/40 border border-stone-700/40 rounded-lg p-4 hover:bg-stone-800/60 transition-all">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold">
-                            {comment.author.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="font-semibold text-stone-200 text-sm">{comment.author}</span>
-                        </div>
-                        <span className="text-xs text-stone-500">{new Date(comment.created_at).toLocaleString()}</span>
-                      </div>
-                      <p className="text-stone-300 text-sm leading-relaxed ml-10">{comment.content}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 mb-5">
-                  <div className="w-16 h-16 rounded-full bg-stone-800/40 flex items-center justify-center mb-3">
-                    <span className="text-3xl">💬</span>
-                  </div>
-                  <p className="text-stone-500 text-sm">No comments yet</p>
-                </div>
-              )}
-
-              <form onSubmit={handleAddComment} className="space-y-3">
-                <textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-4 py-3 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 min-h-24 text-sm placeholder-stone-500"
-                />
-                <button
-                  type="submit"
-                  disabled={submitting || !newComment.trim()}
-                  className="px-5 py-2.5 bg-transparent border-2 border-amber-500 text-amber-500 rounded-lg hover:bg-amber-500 hover:text-white transition-all text-sm font-semibold disabled:opacity-50"
-                >
-                  {submitting ? 'Posting...' : 'Add Comment'}
-                </button>
-              </form>
-            </div>
-
-            {/* Attachments */}
-            <IssueAttachments issueId={issueId} />
-
-            {/* Time Tracking */}
-            <div className="bg-gradient-to-br from-stone-900/60 to-stone-800/40 backdrop-blur-sm border border-stone-700/50 rounded-xl p-6 hover:border-stone-600/50 transition-all">
-              <TimeTracker issueId={issueId} />
-            </div>
-
-            {/* Decision Impacts */}
-            <DecisionImpactPanel issueId={issueId} issueTitle={issue.title} />
-          </div>
-
-          {/* Metadata Sidebar */}
-          <div className="space-y-3">
-            <MetadataCard title="Status" icon={ChartBarIcon}>
-              {!editing ? (
-                <p className="text-stone-200 text-sm capitalize font-medium">{issue.status.replace('_', ' ')}</p>
-              ) : (
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                >
-                  <option value="backlog">Backlog</option>
-                  <option value="todo">To Do</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="in_review">In Review</option>
-                  <option value="testing">Testing</option>
-                  <option value="done">Done</option>
-                </select>
-              )}
-            </MetadataCard>
-
-            <MetadataCard title="Priority" icon={ChartBarIcon}>
-              {!editing ? (
-                <p className="text-stone-200 text-sm capitalize font-medium">{issue.priority}</p>
-              ) : (
-                <select
-                  value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                  className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                >
-                  <option value="lowest">Lowest</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="highest">Highest</option>
-                </select>
-              )}
-            </MetadataCard>
-
-            <MetadataCard title="Type" icon={ChartBarIcon}>
-              <p className="text-stone-200 text-sm capitalize font-medium">{issue.issue_type || 'task'}</p>
-            </MetadataCard>
-
-            <MetadataCard title="Assignee" icon={UserIcon}>
-              {!editing ? (
-                <p className="text-stone-200 text-sm font-medium">{issue.assignee_name || 'Unassigned'}</p>
-              ) : (
-                <select
-                  value={formData.assignee_id || ''}
-                  onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value ? parseInt(e.target.value) : null })}
-                  className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                >
-                  <option value="">Unassigned</option>
-                  {teamMembers.map(member => (
-                    <option key={member.id} value={member.id}>
-                      {member.first_name} {member.last_name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </MetadataCard>
-
-            <MetadataCard title="Reporter" icon={UserIcon}>
-              <p className="text-stone-200 text-sm font-medium">{issue.reporter_name}</p>
-            </MetadataCard>
-
-            <MetadataCard title="Story Points" icon={ChartBarIcon}>
-              {!editing ? (
-                <p className="text-stone-200 text-sm font-medium">{issue.story_points || '-'}</p>
-              ) : (
-                <input
-                  type="number"
-                  value={formData.story_points || ''}
-                  onChange={(e) => setFormData({ ...formData, story_points: e.target.value ? parseInt(e.target.value) : null })}
-                  className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                  placeholder="Points"
-                />
-              )}
-            </MetadataCard>
-
-            <MetadataCard title="Sprint" icon={CalendarIcon}>
-              <p className="text-stone-200 text-sm font-medium">{issue.sprint_name || 'Backlog'}</p>
-            </MetadataCard>
-
-            <MetadataCard title="Due Date" icon={CalendarIcon}>
-              {!editing ? (
-                <p className="text-stone-200 text-sm font-medium">{issue.due_date || '-'}</p>
-              ) : (
-                <input
-                  type="date"
-                  value={formData.due_date || ''}
-                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                  className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                />
-              )}
-            </MetadataCard>
-
-            <MetadataCard title="Created" icon={ClockIcon}>
-              <p className="text-stone-300 text-xs">{new Date(issue.created_at).toLocaleString()}</p>
-            </MetadataCard>
-
-            <div className="bg-stone-900 border border-stone-800 rounded p-3">
-              <TimeEstimate issueId={issueId} estimate={issue.time_estimate} onUpdate={fetchIssue} />
+        <section style={{ ...hero, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(140deg,#1b1417 0%,#140f11 100%)" : "linear-gradient(140deg,#fffdf9 0%,#fff7ea 100%)", boxShadow: darkMode ? "0 26px 60px rgba(0,0,0,0.35)" : "0 26px 60px rgba(20,12,4,0.08)" }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ ...issueKey, color: palette.muted }}>{issue.key || `ISS-${issue.id}`}</p>
+            {!editing ? (
+              <h1 style={{ ...issueTitle, color: palette.text }}>{issue.title}</h1>
+            ) : (
+              <input value={formData.title || ""} onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))} style={ui.input} />
+            )}
+            <div style={tagRow}>
+              <span style={{ ...chip, ...getSemanticChipStyle(issue.status, "status", darkMode) }}>{formatLabel(issue.status)}</span>
+              <span style={{ ...chip, ...getSemanticChipStyle(issue.priority, "priority", darkMode) }}>{formatLabel(issue.priority)}</span>
+              <span style={{ ...chip, border: `1px solid ${palette.border}`, color: palette.muted }}>{formatLabel(issue.issue_type)}</span>
             </div>
           </div>
 
-          {/* Code Review Sidebar */}
-          <div className="space-y-3">
-            <WatchButton issueId={issueId} isWatching={issue.watchers?.includes(parseInt(localStorage.getItem('user_id')))} />
-
-            {issue.status === 'in_review' && (
+          <div style={heroActions}>
+            <WatchButton issueId={issueId} isWatching={false} />
+            {!editing ? (
+              <button onClick={() => setEditing(true)} style={ui.secondaryButton}>
+                <PencilIcon style={icon14} /> Edit
+              </button>
+            ) : (
               <>
-                <MetadataCard title="Review Status" icon={CheckIcon}>
-                  {!editing ? (
-                    <p className={`text-sm font-semibold capitalize ${
-                      issue.code_review_status === 'approved' ? 'text-green-400' :
-                      issue.code_review_status === 'changes_requested' ? 'text-red-400' :
-                      issue.code_review_status === 'merged' ? 'text-blue-400' :
-                      'text-yellow-400'
-                    }`}>{issue.code_review_status || 'pending'}</p>
-                  ) : (
-                    <select
-                      value={formData.code_review_status || ''}
-                      onChange={(e) => setFormData({ ...formData, code_review_status: e.target.value })}
-                      className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                    >
-                      <option value="pending">Pending Review</option>
-                      <option value="approved">Approved</option>
-                      <option value="changes_requested">Changes Requested</option>
-                      <option value="merged">Merged</option>
-                    </select>
-                  )}
-                </MetadataCard>
-
-                <MetadataCard title="Pull Request" icon={ChartBarIcon}>
-                  {!editing ? (
-                    issue.pr_url ? (
-                      <a href={issue.pr_url} target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 text-sm break-all underline">
-                        View PR
-                      </a>
-                    ) : (
-                      <p className="text-stone-400 text-sm">-</p>
-                    )
-                  ) : (
-                    <input
-                      type="url"
-                      value={formData.pr_url || ''}
-                      onChange={(e) => setFormData({ ...formData, pr_url: e.target.value })}
-                      placeholder="https://github.com/..."
-                      className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                    />
-                  )}
-                </MetadataCard>
-
-                <MetadataCard title="Branch" icon={ChartBarIcon}>
-                  {!editing ? (
-                    <p className="text-stone-200 text-xs font-mono">{issue.branch_name || '-'}</p>
-                  ) : (
-                    <input
-                      type="text"
-                      value={formData.branch_name || ''}
-                      onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
-                      placeholder="feature/branch-name"
-                      className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                    />
-                  )}
-                </MetadataCard>
-
-                <MetadataCard title="CI/CD Status" icon={ChartBarIcon}>
-                  {!editing ? (
-                    <div className="space-y-2">
-                      <p className={`text-sm font-semibold capitalize ${
-                        issue.ci_status === 'passed' ? 'text-green-400' :
-                        issue.ci_status === 'failed' ? 'text-red-400' :
-                        issue.ci_status === 'running' ? 'text-blue-400' :
-                        'text-stone-400'
-                      }`}>{issue.ci_status || '-'}</p>
-                      {issue.ci_url && (
-                        <a href={issue.ci_url} target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 text-xs break-all underline">
-                          View Pipeline
-                        </a>
-                      )}
-                    </div>
-                  ) : (
-                    <select
-                      value={formData.ci_status || ''}
-                      onChange={(e) => setFormData({ ...formData, ci_status: e.target.value })}
-                      className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                    >
-                      <option value="">-</option>
-                      <option value="pending">Pending</option>
-                      <option value="running">Running</option>
-                      <option value="passed">Passed</option>
-                      <option value="failed">Failed</option>
-                    </select>
-                  )}
-                </MetadataCard>
-
-                <MetadataCard title="Test Coverage" icon={ChartBarIcon}>
-                  {!editing ? (
-                    <p className="text-stone-200 text-sm font-medium">{issue.test_coverage ? `${issue.test_coverage}%` : '-'}</p>
-                  ) : (
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.test_coverage || ''}
-                      onChange={(e) => setFormData({ ...formData, test_coverage: e.target.value ? parseInt(e.target.value) : null })}
-                      placeholder="0-100"
-                      className="w-full bg-stone-800/40 text-stone-200 border border-stone-700/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-                    />
-                  )}
-                </MetadataCard>
+                <button onClick={handleSave} disabled={saving} style={ui.primaryButton}>
+                  <CheckIcon style={icon14} /> {saving ? "Saving..." : "Save"}
+                </button>
+                <button onClick={() => setEditing(false)} disabled={saving} style={ui.secondaryButton}>
+                  <XMarkIcon style={icon14} /> Cancel
+                </button>
               </>
             )}
+            <button onClick={handleDelete} style={dangerButton}>
+              <TrashIcon style={icon14} />
+            </button>
           </div>
+        </section>
+
+        <div style={metricsRow}>
+          <Metric icon={UserCircleIcon} label="Reporter" value={issue.reporter_name || "-"} palette={palette} />
+          <Metric icon={ClockIcon} label="Created" value={formatDateTime(issue.created_at)} palette={palette} />
+          <Metric icon={CalendarDaysIcon} label="Due" value={formatDateOnly(issue.due_date)} palette={palette} />
+          <Metric icon={SparklesIcon} label="Story Points" value={issue.story_points ?? "-"} palette={palette} />
+        </div>
+
+        <div style={contentLayout}>
+          <main style={mainStack}>
+            <section style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <h2 style={{ ...sectionTitle, color: palette.text }}>Issue Brief</h2>
+              {!editing ? (
+                <p style={{ ...bodyText, color: palette.muted }}>{issue.description || "No description provided yet."}</p>
+              ) : (
+                <textarea rows={7} value={formData.description || ""} onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))} style={{ ...ui.input, resize: "vertical" }} />
+              )}
+            </section>
+
+            <section style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <h2 style={{ ...sectionTitle, color: palette.text }}>
+                <ChatBubbleBottomCenterTextIcon style={icon16} /> Discussion
+              </h2>
+
+              <div style={commentList}>
+                {(issue.comments || []).length === 0 && <div style={{ ...emptyState, border: `1px dashed ${palette.border}`, color: palette.muted }}>No comments yet.</div>}
+                {(issue.comments || []).map((comment) => (
+                  <article key={comment.id} style={{ ...commentCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                    <p style={{ ...commentMeta, color: palette.muted }}>{comment.author} | {formatDateTime(comment.created_at)}</p>
+                    <p style={{ ...bodyText, color: palette.text }}>{comment.content}</p>
+                  </article>
+                ))}
+              </div>
+
+              <form onSubmit={handleAddComment} style={commentComposer}>
+                <textarea rows={3} value={newComment} onChange={(event) => setNewComment(event.target.value)} placeholder="Add context, blockers, links..." style={{ ...ui.input, resize: "vertical" }} />
+                <button type="submit" disabled={commenting || !newComment.trim()} style={ui.primaryButton}>
+                  {commenting ? "Posting..." : "Post Comment"}
+                </button>
+              </form>
+            </section>
+
+            <section style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <h2 style={{ ...sectionTitle, color: palette.text }}>Delivery Signals</h2>
+              <div style={moduleStack}>
+                <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                  <TimeTracker issueId={issueId} />
+                </div>
+                <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                  <IssueAttachments issueId={issueId} />
+                </div>
+                <DecisionImpactPanel issueId={issueId} issueTitle={issue.title} />
+              </div>
+            </section>
+          </main>
+
+          <aside style={{ ...sidePanel, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <h2 style={{ ...sectionTitle, color: palette.text }}>Properties</h2>
+
+            <Field label="Status" palette={palette}>
+              {!editing ? (
+                <span style={{ ...chip, width: "fit-content", ...getSemanticChipStyle(issue.status, "status", darkMode) }}>{formatLabel(issue.status)}</span>
+              ) : (
+                <select value={formData.status || "todo"} onChange={(event) => setFormData((prev) => ({ ...prev, status: event.target.value }))} style={ui.input}>
+                  {STATUSES.map((status) => (
+                    <option key={status} value={status}>{formatLabel(status)}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
+
+            <Field label="Priority" palette={palette}>
+              {!editing ? (
+                <span style={{ ...chip, width: "fit-content", ...getSemanticChipStyle(issue.priority, "priority", darkMode) }}>{formatLabel(issue.priority)}</span>
+              ) : (
+                <select value={formData.priority || "medium"} onChange={(event) => setFormData((prev) => ({ ...prev, priority: event.target.value }))} style={ui.input}>
+                  {PRIORITIES.map((priority) => (
+                    <option key={priority} value={priority}>{formatLabel(priority)}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
+
+            <Field label="Assignee" palette={palette}>
+              {!editing ? (
+                <span style={{ ...valueText, color: palette.text }}>{issue.assignee_name || "Unassigned"}</span>
+              ) : (
+                <select value={formData.assignee_id ?? ""} onChange={(event) => setFormData((prev) => ({ ...prev, assignee_id: event.target.value }))} style={ui.input}>
+                  <option value="">Unassigned</option>
+                  {teamMembers.map((member) => (
+                    <option key={member.id} value={member.id}>{member.full_name || member.username}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
+
+            <Field label="Sprint" palette={palette}>
+              {!editing ? (
+                <span style={{ ...valueText, color: palette.text }}>{issue.sprint_name || "Backlog"}</span>
+              ) : (
+                <select value={formData.sprint_id ?? ""} onChange={(event) => setFormData((prev) => ({ ...prev, sprint_id: event.target.value }))} style={ui.input}>
+                  <option value="">Backlog</option>
+                  {sprints.map((sprint) => (
+                    <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
+
+            <Field label="Story Points" palette={palette}>
+              {!editing ? (
+                <span style={{ ...valueText, color: palette.text }}>{issue.story_points ?? "-"}</span>
+              ) : (
+                <input type="number" min="0" value={formData.story_points ?? ""} onChange={(event) => setFormData((prev) => ({ ...prev, story_points: event.target.value }))} style={ui.input} />
+              )}
+            </Field>
+
+            <Field label="Due Date" palette={palette}>
+              {!editing ? (
+                <span style={{ ...valueText, color: palette.text }}>{formatDateOnly(issue.due_date)}</span>
+              ) : (
+                <input type="date" value={formData.due_date || ""} onChange={(event) => setFormData((prev) => ({ ...prev, due_date: event.target.value }))} style={ui.input} />
+              )}
+            </Field>
+
+            <Field label="Updated" palette={palette}>
+              <span style={{ ...valueText, color: palette.muted }}>{formatDateTime(issue.updated_at)}</span>
+            </Field>
+
+            <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt, marginTop: 4 }}>
+              <TimeEstimate issueId={issueId} estimate={issue.time_estimate} onUpdate={fetchIssue} />
+            </div>
+          </aside>
         </div>
       </div>
     </div>
   );
 }
 
-function MetadataCard({ title, icon: Icon, children }) {
+function Field({ label, children, palette }) {
   return (
-    <div className="bg-stone-900 border border-stone-800 rounded p-3">
-      <div className="flex items-center gap-2 mb-2">
-        {Icon && <Icon className="w-4 h-4 text-stone-500" />}
-        <h3 className="text-xs font-semibold text-stone-500 uppercase">{title}</h3>
-      </div>
+    <label style={fieldWrap}>
+      <span style={{ ...fieldLabel, color: palette.muted }}>{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
+
+function Metric({ icon: Icon, label, value, palette }) {
+  return (
+    <article style={{ ...metricCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+      <p style={{ ...metricLabel, color: palette.muted }}>
+        <Icon style={icon14} /> {label}
+      </p>
+      <p style={{ ...metricValue, color: palette.text }}>{value}</p>
+    </article>
+  );
+}
+
+const spinner = { width: 34, height: 34, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#f59e0b", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const ambientGlow = { position: "fixed", inset: 0, pointerEvents: "none" };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 12 };
+const errorBanner = { borderRadius: 12, border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#ef4444", padding: "10px 12px", marginBottom: 10, fontSize: 13 };
+const cardBase = { borderRadius: 18, padding: "clamp(12px,2vw,18px)" };
+const hero = { borderRadius: 20, padding: "clamp(14px,2.2vw,22px)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" };
+const issueKey = { margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" };
+const issueTitle = { margin: "8px 0 10px", fontSize: "clamp(1.4rem,3vw,2.15rem)", letterSpacing: "-0.03em", lineHeight: 1.1 };
+const tagRow = { display: "flex", gap: 8, flexWrap: "wrap" };
+const chip = { borderRadius: 999, padding: "5px 10px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
+const heroActions = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
+const dangerButton = { border: "1px solid rgba(239,68,68,0.45)", borderRadius: 10, padding: 9, color: "#ef4444", background: "rgba(239,68,68,0.1)", cursor: "pointer", display: "grid", placeItems: "center" };
+const metricsRow = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 };
+const metricCard = { borderRadius: 14, padding: "10px 12px" };
+const metricLabel = { margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5 };
+const metricValue = { margin: "7px 0 0", fontSize: 13, fontWeight: 700 };
+const contentLayout = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 10 };
+const mainStack = { display: "grid", gap: 10 };
+const sidePanel = { borderRadius: 18, padding: "clamp(12px,2vw,18px)", display: "grid", gap: 4, alignContent: "start", position: "sticky", top: 12, height: "fit-content" };
+const sectionTitle = { margin: "0 0 10px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 16, fontWeight: 800, letterSpacing: "-0.01em" };
+const bodyText = { margin: 0, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" };
+const fieldWrap = { display: "grid", gap: 6, marginBottom: 8 };
+const fieldLabel = { fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
+const valueText = { fontSize: 14, fontWeight: 600 };
+const commentList = { display: "grid", gap: 8 };
+const commentCard = { borderRadius: 12, padding: 10 };
+const commentMeta = { margin: "0 0 6px", fontSize: 11, fontWeight: 700 };
+const commentComposer = { marginTop: 10, display: "grid", gap: 8 };
+const emptyState = { borderRadius: 10, padding: "12px 10px", textAlign: "center", fontSize: 12 };
+const subCard = { borderRadius: 12, padding: 10 };
+const moduleStack = { display: "grid", gap: 10 };
+const icon14 = { width: 14, height: 14 };
+const icon16 = { width: 16, height: 16 };
 
 export default IssueDetail;

@@ -1,29 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PlusIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import api from '../services/api';
-import { useToast } from '../components/Toast';
-import { getAvatarUrl } from '../utils/avatarUtils';
-import { ListSkeleton } from '../components/Skeleton';
-import { NoData, NoResults } from '../components/EmptyState';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MagnifyingGlassIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import api from "../services/api";
+import { useToast } from "../components/Toast";
+import { getAvatarUrl } from "../utils/avatarUtils";
+import { ListSkeleton } from "../components/Skeleton";
+import { NoData, NoResults } from "../components/EmptyState";
 
 function Conversations() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
   const { addToast, confirm } = useToast();
+
   const [conversations, setConversations] = useState([]);
   const [filteredConversations, setFilteredConversations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [sortBy, setSortBy] = useState('recent');
-
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [sortBy, setSortBy] = useState("recent");
 
   useEffect(() => {
     loadConversations();
@@ -33,29 +28,53 @@ function Conversations() {
     applyFiltersAndSort();
   }, [conversations, searchQuery, filterType, sortBy]);
 
+  const palette = useMemo(
+    () =>
+      darkMode
+        ? {
+            panel: "#171215",
+            panelAlt: "#1f181c",
+            border: "rgba(255,225,193,0.14)",
+            text: "#f4ece0",
+            muted: "#baa892",
+            accent: "#ffaf72",
+          }
+        : {
+            panel: "#fffaf3",
+            panelAlt: "#ffffff",
+            border: "#eadfce",
+            text: "#231814",
+            muted: "#7d6d5a",
+            accent: "#d9692e",
+          },
+    [darkMode]
+  );
+
   const loadConversations = async () => {
     try {
-      const response = await api.get('/api/conversations/');
-      const allConvs = response.data.results || response.data || [];
-      const filtered = Array.isArray(allConvs) ? allConvs.filter(c => c && c.id) : [];
-      setConversations(filtered);
+      const response = await api.get("/api/conversations/");
+      const allConversations = response.data.results || response.data || [];
+      const validConversations = Array.isArray(allConversations)
+        ? allConversations.filter((conversation) => conversation && conversation.id)
+        : [];
+      setConversations(validConversations);
     } catch (error) {
-      console.error('Failed to load conversations:', error);
+      console.error("Failed to load conversations:", error);
       setConversations([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteConversation = async (id, e) => {
-    e.stopPropagation();
-    confirm('Delete this conversation?', async () => {
+  const deleteConversation = async (id, event) => {
+    event.stopPropagation();
+    confirm("Delete this conversation?", async () => {
       try {
         await api.delete(`/api/conversations/${id}/`);
-        setConversations(conversations.filter(c => c.id !== id));
-        addToast('Conversation deleted', 'success');
+        setConversations(conversations.filter((conversation) => conversation.id !== id));
+        addToast("Conversation deleted", "success");
       } catch (error) {
-        addToast('Failed to delete conversation', 'error');
+        addToast("Failed to delete conversation", "error");
       }
     });
   };
@@ -64,21 +83,22 @@ function Conversations() {
     let result = [...conversations];
 
     if (searchQuery) {
-      result = result.filter(conv =>
-        (conv.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (conv.content || '').toLowerCase().includes(searchQuery.toLowerCase())
+      result = result.filter(
+        (conversation) =>
+          (conversation.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (conversation.content || "").toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    if (filterType !== 'all') {
-      result = result.filter(conv => conv.post_type === filterType);
+    if (filterType !== "all") {
+      result = result.filter((conversation) => conversation.post_type === filterType);
     }
 
-    if (sortBy === 'recent') {
+    if (sortBy === "recent") {
       result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    } else if (sortBy === 'replies') {
+    } else if (sortBy === "replies") {
       result.sort((a, b) => (b.reply_count || 0) - (a.reply_count || 0));
-    } else if (sortBy === 'views') {
+    } else if (sortBy === "views") {
       result.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
     }
 
@@ -89,169 +109,413 @@ function Conversations() {
     return <ListSkeleton count={5} />;
   }
 
+  const thisWeekCount = conversations.filter((conversation) => {
+    const date = new Date(conversation.created_at);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return date > weekAgo;
+  }).length;
+
+  const averageReplies = conversations.length
+    ? Math.round(
+        conversations.reduce(
+          (total, conversation) => total + (conversation.reply_count || 0),
+          0
+        ) / conversations.length
+      )
+    : 0;
+
   return (
-    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px', letterSpacing: '-0.01em' }}>Conversations</h1>
-            <p style={{ fontSize: '14px', color: secondaryText }}>Collaborate, discuss, and make decisions together</p>
-          </div>
-          <button
-            onClick={() => navigate('/conversations/new')}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '5px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s' }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; }}
-          >
-            <PlusIcon style={{ width: '16px', height: '16px' }} />
-            New Conversation
-          </button>
+    <div style={page}>
+      <section
+        style={{
+          ...hero,
+          border: `1px solid ${palette.border}`,
+          background: `linear-gradient(150deg, ${
+            darkMode ? "rgba(255,167,97,0.18)" : "rgba(255,196,146,0.45)"
+          }, ${darkMode ? "rgba(74,194,171,0.15)" : "rgba(150,240,220,0.42)"})`,
+        }}
+      >
+        <div>
+          <p style={{ ...eyebrow, color: palette.muted }}>COLLABORATION THREADS</p>
+          <h1 style={{ ...title, color: palette.text }}>Conversations</h1>
+          <p style={{ ...subtitle, color: palette.muted }}>
+            Capture questions, updates, blockers, and decisions with full context.
+          </p>
         </div>
-      </div>
+        <button
+          onClick={() => navigate("/conversations/new")}
+          style={newConversationButton}
+        >
+          <PlusIcon style={icon16} />
+          New Conversation
+        </button>
+      </section>
 
-      {/* Search and Filters */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <MagnifyingGlassIcon style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: secondaryText }} />
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '100%', paddingLeft: '38px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '13px', outline: 'none', transition: 'all 0.15s' }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = borderColor; }}
-            />
-          </div>
-
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            style={{ padding: '8px 12px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '13px', outline: 'none', cursor: 'pointer' }}
-          >
-            <option value="all">All Types</option>
-            <option value="question">Questions</option>
-            <option value="discussion">Discussions</option>
-            <option value="decision">Decisions</option>
-            <option value="blocker">Blockers</option>
-          </select>
-
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            style={{ padding: '8px 12px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '13px', outline: 'none', cursor: 'pointer' }}
-          >
-            <option value="recent">Most Recent</option>
-            <option value="replies">Most Replies</option>
-            <option value="views">Most Views</option>
-          </select>
+      <section style={filterBar}>
+        <div style={searchWrap}>
+          <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
+          <input
+            type="text"
+            placeholder="Search conversations"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            style={{ ...searchInput, background: palette.panel, border: `1px solid ${palette.border}`, color: palette.text }}
+          />
         </div>
-      </div>
 
-      {/* Stats */}
+        <select
+          value={filterType}
+          onChange={(event) => setFilterType(event.target.value)}
+          style={{ ...selectInput, background: palette.panel, border: `1px solid ${palette.border}`, color: palette.text }}
+        >
+          <option value="all">All Types</option>
+          <option value="question">Questions</option>
+          <option value="discussion">Discussions</option>
+          <option value="decision">Decisions</option>
+          <option value="blocker">Blockers</option>
+        </select>
+
+        <select
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value)}
+          style={{ ...selectInput, background: palette.panel, border: `1px solid ${palette.border}`, color: palette.text }}
+        >
+          <option value="recent">Most Recent</option>
+          <option value="replies">Most Replies</option>
+          <option value="views">Most Views</option>
+        </select>
+      </section>
+
       {conversations.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
-          <div style={{ backgroundColor: bgColor, padding: '16px', border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
-            <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Total</p>
-            <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>{conversations.length}</p>
-          </div>
-          <div style={{ backgroundColor: bgColor, padding: '16px', border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
-            <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>This Week</p>
-            <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>
-              {conversations.filter(c => {
-                const date = new Date(c.created_at);
-                const weekAgo = new Date();
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                return date > weekAgo;
-              }).length}
-            </p>
-          </div>
-          <div style={{ backgroundColor: bgColor, padding: '16px', border: `1px solid ${borderColor}`, borderRadius: '5px' }}>
-            <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Avg Replies</p>
-            <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>
-              {Math.round(conversations.reduce((sum, c) => sum + (c.reply_count || 0), 0) / conversations.length)}
-            </p>
-          </div>
-        </div>
+        <section style={statsGrid}>
+          <StatCard label="Total" value={conversations.length} palette={palette} />
+          <StatCard label="This Week" value={thisWeekCount} palette={palette} />
+          <StatCard label="Avg Replies" value={averageReplies} palette={palette} />
+        </section>
       )}
 
-      {/* Conversations List */}
       {filteredConversations.length === 0 ? (
         searchQuery ? (
-          <NoResults searchTerm={searchQuery} onClear={() => setSearchQuery('')} />
+          <NoResults searchTerm={searchQuery} onClear={() => setSearchQuery("")} />
         ) : (
-          <NoData type="conversations" onCreate={() => navigate('/conversations/new')} />
+          <NoData type="conversations" onCreate={() => navigate("/conversations/new")} />
         )
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {filteredConversations.map(conv => (
-            <div
-              key={conv.id}
-              onClick={() => navigate(`/conversations/${conv.id}`)}
-              style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', cursor: 'pointer', transition: 'all 0.15s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#1f2937'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = bgColor; }}
+        <section style={listWrap}>
+          {filteredConversations.map((conversation) => (
+            <article
+              key={conversation.id}
+              onClick={() => navigate(`/conversations/${conversation.id}`)}
+              style={{ ...listCard, background: palette.panelAlt, border: `1px solid ${palette.border}` }}
             >
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
-                <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                    <span style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 600, border: `1px solid ${borderColor}`, borderRadius: '3px', backgroundColor: hoverBg, color: textColor, textTransform: 'capitalize' }}>
-                      {conv.post_type || 'Discussion'}
+              <div style={cardMain}>
+                <div style={tagRow}>
+                  <span style={{ ...typeTag, border: `1px solid ${palette.border}`, color: palette.text }}>
+                    {conversation.post_type || "discussion"}
+                  </span>
+                  {conversation.is_closed && (
+                    <span style={{ ...typeTag, border: `1px solid ${palette.border}`, color: palette.muted }}>
+                      Closed
                     </span>
-                    {conv.is_closed && (
-                      <span style={{ padding: '3px 8px', backgroundColor: hoverBg, border: `1px solid ${borderColor}`, borderRadius: '3px', color: secondaryText, fontSize: '11px', fontWeight: 600 }}>Closed</span>
-                    )}
-                  </div>
-                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: textColor, marginBottom: '6px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                    {conv.title || conv.question || 'Untitled'}
-                  </h3>
-                  <p style={{ color: secondaryText, fontSize: '13px', marginBottom: '10px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                    {conv.content || conv.description || 'No description'}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12px', color: secondaryText }}>
-                    <div>{new Date(conv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                    <div>{conv.reply_count || 0} replies</div>
-                    <div>{conv.view_count || 0} views</div>
-                  </div>
+                  )}
                 </div>
-                <div style={{ flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  {(() => {
-                    const avatarUrl = getAvatarUrl(conv.author_avatar || conv.author?.avatar);
-                    return avatarUrl ? (
-                      <img src={avatarUrl} alt={conv.author} style={{ width: '36px', height: '36px', borderRadius: '5px', objectFit: 'cover' }} onError={(e) => {
-                        e.target.style.display = 'none';
-                        const fallback = document.createElement('div');
-                        fallback.style.cssText = 'width: 36px; height: 36px; border-radius: 5px; background-color: #3b82f6; display: flex; align-items: center; justify-content: center;';
-                        fallback.innerHTML = `<span style="color: #ffffff; font-size: 13px; font-weight: 600;">${(conv.author || conv.author_name || 'U')?.charAt(0).toUpperCase()}</span>`;
-                        e.target.parentElement.appendChild(fallback);
-                      }} />
-                    ) : (
-                      <div style={{ width: '36px', height: '36px', borderRadius: '5px', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: 600 }}>
-                          {(conv.author || conv.author_name || 'U')?.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    );
-                  })()}
-                  <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 500 }}>{conv.author || conv.author_name}</p>
-                  <button
-                    onClick={(e) => deleteConversation(conv.id, e)}
-                    style={{ padding: '6px', backgroundColor: 'transparent', border: `1px solid #ef4444`, color: '#ef4444', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ef4444'; e.currentTarget.style.color = '#ffffff'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#ef4444'; }}
-                  >
-                    <TrashIcon style={{ width: '14px', height: '14px' }} />
-                  </button>
+
+                <h3 style={{ ...cardTitle, color: palette.text }}>
+                  {conversation.title || conversation.question || "Untitled"}
+                </h3>
+                <p style={{ ...cardExcerpt, color: palette.muted }}>
+                  {conversation.content || conversation.description || "No description"}
+                </p>
+
+                <div style={{ ...metaRow, color: palette.muted }}>
+                  <span>
+                    {new Date(conversation.created_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                  <span>{conversation.reply_count || 0} replies</span>
+                  <span>{conversation.view_count || 0} views</span>
                 </div>
               </div>
-            </div>
+
+              <div style={cardSide}>
+                <div style={authorAvatarWrap}>
+                  {(() => {
+                    const avatarUrl = getAvatarUrl(
+                      conversation.author_avatar || conversation.author?.avatar
+                    );
+                    const initial = (
+                      conversation.author || conversation.author_name || "U"
+                    )
+                      .charAt(0)
+                      .toUpperCase();
+
+                    return avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={conversation.author || "Author"}
+                        style={authorAvatarImage}
+                        onError={(event) => {
+                          event.target.style.display = "none";
+                          event.target.parentElement.innerHTML = `<span style="color:#20140f;font-size:13px;font-weight:700;">${initial}</span>`;
+                        }}
+                      />
+                    ) : (
+                      <span style={avatarInitial}>{initial}</span>
+                    );
+                  })()}
+                </div>
+
+                <p style={{ ...authorName, color: palette.muted }}>
+                  {conversation.author || conversation.author_name || "Unknown"}
+                </p>
+
+                <button
+                  onClick={(event) => deleteConversation(conversation.id, event)}
+                  style={deleteButton}
+                >
+                  <TrashIcon style={icon14} />
+                </button>
+              </div>
+            </article>
           ))}
-        </div>
+        </section>
       )}
     </div>
   );
 }
+
+function StatCard({ label, value, palette }) {
+  return (
+    <article style={{ ...statCard, background: palette.panel, border: `1px solid ${palette.border}` }}>
+      <p style={{ ...statLabel, color: palette.muted }}>{label}</p>
+      <p style={{ ...statValue, color: palette.text }}>{value}</p>
+    </article>
+  );
+}
+
+const page = {
+  maxWidth: 1280,
+  margin: "0 auto",
+  display: "grid",
+  gap: 12,
+};
+
+const hero = {
+  borderRadius: 18,
+  padding: "clamp(18px, 3vw, 28px)",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-end",
+  gap: 14,
+  flexWrap: "wrap",
+};
+
+const eyebrow = {
+  margin: 0,
+  fontSize: 11,
+  letterSpacing: "0.14em",
+};
+
+const title = {
+  margin: "7px 0 6px",
+  fontSize: "clamp(1.5rem, 3vw, 2.2rem)",
+  letterSpacing: "-0.02em",
+};
+
+const subtitle = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.5,
+};
+
+const newConversationButton = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 7,
+  border: "none",
+  background: "linear-gradient(135deg, #ffd390, #ff9f62)",
+  color: "#20140f",
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const filterBar = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto auto",
+  gap: 8,
+};
+
+const searchWrap = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  paddingLeft: 10,
+};
+
+const searchInput = {
+  width: "100%",
+  borderRadius: 10,
+  padding: "10px 12px 10px 0",
+  border: "none",
+  fontSize: 13,
+  outline: "none",
+};
+
+const selectInput = {
+  borderRadius: 10,
+  padding: "10px 11px",
+  fontSize: 13,
+  outline: "none",
+  cursor: "pointer",
+};
+
+const statsGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+  gap: 8,
+};
+
+const statCard = {
+  borderRadius: 12,
+  padding: "12px 14px",
+};
+
+const statLabel = {
+  margin: 0,
+  fontSize: 11,
+  textTransform: "uppercase",
+  letterSpacing: "0.07em",
+  fontWeight: 700,
+};
+
+const statValue = {
+  margin: "6px 0 0",
+  fontSize: 28,
+  lineHeight: 1,
+  fontWeight: 800,
+};
+
+const listWrap = {
+  display: "grid",
+  gap: 8,
+};
+
+const listCard = {
+  borderRadius: 12,
+  padding: 14,
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 12,
+  cursor: "pointer",
+};
+
+const cardMain = {
+  minWidth: 0,
+};
+
+const tagRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  marginBottom: 10,
+};
+
+const typeTag = {
+  textTransform: "capitalize",
+  borderRadius: 999,
+  padding: "3px 8px",
+  fontSize: 11,
+  fontWeight: 700,
+};
+
+const cardTitle = {
+  margin: "0 0 6px",
+  fontSize: 15,
+  fontWeight: 700,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+};
+
+const cardExcerpt = {
+  margin: "0 0 10px",
+  fontSize: 13,
+  lineHeight: 1.45,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+};
+
+const metaRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: 14,
+  fontSize: 12,
+};
+
+const cardSide = {
+  display: "grid",
+  justifyItems: "center",
+  alignContent: "start",
+  gap: 7,
+  minWidth: 56,
+};
+
+const authorAvatarWrap = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  overflow: "hidden",
+  background: "linear-gradient(135deg, #ffcc8b, #ff955e)",
+  display: "grid",
+  placeItems: "center",
+};
+
+const authorAvatarImage = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+};
+
+const avatarInitial = {
+  color: "#20140f",
+  fontSize: 13,
+  fontWeight: 700,
+};
+
+const authorName = {
+  margin: 0,
+  fontSize: 11,
+  textAlign: "center",
+  maxWidth: 80,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const deleteButton = {
+  width: 28,
+  height: 28,
+  borderRadius: 8,
+  border: "1px solid rgba(239,68,68,0.45)",
+  background: "transparent",
+  color: "#ef4444",
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+};
+
+const icon16 = { width: 16, height: 16 };
+const icon14 = { width: 14, height: 14 };
 
 export default Conversations;

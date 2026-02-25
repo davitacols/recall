@@ -1,25 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 export default function TasksBoard() {
   const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [board, setBoard] = useState({ todo: [], in_progress: [], done: [] });
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', priority: 'medium', status: 'todo', goal_id: '', conversation_id: '', decision_id: '' });
+  const [formData, setFormData] = useState({ title: "", description: "", priority: "medium", status: "todo", goal_id: "", conversation_id: "", decision_id: "" });
 
-  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-500' : 'text-gray-600';
-  const textTertiary = darkMode ? 'text-stone-400' : 'text-gray-500';
-  const hoverBg = darkMode ? 'hover:bg-stone-700' : 'hover:bg-gray-100';
-  const hoverBorder = darkMode ? 'hover:border-stone-700' : 'hover:border-gray-300';
-  const inputBg = darkMode ? 'bg-stone-800' : 'bg-white';
-  const inputBorder = darkMode ? 'border-stone-700' : 'border-gray-300';
-  const inputText = darkMode ? 'text-stone-200' : 'text-gray-900';
+  const columns = [
+    { key: "todo", title: "To Do", accent: "#94a3b8" },
+    { key: "in_progress", title: "In Progress", accent: "#3b82f6" },
+    { key: "done", title: "Done", accent: "#10b981" },
+  ];
 
   useEffect(() => {
     fetchBoard();
@@ -27,92 +25,70 @@ export default function TasksBoard() {
 
   const fetchBoard = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/board/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        console.error('API Error:', res.status, await res.text());
+        console.error("API Error:", res.status, await res.text());
         setBoard({ todo: [], in_progress: [], done: [] });
         return;
       }
-      const data = await res.json();
-      setBoard(data);
+      setBoard(await res.json());
     } catch (error) {
-      console.error('Error fetching board:', error);
+      console.error("Error fetching board:", error);
       setBoard({ todo: [], in_progress: [], done: [] });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       await fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
       setShowModal(false);
-      setFormData({ title: '', description: '', priority: 'medium', status: 'todo', goal_id: '', conversation_id: '', decision_id: '' });
+      setFormData({ title: "", description: "", priority: "medium", status: "todo", goal_id: "", conversation_id: "", decision_id: "" });
       fetchBoard();
     } catch (error) {
-      console.error('Error creating task:', error);
+      console.error("Error creating task:", error);
     }
   };
 
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       await fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/${taskId}/`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus }),
       });
       fetchBoard();
     } catch (error) {
-      console.error('Error updating task:', error);
+      console.error("Error updating task:", error);
     }
   };
 
-  const priorityColors = {
-    low: darkMode ? 'text-stone-500 bg-stone-500/20' : 'text-gray-500 bg-gray-500/20',
-    medium: darkMode ? 'text-yellow-400 bg-yellow-400/20' : 'text-yellow-600 bg-yellow-600/20',
-    high: darkMode ? 'text-red-400 bg-red-400/20' : 'text-red-600 bg-red-600/20'
-  };
-
-  const columns = [
-    { key: 'todo', title: 'To Do', color: darkMode ? 'border-stone-600' : 'border-gray-400' },
-    { key: 'in_progress', title: 'In Progress', color: darkMode ? 'border-blue-600' : 'border-blue-500' },
-    { key: 'done', title: 'Done', color: darkMode ? 'border-green-600' : 'border-green-500' }
-  ];
+  const totals = columns.reduce((acc, col) => acc + (board[col.key]?.length || 0), 0);
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${bgPrimary}`}>
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[1,2,3].map(i => (
-              <div key={i} className="space-y-3">
-                <div className={`p-4 ${bgSecondary} border ${borderColor} rounded-lg animate-pulse`}>
-                  <div className={`h-4 ${inputBg} rounded w-1/2 mb-2`}></div>
-                  <div className={`h-3 ${inputBg} rounded w-1/4`}></div>
-                </div>
-                {[1,2].map(j => (
-                  <div key={j} className={`p-4 ${bgSecondary} border ${borderColor} rounded-lg animate-pulse`}>
-                    <div className={`h-3 ${inputBg} rounded w-3/4 mb-2`}></div>
-                    <div className={`h-3 ${inputBg} rounded w-1/2`}></div>
-                  </div>
-                ))}
-              </div>
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 10 }}>
+            {[1, 2, 3].map((item) => (
+              <div key={item} style={{ borderRadius: 12, height: 320, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
             ))}
           </div>
         </div>
@@ -121,110 +97,73 @@ export default function TasksBoard() {
   }
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-start mb-8">
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>
-            <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Tasks Board</h1>
-            <p className={`text-sm ${textSecondary}`}>Manage your tasks with a simple board</p>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>TASK EXECUTION</p>
+            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Tasks Board</h1>
+            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>{totals} tasks across workflow columns</p>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className={`flex items-center gap-2 px-4 py-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm transition-all`}
-          >
-            <PlusIcon className="w-4 h-4" />
-            New Task
-          </button>
-        </div>
+          <button onClick={() => setShowModal(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Task</button>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {columns.map(column => (
-            <div key={column.key} className="space-y-3">
-              <div className={`p-4 ${bgSecondary} border ${borderColor} rounded-lg border-l-4 ${column.color}`}>
-                <h2 className={`text-base font-semibold ${textPrimary}`}>{column.title}</h2>
-                <span className={`text-xs ${textSecondary}`}>{board[column.key].length} tasks</span>
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 10 }}>
+          {columns.map((column) => (
+            <article key={column.key} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 10 }}>
+              <div style={{ borderRadius: 9, border: `1px solid ${palette.border}`, padding: 10, marginBottom: 8, borderLeft: `4px solid ${column.accent}` }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{column.title}</p>
+                <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>{board[column.key]?.length || 0} tasks</p>
               </div>
-              
-              <div className="space-y-3">
-                {board[column.key].map(task => (
-                  <div
-                    key={task.id}
-                    className={`p-4 ${bgSecondary} border ${borderColor} rounded-lg ${hoverBorder} transition-all`}
-                  >
-                    <h3 className={`text-sm font-medium ${textPrimary} mb-3`}>{task.title}</h3>
-                    <div className="flex justify-between items-center mb-3">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${priorityColors[task.priority]}`}>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                {(board[column.key] || []).map((task) => (
+                  <div key={task.id} style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{task.title}</p>
+                    {task.description && <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{task.description}</p>}
+                    <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 11, color: priorityColor(task.priority), border: `1px solid ${priorityColor(task.priority)}`, borderRadius: 999, padding: "3px 8px", textTransform: "capitalize", fontWeight: 700 }}>
                         {task.priority}
                       </span>
-                      {task.assigned_to && (
-                        <span className={`text-xs ${textSecondary}`}>{task.assigned_to.full_name}</span>
-                      )}
+                      <span style={{ fontSize: 11, color: palette.muted }}>{task.assigned_to?.full_name || "Unassigned"}</span>
                     </div>
-                    {column.key !== 'done' && (
+                    {column.key !== "done" && (
                       <button
-                        onClick={() => updateTaskStatus(task.id, column.key === 'todo' ? 'in_progress' : 'done')}
-                        className={`w-full py-2 text-xs ${textSecondary} border ${borderColor} rounded ${hoverBg} transition-all`}
+                        onClick={() => updateTaskStatus(task.id, column.key === "todo" ? "in_progress" : "done")}
+                        style={{ ...ui.secondaryButton, width: "100%", marginTop: 8, fontSize: 12, padding: "8px 10px" }}
                       >
-                        Move to {column.key === 'todo' ? 'In Progress' : 'Done'}
+                        Move to {column.key === "todo" ? "In Progress" : "Done"}
                       </button>
                     )}
                   </div>
                 ))}
               </div>
-            </div>
+            </article>
           ))}
-        </div>
+        </section>
 
         {showModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 w-full max-w-md`}>
-              <h2 className={`text-xl font-bold ${textPrimary} mb-5`}>Create New Task</h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Priority</label>
-                  <select
-                    value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                  >
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
+            <div style={{ width: "min(560px,100%)", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
+              <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>Create Task</h2>
+              <form onSubmit={handleSubmit} style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                <input required placeholder="Task title" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} style={ui.input} />
+                <textarea rows={4} placeholder="Description" value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} style={ui.input} />
+                <div style={ui.twoCol}>
+                  <select value={formData.priority} onChange={(event) => setFormData({ ...formData, priority: event.target.value })} style={ui.input}>
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
                     <option value="high">High</option>
                   </select>
+                  <select value={formData.status} onChange={(event) => setFormData({ ...formData, status: event.target.value })} style={ui.input}>
+                    <option value="todo">To Do</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="done">Done</option>
+                  </select>
                 </div>
-                <div className="flex gap-3 justify-end pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className={`px-4 py-2 bg-transparent ${textTertiary} border-2 ${borderColor} rounded ${hoverBg} font-medium text-sm`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className={`px-4 py-2 bg-transparent border-2 ${inputBorder} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm`}
-                  >
-                    Create Task
-                  </button>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                  <button type="button" onClick={() => setShowModal(false)} style={ui.secondaryButton}>Cancel</button>
+                  <button type="submit" style={ui.primaryButton}>Create</button>
                 </div>
               </form>
             </div>
@@ -233,4 +172,10 @@ export default function TasksBoard() {
       </div>
     </div>
   );
+}
+
+function priorityColor(priority) {
+  if (priority === "high") return "#ef4444";
+  if (priority === "medium") return "#f59e0b";
+  return "#60a5fa";
 }

@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import api from '../services/api';
-import { useToast } from '../components/Toast';
+import React, { useEffect, useMemo, useState } from "react";
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import api from "../services/api";
+import { useToast } from "../components/Toast";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 export default function Templates() {
   const { darkMode } = useTheme();
   const { addToast, confirm } = useToast();
-  const [templates, setTemplates] = useState([]);
-  const [filterType, setFilterType] = useState('all');
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ name: '', template_type: 'goal', content: {} });
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const [templates, setTemplates] = useState([]);
+  const [filterType, setFilterType] = useState("all");
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({ name: "", template_type: "goal", content: {} });
+  const [contentText, setContentText] = useState("{}");
+  const [contentError, setContentError] = useState("");
 
   useEffect(() => {
     loadTemplates();
@@ -23,155 +24,128 @@ export default function Templates() {
 
   const loadTemplates = async () => {
     try {
-      const res = await api.get('/api/business/templates/');
-      setTemplates(res.data);
+      const res = await api.get("/api/business/templates/");
+      setTemplates(res.data || []);
     } catch (error) {
-      addToast('Failed to load templates', 'error');
+      addToast("Failed to load templates", "error");
     }
   };
 
-  const createTemplate = async (e) => {
-    e.preventDefault();
+  const createTemplate = async (event) => {
+    event.preventDefault();
+    if (contentError) return;
+
     try {
-      await api.post('/api/business/templates/', formData);
+      await api.post("/api/business/templates/", formData);
       setShowModal(false);
-      setFormData({ name: '', template_type: 'goal', content: {} });
+      setFormData({ name: "", template_type: "goal", content: {} });
+      setContentText("{}");
+      setContentError("");
       loadTemplates();
-      addToast('Template created', 'success');
+      addToast("Template created", "success");
     } catch (error) {
-      addToast('Failed to create template', 'error');
+      addToast("Failed to create template", "error");
     }
   };
 
   const deleteTemplate = (id) => {
-    confirm('Delete this template?', async () => {
+    confirm("Delete this template?", async () => {
       try {
         await api.delete(`/api/business/templates/${id}/`);
-        setTemplates(templates.filter(t => t.id !== id));
-        addToast('Template deleted', 'success');
+        setTemplates((prev) => prev.filter((template) => template.id !== id));
+        addToast("Template deleted", "success");
       } catch (error) {
-        addToast('Failed to delete template', 'error');
+        addToast("Failed to delete template", "error");
       }
     });
   };
 
-  const filteredTemplates = filterType === 'all' ? templates : templates.filter(t => t.template_type === filterType);
+  const filteredTemplates = filterType === "all" ? templates : templates.filter((template) => template.template_type === filterType);
 
   return (
-    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px' }}>Templates</h1>
-          <p style={{ fontSize: '14px', color: secondaryText }}>Reusable templates for goals, meetings, and tasks</p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '5px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s' }}
-          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; }}
-        >
-          <PlusIcon style={{ width: '16px', height: '16px' }} />
-          New Template
-        </button>
-      </div>
-
-      <div style={{ marginBottom: '20px' }}>
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          style={{ padding: '8px 12px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '13px', outline: 'none', cursor: 'pointer' }}
-        >
-          <option value="all">All Types</option>
-          <option value="goal">Goal Templates</option>
-          <option value="meeting">Meeting Templates</option>
-          <option value="task">Task Templates</option>
-        </select>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-        {filteredTemplates.map(template => (
-          <div
-            key={template.id}
-            style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 600, border: `1px solid ${borderColor}`, borderRadius: '3px', color: textColor, textTransform: 'capitalize' }}>
-                {template.template_type}
-              </span>
-              <button
-                onClick={() => deleteTemplate(template.id)}
-                style={{ padding: '4px', backgroundColor: 'transparent', border: `1px solid #ef4444`, color: '#ef4444', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.15s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ef4444'; e.currentTarget.style.color = '#ffffff'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#ef4444'; }}
-              >
-                <TrashIcon style={{ width: '14px', height: '14px' }} />
-              </button>
-            </div>
-            <h3 style={{ fontSize: '15px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>{template.name}</h3>
-            <p style={{ fontSize: '12px', color: secondaryText }}>Created by {template.created_by || 'Unknown'}</p>
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>REUSABLE TEMPLATES</p>
+            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Templates</h1>
+            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Standardized structures for goals, meetings, and tasks.</p>
           </div>
-        ))}
-      </div>
+          <button onClick={() => setShowModal(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Template</button>
+        </section>
 
-      {showModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={() => setShowModal(false)}>
-          <div style={{ backgroundColor: bgColor, borderRadius: '8px', padding: '24px', width: '90%', maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ fontSize: '20px', fontWeight: 600, color: textColor, marginBottom: '20px' }}>New Template</h2>
-            <form onSubmit={createTemplate}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '8px 12px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Type</label>
-                <select
-                  value={formData.template_type}
-                  onChange={(e) => setFormData({ ...formData, template_type: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '13px', outline: 'none', cursor: 'pointer' }}
-                >
+        <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 10, marginBottom: 12 }}>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted, marginBottom: 6 }}>
+            Filter
+          </label>
+          <select value={filterType} onChange={(event) => setFilterType(event.target.value)} style={{ ...ui.input, maxWidth: 260 }}>
+            <option value="all">All Types</option>
+            <option value="goal">Goal Templates</option>
+            <option value="meeting">Meeting Templates</option>
+            <option value="task">Task Templates</option>
+          </select>
+        </section>
+
+        {filteredTemplates.length === 0 ? (
+          <div style={{ borderRadius: 12, border: `1px dashed ${palette.border}`, background: palette.card, padding: "20px 14px", textAlign: "center", color: palette.muted, fontSize: 13 }}>
+            No templates found.
+          </div>
+        ) : (
+          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 10 }}>
+            {filteredTemplates.map((template) => (
+              <article key={template.id} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, color: palette.muted, border: `1px solid ${palette.border}`, borderRadius: 999, padding: "3px 8px", textTransform: "capitalize", fontWeight: 700 }}>
+                    {template.template_type}
+                  </span>
+                  <button onClick={() => deleteTemplate(template.id)} style={{ border: "1px solid rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.08)", color: "#ef4444", borderRadius: 8, padding: "6px", cursor: "pointer" }}>
+                    <TrashIcon style={{ width: 13, height: 13 }} />
+                  </button>
+                </div>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{template.name}</p>
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: palette.muted }}>Created by {template.created_by || "Unknown"}</p>
+              </article>
+            ))}
+          </section>
+        )}
+
+        {showModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
+            <div style={{ width: "min(620px,100%)", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
+              <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>New Template</h2>
+              <form onSubmit={createTemplate} style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                <input required placeholder="Template name" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} style={ui.input} />
+                <select value={formData.template_type} onChange={(event) => setFormData({ ...formData, template_type: event.target.value })} style={ui.input}>
                   <option value="goal">Goal</option>
                   <option value="meeting">Meeting</option>
                   <option value="task">Task</option>
                 </select>
-              </div>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Content (JSON)</label>
                 <textarea
-                  value={JSON.stringify(formData.content, null, 2)}
-                  onChange={(e) => {
+                  rows={8}
+                  value={contentText}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setContentText(next);
                     try {
-                      setFormData({ ...formData, content: JSON.parse(e.target.value) });
-                    } catch {}
+                      const parsed = JSON.parse(next || "{}");
+                      setFormData((prev) => ({ ...prev, content: parsed }));
+                      setContentError("");
+                    } catch {
+                      setContentError("Content must be valid JSON");
+                    }
                   }}
-                  rows={6}
-                  style={{ width: '100%', padding: '8px 12px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '12px', fontFamily: 'monospace', outline: 'none', resize: 'vertical' }}
+                  style={{ ...ui.input, fontFamily: "monospace", fontSize: 12 }}
                 />
-              </div>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  style={{ padding: '8px 16px', backgroundColor: 'transparent', border: `1px solid ${borderColor}`, color: textColor, borderRadius: '5px', fontSize: '13px', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{ padding: '8px 16px', backgroundColor: '#3b82f6', border: 'none', color: '#ffffff', borderRadius: '5px', fontSize: '13px', cursor: 'pointer' }}
-                >
-                  Create
-                </button>
-              </div>
-            </form>
+                {contentError && <p style={{ margin: 0, fontSize: 12, color: "#ef4444" }}>{contentError}</p>}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                  <button type="button" onClick={() => setShowModal(false)} style={ui.secondaryButton}>Cancel</button>
+                  <button type="submit" disabled={Boolean(contentError)} style={{ ...ui.primaryButton, opacity: contentError ? 0.6 : 1 }}>Create</button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

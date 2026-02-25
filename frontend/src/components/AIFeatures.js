@@ -1,11 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { SparklesIcon, PaperAirplaneIcon, XMarkIcon, LightBulbIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { SparklesIcon, PaperAirplaneIcon, XMarkIcon, LightBulbIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { aiButtonPrimary, aiButtonSecondary, aiCard, aiInput, getAIPalette } from "./aiUi";
+import api from "../services/api";
 
 export const AIAssistant = () => {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getAIPalette(darkMode), [darkMode]);
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
@@ -13,104 +18,68 @@ export const AIAssistant = () => {
     "What issues are blocking our sprint?",
     "Summarize recent decisions",
     "Show me high priority bugs",
-    "Create a retrospective report"
+    "Create a retrospective report",
   ];
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    const userMessage = { role: "user", content: input };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
     setLoading(true);
 
     try {
-      const response = await api.post('/api/agile/ai/chat/', { message: input });
-      setMessages(prev => [...prev, { role: 'assistant', content: response.data.response, actions: response.data.actions }]);
+      const response = await api.post("/api/agile/ai/chat/", { message: input });
+      setMessages((prev) => [...prev, { role: "assistant", content: response.data.response, actions: response.data.actions }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again." }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSuggestion = (suggestion) => {
-    setInput(suggestion);
-  };
-
   return (
     <>
-      {/* Floating Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group"
-        style={{ zIndex: 9999 }}
-      >
-        {isOpen ? (
-          <XMarkIcon className="w-6 h-6 text-white" />
-        ) : (
-          <SparklesIcon className="w-6 h-6 text-white animate-pulse" />
-        )}
+      <button onClick={() => setIsOpen((v) => !v)} style={{ position: "fixed", bottom: 20, right: 20, width: 52, height: 52, borderRadius: 999, border: "none", background: "linear-gradient(135deg,#ffd390,#ff9f62)", color: "#20140f", display: "grid", placeItems: "center", cursor: "pointer", zIndex: 9999 }}>
+        {isOpen ? <XMarkIcon style={{ width: 20, height: 20 }} /> : <SparklesIcon style={{ width: 20, height: 20 }} />}
       </button>
 
-      {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-stone-900 rounded-2xl shadow-2xl flex flex-col border border-stone-700" style={{ zIndex: 9999 }}>
-          {/* Header */}
-          <div className="p-4 border-b border-stone-800 bg-stone-900 rounded-t-2xl">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
-                <SparklesIcon className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-stone-100">AI Assistant</h3>
-                <p className="text-xs text-stone-500">AI Assistant</p>
-              </div>
+        <div style={{ ...aiCard(palette), position: "fixed", right: 20, bottom: 82, width: 360, height: 500, display: "grid", gridTemplateRows: "auto 1fr auto", zIndex: 9999 }}>
+          <header style={{ padding: 10, borderBottom: `1px solid ${palette.border}`, display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ width: 28, height: 28, borderRadius: 999, background: "linear-gradient(135deg,#ffd390,#ff9f62)", display: "grid", placeItems: "center" }}><SparklesIcon style={{ width: 14, height: 14, color: "#20140f" }} /></div>
+            <div>
+              <p style={{ margin: 0, fontSize: 13, color: palette.text, fontWeight: 700 }}>AI Assistant</p>
+              <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>Chat and quick actions</p>
             </div>
-          </div>
+          </header>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-stone-950">
+          <div style={{ overflowY: "auto", padding: 10, display: "grid", gap: 8 }}>
             {messages.length === 0 && (
-              <div className="text-center py-8">
-                <LightBulbIcon className="w-12 h-12 text-stone-600 mx-auto mb-3" />
-                <p className="text-sm text-stone-400 mb-4">Try asking me:</p>
-                <div className="space-y-2">
-                  {suggestions.map((suggestion, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSuggestion(suggestion)}
-                      className="block w-full text-left px-3 py-2 text-sm bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg transition-colors"
-                    >
-                      {suggestion}
-                    </button>
+              <div style={{ textAlign: "center", padding: "14px 6px" }}>
+                <LightBulbIcon style={{ width: 26, height: 26, color: palette.muted, margin: "0 auto 8px" }} />
+                <p style={{ margin: "0 0 8px", fontSize: 12, color: palette.muted }}>Try asking:</p>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {suggestions.map((s, i) => (
+                    <button key={i} onClick={() => setInput(s)} style={{ ...aiButtonSecondary(palette), justifyContent: "flex-start", fontSize: 11 }}>{s}</button>
                   ))}
                 </div>
               </div>
             )}
 
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                  msg.role === 'user' 
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' 
-                    : 'bg-stone-800 text-stone-100'
-                }`}>
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  {msg.actions && (
-                    <div className="mt-2 space-y-1">
-                      {msg.actions.map((action, j) => (
-                        <button
-                          key={j}
-                          onClick={() => window.location.href = action.url}
-                          className="block w-full text-left px-3 py-2 text-xs bg-stone-700 hover:bg-stone-600 text-stone-200 rounded-lg transition-colors"
-                        >
-                          {action.label}
-                        </button>
+              <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                <div style={{ maxWidth: "84%", borderRadius: 12, padding: "8px 10px", background: msg.role === "user" ? "linear-gradient(135deg,#ffd390,#ff9f62)" : palette.cardAlt, color: msg.role === "user" ? "#20140f" : palette.text, fontSize: 12 }}>
+                  <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{msg.content}</p>
+                  {msg.actions?.length > 0 && (
+                    <div style={{ display: "grid", gap: 5, marginTop: 6 }}>
+                      {msg.actions.map((a, j) => (
+                        <button key={j} onClick={() => (window.location.href = a.url)} style={{ ...aiButtonSecondary(palette), justifyContent: "flex-start", fontSize: 11 }}>{a.label}</button>
                       ))}
                     </div>
                   )}
@@ -118,40 +87,16 @@ export const AIAssistant = () => {
               </div>
             ))}
 
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-stone-800 rounded-2xl px-4 py-2">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-stone-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-stone-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-stone-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {loading && <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>AI is thinking...</p>}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="p-4 border-t border-stone-700 bg-stone-900">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask me anything..."
-                className="flex-1 px-4 py-2 bg-stone-800 border border-stone-700 text-stone-100 placeholder-stone-500 rounded-full focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || loading}
-                className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white disabled:opacity-50 hover:shadow-lg transition-all"
-              >
-                <PaperAirplaneIcon className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+          <footer style={{ padding: 10, borderTop: `1px solid ${palette.border}`, display: "grid", gridTemplateColumns: "1fr auto", gap: 6 }}>
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSend()} placeholder="Ask me anything..." style={aiInput(palette)} />
+            <button onClick={handleSend} disabled={!input.trim() || loading} style={{ ...aiButtonPrimary(), padding: "8px 10px", opacity: !input.trim() || loading ? 0.6 : 1 }}>
+              <PaperAirplaneIcon style={{ width: 14, height: 14 }} />
+            </button>
+          </footer>
         </div>
       )}
     </>
@@ -159,6 +104,8 @@ export const AIAssistant = () => {
 };
 
 export const SmartSuggestions = ({ context, onApply }) => {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getAIPalette(darkMode), [darkMode]);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -168,85 +115,69 @@ export const SmartSuggestions = ({ context, onApply }) => {
 
   const loadSuggestions = async () => {
     try {
-      const response = await api.post('/api/agile/ai/suggestions/', { context });
-      setSuggestions(response.data.suggestions);
+      const response = await api.post("/api/agile/ai/suggestions/", { context });
+      setSuggestions(response.data.suggestions || []);
     } catch (error) {
-      console.error('Failed to load suggestions:', error);
+      console.error("Failed to load suggestions:", error);
+      setSuggestions([]);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return null;
-  if (suggestions.length === 0) return null;
+  if (loading || suggestions.length === 0) return null;
 
   return (
-    <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
-      <div className="flex items-center gap-2 mb-3">
-        <SparklesIcon className="w-5 h-5 text-purple-600" />
-        <h4 className="font-semibold text-gray-900">AI Suggestions</h4>
-      </div>
-      <div className="space-y-2">
+    <section style={{ ...aiCard(palette), padding: 10 }}>
+      <h4 style={{ margin: "0 0 8px", fontSize: 13, color: palette.text, display: "inline-flex", alignItems: "center", gap: 6 }}><SparklesIcon style={{ width: 14, height: 14, color: palette.warm }} /> AI Suggestions</h4>
+      <div style={{ display: "grid", gap: 6 }}>
         {suggestions.map((suggestion, i) => (
-          <div key={i} className="flex items-start gap-3 p-3 bg-white rounded-lg">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">{suggestion.title}</p>
-              <p className="text-xs text-gray-600 mt-1">{suggestion.reason}</p>
+          <div key={i} style={{ borderRadius: 8, border: `1px solid ${palette.border}`, padding: 8, display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "start" }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 12, color: palette.text, fontWeight: 700 }}>{suggestion.title}</p>
+              <p style={{ margin: "3px 0 0", fontSize: 11, color: palette.muted }}>{suggestion.reason}</p>
             </div>
-            <button
-              onClick={() => onApply?.(suggestion)}
-              className="px-3 py-1 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-            >
-              Apply
-            </button>
+            <button onClick={() => onApply?.(suggestion)} style={aiButtonSecondary(palette)}>Apply</button>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 };
 
 export const AutoCategorize = ({ text, onCategorize }) => {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getAIPalette(darkMode), [darkMode]);
   const [categories, setCategories] = useState(null);
 
   useEffect(() => {
-    if (text && text.length > 20) {
-      const timer = setTimeout(() => categorize(), 1000);
-      return () => clearTimeout(timer);
-    }
+    if (!(text && text.length > 20)) return;
+    const timer = setTimeout(categorize, 800);
+    return () => clearTimeout(timer);
   }, [text]);
 
   const categorize = async () => {
     try {
-      const response = await api.post('/api/agile/ai/categorize/', { text });
+      const response = await api.post("/api/agile/ai/categorize/", { text });
       setCategories(response.data);
       onCategorize?.(response.data);
     } catch (error) {
-      console.error('Failed to categorize:', error);
+      console.error("Failed to categorize:", error);
+      setCategories(null);
     }
   };
 
   if (!categories) return null;
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <SparklesIcon className="w-4 h-4 text-purple-600" />
-      <span className="text-gray-600">AI detected:</span>
-      {categories.priority && (
-        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-          {categories.priority} priority
-        </span>
-      )}
-      {categories.type && (
-        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-          {categories.type}
-        </span>
-      )}
-      {categories.labels?.map((label, i) => (
-        <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-          {label}
-        </span>
-      ))}
+    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", fontSize: 11, color: palette.muted }}>
+      <SparklesIcon style={{ width: 13, height: 13, color: palette.warm }} />
+      <span>AI detected:</span>
+      {categories.priority && <span style={pill}>{categories.priority} priority</span>}
+      {categories.type && <span style={pill}>{categories.type}</span>}
+      {categories.labels?.map((label, i) => <span key={i} style={pill}>{label}</span>)}
     </div>
   );
 };
+
+const pill = { border: "1px solid rgba(120,120,120,0.35)", borderRadius: 999, padding: "2px 7px", color: "#d9cdbf" };

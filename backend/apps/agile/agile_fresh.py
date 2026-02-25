@@ -3,7 +3,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Count, Q
+from django.db import IntegrityError
 from datetime import timedelta
+import re
 from apps.agile.models import Project, Sprint, Issue, Board, Column, IssueComment, IssueLabel, Blocker, Retrospective, SprintUpdate, DecisionImpact
 from apps.organizations.models import User
 from apps.conversations.models import Conversation
@@ -28,17 +30,44 @@ def projects(request):
             'created_at': p.created_at.isoformat()
         } for p in projects])
     
-    key = request.data['key'].upper()
-    if Project.objects.filter(key=key).exists():
-        return Response({'error': f'Project key "{key}" already exists'}, status=400)
-    
-    project = Project.objects.create(
-        organization=request.user.organization,
-        name=request.data['name'],
-        key=key,
-        description=request.data.get('description', ''),
-        lead=request.user
-    )
+    name = (request.data.get('name') or '').strip()
+    if not name:
+        return Response({'error': 'Project name is required'}, status=400)
+
+    def normalize_key(value):
+        token = re.sub(r'[^A-Z0-9]', '', (value or '').upper())
+        return token[:10]
+
+    raw_key = request.data.get('key')
+    if raw_key:
+        base_key = normalize_key(raw_key)
+    else:
+        # Derive a reasonable default key from project name.
+        name_token = normalize_key(name)
+        base_key = name_token[:6] if name_token else 'PRJ'
+
+    if not base_key:
+        base_key = 'PRJ'
+
+    key = base_key
+    suffix = 2
+    while Project.objects.filter(key=key).exists():
+        suffix_text = str(suffix)
+        key = f"{base_key[:max(1, 10 - len(suffix_text))]}{suffix_text}"
+        suffix += 1
+        if suffix > 999:
+            return Response({'error': 'Unable to generate unique project key'}, status=400)
+
+    try:
+        project = Project.objects.create(
+            organization=request.user.organization,
+            name=name,
+            key=key,
+            description=(request.data.get('description') or '').strip(),
+            lead=request.user
+        )
+    except IntegrityError:
+        return Response({'error': 'Project key already exists. Please try again.'}, status=400)
     
     board = Board.objects.create(
         organization=request.user.organization,
@@ -258,32 +287,74 @@ def issues(request, project_id):
             'labels': [l.name for l in i.labels.all()]
         } for i in issues])
     
+    title = (request.data.get('title') or '').strip()
+    if not title:
+        return Response({'error': 'Title is required'}, status=400)
+
     board = project.boards.first()
     if not board:
         return Response({'error': 'No board found for project'}, status=400)
-    
-    column = board.columns.first()
-    issue_count = project.issues.count() + 1
-    
-    issue = Issue.objects.create(
-        organization=request.user.organization,
-        project=project,
-        board=board,
-        column=column,
-        key=f"{project.key}-{issue_count}",
-        title=request.data['title'],
-        description=request.data.get('description', ''),
-        priority=request.data.get('priority', 'medium'),
-        status='todo',
-        reporter=request.user,
-        assignee_id=request.data.get('assignee_id'),
-        story_points=request.data.get('story_points'),
-        issue_type=request.data.get('issue_type', 'task'),
-        sprint_id=request.data.get('sprint_id'),
-        due_date=request.data.get('due_date'),
-        parent_issue_id=request.data.get('parent_issue_id')
-    )
-    
+
+    column = board.columns.order_by('order').first()
+    if not column:
+        column = Column.objects.create(board=board, name='To Do', order=0)
+
+    # Use max numeric suffix instead of count()+1 to avoid duplicate keys after deletions.
+    prefix = f"{project.key}-"
+    max_suffix = 0
+    for existing_key in project.issues.filter(key__startswith=prefix).values_list('key', flat=True):
+        suffix = existing_key[len(prefix):]
+        if suffix.isdigit():
+            max_suffix = max(max_suffix, int(suffix))
+    issue_key = f"{project.key}-{max_suffix + 1}"
+
+    def _optional_int(value, field_name):
+        if value in (None, '', 'null'):
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            raise ValueError(f'{field_name} must be an integer')
+
+    try:
+        assignee_id = _optional_int(request.data.get('assignee_id'), 'assignee_id')
+        sprint_id = _optional_int(request.data.get('sprint_id'), 'sprint_id')
+        story_points = _optional_int(request.data.get('story_points'), 'story_points')
+        parent_issue_id = _optional_int(request.data.get('parent_issue_id'), 'parent_issue_id')
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=400)
+
+    if assignee_id and not User.objects.filter(id=assignee_id, organization=request.user.organization).exists():
+        return Response({'error': 'Invalid assignee_id for this organization'}, status=400)
+
+    if sprint_id and not Sprint.objects.filter(id=sprint_id, project=project).exists():
+        return Response({'error': 'Invalid sprint_id for this project'}, status=400)
+
+    if parent_issue_id and not Issue.objects.filter(id=parent_issue_id, project=project).exists():
+        return Response({'error': 'Invalid parent_issue_id for this project'}, status=400)
+
+    try:
+        issue = Issue.objects.create(
+            organization=request.user.organization,
+            project=project,
+            board=board,
+            column=column,
+            key=issue_key,
+            title=title,
+            description=request.data.get('description', ''),
+            priority=request.data.get('priority', 'medium'),
+            status='todo',
+            reporter=request.user,
+            assignee_id=assignee_id,
+            story_points=story_points,
+            issue_type=request.data.get('issue_type', 'task'),
+            sprint_id=sprint_id,
+            due_date=request.data.get('due_date'),
+            parent_issue_id=parent_issue_id
+        )
+    except Exception as exc:
+        return Response({'error': str(exc)}, status=400)
+
     return Response({'id': issue.id, 'key': issue.key, 'title': issue.title})
 
 @api_view(['GET', 'PUT', 'DELETE'])

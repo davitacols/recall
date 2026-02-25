@@ -15,7 +15,9 @@ function Search() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.defaultPrevented) return;
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        if (document.querySelector('[data-unified-nav-search="true"]')) return;
         e.preventDefault();
         inputRef.current?.focus();
       }

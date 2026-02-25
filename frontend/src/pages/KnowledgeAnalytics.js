@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { ChartBarIcon, LinkIcon, UserGroupIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
+import { ArrowTrendingUpIcon, ChartBarIcon, LinkIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 export default function KnowledgeAnalytics() {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -11,151 +17,115 @@ export default function KnowledgeAnalytics() {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token');
-      
-      // Fetch various stats
+      const token = localStorage.getItem("token");
       const [timeline, graph] = await Promise.all([
-        fetch('http://localhost:8000/api/knowledge/timeline/?days=30', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }).then(r => r.json()),
-        fetch('http://localhost:8000/api/knowledge/graph/', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }).then(r => r.json())
+        fetch(`${process.env.REACT_APP_API_URL}/api/knowledge/timeline/?days=30`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then((r) => r.json()),
+        fetch(`${process.env.REACT_APP_API_URL}/api/knowledge/graph/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then((r) => r.json()),
       ]);
 
-      // Calculate stats
       const activityByType = {};
-      timeline.forEach(item => {
+      (timeline || []).forEach((item) => {
         activityByType[item.type] = (activityByType[item.type] || 0) + 1;
       });
 
       const nodesByType = {};
-      graph.nodes.forEach(node => {
+      (graph.nodes || []).forEach((node) => {
         nodesByType[node.type] = (nodesByType[node.type] || 0) + 1;
       });
 
       setStats({
-        totalActivity: timeline.length,
-        totalNodes: graph.nodes.length,
-        totalLinks: graph.edges.length,
+        totalActivity: (timeline || []).length,
+        totalNodes: graph.nodes?.length || 0,
+        totalLinks: graph.edges?.length || 0,
         activityByType,
         nodesByType,
-        avgLinksPerNode: graph.nodes.length > 0 ? (graph.edges.length / graph.nodes.length).toFixed(1) : 0
+        avgLinksPerNode: graph.nodes?.length ? (graph.edges.length / graph.nodes.length).toFixed(1) : "0.0",
       });
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
+      setStats({ totalActivity: 0, totalNodes: 0, totalLinks: 0, activityByType: {}, nodesByType: {}, avgLinksPerNode: "0.0" });
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="p-8 text-center">Loading analytics...</div>;
+    return (
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8 }}>
+            {[1, 2, 3, 4].map((i) => <div key={i} style={{ borderRadius: 12, height: 120, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />)}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-        Knowledge Analytics
-      </h1>
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 12 }}>
+          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>KNOWLEDGE ANALYTICS</p>
+          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Knowledge Analytics</h1>
+          <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>30-day trend, content distribution, and knowledge linkage density.</p>
+        </section>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-2">
-            <ChartBarIcon className="w-8 h-8 text-blue-500" />
-            <span className="text-3xl font-bold text-gray-900 dark:text-white">
-              {stats.totalActivity}
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Total Activity (30d)</p>
-        </div>
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
+          <TopStat icon={ChartBarIcon} label="Total Activity" value={stats.totalActivity} />
+          <TopStat icon={UserGroupIcon} label="Knowledge Items" value={stats.totalNodes} />
+          <TopStat icon={LinkIcon} label="Connections" value={stats.totalLinks} />
+          <TopStat icon={ArrowTrendingUpIcon} label="Avg Links/Item" value={stats.avgLinksPerNode} />
+        </section>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-2">
-            <UserGroupIcon className="w-8 h-8 text-green-500" />
-            <span className="text-3xl font-bold text-gray-900 dark:text-white">
-              {stats.totalNodes}
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Knowledge Items</p>
-        </div>
+        <section style={ui.responsiveSplit}>
+          <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+            <h2 style={{ margin: "0 0 10px", fontSize: 16, color: palette.text }}>Activity by Type</h2>
+            <Breakdown rows={stats.activityByType} total={stats.totalActivity || 1} color="#3b82f6" />
+          </article>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-2">
-            <LinkIcon className="w-8 h-8 text-purple-500" />
-            <span className="text-3xl font-bold text-gray-900 dark:text-white">
-              {stats.totalLinks}
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Connections</p>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-2">
-            <ArrowTrendingUpIcon className="w-8 h-8 text-amber-500" />
-            <span className="text-3xl font-bold text-gray-900 dark:text-white">
-              {stats.avgLinksPerNode}
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Avg Links/Item</p>
-        </div>
+          <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+            <h2 style={{ margin: "0 0 10px", fontSize: 16, color: palette.text }}>Content Distribution</h2>
+            <Breakdown rows={stats.nodesByType} total={stats.totalNodes || 1} color="#8b5cf6" />
+          </article>
+        </section>
       </div>
+    </div>
+  );
+}
 
-      {/* Activity Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Activity by Type
-          </h2>
-          <div className="space-y-3">
-            {Object.entries(stats.activityByType).map(([type, count]) => (
-              <div key={type} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
-                  {type.replace('_', ' ')}
-                </span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-blue-500"
-                      style={{ width: `${(count / stats.totalActivity) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white w-8 text-right">
-                    {count}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Content Distribution
-          </h2>
-          <div className="space-y-3">
-            {Object.entries(stats.nodesByType).map(([type, count]) => (
-              <div key={type} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
-                  {type}s
-                </span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-purple-500"
-                      style={{ width: `${(count / stats.totalNodes) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white w-8 text-right">
-                    {count}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+function TopStat({ icon: Icon, label, value }) {
+  return (
+    <article style={{ borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Icon style={{ width: 18, height: 18, color: "#93c5fd" }} />
+        <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#f4ece0" }}>{value}</p>
       </div>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: "#baa892" }}>{label}</p>
+    </article>
+  );
+}
+
+function Breakdown({ rows, total, color }) {
+  const entries = Object.entries(rows || {});
+  if (!entries.length) return <p style={{ margin: 0, fontSize: 12, color: "#baa892" }}>No data</p>;
+
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {entries.map(([type, count]) => (
+        <div key={type} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
+          <div>
+            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#baa892", textTransform: "capitalize" }}>{type.replace("_", " ")}</p>
+            <div style={{ width: "100%", height: 7, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${(count / total) * 100}%`, background: color }} />
+            </div>
+          </div>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#f4ece0", minWidth: 24, textAlign: "right" }}>{count}</p>
+        </div>
+      ))}
     </div>
   );
 }

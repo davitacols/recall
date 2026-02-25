@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
 
+const getApiErrorMessage = (err, fallback) =>
+  err?.response?.data?.detail ||
+  err?.response?.data?.error ||
+  err?.response?.data?.message ||
+  err?.message ||
+  fallback;
+
 export function AddIssuesToSprintModal({ sprintId, projectId, onClose, onSuccess }) {
   const [availableIssues, setAvailableIssues] = useState([]);
   const [selectedIssues, setSelectedIssues] = useState([]);
@@ -54,20 +61,20 @@ export function AddIssuesToSprintModal({ sprintId, projectId, onClose, onSuccess
     
     try {
       const payload = {
-        title: newIssueTitle,
+        title: newIssueTitle.trim(),
         sprint_id: sprintId,
       };
       if (selectedAssignee) {
-        payload.assignee_id = selectedAssignee;
+        payload.assignee_id = Number(selectedAssignee);
       }
-      const response = await api.post(`/api/agile/projects/${projectId}/issues/`, payload);
+      await api.post(`/api/agile/projects/${projectId}/issues/`, payload);
       setNewIssueTitle('');
       setShowCreateIssue(false);
       await new Promise(resolve => setTimeout(resolve, 500));
       await fetchAvailableIssues();
     } catch (err) {
       console.error('Failed to create issue:', err.response || err);
-      setError(err.response?.data?.detail || err.message || 'Failed to create issue');
+      setError(getApiErrorMessage(err, 'Failed to create issue'));
     }
   };
 
@@ -87,7 +94,7 @@ export function AddIssuesToSprintModal({ sprintId, projectId, onClose, onSuccess
       onClose();
     } catch (err) {
       console.error('Failed to add issues:', err.response || err);
-      setError(err.response?.data?.detail || err.message || 'Failed to add issues');
+      setError(getApiErrorMessage(err, 'Failed to add issues'));
     } finally {
       setSubmitting(false);
     }

@@ -1,24 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import { PlusIcon, CalendarIcon, ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { CalendarIcon, ExclamationTriangleIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import api from "../services/api";
 
 export default function SprintManagement() {
   const { darkMode } = useTheme();
   const navigate = useNavigate();
+
   const [sprints, setSprints] = useState([]);
   const [currentSprint, setCurrentSprint] = useState(null);
   const [blockers, setBlockers] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [newSprint, setNewSprint] = useState({ name: '', start_date: '', end_date: '', goal: '' });
+  const [newSprint, setNewSprint] = useState({ name: "", start_date: "", end_date: "", goal: "" });
   const [loading, setLoading] = useState(true);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const cardBg = darkMode ? '#0c0a09' : '#ffffff';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   useEffect(() => {
     fetchSprints();
@@ -27,12 +26,12 @@ export default function SprintManagement() {
 
   const fetchSprints = async () => {
     try {
-      const res = await api.get('/api/agile/sprints/');
-      setSprints(res.data);
-      const active = res.data.find(s => s.status === 'active');
-      setCurrentSprint(active);
+      const response = await api.get("/api/agile/sprints/");
+      const sprintList = response.data || [];
+      setSprints(sprintList);
+      setCurrentSprint(sprintList.find((sprint) => sprint.status === "active") || null);
     } catch (error) {
-      console.error('Failed to fetch sprints:', error);
+      console.error("Failed to fetch sprints:", error);
     } finally {
       setLoading(false);
     }
@@ -40,229 +39,168 @@ export default function SprintManagement() {
 
   const fetchBlockers = async () => {
     try {
-      const res = await api.get('/api/agile/blockers/');
-      setBlockers(res.data.filter(b => b.status === 'active'));
+      const response = await api.get("/api/agile/blockers/");
+      setBlockers((response.data || []).filter((blocker) => blocker.status === "active"));
     } catch (error) {
-      console.error('Failed to fetch blockers:', error);
+      console.error("Failed to fetch blockers:", error);
     }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
+  const handleCreate = async (event) => {
+    event.preventDefault();
     try {
-      await api.post('/api/agile/sprints/', newSprint);
+      await api.post("/api/agile/sprints/", newSprint);
       setShowCreate(false);
-      setNewSprint({ name: '', start_date: '', end_date: '', goal: '' });
+      setNewSprint({ name: "", start_date: "", end_date: "", goal: "" });
       fetchSprints();
     } catch (error) {
-      console.error('Failed to create sprint:', error);
+      console.error("Failed to create sprint:", error);
     }
-  };
-
-  const statusConfig = {
-    planning: { bg: darkMode ? '#312e81' : '#e0e7ff', text: darkMode ? '#a5b4fc' : '#3730a3' },
-    active: { bg: darkMode ? '#065f46' : '#d1fae5', text: darkMode ? '#6ee7b7' : '#065f46' },
-    completed: { bg: darkMode ? '#374151' : '#f3f4f6', text: darkMode ? '#9ca3af' : '#4b5563' }
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '60px', color: secondaryText }}>Loading...</div>;
+    return (
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+        <div style={spinner} />
+      </div>
+    );
   }
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
-        <div>
-          <h1 style={{ fontSize: '32px', fontWeight: 700, color: textColor, marginBottom: '8px' }}>Sprint Management</h1>
-          <p style={{ fontSize: '15px', color: secondaryText }}>Plan and track your team's sprints</p>
-        </div>
-        <button
-          onClick={() => setShowCreate(true)}
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 20px',
-            backgroundColor: '#3b82f6',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer'
+            ...hero,
+            border: `1px solid ${palette.border}`,
+            background: darkMode
+              ? "linear-gradient(140deg, rgba(255,167,97,0.14), rgba(87,205,184,0.13))"
+              : "linear-gradient(140deg, rgba(255,196,146,0.42), rgba(152,243,223,0.36))",
           }}
         >
-          <PlusIcon style={{ width: '18px', height: '18px' }} />
-          New Sprint
-        </button>
-      </div>
-
-      {/* Current Sprint */}
-      {currentSprint && (
-        <div style={{ marginBottom: '32px', padding: '24px', backgroundColor: cardBg, border: `2px solid #3b82f6`, borderRadius: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>{currentSprint.name}</h2>
-                <span style={{ padding: '4px 12px', fontSize: '12px', fontWeight: 600, borderRadius: '6px', backgroundColor: statusConfig.active.bg, color: statusConfig.active.text }}>
-                  Active
-                </span>
-              </div>
-              <p style={{ fontSize: '14px', color: secondaryText }}>{currentSprint.goal}</p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '13px', color: secondaryText, marginBottom: '4px' }}>
-                {new Date(currentSprint.start_date).toLocaleDateString()} - {new Date(currentSprint.end_date).toLocaleDateString()}
-              </div>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: textColor }}>
-                {Math.ceil((new Date(currentSprint.end_date) - new Date()) / (1000 * 60 * 60 * 24))} days left
-              </div>
-            </div>
+          <div>
+            <p style={{ ...eyebrow, color: palette.muted }}>SPRINT OPERATIONS</p>
+            <h1 style={{ ...title, color: palette.text }}>Sprint Management</h1>
+            <p style={{ ...subtitle, color: palette.muted }}>Plan, track, and adapt sprint execution with live context.</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '20px' }}>
-            <div style={{ padding: '16px', backgroundColor: darkMode ? '#292524' : '#f9fafb', borderRadius: '8px' }}>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: '#10b981' }}>{currentSprint.completed_count || 0}</div>
-              <div style={{ fontSize: '13px', color: secondaryText }}>Completed</div>
-            </div>
-            <div style={{ padding: '16px', backgroundColor: darkMode ? '#292524' : '#f9fafb', borderRadius: '8px' }}>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: '#ef4444' }}>{currentSprint.blocked_count || 0}</div>
-              <div style={{ fontSize: '13px', color: secondaryText }}>Blocked</div>
-            </div>
-            <div style={{ padding: '16px', backgroundColor: darkMode ? '#292524' : '#f9fafb', borderRadius: '8px' }}>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: '#3b82f6' }}>{currentSprint.decisions_made || 0}</div>
-              <div style={{ fontSize: '13px', color: secondaryText }}>Decisions</div>
-            </div>
-          </div>
-        </div>
-      )}
+          <button onClick={() => setShowCreate(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Sprint</button>
+        </section>
 
-      {/* Active Blockers */}
-      {blockers.length > 0 && (
-        <div style={{ marginBottom: '32px' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 600, color: textColor, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ExclamationTriangleIcon style={{ width: '24px', height: '24px', color: '#ef4444' }} />
-            Active Blockers ({blockers.length})
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {blockers.map((blocker) => (
-              <div key={blocker.id} style={{ padding: '16px', backgroundColor: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '4px' }}>{blocker.title}</h3>
-                <p style={{ fontSize: '14px', color: secondaryText }}>{blocker.description}</p>
+        {currentSprint && (
+          <section style={{ ...activeCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+            <div style={sectionHeader}>
+              <div>
+                <h2 style={{ ...h2, color: palette.text }}>{currentSprint.name}</h2>
+                <p style={{ ...muted, color: palette.muted }}>{currentSprint.goal || "No sprint goal"}</p>
               </div>
+              <span style={activePill}>Active</span>
+            </div>
+            <p style={{ ...muted, color: palette.muted, marginTop: 6 }}>
+              {new Date(currentSprint.start_date).toLocaleDateString()} - {new Date(currentSprint.end_date).toLocaleDateString()}
+            </p>
+            <div style={miniStats}>
+              <Metric value={currentSprint.completed_count || 0} label="Completed" />
+              <Metric value={currentSprint.blocked_count || 0} label="Blocked" />
+              <Metric value={currentSprint.decisions_made || 0} label="Decisions" />
+            </div>
+          </section>
+        )}
+
+        {blockers.length > 0 && (
+          <section style={{ marginBottom: 12 }}>
+            <h2 style={{ ...h2, color: palette.text, marginBottom: 8 }}>
+              <ExclamationTriangleIcon style={{ ...icon18, color: "#ef4444" }} /> Blockers ({blockers.length})
+            </h2>
+            <div style={list}>
+              {blockers.map((blocker) => (
+                <article key={blocker.id} style={{ ...blockerCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+                  <p style={{ ...itemTitle, color: palette.text }}>{blocker.title}</p>
+                  <p style={{ ...muted, color: palette.muted }}>{blocker.description}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section>
+          <h2 style={{ ...h2, color: palette.text, marginBottom: 8 }}>All Sprints</h2>
+          <div style={list}>
+            {sprints.map((sprint) => (
+              <article
+                key={sprint.id}
+                onClick={() => navigate(`/sprints/${sprint.id}`)}
+                style={{ ...rowCard, background: palette.card, border: `1px solid ${palette.border}` }}
+              >
+                <div>
+                  <p style={{ ...itemTitle, color: palette.text }}>{sprint.name}</p>
+                  <p style={{ ...muted, color: palette.muted }}>
+                    <CalendarIcon style={icon14} /> {new Date(sprint.start_date).toLocaleDateString()} - {new Date(sprint.end_date).toLocaleDateString()}
+                  </p>
+                  {sprint.goal && <p style={{ ...muted, color: palette.muted, marginTop: 4 }}>{sprint.goal}</p>}
+                </div>
+                <span style={statusPill}>{sprint.status}</span>
+              </article>
             ))}
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* All Sprints */}
-      <h2 style={{ fontSize: '20px', fontWeight: 600, color: textColor, marginBottom: '16px' }}>All Sprints</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {sprints.map((sprint) => {
-          const status = statusConfig[sprint.status] || statusConfig.planning;
-          return (
-            <div
-              key={sprint.id}
-              onClick={() => navigate(`/sprints/${sprint.id}`)}
-              style={{
-                padding: '20px',
-                backgroundColor: cardBg,
-                border: `1px solid ${borderColor}`,
-                borderRadius: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = '#3b82f6'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = borderColor}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: 600, color: textColor }}>{sprint.name}</h3>
-                    <span style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 600, borderRadius: '6px', backgroundColor: status.bg, color: status.text, textTransform: 'capitalize' }}>
-                      {sprint.status}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '14px', color: secondaryText }}>{sprint.goal}</p>
+        {showCreate && (
+          <div style={overlay}>
+            <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+              <h3 style={{ margin: 0, fontSize: 22, color: palette.text }}>Create Sprint</h3>
+              <form onSubmit={handleCreate} style={formStack}>
+                <input placeholder="Sprint Name" required value={newSprint.name} onChange={(e) => setNewSprint({ ...newSprint, name: e.target.value })} style={ui.input} />
+                <div style={ui.twoCol}>
+                  <input type="date" required value={newSprint.start_date} onChange={(e) => setNewSprint({ ...newSprint, start_date: e.target.value })} style={ui.input} />
+                  <input type="date" required value={newSprint.end_date} onChange={(e) => setNewSprint({ ...newSprint, end_date: e.target.value })} style={ui.input} />
                 </div>
-                <div style={{ textAlign: 'right', fontSize: '13px', color: secondaryText }}>
-                  <CalendarIcon style={{ width: '16px', height: '16px', display: 'inline', marginRight: '4px' }} />
-                  {new Date(sprint.start_date).toLocaleDateString()} - {new Date(sprint.end_date).toLocaleDateString()}
+                <textarea rows={4} placeholder="Sprint goal" value={newSprint.goal} onChange={(e) => setNewSprint({ ...newSprint, goal: e.target.value })} style={ui.input} />
+                <div style={buttonRow}>
+                  <button type="button" onClick={() => setShowCreate(false)} style={ui.secondaryButton}>Cancel</button>
+                  <button type="submit" style={ui.primaryButton}>Create</button>
                 </div>
-              </div>
+              </form>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Create Modal */}
-      {showCreate && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ backgroundColor: bgColor, borderRadius: '12px', padding: '32px', width: '100%', maxWidth: '500px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '24px' }}>Create Sprint</h2>
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Sprint Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newSprint.name}
-                  onChange={(e) => setNewSprint({ ...newSprint, name: e.target.value })}
-                  placeholder="Sprint 1"
-                  style={{ width: '100%', padding: '12px', border: `2px solid ${borderColor}`, borderRadius: '8px', backgroundColor: bgColor, color: textColor, fontSize: '15px' }}
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Start Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={newSprint.start_date}
-                    onChange={(e) => setNewSprint({ ...newSprint, start_date: e.target.value })}
-                    style={{ width: '100%', padding: '12px', border: `2px solid ${borderColor}`, borderRadius: '8px', backgroundColor: bgColor, color: textColor, fontSize: '15px' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>End Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={newSprint.end_date}
-                    onChange={(e) => setNewSprint({ ...newSprint, end_date: e.target.value })}
-                    style={{ width: '100%', padding: '12px', border: `2px solid ${borderColor}`, borderRadius: '8px', backgroundColor: bgColor, color: textColor, fontSize: '15px' }}
-                  />
-                </div>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Sprint Goal</label>
-                <textarea
-                  value={newSprint.goal}
-                  onChange={(e) => setNewSprint({ ...newSprint, goal: e.target.value })}
-                  rows={3}
-                  placeholder="What do you want to achieve?"
-                  style={{ width: '100%', padding: '12px', border: `2px solid ${borderColor}`, borderRadius: '8px', backgroundColor: bgColor, color: textColor, fontSize: '15px', resize: 'vertical' }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCreate(false)}
-                  style={{ padding: '12px 20px', border: `1px solid ${borderColor}`, borderRadius: '8px', backgroundColor: 'transparent', color: textColor, fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{ padding: '12px 20px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Create
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
+
+function Metric({ value, label }) {
+  return (
+    <article style={metricCard}>
+      <p style={metricValue}>{value}</p>
+      <p style={metricLabel}>{label}</p>
+    </article>
+  );
+}
+
+const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const hero = { borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 12 };
+const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.14em", fontWeight: 700 };
+const title = { margin: "7px 0 6px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
+const subtitle = { margin: 0, fontSize: 14 };
+const h2 = { margin: 0, fontSize: 19, display: "flex", alignItems: "center", gap: 7 };
+const muted = { margin: 0, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 };
+const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };
+const activeCard = { borderRadius: 14, padding: 14, marginBottom: 12 };
+const activePill = { border: "1px solid rgba(16,185,129,0.5)", background: "rgba(16,185,129,0.12)", color: "#10b981", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 700 };
+const miniStats = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8 };
+const metricCard = { borderRadius: 10, padding: 10, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" };
+const metricValue = { margin: 0, fontSize: 24, fontWeight: 800, color: "#f4ece0" };
+const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "#baa892" };
+const list = { display: "grid", gap: 8 };
+const blockerCard = { borderRadius: 12, padding: 12, borderLeft: "3px solid #ef4444" };
+const rowCard = { borderRadius: 12, padding: 12, cursor: "pointer", display: "flex", justifyContent: "space-between", gap: 10 };
+const itemTitle = { margin: 0, fontSize: 15, fontWeight: 700 };
+const statusPill = { border: "1px solid rgba(120,120,120,0.45)", borderRadius: 999, padding: "4px 8px", height: "fit-content", fontSize: 11, textTransform: "capitalize", color: "#9e8d7b", fontWeight: 700 };
+const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 110, padding: 16 };
+const modalCard = { width: "min(560px,100%)", borderRadius: 14, padding: 16 };
+const formStack = { marginTop: 12, display: "grid", gap: 8 };
+const buttonRow = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
+const icon18 = { width: 18, height: 18 };
+const icon14 = { width: 14, height: 14 };
+
+

@@ -1,11 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 function ProjectRoadmap() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
+  const { darkMode } = useTheme();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   useEffect(() => {
     fetchProject();
@@ -16,7 +24,8 @@ function ProjectRoadmap() {
       const response = await api.get(`/api/agile/projects/${projectId}/`);
       setProject(response.data);
     } catch (error) {
-      console.error('Failed to fetch project:', error);
+      console.error("Failed to fetch project:", error);
+      setProject(null);
     } finally {
       setLoading(false);
     }
@@ -24,61 +33,69 @@ function ProjectRoadmap() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+        <div style={spinner} />
       </div>
     );
   }
 
   if (!project) {
-    return (
-      <div className="text-center py-20">
-        <h2 className="text-4xl font-black text-gray-900 mb-4">Project not found</h2>
-      </div>
-    );
+    return <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center", color: palette.muted }}>Project not found</div>;
   }
 
-  return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
-        <h1 className="text-5xl font-black text-gray-900 mb-4">{project.name} Roadmap</h1>
-        <p className="text-lg text-gray-600 mb-12">Project roadmap and timeline</p>
+  const sprints = project.sprints || [];
 
-        {project.sprints && project.sprints.length > 0 ? (
-          <div className="space-y-8">
-            {project.sprints.map((sprint) => (
-              <div key={sprint.id} className="border border-gray-200 p-8">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{sprint.name}</h2>
-                    <p className="text-sm text-gray-600 mt-1">{sprint.start_date} to {sprint.end_date}</p>
-                  </div>
-                  <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${
-                    sprint.status === 'active' ? 'bg-green-100 text-green-700' :
-                    sprint.status === 'completed' ? 'bg-gray-100 text-gray-700' :
-                    'bg-blue-100 text-blue-700'
-                  }`}>
-                    {sprint.status}
-                  </span>
-                </div>
-                {sprint.goal && (
-                  <p className="text-gray-700 mb-4">{sprint.goal}</p>
-                )}
-                <div className="flex gap-6 text-sm text-gray-600">
-                  <div>{sprint.issue_count} issues</div>
-                  <div>{sprint.completed_count} completed</div>
-                </div>
-              </div>
-            ))}
-          </div>
+  return (
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <button onClick={() => navigate(-1)} style={backButton}><ArrowLeftIcon style={icon14} /> Back</button>
+
+        <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+          <p style={{ ...eyebrow, color: palette.muted }}>ROADMAP</p>
+          <h1 style={{ ...title, color: palette.text }}>{project.name}</h1>
+          <p style={{ ...subtitle, color: palette.muted }}>Sprint timeline and delivery progression</p>
+        </section>
+
+        {sprints.length === 0 ? (
+          <div style={empty}>No sprints planned yet.</div>
         ) : (
-          <div className="text-center py-20 border border-gray-200">
-            <p className="text-gray-600">No sprints planned yet</p>
-          </div>
+          <section style={timeline}>
+            {sprints.map((sprint) => (
+              <article key={sprint.id} style={{ ...timelineCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+                <div style={head}>
+                  <h2 style={{ margin: 0, color: palette.text, fontSize: 18 }}>{sprint.name}</h2>
+                  <span style={pill}>{sprint.status}</span>
+                </div>
+                <p style={meta}>{sprint.start_date} - {sprint.end_date}</p>
+                {sprint.goal && <p style={goal}>{sprint.goal}</p>}
+                <div style={stats}>
+                  <span>{sprint.issue_count || 0} issues</span>
+                  <span>{sprint.completed_count || 0} completed</span>
+                </div>
+              </article>
+            ))}
+          </section>
         )}
       </div>
     </div>
   );
 }
 
+const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
+const hero = { borderRadius: 16, padding: 16, marginBottom: 10 };
+const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
+const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
+const subtitle = { margin: 0, fontSize: 13 };
+const timeline = { display: "grid", gap: 8 };
+const timelineCard = { borderRadius: 12, padding: 12 };
+const head = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 };
+const pill = { borderRadius: 999, border: "1px solid rgba(120,120,120,0.4)", padding: "3px 8px", fontSize: 10, color: "#baa892", textTransform: "capitalize", fontWeight: 700 };
+const meta = { margin: "6px 0 0", fontSize: 12, color: "#9e8d7b" };
+const goal = { margin: "6px 0 0", fontSize: 13, color: "#f4ece0" };
+const stats = { marginTop: 8, display: "flex", gap: 12, fontSize: 12, color: "#baa892" };
+const empty = { borderRadius: 10, border: "1px dashed rgba(120,120,120,0.35)", padding: "14px 10px", fontSize: 12, color: "#9e8d7b", textAlign: "center", background: "#171215" };
+const icon14 = { width: 14, height: 14 };
+
 export default ProjectRoadmap;
+

@@ -24,10 +24,12 @@ export const CommandPalette = () => {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.defaultPrevented) return;
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const modKey = isMac ? e.metaKey : e.ctrlKey;
 
       if (modKey && e.key === 'k') {
+        if (document.querySelector('[data-unified-nav-search="true"]')) return;
         e.preventDefault();
         setIsOpen(true);
       }

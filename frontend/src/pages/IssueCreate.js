@@ -1,30 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import api from '../services/api';
-import { colors, spacing, radius, shadows, motion } from '../utils/designTokens';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+﻿import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+
+const getApiErrorMessage = (error, fallback) =>
+  error?.response?.data?.detail ||
+  error?.response?.data?.error ||
+  error?.response?.data?.message ||
+  error?.message ||
+  fallback;
 
 function IssueCreate() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const boardId = searchParams.get('boardId');
-  
+  const boardId = searchParams.get("boardId");
+  const { darkMode } = useTheme();
+
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'medium',
-    assignee_id: null,
-    sprint_id: null,
-    story_points: '',
-    due_date: ''
+    title: "",
+    description: "",
+    priority: "medium",
+    assignee_id: "",
+    sprint_id: "",
+    story_points: "",
+    due_date: "",
   });
-  
+
   const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedProject, setSelectedProject] = useState("");
   const [sprints, setSprints] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   useEffect(() => {
     fetchProjects();
@@ -39,401 +51,178 @@ function IssueCreate() {
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/api/agile/projects/');
-      setProjects(response.data);
-      if (response.data.length > 0) {
-        setSelectedProject(response.data[0].id);
+      const response = await api.get("/api/agile/projects/");
+      const projectList = response.data || [];
+      setProjects(projectList);
+      if (projectList.length > 0) {
+        setSelectedProject(String(projectList[0].id));
       } else {
-        setError('No projects available. Please create a project first.');
+        setError("No projects available. Please create a project first.");
       }
-    } catch (err) {
-      console.error('Failed to fetch projects:', err);
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
     }
   };
 
   const fetchSprints = async (projectId) => {
     try {
       const response = await api.get(`/api/agile/projects/${projectId}/sprints/`);
-      setSprints(response.data);
-    } catch (err) {
-      console.error('Failed to fetch sprints:', err);
+      setSprints(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch sprints:", error);
     }
   };
 
   const fetchTeamMembers = async () => {
     try {
-      console.log('IssueCreate: Fetching team members');
-      const response = await api.get('/api/organizations/members/');
-      console.log('IssueCreate: Team members response:', response.data);
+      const response = await api.get("/api/organizations/members/");
       setTeamMembers(response.data || []);
-    } catch (err) {
-      console.error('IssueCreate: Failed to fetch team members:', err);
+    } catch (error) {
+      console.error("Failed to fetch team members:", error);
       setTeamMembers([]);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
     if (!formData.title.trim()) {
-      setError('Title is required');
+      setError("Title is required");
       return;
     }
-
     if (!selectedProject) {
-      setError('Project is required');
+      setError("Project is required");
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const payload = {
-        title: formData.title,
+        title: formData.title.trim(),
         description: formData.description,
         priority: formData.priority,
-        project_id: selectedProject,
-        assignee_id: formData.assignee_id,
-        sprint_id: formData.sprint_id,
-        status: 'todo'
+        project_id: parseInt(selectedProject, 10),
+        status: "todo",
       };
 
-      if (formData.story_points) {
-        payload.story_points = parseInt(formData.story_points);
-      }
+      if (formData.assignee_id) payload.assignee_id = parseInt(formData.assignee_id, 10);
+      if (formData.sprint_id) payload.sprint_id = parseInt(formData.sprint_id, 10);
+      if (formData.story_points) payload.story_points = parseInt(formData.story_points, 10);
+      if (formData.due_date) payload.due_date = formData.due_date;
 
-      if (formData.due_date) {
-        payload.due_date = formData.due_date;
-      }
-
-      const response = await api.post(`/api/agile/projects/${selectedProject}/issues/`, payload);
+      await api.post(`/api/agile/projects/${selectedProject}/issues/`, payload);
       navigate(`/boards/${boardId || 1}`);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create issue');
+    } catch (error) {
+      setError(getApiErrorMessage(error, "Failed to create issue"));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: spacing.sm,
-          padding: spacing.md,
-          backgroundColor: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          color: colors.secondary,
-          fontSize: '14px',
-          marginBottom: spacing.lg,
-          transition: motion.fast
-        }}
-        onMouseEnter={(e) => e.target.style.color = colors.primary}
-        onMouseLeave={(e) => e.target.style.color = colors.secondary}
-      >
-        <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
-        Back
-      </button>
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <button onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
+          <ArrowLeftIcon style={icon14} /> Back
+        </button>
 
-      <div style={{
-        backgroundColor: colors.surface,
-        borderRadius: radius.lg,
-        border: `1px solid ${colors.border}`,
-        padding: spacing.xl,
-        boxShadow: shadows.sm
-      }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 700, color: colors.primary, marginBottom: spacing.lg }}>
-          Create New Issue
-        </h1>
+        <section style={{ ...card, background: palette.card, border: `1px solid ${palette.border}` }}>
+          <h1 style={{ ...title, color: palette.text }}>Create New Issue</h1>
 
-        {error && (
-          <div style={{
-            padding: spacing.md,
-            backgroundColor: '#FEE2E2',
-            border: '1px solid #FECACA',
-            borderRadius: radius.md,
-            color: '#DC2626',
-            fontSize: '14px',
-            marginBottom: spacing.lg
-          }}>
-            {error}
-          </div>
-        )}
+          {error && <div style={errorBox}>{error}</div>}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
-          <div>
-            <label style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-              Project *
-            </label>
-            <select
-              value={selectedProject || ''}
-              onChange={(e) => setSelectedProject(parseInt(e.target.value))}
-              style={{
-                width: '100%',
-                padding: spacing.md,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                fontSize: '14px',
-                color: colors.primary,
-                backgroundColor: colors.background,
-                cursor: 'pointer'
-              }}
-            >
-              <option value="">Select a project</option>
-              {projects.map(project => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-              Title *
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="Issue title"
-              style={{
-                width: '100%',
-                padding: spacing.md,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                fontSize: '14px',
-                color: colors.primary,
-                backgroundColor: colors.background,
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Issue description"
-              style={{
-                width: '100%',
-                padding: spacing.md,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                fontSize: '14px',
-                color: colors.primary,
-                backgroundColor: colors.background,
-                fontFamily: 'inherit',
-                minHeight: '120px',
-                boxSizing: 'border-box',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing.lg }}>
-            <div>
-              <label style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-                Priority
-              </label>
-              <select
-                name="priority"
-                value={formData.priority}
-                onChange={handleChange}
-                style={{
-                  width: '100%',
-                  padding: spacing.md,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  fontSize: '14px',
-                  color: colors.primary,
-                  backgroundColor: colors.background,
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-                Story Points
-              </label>
-              <input
-                type="number"
-                name="story_points"
-                value={formData.story_points}
-                onChange={handleChange}
-                placeholder="0"
-                min="0"
-                style={{
-                  width: '100%',
-                  padding: spacing.md,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  fontSize: '14px',
-                  color: colors.primary,
-                  backgroundColor: colors.background,
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing.lg }}>
-            <div>
-              <label style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-                Assignee
-              </label>
-              <select
-                name="assignee_id"
-                value={formData.assignee_id || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, assignee_id: e.target.value ? parseInt(e.target.value) : null }))}
-                style={{
-                  width: '100%',
-                  padding: spacing.md,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  fontSize: '14px',
-                  color: colors.primary,
-                  backgroundColor: colors.background,
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="">Unassigned</option>
-                {teamMembers && teamMembers.length > 0 ? (
-                  teamMembers.map(member => (
-                    <option key={member.id} value={member.id}>
-                      {member.full_name || member.username}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>No team members available</option>
-                )}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-                Sprint
-              </label>
-              <select
-                name="sprint_id"
-                value={formData.sprint_id || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, sprint_id: e.target.value ? parseInt(e.target.value) : null }))}
-                style={{
-                  width: '100%',
-                  padding: spacing.md,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  fontSize: '14px',
-                  color: colors.primary,
-                  backgroundColor: colors.background,
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="">No Sprint</option>
-                {sprints.map(sprint => (
-                  <option key={sprint.id} value={sprint.id}>
-                    {sprint.name}
-                  </option>
+          <form onSubmit={handleSubmit} style={formStack}>
+            <Field label="Project">
+              <select value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)} style={ui.input}>
+                <option value="">Select a project</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
                 ))}
               </select>
+            </Field>
+
+            <Field label="Title">
+              <input name="title" value={formData.title} onChange={handleChange} placeholder="Issue title" style={ui.input} />
+            </Field>
+
+            <Field label="Description">
+              <textarea name="description" value={formData.description} onChange={handleChange} rows={5} placeholder="Issue description" style={{ ...ui.input, resize: "vertical" }} />
+            </Field>
+
+            <div style={ui.twoCol}>
+              <Field label="Priority">
+                <select name="priority" value={formData.priority} onChange={handleChange} style={ui.input}>
+                  <option value="lowest">Lowest</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="highest">Highest</option>
+                </select>
+              </Field>
+              <Field label="Story Points">
+                <input type="number" name="story_points" value={formData.story_points} onChange={handleChange} placeholder="0" style={ui.input} />
+              </Field>
             </div>
-          </div>
 
-          <div>
-            <label style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, display: 'block', marginBottom: spacing.sm }}>
-              Due Date
-            </label>
-            <input
-              type="date"
-              name="due_date"
-              value={formData.due_date}
-              onChange={handleChange}
-              style={{
-                width: '100%',
-                padding: spacing.md,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                fontSize: '14px',
-                color: colors.primary,
-                backgroundColor: colors.background,
-                boxSizing: 'border-box',
-                cursor: 'pointer'
-              }}
-            />
-          </div>
+            <div style={ui.twoCol}>
+              <Field label="Sprint">
+                <select name="sprint_id" value={formData.sprint_id} onChange={handleChange} style={ui.input}>
+                  <option value="">No Sprint</option>
+                  {sprints.map((sprint) => (
+                    <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Assignee">
+                <select name="assignee_id" value={formData.assignee_id} onChange={handleChange} style={ui.input}>
+                  <option value="">Unassigned</option>
+                  {teamMembers.map((member) => (
+                    <option key={member.id} value={member.id}>{member.full_name || member.username}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
 
-          <div style={{ display: 'flex', gap: spacing.md, marginTop: spacing.lg }}>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: spacing.md,
-                backgroundColor: colors.primary,
-                color: colors.surface,
-                border: 'none',
-                borderRadius: radius.md,
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1,
-                transition: motion.fast,
-                boxShadow: shadows.sm
-              }}
-              onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#1a1f35')}
-              onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = colors.primary)}
-            >
-              {loading ? 'Creating...' : 'Create Issue'}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              style={{
-                flex: 1,
-                padding: spacing.md,
-                backgroundColor: colors.background,
-                color: colors.primary,
-                border: `1px solid ${colors.border}`,
-                borderRadius: radius.md,
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: motion.fast
-              }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = colors.border}
-              onMouseLeave={(e) => e.target.style.backgroundColor = colors.background}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+            <Field label="Due Date">
+              <input type="date" name="due_date" value={formData.due_date} onChange={handleChange} style={ui.input} />
+            </Field>
+
+            <div style={buttonRow}>
+              <button type="button" onClick={() => navigate(-1)} style={ui.secondaryButton}>Cancel</button>
+              <button type="submit" disabled={loading} style={ui.primaryButton}>{loading ? "Creating..." : "Create Issue"}</button>
+            </div>
+          </form>
+        </section>
       </div>
     </div>
   );
 }
 
+function Field({ label, children }) {
+  return (
+    <label style={field}>
+      <span style={fieldLabel}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
+const card = { borderRadius: 16, padding: 16 };
+const title = { margin: 0, fontSize: "clamp(1.5rem,3vw,2rem)", letterSpacing: "-0.02em" };
+const errorBox = { marginTop: 10, border: "1px solid rgba(239,68,68,0.5)", background: "rgba(239,68,68,0.1)", color: "#ef4444", borderRadius: 10, padding: "10px 12px", fontSize: 13 };
+const formStack = { marginTop: 14, display: "grid", gap: 10 };
+const field = { display: "grid", gap: 6 };
+const fieldLabel = { fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 700, color: "#9e8d7b" };
+const buttonRow = { marginTop: 6, display: "flex", justifyContent: "flex-end", gap: 8 };
+const icon14 = { width: 14, height: 14 };
+
 export default IssueCreate;
+

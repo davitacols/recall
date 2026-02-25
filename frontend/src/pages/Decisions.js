@@ -1,24 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PlusIcon, Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ListBulletIcon, PlusIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import api from "../services/api";
 
 function Decisions() {
   const { darkMode } = useTheme();
   const navigate = useNavigate();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('grid');
-
-  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
-  const hoverBg = darkMode ? 'hover:bg-stone-800' : 'hover:bg-gray-50';
-  const hoverBorder = darkMode ? 'hover:border-stone-700' : 'hover:border-gray-300';
+  const [filter, setFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("grid");
 
   useEffect(() => {
     fetchDecisions();
@@ -26,59 +22,37 @@ function Decisions() {
 
   const fetchDecisions = async () => {
     try {
-      const response = await api.get('/api/decisions/');
+      const response = await api.get("/api/decisions/");
       const data = response.data.data || response.data.results || response.data || [];
       const decisionsArray = Array.isArray(data) ? data : [];
-      
-      const sorted = decisionsArray.sort((a, b) => 
-        new Date(b.created_at) - new Date(a.created_at)
-      );
-      setDecisions(sorted);
+      setDecisions(decisionsArray.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
     } catch (error) {
-      console.error('Failed to fetch decisions:', error);
+      console.error("Failed to fetch decisions:", error);
       setDecisions([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredDecisions = decisions.filter(decision => {
-    if (filter === 'all') return true;
-    return decision.status === filter;
-  });
+  const filteredDecisions = decisions.filter((decision) => (filter === "all" ? true : decision.status === filter));
 
   const statusCounts = decisions.reduce((acc, decision) => {
     acc[decision.status] = (acc[decision.status] || 0) + 1;
     return acc;
   }, {});
 
-  const statusConfig = {
-    proposed: { bg: darkMode ? '#312e81' : '#e0e7ff', text: darkMode ? '#a5b4fc' : '#3730a3', label: 'Proposed' },
-    under_review: { bg: darkMode ? '#1e3a8a' : '#dbeafe', text: darkMode ? '#93c5fd' : '#1e40af', label: 'Under Review' },
-    approved: { bg: darkMode ? '#065f46' : '#d1fae5', text: darkMode ? '#6ee7b7' : '#065f46', label: 'Approved' },
-    rejected: { bg: darkMode ? '#7f1d1d' : '#fee2e2', text: darkMode ? '#fca5a5' : '#991b1b', label: 'Rejected' },
-    implemented: { bg: darkMode ? '#065f46' : '#d1fae5', text: darkMode ? '#6ee7b7' : '#065f46', label: 'Implemented' },
-    cancelled: { bg: darkMode ? '#374151' : '#f3f4f6', text: darkMode ? '#9ca3af' : '#4b5563', label: 'Cancelled' }
-  };
-
-  const impactConfig = {
-    low: { bg: darkMode ? '#1e3a8a' : '#dbeafe', text: darkMode ? '#93c5fd' : '#1e40af' },
-    medium: { bg: darkMode ? '#78350f' : '#fef3c7', text: darkMode ? '#fcd34d' : '#92400e' },
-    high: { bg: darkMode ? '#7c2d12' : '#fed7aa', text: darkMode ? '#fdba74' : '#9a3412' },
-    critical: { bg: darkMode ? '#7f1d1d' : '#fecaca', text: darkMode ? '#fca5a5' : '#991b1b' }
+  const statusLabel = (status) => {
+    if (!status) return "Proposed";
+    return status.replace("_", " ");
   };
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${bgPrimary}`}>
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg animate-pulse`}>
-                <div className={`h-4 ${bgPrimary} rounded w-3/4 mb-3`}></div>
-                <div className={`h-3 ${bgPrimary} rounded w-full mb-2`}></div>
-                <div className={`h-3 ${bgPrimary} rounded w-2/3`}></div>
-              </div>
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10 }}>
+            {[1, 2, 3, 4].map((item) => (
+              <div key={item} style={{ borderRadius: 12, height: 140, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
             ))}
           </div>
         </div>
@@ -87,167 +61,112 @@ function Decisions() {
   }
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-start mb-8">
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>
-            <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Decisions</h1>
-            <p className={`text-sm ${textSecondary}`}>Track decisions, their status, and impact across your team</p>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>DECISION CENTER</p>
+            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Decisions</h1>
+            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track choices, review status, and implementation momentum.</p>
           </div>
-          <button
-            onClick={() => navigate('/conversations')}
-            className={`flex items-center gap-2 px-4 py-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm transition-all`}
-          >
-            <PlusIcon className="w-4 h-4" />
-            New Decision
-          </button>
-        </div>
+          <button onClick={() => navigate("/conversations")} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Decision</button>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
-            <div className={`text-3xl font-bold ${textPrimary} mb-1`}>{decisions.length}</div>
-            <div className={`text-xs ${textSecondary} font-medium`}>Total Decisions</div>
-          </div>
-          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
-            <div className="text-3xl font-bold text-blue-500 mb-1">{statusCounts.approved || 0}</div>
-            <div className={`text-xs ${textSecondary} font-medium`}>Approved</div>
-          </div>
-          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
-            <div className="text-3xl font-bold text-amber-500 mb-1">{statusCounts.under_review || 0}</div>
-            <div className={`text-xs ${textSecondary} font-medium`}>Under Review</div>
-          </div>
-          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
-            <div className="text-3xl font-bold text-green-500 mb-1">{statusCounts.implemented || 0}</div>
-            <div className={`text-xs ${textSecondary} font-medium`}>Implemented</div>
-          </div>
-        </div>
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8, marginBottom: 12 }}>
+          <Metric label="Total" value={decisions.length} />
+          <Metric label="Approved" value={statusCounts.approved || 0} color="#10b981" />
+          <Metric label="Under Review" value={statusCounts.under_review || 0} color="#f59e0b" />
+          <Metric label="Implemented" value={statusCounts.implemented || 0} color="#3b82f6" />
+        </section>
 
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            {['all', 'proposed', 'under_review', 'approved', 'implemented'].map((status) => (
+        <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 10, marginBottom: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {["all", "proposed", "under_review", "approved", "implemented"].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`px-4 py-2 text-xs font-semibold rounded transition-all capitalize ${
-                  filter === status
-                    ? 'bg-blue-600 text-white'
-                    : `${bgSecondary} ${textSecondary} border ${borderColor} ${hoverBg}`
-                }`}
+                style={{
+                  ...ui.secondaryButton,
+                  fontSize: 11,
+                  padding: "7px 10px",
+                  textTransform: "capitalize",
+                  background: filter === status ? "rgba(59,130,246,0.2)" : "transparent",
+                  border: filter === status ? "1px solid rgba(59,130,246,0.45)" : ui.secondaryButton.border,
+                  color: filter === status ? "#93c5fd" : ui.secondaryButton.color,
+                }}
               >
-                {status === 'all' ? 'All' : status.replace('_', ' ')}
+                {status === "all" ? "All" : status.replace("_", " ")}
               </button>
             ))}
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 border ${borderColor} rounded transition-all ${
-                viewMode === 'grid' ? bgSecondary : 'bg-transparent'
-              }`}
-            >
-              <Squares2X2Icon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 border ${borderColor} rounded transition-all ${
-                viewMode === 'list' ? bgSecondary : 'bg-transparent'
-              }`}
-            >
-              <ListBulletIcon className="w-5 h-5" />
-            </button>
+
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => setViewMode("grid")} style={{ ...ui.secondaryButton, padding: "7px 9px", background: viewMode === "grid" ? "rgba(120,120,120,0.18)" : "transparent" }}><Squares2X2Icon style={{ width: 15, height: 15 }} /></button>
+            <button onClick={() => setViewMode("list")} style={{ ...ui.secondaryButton, padding: "7px 9px", background: viewMode === "list" ? "rgba(120,120,120,0.18)" : "transparent" }}><ListBulletIcon style={{ width: 15, height: 15 }} /></button>
           </div>
-        </div>
+        </section>
 
         {filteredDecisions.length === 0 ? (
-          <div className={`text-center py-20 ${textSecondary}`}>
-            <p className="text-lg mb-4">No decisions found</p>
-            <button
-              onClick={() => navigate('/conversations')}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all"
-            >
-              Create Decision
-            </button>
+          <div style={{ borderRadius: 12, border: `1px dashed ${palette.border}`, background: palette.card, padding: "20px 14px", textAlign: "center", color: palette.muted, fontSize: 13 }}>
+            No decisions found for this filter.
           </div>
-        ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDecisions.map((decision) => {
-              const status = statusConfig[decision.status] || statusConfig.proposed;
-              const impact = impactConfig[decision.impact_level] || impactConfig.medium;
-              
-              return (
-                <div
-                  key={decision.id}
-                  onClick={() => navigate(`/decisions/${decision.id}`)}
-                  className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg cursor-pointer transition-all ${hoverBorder} hover:-translate-y-1`}
-                >
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="px-3 py-1 text-xs font-semibold rounded" style={{ backgroundColor: status.bg, color: status.text }}>
-                      {status.label}
-                    </span>
-                    <span className="px-3 py-1 text-xs font-semibold rounded capitalize" style={{ backgroundColor: impact.bg, color: impact.text }}>
-                      {decision.impact_level}
-                    </span>
-                  </div>
-
-                  <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
-                    {decision.title}
-                  </h3>
-                  {decision.description && (
-                    <p className={`text-sm ${textSecondary} line-clamp-2 mb-4`}>
-                      {decision.description}
-                    </p>
-                  )}
-
-                  <div className={`flex items-center justify-between pt-4 border-t ${borderColor} text-xs ${textSecondary}`}>
-                    <span>{decision.decision_maker_name}</span>
-                    <span>{new Date(decision.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                  </div>
+        ) : viewMode === "grid" ? (
+          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 10 }}>
+            {filteredDecisions.map((decision) => (
+              <article key={decision.id} onClick={() => navigate(`/decisions/${decision.id}`)} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, cursor: "pointer" }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+                  <Badge text={statusLabel(decision.status)} />
+                  <Badge text={decision.impact_level || "medium"} tone="amber" />
                 </div>
-              );
-            })}
-          </div>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{decision.title}</p>
+                {decision.description && <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{decision.description}</p>}
+                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 11, color: palette.muted }}>
+                  <span>{decision.decision_maker_name || "Unknown"}</span>
+                  <span>{new Date(decision.created_at).toLocaleDateString()}</span>
+                </div>
+              </article>
+            ))}
+          </section>
         ) : (
-          <div className="space-y-3">
-            {filteredDecisions.map((decision) => {
-              const status = statusConfig[decision.status] || statusConfig.proposed;
-              const impact = impactConfig[decision.impact_level] || impactConfig.medium;
-              
-              return (
-                <div
-                  key={decision.id}
-                  onClick={() => navigate(`/decisions/${decision.id}`)}
-                  className={`p-5 ${bgSecondary} border ${borderColor} rounded-lg cursor-pointer transition-all ${hoverBg} ${hoverBorder} flex items-center gap-5`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: status.bg, color: status.text }}>
-                        {status.label}
-                      </span>
-                      <span className="px-2 py-1 text-xs font-semibold rounded capitalize" style={{ backgroundColor: impact.bg, color: impact.text }}>
-                        {decision.impact_level}
-                      </span>
-                    </div>
-                    <h3 className={`text-base font-semibold ${textPrimary} mb-1`}>
-                      {decision.title}
-                    </h3>
-                    {decision.description && (
-                      <p className={`text-sm ${textSecondary} truncate`}>
-                        {decision.description}
-                      </p>
-                    )}
+          <section style={{ display: "grid", gap: 8 }}>
+            {filteredDecisions.map((decision) => (
+              <article key={decision.id} onClick={() => navigate(`/decisions/${decision.id}`)} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, cursor: "pointer", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+                    <Badge text={statusLabel(decision.status)} />
+                    <Badge text={decision.impact_level || "medium"} tone="amber" />
                   </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span className={`text-sm ${textSecondary}`}>{decision.decision_maker_name}</span>
-                    <span className={`text-xs ${textSecondary}`}>{new Date(decision.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                  </div>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{decision.title}</p>
+                  {decision.description && <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted }}>{decision.description}</p>}
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ fontSize: 11, color: palette.muted, textAlign: "right" }}>
+                  <p style={{ margin: 0 }}>{decision.decision_maker_name || "Unknown"}</p>
+                  <p style={{ margin: "4px 0 0" }}>{new Date(decision.created_at).toLocaleDateString()}</p>
+                </div>
+              </article>
+            ))}
+          </section>
         )}
       </div>
     </div>
   );
+}
+
+function Metric({ label, value, color = "#f4ece0" }) {
+  return (
+    <article style={{ borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" }}>
+      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color }}>{value}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: "#baa892" }}>{label}</p>
+    </article>
+  );
+}
+
+function Badge({ text, tone = "blue" }) {
+  const styles = tone === "amber"
+    ? { border: "1px solid rgba(245,158,11,0.45)", color: "#fcd34d", background: "rgba(245,158,11,0.12)" }
+    : { border: "1px solid rgba(59,130,246,0.45)", color: "#93c5fd", background: "rgba(59,130,246,0.12)" };
+
+  return <span style={{ ...styles, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 8px", textTransform: "capitalize" }}>{text}</span>;
 }
 
 export default Decisions;

@@ -1,27 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import { PlusIcon, FlagIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FlagIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 export default function Goals() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', target_date: '', status: 'not_started', conversation_id: '', decision_id: '' });
-
-  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-500' : 'text-gray-600';
-  const textTertiary = darkMode ? 'text-stone-400' : 'text-gray-500';
-  const hoverBg = darkMode ? 'hover:bg-stone-700' : 'hover:bg-gray-100';
-  const hoverBorder = darkMode ? 'hover:border-stone-700' : 'hover:border-gray-300';
-  const inputBg = darkMode ? 'bg-stone-800' : 'bg-white';
-  const inputBorder = darkMode ? 'border-stone-700' : 'border-gray-300';
-  const inputText = darkMode ? 'text-stone-200' : 'text-gray-900';
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    target_date: "",
+    status: "not_started",
+    conversation_id: "",
+    decision_id: "",
+  });
 
   useEffect(() => {
     fetchGoals();
@@ -29,63 +28,55 @@ export default function Goals() {
 
   const fetchGoals = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/goals/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        console.error('API Error:', res.status, await res.text());
+        console.error("API Error:", res.status, await res.text());
         setGoals([]);
         return;
       }
-      const data = await res.json();
-      setGoals(data);
+      setGoals(await res.json());
     } catch (error) {
-      console.error('Error fetching goals:', error);
+      console.error("Error fetching goals:", error);
       setGoals([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       await fetch(`${process.env.REACT_APP_API_URL}/api/business/goals/`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
       setShowModal(false);
-      setFormData({ title: '', description: '', target_date: '', status: 'not_started', conversation_id: '', decision_id: '' });
+      setFormData({ title: "", description: "", target_date: "", status: "not_started", conversation_id: "", decision_id: "" });
       fetchGoals();
     } catch (error) {
-      console.error('Error creating goal:', error);
+      console.error("Error creating goal:", error);
     }
   };
 
-  const statusColors = {
-    not_started: darkMode ? 'text-stone-500 bg-stone-500/20' : 'text-gray-500 bg-gray-500/20',
-    in_progress: darkMode ? 'text-blue-400 bg-blue-400/20' : 'text-blue-600 bg-blue-600/20',
-    completed: darkMode ? 'text-green-400 bg-green-400/20' : 'text-green-600 bg-green-600/20',
-    on_hold: darkMode ? 'text-yellow-400 bg-yellow-400/20' : 'text-yellow-600 bg-yellow-600/20'
-  };
+  const doneCount = goals.filter((goal) => goal.status === "completed").length;
+  const inProgressCount = goals.filter((goal) => goal.status === "in_progress").length;
+  const avgProgress = goals.length ? Math.round(goals.reduce((sum, goal) => sum + (goal.progress || 0), 0) / goals.length) : 0;
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${bgPrimary}`}>
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1,2,3].map(i => (
-              <div key={i} className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg animate-pulse`}>
-                <div className={`h-4 ${inputBg} rounded w-3/4 mb-3`}></div>
-                <div className={`h-3 ${inputBg} rounded w-full mb-2`}></div>
-                <div className={`h-3 ${inputBg} rounded w-2/3`}></div>
-              </div>
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10 }}>
+            {[1, 2, 3, 4].map((item) => (
+              <div key={item} style={{ borderRadius: 12, height: 128, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
             ))}
           </div>
         </div>
@@ -94,93 +85,72 @@ export default function Goals() {
   }
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-start mb-8">
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>
-            <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Goals</h1>
-            <p className={`text-sm ${textSecondary}`}>Track and manage your business goals</p>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>BUSINESS GOALS</p>
+            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Goals</h1>
+            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track delivery outcomes and strategic milestones.</p>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className={`flex items-center gap-2 px-4 py-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm transition-all`}
-          >
-            <PlusIcon className="w-4 h-4" />
-            New Goal
-          </button>
-        </div>
+          <button onClick={() => setShowModal(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Goal</button>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {goals.map(goal => (
-            <div
-              key={goal.id}
-              onClick={() => navigate(`/business/goals/${goal.id}`)}
-              className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg ${hoverBorder} hover:bg-opacity-80 transition-all cursor-pointer`}
-            >
-              <div className="flex items-start gap-3 mb-4">
-                <FlagIcon className={`w-5 h-5 ${statusColors[goal.status].split(' ')[0]}`} />
-                <div className="flex-1">
-                  <h3 className={`text-base font-semibold ${textPrimary} mb-1`}>{goal.title}</h3>
-                  <p className={`text-sm ${textTertiary} line-clamp-2`}>{goal.description}</p>
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8, marginBottom: 12 }}>
+          <Metric label="Total" value={goals.length} />
+          <Metric label="In Progress" value={inProgressCount} />
+          <Metric label="Completed" value={doneCount} />
+          <Metric label="Avg Progress" value={`${avgProgress}%`} />
+        </section>
+
+        {goals.length === 0 ? (
+          <div style={{ borderRadius: 12, border: `1px dashed ${palette.border}`, background: palette.card, padding: "20px 14px", textAlign: "center", color: palette.muted, fontSize: 13 }}>
+            No goals yet. Create one to start tracking progress.
+          </div>
+        ) : (
+          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 10 }}>
+            {goals.map((goal) => (
+              <article key={goal.id} onClick={() => navigate(`/business/goals/${goal.id}`)} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, cursor: "pointer" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <FlagIcon style={{ width: 16, height: 16, color: statusColor(goal.status) }} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{goal.title}</p>
+                    <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{goal.description || "No description"}</p>
+                  </div>
                 </div>
-              </div>
-              <div className={`flex justify-between items-center pt-4 border-t ${borderColor}`}>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[goal.status]}`}>
-                  {goal.status.replace('_', ' ')}
-                </span>
-                <span className={`text-sm ${textSecondary}`}>{goal.progress}%</span>
-              </div>
-            </div>
-          ))}
-        </div>
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ width: "100%", height: 7, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" }}>
+                    <div style={{ width: `${goal.progress || 0}%`, height: "100%", background: "linear-gradient(90deg,#10b981,#34d399)" }} />
+                  </div>
+                </div>
+                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
+                  <span style={{ color: palette.muted, textTransform: "capitalize" }}>{(goal.status || "not_started").replace("_", " ")}</span>
+                  <span style={{ color: palette.text, fontWeight: 700 }}>{goal.progress || 0}%</span>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
 
         {showModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 w-full max-w-md`}>
-              <h2 className={`text-xl font-bold ${textPrimary} mb-5`}>Create New Goal</h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                  />
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
+            <div style={{ width: "min(560px,100%)", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
+              <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>Create Goal</h2>
+              <form onSubmit={handleSubmit} style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                <input required placeholder="Goal title" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} style={ui.input} />
+                <textarea rows={4} placeholder="Description" value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} style={ui.input} />
+                <div style={ui.twoCol}>
+                  <input type="date" value={formData.target_date} onChange={(event) => setFormData({ ...formData, target_date: event.target.value })} style={ui.input} />
+                  <select value={formData.status} onChange={(event) => setFormData({ ...formData, status: event.target.value })} style={ui.input}>
+                    <option value="not_started">Not Started</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="on_hold">On Hold</option>
+                  </select>
                 </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Target Date</label>
-                  <input
-                    type="date"
-                    value={formData.target_date}
-                    onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
-                    className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                  />
-                </div>
-                <div className="flex gap-3 justify-end pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className={`px-4 py-2 bg-transparent ${textTertiary} border-2 ${borderColor} rounded ${hoverBg} font-medium text-sm`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className={`px-4 py-2 bg-transparent border-2 ${inputBorder} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm`}
-                  >
-                    Create Goal
-                  </button>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                  <button type="button" onClick={() => setShowModal(false)} style={ui.secondaryButton}>Cancel</button>
+                  <button type="submit" style={ui.primaryButton}>Create</button>
                 </div>
               </form>
             </div>
@@ -189,4 +159,20 @@ export default function Goals() {
       </div>
     </div>
   );
+}
+
+function Metric({ label, value }) {
+  return (
+    <article style={{ borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" }}>
+      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#f4ece0" }}>{value}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 12, color: "#baa892" }}>{label}</p>
+    </article>
+  );
+}
+
+function statusColor(status) {
+  if (status === "completed") return "#10b981";
+  if (status === "in_progress") return "#3b82f6";
+  if (status === "on_hold") return "#f59e0b";
+  return "#9ca3af";
 }

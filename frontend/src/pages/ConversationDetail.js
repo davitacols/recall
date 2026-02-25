@@ -1,82 +1,107 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, ChatBubbleLeftIcon, HandThumbUpIcon, ExclamationTriangleIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../hooks/useAuth';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import { useToast } from '../components/Toast';
-import { AIEnhancementButton, AIResultsPanel } from '../components/AIEnhancements';
-import api from '../services/api';
-import MentionTagInput from '../components/MentionTagInput';
-import HighlightedText from '../components/HighlightedText';
-import RichTextRenderer from '../components/RichTextRenderer';
-import { FavoriteButton, ExportButton, UndoRedoButtons } from '../components/QuickWinFeatures';
-import { getAvatarUrl } from '../utils/avatarUtils';
-import AIAssistant from '../components/AIAssistant';
-import ContextPanel from '../components/ContextPanel';
-import QuickLink from '../components/QuickLink';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeftIcon,
+  ChatBubbleLeftIcon,
+  ExclamationTriangleIcon,
+  HandThumbUpIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { useToast } from "../components/Toast";
+import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
+import api from "../services/api";
+import MentionTagInput from "../components/MentionTagInput";
+import RichTextRenderer from "../components/RichTextRenderer";
+import { FavoriteButton, ExportButton, UndoRedoButtons } from "../components/QuickWinFeatures";
+import { getAvatarUrl } from "../utils/avatarUtils";
+import AIAssistant from "../components/AIAssistant";
+import ContextPanel from "../components/ContextPanel";
+import QuickLink from "../components/QuickLink";
 
-const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId }) => {
+const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette, darkMode }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
+
+  const authorName =
+    typeof reply.author === "string" ? reply.author : reply.author?.username || "Unknown";
+  const avatarUrl = getAvatarUrl(reply.author?.avatar || reply.author_avatar);
 
   const handleSave = async () => {
     await onEdit(reply.id, editContent);
     setIsEditing(false);
   };
 
-  const authorName = typeof reply.author === 'string' ? reply.author : reply.author?.username;
-  const avatarUrl = getAvatarUrl(reply.author?.avatar || reply.author_avatar);
-
   return (
-    <div style={{ marginLeft: depth > 0 ? '32px' : '0' }}>
-      <div style={{ backgroundColor: '#1c1917', border: '1px solid #292524', borderRadius: '5px', padding: '12px', transition: 'all 0.15s' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '28px', height: '28px', backgroundColor: '#3b82f6', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+    <div style={{ marginLeft: depth > 0 ? 24 : 0 }}>
+      <article style={{ ...replyCard, background: palette.panel, border: `1px solid ${palette.border}` }}>
+        <div style={replyHeader}>
+          <div style={replyAuthorWrap}>
+            <div style={avatarSmall}>
               {avatarUrl ? (
-                <img src={avatarUrl} alt={authorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = `<span style="color: #ffffff; font-size: 11px; font-weight: 600;">${authorName?.charAt(0).toUpperCase()}</span>`;
-                }} />
+                <img
+                  src={avatarUrl}
+                  alt={authorName}
+                  style={avatarImage}
+                  onError={(event) => {
+                    event.target.style.display = "none";
+                    event.target.parentElement.innerHTML = `<span style="color:#20140f;font-size:12px;font-weight:700;">${authorName
+                      .charAt(0)
+                      .toUpperCase()}</span>`;
+                  }}
+                />
               ) : (
-                <span style={{ color: '#ffffff', fontSize: '11px', fontWeight: 600 }}>
-                  {authorName?.charAt(0).toUpperCase()}
-                </span>
+                <span style={avatarSmallInitial}>{authorName.charAt(0).toUpperCase()}</span>
               )}
             </div>
             <div>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: '#e7e5e4' }}>
-                {authorName}
-              </p>
-              <p style={{ fontSize: '11px', color: '#a8a29e' }}>
+              <p style={{ ...authorNameStyle, color: palette.text }}>{authorName}</p>
+              <p style={{ ...metaText, color: palette.muted }}>
                 {new Date(reply.created_at).toLocaleDateString()}
               </p>
             </div>
           </div>
+
           {reply.author_id === currentUserId && (
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={() => setIsEditing(!isEditing)} style={{ fontSize: '11px', color: '#a8a29e', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}>
-                {isEditing ? 'Cancel' : 'Edit'}
+            <div style={replyActionRow}>
+              <button onClick={() => setIsEditing((value) => !value)} style={inlineAction}>
+                {isEditing ? "Cancel" : "Edit"}
               </button>
-              <button onClick={() => onDelete(reply.id)} style={{ fontSize: '11px', color: '#a8a29e', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}>
+              <button onClick={() => onDelete(reply.id)} style={inlineActionDanger}>
                 Delete
               </button>
             </div>
           )}
         </div>
+
         {isEditing ? (
           <div>
-            <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #292524', borderRadius: '5px', backgroundColor: '#0c0a09', color: '#e7e5e4', fontSize: '13px' }} rows={2} />
-            <button onClick={handleSave} style={{ marginTop: '8px', padding: '6px 12px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>
+            <textarea
+              value={editContent}
+              onChange={(event) => setEditContent(event.target.value)}
+              rows={3}
+              style={{ ...textareaInput, border: `1px solid ${palette.border}`, color: palette.text }}
+            />
+            <button onClick={handleSave} style={primaryButton}>
               Save
             </button>
           </div>
         ) : (
-          <RichTextRenderer content={reply.content} darkMode={true} />
+          <RichTextRenderer content={reply.content} darkMode={darkMode} />
         )}
-      </div>
-      {reply.children?.map(child => (
-        <ReplyItem key={child.id} reply={child} depth={depth + 1} onReply={onReply} onEdit={onEdit} onDelete={onDelete} currentUserId={currentUserId} />
+      </article>
+
+      {reply.children?.map((child) => (
+        <ReplyItem
+          key={child.id}
+          reply={child}
+          depth={depth + 1}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          currentUserId={currentUserId}
+          palette={palette}
+          darkMode={darkMode}
+        />
       ))}
     </div>
   );
@@ -85,47 +110,73 @@ const ReplyItem = ({ reply, depth = 0, onReply, onEdit, onDelete, currentUserId 
 function ConversationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { darkMode } = useTheme();
   const { addToast } = useToast();
+
   const [conversation, setConversation] = useState(null);
   const [replies, setReplies] = useState([]);
-  const [newReply, setNewReply] = useState('');
+  const [newReply, setNewReply] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isEditingPost, setIsEditingPost] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
   const [currentUserId, setCurrentUserId] = useState(null);
   const [reactions, setReactions] = useState({ reactions: [], user_reaction: null });
-  const [teamMembers, setTeamMembers] = useState([]);
   const [savingPost, setSavingPost] = useState(false);
   const [deletingPost, setDeletingPost] = useState(false);
   const [reactionLoading, setReactionLoading] = useState(false);
   const [selectedType, setSelectedType] = useState(null);
-  const [formData, setFormData] = useState({ title: '', content: '', post_type: '', priority: 'medium' });
+  const [formData, setFormData] = useState({
+    title: "",
+    content: "",
+    post_type: "",
+    priority: "medium",
+  });
   const [creating, setCreating] = useState(false);
   const [converting, setConverting] = useState(false);
   const [aiResults, setAiResults] = useState(null);
-
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1080);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setCurrentUserId(user.id);
-    if (id !== 'new') {
+    const onResize = () => setIsNarrow(window.innerWidth < 1080);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+    setCurrentUserId(localUser.id);
+    if (id !== "new") {
       fetchConversation();
       fetchReplies();
       fetchReactions();
-      fetchTeamMembers();
     } else {
       setLoading(false);
     }
   }, [id]);
+
+  const palette = useMemo(
+    () =>
+      darkMode
+        ? {
+            panel: "#171215",
+            panelAlt: "#1f181c",
+            border: "rgba(255,225,193,0.14)",
+            text: "#f4ece0",
+            muted: "#baa892",
+            accent: "#ffaf72",
+          }
+        : {
+            panel: "#fffaf3",
+            panelAlt: "#ffffff",
+            border: "#eadfce",
+            text: "#231814",
+            muted: "#7d6d5a",
+            accent: "#d9692e",
+          },
+    [darkMode]
+  );
 
   const fetchConversation = async () => {
     try {
@@ -134,7 +185,7 @@ function ConversationDetail() {
       setEditTitle(response.data.title);
       setEditContent(response.data.content);
     } catch (error) {
-      console.error('Failed to fetch conversation:', error);
+      console.error("Failed to fetch conversation:", error);
     } finally {
       setLoading(false);
     }
@@ -145,7 +196,7 @@ function ConversationDetail() {
       const response = await api.get(`/api/recall/conversations/${id}/replies/`);
       setReplies(response.data);
     } catch (error) {
-      console.error('Failed to fetch replies:', error);
+      console.error("Failed to fetch replies:", error);
     }
   };
 
@@ -154,16 +205,7 @@ function ConversationDetail() {
       const response = await api.get(`/api/recall/conversations/${id}/reactions/`);
       setReactions(response.data);
     } catch (error) {
-      console.error('Failed to fetch reactions:', error);
-    }
-  };
-
-  const fetchTeamMembers = async () => {
-    try {
-      const response = await api.get('/api/organizations/team/members/');
-      setTeamMembers(response.data);
-    } catch (error) {
-      console.error('Failed to fetch team members:', error);
+      console.error("Failed to fetch reactions:", error);
     }
   };
 
@@ -174,7 +216,7 @@ function ConversationDetail() {
       setIsEditingPost(false);
       fetchConversation();
     } catch (error) {
-      console.error('Failed to update:', error);
+      console.error("Failed to update:", error);
     } finally {
       setSavingPost(false);
     }
@@ -184,11 +226,11 @@ function ConversationDetail() {
     setDeletingPost(true);
     try {
       await api.delete(`/api/recall/conversations/${id}/`);
-      addToast('Conversation deleted successfully', 'success');
-      window.location.href = '/conversations';
+      addToast("Conversation deleted successfully", "success");
+      window.location.href = "/conversations";
     } catch (error) {
-      console.error('Failed to delete:', error);
-      addToast('Failed to delete conversation', 'error');
+      console.error("Failed to delete:", error);
+      addToast("Failed to delete conversation", "error");
       setDeletingPost(false);
     }
   };
@@ -198,31 +240,31 @@ function ConversationDetail() {
       await api.put(`/api/recall/conversations/replies/${replyId}/`, { content });
       fetchReplies();
     } catch (error) {
-      console.error('Failed to update reply:', error);
+      console.error("Failed to update reply:", error);
     }
   };
 
   const handleDeleteReply = async (replyId) => {
     try {
       await api.delete(`/api/recall/conversations/replies/${replyId}/`);
-      addToast('Reply deleted successfully', 'success');
+      addToast("Reply deleted successfully", "success");
       fetchReplies();
     } catch (error) {
-      console.error('Failed to delete reply:', error);
-      addToast('Failed to delete reply', 'error');
+      console.error("Failed to delete reply:", error);
+      addToast("Failed to delete reply", "error");
     }
   };
 
-  const handleSubmitReply = async (e) => {
-    e.preventDefault();
+  const handleSubmitReply = async (event) => {
+    event.preventDefault();
     if (!newReply.trim()) return;
     setSubmitting(true);
     try {
       await api.post(`/api/recall/conversations/${id}/replies/`, { content: newReply });
-      setNewReply('');
+      setNewReply("");
       fetchReplies();
     } catch (error) {
-      console.error('Failed to submit reply:', error);
+      console.error("Failed to submit reply:", error);
     } finally {
       setSubmitting(false);
     }
@@ -230,25 +272,20 @@ function ConversationDetail() {
 
   const handleReaction = async (type) => {
     if (reactionLoading) return;
-    
-    // Optimistic update
     const wasSelected = reactions.user_reaction === type;
-    const newReactions = reactions.reactions.map(r => {
-      if (r.reaction_type === type) {
-        return { ...r, count: wasSelected ? r.count - 1 : r.count + 1 };
+    const newReactions = reactions.reactions.map((reaction) => {
+      if (reaction.reaction_type === type) {
+        return { ...reaction, count: wasSelected ? reaction.count - 1 : reaction.count + 1 };
       }
-      if (r.reaction_type === reactions.user_reaction) {
-        return { ...r, count: r.count - 1 };
+      if (reaction.reaction_type === reactions.user_reaction) {
+        return { ...reaction, count: reaction.count - 1 };
       }
-      return r;
+      return reaction;
     });
-    
-    setReactions({
-      reactions: newReactions,
-      user_reaction: wasSelected ? null : type
-    });
-    
+
+    setReactions({ reactions: newReactions, user_reaction: wasSelected ? null : type });
     setReactionLoading(true);
+
     try {
       if (wasSelected) {
         await api.delete(`/api/recall/conversations/${id}/reactions/remove/`);
@@ -257,8 +294,7 @@ function ConversationDetail() {
       }
       fetchReactions();
     } catch (error) {
-      console.error('Failed to update reaction:', error);
-      // Revert on error
+      console.error("Failed to update reaction:", error);
       fetchReactions();
     } finally {
       setReactionLoading(false);
@@ -267,16 +303,16 @@ function ConversationDetail() {
 
   const handleCreateConversation = async () => {
     if (!formData.title.trim() || !formData.content.trim() || !formData.post_type) {
-      alert('Please fill in all fields');
+      alert("Please fill in all fields");
       return;
     }
     setCreating(true);
     try {
-      const response = await api.post('/api/recall/conversations/', formData);
+      const response = await api.post("/api/recall/conversations/", formData);
       navigate(`/conversations/${response.data.id}`);
     } catch (error) {
-      console.error('Failed to create conversation:', error);
-      alert('Failed to create conversation');
+      console.error("Failed to create conversation:", error);
+      alert("Failed to create conversation");
     } finally {
       setCreating(false);
     }
@@ -285,30 +321,30 @@ function ConversationDetail() {
   const handleConvertToDecision = async () => {
     setConverting(true);
     try {
-      const response = await api.post('/api/decisions/', {
+      const response = await api.post("/api/decisions/", {
         title: conversation.title,
         description: conversation.content,
-        status: 'proposed',
+        status: "proposed",
         context: `Converted from conversation #${id}`,
-        conversation_id: id
+        conversation_id: id,
       });
-      addToast('Successfully converted to decision', 'success');
+      addToast("Successfully converted to decision", "success");
       navigate(`/decisions/${response.data.id}`);
     } catch (error) {
-      console.error('Failed to convert to decision:', error);
-      addToast('Failed to convert to decision', 'error');
+      console.error("Failed to convert to decision:", error);
+      addToast("Failed to convert to decision", "error");
     } finally {
       setConverting(false);
     }
   };
 
-  const buildReplyTree = (replies) => {
+  const buildReplyTree = (items) => {
     const map = {};
     const roots = [];
-    replies.forEach(reply => {
+    items.forEach((reply) => {
       map[reply.id] = { ...reply, children: [] };
     });
-    replies.forEach(reply => {
+    items.forEach((reply) => {
       if (reply.parent_reply && map[reply.parent_reply]) {
         map[reply.parent_reply].children.push(map[reply.id]);
       } else {
@@ -318,194 +354,149 @@ function ConversationDetail() {
     return roots;
   };
 
-  if (id === 'new') {
-    if (!selectedType) {
-      return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '48px 24px' }}>
-          <Link to="/conversations" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', color: '#6B778C', textDecoration: 'none', marginBottom: '40px', fontWeight: 500, transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'} onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}>
-            <ArrowLeftIcon style={{ width: '16px', height: '16px', marginRight: '8px' }} />
-            Back to Conversations
-          </Link>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <h1 style={{ fontSize: '32px', fontWeight: 700, color: '#172B4D', marginBottom: '12px' }}>Create New Conversation</h1>
-            <p style={{ fontSize: '16px', color: '#6B778C' }}>Choose a conversation type to get started</p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', maxWidth: '1000px', margin: '0 auto' }}>
-            {[
-              { type: 'update', label: 'Update', desc: 'Team announcements and status updates' },
-              { type: 'decision', label: 'Decision', desc: 'Formal decisions with rationale' },
-              { type: 'question', label: 'Question', desc: 'Questions seeking answers' },
-              { type: 'proposal', label: 'Proposal', desc: 'Proposals for discussion' }
-            ].map(({ type, label, desc }) => (
-              <button
-                key={type}
-                onClick={() => {
-                  setSelectedType(type);
-                  setFormData({ ...formData, post_type: type });
-                }}
-                style={{ padding: '24px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0052CC'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,82,204,0.1)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#DFE1E6'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.04)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-              >
-                <p style={{ fontWeight: 600, color: '#172B4D', fontSize: '16px', marginBottom: '8px' }}>{label}</p>
-                <p style={{ fontSize: '14px', color: '#6B778C', lineHeight: '1.5' }}>{desc}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
+  if (id === "new") {
     return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '48px 24px' }}>
-        <button
-          onClick={() => setSelectedType(null)}
-          style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', color: '#6B778C', marginBottom: '40px', fontWeight: 500, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', transition: 'color 0.2s' }}
-          onMouseEnter={(e) => e.currentTarget.style.color = '#0052CC'}
-          onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}
-        >
-          <ArrowLeftIcon style={{ width: '16px', height: '16px', marginRight: '8px' }} />
-          Back
-        </button>
-        <div style={{ backgroundColor: '#ffffff', border: '1px solid #DFE1E6', borderRadius: '8px', padding: '40px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#172B4D', marginBottom: '32px' }}>Create {formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}</h1>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '8px' }}>Title</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Enter conversation title"
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', color: '#172B4D', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}
-                onFocus={(e) => e.target.style.borderColor = '#0052CC'}
-                onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
-              />
+      <div style={page}>
+        <Link to="/conversations" style={{ ...backLink, color: palette.muted }}>
+          <ArrowLeftIcon style={icon14} /> Back to Conversations
+        </Link>
+        {!selectedType ? (
+          <section>
+            <h1 style={{ ...h1, color: palette.text }}>Create New Conversation</h1>
+            <p style={{ ...sub, color: palette.muted }}>Choose a conversation type to start.</p>
+            <div style={typeGrid}>
+              {[
+                { type: "update", label: "Update", desc: "Team announcements and status updates" },
+                { type: "decision", label: "Decision", desc: "Formal decisions with rationale" },
+                { type: "question", label: "Question", desc: "Questions seeking answers" },
+                { type: "proposal", label: "Proposal", desc: "Proposals for discussion" },
+              ].map(({ type, label, desc }) => (
+                <button
+                  key={type}
+                  onClick={() => {
+                    setSelectedType(type);
+                    setFormData({ ...formData, post_type: type });
+                  }}
+                  style={{ ...typeCard, background: palette.panel, border: `1px solid ${palette.border}`, color: palette.text }}
+                >
+                  <p style={typeLabel}>{label}</p>
+                  <p style={{ ...sub, margin: 0, color: palette.muted }}>{desc}</p>
+                </button>
+              ))}
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '8px' }}>Content</label>
+          </section>
+        ) : (
+          <section style={{ ...formCard, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            <h1 style={{ ...h1, color: palette.text }}>
+              Create {formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}
+            </h1>
+            <div style={formStack}>
+              <label style={label}>Title</label>
+              <input
+                value={formData.title}
+                onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+                style={{ ...textInput, background: palette.panelAlt, border: `1px solid ${palette.border}`, color: palette.text }}
+              />
+              <label style={label}>Content</label>
               <textarea
                 value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Enter conversation content"
+                onChange={(event) => setFormData({ ...formData, content: event.target.value })}
                 rows={8}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', color: '#172B4D', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border 0.2s', resize: 'vertical' }}
-                onFocus={(e) => e.target.style.borderColor = '#0052CC'}
-                onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
+                style={{ ...textareaInput, background: palette.panelAlt, border: `1px solid ${palette.border}`, color: palette.text }}
               />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '8px' }}>Priority</label>
+              <label style={label}>Priority</label>
               <select
                 value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', color: '#172B4D', borderRadius: '6px', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
+                onChange={(event) => setFormData({ ...formData, priority: event.target.value })}
+                style={{ ...textInput, background: palette.panelAlt, border: `1px solid ${palette.border}`, color: palette.text }}
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
                 <option value="urgent">Urgent</option>
               </select>
+              <div style={buttonRow}>
+                <button onClick={handleCreateConversation} style={primaryButton}>
+                  {creating ? "Creating..." : "Create Conversation"}
+                </button>
+                <button onClick={() => setSelectedType(null)} style={secondaryButton}>
+                  Cancel
+                </button>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '12px', paddingTop: '16px' }}>
-              <button
-                onClick={handleCreateConversation}
-                disabled={creating}
-                style={{ flex: 1, padding: '12px 24px', backgroundColor: '#0052CC', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', opacity: creating ? 0.6 : 1, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,82,204,0.2)' }}
-                onMouseEnter={(e) => !creating && (e.currentTarget.style.backgroundColor = '#0747A6')}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0052CC'}
-              >
-                {creating ? 'Creating...' : 'Create Conversation'}
-              </button>
-              <button
-                onClick={() => setSelectedType(null)}
-                style={{ flex: 1, padding: '12px 24px', border: '1px solid #DFE1E6', backgroundColor: '#ffffff', color: '#6B778C', borderRadius: '6px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F4F5F7'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+          </section>
+        )}
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #292524', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <div style={loadingWrap}>
+        <div style={spinner} />
       </div>
     );
   }
 
   if (!conversation) {
     return (
-      <div style={{ minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>Conversation Not Found</h3>
-          <Link to="/conversations" style={{ color: secondaryText, textDecoration: 'none', fontSize: '13px', fontWeight: 500 }}>
-            ← Back to Conversations
-          </Link>
-        </div>
+      <div style={loadingWrap}>
+        <p style={{ color: palette.muted }}>Conversation not found.</p>
       </div>
     );
   }
 
+  const authorName =
+    typeof conversation.author === "string"
+      ? conversation.author
+      : conversation.author?.username || "Unknown";
+
   return (
-    <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1rem' }}>
-      <Link to="/conversations" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '13px', color: secondaryText, textDecoration: 'none', marginBottom: '16px', fontWeight: 500 }}>
-        <ArrowLeftIcon style={{ width: '14px', height: '14px', marginRight: '6px' }} />
-        Back
+    <div style={page}>
+      <Link to="/conversations" style={{ ...backLink, color: palette.muted }}>
+        <ArrowLeftIcon style={icon14} /> Back
       </Link>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '1.5rem' }}>
-        {/* Main Content */}
+      <div style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px" }}>
         <div>
-        {/* Header */}
-        <div style={{ backgroundColor: bgColor, padding: '20px', borderRadius: '5px', border: `1px solid ${borderColor}`, marginBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div style={{ flex: 1 }}>
-              {isEditingPost ? (
-                <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={{ width: '100%', fontSize: '20px', fontWeight: 600, color: textColor, backgroundColor: bgColor, border: 'none', outline: 'none', marginBottom: '12px' }} />
-              ) : (
-                <h1 style={{ fontSize: '20px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>{conversation.title}</h1>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', backgroundColor: '#3b82f6', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  {(() => {
-                    const avatarUrl = getAvatarUrl(conversation.author_avatar || conversation.author?.avatar);
-                    return avatarUrl ? (
-                      <img 
-                        src={avatarUrl} 
-                        alt={typeof conversation.author === 'string' ? conversation.author : conversation.author?.username} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          const initial = typeof conversation.author === 'string' ? conversation.author.charAt(0).toUpperCase() : conversation.author?.username?.charAt(0).toUpperCase();
-                          e.target.parentElement.innerHTML = `<span style="color: #ffffff; font-weight: 600; font-size: 13px;">${initial}</span>`;
-                        }}
-                      />
-                    ) : (
-                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '13px' }}>
-                        {typeof conversation.author === 'string' ? conversation.author.charAt(0).toUpperCase() : conversation.author?.username?.charAt(0).toUpperCase()}
-                      </span>
-                    );
-                  })()}
-                </div>
-                <div>
-                  <p style={{ color: textColor, fontWeight: 600, fontSize: '13px' }}>
-                    {typeof conversation.author === 'string' ? conversation.author : conversation.author?.username}
-                  </p>
-                  <p style={{ color: secondaryText, fontSize: '11px' }}>{new Date(conversation.created_at).toLocaleDateString()}</p>
-                </div>
+          <section style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            {isEditingPost ? (
+              <input
+                value={editTitle}
+                onChange={(event) => setEditTitle(event.target.value)}
+                style={{ ...titleInput, color: palette.text, borderBottom: `1px solid ${palette.border}` }}
+              />
+            ) : (
+              <h1 style={{ ...titleMain, color: palette.text }}>{conversation.title}</h1>
+            )}
+            <div style={authorRow}>
+              <div style={avatarWrap}>
+                {getAvatarUrl(conversation.author_avatar || conversation.author?.avatar) ? (
+                  <img
+                    src={getAvatarUrl(conversation.author_avatar || conversation.author?.avatar)}
+                    alt={authorName}
+                    style={avatarImage}
+                  />
+                ) : (
+                  <span style={avatarInitial}>{authorName.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <div>
+                <p style={{ ...authorNameStyle, color: palette.text }}>{authorName}</p>
+                <p style={{ ...metaText, color: palette.muted }}>
+                  {new Date(conversation.created_at).toLocaleDateString()}
+                </p>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '6px', marginLeft: '16px', flexWrap: 'wrap' }}>
+
+            <div style={actionRow}>
               <QuickLink sourceType="conversations.conversation" sourceId={id} />
-              <button onClick={handleConvertToDecision} style={{ padding: '7px 12px', backgroundColor: 'transparent', border: '2px solid #10b981', color: '#10b981', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (converting || savingPost || deletingPost) ? 0.5 : 1, transition: 'all 0.15s' }} disabled={converting || savingPost || deletingPost} onMouseEnter={(e) => { if (!converting && !savingPost && !deletingPost) { e.currentTarget.style.backgroundColor = '#10b981'; e.currentTarget.style.color = '#ffffff'; } }} onMouseLeave={(e) => { if (!converting && !savingPost && !deletingPost) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#10b981'; } }}>
-                {converting ? 'Converting...' : 'Convert to Decision'}
+              <button
+                onClick={handleConvertToDecision}
+                disabled={converting || savingPost || deletingPost}
+                style={ghostSuccessButton}
+              >
+                {converting ? "Converting..." : "Convert"}
               </button>
               <AIEnhancementButton
                 content={conversation?.content}
@@ -518,111 +509,190 @@ function ConversationDetail() {
               <UndoRedoButtons />
               {conversation.author_id === currentUserId && (
                 <>
-                  <button onClick={() => setIsEditingPost(!isEditingPost)} style={{ padding: '7px 12px', backgroundColor: bgColor, color: textColor, border: `1px solid ${borderColor}`, borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (savingPost || deletingPost) ? 0.5 : 1 }} disabled={savingPost || deletingPost}>
-                    {isEditingPost ? 'Cancel' : 'Edit'}
+                  <button onClick={() => setIsEditingPost((value) => !value)} style={smallOutlineButton}>
+                    {isEditingPost ? "Cancel" : "Edit"}
                   </button>
-                  <button onClick={handleDeletePost} style={{ padding: '7px 12px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', opacity: (savingPost || deletingPost) ? 0.5 : 1 }} disabled={savingPost || deletingPost}>
-                    {deletingPost ? 'Deleting...' : 'Delete'}
+                  <button onClick={handleDeletePost} style={smallDangerButton}>
+                    {deletingPost ? "Deleting..." : "Delete"}
                   </button>
                 </>
               )}
             </div>
-          </div>
-        </div>
+          </section>
 
-        {/* Content */}
-        <AIAssistant content={conversation?.content} contentType="conversation" />
-        
-        <div style={{ padding: '20px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor, marginBottom: '12px' }}>
-          {isEditingPost ? (
-            <div>
-              <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ width: '100%', padding: '12px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: '#0c0a09', color: textColor, fontSize: '14px', outline: 'none' }} rows={10} />
-              <button onClick={handleEditPost} style={{ marginTop: '12px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', opacity: savingPost ? 0.5 : 1, transition: 'all 0.15s' }} disabled={savingPost} onMouseEnter={(e) => { if (!savingPost) { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; } }} onMouseLeave={(e) => { if (!savingPost) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; } }}>
-                {savingPost ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          ) : (
-            <RichTextRenderer content={conversation.content} darkMode={darkMode} />
-          )}
-        </div>
+          <AIAssistant content={conversation?.content} contentType="conversation" />
 
-        {/* Reactions */}
-        <div style={{ padding: '16px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor, marginBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {[
-              { type: 'agree', icon: HandThumbUpIcon, label: 'Agree' },
-              { type: 'unsure', icon: QuestionMarkCircleIcon, label: 'Unsure' },
-              { type: 'concern', icon: ExclamationTriangleIcon, label: 'Concern' }
-            ].map(({ type, icon: Icon, label }) => (
-              <button
-                key={type}
-                onClick={() => handleReaction(type)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 12px',
-                  fontWeight: 500,
-                  fontSize: '12px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  opacity: reactionLoading ? 0.5 : 1,
-                  backgroundColor: reactions.user_reaction === type ? '#3b82f6' : bgColor,
-                  color: reactions.user_reaction === type ? '#ffffff' : textColor,
-                  border: `1px solid ${reactions.user_reaction === type ? '#3b82f6' : borderColor}`
-                }}
-                disabled={reactionLoading}
-              >
-                <Icon style={{ width: '14px', height: '14px' }} />
-                {label} ({reactions.reactions.find(r => r.reaction_type === type)?.count || 0})
-              </button>
-            ))}
-          </div>
-        </div>
+          <section style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            {isEditingPost ? (
+              <>
+                <textarea
+                  value={editContent}
+                  onChange={(event) => setEditContent(event.target.value)}
+                  rows={10}
+                  style={{ ...textareaInput, border: `1px solid ${palette.border}`, color: palette.text }}
+                />
+                <button onClick={handleEditPost} style={primaryButton}>
+                  {savingPost ? "Saving..." : "Save Changes"}
+                </button>
+              </>
+            ) : (
+              <RichTextRenderer content={conversation.content} darkMode={darkMode} />
+            )}
+          </section>
 
-        {/* Replies */}
-        <div style={{ padding: '20px', border: `1px solid ${borderColor}`, borderRadius: '5px', backgroundColor: bgColor }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ChatBubbleLeftIcon style={{ width: '18px', height: '18px', color: textColor }} />
-            Replies ({replies.length})
-          </h2>
-
-          {replies.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: hoverBg, border: `1px solid ${borderColor}`, borderRadius: '5px', marginBottom: '16px' }}>
-              <ChatBubbleLeftIcon style={{ width: '40px', height: '40px', color: borderColor, margin: '0 auto 12px' }} />
-              <p style={{ color: secondaryText, fontWeight: 500, fontSize: '13px' }}>No replies yet. Be the first to comment.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-              {buildReplyTree(replies).map((reply) => (
-                <ReplyItem key={reply.id} reply={reply} onReply={() => {}} onEdit={handleEditReply} onDelete={handleDeleteReply} currentUserId={currentUserId} />
+          <section style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            <div style={reactionRow}>
+              {[
+                { type: "agree", icon: HandThumbUpIcon, label: "Agree" },
+                { type: "unsure", icon: QuestionMarkCircleIcon, label: "Unsure" },
+                { type: "concern", icon: ExclamationTriangleIcon, label: "Concern" },
+              ].map(({ type, icon: Icon, label }) => (
+                <button
+                  key={type}
+                  onClick={() => handleReaction(type)}
+                  style={{
+                    ...reactionButton,
+                    background: reactions.user_reaction === type ? "#3b82f6" : palette.panelAlt,
+                    color: reactions.user_reaction === type ? "#fff" : palette.text,
+                    border: `1px solid ${palette.border}`,
+                  }}
+                >
+                  <Icon style={icon14} />
+                  {label} ({reactions.reactions.find((reaction) => reaction.reaction_type === type)?.count || 0})
+                </button>
               ))}
             </div>
-          )}
+          </section>
 
-          {/* Add Reply */}
-          <div style={{ backgroundColor: hoverBg, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '10px' }}>Add a comment</h3>
-            <form onSubmit={handleSubmitReply}>
-              <MentionTagInput value={newReply} onChange={(e) => setNewReply(e.target.value)} placeholder="Share your thoughts..." rows={4} darkMode={darkMode} />
-              <button type="submit" disabled={submitting || !newReply.trim()} style={{ marginTop: '10px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', opacity: (submitting || !newReply.trim()) ? 0.5 : 1, transition: 'all 0.15s' }} onMouseEnter={(e) => { if (!submitting && newReply.trim()) { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; } }} onMouseLeave={(e) => { if (!submitting && newReply.trim()) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; } }}>
-                {submitting ? 'Posting...' : 'Reply'}
-              </button>
-            </form>
-          </div>
+          <section style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            <h2 style={{ ...h2, color: palette.text }}>
+              <ChatBubbleLeftIcon style={icon18} /> Replies ({replies.length})
+            </h2>
+
+            {replies.length === 0 ? (
+              <div style={{ ...emptyState, border: `1px solid ${palette.border}`, color: palette.muted }}>
+                No replies yet. Be the first to comment.
+              </div>
+            ) : (
+              <div style={replyList}>
+                {buildReplyTree(replies).map((reply) => (
+                  <ReplyItem
+                    key={reply.id}
+                    reply={reply}
+                    onEdit={handleEditReply}
+                    onDelete={handleDeleteReply}
+                    currentUserId={currentUserId}
+                    palette={palette}
+                    darkMode={darkMode}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div style={{ ...composer, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+              <p style={{ ...metaText, marginBottom: 8, color: palette.text }}>Add a comment</p>
+              <form onSubmit={handleSubmitReply}>
+                <MentionTagInput
+                  value={newReply}
+                  onChange={(event) => setNewReply(event.target.value)}
+                  placeholder="Share your thoughts..."
+                  rows={4}
+                  darkMode={darkMode}
+                />
+                <button type="submit" disabled={submitting || !newReply.trim()} style={primaryButton}>
+                  {submitting ? "Posting..." : "Reply"}
+                </button>
+              </form>
+            </div>
+          </section>
         </div>
-        </div>
-        
-        {/* Context Panel */}
+
         <div>
           <ContextPanel contentType="conversations.conversation" objectId={id} />
         </div>
       </div>
-      
+
       <AIResultsPanel results={aiResults} onClose={() => setAiResults(null)} />
     </div>
   );
 }
+
+const page = { maxWidth: 1280, margin: "0 auto" };
+const grid = { display: "grid", gap: 12 };
+const loadingWrap = { minHeight: 320, display: "grid", placeItems: "center" };
+const spinner = {
+  width: 28,
+  height: 28,
+  border: "2px solid rgba(120,120,120,0.35)",
+  borderTopColor: "#3b82f6",
+  borderRadius: "50%",
+  animation: "spin 1s linear infinite",
+};
+const backLink = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  textDecoration: "none",
+  fontSize: 13,
+  fontWeight: 700,
+  marginBottom: 10,
+};
+const h1 = { margin: "0 0 8px", fontSize: "clamp(1.7rem, 3.5vw, 2.2rem)" };
+const h2 = { margin: "0 0 10px", fontSize: 16, display: "flex", alignItems: "center", gap: 7 };
+const sub = { margin: "0 0 12px", fontSize: 14 };
+const card = { borderRadius: 14, padding: 14, marginBottom: 10 };
+const typeGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 };
+const typeCard = { borderRadius: 14, padding: 16, textAlign: "left", cursor: "pointer" };
+const typeLabel = { margin: "0 0 6px", fontSize: 16, fontWeight: 700 };
+const formCard = { borderRadius: 14, padding: 16 };
+const formStack = { display: "grid", gap: 10 };
+const label = { fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" };
+const textInput = { borderRadius: 10, padding: "10px 12px", fontSize: 14, outline: "none", width: "100%" };
+const textareaInput = { ...textInput, resize: "vertical" };
+const buttonRow = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 };
+const primaryButton = {
+  marginTop: 10,
+  border: "none",
+  borderRadius: 10,
+  background: "linear-gradient(135deg, #ffd390, #ff9f62)",
+  color: "#20140f",
+  padding: "10px 14px",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+const secondaryButton = {
+  ...primaryButton,
+  background: "transparent",
+  color: "#7d6d5a",
+  border: "1px solid rgba(120,120,120,0.45)",
+};
+const titleMain = { margin: "0 0 10px", fontSize: "clamp(1.3rem,2.8vw,1.8rem)" };
+const titleInput = { width: "100%", border: "none", background: "transparent", fontSize: 22, fontWeight: 700, marginBottom: 10, paddingBottom: 8, outline: "none" };
+const authorRow = { display: "flex", alignItems: "center", gap: 8 };
+const avatarWrap = { width: 34, height: 34, borderRadius: 10, overflow: "hidden", background: "linear-gradient(135deg,#ffcb8b,#ff935d)", display: "grid", placeItems: "center" };
+const avatarSmall = { width: 28, height: 28, borderRadius: 8, overflow: "hidden", background: "linear-gradient(135deg,#ffcb8b,#ff935d)", display: "grid", placeItems: "center" };
+const avatarImage = { width: "100%", height: "100%", objectFit: "cover" };
+const avatarInitial = { color: "#20140f", fontSize: 13, fontWeight: 700 };
+const avatarSmallInitial = { color: "#20140f", fontSize: 12, fontWeight: 700 };
+const authorNameStyle = { margin: 0, fontSize: 13, fontWeight: 700 };
+const metaText = { margin: "2px 0 0", fontSize: 11 };
+const actionRow = { display: "flex", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" };
+const ghostSuccessButton = { border: "1px solid rgba(16,185,129,0.45)", borderRadius: 8, background: "rgba(16,185,129,0.08)", color: "#10b981", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
+const smallOutlineButton = { border: "1px solid rgba(120,120,120,0.45)", borderRadius: 8, background: "transparent", color: "#94a3b8", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
+const smallDangerButton = { border: "1px solid rgba(239,68,68,0.5)", borderRadius: 8, background: "rgba(239,68,68,0.1)", color: "#ef4444", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
+const reactionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
+const reactionButton = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 10, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer" };
+const emptyState = { borderRadius: 10, padding: "24px 14px", textAlign: "center", fontSize: 13, marginBottom: 10 };
+const replyList = { display: "grid", gap: 8, marginBottom: 10 };
+const composer = { borderRadius: 10, padding: 12 };
+const replyCard = { borderRadius: 10, padding: 10, marginBottom: 8 };
+const replyHeader = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 };
+const replyAuthorWrap = { display: "flex", alignItems: "center", gap: 8 };
+const replyActionRow = { display: "flex", gap: 6 };
+const inlineAction = { border: "none", background: "transparent", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "pointer" };
+const inlineActionDanger = { ...inlineAction, color: "#ef4444" };
+const icon18 = { width: 18, height: 18 };
+const icon14 = { width: 14, height: 14 };
 
 export default ConversationDetail;

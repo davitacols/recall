@@ -1,16 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { SparklesIcon, ChatBubbleLeftIcon, LightBulbIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { ChatBubbleLeftIcon, DocumentTextIcon, LightBulbIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { getAIPalette, aiCard } from "./aiUi";
 
 export default function AIRecommendations({ darkMode }) {
+  const palette = useMemo(() => getAIPalette(Boolean(darkMode)), [darkMode]);
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const hoverBg = darkMode ? '#292524' : '#f3f4f6';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
 
   useEffect(() => {
     fetchRecommendations();
@@ -18,84 +14,55 @@ export default function AIRecommendations({ darkMode }) {
 
   const fetchRecommendations = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/knowledge/ai/recommendations/', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/knowledge/ai/recommendations/`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       setRecommendations(data.recommendations || []);
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
+      setRecommendations([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getIcon = (type) => {
-    switch (type) {
-      case 'conversation': return ChatBubbleLeftIcon;
-      case 'decision': return LightBulbIcon;
-      default: return DocumentTextIcon;
-    }
-  };
-
-  const getLink = (item) => {
-    switch (item.type) {
-      case 'conversation': return `/conversations/${item.id}`;
-      case 'decision': return `/decisions/${item.id}`;
-      default: return '#';
-    }
-  };
-
-  if (loading) return null;
-  if (recommendations.length === 0) return null;
+  if (loading || recommendations.length === 0) return null;
 
   return (
-    <div style={{
-      backgroundColor: bgColor,
-      border: `1px solid ${borderColor}`,
-      borderRadius: '8px',
-      padding: '20px'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-        <SparklesIcon style={{ width: '20px', height: '20px', color: '#f59e0b' }} />
-        <h3 style={{ fontSize: '16px', fontWeight: 600, color: textColor, margin: 0 }}>
-          AI Recommendations
-        </h3>
+    <section style={{ ...aiCard(palette), padding: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <SparklesIcon style={{ width: 16, height: 16, color: palette.warm }} />
+        <h3 style={{ margin: 0, fontSize: 14, color: palette.text }}>AI Recommendations</h3>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: "grid", gap: 6 }}>
         {recommendations.slice(0, 5).map((item, idx) => {
           const Icon = getIcon(item.type);
           return (
-            <Link
-              key={idx}
-              to={getLink(item)}
-              style={{
-                display: 'flex',
-                alignItems: 'start',
-                gap: '10px',
-                padding: '10px',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                transition: 'background 0.15s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              <Icon style={{ width: '16px', height: '16px', color: secondaryText, marginTop: '2px', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '2px' }}>
-                  {item.title}
-                </div>
-                <div style={{ fontSize: '11px', color: secondaryText }}>
-                  {item.reason}
-                </div>
+            <Link key={idx} to={getLink(item)} style={{ borderRadius: 9, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 9, textDecoration: "none", display: "grid", gridTemplateColumns: "auto 1fr", gap: 8 }}>
+              <Icon style={{ width: 14, height: 14, color: palette.muted, marginTop: 1 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text }}>{item.title}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 11, color: palette.muted }}>{item.reason}</p>
               </div>
             </Link>
           );
         })}
       </div>
-    </div>
+    </section>
   );
+}
+
+function getIcon(type) {
+  if (type === "conversation") return ChatBubbleLeftIcon;
+  if (type === "decision") return LightBulbIcon;
+  return DocumentTextIcon;
+}
+
+function getLink(item) {
+  if (item.type === "conversation") return `/conversations/${item.id}`;
+  if (item.type === "decision") return `/decisions/${item.id}`;
+  return "#";
 }

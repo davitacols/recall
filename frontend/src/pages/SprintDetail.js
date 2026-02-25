@@ -1,18 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, CalendarIcon, FlagIcon, ChartBarIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import api from '../services/api';
-import { BurndownChart, SprintTimeTracking } from '../components/BurndownChart';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import api from "../services/api";
 
 function SprintDetail() {
   const { darkMode } = useTheme();
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [sprint, setSprint] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [decisionImpact, setDecisionImpact] = useState(null);
   const [draggedIssue, setDraggedIssue] = useState(null);
+
+  const palette = useMemo(
+    () =>
+      darkMode
+        ? {
+            bg: "#0f0b0d",
+            card: "#171215",
+            cardAlt: "#1f181c",
+            border: "rgba(255,225,193,0.14)",
+            text: "#f4ece0",
+            muted: "#baa892",
+          }
+        : {
+            bg: "#f6f1ea",
+            card: "#fffaf3",
+            cardAlt: "#ffffff",
+            border: "#eadfce",
+            text: "#231814",
+            muted: "#7d6d5a",
+          },
+    [darkMode]
+  );
 
   useEffect(() => {
     fetchData();
@@ -20,183 +41,160 @@ function SprintDetail() {
 
   const fetchData = async () => {
     try {
-      const [sprintRes, impactRes] = await Promise.all([
-        api.get(`/api/agile/sprints/${id}/detail/`),
-        api.get(`/api/agile/sprints/${id}/decision-analysis/`).catch(() => null)
-      ]);
-      setSprint(sprintRes.data.data || sprintRes.data);
-      if (impactRes) setDecisionImpact(impactRes.data);
+      const response = await api.get(`/api/agile/sprints/${id}/detail/`);
+      setSprint(response.data.data || response.data);
     } catch (error) {
-      console.error('Failed to fetch sprint:', error);
+      console.error("Failed to fetch sprint:", error);
+      setSprint(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDragStart = (issue) => {
-    setDraggedIssue(issue);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
   const handleDrop = async (status) => {
     if (!draggedIssue) return;
-    
     try {
       await api.put(`/api/agile/issues/${draggedIssue.id}/`, { status });
       setDraggedIssue(null);
       fetchData();
     } catch (error) {
-      console.error('Failed to update issue:', error);
+      console.error("Failed to update issue:", error);
+      setDraggedIssue(null);
     }
   };
 
-  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-500' : 'text-gray-600';
-  const cardBg = darkMode ? 'bg-stone-800' : 'bg-gray-100';
-  const cardBorder = darkMode ? 'border-stone-700' : 'border-gray-300';
-
   if (loading) {
     return (
-      <div className={`min-h-screen ${bgPrimary} flex items-center justify-center`}>
-        <div className={`w-8 h-8 border-2 ${borderColor} ${darkMode ? 'border-t-stone-400' : 'border-t-gray-600'} rounded-full animate-spin`}></div>
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+        <div style={spinner} />
       </div>
     );
   }
 
   if (!sprint) {
-    return <div className={`min-h-screen ${bgPrimary} flex items-center justify-center`}><h2 className={`text-xl font-semibold ${textSecondary}`}>Sprint not found</h2></div>;
+    return (
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+        <h2 style={{ color: palette.muted }}>Sprint not found</h2>
+      </div>
+    );
   }
 
   const issues = sprint.issues || [];
-  const statuses = ['backlog', 'todo', 'in_progress', 'in_review', 'testing', 'done'];
-  const statusLabels = { backlog: 'Backlog', todo: 'To Do', in_progress: 'In Progress', in_review: 'In Review', testing: 'Testing', done: 'Done' };
-  const statusColors = {
-    backlog: 'bg-stone-800',
-    todo: 'bg-slate-700',
-    in_progress: 'bg-blue-900',
-    in_review: 'bg-purple-900',
-    testing: 'bg-yellow-900',
-    done: 'bg-green-900'
-  };
-
-  const getStatusIcon = (status) => {
-    const completed = issues.filter(i => i.status === status).length;
-    return completed;
-  };
-
-  const progress = sprint.issue_count > 0 ? Math.round((sprint.completed / sprint.issue_count) * 100) : 0;
+  const progress = sprint.issue_count > 0 ? Math.round(((sprint.completed || 0) / sprint.issue_count) * 100) : 0;
+  const statuses = ["backlog", "todo", "in_progress", "in_review", "testing", "done"];
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
-        <button
-          onClick={() => navigate(-1)}
-          className={`mb-6 px-3 py-2 rounded border ${borderColor} ${textSecondary} hover:${textPrimary} transition-all`}
-        >
-          ← Back
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={container}>
+        <button onClick={() => navigate(-1)} style={backButton}>
+          <ArrowLeftIcon style={icon14} /> Back
         </button>
 
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 mb-6`}>
-          <div className="flex items-center justify-between mb-2">
-            <h1 className={`text-2xl font-bold ${textPrimary}`}>{sprint.name}</h1>
-            <span className={`px-3 py-1 rounded text-sm font-medium ${
-              progress === 100 ? (darkMode ? 'bg-green-900/20 text-green-400' : 'bg-green-100 text-green-700') :
-              progress >= 50 ? (darkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-100 text-blue-700') :
-              (darkMode ? 'bg-stone-800 text-stone-400' : 'bg-gray-200 text-gray-700')
-            }`}>
-              {progress}% Complete
-            </span>
+        <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+          <div>
+            <p style={{ ...eyebrow, color: palette.muted }}>SPRINT DETAIL</p>
+            <h1 style={{ ...title, color: palette.text }}>{sprint.name}</h1>
+            <p style={{ ...sub, color: palette.muted }}>
+              {sprint.start_date} - {sprint.end_date} | {sprint.project_name}
+            </p>
+            {sprint.goal && <p style={{ ...sub, marginTop: 8, color: palette.muted }}>Goal: {sprint.goal}</p>}
           </div>
-          <div className={`flex items-center gap-4 text-sm ${textSecondary} mb-4`}>
-            <span>{sprint.start_date} → {sprint.end_date}</span>
-            <span>•</span>
-            <span>{sprint.project_name}</span>
+          <div style={topRight}>
+            <span style={statusPill}>{progress}% complete</span>
+            <Link to="/sprint-management" style={secondaryButton}>Sprint Management</Link>
           </div>
-          {sprint.goal && (
-            <p className={`text-sm ${textSecondary}`}>{sprint.goal}</p>
-          )}
-        </div>
+        </section>
 
-        {/* Stats */}
-        <div className="grid grid-cols-5 gap-4 mb-6">
-          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-            <p className={`text-2xl font-bold ${textPrimary}`}>{sprint.issue_count || 0}</p>
-            <p className={`text-xs ${textSecondary}`}>Total</p>
-          </div>
-          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-            <p className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{sprint.completed || 0}</p>
-            <p className={`text-xs ${textSecondary}`}>Done</p>
-          </div>
-          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-            <p className={`text-2xl font-bold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{sprint.in_progress || 0}</p>
-            <p className={`text-xs ${textSecondary}`}>In Progress</p>
-          </div>
-          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-            <p className={`text-2xl font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{sprint.blocked || 0}</p>
-            <p className={`text-xs ${textSecondary}`}>Blocked</p>
-          </div>
-          <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-            <p className={`text-2xl font-bold ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>{sprint.decisions || 0}</p>
-            <p className={`text-xs ${textSecondary}`}>Decisions</p>
-          </div>
-        </div>
+        <section style={statsGrid}>
+          <Metric label="Total" value={sprint.issue_count || 0} />
+          <Metric label="Done" value={sprint.completed || 0} />
+          <Metric label="In Progress" value={sprint.in_progress || 0} />
+          <Metric label="Blocked" value={sprint.blocked || 0} />
+          <Metric label="Decisions" value={sprint.decisions || 0} />
+        </section>
 
-        {/* Board */}
-        <div className="grid grid-cols-6 gap-3">
-          {statuses.map(status => (
-            <div key={status}>
-              <div className={`${bgSecondary} border ${borderColor} rounded-lg p-3 mb-2`}>
-                <h3 className={`text-xs font-semibold ${textPrimary} uppercase mb-1`}>{statusLabels[status]}</h3>
-                <span className={`text-xs ${textSecondary}`}>{issues.filter(i => i.status === status).length}</span>
-              </div>
-              <div className="space-y-2">
-                {issues.filter(i => i.status === status).map(issue => (
-                  <div
-                    key={issue.id}
-                    draggable
-                    onDragStart={() => handleDragStart(issue)}
-                    onClick={() => window.location.href = `/issues/${issue.id}`}
-                    className={`p-3 ${bgSecondary} border ${borderColor} rounded cursor-pointer hover:border-gray-400 transition-all`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs ${textSecondary} font-mono`}>{issue.key}</span>
-                      {issue.priority && (
-                        <span className={`w-2 h-2 rounded-full ${
-                          issue.priority === 'critical' ? 'bg-red-500' :
-                          issue.priority === 'high' ? 'bg-orange-500' :
-                          issue.priority === 'medium' ? 'bg-yellow-500' : 'bg-blue-500'
-                        }`}></span>
-                      )}
+        <section style={{ ...progressCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+          <div style={progressTrack}>
+            <div style={{ ...progressFill, width: `${progress}%` }} />
+          </div>
+        </section>
+
+        <section style={board}>
+          {statuses.map((status) => {
+            const columnIssues = issues.filter((issue) => issue.status === status);
+            return (
+              <article key={status} style={{ ...column, background: palette.card, border: `1px solid ${palette.border}` }}>
+                <div style={columnHead}>
+                  <p style={{ margin: 0, fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+                    {status.replace("_", " ")}
+                  </p>
+                  <span style={countBadge}>{columnIssues.length}</span>
+                </div>
+                <div
+                  style={dropZone}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => handleDrop(status)}
+                >
+                  {columnIssues.map((issue) => (
+                    <div
+                      key={issue.id}
+                      draggable
+                      onDragStart={() => setDraggedIssue(issue)}
+                      onDragEnd={() => setDraggedIssue(null)}
+                      onClick={() => navigate(`/issues/${issue.id}`)}
+                      style={issueCard}
+                    >
+                      <p style={issueKey}>{issue.key || `ISS-${issue.id}`}</p>
+                      <p style={issueTitle}>{issue.title}</p>
+                      <p style={issueMeta}>{issue.assignee_name || issue.assignee || "Unassigned"}</p>
                     </div>
-                    <p className={`text-sm ${textPrimary} line-clamp-2 mb-2`}>{issue.title}</p>
-                    <div className="flex items-center justify-between">
-                      {issue.assignee && (
-                        <div className={`w-6 h-6 rounded-full ${cardBg} flex items-center justify-center text-xs font-semibold ${textPrimary}`}>
-                          {issue.assignee.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      {issue.story_points && (
-                        <span className={`text-xs ${textSecondary}`}>{issue.story_points}pts</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+                  ))}
+                </div>
+              </article>
+            );
+          })}
+        </section>
       </div>
     </div>
   );
 }
 
+function Metric({ label, value }) {
+  return (
+    <article style={metricCard}>
+      <p style={metricValue}>{value}</p>
+      <p style={metricLabel}>{label}</p>
+    </article>
+  );
+}
 
+const container = { maxWidth: 1320, margin: "0 auto", padding: 20 };
+const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
+const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" };
+const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
+const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
+const sub = { margin: 0, fontSize: 13 };
+const topRight = { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" };
+const statusPill = { borderRadius: 999, border: "1px solid rgba(16,185,129,0.5)", background: "rgba(16,185,129,0.1)", color: "#10b981", fontSize: 11, fontWeight: 700, padding: "5px 10px" };
+const secondaryButton = { border: "1px solid rgba(120,120,120,0.45)", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, color: "#7d6d5a", background: "transparent", textDecoration: "none" };
+const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
+const metricCard = { borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" };
+const metricValue = { margin: 0, fontSize: 26, fontWeight: 800, color: "#f4ece0" };
+const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "#baa892" };
+const progressCard = { borderRadius: 12, padding: 12, marginBottom: 12 };
+const progressTrack = { width: "100%", height: 10, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" };
+const progressFill = { height: "100%", background: "linear-gradient(90deg,#10b981,#34d399)" };
+const board = { display: "grid", gridTemplateColumns: "repeat(6,minmax(190px,1fr))", gap: 8, overflowX: "auto", paddingBottom: 4 };
+const column = { borderRadius: 12, padding: 10, minHeight: 420 };
+const columnHead = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
+const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid rgba(120,120,120,0.4)", color: "#9e8d7b", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
+const dropZone = { display: "grid", gap: 8 };
+const issueCard = { borderRadius: 10, border: "1px solid rgba(120,120,120,0.35)", background: "#251d22", padding: 10, cursor: "pointer" };
+const issueKey = { margin: 0, fontSize: 11, color: "#9e8d7b", fontWeight: 700 };
+const issueTitle = { margin: "5px 0", fontSize: 13, color: "#f4ece0", fontWeight: 600, lineHeight: 1.35 };
+const issueMeta = { margin: 0, fontSize: 11, color: "#baa892" };
+const icon14 = { width: 14, height: 14 };
 
 export default SprintDetail;
+

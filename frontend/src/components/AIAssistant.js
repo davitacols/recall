@@ -1,183 +1,121 @@
-import React, { useState } from 'react';
-import { useTheme } from '../utils/ThemeAndAccessibility';
+import React, { useMemo, useState } from "react";
+import { SparklesIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { aiButtonPrimary, aiButtonSecondary, aiCard, aiInput, getAIPalette } from "./aiUi";
 
-export default function AIAssistant({ content, contentType = 'conversation', onApply }) {
+export default function AIAssistant({ content, contentType = "conversation", onApply }) {
   const { darkMode } = useTheme();
+  const palette = useMemo(() => getAIPalette(darkMode), [darkMode]);
+
   const [loading, setLoading] = useState(false);
-  const [summary, setSummary] = useState('');
+  const [summary, setSummary] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [actionItems, setActionItems] = useState([]);
   const [tags, setTags] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
 
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
+  if (!content) return null;
 
-  const generateSummary = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/organizations/ai/summary/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ content, content_type: contentType })
-      });
-      const data = await res.json();
-      setSummary(data.summary);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getSuggestions = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/organizations/ai/suggestions/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ content, content_type: contentType })
-      });
-      const data = await res.json();
-      setSuggestions(data.suggestions);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const extractActions = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/organizations/ai/actions/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ content })
-      });
-      const data = await res.json();
-      setActionItems(data.action_items);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const suggestTags = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/organizations/ai/tags/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ content })
-      });
-      const data = await res.json();
-      setTags(data.tags);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
+  const postAI = async (path, body) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${process.env.REACT_APP_API_URL}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    return res.json();
   };
 
   const runAll = async () => {
-    await Promise.all([
-      generateSummary(),
-      getSuggestions(),
-      extractActions(),
-      suggestTags()
-    ]);
-    setShowPanel(true);
+    setLoading(true);
+    try {
+      const [summaryData, suggestionsData, actionData, tagData] = await Promise.all([
+        postAI("/api/organizations/ai/summary/", { content, content_type: contentType }).catch(() => ({})),
+        postAI("/api/organizations/ai/suggestions/", { content, content_type: contentType }).catch(() => ({})),
+        postAI("/api/organizations/ai/actions/", { content }).catch(() => ({})),
+        postAI("/api/organizations/ai/tags/", { content }).catch(() => ({})),
+      ]);
+
+      setSummary(summaryData.summary || "");
+      setSuggestions(suggestionsData.suggestions || []);
+      setActionItems(actionData.action_items || []);
+      setTags(tagData.tags || []);
+      setShowPanel(true);
+
+      if (onApply) {
+        onApply({ summary: summaryData.summary, suggestions: suggestionsData.suggestions, actionItems: actionData.action_items, tags: tagData.tags });
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!content) return null;
-
   return (
-    <div className="mb-4">
-      <button
-        onClick={runAll}
-        disabled={loading}
-        className={`px-4 py-2 ${darkMode ? 'bg-stone-800 hover:bg-stone-700 text-stone-100 border-stone-700' : 'bg-white hover:bg-gray-50 text-gray-900 border-gray-200'} border rounded-lg transition-all disabled:opacity-50 font-medium text-sm`}
-      >
-        {loading ? 'Analyzing...' : 'AI Insights'}
+    <div style={{ marginBottom: 12 }}>
+      <button onClick={runAll} disabled={loading} style={{ ...aiButtonPrimary(), opacity: loading ? 0.7 : 1 }}>
+        <SparklesIcon style={{ width: 14, height: 14 }} /> {loading ? "Analyzing..." : "AI Insights"}
       </button>
 
       {showPanel && (
-        <div className={`mt-4 ${bgSecondary} border ${borderColor} rounded-lg overflow-hidden`}>
-          {summary && (
-            <div className={`p-4 border-b ${borderColor}`}>
-              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-2`}>
-                Summary
-              </h3>
-              <p className={`${textPrimary} text-sm leading-relaxed`}>{summary}</p>
-            </div>
-          )}
+        <section style={{ ...aiCard(palette), marginTop: 10, overflow: "hidden" }}>
+          {summary && <Section title="Summary" palette={palette}><p style={p}>{summary}</p></Section>}
 
           {suggestions.length > 0 && (
-            <div className={`p-4 border-b ${borderColor}`}>
-              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-3`}>
-                Related Topics
-              </h3>
-              <div className="space-y-2">
-                {suggestions.map((s, i) => (
-                  <div key={i} className={`${textPrimary} text-sm flex items-start gap-2`}>
-                    <span className={`${textSecondary} mt-0.5`}>{i + 1}.</span>
-                    <span>{s}</span>
-                  </div>
+            <Section title="Related Topics" palette={palette}>
+              <ul style={list}>
+                {suggestions.map((item, i) => (
+                  <li key={i} style={li}><span style={dot}>•</span><span>{item}</span></li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </Section>
           )}
 
           {actionItems.length > 0 && (
-            <div className={`p-4 border-b ${borderColor}`}>
-              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-3`}>
-                Action Items
-              </h3>
-              <div className="space-y-2">
+            <Section title="Action Items" palette={palette}>
+              <ul style={list}>
                 {actionItems.map((item, i) => (
-                  <div key={i} className={`${textPrimary} text-sm flex items-start gap-2`}>
-                    <span className={`${textSecondary}`}>â€¢</span>
-                    <span>{item}</span>
-                  </div>
+                  <li key={i} style={li}><span style={dot}>•</span><span>{item}</span></li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </Section>
           )}
 
           {tags.length > 0 && (
-            <div className="p-4">
-              <h3 className={`text-xs font-semibold ${textSecondary} uppercase tracking-wide mb-3`}>Suggested Tags</h3>
-              <div className="flex flex-wrap gap-2">
+            <Section title="Suggested Tags" palette={palette} noBorder>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {tags.map((tag, i) => (
-                  <span key={i} className={`px-2.5 py-1 ${darkMode ? 'bg-stone-800 text-stone-300' : 'bg-gray-100 text-gray-700'} rounded text-xs font-medium`}>
-                    {tag}
+                  <span key={i} style={{ border: `1px solid ${palette.border}`, borderRadius: 999, padding: "3px 8px", fontSize: 11, color: palette.muted }}>
+                    #{tag}
                   </span>
                 ))}
               </div>
-            </div>
+            </Section>
           )}
-        </div>
+
+          <div style={{ padding: 10, borderTop: `1px solid ${palette.border}` }}>
+            <button onClick={() => setShowPanel(false)} style={aiButtonSecondary(palette)}>Close</button>
+          </div>
+        </section>
       )}
     </div>
   );
 }
+
+function Section({ title, children, palette, noBorder = false }) {
+  return (
+    <div style={{ padding: 10, borderBottom: noBorder ? "none" : `1px solid ${palette.border}` }}>
+      <h3 style={{ margin: "0 0 8px", fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+const p = { margin: 0, fontSize: 13, color: "#d9cdbf", lineHeight: 1.5 };
+const list = { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 6 };
+const li = { display: "grid", gridTemplateColumns: "10px 1fr", gap: 6, fontSize: 12, color: "#d9cdbf" };
+const dot = { color: "#baa892" };

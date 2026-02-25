@@ -1,213 +1,214 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { BellIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
-import { useNotifications } from '../hooks/useNotifications';
-import { useToast } from './Toast';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { BellIcon } from "@heroicons/react/24/outline";
+import { useNotifications } from "../hooks/useNotifications";
+import { useToast } from "./Toast";
+import {
+  deleteNotification,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  normalizeNotification,
+} from "../services/notifications";
+import { useTheme } from "../utils/ThemeAndAccessibility";
 
 function NotificationBell() {
   const navigate = useNavigate();
+  const dropdownRef = useRef(null);
   const { addToast } = useToast();
+  const { darkMode } = useTheme();
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const dropdownRef = useRef(null);
+
+  const palette = useMemo(
+    () =>
+      darkMode
+        ? {
+            panel: "#1d171b",
+            border: "rgba(255,225,193,0.14)",
+            text: "#f4ece0",
+            muted: "#baa892",
+            rowHover: "rgba(255,255,255,0.06)",
+            unreadDot: "#ff8a4c",
+          }
+        : {
+            panel: "#fffaf3",
+            border: "#eadfce",
+            text: "#231814",
+            muted: "#7d6d5a",
+            rowHover: "rgba(35,24,20,0.06)",
+            unreadDot: "#e85d04",
+          },
+    [darkMode]
+  );
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000);
+    const interval = setInterval(fetchNotifications, 12000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const onOutsideClick = (event) => {
+      if (!dropdownRef.current?.contains(event.target)) {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", onOutsideClick);
+    return () => document.removeEventListener("mousedown", onOutsideClick);
   }, []);
 
-  const handleNotification = (notification) => {
-    setNotifications(prev => [notification, ...prev]);
-    setUnreadCount(prev => prev + 1);
+  const handleIncomingNotification = (payload) => {
+    const incoming = normalizeNotification(payload);
+    if (!incoming) return;
+
+    setNotifications((prev) => {
+      const next = [incoming, ...prev.filter((n) => n.id !== incoming.id)];
+      return next.slice(0, 50);
+    });
+
+    if (!incoming.is_read) {
+      setUnreadCount((count) => count + 1);
+    }
+
     if (addToast) {
-      addToast(notification.message, 'info');
+      addToast(incoming.message || incoming.title, "info");
     }
   };
 
-  useNotifications(handleNotification);
+  useNotifications(handleIncomingNotification);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/notifications/');
-      setNotifications(response.data.notifications || []);
-      setUnreadCount(response.data.unread_count || 0);
+      const { notifications: items, unreadCount: unread } = await listNotifications();
+      setNotifications(items);
+      setUnreadCount(unread);
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      console.error("Failed to fetch notifications:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMarkAsRead = async (id) => {
+  const onMarkAsRead = async (notification) => {
+    if (!notification || notification.is_read) return;
     try {
-      await api.post(`/api/notifications/${id}/read/`);
-      fetchNotifications();
+      await markNotificationRead(notification.id);
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === notification.id ? { ...item, is_read: true } : item))
+      );
+      setUnreadCount((count) => Math.max(0, count - 1));
     } catch (error) {
-      console.error('Failed to mark as read:', error);
+      console.error("Failed to mark notification as read:", error);
     }
   };
 
-  const handleMarkAllAsRead = async () => {
+  const onMarkAllAsRead = async () => {
     try {
-      await api.post('/api/notifications/read-all/');
-      fetchNotifications();
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
+      setUnreadCount(0);
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      console.error("Failed to mark all as read:", error);
     }
   };
 
-  const groupNotificationsByType = (notifications) => {
-    const grouped = {
-      attention: [],
-      fyi: []
-    };
-    
-    notifications.forEach(notif => {
-      if (['mention', 'decision', 'organization_update'].includes(notif.type)) {
-        grouped.attention.push(notif);
-      } else {
-        grouped.fyi.push(notif);
+  const onDelete = async (notification) => {
+    try {
+      await deleteNotification(notification.id);
+      setNotifications((prev) => prev.filter((item) => item.id !== notification.id));
+      if (!notification.is_read) {
+        setUnreadCount((count) => Math.max(0, count - 1));
       }
-    });
-    
-    return grouped;
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+    }
   };
 
-  const groupedNotifications = groupNotificationsByType(notifications);
+  const attention = notifications.filter((n) => ["mention", "decision", "task", "goal", "meeting"].includes(n.type));
+  const fyi = notifications.filter((n) => !["mention", "decision", "task", "goal", "meeting"].includes(n.type));
+
+  const renderItem = (item) => (
+    <article key={item.id} style={{ ...row, borderBottom: `1px solid ${palette.border}` }}>
+      <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <p style={{ ...title, color: palette.text }}>{item.title}</p>
+          {!item.is_read && <span style={{ ...unreadDot, background: palette.unreadDot }} />}
+        </div>
+        <p style={{ ...message, color: palette.muted }}>{item.message}</p>
+        <p style={{ ...timestamp, color: palette.muted }}>
+          {item.created_at ? new Date(item.created_at).toLocaleString() : ""}
+        </p>
+        <div style={actionsRow}>
+          {item.link ? (
+            <Link
+              to={item.link}
+              onClick={() => {
+                onMarkAsRead(item);
+                setIsOpen(false);
+              }}
+              style={actionLink}
+            >
+              Open
+            </Link>
+          ) : null}
+          {!item.is_read ? (
+            <button onClick={() => onMarkAsRead(item)} style={actionButton}>
+              Mark read
+            </button>
+          ) : null}
+          <button onClick={() => onDelete(item)} style={{ ...actionButton, color: "#ef4444" }}>
+            Delete
+          </button>
+        </div>
+      </div>
+    </article>
+  );
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors"
-      >
-        <BellIcon className="w-6 h-6" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
+    <div style={{ position: "relative" }} ref={dropdownRef}>
+      <button onClick={() => setIsOpen((open) => !open)} style={bellButton} aria-label="Notifications">
+        <BellIcon style={{ width: 20, height: 20 }} />
+        {unreadCount > 0 && <span style={badge}>{unreadCount > 99 ? "99+" : unreadCount}</span>}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 shadow-lg z-50">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-base font-bold text-gray-900">Notifications</h3>
-            <button
-              onClick={() => {
-                navigate('/notifications');
-                setIsOpen(false);
-              }}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900"
-            >
-              View All
-            </button>
+        <div style={{ ...dropdown, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <div style={{ ...header, borderBottom: `1px solid ${palette.border}` }}>
+            <h3 style={{ margin: 0, fontSize: 14, color: palette.text }}>Notifications</h3>
+            <div style={{ display: "flex", gap: 8 }}>
+              {unreadCount > 0 ? (
+                <button onClick={onMarkAllAsRead} style={actionButton}>
+                  Mark all read
+                </button>
+              ) : null}
+              <button
+                onClick={() => {
+                  navigate("/notifications");
+                  setIsOpen(false);
+                }}
+                style={actionButton}
+              >
+                View all
+              </button>
+            </div>
           </div>
 
-          <div className="max-h-96 overflow-y-auto">
+          <div style={{ maxHeight: 420, overflowY: "auto" }}>
             {loading ? (
-              <div className="p-8 text-center">
-                <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              </div>
+              <div style={{ ...empty, color: palette.muted }}>Loading notifications...</div>
             ) : notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <p className="text-sm">You're all caught up!</p>
-                <p className="text-xs text-gray-400 mt-1">New mentions and updates will appear here.</p>
-              </div>
+              <div style={{ ...empty, color: palette.muted }}>You are all caught up.</div>
             ) : (
               <>
-                {groupedNotifications.attention.length > 0 && (
-                  <div>
-                    <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                      <span className="text-xs font-bold text-gray-700 uppercase">Requires Attention</span>
-                    </div>
-                    {groupedNotifications.attention.slice(0, 3).map((notif) => (
-                      <div
-                        key={notif.id}
-                        className="p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <p className="text-sm font-bold text-gray-900 flex-1">{notif.title}</p>
-                          {!notif.is_read && (
-                            <div className="w-2 h-2 bg-red-600 rounded-full ml-2 mt-1.5 flex-shrink-0"></div>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-600 mb-2">{notif.message}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">
-                            {new Date(notif.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          {notif.link && (
-                            <Link
-                              to={notif.link}
-                              onClick={() => {
-                                handleMarkAsRead(notif.id);
-                                setIsOpen(false);
-                              }}
-                              className="text-xs font-bold text-gray-900 hover:underline"
-                            >
-                              View →
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {groupedNotifications.fyi.length > 0 && (
-                  <div>
-                    <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                      <span className="text-xs font-bold text-gray-700 uppercase">FYI</span>
-                    </div>
-                    {groupedNotifications.fyi.slice(0, 2).map((notif) => (
-                      <div
-                        key={notif.id}
-                        className="p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <p className="text-sm font-medium text-gray-900 flex-1">{notif.title}</p>
-                          {!notif.is_read && (
-                            <div className="w-2 h-2 bg-gray-400 rounded-full ml-2 mt-1.5 flex-shrink-0"></div>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-600 mb-2">{notif.message}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">
-                            {new Date(notif.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                          {notif.link && (
-                            <Link
-                              to={notif.link}
-                              onClick={() => {
-                                handleMarkAsRead(notif.id);
-                                setIsOpen(false);
-                              }}
-                              className="text-xs font-medium text-gray-600 hover:text-gray-900"
-                            >
-                              View
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {attention.length > 0 ? <div style={sectionTag}>Attention</div> : null}
+                {attention.slice(0, 4).map(renderItem)}
+                {fyi.length > 0 ? <div style={sectionTag}>FYI</div> : null}
+                {fyi.slice(0, 3).map(renderItem)}
               </>
             )}
           </div>
@@ -216,5 +217,122 @@ function NotificationBell() {
     </div>
   );
 }
+
+const bellButton = {
+  position: "relative",
+  display: "grid",
+  placeItems: "center",
+  width: 32,
+  height: 32,
+  border: "none",
+  borderRadius: 9,
+  background: "transparent",
+  cursor: "pointer",
+};
+
+const badge = {
+  position: "absolute",
+  top: -4,
+  right: -4,
+  minWidth: 17,
+  height: 17,
+  borderRadius: 999,
+  background: "#ef4444",
+  color: "#fff",
+  fontSize: 10,
+  fontWeight: 700,
+  display: "grid",
+  placeItems: "center",
+  padding: "0 4px",
+};
+
+const dropdown = {
+  position: "absolute",
+  top: "calc(100% + 8px)",
+  right: 0,
+  width: 390,
+  borderRadius: 12,
+  overflow: "hidden",
+  boxShadow: "0 20px 40px rgba(0,0,0,0.24)",
+  zIndex: 100,
+};
+
+const header = {
+  padding: "10px 12px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+};
+
+const sectionTag = {
+  padding: "8px 12px",
+  fontSize: 10,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "#9ca3af",
+};
+
+const row = {
+  padding: "10px 12px",
+};
+
+const title = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 700,
+  lineHeight: 1.35,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const message = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.45,
+};
+
+const timestamp = {
+  margin: "2px 0 0",
+  fontSize: 11,
+};
+
+const unreadDot = {
+  width: 7,
+  height: 7,
+  borderRadius: "50%",
+  flexShrink: 0,
+};
+
+const actionsRow = {
+  display: "flex",
+  gap: 8,
+  marginTop: 4,
+  alignItems: "center",
+};
+
+const actionButton = {
+  border: "none",
+  background: "transparent",
+  padding: 0,
+  fontSize: 11,
+  fontWeight: 600,
+  color: "#60a5fa",
+  cursor: "pointer",
+};
+
+const actionLink = {
+  fontSize: 11,
+  fontWeight: 600,
+  color: "#60a5fa",
+  textDecoration: "none",
+};
+
+const empty = {
+  textAlign: "center",
+  padding: "24px 12px",
+  fontSize: 13,
+};
 
 export default NotificationBell;

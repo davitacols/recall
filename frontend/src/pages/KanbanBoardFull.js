@@ -1,39 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { PlusIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
-import { useTheme } from '../utils/ThemeAndAccessibility';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeftIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 function KanbanBoard() {
   const { boardId } = useParams();
   const navigate = useNavigate();
   const { darkMode } = useTheme();
+
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [draggedIssue, setDraggedIssue] = useState(null);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
-  const [newIssueTitle, setNewIssueTitle] = useState('');
-  const [newIssueColumn, setNewIssueColumn] = useState(null);
+  const [newIssueTitle, setNewIssueTitle] = useState("");
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'critical': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-blue-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getColumnColor = (name) => {
-    switch (name) {
-      case 'To Do': return 'border-t-4 border-t-slate-500';
-      case 'In Progress': return 'border-t-4 border-t-blue-500';
-      case 'In Review': return 'border-t-4 border-t-purple-500';
-      case 'Done': return 'border-t-4 border-t-green-500';
-      default: return 'border-t-4 border-t-gray-500';
-    }
-  };
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   useEffect(() => {
     fetchBoard();
@@ -44,265 +28,188 @@ function KanbanBoard() {
       const response = await api.get(`/api/agile/boards/${boardId}/`);
       setBoard(response.data);
     } catch (error) {
-      console.error('Failed to fetch board:', error);
+      console.error("Failed to fetch board:", error);
+      setBoard(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDragStart = (e, issue) => {
-    setDraggedIssue(issue);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = async (e, column) => {
-    e.preventDefault();
-    if (!draggedIssue) return;
+  const handleDrop = async (column) => {
+    if (!draggedIssue || !board?.columns) return;
 
     const statusMap = {
-      'To Do': 'todo',
-      'In Progress': 'in_progress',
-      'In Review': 'in_review',
-      'Done': 'done',
+      "To Do": "todo",
+      "In Progress": "in_progress",
+      "In Review": "in_review",
+      Done: "done",
+      Testing: "testing",
+      Backlog: "backlog",
     };
 
+    const status = statusMap[column.name] || "todo";
+
     try {
-      const status = statusMap[column.name] || 'todo';
-      const updatedIssue = { ...draggedIssue, status };
-      
-      setBoard(prevBoard => ({
-        ...prevBoard,
-        columns: prevBoard.columns.map(col => {
-          if (col.id === column.id) {
-            return {
-              ...col,
-              issues: [...(col.issues || []), updatedIssue],
-              issue_count: (col.issue_count || 0) + 1
-            };
-          }
-          return {
-            ...col,
-            issues: (col.issues || []).filter(i => i.id !== draggedIssue.id),
-            issue_count: Math.max(0, (col.issue_count || 0) - 1)
-          };
-        })
-      }));
-      
-      setDraggedIssue(null);
-      
-      await api.put(`/api/agile/issues/${draggedIssue.id}/`, {
-        status: status,
-      });
-    } catch (error) {
-      console.error('Failed to move issue:', error);
+      await api.put(`/api/agile/issues/${draggedIssue.id}/`, { status });
       setDraggedIssue(null);
       fetchBoard();
+    } catch (error) {
+      console.error("Failed to move issue:", error);
+      setDraggedIssue(null);
     }
   };
 
   const handleCreateIssue = async () => {
-    if (!newIssueTitle.trim() || !newIssueColumn) return;
-
+    if (!newIssueTitle.trim() || !board?.project_id) return;
     try {
-      await api.post(`/api/agile/projects/${board.project_id}/issues/`, {
-        title: newIssueTitle,
-      });
-      setNewIssueTitle('');
-      setNewIssueColumn(null);
+      await api.post(`/api/agile/projects/${board.project_id}/issues/`, { title: newIssueTitle.trim() });
       setShowCreateIssue(false);
+      setNewIssueTitle("");
       fetchBoard();
     } catch (error) {
-      console.error('Failed to create issue:', error);
+      console.error("Failed to create issue:", error);
     }
   };
 
   const handleDeleteIssue = async (issueId) => {
-    if (!window.confirm('Delete this issue?')) return;
-
+    if (!window.confirm("Delete this issue?")) return;
     try {
       await api.delete(`/api/agile/issues/${issueId}/`);
       fetchBoard();
     } catch (error) {
-      console.error('Failed to delete issue:', error);
+      console.error("Failed to delete issue:", error);
     }
   };
 
-  const bgColor = darkMode ? 'bg-stone-950' : 'bg-white';
-  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
-  const columnBg = darkMode ? 'bg-gray-700' : 'bg-gray-50';
-  const borderColor = darkMode ? 'border-gray-600' : 'border-gray-200';
-  const textColor = darkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-gray-300' : 'text-gray-600';
-  const textTertiary = darkMode ? 'text-gray-400' : 'text-gray-500';
-  const hoverBg = darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
-  const buttonBg = darkMode ? 'bg-gray-700' : 'bg-gray-100';
-  const buttonHover = darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-200';
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className={`w-8 h-8 border-2 ${darkMode ? 'border-gray-900 border-t-transparent' : 'border-gray-300 border-t-gray-600'} animate-spin`}></div>
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+        <div style={spinner} />
       </div>
     );
   }
 
   if (!board) {
-    return <div className={`text-center py-20 ${textColor}`}>Board not found</div>;
+    return (
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+        <p style={{ color: palette.muted }}>Board not found.</p>
+      </div>
+    );
   }
 
   return (
-    <div className={`min-h-screen p-6 ${bgColor}`}>
-      <div className="max-w-[1600px] mx-auto">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className={`p-2 ${hoverBg} rounded-lg transition-all border ${borderColor} ${darkMode ? 'bg-gray-800' : 'bg-gray-50'} shadow-sm`}
-            >
-              <ArrowLeftIcon className={`w-5 h-5 ${textSecondary}`} />
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+          <div>
+            <button onClick={() => navigate(-1)} style={backButton}>
+              <ArrowLeftIcon style={icon14} /> Back
             </button>
-            <div>
-              <h1 className={`text-3xl font-black ${textColor}`}>{board.name}</h1>
-              <p className={`text-sm ${textSecondary} mt-1`}>Project: {board.project_name}</p>
-            </div>
+            <p style={{ ...eyebrow, color: palette.muted }}>KANBAN BOARD</p>
+            <h1 style={{ ...title, color: palette.text }}>{board.name}</h1>
+            <p style={{ ...subtitle, color: palette.muted }}>Project: {board.project_name}</p>
           </div>
-        </div>
+          <button onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}>
+            <PlusIcon style={icon14} /> New Issue
+          </button>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {board.columns && board.columns.map((column) => (
-            <div
-              key={column.id}
-              className={`${cardBg} rounded-xl shadow-sm flex flex-col min-h-[600px] border ${borderColor} ${getColumnColor(column.name)}`}
-            >
-              <div className="p-4 pb-3">
-                <div className="flex items-center justify-between">
-                  <h2 className={`text-base font-bold ${textColor} uppercase tracking-wide`}>{column.name}</h2>
-                  <span className={`px-2.5 py-1 ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'} text-xs font-bold rounded-full`}>
-                    {column.issue_count}
-                  </span>
-                </div>
+        <section style={boardGrid}>
+          {(board.columns || []).map((column) => (
+            <article key={column.id} style={{ ...columnCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+              <div style={columnHead}>
+                <h2 style={{ margin: 0, fontSize: 13, color: palette.text, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  {column.name}
+                </h2>
+                <span style={countBadge}>{column.issue_count || (column.issues || []).length || 0}</span>
               </div>
 
               <div
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, column)}
-                className="flex-1 px-3 pb-3 space-y-2.5 overflow-y-auto min-h-[400px]"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => handleDrop(column)}
+                style={issuesWrap}
               >
-                {column.issues && column.issues.length === 0 && (
-                  <div className={`flex items-center justify-center h-32 ${textTertiary} text-sm`}>
-                    No issues
-                  </div>
-                )}
-                {column.issues && column.issues.map((issue) => (
-                  <div
+                {(column.issues || []).length === 0 && <div style={empty}>No issues</div>}
+
+                {(column.issues || []).map((issue) => (
+                  <article
                     key={issue.id}
                     draggable
-                    onDragStart={(e) => handleDragStart(e, issue)}
+                    onDragStart={() => setDraggedIssue(issue)}
+                    onDragEnd={() => setDraggedIssue(null)}
                     onClick={() => navigate(`/issues/${issue.id}`)}
-                    className={`group p-3.5 ${darkMode ? 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'} border rounded-lg cursor-pointer transition-all duration-200 hover:-translate-y-0.5`}
+                    style={issueCard}
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className={`text-xs font-bold ${textTertiary} uppercase`}>{issue.key}</span>
-                          {issue.priority && (
-                            <span className={`w-2 h-2 rounded-full ${getPriorityColor(issue.priority)}`} title={issue.priority}></span>
-                          )}
-                        </div>
-                        <p className={`text-sm font-semibold ${textColor} line-clamp-2 leading-snug`}>{issue.title}</p>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={issueKey}>{issue.key || `ISS-${issue.id}`}</p>
+                        <p style={issueTitle}>{issue.title}</p>
                       </div>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={(event) => {
+                          event.stopPropagation();
                           handleDeleteIssue(issue.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-900 text-red-400 rounded-md transition-all"
+                        style={deleteButton}
                       >
-                        <TrashIcon className="w-4 h-4" />
+                        <TrashIcon style={icon14} />
                       </button>
                     </div>
-                    <div className={`flex items-center justify-between mt-3 pt-2.5 border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                      <div className="flex items-center gap-2">
-                        {issue.assignee && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-                              {issue.assignee.charAt(0).toUpperCase()}
-                            </div>
-                            <span className={`text-xs ${textTertiary} truncate max-w-[80px]`}>{issue.assignee}</span>
-                          </div>
-                        )}
-                      </div>
-                      {issue.story_points && (
-                        <span className="px-2 py-0.5 bg-indigo-600 text-indigo-200 text-xs font-bold rounded">
-                          {issue.story_points} pts
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    <p style={issueMeta}>{issue.assignee || issue.assignee_name || "Unassigned"}</p>
+                  </article>
                 ))}
               </div>
+            </article>
+          ))}
+        </section>
 
-              <div className={`p-3 border-t ${borderColor}`}>
-                <button
-                  onClick={() => {
-                    setNewIssueColumn(column.id);
-                    setShowCreateIssue(true);
-                  }}
-                  className={`w-full px-3 py-2.5 ${buttonBg} ${buttonHover} ${darkMode ? 'text-gray-200 border-gray-600 hover:border-gray-500' : 'text-gray-700 border-gray-300 hover:border-gray-400'} font-semibold text-sm rounded-lg transition-all flex items-center justify-center gap-2 border`}
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Add Issue
-                </button>
+        {showCreateIssue && (
+          <div style={overlay}>
+            <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+              <h3 style={{ margin: 0, fontSize: 20, color: palette.text }}>Create Issue</h3>
+              <div style={formStack}>
+                <input
+                  autoFocus
+                  value={newIssueTitle}
+                  onChange={(event) => setNewIssueTitle(event.target.value)}
+                  placeholder="Issue title"
+                  style={ui.input}
+                />
+                <div style={modalButtons}>
+                  <button onClick={() => setShowCreateIssue(false)} style={ui.secondaryButton}>Cancel</button>
+                  <button onClick={handleCreateIssue} style={ui.primaryButton}>Create</button>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {showCreateIssue && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New Issue</h2>
-            <input
-              type="text"
-              value={newIssueTitle}
-              onChange={(e) => setNewIssueTitle(e.target.value)}
-              placeholder="Enter issue title..."
-              autoFocus
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none mb-6 transition-all"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') handleCreateIssue();
-              }}
-            />
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setShowCreateIssue(false);
-                  setNewIssueTitle('');
-                  setNewIssueColumn(null);
-                }}
-                className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateIssue}
-                disabled={!newIssueTitle.trim()}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30"
-              >
-                Create Issue
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
+const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 8 };
+const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
+const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
+const subtitle = { margin: 0, fontSize: 13 };
+const boardGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 8 };
+const columnCard = { borderRadius: 12, padding: 10, minHeight: 520, display: "flex", flexDirection: "column" };
+const columnHead = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
+const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid rgba(120,120,120,0.4)", color: "#9e8d7b", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
+const issuesWrap = { display: "grid", gap: 8, alignContent: "start", flex: 1 };
+const empty = { borderRadius: 10, border: "1px dashed rgba(120,120,120,0.35)", padding: "14px 10px", fontSize: 12, color: "#9e8d7b", textAlign: "center" };
+const issueCard = { borderRadius: 10, border: "1px solid rgba(120,120,120,0.35)", background: "#251d22", padding: 10, cursor: "pointer" };
+const issueKey = { margin: 0, fontSize: 11, color: "#9e8d7b", fontWeight: 700 };
+const issueTitle = { margin: "5px 0", fontSize: 13, color: "#f4ece0", fontWeight: 600, lineHeight: 1.35 };
+const issueMeta = { margin: 0, fontSize: 11, color: "#baa892" };
+const deleteButton = { border: "none", background: "transparent", color: "#ef4444", cursor: "pointer", padding: 2 };
+const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
+const modalCard = { width: "min(520px,100%)", borderRadius: 14, padding: 16 };
+const formStack = { marginTop: 12, display: "grid", gap: 8 };
+const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
+const icon14 = { width: 14, height: 14 };
+
 export default KanbanBoard;
+

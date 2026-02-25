@@ -13,7 +13,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
                 await self.close()
                 return
             
-            self.room_group_name = f'notifications_{self.user.organization_id}'
+            # User-scoped room so each user only receives their own notifications.
+            self.room_group_name = f'notifications_{self.user.id}'
             await self.channel_layer.group_add(self.room_group_name, self.channel_name)
             await self.accept()
         except:

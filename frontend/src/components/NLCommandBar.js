@@ -17,7 +17,9 @@ export default function NLCommandBar({ darkMode }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.defaultPrevented) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        if (document.querySelector('[data-unified-nav-search="true"]')) return;
         e.preventDefault();
         setOpen(true);
       }

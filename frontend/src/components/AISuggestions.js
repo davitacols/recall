@@ -1,31 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { SparklesIcon, UserIcon, TagIcon, ClockIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import { ClockIcon, SparklesIcon, TagIcon, UserIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { aiButtonSecondary, aiCard, getAIPalette } from "./aiUi";
+import api from "../services/api";
 
 export const AISuggestions = ({ title, description, projectId, onApply }) => {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getAIPalette(darkMode), [darkMode]);
+
   const [suggestions, setSuggestions] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (title && title.length > 10) {
-      const timer = setTimeout(() => {
-        fetchSuggestions();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [title, description]);
+    if (!(title && title.length > 10)) return;
+    const timer = setTimeout(fetchSuggestions, 700);
+    return () => clearTimeout(timer);
+  }, [title, description, projectId]);
 
   const fetchSuggestions = async () => {
     setLoading(true);
     try {
-      const response = await api.post('/api/agile/ml/analyze-issue/', {
-        title,
-        description,
-        project_id: projectId
-      });
+      const response = await api.post("/api/agile/ml/analyze-issue/", { title, description, project_id: projectId });
       setSuggestions(response.data);
     } catch (error) {
-      console.error('Failed to fetch AI suggestions:', error);
+      console.error("Failed to fetch AI suggestions:", error);
+      setSuggestions(null);
     } finally {
       setLoading(false);
     }
@@ -34,97 +33,51 @@ export const AISuggestions = ({ title, description, projectId, onApply }) => {
   if (!suggestions && !loading) return null;
 
   return (
-    <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <SparklesIcon className="w-5 h-5 text-purple-600" />
-        <h3 className="font-semibold text-gray-900">AI Suggestions</h3>
-      </div>
+    <section style={{ ...aiCard(palette), padding: 10 }}>
+      <h3 style={{ margin: "0 0 8px", fontSize: 13, color: palette.text, display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <SparklesIcon style={{ width: 14, height: 14, color: palette.warm }} /> AI Suggestions
+      </h3>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-          Analyzing...
-        </div>
+        <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>Analyzing issue context...</p>
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: "grid", gap: 8 }}>
           {suggestions?.suggested_assignee && (
-            <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-purple-100">
-              <UserIcon className="w-5 h-5 text-purple-600 mt-0.5" />
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-semibold text-gray-900">Suggested Assignee</span>
-                  <span className="text-xs text-purple-600 font-medium">
-                    {Math.round(suggestions.suggested_assignee.confidence * 100)}% match
-                  </span>
-                </div>
-                <p className="text-sm text-gray-700 mb-2">{suggestions.suggested_assignee.name}</p>
-                <p className="text-xs text-gray-500">{suggestions.suggested_assignee.reason}</p>
-                <button
-                  onClick={() => onApply?.('assignee', suggestions.suggested_assignee.user_id)}
-                  className="mt-2 text-xs text-purple-600 hover:text-purple-700 font-medium"
-                >
-                  Apply suggestion
-                </button>
-              </div>
-            </div>
+            <Block icon={UserIcon} title="Suggested Assignee">
+              <p style={p}>{suggestions.suggested_assignee.name}</p>
+              <p style={sub}>{Math.round(suggestions.suggested_assignee.confidence * 100)}% match • {suggestions.suggested_assignee.reason}</p>
+              <button onClick={() => onApply?.("assignee", suggestions.suggested_assignee.user_id)} style={aiButtonSecondary(palette)}>Apply</button>
+            </Block>
           )}
 
-          {suggestions?.tags && suggestions.tags.length > 0 && (
-            <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-purple-100">
-              <TagIcon className="w-5 h-5 text-purple-600 mt-0.5" />
-              <div className="flex-1">
-                <span className="text-sm font-semibold text-gray-900 block mb-2">Suggested Tags</span>
-                <div className="flex flex-wrap gap-2">
-                  {suggestions.tags.map((tag, i) => (
-                    <button
-                      key={i}
-                      onClick={() => onApply?.('tag', tag)}
-                      className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200 transition-colors"
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
+          {suggestions?.tags?.length > 0 && (
+            <Block icon={TagIcon} title="Suggested Tags">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {suggestions.tags.map((tag, i) => (
+                  <button key={i} onClick={() => onApply?.("tag", tag)} style={{ border: "1px solid rgba(52,211,153,0.45)", color: "#6ee7b7", background: "rgba(52,211,153,0.12)", borderRadius: 999, padding: "3px 8px", fontSize: 11, cursor: "pointer" }}>
+                    {tag}
+                  </button>
+                ))}
               </div>
-            </div>
+            </Block>
           )}
 
           {suggestions?.estimated_points && (
-            <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-purple-100">
-              <ClockIcon className="w-5 h-5 text-purple-600 mt-0.5" />
-              <div className="flex-1">
-                <span className="text-sm font-semibold text-gray-900 block mb-1">Estimated Story Points</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-purple-600">{suggestions.estimated_points}</span>
-                  <button
-                    onClick={() => onApply?.('points', suggestions.estimated_points)}
-                    className="text-xs text-purple-600 hover:text-purple-700 font-medium"
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {suggestions?.sentiment && suggestions.sentiment !== 'neutral' && (
-            <div className={`p-3 rounded-lg border ${
-              suggestions.sentiment === 'urgent' ? 'bg-red-50 border-red-200' :
-              suggestions.sentiment === 'negative' ? 'bg-orange-50 border-orange-200' :
-              'bg-green-50 border-green-200'
-            }`}>
-              <span className="text-sm font-semibold">
-                Sentiment: <span className="capitalize">{suggestions.sentiment}</span>
-              </span>
-            </div>
+            <Block icon={ClockIcon} title="Estimated Story Points">
+              <p style={{ ...p, fontSize: 20, fontWeight: 800 }}>{suggestions.estimated_points}</p>
+              <button onClick={() => onApply?.("points", suggestions.estimated_points)} style={aiButtonSecondary(palette)}>Apply</button>
+            </Block>
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
 export const SprintPrediction = ({ sprintId }) => {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getAIPalette(darkMode), [darkMode]);
+
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -137,50 +90,47 @@ export const SprintPrediction = ({ sprintId }) => {
       const response = await api.get(`/api/agile/ml/predict-sprint/${sprintId}/`);
       setPrediction(response.data);
     } catch (error) {
-      console.error('Failed to fetch prediction:', error);
+      console.error("Failed to fetch prediction:", error);
+      setPrediction(null);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <div className="animate-pulse h-24 bg-gray-200 rounded-lg"></div>;
+  if (loading) return <div style={{ ...aiCard(palette), padding: 10, fontSize: 12, color: palette.muted }}>Loading prediction...</div>;
   if (!prediction) return null;
 
   return (
-    <div className={`p-6 rounded-xl border-2 ${
-      prediction.at_risk ? 'bg-red-50 border-red-300' : 'bg-green-50 border-green-300'
-    }`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <SparklesIcon className="w-6 h-6 text-purple-600" />
-          <h3 className="text-lg font-bold text-gray-900">AI Prediction</h3>
-        </div>
-        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-          prediction.at_risk ? 'bg-red-200 text-red-800' : 'bg-green-200 text-green-800'
-        }`}>
-          {prediction.recommendation}
-        </span>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <div className="text-3xl font-bold text-gray-900">{prediction.probability}%</div>
-          <div className="text-sm text-gray-600">Completion Probability</div>
-        </div>
-        <div>
-          <div className="text-3xl font-bold text-gray-900">{prediction.completed}/{prediction.total}</div>
-          <div className="text-sm text-gray-600">Issues Completed</div>
-        </div>
-      </div>
+    <section style={{ ...aiCard(palette), padding: 12 }}>
+      <h3 style={{ margin: "0 0 8px", fontSize: 13, color: palette.text, display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <SparklesIcon style={{ width: 14, height: 14, color: palette.warm }} /> AI Sprint Prediction
+      </h3>
 
-      <div className="w-full bg-gray-200 rounded-full h-3">
-        <div
-          className={`h-3 rounded-full transition-all ${
-            prediction.at_risk ? 'bg-red-500' : 'bg-green-500'
-          }`}
-          style={{ width: `${prediction.probability}%` }}
-        ></div>
+      <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>Recommendation: {prediction.recommendation}</p>
+      <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div style={metric}><p style={metricValue}>{prediction.probability}%</p><p style={metricLabel}>Completion</p></div>
+        <div style={metric}><p style={metricValue}>{prediction.completed}/{prediction.total}</p><p style={metricLabel}>Done</p></div>
       </div>
-    </div>
+      <div style={{ marginTop: 8, width: "100%", height: 8, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${prediction.probability}%`, background: prediction.at_risk ? "#ef4444" : "#10b981" }} />
+      </div>
+    </section>
   );
 };
+
+function Block({ icon: Icon, title, children }) {
+  return (
+    <div style={{ borderRadius: 9, border: "1px solid rgba(120,120,120,0.3)", background: "#1f181c", padding: 8 }}>
+      <p style={{ margin: "0 0 6px", fontSize: 12, color: "#f4ece0", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Icon style={{ width: 13, height: 13, color: "#baa892" }} /> {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+const p = { margin: "0 0 4px", fontSize: 12, color: "#d9cdbf" };
+const sub = { margin: "0 0 6px", fontSize: 11, color: "#baa892" };
+const metric = { borderRadius: 8, border: "1px solid rgba(120,120,120,0.3)", background: "#1f181c", padding: 8 };
+const metricValue = { margin: 0, fontSize: 18, fontWeight: 800, color: "#f4ece0" };
+const metricLabel = { margin: "2px 0 0", fontSize: 11, color: "#baa892" };

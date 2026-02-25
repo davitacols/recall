@@ -1,26 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import { PlusIcon, FolderIcon, UserGroupIcon, ChartBarIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ChartBarIcon, FolderIcon, PlusIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import api from "../services/api";
 
 export default function Projects() {
   const { darkMode } = useTheme();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', description: '' });
+  const [newProject, setNewProject] = useState({ name: "", description: "" });
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
-  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
-  const hoverBg = darkMode ? 'hover:bg-stone-800' : 'hover:bg-gray-50';
-  const inputBg = darkMode ? 'bg-stone-800' : 'bg-white';
-  const inputBorder = darkMode ? 'border-stone-700' : 'border-gray-300';
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   useEffect(() => {
     fetchProjects();
@@ -28,31 +24,39 @@ export default function Projects() {
 
   const fetchProjects = async () => {
     try {
-      const res = await api.get('/api/agile/projects/');
-      setProjects(res.data);
+      const response = await api.get("/api/agile/projects/");
+      setProjects(response.data || []);
     } catch (error) {
-      console.error('Failed to fetch projects:', error);
+      console.error("Failed to fetch projects:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
+  const handleCreate = async (event) => {
+    event.preventDefault();
+    if (!newProject.name.trim()) {
+      setCreateError("Project name is required");
+      return;
+    }
     setCreating(true);
+    setCreateError("");
     try {
-      await api.post('/api/agile/projects/', newProject);
+      await api.post("/api/agile/projects/", {
+        name: newProject.name.trim(),
+        description: newProject.description?.trim() || "",
+      });
       setShowCreate(false);
-      setNewProject({ name: '', description: '' });
+      setNewProject({ name: "", description: "" });
       fetchProjects();
-      // Show success toast
-      const toast = document.createElement('div');
-      toast.className = `fixed top-4 right-4 ${bgSecondary} border ${borderColor} px-6 py-3 rounded-lg shadow-lg z-50 ${textPrimary}`;
-      toast.textContent = 'Project created successfully!';
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
     } catch (error) {
-      console.error('Failed to create project:', error);
+      console.error("Failed to create project:", error);
+      setCreateError(
+        error?.response?.data?.detail ||
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        "Failed to create project"
+      );
     } finally {
       setCreating(false);
     }
@@ -60,16 +64,11 @@ export default function Projects() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${bgPrimary}`}>
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1,2,3].map(i => (
-              <div key={i} className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg animate-pulse`}>
-                <div className={`h-12 w-12 ${inputBg} rounded-lg mb-4`}></div>
-                <div className={`h-5 ${inputBg} rounded w-3/4 mb-3`}></div>
-                <div className={`h-4 ${inputBg} rounded w-full mb-2`}></div>
-                <div className={`h-4 ${inputBg} rounded w-2/3`}></div>
-              </div>
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <div style={skeletonGrid}>
+            {[1, 2, 3].map((item) => (
+              <div key={item} style={{ ...skeletonCard, background: palette.card, border: `1px solid ${palette.border}` }} />
             ))}
           </div>
         </div>
@@ -78,64 +77,52 @@ export default function Projects() {
   }
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-start mb-8">
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section
+          style={{
+            ...hero,
+            border: `1px solid ${palette.border}`,
+            background: darkMode
+              ? "linear-gradient(145deg, rgba(255,167,97,0.16), rgba(87,205,184,0.13))"
+              : "linear-gradient(145deg, rgba(255,196,146,0.42), rgba(152,243,223,0.36))",
+          }}
+        >
           <div>
-            <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Projects</h1>
-            <p className={`text-sm ${textSecondary}`}>Manage your team's projects and boards</p>
+            <p style={{ ...eyebrow, color: palette.muted }}>PROJECT WORKSPACE</p>
+            <h1 style={{ ...title, color: palette.text }}>Projects</h1>
+            <p style={{ ...subtitle, color: palette.muted }}>Organize teams, boards, and delivery tracks in one place.</p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className={`flex items-center gap-2 px-4 py-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} hover:border-stone-700 font-medium text-sm transition-all`}
-          >
-            <PlusIcon className="w-4 h-4" />
-            New Project
+          <button onClick={() => setShowCreate(true)} style={{ ...ui.primaryButton, ...newButton }}>
+            <PlusIcon style={icon16} /> New Project
           </button>
-        </div>
+        </section>
 
         {showCreate && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 w-full max-w-md`}>
-              <h2 className={`text-xl font-bold ${textPrimary} mb-5`}>Create Project</h2>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Project Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={newProject.name}
-                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                    className={`w-full px-3 py-2 ${inputBg} ${textPrimary} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Description</label>
-                  <textarea
-                    value={newProject.description}
-                    onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-                    rows={3}
-                    className={`w-full px-3 py-2 ${inputBg} ${textPrimary} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                  />
-                </div>
-                <div className="flex gap-3 justify-end pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreate(false)}
-                    className={`px-4 py-2 bg-transparent ${textSecondary} border-2 ${borderColor} rounded ${hoverBg} font-medium text-sm`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={creating}
-                    className={`px-4 py-2 bg-transparent border-2 ${inputBorder} ${textPrimary} rounded ${hoverBg} hover:border-stone-700 font-medium text-sm disabled:opacity-50 flex items-center gap-2`}
-                  >
-                    {creating && (
-                      <div className={`w-4 h-4 border-2 ${darkMode ? 'border-stone-400 border-t-transparent' : 'border-gray-600 border-t-transparent'} rounded-full animate-spin`} />
-                    )}
-                    Create
-                  </button>
+          <div style={modalOverlay}>
+            <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+              <h2 style={{ margin: 0, fontSize: 22, color: palette.text }}>Create Project</h2>
+              <form onSubmit={handleCreate} style={formStack}>
+                {createError && (
+                  <div style={errorBox}>{createError}</div>
+                )}
+                <label style={label}>Project Name</label>
+                <input
+                  required
+                  value={newProject.name}
+                  onChange={(event) => setNewProject({ ...newProject, name: event.target.value })}
+                  style={{ ...ui.input, ...input }}
+                />
+                <label style={label}>Description</label>
+                <textarea
+                  rows={4}
+                  value={newProject.description}
+                  onChange={(event) => setNewProject({ ...newProject, description: event.target.value })}
+                  style={{ ...ui.input, ...input, resize: "vertical" }}
+                />
+                <div style={buttonRow}>
+                  <button type="button" onClick={() => setShowCreate(false)} style={ui.secondaryButton}>Cancel</button>
+                  <button type="submit" disabled={creating} style={ui.primaryButton}>{creating ? "Creating..." : "Create"}</button>
                 </div>
               </form>
             </div>
@@ -143,40 +130,30 @@ export default function Projects() {
         )}
 
         {projects.length === 0 ? (
-          <div className={`text-center py-20 ${textSecondary}`}>
-            <FolderIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg">No projects yet. Create your first project to get started.</p>
+          <div style={{ ...emptyCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+            <FolderIcon style={{ width: 48, height: 48, color: palette.muted }} />
+            <p style={{ color: palette.muted, margin: "10px 0 0" }}>No projects yet. Create your first project.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div style={grid}>
             {projects.map((project) => (
-              <div
+              <article
                 key={project.id}
                 onClick={() => navigate(`/projects/${project.id}`)}
-                className={`p-6 ${bgSecondary} border ${borderColor} rounded-lg cursor-pointer transition-all hover:border-stone-700 hover:-translate-y-1`}
+                style={{ ...card, background: palette.card, border: `1px solid ${palette.border}` }}
               >
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                    {project.key}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`text-lg font-semibold ${textPrimary} mb-1 truncate`}>{project.name}</h3>
-                    {project.description && (
-                      <p className={`text-sm ${textSecondary} line-clamp-2`}>{project.description}</p>
-                    )}
+                <div style={cardTop}>
+                  <div style={keyBadge}>{project.key || "PRJ"}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={{ ...cardTitle, color: palette.text }}>{project.name}</h3>
+                    <p style={{ ...cardDesc, color: palette.muted }}>{project.description || "No description"}</p>
                   </div>
                 </div>
-                <div className={`flex items-center justify-between pt-4 border-t ${borderColor} text-xs ${textSecondary}`}>
-                  <div className="flex items-center gap-2">
-                    <UserGroupIcon className="w-4 h-4" />
-                    <span>{project.lead_name || 'No lead'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ChartBarIcon className="w-4 h-4" />
-                    <span>Active</span>
-                  </div>
+                <div style={{ ...cardMeta, borderTop: `1px solid ${palette.border}` }}>
+                  <span style={metaItem}><UserGroupIcon style={icon14} /> {project.lead_name || "No lead"}</span>
+                  <span style={metaItem}><ChartBarIcon style={icon14} /> Active</span>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
@@ -184,3 +161,29 @@ export default function Projects() {
     </div>
   );
 }
+
+const hero = { borderRadius: 18, padding: "22px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 14, flexWrap: "wrap", marginBottom: 14 };
+const eyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.15em" };
+const title = { margin: "7px 0 6px", fontSize: "clamp(1.6rem,3vw,2.3rem)", letterSpacing: "-0.02em" };
+const subtitle = { margin: 0, fontSize: 14 };
+const newButton = { display: "inline-flex", alignItems: "center", gap: 7, border: "none", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#20140f", background: "linear-gradient(135deg,#ffd390,#ff9f62)" };
+const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(270px,1fr))", gap: 10 };
+const card = { borderRadius: 14, padding: 14, cursor: "pointer" };
+const cardTop = { display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "start" };
+const keyBadge = { width: 50, height: 50, borderRadius: 12, display: "grid", placeItems: "center", background: "linear-gradient(135deg,#ffcc8b,#ff935d)", color: "#20140f", fontWeight: 800, fontSize: 12 };
+const cardTitle = { margin: 0, fontSize: 17, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const cardDesc = { margin: "4px 0 0", fontSize: 13, lineHeight: 1.45, minHeight: 36 };
+const cardMeta = { marginTop: 12, paddingTop: 10, display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 };
+const metaItem = { display: "inline-flex", alignItems: "center", gap: 5, color: "#9e8d7b" };
+const emptyCard = { borderRadius: 14, padding: "34px 14px", textAlign: "center" };
+const modalOverlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", zIndex: 100, padding: 16 };
+const modalCard = { width: "min(520px,100%)", borderRadius: 16, padding: 18 };
+const formStack = { marginTop: 14, display: "grid", gap: 8 };
+const label = { fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#9e8d7b" };
+const errorBox = { borderRadius: 10, border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#ef4444", padding: "8px 10px", fontSize: 13 };
+const input = { borderRadius: 10, padding: "10px 12px", fontSize: 14, outline: "none", fontFamily: "inherit" };
+const buttonRow = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
+const skeletonGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(270px,1fr))", gap: 10 };
+const skeletonCard = { borderRadius: 14, minHeight: 130, opacity: 0.7 };
+const icon16 = { width: 16, height: 16 };
+const icon14 = { width: 14, height: 14 };

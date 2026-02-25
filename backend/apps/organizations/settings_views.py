@@ -337,10 +337,23 @@ def invite_member(request):
         invitation.expires_at = expires_at
         invitation.save()
     
+    email_sent = False
+    invite_link = f"{settings.FRONTEND_URL}/invite/{invitation.token}"
+
+    # Send invitation email when configured; still return link even if sending fails.
+    try:
+        from apps.notifications.email_service import send_invitation_email
+
+        email_sent = send_invitation_email(email, invitation.token, request.user)
+    except Exception:
+        email_sent = False
+
     return Response({
         'message': 'Invitation created',
         'invitation_id': invitation.id,
-        'email': email
+        'email': email,
+        'invite_link': invite_link,
+        'email_sent': email_sent,
     }, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])

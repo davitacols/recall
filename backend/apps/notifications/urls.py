@@ -5,6 +5,7 @@ from apps.decisions.phase2_views import knowledge_health
 
 urlpatterns = [
     path('', views.notifications_list, name='notifications_list'),
+    path('test-email/', views.send_test_email, name='send_test_email'),
     path('<int:notification_id>/read/', views.mark_as_read, name='mark_as_read'),
     path('read-all/', views.mark_all_as_read, name='mark_all_as_read'),
     path('<int:notification_id>/delete/', views.delete_notification, name='delete_notification'),

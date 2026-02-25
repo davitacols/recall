@@ -63,7 +63,7 @@ export default function Homepage() {
               <button onClick={() => navigate("/login")} style={ghostButton}>
                 Sign in
               </button>
-              <button onClick={() => navigate("/signup")} style={primaryButton}>
+              <button onClick={() => navigate("/login")} style={primaryButton}>
                 Start free
               </button>
             </div>
@@ -93,7 +93,7 @@ export default function Homepage() {
                 </p>
                 <div style={ctaRow}>
                   <button
-                    onClick={() => navigate("/signup")}
+                    onClick={() => navigate("/login")}
                     style={primaryLargeButton}
                   >
                     Create workspace
@@ -192,7 +192,7 @@ export default function Homepage() {
                 Start with one workspace. Scale with every decision you keep.
               </p>
               <div style={ctaRow}>
-                <button onClick={() => navigate("/signup")} style={darkButton}>
+                <button onClick={() => navigate("/login")} style={darkButton}>
                   Get started free
                 </button>
                 <button
@@ -206,6 +206,46 @@ export default function Homepage() {
           </div>
         </section>
       </main>
+
+      <footer style={footer}>
+        <div style={container}>
+          <div style={footerGrid}>
+            <div>
+              <div style={brandRow}>
+                <div style={brandMark} />
+                <span style={brandText}>Knoledgr</span>
+              </div>
+              <p style={footerCopy}>
+                Keep decisions, context, and execution connected across your team.
+              </p>
+            </div>
+
+            <div style={footerLinks}>
+              <button onClick={() => navigate("/home")} style={footerLinkButton}>
+                Product
+              </button>
+              <button onClick={() => navigate("/login")} style={footerLinkButton}>
+                Pricing
+              </button>
+              <button onClick={() => navigate("/login")} style={footerLinkButton}>
+                Sign in
+              </button>
+              <button onClick={() => navigate("/login")} style={footerLinkButton}>
+                Start free
+              </button>
+            </div>
+          </div>
+
+          <div style={footerBottom}>
+            <span>© {new Date().getFullYear()} Knoledgr. All rights reserved.</span>
+            <div style={footerLegal}>
+              <button style={footerMutedButton}>Privacy</button>
+              <button style={footerMutedButton}>Terms</button>
+              <button style={footerMutedButton}>Security</button>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -585,5 +625,72 @@ const lightOutlineButton = {
   color: "#231713",
   border: "1px solid rgba(35,23,19,0.38)",
   padding: "13px 20px",
+};
+
+const footer = {
+  borderTop: "1px solid rgba(255,231,198,0.12)",
+  background: "rgba(10,8,9,0.55)",
+  backdropFilter: "blur(8px)",
+};
+
+const footerGrid = {
+  padding: "26px 0 18px",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
+  gap: 16,
+  alignItems: "end",
+};
+
+const footerCopy = {
+  margin: "10px 0 0",
+  color: "rgba(244,239,230,0.68)",
+  fontSize: 13,
+  maxWidth: 420,
+  lineHeight: 1.5,
+};
+
+const footerLinks = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+};
+
+const footerLinkButton = {
+  border: "1px solid rgba(255,231,198,0.14)",
+  background: "rgba(255,255,255,0.02)",
+  color: "#f4efe6",
+  borderRadius: 10,
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const footerBottom = {
+  padding: "12px 0 22px",
+  borderTop: "1px solid rgba(255,231,198,0.08)",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap",
+  color: "rgba(244,239,230,0.58)",
+  fontSize: 12,
+};
+
+const footerLegal = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const footerMutedButton = {
+  border: "none",
+  background: "transparent",
+  color: "rgba(244,239,230,0.58)",
+  fontSize: 12,
+  cursor: "pointer",
+  padding: 0,
 };
 

@@ -18,8 +18,8 @@ import Layout from './components/Layout.js';
 import UnifiedLayout from './components/UnifiedLayout';
 import UnifiedNav from './components/UnifiedNav';
 import SmartSearch from './components/SmartSearch';
+import SeoManager from './components/SeoManager';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
 import AcceptInvite from './pages/AcceptInvite';
 import Dashboard from './pages/Dashboard';
 import UnifiedDashboard from './pages/UnifiedDashboard';
@@ -155,6 +155,7 @@ function AppContent() {
 
   return (
     <>
+      <SeoManager />
       <OnboardingTour />
       <SmartSearch />
       <NLPCommandBar />
@@ -177,7 +178,7 @@ function AppContent() {
       <Routes>
         <Route path="/home" element={<Homepage />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/signup" element={<Navigate to="/login" replace />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/" element={<RootRoute />} />
         <Route path="/dashboard" element={<Navigate to="/" replace />} />

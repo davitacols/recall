@@ -113,9 +113,6 @@ if DEBUG:
     # Use synchronous task execution for local development
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
-else:
-    if redis_url.startswith('rediss://'):
-        redis_url = redis_url.replace('rediss://', 'redis+sentinel://')
 CELERY_BROKER_URL = redis_url
 CELERY_RESULT_BACKEND = redis_url
 CELERY_ACCEPT_CONTENT = ['json']

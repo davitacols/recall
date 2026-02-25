@@ -1,258 +1,156 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MagnifyingGlassIcon, ClockIcon, DocumentTextIcon, ChatBubbleLeftIcon, ListBulletIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
 
 export const GlobalSearch = ({ isOpen, onClose }) => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState({ issues: [], conversations: [], decisions: [], recent: [] });
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(0);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
   const navigate = useNavigate();
+  const { darkMode } = useTheme();
+
+  const palette = useMemo(
+    () =>
+      darkMode
+        ? {
+            panel: "#1d171b",
+            border: "rgba(255,225,193,0.14)",
+            text: "#f4ece0",
+            muted: "#baa892",
+            hover: "rgba(255,255,255,0.06)",
+            active: "rgba(255,173,105,0.18)",
+          }
+        : {
+            panel: "#fffaf3",
+            border: "#eadfce",
+            text: "#231814",
+            muted: "#7d6d5a",
+            hover: "rgba(35,24,20,0.06)",
+            active: "rgba(255,158,87,0.2)",
+          },
+    [darkMode]
+  );
 
   useEffect(() => {
-    if (isOpen) {
-      inputRef.current?.focus();
-      loadRecent();
-    }
+    if (isOpen) inputRef.current?.focus();
   }, [isOpen]);
 
   useEffect(() => {
-    if (query.length > 2) {
-      const timer = setTimeout(() => search(), 300);
-      return () => clearTimeout(timer);
-    } else {
-      setResults({ ...results, issues: [], conversations: [], decisions: [] });
+    if (query.trim().length < 2) {
+      setResults([]);
+      return;
     }
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const response = await api.get("/api/organizations/search/", { params: { q: query } });
+        setResults((response.data || []).slice(0, 12));
+      } catch (error) {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 260);
+    return () => clearTimeout(timer);
   }, [query]);
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e) => {
-      if (!isOpen) return;
-      
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'ArrowDown') {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowDown") {
         e.preventDefault();
-        const total = getTotalResults();
-        setSelected(s => (s + 1) % total);
-      } else if (e.key === 'ArrowUp') {
+        if (!results.length) return;
+        setSelected((s) => (s + 1) % results.length);
+      }
+      if (e.key === "ArrowUp") {
         e.preventDefault();
-        const total = getTotalResults();
-        setSelected(s => (s - 1 + total) % total);
-      } else if (e.key === 'Enter') {
+        if (!results.length) return;
+        setSelected((s) => (s - 1 + results.length) % results.length);
+      }
+      if (e.key === "Enter" && results[selected]) {
         e.preventDefault();
-        navigateToSelected();
+        onPick(results[selected]);
       }
     };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, results, selected, onClose]);
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selected, results]);
-
-  const loadRecent = async () => {
-    try {
-      const recent = JSON.parse(localStorage.getItem('recentSearches') || '[]');
-      setResults({ ...results, recent });
-    } catch (error) {
-      console.error('Failed to load recent:', error);
-    }
-  };
-
-  const search = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/api/organizations/search/?q=${query}`);
-      const data = res.data || [];
-      
-      setResults({
-        issues: data.filter(r => r.type === 'project'),
-        conversations: data.filter(r => r.type === 'conversation'),
-        decisions: data.filter(r => r.type === 'decision'),
-        goals: data.filter(r => r.type === 'goal'),
-        documents: data.filter(r => r.type === 'document'),
-        recent: results.recent
-      });
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getTotalResults = () => {
-    return results.issues.length + results.conversations.length + results.decisions.length + 
-           (results.goals?.length || 0) + (results.documents?.length || 0) + results.recent.length;
-  };
-
-  const navigateToSelected = () => {
-    const allResults = [
-      ...results.recent.map(r => ({ ...r, type: 'recent' })),
-      ...results.issues.map(i => ({ ...i, type: 'issue' })),
-      ...results.conversations.map(c => ({ ...c, type: 'conversation' })),
-      ...results.decisions.map(d => ({ ...d, type: 'decision' })),
-      ...(results.goals || []).map(g => ({ ...g, type: 'goal' })),
-      ...(results.documents || []).map(d => ({ ...d, type: 'document' }))
-    ];
-
-    const item = allResults[selected];
-    if (!item) return;
-
-    saveToRecent(item);
-
-    if (item.type === 'issue') navigate(`/issues/${item.id}`);
-    else if (item.type === 'conversation') navigate(`/conversations/${item.id}`);
-    else if (item.type === 'decision') navigate(`/decisions/${item.id}`);
-    else if (item.type === 'goal') navigate(`/business/goals/${item.id}`);
-    else if (item.type === 'document') navigate(`/business/documents/${item.id}`);
-    else if (item.url) navigate(item.url);
-
+  const onPick = (item) => {
+    const url =
+      item.url ||
+      (item.type === "conversation" ? `/conversations/${item.id}` :
+      item.type === "decision" ? `/decisions/${item.id}` :
+      item.type === "project" ? `/projects/${item.id}` :
+      item.type === "issue" ? `/issues/${item.id}` :
+      item.type === "goal" ? `/business/goals/${item.id}` :
+      item.type === "document" ? `/business/documents/${item.id}` : "/");
+    navigate(url);
     onClose();
-  };
-
-  const saveToRecent = (item) => {
-    try {
-      const recent = JSON.parse(localStorage.getItem('recentSearches') || '[]');
-      const newRecent = [
-        { title: item.title, url: item.url || `/${item.type}s/${item.id}`, type: item.type },
-        ...recent.filter(r => r.url !== (item.url || `/${item.type}s/${item.id}`))
-      ].slice(0, 5);
-      localStorage.setItem('recentSearches', JSON.stringify(newRecent));
-    } catch (error) {
-      console.error('Failed to save recent:', error);
-    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center pt-32 z-50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
-        {/* Search Input */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search issues, conversations, decisions..."
-              className="flex-1 text-lg outline-none"
-            />
-            {loading && <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>}
-          </div>
+    <div style={overlay} onClick={onClose}>
+      <div style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ ...searchWrap, borderBottom: `1px solid ${palette.border}` }}>
+          <MagnifyingGlassIcon style={{ width: 18, height: 18, color: palette.muted }} />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelected(0);
+            }}
+            placeholder="Search conversations, decisions, projects..."
+            style={{ ...input, color: palette.text }}
+          />
         </div>
 
-        {/* Results */}
-        <div className="max-h-96 overflow-y-auto">
-          {query.length === 0 && results.recent.length > 0 && (
-            <div className="p-2">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Recent</div>
-              {results.recent.map((item, i) => (
-                <button
-                  key={i}
-                  onClick={() => { navigate(item.url); onClose(); }}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left ${
-                    i === selected ? 'bg-purple-50' : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <ClockIcon className="w-5 h-5 text-gray-400" />
-                  <span className="flex-1 text-gray-900">{item.title}</span>
-                </button>
-              ))}
-            </div>
+        <div style={list}>
+          {loading ? (
+            <div style={{ ...state, color: palette.muted }}>Searching...</div>
+          ) : query.trim().length < 2 ? (
+            <div style={{ ...state, color: palette.muted }}>Type at least 2 characters</div>
+          ) : results.length === 0 ? (
+            <div style={{ ...state, color: palette.muted }}>No results found</div>
+          ) : (
+            results.map((item, index) => (
+              <button
+                key={`${item.type}-${item.id}-${index}`}
+                onClick={() => onPick(item)}
+                onMouseEnter={() => setSelected(index)}
+                style={{
+                  ...row,
+                  background: index === selected ? palette.active : "transparent",
+                  color: index === selected ? palette.text : palette.muted,
+                  borderBottom: `1px solid ${palette.border}`,
+                }}
+              >
+                <span style={typePill}>{item.type || "item"}</span>
+                <span style={title}>{item.title || item.name || "Untitled"}</span>
+              </button>
+            ))
           )}
-
-          {results.issues.length > 0 && (
-            <div className="p-2">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Issues</div>
-              {results.issues.map((issue, i) => {
-                const index = results.recent.length + i;
-                return (
-                  <button
-                    key={issue.id}
-                    onClick={() => { navigate(`/issues/${issue.id}`); onClose(); }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left ${
-                      index === selected ? 'bg-purple-50' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <ListBulletIcon className="w-5 h-5 text-blue-500" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 truncate">{issue.title}</div>
-                      <div className="text-sm text-gray-500">{issue.key} • {issue.status}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {results.conversations.length > 0 && (
-            <div className="p-2">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Conversations</div>
-              {results.conversations.map((conv, i) => {
-                const index = results.recent.length + results.issues.length + i;
-                return (
-                  <button
-                    key={conv.id}
-                    onClick={() => { navigate(`/conversations/${conv.id}`); onClose(); }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left ${
-                      index === selected ? 'bg-purple-50' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <ChatBubbleLeftIcon className="w-5 h-5 text-green-500" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 truncate">{conv.title}</div>
-                      <div className="text-sm text-gray-500">{conv.reply_count || 0} replies</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {results.decisions.length > 0 && (
-            <div className="p-2">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Decisions</div>
-              {results.decisions.map((decision, i) => {
-                const index = results.recent.length + results.issues.length + results.conversations.length + i;
-                return (
-                  <button
-                    key={decision.id}
-                    onClick={() => { navigate(`/decisions/${decision.id}`); onClose(); }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left ${
-                      index === selected ? 'bg-purple-50' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <DocumentTextIcon className="w-5 h-5 text-purple-500" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 truncate">{decision.title}</div>
-                      <div className="text-sm text-gray-500">{decision.status}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {query.length > 2 && getTotalResults() === 0 && !loading && (
-            <div className="p-8 text-center text-gray-500">
-              No results found for "{query}"
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-3 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 flex items-center justify-between">
-          <div className="flex gap-4">
-            <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">↑↓</kbd> Navigate</span>
-            <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">Enter</kbd> Select</span>
-            <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">Esc</kbd> Close</span>
-          </div>
         </div>
       </div>
     </div>
   );
 };
+
+const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120, zIndex: 120 };
+const panel = { width: "min(820px, 94vw)", borderRadius: 12, overflow: "hidden", boxShadow: "0 18px 40px rgba(0,0,0,0.28)" };
+const searchWrap = { display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" };
+const input = { width: "100%", border: "none", outline: "none", background: "transparent", fontSize: 15, fontFamily: "inherit" };
+const list = { maxHeight: 420, overflowY: "auto" };
+const row = { width: "100%", border: "none", textAlign: "left", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontFamily: "inherit" };
+const typePill = { borderRadius: 999, padding: "2px 8px", fontSize: 10, textTransform: "uppercase", border: "1px solid rgba(120,120,120,0.35)", fontWeight: 700, flexShrink: 0 };
+const title = { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const state = { textAlign: "center", padding: "18px 12px", fontSize: 13 };

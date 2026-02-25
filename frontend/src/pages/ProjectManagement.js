@@ -21,6 +21,74 @@ function ProjectManagement() {
 
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
+  const styles = useMemo(
+    () => ({
+      backButton: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        border: "none",
+        background: "transparent",
+        color: palette.muted,
+        fontWeight: 700,
+        fontSize: 13,
+        cursor: "pointer",
+        marginBottom: 10,
+      },
+      metricCard: {
+        borderRadius: 12,
+        padding: 12,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardAlt,
+      },
+      metricValue: { margin: 0, fontSize: 26, fontWeight: 800, color: palette.text },
+      metricLabel: { margin: "4px 0 0", fontSize: 12, color: palette.muted },
+      heading: { margin: 0, fontSize: 16, color: palette.text },
+      muted: { margin: "6px 0 0", fontSize: 12, color: palette.muted },
+      rowButton: {
+        borderRadius: 10,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardAlt,
+        color: palette.text,
+        padding: "10px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        cursor: "pointer",
+        fontSize: 13,
+      },
+      pill: {
+        borderRadius: 999,
+        border: `1px solid ${palette.border}`,
+        padding: "3px 8px",
+        fontSize: 10,
+        color: palette.muted,
+        textTransform: "capitalize",
+        fontWeight: 700,
+      },
+      teamRow: {
+        borderRadius: 10,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardAlt,
+        padding: 10,
+        display: "grid",
+        gridTemplateColumns: "30px 1fr",
+        gap: 8,
+        alignItems: "center",
+      },
+      teamName: { margin: 0, fontSize: 13, color: palette.text, fontWeight: 600 },
+      teamMeta: { margin: "3px 0 0", fontSize: 11, color: palette.muted },
+      empty: {
+        borderRadius: 10,
+        border: `1px dashed ${palette.border}`,
+        padding: "14px 10px",
+        fontSize: 12,
+        color: palette.muted,
+        textAlign: "center",
+      },
+    }),
+    [palette]
+  );
 
   useEffect(() => {
     fetchProjectData();
@@ -81,7 +149,7 @@ function ProjectManagement() {
   return (
     <div style={{ minHeight: "100vh", background: palette.bg }}>
       <div style={ui.container}>
-        <button onClick={() => navigate("/projects")} style={backButton}><ArrowLeftIcon style={icon14} /> Back to Projects</button>
+        <button onClick={() => navigate("/projects")} style={styles.backButton}><ArrowLeftIcon style={icon14} /> Back to Projects</button>
 
         <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
           <div>
@@ -93,43 +161,43 @@ function ProjectManagement() {
         </section>
 
         <section style={statsGrid}>
-          <Metric label="Issues" value={issues.length} />
-          <Metric label="Done" value={done} />
-          <Metric label="In Progress" value={inProgress} />
-          <Metric label="Sprints" value={sprints.length} />
+          <Metric label="Issues" value={issues.length} styles={styles} />
+          <Metric label="Done" value={done} styles={styles} />
+          <Metric label="In Progress" value={inProgress} styles={styles} />
+          <Metric label="Sprints" value={sprints.length} styles={styles} />
         </section>
 
         {activeSprint && (
           <section style={{ ...card, border: `1px solid ${palette.border}`, background: palette.card }}>
-            <h2 style={h2}>Active Sprint: {activeSprint.name}</h2>
-            <p style={muted}>{activeSprint.start_date} - {activeSprint.end_date}</p>
-            <p style={muted}>{activeSprint.goal || "No sprint goal"}</p>
+            <h2 style={styles.heading}>Active Sprint: {activeSprint.name}</h2>
+            <p style={styles.muted}>{activeSprint.start_date} - {activeSprint.end_date}</p>
+            <p style={styles.muted}>{activeSprint.goal || "No sprint goal"}</p>
           </section>
         )}
 
         <div style={ui.responsiveSplit}>
           <section style={{ ...card, border: `1px solid ${palette.border}`, background: palette.card }}>
-            <h2 style={h2}>Sprints</h2>
+            <h2 style={styles.heading}>Sprints</h2>
             <div style={list}>
               {sprints.map((sprint) => (
-                <button key={sprint.id} onClick={() => navigate(`/sprints/${sprint.id}`)} style={rowButton}>
+                <button key={sprint.id} onClick={() => navigate(`/sprints/${sprint.id}`)} style={styles.rowButton}>
                   <span>{sprint.name}</span>
-                  <span style={pill}>{sprint.status}</span>
+                  <span style={styles.pill}>{sprint.status}</span>
                 </button>
               ))}
             </div>
           </section>
 
           <section style={{ ...card, border: `1px solid ${palette.border}`, background: palette.card }}>
-            <h2 style={h2}>Team</h2>
+            <h2 style={styles.heading}>Team</h2>
             <div style={list}>
-              {teamMembers.length === 0 && <div style={empty}>No team members</div>}
+              {teamMembers.length === 0 && <div style={styles.empty}>No team members</div>}
               {teamMembers.map((member) => (
-                <div key={member.id} style={teamRow}>
+                <div key={member.id} style={styles.teamRow}>
                   <div style={avatar}>{(member.full_name || "?").charAt(0).toUpperCase()}</div>
                   <div>
-                    <p style={{ margin: 0, fontSize: 13, color: "#f4ece0", fontWeight: 600 }}>{member.full_name || member.username}</p>
-                    <p style={{ margin: "3px 0 0", fontSize: 11, color: "#baa892" }}>{member.email || member.role || "Team member"}</p>
+                    <p style={styles.teamName}>{member.full_name || member.username}</p>
+                    <p style={styles.teamMeta}>{member.email || member.role || "Team member"}</p>
                   </div>
                 </div>
               ))}
@@ -157,34 +225,24 @@ function ProjectManagement() {
   );
 }
 
-function Metric({ label, value }) {
+function Metric({ label, value, styles }) {
   return (
-    <article style={metricCard}>
-      <p style={metricValue}>{value}</p>
-      <p style={metricLabel}>{label}</p>
+    <article style={styles.metricCard}>
+      <p style={styles.metricValue}>{value}</p>
+      <p style={styles.metricLabel}>{label}</p>
     </article>
   );
 }
 
 const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
 const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
 const subtitle = { margin: 0, fontSize: 13 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
-const metricCard = { borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" };
-const metricValue = { margin: 0, fontSize: 26, fontWeight: 800, color: "#f4ece0" };
-const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "#baa892" };
 const card = { borderRadius: 12, padding: 12, marginBottom: 10 };
-const h2 = { margin: 0, fontSize: 16, color: "#f4ece0" };
-const muted = { margin: "6px 0 0", fontSize: 12, color: "#baa892" };
 const list = { marginTop: 8, display: "grid", gap: 7 };
-const rowButton = { borderRadius: 10, border: "1px solid rgba(120,120,120,0.35)", background: "#1f181c", color: "#f4ece0", padding: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", fontSize: 13 };
-const pill = { borderRadius: 999, border: "1px solid rgba(120,120,120,0.4)", padding: "3px 8px", fontSize: 10, color: "#baa892", textTransform: "capitalize", fontWeight: 700 };
-const teamRow = { borderRadius: 10, border: "1px solid rgba(120,120,120,0.35)", background: "#1f181c", padding: 10, display: "grid", gridTemplateColumns: "30px 1fr", gap: 8, alignItems: "center" };
 const avatar = { width: 30, height: 30, borderRadius: 999, background: "linear-gradient(135deg,#ffd390,#ff9f62)", color: "#20140f", fontWeight: 800, display: "grid", placeItems: "center", fontSize: 12 };
-const empty = { borderRadius: 10, border: "1px dashed rgba(120,120,120,0.35)", padding: "14px 10px", fontSize: 12, color: "#9e8d7b", textAlign: "center" };
 const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
 const modalCard = { width: "min(560px,100%)", borderRadius: 14, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };

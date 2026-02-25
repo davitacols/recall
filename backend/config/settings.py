@@ -20,6 +20,9 @@ SECURE_HSTS_PRELOAD = True
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_SSL_REDIRECT = not DEBUG
+# Behind Render/other reverse proxies, trust forwarded HTTPS headers to avoid redirect loops.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
 
 # Custom User Model
 AUTH_USER_MODEL = 'organizations.User'

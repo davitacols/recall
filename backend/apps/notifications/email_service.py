@@ -1,4 +1,5 @@
 import logging
+import re
 from html import escape
 from urllib.parse import urljoin
 
@@ -8,11 +9,28 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-def send_email(to_email, subject, html_content):
+def send_email(to_email, subject, html_content, text_content=None, reply_to=None):
     """Send transactional email through Resend REST API."""
     if not settings.RESEND_API_KEY:
         logger.warning("RESEND_API_KEY is missing; email skipped for %s", to_email)
         return False
+
+    if not text_content:
+        text_content = html_to_text(html_content)
+
+    payload = {
+        "from": settings.DEFAULT_FROM_EMAIL,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_content,
+        "text": text_content,
+        "headers": {
+            "X-Entity-Ref-ID": "knoledgr-transactional",
+            "X-Auto-Response-Suppress": "OOF, AutoReply",
+        },
+    }
+    if reply_to:
+        payload["reply_to"] = reply_to
 
     try:
         response = requests.post(
@@ -21,12 +39,7 @@ def send_email(to_email, subject, html_content):
                 "Authorization": f"Bearer {settings.RESEND_API_KEY}",
                 "Content-Type": "application/json",
             },
-            json={
-                "from": settings.DEFAULT_FROM_EMAIL,
-                "to": [to_email],
-                "subject": subject,
-                "html": html_content,
-            },
+            json=payload,
             timeout=20,
         )
         if not response.ok:
@@ -42,20 +55,31 @@ def send_notification_email(user, notification):
     app_name = "Knoledgr"
     link = notification.link or "/notifications"
     subject = f"{app_name}: {notification.title}"
+    reason = "You received this email because notifications are enabled in your Knoledgr account."
     html = render_email_template(
         preheader=notification.title,
         title=notification.title,
         body_html=f"<p>{escape(notification.message)}</p>",
         cta_label=f"View in {app_name}",
         cta_url=build_frontend_url(link),
+        reason_text=reason,
     )
-    return send_email(user.email, subject, html)
+    text = build_text_email(
+        title=notification.title,
+        body_lines=[notification.message],
+        cta_label=f"View in {app_name}",
+        cta_url=build_frontend_url(link),
+        reason_text=reason,
+    )
+    return send_email(user.email, subject, html, text_content=text, reply_to=get_support_email())
 
 
 def send_invitation_email(email, token, inviter):
     app_name = "Knoledgr"
     inviter_name = inviter.full_name or inviter.username
     subject = f"{inviter_name} invited you to {app_name}"
+    invite_url = build_frontend_url(f"/invite/{token}")
+    reason = "You received this email because a workspace admin invited this address."
     html = render_email_template(
         preheader=f"{inviter_name} invited you to join {app_name}",
         title=f"You've been invited to join {app_name}",
@@ -65,9 +89,20 @@ def send_invitation_email(email, token, inviter):
             f"projects, and team context.</p>"
         ),
         cta_label="Accept Invitation",
-        cta_url=build_frontend_url(f"/invite/{token}"),
+        cta_url=invite_url,
+        reason_text=reason,
     )
-    return send_email(email, subject, html)
+    text = build_text_email(
+        title=f"You've been invited to join {app_name}",
+        body_lines=[
+            f"{inviter_name} invited you to collaborate in {app_name}.",
+            "Accept your invite to access conversations, decisions, projects, and team context.",
+        ],
+        cta_label="Accept Invitation",
+        cta_url=invite_url,
+        reason_text=reason,
+    )
+    return send_email(email, subject, html, text_content=text, reply_to=get_support_email())
 
 
 def build_frontend_url(path):
@@ -76,12 +111,13 @@ def build_frontend_url(path):
     return urljoin(base, relative)
 
 
-def render_email_template(preheader, title, body_html, cta_label, cta_url):
+def render_email_template(preheader, title, body_html, cta_label, cta_url, reason_text=""):
     app_name = "Knoledgr"
     safe_preheader = escape(preheader or app_name)
     safe_title = escape(title or app_name)
     safe_cta_label = escape(cta_label or "Open")
     safe_cta_url = escape(cta_url or settings.FRONTEND_URL)
+    safe_reason = escape(reason_text or "This is a transactional email related to your Knoledgr account.")
 
     return f"""
 <!doctype html>
@@ -119,7 +155,10 @@ def render_email_template(preheader, title, body_html, cta_label, cta_url):
       <tr>
         <td style="padding:12px 2px 0 2px;">
           <div style="font-size:12px;line-height:1.5;color:#7c6d5a;">
-            This email was sent by {app_name}. If you did not expect this message, you can safely ignore it.
+            {safe_reason}
+          </div>
+          <div style="margin-top:6px;font-size:12px;line-height:1.5;color:#7c6d5a;">
+            Sent by {app_name}. Need help? Reply to this email.
           </div>
         </td>
       </tr>
@@ -127,3 +166,35 @@ def render_email_template(preheader, title, body_html, cta_label, cta_url):
   </body>
 </html>
 """
+
+
+def build_text_email(title, body_lines, cta_label, cta_url, reason_text):
+    lines = [
+        f"Knoledgr - {title}",
+        "",
+    ]
+    lines.extend([line for line in (body_lines or []) if line])
+    lines.extend(
+        [
+            "",
+            f"{cta_label}: {cta_url}",
+            "",
+            reason_text or "This is a transactional email related to your Knoledgr account.",
+            "Need help? Reply to this email.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def html_to_text(html):
+    no_tags = re.sub(r"<[^>]+>", " ", html or "")
+    normalized = re.sub(r"\s+", " ", no_tags).strip()
+    return normalized[:5000]
+
+
+def get_support_email():
+    from_email = settings.DEFAULT_FROM_EMAIL or ""
+    match = re.search(r"<([^>]+)>", from_email)
+    if match:
+        return match.group(1)
+    return from_email

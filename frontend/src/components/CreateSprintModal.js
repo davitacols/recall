@@ -1,13 +1,28 @@
 import React, { useState } from 'react';
 import api from '../services/api';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 
 export function CreateSprintModal({ projectId, onClose, onSuccess }) {
+  const { darkMode } = useTheme();
   const [name, setName] = useState('');
   const [goal, setGoal] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const panelClass = darkMode ? 'bg-stone-900 border border-stone-700' : 'bg-white border border-gray-200';
+  const titleClass = darkMode ? 'text-stone-100' : 'text-gray-900';
+  const labelClass = darkMode ? 'text-stone-200' : 'text-gray-900';
+  const inputClass = darkMode
+    ? 'w-full px-4 py-2 border border-stone-600 bg-stone-800 text-stone-100 focus:border-amber-400 focus:outline-none'
+    : 'w-full px-4 py-2 border border-gray-300 bg-white text-gray-900 focus:border-gray-900 focus:outline-none';
+  const cancelButtonClass = darkMode
+    ? 'px-6 py-3 border border-stone-500 text-stone-100 hover:bg-stone-800 font-bold uppercase text-sm transition-all disabled:opacity-50'
+    : 'px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all disabled:opacity-50';
+  const submitButtonClass = darkMode
+    ? 'px-6 py-3 bg-amber-500 text-stone-950 hover:bg-amber-400 font-bold uppercase text-sm transition-all disabled:opacity-50'
+    : 'px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,56 +47,56 @@ export function CreateSprintModal({ projectId, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Sprint</h2>
+      <div className={`${panelClass} p-8 w-full max-w-md`}>
+        <h2 className={`text-2xl font-bold mb-6 ${titleClass}`}>Create Sprint</h2>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 text-sm">
+          <div className={`${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border-red-200 text-red-700'} mb-4 p-4 border text-sm`}>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Sprint Name</label>
+            <label className={`block text-sm font-bold mb-2 ${labelClass}`}>Sprint Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 focus:border-gray-900 focus:outline-none"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Goal</label>
+            <label className={`block text-sm font-bold mb-2 ${labelClass}`}>Goal</label>
             <textarea
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               rows="3"
-              className="w-full px-4 py-2 border border-gray-300 focus:border-gray-900 focus:outline-none"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Start Date</label>
+            <label className={`block text-sm font-bold mb-2 ${labelClass}`}>Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 focus:border-gray-900 focus:outline-none"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">End Date</label>
+            <label className={`block text-sm font-bold mb-2 ${labelClass}`}>End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 focus:border-gray-900 focus:outline-none"
+              className={inputClass}
             />
           </div>
 
@@ -90,14 +105,14 @@ export function CreateSprintModal({ projectId, onClose, onSuccess }) {
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all disabled:opacity-50"
+              className={cancelButtonClass}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50"
+              className={submitButtonClass}
             >
               {loading ? 'Creating...' : 'Create'}
             </button>

@@ -440,7 +440,7 @@ export default function UnifiedDashboard() {
                 <div key={`${row.reviewer_id}-${row.reviewer_name}`} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: "8px 10px" }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>{row.reviewer_name}</div>
                   <div style={{ fontSize: 11, color: palette.muted }}>
-                    Gap {row.calibration_gap}% • {row.reviews} reviews • {row.quality_band}
+                    Gap {row.calibration_gap}% | {row.reviews} reviews | {row.quality_band}
                   </div>
                 </div>
               ))}

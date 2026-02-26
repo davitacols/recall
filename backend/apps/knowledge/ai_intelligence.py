@@ -17,6 +17,29 @@ from apps.notifications.utils import create_notification
 def _time_decay(days_old, half_life_days=3.0):
     return 0.5 ** (max(days_old, 0.0) / half_life_days)
 
+
+def _decision_impact_level(decision):
+    return getattr(decision, 'impact_level', 'medium') or 'medium'
+
+
+def _safe_unresolved_decisions_qs(org):
+    """
+    Use newest decision-outcome fields when available, but gracefully degrade
+    if the deployed DB schema is behind.
+    """
+    try:
+        return Decision.objects.filter(
+            organization=org
+        ).filter(
+            Q(status__in=['proposed', 'under_review', 'approved']) |
+            Q(status='implemented', review_completed_at__isnull=True)
+        )
+    except Exception:
+        return Decision.objects.filter(
+            organization=org,
+            status__in=['proposed', 'under_review', 'approved', 'implemented']
+        )
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def ai_recommendations(request):
@@ -272,12 +295,10 @@ def mission_control_briefing(request):
     org = request.user.organization
     now = timezone.now()
 
-    unresolved_decisions = Decision.objects.filter(
-        organization=org
-    ).filter(
-        Q(status__in=['proposed', 'under_review', 'approved']) |
-        Q(status='implemented', review_completed_at__isnull=True)
-    ).order_by('-impact_level', '-created_at')[:30]
+    try:
+        unresolved_decisions = _safe_unresolved_decisions_qs(org).order_by('-impact_level', '-created_at')[:30]
+    except Exception:
+        unresolved_decisions = _safe_unresolved_decisions_qs(org).order_by('-created_at')[:30]
 
     active_blockers = Blocker.objects.filter(
         organization=org,
@@ -309,12 +330,13 @@ def mission_control_briefing(request):
     citations = []
 
     for dec in unresolved_decisions[:3]:
-        confidence = max(55, min(94, 88 - (10 if dec.impact_level in ['high', 'critical'] else 0)))
+        impact_level = _decision_impact_level(dec)
+        confidence = max(55, min(94, 88 - (10 if impact_level in ['high', 'critical'] else 0)))
         actions.append({
             'type': 'decision_resolution',
             'title': f"Resolve decision: {dec.title}",
-            'impact_estimate': 'high' if dec.impact_level in ['high', 'critical'] else 'medium',
-            'time_to_value_hours': 6 if dec.impact_level in ['high', 'critical'] else 12,
+            'impact_estimate': 'high' if impact_level in ['high', 'critical'] else 'medium',
+            'time_to_value_hours': 6 if impact_level in ['high', 'critical'] else 12,
             'confidence': confidence,
             'auto_run_supported': False,
             'suggested_path': f"Gather final stakeholder input and move decision #{dec.id} to implemented or rejected.",
@@ -388,8 +410,7 @@ def _build_chief_of_staff_plan(org, now):
     interventions = []
 
     unresolved_decisions = list(
-        Decision.objects.filter(organization=org)
-        .filter(Q(status__in=['proposed', 'under_review', 'approved']) | Q(status='implemented', review_completed_at__isnull=True))
+        _safe_unresolved_decisions_qs(org)
         .select_related('decision_maker')
         .order_by('-created_at')[:20]
     )
@@ -408,13 +429,14 @@ def _build_chief_of_staff_plan(org, now):
 
     # 1) Decision resolution interventions.
     for dec in unresolved_decisions[:4]:
+        impact_level = _decision_impact_level(dec)
         interventions.append({
             'id': f"decision:{dec.id}",
             'kind': 'decision_resolution',
             'title': f"Resolve decision: {dec.title}",
             'reason': 'Unresolved decision is impacting execution flow',
-            'impact': 'high' if dec.impact_level in ['high', 'critical'] else 'medium',
-            'confidence': 86 if dec.impact_level in ['high', 'critical'] else 78,
+            'impact': 'high' if impact_level in ['high', 'critical'] else 'medium',
+            'confidence': 86 if impact_level in ['high', 'critical'] else 78,
             'url': f"/decisions/{dec.id}",
             'meta': {'decision_id': dec.id},
         })
@@ -524,7 +546,7 @@ def chief_of_staff_execute(request):
                 title=task_title,
                 description=f"Auto-generated intervention for decision '{decision.title}'.",
                 status='todo',
-                priority='high' if decision.impact_level in ['high', 'critical'] else 'medium',
+                priority='high' if _decision_impact_level(decision) in ['high', 'critical'] else 'medium',
                 assigned_to=decision.decision_maker,
                 decision=decision,
                 due_date=(now + timedelta(days=3)).date(),

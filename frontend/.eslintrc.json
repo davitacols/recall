@@ -4,6 +4,7 @@
     "no-unused-vars": "off",
     "react-hooks/exhaustive-deps": "off",
     "no-dupe-keys": "off",
-    "jsx-a11y/anchor-is-valid": "off"
+    "jsx-a11y/anchor-is-valid": "off",
+    "unicode-bom": "off"
   }
 }

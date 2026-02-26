@@ -261,6 +261,38 @@ export default function ContextPanel({ contentType, objectId }) {
         </div>
       )}
 
+      {/* Outcome Patterns */}
+      {context.outcome_patterns?.reviewed_count > 0 && (
+        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
+          <div className="flex items-center gap-2 mb-3">
+            <DocumentTextIcon className="w-5 h-5 text-emerald-500" />
+            <h3 className={`font-semibold ${textPrimary}`}>
+              Similar Outcomes
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className={`p-2 rounded ${darkMode ? 'bg-stone-800' : 'bg-gray-50'}`}>
+              <div className={textSecondary}>Reviewed</div>
+              <div className={`font-semibold ${textPrimary}`}>{context.outcome_patterns.reviewed_count}</div>
+            </div>
+            <div className={`p-2 rounded ${darkMode ? 'bg-stone-800' : 'bg-gray-50'}`}>
+              <div className={textSecondary}>Failure Rate</div>
+              <div className={`font-semibold ${textPrimary}`}>
+                {context.outcome_patterns.failure_rate != null ? `${context.outcome_patterns.failure_rate}%` : '-'}
+              </div>
+            </div>
+            <div className={`p-2 rounded ${darkMode ? 'bg-stone-800' : 'bg-gray-50'}`}>
+              <div className={textSecondary}>Successful</div>
+              <div className="font-semibold text-green-600">{context.outcome_patterns.successful_count}</div>
+            </div>
+            <div className={`p-2 rounded ${darkMode ? 'bg-stone-800' : 'bg-gray-50'}`}>
+              <div className={textSecondary}>Failed</div>
+              <div className="font-semibold text-red-600">{context.outcome_patterns.failed_count}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Risk Indicators */}
       {context.risk_indicators?.length > 0 && (
         <div className={`rounded-lg border-2 p-4 ${

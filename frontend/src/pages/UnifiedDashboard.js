@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import AIRecommendations from "../components/AIRecommendations";
 import AdvancedAIInsights from "../components/AdvancedAIInsights";
 import DashboardWidgets from "../components/DashboardWidgets";
+import MissionControlPanel from "../components/MissionControlPanel";
+import ChiefOfStaffPanel from "../components/ChiefOfStaffPanel";
 import {
   MetricsTracker,
   TeamExpertiseMap,
@@ -23,6 +25,20 @@ export default function UnifiedDashboard() {
   const { darkMode } = useTheme();
   const [timeline, setTimeline] = useState([]);
   const [stats, setStats] = useState({ activity: 0, nodes: 0, links: 0, rate: 0 });
+  const [outcomeStats, setOutcomeStats] = useState({
+    reviewed_count: 0,
+    success_count: 0,
+    failure_count: 0,
+    success_rate: 0,
+    avg_reliability: 0,
+  });
+  const [pendingOutcomeReviews, setPendingOutcomeReviews] = useState([]);
+  const [pendingOutcomeMeta, setPendingOutcomeMeta] = useState({ total: 0, overdue: 0 });
+  const [notifyingOutcomes, setNotifyingOutcomes] = useState(false);
+  const [orchestratingOutcomes, setOrchestratingOutcomes] = useState(false);
+  const [driftAlerts, setDriftAlerts] = useState([]);
+  const [driftMeta, setDriftMeta] = useState({ total: 0, critical: 0, high: 0 });
+  const [calibrationRows, setCalibrationRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -55,6 +71,45 @@ export default function UnifiedDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const statsData = await statsRes.json();
+
+      const outcomesRes = await fetch(buildApiUrl("/api/decisions/outcomes/stats/"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const outcomesData = await outcomesRes.json();
+      setOutcomeStats({
+        reviewed_count: outcomesData.reviewed_count || 0,
+        success_count: outcomesData.success_count || 0,
+        failure_count: outcomesData.failure_count || 0,
+        success_rate: outcomesData.success_rate || 0,
+        avg_reliability: outcomesData.avg_reliability || 0,
+      });
+
+      const pendingRes = await fetch(buildApiUrl("/api/decisions/outcomes/pending/?overdue_only=false"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const pendingData = await pendingRes.json();
+      setPendingOutcomeReviews(pendingData.items || []);
+      setPendingOutcomeMeta({
+        total: pendingData.total || 0,
+        overdue: pendingData.overdue || 0,
+      });
+
+      const driftRes = await fetch(buildApiUrl("/api/decisions/outcomes/drift-alerts/"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const driftData = await driftRes.json();
+      setDriftAlerts(driftData.items || []);
+      setDriftMeta({
+        total: driftData.total || 0,
+        critical: driftData.critical || 0,
+        high: driftData.high || 0,
+      });
+
+      const calibrationRes = await fetch(buildApiUrl("/api/decisions/outcomes/calibration/?days=120"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const calibrationData = await calibrationRes.json();
+      setCalibrationRows(calibrationData.reviewers || []);
 
       setStats({
         activity: timelineData.pagination?.total || results.length,
@@ -99,7 +154,54 @@ export default function UnifiedDashboard() {
 
   const getActivityUrl = (activity) => {
     const type = activity.content_type?.split(".")[1] || "conversation";
-    return `/${type}s/${activity.object_id}`;
+    const routes = {
+      conversation: `/conversations/${activity.object_id}`,
+      decision: `/decisions/${activity.object_id}`,
+      meeting: `/business/meetings/${activity.object_id}`,
+      document: `/business/documents/${activity.object_id}`,
+      task: "/business/tasks",
+    };
+    return routes[type] || "/";
+  };
+
+  const sendOutcomeReminders = async () => {
+    setNotifyingOutcomes(true);
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(buildApiUrl("/api/decisions/outcomes/pending/notify/"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ overdue_only: true }),
+      });
+      await fetchDashboardData();
+    } catch (error) {
+      console.error("Failed to send outcome reminders:", error);
+    } finally {
+      setNotifyingOutcomes(false);
+    }
+  };
+
+  const runFollowUpOrchestrator = async () => {
+    setOrchestratingOutcomes(true);
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(buildApiUrl("/api/decisions/outcomes/follow-up/run/"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ limit: 20 }),
+      });
+      await fetchDashboardData();
+    } catch (error) {
+      console.error("Failed to run follow-up orchestrator:", error);
+    } finally {
+      setOrchestratingOutcomes(false);
+    }
   };
 
   if (loading) {
@@ -203,12 +305,148 @@ export default function UnifiedDashboard() {
         </div>
 
         <aside style={rightCol}>
+          <MissionControlPanel darkMode={darkMode} />
+          <ChiefOfStaffPanel darkMode={darkMode} />
+
           <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
             <h3 style={{ ...railTitle, color: palette.text }}>Health Snapshot</h3>
             <div style={healthList}>
               <HealthRow label="Knowledge freshness" value="High" tint={palette.good} />
               <HealthRow label="Decision throughput" value={`${stats.nodes}`} tint={palette.info} />
               <HealthRow label="Pending links" value={`${stats.links}`} tint={palette.accent} />
+            </div>
+          </article>
+
+          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            <h3 style={{ ...railTitle, color: palette.text }}>Decision Outcomes (Month)</h3>
+            <div style={healthList}>
+              <HealthRow label="Reviewed" value={`${outcomeStats.reviewed_count}`} tint={palette.info} />
+              <HealthRow label="Successful" value={`${outcomeStats.success_count}`} tint={palette.good} />
+              <HealthRow label="Unsuccessful" value={`${outcomeStats.failure_count}`} tint={palette.accent} />
+              <HealthRow label="Success rate" value={`${outcomeStats.success_rate}%`} tint={palette.good} />
+              <HealthRow label="Avg reliability" value={`${outcomeStats.avg_reliability}%`} tint={palette.info} />
+            </div>
+          </article>
+
+          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            <h3 style={{ ...railTitle, color: palette.text }}>Pending Outcome Reviews</h3>
+            <div style={healthList}>
+              <HealthRow label="Total pending" value={`${pendingOutcomeMeta.total}`} tint={palette.info} />
+              <HealthRow label="Overdue" value={`${pendingOutcomeMeta.overdue}`} tint={palette.accent} />
+              {pendingOutcomeReviews.slice(0, 3).map((item) => (
+                <Link
+                  key={item.id}
+                  to={`/decisions/${item.id}`}
+                  style={{
+                    textDecoration: "none",
+                    border: `1px solid ${palette.border}`,
+                    borderRadius: 10,
+                    padding: "8px 10px",
+                    display: "block",
+                    color: palette.text,
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>{item.title}</div>
+                  <div style={{ fontSize: 11, color: palette.muted }}>
+                    {item.is_overdue ? `${item.days_overdue} days overdue` : "Not overdue yet"}
+                  </div>
+                </Link>
+              ))}
+              <div style={{ display: "flex", gap: 8 }}>
+                <Link
+                  to="/decisions?outcome=pending"
+                  style={{
+                    textDecoration: "none",
+                    border: `1px solid ${palette.border}`,
+                    borderRadius: 10,
+                    padding: "7px 10px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: palette.text,
+                  }}
+                >
+                  Open Queue
+                </Link>
+                <button
+                  onClick={sendOutcomeReminders}
+                  disabled={notifyingOutcomes || pendingOutcomeMeta.overdue === 0}
+                  style={{
+                    border: `1px solid ${palette.border}`,
+                    borderRadius: 10,
+                    padding: "7px 10px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: palette.panelAlt,
+                    color: palette.text,
+                    cursor: "pointer",
+                    opacity: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? 0.6 : 1,
+                  }}
+                >
+                  {notifyingOutcomes ? "Sending..." : "Send Reminders"}
+                </button>
+                <button
+                  onClick={runFollowUpOrchestrator}
+                  disabled={orchestratingOutcomes}
+                  style={{
+                    border: `1px solid ${palette.border}`,
+                    borderRadius: 10,
+                    padding: "7px 10px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: palette.panelAlt,
+                    color: palette.text,
+                    cursor: "pointer",
+                    opacity: orchestratingOutcomes ? 0.6 : 1,
+                  }}
+                >
+                  {orchestratingOutcomes ? "Running..." : "Create Follow-ups"}
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            <h3 style={{ ...railTitle, color: palette.text }}>Decision Drift Alerts</h3>
+            <div style={healthList}>
+              <HealthRow label="Total alerts" value={`${driftMeta.total}`} tint={palette.info} />
+              <HealthRow label="Critical" value={`${driftMeta.critical}`} tint={palette.accent} />
+              <HealthRow label="High" value={`${driftMeta.high}`} tint={palette.accent} />
+              {driftAlerts.slice(0, 3).map((item) => (
+                <Link
+                  key={item.decision_id}
+                  to={`/decisions/${item.decision_id}`}
+                  style={{
+                    textDecoration: "none",
+                    border: `1px solid ${palette.border}`,
+                    borderRadius: 10,
+                    padding: "8px 10px",
+                    display: "block",
+                    color: palette.text,
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>{item.title}</div>
+                  <div style={{ fontSize: 11, color: palette.muted }}>
+                    {item.severity} drift score {item.drift_score}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </article>
+
+          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            <h3 style={{ ...railTitle, color: palette.text }}>Team Calibration</h3>
+            <div style={healthList}>
+              {calibrationRows.slice(0, 4).map((row) => (
+                <div key={`${row.reviewer_id}-${row.reviewer_name}`} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>{row.reviewer_name}</div>
+                  <div style={{ fontSize: 11, color: palette.muted }}>
+                    Gap {row.calibration_gap}% • {row.reviews} reviews • {row.quality_band}
+                  </div>
+                </div>
+              ))}
+              {calibrationRows.length === 0 && (
+                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>No calibration data yet.</p>
+              )}
             </div>
           </article>
 

@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.paginator import Paginator
+from django.db.models import Q
 from apps.knowledge.context_engine import ContextEngine
 from apps.knowledge.unified_models import ContentLink, UnifiedActivity
 
@@ -32,15 +33,27 @@ def get_context_panel(request, content_type_name, object_id):
         # Get context
         context = ContextEngine.get_context(content_object, request.user.organization)
         
+        similar_items = context.similar_past_items or []
+        reviewed = [item for item in similar_items if item.get('was_successful') is not None]
+        successful = [item for item in reviewed if item.get('was_successful') is True]
+        failed = [item for item in reviewed if item.get('was_successful') is False]
+        failure_rate = (len(failed) / len(reviewed) * 100) if reviewed else None
+
         result = {
             'related_conversations': context.related_conversations,
             'related_decisions': context.related_decisions,
             'related_tasks': context.related_tasks,
             'related_documents': context.related_documents,
             'expert_users': context.expert_users,
-            'similar_past_items': context.similar_past_items,
+            'similar_past_items': similar_items,
             'success_rate': context.success_rate,
             'risk_indicators': context.risk_indicators,
+            'outcome_patterns': {
+                'reviewed_count': len(reviewed),
+                'successful_count': len(successful),
+                'failed_count': len(failed),
+                'failure_rate': round(failure_rate, 1) if failure_rate is not None else None,
+            },
         }
         
         # Cache for 1 hour
@@ -149,10 +162,12 @@ def search_everything(request):
     query = request.GET.get('q', '')
     if not query:
         return Response({'results': []})
+    q_lower = query.lower()
     
     from apps.conversations.models import Conversation
     from apps.decisions.models import Decision
-    from apps.business.models import Task, Meeting, Document
+    from apps.business.models import Task, Meeting
+    from apps.business.document_models import Document
     
     results = []
     
@@ -172,16 +187,23 @@ def search_everything(request):
         })
     
     # Search decisions
-    decisions = Decision.objects.filter(
-        organization=request.user.organization,
-        title__icontains=query
-    )[:5]
+    decision_qs = Decision.objects.filter(organization=request.user.organization)
+    failed_outcome_mode = any(token in q_lower for token in ['failed', 'failure', 'unsuccessful']) and 'decision' in q_lower
+    if failed_outcome_mode:
+        decision_qs = decision_qs.filter(was_successful=False)
+        keyword_tokens = [t for t in q_lower.replace('decisions', 'decision').split() if t not in {'find', 'search', 'failed', 'failure', 'unsuccessful', 'decision', 'decisions', 'outcomes', 'outcome', 'in', 'about', 'with', 'on'}]
+        for token in keyword_tokens[:3]:
+            decision_qs = decision_qs.filter(Q(title__icontains=token) | Q(description__icontains=token))
+    else:
+        decision_qs = decision_qs.filter(title__icontains=query)
+
+    decisions = decision_qs[:5]
     for decision in decisions:
         results.append({
             'type': 'decision',
             'id': decision.id,
             'title': decision.title,
-            'excerpt': decision.description[:200],
+            'excerpt': (decision.description[:170] + '...') if len(decision.description) > 170 else decision.description,
             'url': f'/decisions/{decision.id}',
             'created_at': decision.created_at,
         })
@@ -198,8 +220,44 @@ def search_everything(request):
                 'id': task.id,
                 'title': task.title,
                 'excerpt': task.description[:200] if hasattr(task, 'description') else '',
-                'url': f'/tasks/{task.id}',
+                'url': '/business/tasks',
                 'created_at': task.created_at,
+            })
+    except:
+        pass
+
+    # Search meetings
+    try:
+        meetings = Meeting.objects.filter(
+            organization=request.user.organization,
+            title__icontains=query
+        )[:5]
+        for meeting in meetings:
+            results.append({
+                'type': 'meeting',
+                'id': meeting.id,
+                'title': meeting.title,
+                'excerpt': meeting.description[:200] if hasattr(meeting, 'description') else '',
+                'url': f'/business/meetings/{meeting.id}',
+                'created_at': meeting.created_at,
+            })
+    except:
+        pass
+
+    # Search documents
+    try:
+        documents = Document.objects.filter(
+            organization=request.user.organization,
+            title__icontains=query
+        )[:5]
+        for document in documents:
+            results.append({
+                'type': 'document',
+                'id': document.id,
+                'title': document.title,
+                'excerpt': document.description[:200] if hasattr(document, 'description') else '',
+                'url': f'/business/documents/{document.id}',
+                'created_at': document.created_at,
             })
     except:
         pass

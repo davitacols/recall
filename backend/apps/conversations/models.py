@@ -327,6 +327,6 @@ def auto_link_conversation(sender, instance, created, **kwargs):
         try:
             from apps.knowledge.context_engine import ContextEngine
             engine = ContextEngine()
-            engine.auto_link_content('conversations.conversation', instance.id, instance.organization)
+            engine.auto_link_content(instance, instance.organization)
         except Exception:
             pass

@@ -160,7 +160,9 @@ class ContextEngine:
             decisions = Decision.objects.filter(
                 organization=organization,
                 status__in=['implemented', 'rejected']
-            ).exclude(id=content_object.id if isinstance(content_object, Decision) else None)[:5]
+            ).exclude(
+                id=content_object.id if isinstance(content_object, Decision) else None
+            ).order_by('-review_completed_at', '-implemented_at', '-created_at')[:5]
             
             for decision in decisions:
                 similar.append({
@@ -295,6 +297,11 @@ class ContextEngine:
             failed_count = sum(1 for item in similar_items if not item.get('was_successful'))
             if failed_count >= 2:
                 risks.append(f"Similar items failed {failed_count} times in the past")
+            reviewed_count = sum(1 for item in similar_items if item.get('was_successful') is not None)
+            if reviewed_count >= 3:
+                failure_rate = (failed_count / reviewed_count) * 100
+                if failure_rate >= 50:
+                    risks.append(f"High historical failure rate: {int(failure_rate)}% for similar reviewed items")
         
         # Check if decision without conversation
         if hasattr(content_object, 'conversation') and not content_object.conversation:

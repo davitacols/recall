@@ -46,6 +46,10 @@ export default function NLPCommandBar() {
       const match = lower.match(/linked to decision #(\d+)/);
       return { type: 'action', action: 'create_task', decisionId: match ? match[1] : null };
     }
+    if (lower.startsWith('create follow-up task')) {
+      const match = lower.match(/(?:outcome review|decision)\s*#(\d+)/);
+      return { type: 'action', action: 'create_followup_task', decisionId: match ? match[1] : null };
+    }
     if (lower.startsWith('create goal')) return { type: 'action', action: 'create_goal' };
     if (lower.startsWith('create meeting')) return { type: 'action', action: 'create_meeting' };
     
@@ -72,6 +76,40 @@ export default function NLPCommandBar() {
     if (parsed.type === 'action') {
       if (parsed.action === 'create_task') {
         navigate('/business/tasks');
+      } else if (parsed.action === 'create_followup_task') {
+        if (!parsed.decisionId) {
+          alert('Please specify a decision id, e.g. "Create follow-up task from outcome review #123"');
+          return;
+        }
+        try {
+          const token = localStorage.getItem('token');
+          const decisionRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/decisions/${parsed.decisionId}/`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!decisionRes.ok) throw new Error('Decision not found');
+          const decision = await decisionRes.json();
+          const taskTitle = `Follow-up: ${decision.title}`;
+          const taskDescription = `Follow-up task created from outcome review for decision #${parsed.decisionId}.\n\nOutcome notes:\n${decision.outcome_notes || 'N/A'}\n\nLessons learned:\n${decision.lessons_learned || 'N/A'}`;
+          await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/tasks/`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              title: taskTitle,
+              description: taskDescription,
+              priority: 'medium',
+              status: 'todo',
+              decision_id: Number(parsed.decisionId),
+            }),
+          });
+          navigate('/business/tasks');
+        } catch (error) {
+          console.error('Failed to create follow-up task:', error);
+          alert('Failed to create follow-up task');
+          return;
+        }
       } else if (parsed.action === 'create_goal') {
         navigate('/business/goals');
       } else if (parsed.action === 'create_meeting') {
@@ -115,7 +153,7 @@ export default function NLPCommandBar() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type a command or search... (e.g., 'Find decisions about auth' or 'Create task linked to decision #123')"
+              placeholder="Type a command or search... (e.g., 'Find decisions with failed outcomes in auth' or 'Create follow-up task from outcome review #123')"
               className={`flex-1 bg-transparent ${textPrimary} outline-none text-sm`}
               autoFocus
             />

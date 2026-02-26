@@ -87,6 +87,7 @@ import Documents from './pages/Documents';
 import DocumentDetail from './pages/DocumentDetail';
 import KnowledgeGraph from './pages/KnowledgeGraph';
 import KnowledgeAnalytics from './pages/KnowledgeAnalytics';
+import Documentation from './pages/Documentation';
 import Milestones from './pages/Milestones';
 import Reminders from './pages/Reminders';
 import AdvancedSearch from './pages/AdvancedSearch';
@@ -235,6 +236,13 @@ function AppContent() {
           <ProtectedRoute>
             <UnifiedLayout>
               <KnowledgeAnalytics />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/docs" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <Documentation />
             </UnifiedLayout>
           </ProtectedRoute>
         } />

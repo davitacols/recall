@@ -1,7 +1,14 @@
 from django.urls import path
 from . import views, unified_views
 from .ai_suggestions import ai_suggestions
-from .ai_intelligence import ai_recommendations, ai_summarize as ai_summarize_v2, ai_extract_action_items
+from .ai_intelligence import (
+    ai_recommendations,
+    ai_summarize as ai_summarize_v2,
+    ai_extract_action_items,
+    mission_control_briefing,
+    chief_of_staff_plan,
+    chief_of_staff_execute,
+)
 from .advanced_ai import check_similar_failures, get_success_rates, detect_bottlenecks, detect_knowledge_gaps, detect_patterns
 from .enhanced_features import daily_digest, team_expertise, trend_analysis, auto_tag_content, metrics_tracking, sentiment_analysis
 from .export_views import export_knowledge
@@ -13,6 +20,9 @@ urlpatterns = [
     path('ai/recommendations/', ai_recommendations, name='ai_recommendations'),
     path('ai/summarize-v2/', ai_summarize_v2, name='ai_summarize_v2'),
     path('ai/action-items/', ai_extract_action_items, name='ai_action_items'),
+    path('ai/mission-control/', mission_control_briefing, name='mission_control_briefing'),
+    path('ai/chief-of-staff/plan/', chief_of_staff_plan, name='chief_of_staff_plan'),
+    path('ai/chief-of-staff/execute/', chief_of_staff_execute, name='chief_of_staff_execute'),
     path('ai/check-failures/', check_similar_failures, name='check_similar_failures'),
     path('ai/success-rates/', get_success_rates, name='get_success_rates'),
     path('ai/bottlenecks/', detect_bottlenecks, name='detect_bottlenecks'),

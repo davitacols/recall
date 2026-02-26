@@ -12,6 +12,10 @@ function SprintDetail() {
   const [sprint, setSprint] = useState(null);
   const [loading, setLoading] = useState(true);
   const [draggedIssue, setDraggedIssue] = useState(null);
+  const [autopilot, setAutopilot] = useState(null);
+  const [autopilotLoading, setAutopilotLoading] = useState(false);
+  const [autopilotApplying, setAutopilotApplying] = useState(false);
+  const [autopilotMessage, setAutopilotMessage] = useState("");
 
   const palette = useMemo(
     () =>
@@ -41,13 +45,31 @@ function SprintDetail() {
 
   const fetchData = async () => {
     try {
-      const response = await api.get(`/api/agile/sprints/${id}/detail/`);
-      setSprint(response.data.data || response.data);
+      const [sprintRes, autopilotRes] = await Promise.all([
+        api.get(`/api/agile/sprints/${id}/detail/`),
+        api.get(`/api/agile/sprints/${id}/autopilot/`),
+      ]);
+      setSprint(sprintRes.data.data || sprintRes.data);
+      setAutopilot(autopilotRes.data || null);
     } catch (error) {
       console.error("Failed to fetch sprint:", error);
       setSprint(null);
+      setAutopilot(null);
     } finally {
       setLoading(false);
+      setAutopilotLoading(false);
+    }
+  };
+
+  const refreshAutopilot = async () => {
+    setAutopilotLoading(true);
+    try {
+      const response = await api.get(`/api/agile/sprints/${id}/autopilot/`);
+      setAutopilot(response.data || null);
+    } catch (error) {
+      console.error("Failed to refresh autopilot:", error);
+    } finally {
+      setAutopilotLoading(false);
     }
   };
 
@@ -60,6 +82,29 @@ function SprintDetail() {
     } catch (error) {
       console.error("Failed to update issue:", error);
       setDraggedIssue(null);
+    }
+  };
+
+  const applyAutopilotPlan = async () => {
+    if (!autopilot) return;
+    setAutopilotApplying(true);
+    setAutopilotMessage("");
+    try {
+      const dropIds = (autopilot.scope_swap?.suggested_drops || []).map((item) => item.issue_id);
+      const addIds = (autopilot.scope_swap?.suggested_adds || []).map((item) => item.issue_id);
+      const response = await api.post(`/api/agile/sprints/${id}/autopilot/apply/`, {
+        drop_issue_ids: dropIds,
+        add_issue_ids: addIds,
+        create_decision_followups: true,
+      });
+      setAutopilotMessage(
+        `Applied plan: dropped ${response.data?.dropped_count || 0}, added ${response.data?.added_count || 0}, follow-ups ${response.data?.followups_created || 0}.`
+      );
+      await fetchData();
+    } catch (error) {
+      setAutopilotMessage(error?.response?.data?.error || "Failed to apply autopilot plan.");
+    } finally {
+      setAutopilotApplying(false);
     }
   };
 
@@ -111,6 +156,79 @@ function SprintDetail() {
           <Metric label="In Progress" value={sprint.in_progress || 0} />
           <Metric label="Blocked" value={sprint.blocked || 0} />
           <Metric label="Decisions" value={sprint.decisions || 0} />
+        </section>
+
+        <section style={{ ...progressCard, background: palette.card, border: `1px solid ${palette.border}`, display: "grid", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 11, color: palette.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>
+                Decision-Coupled Sprint Autopilot
+              </p>
+              <p style={{ margin: "4px 0 0", fontSize: 16, color: palette.text, fontWeight: 800 }}>
+                Goal Probability: {autopilot ? `${autopilot.goal_probability}%` : "--"}
+              </p>
+              {autopilot && (
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>
+                  Confidence: {(autopilot.confidence_band || "low").toUpperCase()} | Unresolved decisions: {autopilot.signals?.unresolved_decisions || 0}
+                </p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={refreshAutopilot} disabled={autopilotLoading} style={secondaryButton}>
+                {autopilotLoading ? "Refreshing..." : "Refresh Autopilot"}
+              </button>
+              <button onClick={applyAutopilotPlan} disabled={autopilotApplying || !autopilot} style={secondaryButton}>
+                {autopilotApplying ? "Applying..." : "Apply Autopilot Plan"}
+              </button>
+            </div>
+          </div>
+          {autopilotMessage && (
+            <p style={{ margin: 0, fontSize: 12, color: autopilotMessage.startsWith("Failed") ? "#ef4444" : "#10b981" }}>
+              {autopilotMessage}
+            </p>
+          )}
+          {autopilot?.risks?.length > 0 && (
+            <ul style={{ margin: 0, paddingLeft: 18, color: palette.muted, fontSize: 12 }}>
+              {autopilot.risks.slice(0, 3).map((risk, idx) => (
+                <li key={idx}>{risk}</li>
+              ))}
+            </ul>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 8 }}>
+            <div style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: 9 }}>
+              <p style={{ margin: "0 0 6px", fontSize: 12, color: palette.text, fontWeight: 700 }}>Scope Swap: Suggested Drops</p>
+              {(autopilot?.scope_swap?.suggested_drops || []).slice(0, 3).map((item) => (
+                <p key={item.issue_id} style={{ margin: "0 0 4px", fontSize: 11, color: palette.muted }}>
+                  {item.key}: {item.title}
+                </p>
+              ))}
+              {(autopilot?.scope_swap?.suggested_drops || []).length === 0 && (
+                <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>No drops suggested.</p>
+              )}
+            </div>
+            <div style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: 9 }}>
+              <p style={{ margin: "0 0 6px", fontSize: 12, color: palette.text, fontWeight: 700 }}>Scope Swap: Suggested Adds</p>
+              {(autopilot?.scope_swap?.suggested_adds || []).slice(0, 3).map((item) => (
+                <p key={item.issue_id} style={{ margin: "0 0 4px", fontSize: 11, color: palette.muted }}>
+                  {item.key}: {item.title}
+                </p>
+              ))}
+              {(autopilot?.scope_swap?.suggested_adds || []).length === 0 && (
+                <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>No adds suggested.</p>
+              )}
+            </div>
+            <div style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: 9 }}>
+              <p style={{ margin: "0 0 6px", fontSize: 12, color: palette.text, fontWeight: 700 }}>Decision Dependency Heatmap</p>
+              {(autopilot?.decision_dependency_heatmap || []).slice(0, 4).map((item) => (
+                <p key={item.issue_id} style={{ margin: "0 0 4px", fontSize: 11, color: palette.muted }}>
+                  {item.key}: exposure {item.decision_exposure_score}
+                </p>
+              ))}
+              {(autopilot?.decision_dependency_heatmap || []).length === 0 && (
+                <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>No dependency signals yet.</p>
+              )}
+            </div>
+          </div>
         </section>
 
         <section style={{ ...progressCard, background: palette.card, border: `1px solid ${palette.border}` }}>

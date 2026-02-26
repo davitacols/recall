@@ -5,10 +5,39 @@ from django.utils import timezone
 from django.db.models import Count, Q
 from django.db import IntegrityError
 from datetime import timedelta
+from django.contrib.contenttypes.models import ContentType
 import re
 from apps.agile.models import Project, Sprint, Issue, Board, Column, IssueComment, IssueLabel, Blocker, Retrospective, SprintUpdate, DecisionImpact
+from apps.decisions.models import Decision
 from apps.organizations.models import User
 from apps.conversations.models import Conversation
+from apps.knowledge.unified_models import UnifiedActivity
+
+
+def _track_view_activity(request, obj, title, description=""):
+    try:
+        content_type = ContentType.objects.get_for_model(obj)
+        cutoff = timezone.now() - timedelta(minutes=30)
+        exists = UnifiedActivity.objects.filter(
+            organization=request.user.organization,
+            user=request.user,
+            activity_type='viewed',
+            content_type=content_type,
+            object_id=obj.id,
+            created_at__gte=cutoff,
+        ).exists()
+        if not exists:
+            UnifiedActivity.objects.create(
+                organization=request.user.organization,
+                user=request.user,
+                activity_type='viewed',
+                content_type=content_type,
+                object_id=obj.id,
+                title=title,
+                description=description[:200] if description else '',
+            )
+    except Exception:
+        pass
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -104,6 +133,12 @@ def project_detail(request, project_id):
     
     try:
         project = Project.objects.get(id=project_id, organization=request.user.organization)
+        _track_view_activity(
+            request,
+            project,
+            project.name,
+            project.description,
+        )
         sprints = project.sprints.all().order_by('-start_date')
         
         return Response({
@@ -183,6 +218,12 @@ def sprint_detail(request, sprint_id):
         return Response({'error': 'Sprint not found'}, status=404)
     
     if request.method == 'GET':
+        _track_view_activity(
+            request,
+            sprint,
+            sprint.name,
+            sprint.goal or '',
+        )
         issues = sprint.issues.all()
         return Response({
             'id': sprint.id,
@@ -370,6 +411,12 @@ def issue_detail(request, issue_id):
         return Response({'error': 'Issue not found'}, status=404)
     
     if request.method == 'GET':
+        _track_view_activity(
+            request,
+            issue,
+            issue.title,
+            issue.description,
+        )
         comments = issue.comments.all()
         return Response({
             'id': issue.id,
@@ -871,6 +918,261 @@ def sprint_decision_analysis(request, sprint_id):
         'blocked_issues': blocked_issues,
         'enabled_issues': enabled_issues,
         'decisions_impacting_sprint': impacts.values('decision').distinct().count()
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def sprint_autopilot(request, sprint_id):
+    """Decision-coupled sprint autopilot: score + scope swap suggestions."""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+
+    try:
+        sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
+    except Sprint.DoesNotExist:
+        return Response({'error': 'Sprint not found'}, status=404)
+
+    today = timezone.now().date()
+    total_days = max(1, (sprint.end_date - sprint.start_date).days + 1)
+    elapsed_days = max(0, min(total_days, (today - sprint.start_date).days + 1))
+    progress_time = elapsed_days / total_days
+
+    issues = list(sprint.issues.all().select_related('assignee', 'reporter'))
+    total_issues = len(issues)
+    done_issues = [i for i in issues if i.status == 'done']
+    in_progress_issues = [i for i in issues if i.status in ['in_progress', 'in_review', 'testing']]
+    todo_issues = [i for i in issues if i.status in ['todo', 'backlog']]
+    completion_ratio = (len(done_issues) / total_issues) if total_issues else 0.0
+
+    blockers_count = Blocker.objects.filter(
+        organization=request.user.organization,
+        sprint=sprint,
+        status='active'
+    ).count()
+
+    sprint_decisions = Decision.objects.filter(
+        organization=request.user.organization,
+        sprint=sprint
+    )
+    unresolved_decisions = sprint_decisions.filter(
+        Q(status__in=['proposed', 'under_review', 'approved']) |
+        Q(status='implemented', review_completed_at__isnull=True)
+    )
+    unresolved_count = unresolved_decisions.count()
+
+    decision_impacts = list(
+        DecisionImpact.objects.filter(organization=request.user.organization, sprint=sprint)
+        .select_related('issue', 'decision')
+    )
+    issue_exposure = {}
+    for impact in decision_impacts:
+        issue_id = impact.issue_id
+        if issue_id not in issue_exposure:
+            issue_exposure[issue_id] = 0.0
+        weight = 1.8 if impact.impact_type in ['blocks', 'delays'] else 1.1 if impact.impact_type == 'changes' else 0.7
+        issue_exposure[issue_id] += weight
+        if impact.decision and impact.decision.review_completed_at is None:
+            issue_exposure[issue_id] += 0.7
+
+    # Goal probability model (0-100): progress vs time + operational risk penalties.
+    base_probability = 55.0
+    base_probability += (completion_ratio - progress_time) * 60.0
+    base_probability -= min(20.0, len(in_progress_issues) * 2.5)
+    base_probability -= min(22.0, unresolved_count * 4.0)
+    base_probability -= min(15.0, blockers_count * 5.0)
+    goal_probability = max(3.0, min(98.0, base_probability))
+
+    risks = []
+    if completion_ratio + 0.15 < progress_time:
+        risks.append('Delivery pace is behind elapsed sprint time')
+    if unresolved_count > 0:
+        risks.append(f'{unresolved_count} unresolved decisions may affect execution')
+    if blockers_count > 0:
+        risks.append(f'{blockers_count} active blockers are reducing sprint predictability')
+    if len(in_progress_issues) > max(3, total_issues // 2):
+        risks.append('High in-progress load indicates potential WIP bottleneck')
+
+    heatmap = []
+    for issue in issues:
+        exposure = issue_exposure.get(issue.id, 0.0)
+        score = min(100, int(exposure * 22))
+        if issue.status in ['in_progress', 'in_review', 'testing']:
+            score = min(100, score + 10)
+        heatmap.append({
+            'issue_id': issue.id,
+            'key': issue.key,
+            'title': issue.title,
+            'status': issue.status,
+            'decision_exposure_score': score,
+        })
+    heatmap.sort(key=lambda row: row['decision_exposure_score'], reverse=True)
+
+    drop_candidates = []
+    for issue in todo_issues + in_progress_issues:
+        exposure = issue_exposure.get(issue.id, 0.0)
+        priority_weight = {'highest': 0, 'high': 1, 'medium': 2, 'low': 3, 'lowest': 4}.get(issue.priority or 'medium', 2)
+        candidate_score = (exposure * 1.9) + (priority_weight * 0.8)
+        if issue.status in ['in_progress', 'in_review', 'testing']:
+            candidate_score += 0.8
+        drop_candidates.append((issue, candidate_score))
+    drop_candidates.sort(key=lambda row: row[1], reverse=True)
+
+    backlog_candidates = list(
+        Issue.objects.filter(
+            organization=request.user.organization,
+            project=sprint.project,
+            sprint__isnull=True
+        ).order_by('-priority', '-created_at')[:80]
+    )
+    add_candidates = []
+    for issue in backlog_candidates:
+        exposure = issue_exposure.get(issue.id, 0.0)
+        priority_bonus = {'highest': 3.0, 'high': 2.2, 'medium': 1.2, 'low': 0.7, 'lowest': 0.3}.get(issue.priority or 'medium', 1.2)
+        candidate_score = priority_bonus - (exposure * 1.5)
+        add_candidates.append((issue, candidate_score))
+    add_candidates.sort(key=lambda row: row[1], reverse=True)
+
+    suggested_drops = []
+    for issue, score in drop_candidates[:3]:
+        suggested_drops.append({
+            'issue_id': issue.id,
+            'key': issue.key,
+            'title': issue.title,
+            'status': issue.status,
+            'priority': issue.priority,
+            'score': round(score, 2),
+            'reason': 'High decision risk exposure with lower delivery value this sprint',
+        })
+
+    suggested_adds = []
+    for issue, score in add_candidates[:3]:
+        suggested_adds.append({
+            'issue_id': issue.id,
+            'key': issue.key,
+            'title': issue.title,
+            'status': issue.status,
+            'priority': issue.priority,
+            'score': round(score, 2),
+            'reason': 'Lower decision dependency with higher projected sprint-fit value',
+        })
+
+    return Response({
+        'sprint_id': sprint.id,
+        'goal_probability': round(goal_probability, 1),
+        'confidence_band': 'high' if goal_probability >= 75 else 'medium' if goal_probability >= 50 else 'low',
+        'signals': {
+            'completion_ratio': round(completion_ratio * 100, 1),
+            'time_elapsed_ratio': round(progress_time * 100, 1),
+            'unresolved_decisions': unresolved_count,
+            'active_blockers': blockers_count,
+            'in_progress_issues': len(in_progress_issues),
+            'total_issues': total_issues,
+        },
+        'risks': risks[:6],
+        'scope_swap': {
+            'suggested_drops': suggested_drops,
+            'suggested_adds': suggested_adds,
+        },
+        'decision_dependency_heatmap': heatmap[:10],
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def apply_sprint_autopilot_plan(request, sprint_id):
+    """Apply suggested scope swap and create decision follow-up tasks."""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+
+    try:
+        sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
+    except Sprint.DoesNotExist:
+        return Response({'error': 'Sprint not found'}, status=404)
+
+    drop_issue_ids = request.data.get('drop_issue_ids') or []
+    add_issue_ids = request.data.get('add_issue_ids') or []
+    create_decision_followups = bool(request.data.get('create_decision_followups', True))
+
+    if not isinstance(drop_issue_ids, list) or not isinstance(add_issue_ids, list):
+        return Response({'error': 'drop_issue_ids and add_issue_ids must be arrays'}, status=400)
+
+    drop_issue_ids = [int(i) for i in drop_issue_ids[:10] if str(i).isdigit()]
+    add_issue_ids = [int(i) for i in add_issue_ids[:10] if str(i).isdigit()]
+
+    dropped = []
+    for issue in Issue.objects.filter(organization=request.user.organization, sprint=sprint, id__in=drop_issue_ids):
+        issue.sprint = None
+        issue.in_backlog = True
+        if issue.status != 'done':
+            issue.status = 'backlog'
+        issue.save()
+        dropped.append({'issue_id': issue.id, 'key': issue.key, 'title': issue.title})
+
+    added = []
+    for issue in Issue.objects.filter(
+        organization=request.user.organization,
+        project=sprint.project,
+        sprint__isnull=True,
+        id__in=add_issue_ids
+    ):
+        issue.sprint = sprint
+        issue.in_backlog = False
+        if issue.status == 'backlog':
+            issue.status = 'todo'
+        issue.save()
+        added.append({'issue_id': issue.id, 'key': issue.key, 'title': issue.title})
+
+    created_followups = []
+    if create_decision_followups:
+        from apps.business.models import Task
+        from apps.notifications.utils import create_notification
+
+        unresolved = Decision.objects.filter(
+            organization=request.user.organization,
+            sprint=sprint
+        ).filter(
+            Q(status__in=['proposed', 'under_review', 'approved']) |
+            Q(status='implemented', review_completed_at__isnull=True)
+        )[:5]
+
+        for decision in unresolved:
+            title = f"Sprint Autopilot: resolve decision #{decision.id}"
+            if Task.objects.filter(organization=request.user.organization, decision=decision, title=title).exists():
+                continue
+            task = Task.objects.create(
+                organization=request.user.organization,
+                title=title,
+                description=(
+                    f"Auto-created while applying sprint autopilot plan for sprint '{sprint.name}'.\n\n"
+                    f"Decision: {decision.title}\n"
+                    f"Status: {decision.status}\n"
+                    f"Action: provide resolution or updated outcome review."
+                ),
+                status='todo',
+                priority='high' if decision.impact_level in ['high', 'critical'] else 'medium',
+                assigned_to=decision.decision_maker,
+                decision=decision,
+                due_date=min(sprint.end_date, timezone.now().date() + timedelta(days=5)),
+            )
+            created_followups.append({'task_id': task.id, 'title': task.title, 'decision_id': decision.id})
+            if decision.decision_maker and decision.decision_maker != request.user:
+                create_notification(
+                    user=decision.decision_maker,
+                    notification_type='task',
+                    title='Sprint autopilot follow-up assigned',
+                    message=f'Resolve decision "{decision.title}" for sprint "{sprint.name}"',
+                    link='/business/tasks'
+                )
+
+    return Response({
+        'message': 'Autopilot plan applied',
+        'dropped_count': len(dropped),
+        'added_count': len(added),
+        'followups_created': len(created_followups),
+        'dropped': dropped,
+        'added': added,
+        'decision_followups': created_followups,
     })
 
 @api_view(['GET'])

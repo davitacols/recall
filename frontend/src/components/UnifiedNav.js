@@ -195,6 +195,7 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
       name: "Resources",
       icon: DocumentTextIcon,
       items: [
+        { name: "Docs", href: "/docs", icon: DocumentTextIcon },
         { name: "Documents", href: "/business/documents", icon: DocumentTextIcon },
         { name: "Templates", href: "/business/templates", icon: DocumentTextIcon },
       ],

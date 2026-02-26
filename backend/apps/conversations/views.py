@@ -5,14 +5,43 @@ from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q, F
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from datetime import timedelta
+from django.contrib.contenttypes.models import ContentType
 from .models import Conversation, ConversationReply, ActionItem, Tag
 from .tasks import process_conversation_ai
 from .mention_parser import parse_mentions_and_tags
 from apps.organizations.activity import log_activity
 from apps.organizations.models import User
+from apps.knowledge.unified_models import UnifiedActivity
 
 class ConversationPagination(PageNumberPagination):
     page_size = 20
+
+
+def _track_view_activity(request, obj, title, description=""):
+    try:
+        content_type = ContentType.objects.get_for_model(obj)
+        cutoff = timezone.now() - timedelta(minutes=30)
+        exists = UnifiedActivity.objects.filter(
+            organization=request.user.organization,
+            user=request.user,
+            activity_type='viewed',
+            content_type=content_type,
+            object_id=obj.id,
+            created_at__gte=cutoff,
+        ).exists()
+        if not exists:
+            UnifiedActivity.objects.create(
+                organization=request.user.organization,
+                user=request.user,
+                activity_type='viewed',
+                content_type=content_type,
+                object_id=obj.id,
+                title=title,
+                description=description[:200] if description else '',
+            )
+    except Exception:
+        pass
 
 @csrf_exempt
 @api_view(['GET', 'POST'])
@@ -229,6 +258,12 @@ def conversation_detail(request, conversation_id):
             # Update view count
             Conversation.objects.filter(id=conversation_id).update(
                 view_count=F('view_count') + 1
+            )
+            _track_view_activity(
+                request,
+                conversation,
+                conversation.title,
+                conversation.content,
             )
             
             return Response({

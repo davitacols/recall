@@ -1,33 +1,71 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import RichTextEditor from '../components/RichTextEditor';
-import api from '../services/api';
-import { useToast } from '../components/Toast';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import RichTextEditor from "../components/RichTextEditor";
+import api from "../services/api";
+import { useToast } from "../components/Toast";
+
+const TYPE_OPTIONS = [
+  { value: "question", label: "Question", helper: "Ask for input or unblock a decision." },
+  { value: "discussion", label: "Discussion", helper: "Start a broad team conversation." },
+  { value: "decision", label: "Decision", helper: "Document a decision proposal clearly." },
+  { value: "blocker", label: "Blocker", helper: "Escalate something that is stuck." },
+];
 
 function CreateConversation() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
   const { addToast } = useToast();
   const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    post_type: 'discussion',
-    tags: ''
+    title: "",
+    content: "",
+    post_type: "discussion",
+    tags: "",
   });
   const [loading, setLoading] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1024);
 
-  const bgColor = '#1c1917';
-  const textColor = '#ffffff';
-  const borderColor = '#b45309';
-  const hoverBg = '#292415';
-  const secondaryText = '#d1d5db';
+  const palette = useMemo(
+    () =>
+      darkMode
+        ? {
+            page: "#100d0f",
+            card: "#1a1417",
+            cardAlt: "#241c20",
+            border: "rgba(255,205,145,0.22)",
+            text: "#f8efe4",
+            muted: "#cbb29a",
+            line: "rgba(255,230,200,0.12)",
+            accent: "#e67c34",
+            accentSoft: "rgba(230,124,52,0.16)",
+            cool: "#3ab8a0",
+          }
+        : {
+            page: "#fff8ef",
+            card: "#fffdf9",
+            cardAlt: "#fff4e8",
+            border: "#efd8bf",
+            text: "#2b1e15",
+            muted: "#7e644f",
+            line: "#f2e4d2",
+            accent: "#c95d1d",
+            accentSoft: "rgba(201,93,29,0.12)",
+            cool: "#0f8a75",
+          },
+    [darkMode]
+  );
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 1024);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     if (!formData.title.trim() || !formData.content.trim()) {
-      addToast('Please fill in all required fields', 'error');
+      addToast("Please fill in all required fields", "error");
       return;
     }
 
@@ -35,252 +73,271 @@ function CreateConversation() {
     try {
       const payload = {
         ...formData,
-        tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean)
+        tags: formData.tags.split(",").map((t) => t.trim()).filter(Boolean),
       };
-      const response = await api.post('/api/conversations/', payload);
-      addToast('Conversation created successfully', 'success');
+      const response = await api.post("/api/conversations/", payload);
+      addToast("Conversation created successfully", "success");
       navigate(`/conversations/${response.data.id}`);
     } catch (error) {
-      console.error('Failed to create conversation:', error);
-      console.error('Error response:', error.response);
-      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to create conversation';
-      addToast(errorMsg, 'error');
+      const errorMsg =
+        error.response?.data?.error ||
+        error.response?.data?.detail ||
+        "Failed to create conversation";
+      addToast(errorMsg, "error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '64px' }}>
+    <div style={{ ...page, background: palette.page }}>
+      <section
+        style={{
+          ...hero,
+          border: `1px solid ${palette.border}`,
+          background: `linear-gradient(140deg, ${palette.accentSoft}, rgba(58,184,160,0.14))`,
+        }}
+      >
         <button
-          onClick={() => navigate('/conversations')}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', backgroundColor: 'transparent', border: 'none', color: secondaryText, cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: 'color 0.2s', padding: 0 }}
-          onMouseEnter={(e) => e.currentTarget.style.color = textColor}
-          onMouseLeave={(e) => e.currentTarget.style.color = secondaryText}
+          onClick={() => navigate("/conversations")}
+          style={{ ...backButton, color: palette.muted, border: `1px solid ${palette.line}` }}
         >
-          <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
+          <ArrowLeftIcon style={{ width: 15, height: 15 }} />
           Back to Conversations
         </button>
-        <h1 style={{ fontSize: '56px', fontWeight: 900, color: textColor, marginBottom: '12px', letterSpacing: '-0.02em' }}>Start a Conversation</h1>
-        <p style={{ fontSize: '20px', color: secondaryText, fontWeight: 300 }}>Share your thoughts, ask questions, or start a discussion</p>
-      </div>
+        <p style={{ ...eyebrow, color: palette.muted }}>NEW</p>
+        <h1 style={{ ...heroTitle, color: palette.text }}>Start a Conversation</h1>
+        <p style={{ ...heroSubtitle, color: palette.muted }}>
+          Share your thoughts, ask questions, or start a discussion.
+        </p>
+      </section>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit}>
-        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, padding: '32px' }}>
-          {/* Type Selection */}
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: secondaryText, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Type
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-              {[
-                { value: 'question', label: 'Question' },
-                { value: 'discussion', label: 'Discussion' },
-                { value: 'decision', label: 'Decision' },
-                { value: 'blocker', label: 'Blocker' }
-              ].map(type => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, post_type: type.value })}
-                  style={{
-                    padding: '16px',
-                    backgroundColor: formData.post_type === type.value ? '#d97706' : bgColor,
-                    border: `1px solid ${formData.post_type === type.value ? '#d97706' : borderColor}`,
-                    color: textColor,
-                    fontWeight: 700,
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (formData.post_type !== type.value) {
-                      e.currentTarget.style.borderColor = textColor;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (formData.post_type !== type.value) {
-                      e.currentTarget.style.borderColor = borderColor;
-                    }
-                  }}
-                >
-                  {type.label}
-                </button>
-              ))}
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          ...layout,
+          gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(260px,340px)",
+        }}
+      >
+        <section style={{ ...mainCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+          <div style={sectionHead}>
+            <h2 style={{ ...sectionTitle, color: palette.text }}>Conversation Setup</h2>
+            <p style={{ ...sectionSubtitle, color: palette.muted }}>Type, title, and context in one flow.</p>
+          </div>
+
+          <div style={field}>
+            <label style={{ ...label, color: palette.muted }}>Type</label>
+            <div style={typeGrid}>
+              {TYPE_OPTIONS.map((type) => {
+                const selected = formData.post_type === type.value;
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, post_type: type.value }))}
+                    style={{
+                      ...typeCard,
+                      border: selected ? `1px solid ${palette.accent}` : `1px solid ${palette.line}`,
+                      background: selected ? palette.accentSoft : palette.cardAlt,
+                      color: palette.text,
+                    }}
+                  >
+                    <span style={typeLabel}>{type.label}</span>
+                    <span style={{ ...typeHelper, color: palette.muted }}>{type.helper}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Title */}
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: secondaryText, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Title *
-            </label>
+          <div style={field}>
+            <label style={{ ...label, color: palette.muted }}>Title *</label>
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="What's on your mind?"
-              style={{
-                width: '100%',
-                padding: '16px',
-                backgroundColor: hoverBg,
-                border: `1px solid ${borderColor}`,
-                color: textColor,
-                fontSize: '16px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
-              onFocus={(e) => e.target.style.borderColor = textColor}
-              onBlur={(e) => e.target.style.borderColor = borderColor}
+              onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))}
+              placeholder="What should the team understand first?"
+              style={{ ...input, background: palette.cardAlt, border: `1px solid ${palette.line}`, color: palette.text }}
             />
           </div>
 
-          {/* Content */}
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: secondaryText, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Description *
-            </label>
+          <div style={field}>
+            <label style={{ ...label, color: palette.muted }}>Description *</label>
             <RichTextEditor
               value={formData.content}
-              onChange={(value) => setFormData({ ...formData, content: value })}
-              placeholder="Provide details, context, or ask your question..."
+              onChange={(value) => setFormData((prev) => ({ ...prev, content: value }))}
+              placeholder="Add context, constraints, and what input you need."
               darkMode={darkMode}
             />
           </div>
 
-          {/* Tags */}
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: secondaryText, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Tags
-            </label>
+          <div style={field}>
+            <label style={{ ...label, color: palette.muted }}>Tags</label>
             <input
               type="text"
               value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              placeholder="frontend, backend, urgent (comma-separated)"
-              style={{
-                width: '100%',
-                padding: '16px',
-                backgroundColor: hoverBg,
-                border: `1px solid ${borderColor}`,
-                color: textColor,
-                fontSize: '16px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
-              onFocus={(e) => e.target.style.borderColor = textColor}
-              onBlur={(e) => e.target.style.borderColor = borderColor}
+              onChange={(event) => setFormData((prev) => ({ ...prev, tags: event.target.value }))}
+              placeholder="frontend, auth, urgent"
+              style={{ ...input, background: palette.cardAlt, border: `1px solid ${palette.line}`, color: palette.text }}
             />
-            <p style={{ marginTop: '8px', fontSize: '12px', color: secondaryText, fontWeight: 300 }}>
-              Separate tags with commas
-            </p>
+            <p style={{ ...helper, color: palette.muted }}>Comma-separated tags improve findability.</p>
           </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <div style={actions}>
             <button
               type="button"
-              onClick={() => navigate('/conversations')}
+              onClick={() => navigate("/conversations")}
               disabled={loading}
-              style={{
-                padding: '16px 32px',
-                backgroundColor: 'transparent',
-                border: `1px solid ${borderColor}`,
-                color: textColor,
-                fontWeight: 700,
-                fontSize: '14px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                opacity: loading ? 0.5 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) e.currentTarget.style.borderColor = textColor;
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) e.currentTarget.style.borderColor = borderColor;
-              }}
+              style={{ ...secondaryBtn, border: `1px solid ${palette.line}`, color: palette.text }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              style={{
-                padding: '16px 32px',
-                backgroundColor: '#d97706',
-                border: 'none',
-                color: '#ffffff',
-                fontWeight: 700,
-                fontSize: '14px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                opacity: loading ? 0.5 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) e.currentTarget.style.backgroundColor = '#fbbf24';
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) e.currentTarget.style.backgroundColor = '#d97706';
-              }}
+              style={{ ...primaryBtn, background: palette.accent, opacity: loading ? 0.65 : 1 }}
             >
-              {loading ? 'Creating...' : 'Create Conversation'}
+              {loading ? "Creating..." : "Create Conversation"}
             </button>
           </div>
-        </div>
-      </form>
+        </section>
 
-      {/* Tips */}
-      <div style={{ marginTop: '32px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, padding: '24px', transition: 'all 0.2s' }} onMouseEnter={(e) => e.target.style.borderColor = textColor} onMouseLeave={(e) => e.target.style.borderColor = borderColor}>
-        <h3 style={{ fontSize: '12px', fontWeight: 600, color: secondaryText, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Tips for great conversations
-        </h3>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ color: '#d97706', fontWeight: 700 }}>•</span>
-            <span style={{ color: secondaryText, fontSize: '14px', fontWeight: 300 }}>
-              Use a clear, descriptive title that summarizes your topic
-            </span>
-          </li>
-          <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ color: '#d97706', fontWeight: 700 }}>•</span>
-            <span style={{ color: secondaryText, fontSize: '14px', fontWeight: 300 }}>
-              Provide context and background information in the description
-            </span>
-          </li>
-          <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ color: '#d97706', fontWeight: 700 }}>•</span>
-            <span style={{ color: secondaryText, fontSize: '14px', fontWeight: 300 }}>
-              Choose the right type to help others understand the purpose
-            </span>
-          </li>
-          <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ color: '#d97706', fontWeight: 700 }}>•</span>
-            <span style={{ color: secondaryText, fontSize: '14px', fontWeight: 300 }}>
-              Add relevant tags to make your conversation discoverable
-            </span>
-          </li>
-        </ul>
-      </div>
+        <aside style={{ ...sideCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+          <h3 style={{ ...sideTitle, color: palette.text }}>Posting Checklist</h3>
+          <div style={checkList}>
+            <CheckItem text="Title is concrete and specific" palette={palette} />
+            <CheckItem text="Description includes context and desired outcome" palette={palette} />
+            <CheckItem text="Type reflects intent (question, blocker, decision)" palette={palette} />
+            <CheckItem text="Tags added for future discovery" palette={palette} />
+          </div>
+        </aside>
+      </form>
     </div>
   );
 }
+
+function CheckItem({ text, palette }) {
+  return (
+    <div style={checkItem}>
+      <span style={{ ...dot, background: palette.cool }} />
+      <span style={{ fontSize: 13, color: palette.muted }}>{text}</span>
+    </div>
+  );
+}
+
+const page = {
+  maxWidth: 1240,
+  margin: "0 auto",
+  padding: "clamp(14px, 2.8vw, 26px)",
+  display: "grid",
+  gap: 12,
+};
+
+const hero = {
+  borderRadius: 18,
+  padding: "clamp(16px, 2.4vw, 24px)",
+  display: "grid",
+  gap: 8,
+};
+
+const backButton = {
+  width: "fit-content",
+  borderRadius: 999,
+  background: "transparent",
+  padding: "7px 11px",
+  fontSize: 12,
+  fontWeight: 700,
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  cursor: "pointer",
+};
+
+const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.14em", fontWeight: 700 };
+const heroTitle = { margin: 0, fontSize: "clamp(1.45rem, 3.4vw, 2.4rem)", lineHeight: 1.05, letterSpacing: "-0.02em" };
+const heroSubtitle = { margin: 0, fontSize: 14, lineHeight: 1.5 };
+
+const layout = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0,1fr) minmax(260px,340px)",
+  gap: 12,
+};
+
+const mainCard = {
+  borderRadius: 16,
+  padding: "clamp(14px, 2.3vw, 22px)",
+  display: "grid",
+  gap: 14,
+};
+
+const sideCard = {
+  borderRadius: 16,
+  padding: "16px 14px",
+  alignSelf: "start",
+};
+
+const sectionHead = { display: "grid", gap: 4 };
+const sectionTitle = { margin: 0, fontSize: 18 };
+const sectionSubtitle = { margin: 0, fontSize: 13 };
+const field = { display: "grid", gap: 7 };
+const label = { margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" };
+const helper = { margin: 0, fontSize: 12 };
+
+const typeGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
+  gap: 8,
+};
+
+const typeCard = {
+  borderRadius: 12,
+  padding: "11px 10px",
+  textAlign: "left",
+  cursor: "pointer",
+  display: "grid",
+  gap: 5,
+};
+
+const typeLabel = { fontSize: 13, fontWeight: 800, letterSpacing: "0.02em" };
+const typeHelper = { fontSize: 11, lineHeight: 1.35 };
+
+const input = {
+  width: "100%",
+  borderRadius: 10,
+  padding: "12px 13px",
+  fontSize: 14,
+  outline: "none",
+};
+
+const actions = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const secondaryBtn = {
+  borderRadius: 10,
+  background: "transparent",
+  padding: "10px 13px",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const primaryBtn = {
+  border: "none",
+  borderRadius: 10,
+  color: "#fff",
+  padding: "10px 13px",
+  fontSize: 13,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const sideTitle = { margin: "0 0 10px", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.08em" };
+const checkList = { display: "grid", gap: 8 };
+const checkItem = { display: "grid", gridTemplateColumns: "10px 1fr", gap: 8, alignItems: "start" };
+const dot = { width: 7, height: 7, borderRadius: 999, marginTop: 6 };
 
 export default CreateConversation;

@@ -3,8 +3,38 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.contenttypes.models import ContentType
 from .models import Goal
 from apps.organizations.models import User
+from apps.knowledge.unified_models import UnifiedActivity
+
+
+def _track_view_activity(request, obj, title, description=""):
+    try:
+        content_type = ContentType.objects.get_for_model(obj)
+        cutoff = timezone.now() - timedelta(minutes=30)
+        exists = UnifiedActivity.objects.filter(
+            organization=request.user.organization,
+            user=request.user,
+            activity_type='viewed',
+            content_type=content_type,
+            object_id=obj.id,
+            created_at__gte=cutoff,
+        ).exists()
+        if not exists:
+            UnifiedActivity.objects.create(
+                organization=request.user.organization,
+                user=request.user,
+                activity_type='viewed',
+                content_type=content_type,
+                object_id=obj.id,
+                title=title,
+                description=description[:200] if description else '',
+            )
+    except Exception:
+        pass
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -56,6 +86,12 @@ def goal_detail(request, pk):
     goal = get_object_or_404(Goal, pk=pk, organization=request.user.organization)
     
     if request.method == 'GET':
+        _track_view_activity(
+            request,
+            goal,
+            goal.title,
+            goal.description,
+        )
         tasks = goal.tasks.all()
         return Response({
             'id': goal.id,

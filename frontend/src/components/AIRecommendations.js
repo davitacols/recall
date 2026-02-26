@@ -46,6 +46,14 @@ export default function AIRecommendations({ darkMode }) {
               <div>
                 <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text }}>{item.title}</p>
                 <p style={{ margin: "3px 0 0", fontSize: 11, color: palette.muted }}>{item.reason}</p>
+                {item.source_breakdown?.length > 0 && (
+                  <p style={{ margin: "3px 0 0", fontSize: 10, color: palette.muted }}>
+                    {item.source_breakdown
+                      .slice(0, 2)
+                      .map((s) => `${s.source}: ${Number(s.score).toFixed(2)}`)
+                      .join(" | ")}
+                  </p>
+                )}
               </div>
             </Link>
           );
@@ -64,5 +72,11 @@ function getIcon(type) {
 function getLink(item) {
   if (item.type === "conversation") return `/conversations/${item.id}`;
   if (item.type === "decision") return `/decisions/${item.id}`;
+  if (item.type === "meeting") return `/business/meetings/${item.id}`;
+  if (item.type === "document") return `/business/documents/${item.id}`;
+  if (item.type === "task") return "/business/tasks";
+  if (item.type === "goal") return `/business/goals/${item.id}`;
+  if (item.type === "project") return `/projects/${item.id}`;
+  if (item.type === "issue") return `/issues/${item.id}`;
   return "#";
 }

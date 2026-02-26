@@ -4,8 +4,38 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.contenttypes.models import ContentType
 import base64
 from .document_models import Document, DocumentComment
+from apps.knowledge.unified_models import UnifiedActivity
+
+
+def _track_view_activity(request, obj, title, description=""):
+    try:
+        content_type = ContentType.objects.get_for_model(obj)
+        cutoff = timezone.now() - timedelta(minutes=30)
+        exists = UnifiedActivity.objects.filter(
+            organization=request.user.organization,
+            user=request.user,
+            activity_type='viewed',
+            content_type=content_type,
+            object_id=obj.id,
+            created_at__gte=cutoff,
+        ).exists()
+        if not exists:
+            UnifiedActivity.objects.create(
+                organization=request.user.organization,
+                user=request.user,
+                activity_type='viewed',
+                content_type=content_type,
+                object_id=obj.id,
+                title=title,
+                description=description[:200] if description else '',
+            )
+    except Exception:
+        pass
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -74,6 +104,12 @@ def document_detail(request, pk):
     document = get_object_or_404(Document, pk=pk, organization=request.user.organization)
     
     if request.method == 'GET':
+        _track_view_activity(
+            request,
+            document,
+            document.title,
+            document.description,
+        )
         return Response({
             'id': document.id,
             'title': document.title,

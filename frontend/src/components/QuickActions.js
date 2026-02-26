@@ -22,11 +22,11 @@ export default function QuickActions({ darkMode }) {
 
   const actions = [
     { name: 'Conversation', icon: ChatBubbleLeftIcon, href: '/conversations/new' },
-    { name: 'Decision', icon: DocumentCheckIcon, href: '/decisions/new' },
-    { name: 'Project', icon: CubeIcon, href: '/projects/new' },
-    { name: 'Goal', icon: FlagIcon, href: '/business/goals/new' },
-    { name: 'Meeting', icon: CalendarIcon, href: '/business/meetings/new' },
-    { name: 'Document', icon: DocumentTextIcon, href: '/business/documents/new' }
+    { name: 'Decision', icon: DocumentCheckIcon, href: '/decisions' },
+    { name: 'Project', icon: CubeIcon, href: '/projects' },
+    { name: 'Goal', icon: FlagIcon, href: '/business/goals' },
+    { name: 'Meeting', icon: CalendarIcon, href: '/business/meetings' },
+    { name: 'Document', icon: DocumentTextIcon, href: '/business/documents' }
   ];
 
   return (

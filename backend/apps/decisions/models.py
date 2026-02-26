@@ -272,6 +272,6 @@ def auto_link_decision(sender, instance, created, **kwargs):
         try:
             from apps.knowledge.context_engine import ContextEngine
             engine = ContextEngine()
-            engine.auto_link_content('decisions.decision', instance.id, instance.organization)
+            engine.auto_link_content(instance, instance.organization)
         except Exception:
             pass

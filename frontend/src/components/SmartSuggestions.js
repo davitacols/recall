@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LightBulbIcon } from '@heroicons/react/24/outline';
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 export default function SmartSuggestions({ title, content, type = 'conversation' }) {
   const [suggestions, setSuggestions] = useState([]);
@@ -17,7 +19,7 @@ export default function SmartSuggestions({ title, content, type = 'conversation'
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/knowledge/ai-suggestions/', {
+      const res = await fetch(`${API_BASE}/api/knowledge/ai-suggestions/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -77,3 +79,6 @@ export default function SmartSuggestions({ title, content, type = 'conversation'
     </div>
   );
 }
+
+
+

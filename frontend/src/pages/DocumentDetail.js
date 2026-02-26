@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { useToast } from '../components/Toast';
 import { MentionInput } from '../components/MentionInput';
 import { AIEnhancementButton, AIResultsPanel } from '../components/AIEnhancements';
 import { ArrowLeftIcon, TrashIcon, PencilIcon, ChatBubbleLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+
 
 export default function DocumentDetail() {
   const { id } = useParams();
@@ -40,7 +41,7 @@ export default function DocumentDetail() {
   const fetchDocument = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/business/documents/${id}/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -48,7 +49,7 @@ export default function DocumentDetail() {
       setFormData(data);
       
       if (data.has_file) {
-        const fileRes = await fetch(`http://localhost:8000/api/business/documents/${id}/file/`, {
+        const fileRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/file/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const blob = await fileRes.blob();
@@ -65,7 +66,7 @@ export default function DocumentDetail() {
   const fetchComments = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/business/documents/${id}/comments/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/comments/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -80,7 +81,7 @@ export default function DocumentDetail() {
     if (!newComment.trim()) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/business/documents/${id}/comments/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/comments/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -100,7 +101,7 @@ export default function DocumentDetail() {
   const handleExportPDF = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/organizations/pdf/document/${id}/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/organizations/pdf/document/${id}/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const blob = await res.blob();
@@ -119,7 +120,7 @@ export default function DocumentDetail() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:8000/api/business/documents/${id}/`, {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -139,7 +140,7 @@ export default function DocumentDetail() {
     if (!window.confirm('Delete this document?')) return;
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:8000/api/business/documents/${id}/`, {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -268,7 +269,7 @@ export default function DocumentDetail() {
                 )}
                 {!document.has_file && document.file_url && (
                   <div className={`mb-6 p-4 ${inputBg} border border-yellow-600 rounded`}>
-                    <p className={`text-yellow-500 text-sm`}>⚠️ This document uses old file storage. Please re-upload the file.</p>
+                    <p className={`text-yellow-500 text-sm`}>âš ï¸ This document uses old file storage. Please re-upload the file.</p>
                   </div>
                 )}
                 {document.content && (
@@ -280,7 +281,7 @@ export default function DocumentDetail() {
               </div>
               {document.created_by && (
                 <div className={`mt-8 pt-6 border-t ${borderColor} text-sm ${textSecondary}`}>
-                  Created by {document.created_by.full_name} • Last updated by {document.updated_by?.full_name || 'Unknown'}
+                  Created by {document.created_by.full_name} â€¢ Last updated by {document.updated_by?.full_name || 'Unknown'}
                 </div>
               )}
 
@@ -334,3 +335,5 @@ export default function DocumentDetail() {
     </div>
   );
 }
+
+

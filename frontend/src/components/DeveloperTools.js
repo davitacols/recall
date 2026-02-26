@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const DeveloperTools = ({ conversationId }) => {
   const [templates, setTemplates] = useState([]);
@@ -16,7 +19,7 @@ const DeveloperTools = ({ conversationId }) => {
   const fetchTemplates = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:8000/api/conversations/templates/', {
+      const response = await axios.get(`${API_BASE}/api/conversations/templates/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTemplates(response.data);
@@ -30,7 +33,7 @@ const DeveloperTools = ({ conversationId }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:8000/api/conversations/${conversationId}/export-adr/`,
+        `${API_BASE}/api/conversations/${conversationId}/export-adr/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setAdrContent(response.data);
@@ -54,7 +57,7 @@ const DeveloperTools = ({ conversationId }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `http://localhost:8000/api/conversations/${conversationId}/plain-language/`,
+        `${API_BASE}/api/conversations/${conversationId}/plain-language/`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -72,7 +75,7 @@ const DeveloperTools = ({ conversationId }) => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        `http://localhost:8000/api/conversations/${conversationId}/code-links/`,
+        `${API_BASE}/api/conversations/${conversationId}/code-links/`,
         codeLink,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -186,3 +189,6 @@ const DeveloperTools = ({ conversationId }) => {
 };
 
 export default DeveloperTools;
+
+
+

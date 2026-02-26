@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowsRightLeftIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+
 
 export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
   const [impact, setImpact] = useState(null);
@@ -22,7 +23,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
   const fetchImpact = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/knowledge/context/${contentType}/${objectId}/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/knowledge/context/${contentType}/${objectId}/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -172,7 +173,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
                 {impact.risks.length > 0 && (
                   <div style={{ marginBottom: '20px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>
-                      ⚠️ Potential Risks
+                      âš ï¸ Potential Risks
                     </div>
                     {impact.risks.map((risk, idx) => (
                       <div
@@ -197,7 +198,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
                 {impact.related.length > 0 && (
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>
-                      🔗 Downstream Impact
+                      ðŸ”— Downstream Impact
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {impact.related.slice(0, 5).map((item, idx) => (
@@ -219,7 +220,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
                             {item.title}
                           </div>
                           <div style={{ fontSize: '11px', color: secondaryText, textTransform: 'capitalize' }}>
-                            {item.type} • {item.relationship}
+                            {item.type} â€¢ {item.relationship}
                           </div>
                         </Link>
                       ))}
@@ -251,3 +252,5 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
     </>
   );
 }
+
+

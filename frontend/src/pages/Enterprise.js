@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { ShieldCheckIcon, UserGroupIcon, AcademicCapIcon, ServerIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 export default function Enterprise() {
   const { darkMode } = useTheme();
@@ -30,11 +33,11 @@ export default function Enterprise() {
 
     try {
       const [sso, manager, training, sla, premise] = await Promise.all([
-        fetch('http://localhost:8000/api/organizations/enterprise/sso/', { headers }).then(r => r.json()),
-        fetch('http://localhost:8000/api/organizations/enterprise/account-manager/', { headers }).then(r => r.json()),
-        fetch('http://localhost:8000/api/organizations/enterprise/training/', { headers }).then(r => r.json()),
-        fetch('http://localhost:8000/api/organizations/enterprise/sla/', { headers }).then(r => r.json()),
-        fetch('http://localhost:8000/api/organizations/enterprise/on-premise/', { headers }).then(r => r.json())
+        fetch(`${API_BASE}/api/organizations/enterprise/sso/`, { headers }).then(r => r.json()),
+        fetch(`${API_BASE}/api/organizations/enterprise/account-manager/`, { headers }).then(r => r.json()),
+        fetch(`${API_BASE}/api/organizations/enterprise/training/`, { headers }).then(r => r.json()),
+        fetch(`${API_BASE}/api/organizations/enterprise/sla/`, { headers }).then(r => r.json()),
+        fetch(`${API_BASE}/api/organizations/enterprise/on-premise/`, { headers }).then(r => r.json())
       ]);
 
       setSsoConfig(sso);
@@ -52,7 +55,7 @@ export default function Enterprise() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     
-    const response = await fetch('http://localhost:8000/api/organizations/enterprise/sso/', {
+    const response = await fetch(`${API_BASE}/api/organizations/enterprise/sso/`, {
       method: ssoConfig?.id ? 'PUT' : 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -110,7 +113,7 @@ export default function Enterprise() {
 
         {ssoConfig?.enabled && !showSSOForm && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-green-800 font-medium">✓ SSO Enabled</p>
+            <p className="text-green-800 font-medium">âœ“ SSO Enabled</p>
             <p className="text-sm text-gray-600 mt-1">Provider: {ssoConfig.provider.toUpperCase()}</p>
             <p className="text-sm text-gray-600">Entity ID: {ssoConfig.entity_id}</p>
           </div>
@@ -189,8 +192,8 @@ export default function Enterprise() {
           </div>
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <p className="font-medium text-lg">{accountManager.name}</p>
-            <p className="text-gray-600 mt-1">📧 {accountManager.email}</p>
-            {accountManager.phone && <p className="text-gray-600">📞 {accountManager.phone}</p>}
+            <p className="text-gray-600 mt-1">ðŸ“§ {accountManager.email}</p>
+            {accountManager.phone && <p className="text-gray-600">ðŸ“ž {accountManager.phone}</p>}
             <p className="text-sm text-gray-500 mt-2">Timezone: {accountManager.timezone}</p>
             {accountManager.availability && (
               <p className="text-sm text-gray-600 mt-1">{accountManager.availability}</p>
@@ -217,10 +220,10 @@ export default function Enterprise() {
                     <h3 className="font-medium">{training.title}</h3>
                     <p className="text-sm text-gray-600 mt-1">{training.description}</p>
                     <div className="flex gap-4 mt-2 text-sm text-gray-500">
-                      <span>📅 {new Date(training.training_date).toLocaleDateString()}</span>
-                      <span>⏱️ {training.duration_hours}h</span>
-                      {training.location && <span>📍 {training.location}</span>}
-                      {training.trainer && <span>👨‍🏫 {training.trainer}</span>}
+                      <span>ðŸ“… {new Date(training.training_date).toLocaleDateString()}</span>
+                      <span>â±ï¸ {training.duration_hours}h</span>
+                      {training.location && <span>ðŸ“ {training.location}</span>}
+                      {training.trainer && <span>ðŸ‘¨â€ðŸ« {training.trainer}</span>}
                     </div>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(training.status)}`}>
@@ -230,7 +233,7 @@ export default function Enterprise() {
                 {training.recording_url && (
                   <a href={training.recording_url} target="_blank" rel="noopener noreferrer" 
                      className="text-blue-600 text-sm mt-2 inline-block hover:underline">
-                    View Recording →
+                    View Recording â†’
                   </a>
                 )}
               </div>
@@ -258,7 +261,7 @@ export default function Enterprise() {
                   <h3 className="font-medium capitalize">{sla.metric.replace('_', ' ')}</h3>
                   {sla.met !== null && (
                     <span className={`px-2 py-1 rounded text-xs font-medium ${sla.met ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {sla.met ? '✓ Met' : '✗ Not Met'}
+                      {sla.met ? 'âœ“ Met' : 'âœ— Not Met'}
                     </span>
                   )}
                 </div>
@@ -327,8 +330,8 @@ export default function Enterprise() {
             {(onPremise.support_email || onPremise.support_phone) && (
               <div className="mt-4 pt-4 border-t">
                 <p className="text-sm font-medium mb-2">Support Contact</p>
-                {onPremise.support_email && <p className="text-sm text-gray-600">📧 {onPremise.support_email}</p>}
-                {onPremise.support_phone && <p className="text-sm text-gray-600">📞 {onPremise.support_phone}</p>}
+                {onPremise.support_email && <p className="text-sm text-gray-600">ðŸ“§ {onPremise.support_email}</p>}
+                {onPremise.support_phone && <p className="text-sm text-gray-600">ðŸ“ž {onPremise.support_phone}</p>}
               </div>
             )}
           </div>
@@ -337,3 +340,6 @@ export default function Enterprise() {
     </div>
   );
 }
+
+
+

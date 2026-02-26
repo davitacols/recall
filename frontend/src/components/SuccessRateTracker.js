@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { ExclamationCircleIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 export default function SuccessRateTracker({ contentType, title, description }) {
   const { darkMode } = useTheme();
@@ -22,7 +24,7 @@ export default function SuccessRateTracker({ contentType, title, description }) 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/knowledge/ai/check-failures/', {
+      const res = await fetch(`${API_BASE}/api/knowledge/ai/check-failures/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -139,3 +141,6 @@ export default function SuccessRateTracker({ contentType, title, description }) 
     </div>
   );
 }
+
+
+

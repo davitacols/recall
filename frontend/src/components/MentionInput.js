@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
+
 
 export function MentionInput({ value, onChange, placeholder, rows = 3, darkMode = false }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -25,7 +26,7 @@ export function MentionInput({ value, onChange, placeholder, rows = 3, darkMode 
   const fetchUsers = async (query) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/conversations/users/?search=${query}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/conversations/users/?search=${query}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -154,3 +155,5 @@ export function MentionInput({ value, onChange, placeholder, rows = 3, darkMode 
     </div>
   );
 }
+
+

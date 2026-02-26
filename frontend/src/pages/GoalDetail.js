@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { ArrowLeftIcon, TrashIcon, FlagIcon } from '@heroicons/react/24/outline';
+
 
 export default function GoalDetail() {
   const { id } = useParams();
@@ -24,7 +25,7 @@ export default function GoalDetail() {
   const fetchGoal = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/business/goals/${id}/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/goals/${id}/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -41,7 +42,7 @@ export default function GoalDetail() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:8000/api/business/goals/${id}/`, {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/goals/${id}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -60,7 +61,7 @@ export default function GoalDetail() {
     if (!window.confirm('Delete this goal?')) return;
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:8000/api/business/goals/${id}/`, {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/goals/${id}/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -285,3 +286,5 @@ export default function GoalDetail() {
     </div>
   );
 }
+
+

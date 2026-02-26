@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const TemplateSelector = ({ onSelectTemplate }) => {
   const [templates, setTemplates] = useState([]);
@@ -13,7 +16,7 @@ const TemplateSelector = ({ onSelectTemplate }) => {
   const fetchTemplates = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:8000/api/conversations/templates/', {
+      const response = await axios.get(`${API_BASE}/api/conversations/templates/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTemplates(response.data);
@@ -26,7 +29,7 @@ const TemplateSelector = ({ onSelectTemplate }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:8000/api/conversations/templates/${templateKey}/`,
+        `${API_BASE}/api/conversations/templates/${templateKey}/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSelectedTemplate(response.data);
@@ -43,7 +46,7 @@ const TemplateSelector = ({ onSelectTemplate }) => {
         onClick={() => setShowTemplates(!showTemplates)}
         className="bg-white text-black px-4 py-2 text-sm font-['League_Spartan'] uppercase tracking-wider hover:bg-black hover:text-white transition-colors border-2 border-black"
       >
-        {showTemplates ? '✕ CLOSE' : '📋 USE TEMPLATE'}
+        {showTemplates ? 'âœ• CLOSE' : 'ðŸ“‹ USE TEMPLATE'}
       </button>
 
       {showTemplates && (
@@ -77,3 +80,6 @@ const TemplateSelector = ({ onSelectTemplate }) => {
 };
 
 export default TemplateSelector;
+
+
+

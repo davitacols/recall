@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const NotificationDetail = () => {
   const { id } = useParams();
@@ -15,14 +17,14 @@ const NotificationDetail = () => {
   const fetchNotification = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:8000/api/notifications/', {
+      const response = await axios.get(`${API_BASE}/api/notifications/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const notif = response.data.notifications?.find(n => n.id === parseInt(id));
       setNotification(notif);
       
       if (notif && !notif.is_read) {
-        await axios.post(`http://localhost:8000/api/notifications/${id}/read/`, {}, {
+        await axios.post(`${API_BASE}/api/notifications/${id}/read/`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }
@@ -36,7 +38,7 @@ const NotificationDetail = () => {
   const handleDelete = async () => {
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:8000/api/notifications/${id}/`, {
+      await axios.delete(`${API_BASE}/api/notifications/${id}/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       navigate('/notifications');
@@ -87,7 +89,7 @@ const NotificationDetail = () => {
             onClick={() => navigate('/notifications')}
             className="text-black text-sm font-['League_Spartan'] uppercase tracking-wider hover:bg-black hover:text-white px-4 py-2 border-2 border-black transition-colors mb-4"
           >
-            ← BACK TO NOTIFICATIONS
+            â† BACK TO NOTIFICATIONS
           </button>
           <h1 className="text-4xl font-['League_Spartan'] uppercase tracking-wider text-black font-bold">
             NOTIFICATION DETAIL
@@ -151,3 +153,6 @@ const NotificationDetail = () => {
 };
 
 export default NotificationDetail;
+
+
+

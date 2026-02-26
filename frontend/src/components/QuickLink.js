@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { LinkIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 export default function QuickLink({ sourceType, sourceId }) {
   const { darkMode } = useTheme();
@@ -21,7 +23,7 @@ export default function QuickLink({ sourceType, sourceId }) {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:8000/api/knowledge/link/', {
+      await fetch(`${API_BASE}/api/knowledge/link/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -212,3 +214,6 @@ export default function QuickLink({ sourceType, sourceId }) {
     </>
   );
 }
+
+
+

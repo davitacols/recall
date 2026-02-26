@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { XMarkIcon, ExclamationTriangleIcon, LinkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 export default function ImpactAnalysisModal({ isOpen, onClose, contentType, contentId }) {
   const { darkMode } = useTheme();
@@ -25,7 +27,7 @@ export default function ImpactAnalysisModal({ isOpen, onClose, contentType, cont
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(
-        `http://localhost:8000/api/knowledge/context/${contentType}/${contentId}/`,
+        `${API_BASE}/api/knowledge/context/${contentType}/${contentId}/`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       const data = await res.json();
@@ -170,3 +172,5 @@ export default function ImpactAnalysisModal({ isOpen, onClose, contentType, cont
     </div>
   );
 }
+
+

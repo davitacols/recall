@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { ArrowUpTrayIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 export default function ImportExport() {
   const { darkMode } = useTheme();
@@ -38,7 +41,7 @@ export default function ImportExport() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/organizations/import/', {
+      const response = await fetch(`${API_BASE}/api/organizations/import/`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -63,7 +66,7 @@ export default function ImportExport() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `http://localhost:8000/api/organizations/data-export/?type=${exportType}&format=${exportFormat}`,
+        `${API_BASE}/api/organizations/data-export/?type=${exportType}&format=${exportFormat}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
 
@@ -213,3 +216,6 @@ export default function ImportExport() {
     </div>
   );
 }
+
+
+

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/react/24/outline';
+
 
 export default function NLPCommandBar() {
   const { darkMode } = useTheme();
@@ -84,7 +85,7 @@ export default function NLPCommandBar() {
       setLoading(true);
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:8000/api/knowledge/search-all/?q=${encodeURIComponent(parsed.keywords)}`, {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/knowledge/search-all/?q=${encodeURIComponent(parsed.keywords)}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -177,3 +178,5 @@ export default function NLPCommandBar() {
     </div>
   );
 }
+
+

@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const SearchBar = ({ onSearch }) => {
   const [query, setQuery] = useState('');
@@ -12,7 +15,7 @@ const SearchBar = ({ onSearch }) => {
   const suggestionsRef = useRef(null);
   const resultsRef = useRef(null);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+  const API_URL = `${API_BASE}/api`;
 
   // Fetch suggestions as user types
   useEffect(() => {
@@ -133,7 +136,7 @@ const SearchBar = ({ onSearch }) => {
                     )}
                     {suggestion.type === 'conversation' && (
                       <>
-                        <span className="text-gray-500">💬</span>
+                        <span className="text-gray-500">ðŸ’¬</span>
                         <span>{suggestion.text}</span>
                       </>
                     )}
@@ -183,10 +186,10 @@ const SearchBar = ({ onSearch }) => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           {result.type === 'conversation' && (
-                            <span className="text-blue-500 text-sm">💬 Conversation</span>
+                            <span className="text-blue-500 text-sm">ðŸ’¬ Conversation</span>
                           )}
                           {result.type === 'decision' && (
-                            <span className="text-green-500 text-sm">✓ Decision</span>
+                            <span className="text-green-500 text-sm">âœ“ Decision</span>
                           )}
                           <span className="text-xs text-gray-500">
                             Score: {result.score.toFixed(2)}
@@ -200,7 +203,7 @@ const SearchBar = ({ onSearch }) => {
                         </p>
                         {result.author && (
                           <div className="text-xs text-gray-500 mt-2">
-                            By {result.author} • {new Date(result.created_at).toLocaleDateString()}
+                            By {result.author} â€¢ {new Date(result.created_at).toLocaleDateString()}
                           </div>
                         )}
                         {result.status && (
@@ -233,3 +236,6 @@ const SearchBar = ({ onSearch }) => {
 };
 
 export default SearchBar;
+
+
+

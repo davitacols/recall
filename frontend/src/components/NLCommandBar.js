@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
+
 
 export default function NLCommandBar({ darkMode }) {
   const [open, setOpen] = useState(false);
@@ -68,7 +69,7 @@ export default function NLCommandBar({ darkMode }) {
       if (lowerQuery.includes('find') || lowerQuery.includes('search') || lowerQuery.includes('show')) {
         const searchTerm = query.replace(/find|search|show|me|about/gi, '').trim();
         
-        const res = await fetch(`http://localhost:8000/api/knowledge/search-all/?q=${encodeURIComponent(searchTerm)}`, {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/knowledge/search-all/?q=${encodeURIComponent(searchTerm)}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -89,7 +90,7 @@ export default function NLCommandBar({ darkMode }) {
       }
       
       // Default search
-      const res = await fetch(`http://localhost:8000/api/knowledge/search-all/?q=${encodeURIComponent(query)}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/knowledge/search-all/?q=${encodeURIComponent(query)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -208,7 +209,7 @@ export default function NLCommandBar({ darkMode }) {
                   justifyContent: 'center',
                   fontSize: '16px'
                 }}>
-                  {result.type === 'action' ? '⚡' : '📄'}
+                  {result.type === 'action' ? 'âš¡' : 'ðŸ“„'}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '14px', fontWeight: 500, color: textColor }}>
@@ -277,3 +278,5 @@ export default function NLCommandBar({ darkMode }) {
     </div>
   );
 }
+
+

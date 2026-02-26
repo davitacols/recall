@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+
 
 export default function GitHubPanel({ decisionId }) {
   const { darkMode } = useTheme();
@@ -21,7 +22,7 @@ export default function GitHubPanel({ decisionId }) {
   const fetchPRs = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/integrations/github/prs/${decisionId}/`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/integrations/github/prs/${decisionId}/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -39,7 +40,7 @@ export default function GitHubPanel({ decisionId }) {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/integrations/github/link/${decisionId}/`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/integrations/github/link/${decisionId}/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -149,3 +150,5 @@ export default function GitHubPanel({ decisionId }) {
     </div>
   );
 }
+
+

@@ -236,8 +236,11 @@ def organization_members(request):
     if not org:
         return Response([], status=status.HTTP_200_OK)
     
-    # Include all users in organization, including inactive ones for now
-    members = User.objects.filter(organization=org).order_by('full_name')
+    include_inactive = str(request.query_params.get('include_inactive', '')).lower() in ['1', 'true', 'yes']
+    members_qs = User.objects.filter(organization=org)
+    if not include_inactive:
+        members_qs = members_qs.filter(is_active=True)
+    members = members_qs.order_by('full_name')
     
     members_data = []
     for member in members:

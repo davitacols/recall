@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useToast } from './Toast';
 import { TrashIcon, ArchiveBoxIcon, CheckIcon } from '@heroicons/react/24/outline';
+
 
 export function BulkActions({ selectedIds, onComplete, type = 'conversations' }) {
   const { success, error } = useToast();
@@ -15,7 +16,7 @@ export function BulkActions({ selectedIds, onComplete, type = 'conversations' })
       const endpoint = type === 'conversations' ? 'conversations/delete' :
                       type === 'documents' ? 'documents/delete' : 'conversations/delete';
       
-      const res = await fetch(`http://localhost:8000/api/organizations/bulk/${endpoint}/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/organizations/bulk/${endpoint}/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -38,7 +39,7 @@ export function BulkActions({ selectedIds, onComplete, type = 'conversations' })
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/organizations/bulk/conversations/archive/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/organizations/bulk/conversations/archive/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -140,3 +141,5 @@ export function SelectableList({ items, renderItem, onSelectionChange }) {
     </div>
   );
 }
+
+

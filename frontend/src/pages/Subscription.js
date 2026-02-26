@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 export default function Subscription() {
   const navigate = useNavigate();
@@ -24,13 +27,13 @@ export default function Subscription() {
     const token = localStorage.getItem('token');
     try {
       const [subRes, plansRes, invRes] = await Promise.all([
-        fetch('http://localhost:8000/api/organizations/subscription/', {
+        fetch(`${API_BASE}/api/organizations/subscription/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://localhost:8000/api/organizations/plans/', {
+        fetch(`${API_BASE}/api/organizations/plans/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://localhost:8000/api/organizations/invoices/', {
+        fetch(`${API_BASE}/api/organizations/invoices/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -52,7 +55,7 @@ export default function Subscription() {
   const handleUpgrade = async (planId) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://localhost:8000/api/organizations/stripe/checkout/', {
+      const res = await fetch(`${API_BASE}/api/organizations/stripe/checkout/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -211,29 +214,29 @@ export default function Subscription() {
 
                   <ul className={`space-y-4 mb-8 ${textSecondary}`}>
                     <li className="flex items-start gap-3">
-                      <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                      <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                       <span>{plan.max_users ? `Up to ${plan.max_users} team members` : 'Unlimited team members'}</span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                      <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                       <span>{plan.storage_gb}GB cloud storage</span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                      <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                       <span>All core features</span>
                     </li>
                     {plan.name === 'professional' && (
                       <>
                         <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>Advanced analytics</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>Priority support</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>API access</span>
                         </li>
                       </>
@@ -241,19 +244,19 @@ export default function Subscription() {
                     {plan.name === 'enterprise' && (
                       <>
                         <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>SSO/SAML</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>Dedicated support</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>Custom integrations</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">✓</span>
+                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>Phone support</span>
                         </li>
                       </>
@@ -326,3 +329,6 @@ export default function Subscription() {
     </div>
   );
 }
+
+
+

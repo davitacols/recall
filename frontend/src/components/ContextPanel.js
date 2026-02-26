@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { 
+
   ChatBubbleLeftIcon, 
   DocumentCheckIcon, 
   ClipboardDocumentListIcon,
@@ -44,7 +45,7 @@ export default function ContextPanel({ contentType, objectId }) {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(
-        `http://localhost:8000/api/knowledge/context/${contentType}/${objectId}/`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/knowledge/context/${contentType}/${objectId}/`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       if (!res.ok) {
@@ -157,7 +158,7 @@ export default function ContextPanel({ contentType, objectId }) {
                   {conv.title}
                 </div>
                 <div className={`text-xs ${textSecondary}`}>
-                  {conv.link_type} • {Math.round(conv.strength * 100)}% relevant
+                  {conv.link_type} â€¢ {Math.round(conv.strength * 100)}% relevant
                 </div>
               </Link>
             ))}
@@ -251,7 +252,7 @@ export default function ContextPanel({ contentType, objectId }) {
                 </div>
                 {item.lessons && (
                   <div className={`mt-2 text-xs ${textSecondary}`}>
-                    💡 {item.lessons}
+                    ðŸ’¡ {item.lessons}
                   </div>
                 )}
               </div>
@@ -278,7 +279,7 @@ export default function ContextPanel({ contentType, objectId }) {
           <ul className="space-y-2">
             {context.risk_indicators.map((risk, idx) => (
               <li key={idx} className={`flex items-start gap-2 text-sm ${darkMode ? 'text-amber-200' : 'text-amber-900'}`}>
-                <span className={`font-bold mt-0.5 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`}>⚠</span>
+                <span className={`font-bold mt-0.5 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`}>âš </span>
                 <span className="flex-1">{risk}</span>
               </li>
             ))}
@@ -290,3 +291,5 @@ export default function ContextPanel({ contentType, objectId }) {
     </>
   );
 }
+
+

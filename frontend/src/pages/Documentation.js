@@ -244,6 +244,16 @@ const DOCS = [
               "Track drift and calibration monthly.",
               "Require decision-task linkage for high-impact changes.",
               "Resolve unresolved sprint decisions before midpoint.",
+              "Use Enterprise App Marketplace policies for app approvals and launch governance.",
+            ],
+          },
+          {
+            heading: "Enterprise App Marketplace",
+            bullets: [
+              "Install apps in /enterprise under App Marketplace.",
+              "Installed apps appear in header Apps menu.",
+              "App launch targets are backend-driven via launch_path.",
+              "Docs fallback uses https://knoledgr.com/docs.",
             ],
           },
         ],
@@ -279,6 +289,15 @@ const DOCS = [
               "/api/knowledge/ai/recommendations/",
             ],
           },
+          {
+            heading: "Enterprise and Realtime",
+            bullets: [
+              "/api/organizations/enterprise/marketplace/apps/",
+              "/api/organizations/enterprise/portfolio-report/",
+              "/api/health/, /api/health/realtime/",
+              "/api/notifications/, /api/notifications/<id>/read/, /read-all/",
+            ],
+          },
         ],
       },
       {
@@ -293,6 +312,7 @@ const DOCS = [
               "Missing context: confirm object relationships and metadata completeness.",
               "Weak autopilot confidence: reduce unresolved decisions and active blockers.",
               "Sparse calibration: enforce outcome review discipline post-implementation.",
+              "Realtime notification issues: check /api/health/realtime/ and Redis channel-layer connectivity.",
             ],
           },
         ],
@@ -394,4 +414,3 @@ export default function Documentation() {
     </div>
   );
 }
-

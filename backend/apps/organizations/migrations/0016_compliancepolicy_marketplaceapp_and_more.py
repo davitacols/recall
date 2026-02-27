@@ -15,7 +15,7 @@ def seed_marketplace_apps(apps, schema_editor):
             'vendor': 'Knoledgr',
             'category': 'engineering',
             'pricing': 'included',
-            'docs_url': 'https://docs.knoledgr.com/integrations/github',
+            'docs_url': 'https://knoledgr.com/docs/integrations/github',
         },
         {
             'slug': 'jira-portfolio-bridge',
@@ -24,7 +24,7 @@ def seed_marketplace_apps(apps, schema_editor):
             'vendor': 'Knoledgr',
             'category': 'reporting',
             'pricing': 'included',
-            'docs_url': 'https://docs.knoledgr.com/integrations/jira',
+            'docs_url': 'https://knoledgr.com/docs/integrations/jira',
         },
         {
             'slug': 'compliance-audit-exporter',
@@ -33,7 +33,7 @@ def seed_marketplace_apps(apps, schema_editor):
             'vendor': 'Knoledgr',
             'category': 'security',
             'pricing': 'enterprise',
-            'docs_url': 'https://docs.knoledgr.com/enterprise/compliance',
+            'docs_url': 'https://knoledgr.com/docs/enterprise/compliance',
         },
         {
             'slug': 'incident-ops-feed',
@@ -42,7 +42,7 @@ def seed_marketplace_apps(apps, schema_editor):
             'vendor': 'Knoledgr',
             'category': 'automation',
             'pricing': 'enterprise',
-            'docs_url': 'https://docs.knoledgr.com/enterprise/incident-ops',
+            'docs_url': 'https://knoledgr.com/docs/enterprise/incident-ops',
         },
     ]
     for payload in defaults:

@@ -144,3 +144,270 @@ class OnPremiseDeployment(models.Model):
     
     def __str__(self):
         return f"{self.organization.name} - On-Premise ({self.status})"
+
+
+class CompliancePolicy(models.Model):
+    """Enterprise governance, residency, and compliance controls."""
+    REGION_CHOICES = [
+        ('us', 'United States'),
+        ('eu', 'European Union'),
+        ('uk', 'United Kingdom'),
+        ('ca', 'Canada'),
+        ('apac', 'Asia Pacific'),
+    ]
+
+    organization = models.OneToOneField(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='compliance_policy',
+    )
+    data_residency_region = models.CharField(max_length=20, choices=REGION_CHOICES, default='us')
+    require_sso = models.BooleanField(default=False)
+    require_mfa = models.BooleanField(default=False)
+    audit_export_enabled = models.BooleanField(default=True)
+    third_party_app_approval_required = models.BooleanField(default=True)
+    retention_days = models.PositiveIntegerField(default=365)
+    ip_allowlist = models.JSONField(default=list, blank=True)
+    allowed_integrations = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.organization.name} Compliance Policy"
+
+
+class MarketplaceApp(models.Model):
+    """Installable app metadata for organization marketplace."""
+    APP_CATEGORY_CHOICES = [
+        ('engineering', 'Engineering'),
+        ('knowledge', 'Knowledge'),
+        ('security', 'Security'),
+        ('automation', 'Automation'),
+        ('reporting', 'Reporting'),
+    ]
+
+    slug = models.SlugField(unique=True)
+    name = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    vendor = models.CharField(max_length=120, default='Knoledgr')
+    category = models.CharField(max_length=30, choices=APP_CATEGORY_CHOICES, default='engineering')
+    pricing = models.CharField(max_length=40, default='free')
+    docs_url = models.URLField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class InstalledMarketplaceApp(models.Model):
+    """Installed app records per organization."""
+    STATUS_CHOICES = [
+        ('installed', 'Installed'),
+        ('disabled', 'Disabled'),
+    ]
+
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='installed_marketplace_apps',
+    )
+    app = models.ForeignKey(
+        MarketplaceApp,
+        on_delete=models.CASCADE,
+        related_name='installations',
+    )
+    installed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='installed_marketplace_apps',
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='installed')
+    config = models.JSONField(default=dict, blank=True)
+    installed_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['organization', 'app']
+        ordering = ['-installed_at']
+
+    def __str__(self):
+        return f"{self.organization.name} - {self.app.name}"
+
+
+class RolePermissionPolicy(models.Model):
+    """Organization-level permission overrides by role."""
+    organization = models.OneToOneField(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='role_permission_policy',
+    )
+    role_overrides = models.JSONField(default=dict, blank=True)
+    require_admin_approval_for_delete = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.organization.name} Role Permission Policy"
+
+
+class EnterpriseIncident(models.Model):
+    """Incident and SLA automation events for enterprise operations."""
+    TYPE_CHOICES = [
+        ('sla_risk', 'SLA Risk'),
+        ('blocker_spike', 'Blocker Spike'),
+        ('delivery_risk', 'Delivery Risk'),
+    ]
+    SEVERITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('resolved', 'Resolved'),
+    ]
+
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='enterprise_incidents',
+    )
+    source_key = models.CharField(max_length=200)
+    incident_type = models.CharField(max_length=30, choices=TYPE_CHOICES)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='medium')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    source_payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['organization', 'source_key', 'status']
+
+    def __str__(self):
+        return f"{self.organization.name}: {self.title}"
+
+
+class ProjectPermissionScope(models.Model):
+    """Project-level permission scope overrides by role."""
+    ROLE_CHOICES = [
+        ('admin', 'Admin'),
+        ('manager', 'Manager'),
+        ('contributor', 'Contributor'),
+    ]
+
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='project_permission_scopes',
+    )
+    project = models.ForeignKey(
+        'agile.Project',
+        on_delete=models.CASCADE,
+        related_name='permission_scopes',
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    allowed_permissions = models.JSONField(default=list, blank=True)
+    denied_permissions = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['organization', 'project', 'role']
+        ordering = ['project__name', 'role']
+
+    def __str__(self):
+        return f"{self.organization.name} {self.project.key} {self.role}"
+
+
+class SLARule(models.Model):
+    """Rule builder for SLA risk detection and policy actions."""
+    METRIC_CHOICES = [
+        ('uptime', 'Uptime'),
+        ('response_time', 'Response Time'),
+        ('resolution_time', 'Issue Resolution Time'),
+        ('support_response', 'Support Response Time'),
+    ]
+
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='sla_rules',
+    )
+    name = models.CharField(max_length=120)
+    metric = models.CharField(max_length=30, choices=METRIC_CHOICES)
+    threshold_percent = models.DecimalField(max_digits=5, decimal_places=2, default=99.90)
+    lookback_days = models.PositiveIntegerField(default=30)
+    severity = models.CharField(max_length=20, choices=EnterpriseIncident.SEVERITY_CHOICES, default='high')
+    enabled = models.BooleanField(default=True)
+    auto_notify_admins = models.BooleanField(default=True)
+    auto_create_incident = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.organization.name}: {self.name}"
+
+
+class IncidentEscalationRule(models.Model):
+    """Escalation workflow rules for enterprise incidents."""
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='incident_escalation_rules',
+    )
+    name = models.CharField(max_length=120)
+    enabled = models.BooleanField(default=True)
+    incident_type = models.CharField(max_length=30, blank=True, help_text='Empty means all incident types')
+    min_severity = models.CharField(max_length=20, choices=EnterpriseIncident.SEVERITY_CHOICES, default='high')
+    escalation_delay_minutes = models.PositiveIntegerField(default=0)
+    create_task = models.BooleanField(default=True)
+    create_blocker = models.BooleanField(default=False)
+    notify_admins = models.BooleanField(default=True)
+    assign_to_role = models.CharField(max_length=20, default='admin')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['escalation_delay_minutes', 'name']
+
+    def __str__(self):
+        return f"{self.organization.name}: {self.name}"
+
+
+class EnterpriseIncidentEscalation(models.Model):
+    """Execution record to avoid duplicate escalations per incident/rule."""
+    incident = models.ForeignKey(
+        EnterpriseIncident,
+        on_delete=models.CASCADE,
+        related_name='escalations',
+    )
+    rule = models.ForeignKey(
+        IncidentEscalationRule,
+        on_delete=models.CASCADE,
+        related_name='executions',
+    )
+    task_id = models.IntegerField(null=True, blank=True)
+    blocker_id = models.IntegerField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['incident', 'rule']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Escalation {self.incident_id} via {self.rule_id}"

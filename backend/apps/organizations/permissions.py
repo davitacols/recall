@@ -84,7 +84,7 @@ def require_permission(permission):
                 return Response({'error': 'Authentication required'}, 
                               status=status.HTTP_401_UNAUTHORIZED)
             
-            user_permissions = ROLE_PERMISSIONS.get(request.user.role, [])
+            user_permissions = get_user_permissions(request.user)
             if permission not in user_permissions:
                 return Response({'error': 'Permission denied'}, 
                               status=status.HTTP_403_FORBIDDEN)
@@ -95,8 +95,46 @@ def require_permission(permission):
 
 def get_user_permissions(user):
     """Get all permissions for a user based on their role"""
-    return ROLE_PERMISSIONS.get(user.role, [])
+    base_permissions = set(ROLE_PERMISSIONS.get(user.role, []))
+    try:
+        if not getattr(user, 'organization', None):
+            return list(base_permissions)
+        from .enterprise_models import RolePermissionPolicy
+        policy = RolePermissionPolicy.objects.filter(organization=user.organization).first()
+        if not policy:
+            return list(base_permissions)
+
+        role_config = (policy.role_overrides or {}).get(user.role, {})
+        add_perms = role_config.get('add', []) if isinstance(role_config, dict) else []
+        remove_perms = role_config.get('remove', []) if isinstance(role_config, dict) else []
+        base_permissions.update([p for p in add_perms if isinstance(p, str)])
+        base_permissions.difference_update([p for p in remove_perms if isinstance(p, str)])
+    except Exception:
+        pass
+    return list(base_permissions)
 
 def has_permission(user, permission):
     """Check if user has a specific permission"""
     return permission in get_user_permissions(user)
+
+
+def has_project_permission(user, permission, project_id):
+    """Check permission with optional project-level overrides."""
+    if permission not in get_user_permissions(user):
+        return False
+    try:
+        from .enterprise_models import ProjectPermissionScope
+        scope = ProjectPermissionScope.objects.filter(
+            organization=user.organization,
+            project_id=project_id,
+            role=user.role,
+        ).first()
+        if not scope:
+            return True
+        if permission in (scope.denied_permissions or []):
+            return False
+        if permission in (scope.allowed_permissions or []):
+            return True
+    except Exception:
+        pass
+    return True

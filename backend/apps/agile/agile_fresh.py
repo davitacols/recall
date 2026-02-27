@@ -10,6 +10,7 @@ import re
 from apps.agile.models import Project, Sprint, Issue, Board, Column, IssueComment, IssueLabel, Blocker, Retrospective, SprintUpdate, DecisionImpact
 from apps.decisions.models import Decision
 from apps.organizations.models import User
+from apps.organizations.permissions import has_project_permission, Permission
 from apps.conversations.models import Conversation
 from apps.knowledge.unified_models import UnifiedActivity
 
@@ -331,6 +332,8 @@ def issues(request, project_id):
     title = (request.data.get('title') or '').strip()
     if not title:
         return Response({'error': 'Title is required'}, status=400)
+    if not has_project_permission(request.user, Permission.CREATE_ISSUE.value, project.id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
 
     board = project.boards.first()
     if not board:
@@ -464,6 +467,8 @@ def issue_detail(request, issue_id):
         })
     
     if request.method == 'PUT':
+        if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
         if 'title' in request.data:
             issue.title = request.data['title']
         if 'description' in request.data:
@@ -512,6 +517,8 @@ def issue_detail(request, issue_id):
         })
     
     if request.method == 'DELETE':
+        if not has_project_permission(request.user, Permission.DELETE_ISSUE.value, issue.project_id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
         issue.delete()
         return Response({'message': 'Issue deleted'})
 

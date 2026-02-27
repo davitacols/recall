@@ -45,6 +45,13 @@ const steps = [
   },
 ];
 
+const reelEvents = [
+  { title: "Decision captured", time: "00:08", tone: "#8ff4c7" },
+  { title: "Conflict detected", time: "00:16", tone: "#ffd99f" },
+  { title: "Owner assigned", time: "00:22", tone: "#baf2ff" },
+  { title: "Action synced", time: "00:29", tone: "#f7c4ff" },
+];
+
 export default function Homepage() {
   const navigate = useNavigate();
 
@@ -139,6 +146,90 @@ export default function Homepage() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section style={demoSection}>
+          <div style={container}>
+            <SectionHeading
+              title="Watch Knoledgr in motion"
+              subtitle="A live product-tour animation showing how context gets captured, linked, and resolved in real time."
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.55 }}
+              style={videoShell}
+            >
+              <div style={videoTopBar}>
+                <span style={videoDotWarm} />
+                <span style={videoDotCool} />
+                <span style={videoDotMint} />
+                <span style={videoTitle}>Knoledgr Product Tour</span>
+              </div>
+
+              <div style={videoBody}>
+                <motion.div
+                  animate={{ y: ["-14%", "108%"] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                  style={scanLine}
+                />
+
+                <div style={reelColumn}>
+                  <p style={reelKicker}>Live Event Timeline</p>
+                  {reelEvents.map((event, index) => (
+                    <motion.div
+                      key={event.title}
+                      animate={{ opacity: [0.35, 1, 0.35], x: [0, 4, 0] }}
+                      transition={{
+                        duration: 2.8,
+                        delay: index * 0.35,
+                        repeat: Infinity,
+                        repeatDelay: 0.4,
+                        ease: "easeInOut",
+                      }}
+                      style={reelEvent}
+                    >
+                      <span
+                        style={{
+                          ...eventTone,
+                          background: `linear-gradient(135deg, ${event.tone}, rgba(255,255,255,0.16))`,
+                        }}
+                      />
+                      <span style={reelEventText}>{event.title}</span>
+                      <span style={reelEventTime}>{event.time}</span>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div style={reelColumn}>
+                  <p style={reelKicker}>Context Graph Pulse</p>
+                  <div style={graphShell}>
+                    {[0, 1, 2].map((i) => (
+                      <motion.span
+                        key={i}
+                        animate={{ scale: [0.65, 1.35], opacity: [0.72, 0] }}
+                        transition={{
+                          duration: 2.6,
+                          delay: i * 0.8,
+                          repeat: Infinity,
+                          ease: "easeOut",
+                        }}
+                        style={pulseRing}
+                      />
+                    ))}
+                    <span style={graphCore} />
+                  </div>
+                  <motion.div
+                    animate={{ width: ["18%", "92%", "46%"] }}
+                    transition={{ duration: 4.4, repeat: Infinity, ease: "easeInOut" }}
+                    style={confidenceBar}
+                  />
+                  <p style={graphCaption}>Confidence score updates as signals converge.</p>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </section>
 
@@ -498,6 +589,158 @@ const statLabel = {
 
 const section = {
   padding: "52px 0 68px",
+};
+
+const demoSection = {
+  padding: "20px 0 62px",
+};
+
+const videoShell = {
+  borderRadius: 20,
+  border: "1px solid rgba(255,231,198,0.14)",
+  background: "linear-gradient(160deg, rgba(6,56,53,0.34), rgba(20,16,18,0.95) 62%)",
+  boxShadow: "0 26px 70px rgba(0,0,0,0.38)",
+  overflow: "hidden",
+};
+
+const videoTopBar = {
+  height: 48,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "0 16px",
+  borderBottom: "1px solid rgba(255,231,198,0.12)",
+  background: "rgba(255,255,255,0.02)",
+};
+
+const baseDot = {
+  width: 10,
+  height: 10,
+  borderRadius: 999,
+};
+
+const videoDotWarm = {
+  ...baseDot,
+  background: "#ff9f62",
+};
+
+const videoDotCool = {
+  ...baseDot,
+  background: "#ffd390",
+};
+
+const videoDotMint = {
+  ...baseDot,
+  background: "#72d9c8",
+};
+
+const videoTitle = {
+  marginLeft: 8,
+  fontSize: 13,
+  letterSpacing: "0.04em",
+  color: "rgba(244,239,230,0.75)",
+  textTransform: "uppercase",
+};
+
+const videoBody = {
+  position: "relative",
+  padding: "clamp(16px,3vw,24px)",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gap: 14,
+};
+
+const scanLine = {
+  position: "absolute",
+  left: 0,
+  right: 0,
+  height: 2,
+  background: "linear-gradient(90deg, transparent, rgba(114,217,200,0.85), transparent)",
+  boxShadow: "0 0 18px rgba(114,217,200,0.55)",
+  pointerEvents: "none",
+};
+
+const reelColumn = {
+  border: "1px solid rgba(255,231,198,0.12)",
+  borderRadius: 14,
+  padding: 14,
+  background: "rgba(255,255,255,0.02)",
+};
+
+const reelKicker = {
+  margin: "0 0 10px",
+  fontSize: 11,
+  letterSpacing: "0.14em",
+  color: "rgba(244,239,230,0.65)",
+  textTransform: "uppercase",
+};
+
+const reelEvent = {
+  display: "grid",
+  gridTemplateColumns: "10px 1fr auto",
+  alignItems: "center",
+  gap: 10,
+  borderRadius: 10,
+  padding: "10px 10px",
+  background: "rgba(0,0,0,0.24)",
+  border: "1px solid rgba(255,255,255,0.07)",
+  marginBottom: 8,
+};
+
+const eventTone = {
+  width: 10,
+  height: 10,
+  borderRadius: 999,
+};
+
+const reelEventText = {
+  fontSize: 14,
+  color: "rgba(244,239,230,0.94)",
+};
+
+const reelEventTime = {
+  fontSize: 12,
+  color: "rgba(244,239,230,0.64)",
+  fontFeatureSettings: '"tnum" 1',
+};
+
+const graphShell = {
+  position: "relative",
+  width: 120,
+  height: 120,
+  margin: "6px auto 16px",
+  display: "grid",
+  placeItems: "center",
+};
+
+const pulseRing = {
+  position: "absolute",
+  width: 90,
+  height: 90,
+  borderRadius: "50%",
+  border: "1px solid rgba(114,217,200,0.8)",
+};
+
+const graphCore = {
+  width: 24,
+  height: 24,
+  borderRadius: "50%",
+  background: "radial-gradient(circle at 35% 35%, #e8fff9, #72d9c8 60%, #1c7f74)",
+  boxShadow: "0 0 24px rgba(114,217,200,0.55)",
+};
+
+const confidenceBar = {
+  height: 12,
+  borderRadius: 999,
+  background: "linear-gradient(90deg,#72d9c8,#ffd390,#ff9f62)",
+  boxShadow: "0 8px 20px rgba(0,0,0,0.3)",
+};
+
+const graphCaption = {
+  margin: "10px 0 0",
+  fontSize: 13,
+  lineHeight: 1.5,
+  color: "rgba(244,239,230,0.76)",
 };
 
 const sectionHeading = {

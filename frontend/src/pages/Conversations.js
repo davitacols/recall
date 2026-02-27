@@ -12,6 +12,7 @@ function Conversations() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
   const { addToast, confirm } = useToast();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const [conversations, setConversations] = useState([]);
   const [filteredConversations, setFilteredConversations] = useState([]);
@@ -22,6 +23,12 @@ function Conversations() {
 
   useEffect(() => {
     loadConversations();
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   useEffect(() => {
@@ -152,7 +159,7 @@ function Conversations() {
         </button>
       </section>
 
-      <section style={filterBar}>
+      <section style={{ ...filterBar, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : filterBar.gridTemplateColumns }}>
         <div style={searchWrap}>
           <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
           <input
@@ -167,7 +174,7 @@ function Conversations() {
         <select
           value={filterType}
           onChange={(event) => setFilterType(event.target.value)}
-          style={{ ...selectInput, background: palette.panel, border: `1px solid ${palette.border}`, color: palette.text }}
+          style={{ ...selectInput, width: isMobile ? "100%" : "auto", background: palette.panel, border: `1px solid ${palette.border}`, color: palette.text }}
         >
           <option value="all">All Types</option>
           <option value="question">Questions</option>
@@ -179,7 +186,7 @@ function Conversations() {
         <select
           value={sortBy}
           onChange={(event) => setSortBy(event.target.value)}
-          style={{ ...selectInput, background: palette.panel, border: `1px solid ${palette.border}`, color: palette.text }}
+          style={{ ...selectInput, width: isMobile ? "100%" : "auto", background: palette.panel, border: `1px solid ${palette.border}`, color: palette.text }}
         >
           <option value="recent">Most Recent</option>
           <option value="replies">Most Replies</option>
@@ -207,7 +214,7 @@ function Conversations() {
             <article
               key={conversation.id}
               onClick={() => navigate(`/conversations/${conversation.id}`)}
-              style={{ ...listCard, background: palette.panelAlt, border: `1px solid ${palette.border}` }}
+              style={{ ...listCard, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : listCard.gridTemplateColumns, background: palette.panelAlt, border: `1px solid ${palette.border}` }}
             >
               <div style={cardMain}>
                 <div style={tagRow}>
@@ -228,7 +235,7 @@ function Conversations() {
                   {conversation.content || conversation.description || "No description"}
                 </p>
 
-                <div style={{ ...metaRow, color: palette.muted }}>
+                <div style={{ ...metaRow, flexWrap: "wrap", color: palette.muted }}>
                   <span>
                     {new Date(conversation.created_at).toLocaleDateString("en-US", {
                       month: "short",
@@ -240,7 +247,7 @@ function Conversations() {
                 </div>
               </div>
 
-              <div style={cardSide}>
+              <div style={{ ...cardSide, gridAutoFlow: isMobile ? "column" : "row", justifyContent: isMobile ? "space-between" : "start", alignContent: isMobile ? "center" : "start", justifyItems: isMobile ? "stretch" : "center", minWidth: isMobile ? 0 : cardSide.minWidth }}>
                 <div style={authorAvatarWrap}>
                   {(() => {
                     const avatarUrl = getAvatarUrl(

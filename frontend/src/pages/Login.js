@@ -65,12 +65,12 @@ function Login() {
   };
 
   return (
-    <div style={page}>
+    <div style={page} className="login-page">
       <style>{responsiveStyles}</style>
       <div style={ambientGlowTop} />
       <div style={ambientGlowBottom} />
 
-      <div style={layout}>
+      <div style={layout} className="login-layout">
         <motion.aside
           className="login-side-panel"
           initial={{ opacity: 0, x: -24 }}
@@ -107,15 +107,16 @@ function Login() {
         </motion.aside>
 
         <motion.main
+          className="login-form-section"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12, duration: 0.55 }}
           style={formSection}
         >
-          <div style={formCard}>
+          <div style={formCard} className="login-form-card">
             <div style={formHeader}>
               <p style={formEyebrow}>{isLogin ? "WELCOME BACK" : "GET STARTED"}</p>
-              <h2 style={formTitle}>
+              <h2 style={formTitle} className="login-form-title">
                 {isLogin ? "Sign in to Knoledgr" : inviteToken ? "Join your workspace" : "Create your workspace"}
               </h2>
               <p style={formSubtitle}>
@@ -227,6 +228,7 @@ function Login() {
               <button
                 onClick={() => navigate("/")}
                 type="button"
+                className="login-back-btn"
                 style={backButton}
               >
                 {'<'} Back to home
@@ -251,8 +253,31 @@ function Field({ label, children }) {
 const responsiveStyles = `
   * { box-sizing: border-box; }
   .login-side-panel { display: flex; }
+  .login-layout {
+    display: grid;
+    grid-template-columns: 1fr min(500px, 100%);
+  }
   @media (max-width: 960px) {
     .login-side-panel { display: none !important; }
+    .login-page { padding: 12px !important; }
+    .login-layout {
+      grid-template-columns: 1fr !important;
+      min-height: calc(100vh - 24px) !important;
+      border-radius: 18px !important;
+    }
+    .login-form-section { padding: 22px 14px !important; }
+    .login-form-card {
+      width: 100% !important;
+      max-width: 480px !important;
+      border-radius: 16px !important;
+      padding: 22px 16px 18px !important;
+    }
+  }
+  @media (max-width: 520px) {
+    .login-form-section { padding: 14px 8px !important; }
+    .login-form-card { padding: 18px 12px 14px !important; }
+    .login-form-title { font-size: 1.35rem !important; }
+    .login-back-btn { font-size: 12px !important; }
   }
 `;
 
@@ -264,7 +289,7 @@ const page = {
   background:
     "radial-gradient(1200px 500px at 0% 0%, rgba(255,170,80,0.22), transparent 60%), radial-gradient(900px 500px at 100% 100%, rgba(75,190,170,0.16), transparent 60%), #140f11",
   color: "#f7efe3",
-  fontFamily: "'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif",
+  fontFamily: "'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
 const ambientGlowTop = {

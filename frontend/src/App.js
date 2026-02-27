@@ -14,9 +14,7 @@ import ImpactAnalysisModal from './components/ImpactAnalysisModal';
 import SuccessRateTracker from './components/SuccessRateTracker';
 import OnboardingTour from './components/OnboardingTour';
 import ErrorBoundary from './components/ErrorBoundary';
-import Layout from './components/Layout.js';
 import UnifiedLayout from './components/UnifiedLayout';
-import UnifiedNav from './components/UnifiedNav';
 import SmartSearch from './components/SmartSearch';
 import SeoManager from './components/SeoManager';
 import Login from './pages/Login';
@@ -167,7 +165,7 @@ function AppContent() {
       )}
       <CommandPalette />
       <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
-      <MobileNav onSearchOpen={() => setShowSearch(true)} />
+      {user && <MobileNav onSearchOpen={() => setShowSearch(true)} />}
       {user && <AIAssistant />}
       {user && <CommandBar onCommand={(cmd) => {
         if (cmd === 'create-issue') window.location.href = '/projects';

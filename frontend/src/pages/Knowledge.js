@@ -7,6 +7,7 @@ import BM25 from '../utils/bm25';
 
 function Knowledge() {
   const { darkMode } = useTheme();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,6 +22,12 @@ function Knowledge() {
       setQuery(q);
       performSearch(q);
     }
+  }, []);
+
+  React.useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   const performSearch = async (searchQuery) => {
@@ -87,17 +94,17 @@ function Knowledge() {
   return (
     <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: '24px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: isMobile ? '12px' : 0 }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '4px', letterSpacing: '-0.01em' }}>Knowledge</h1>
           <p style={{ fontSize: '14px', color: secondaryText }}>Search through your organization's collective memory</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Link to="/knowledge/graph" style={{ padding: '8px 14px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, fontSize: '13px', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }}>
+        <div style={{ display: 'flex', gap: '8px', width: isMobile ? '100%' : 'auto' }}>
+          <Link to="/knowledge/graph" style={{ padding: '8px 14px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, fontSize: '13px', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.15s', flex: isMobile ? 1 : 'initial' }}>
             <DocumentTextIcon style={{ width: '16px', height: '16px' }} />
             Graph
           </Link>
-          <Link to="/knowledge/analytics" style={{ padding: '8px 14px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, fontSize: '13px', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }}>
+          <Link to="/knowledge/analytics" style={{ padding: '8px 14px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, fontSize: '13px', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.15s', flex: isMobile ? 1 : 'initial' }}>
             <ChartBarIcon style={{ width: '16px', height: '16px' }} />
             Analytics
           </Link>
@@ -106,21 +113,21 @@ function Knowledge() {
 
       {/* Search Form */}
       <form onSubmit={handleSearch} style={{ marginBottom: '24px' }}>
-        <div style={{ position: 'relative' }}>
-          <MagnifyingGlassIcon style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: secondaryText }} />
+        <div style={{ position: 'relative', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '10px' : 0 }}>
+          <MagnifyingGlassIcon style={{ position: 'absolute', left: '12px', top: isMobile ? '17px' : '50%', transform: isMobile ? 'none' : 'translateY(-50%)', width: '16px', height: '16px', color: secondaryText }} />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search for anything..."
-            style={{ width: '100%', paddingLeft: '38px', paddingRight: '100px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '14px', outline: 'none', transition: 'all 0.15s' }}
+            style={{ width: '100%', paddingLeft: '38px', paddingRight: isMobile ? '12px' : '100px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '14px', outline: 'none', transition: 'all 0.15s' }}
             onFocus={(e) => e.currentTarget.style.borderColor = '#3b82f6'}
             onBlur={(e) => e.currentTarget.style.borderColor = borderColor}
           />
           <button
             type="submit"
             disabled={loading || !query.trim()}
-            style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', padding: '6px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s', opacity: (loading || !query.trim()) ? 0.5 : 1 }}
+            style={{ position: isMobile ? 'relative' : 'absolute', right: isMobile ? 'auto' : '4px', top: isMobile ? 'auto' : '50%', transform: isMobile ? 'none' : 'translateY(-50%)', width: isMobile ? '100%' : 'auto', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '4px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s', opacity: (loading || !query.trim()) ? 0.5 : 1 }}
             onMouseEnter={(e) => { if (!loading && query.trim()) { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; } }}
             onMouseLeave={(e) => { if (!loading && query.trim()) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; } }}
           >
@@ -154,7 +161,7 @@ function Knowledge() {
 
       {/* Stats */}
       {!hasSearched && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
           <div style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', backgroundColor: bgColor }}>
             <p style={{ fontSize: '11px', color: secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Searchable Items</p>
             <p style={{ fontSize: '24px', fontWeight: 600, color: textColor }}>{stats.total_items}</p>
@@ -173,7 +180,7 @@ function Knowledge() {
       {/* Search Results */}
       {hasSearched && (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: isMobile ? '10px' : 0, marginBottom: '20px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 600, color: textColor }}>
               {results.length} {results.length === 1 ? 'Result' : 'Results'}
             </h2>
@@ -183,7 +190,7 @@ function Knowledge() {
                 setResults([]);
                 setHasSearched(false);
               }}
-              style={{ padding: '7px 12px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+              style={{ padding: '7px 12px', border: `2px solid ${borderColor}`, borderRadius: '5px', backgroundColor: 'transparent', color: textColor, fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', width: isMobile ? '100%' : 'auto' }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = hoverBg; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
@@ -201,7 +208,7 @@ function Knowledge() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {results.map((result, index) => (
                 <div key={index} style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', backgroundColor: bgColor, cursor: 'pointer', transition: 'all 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#1f2937'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.backgroundColor = bgColor; }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
                     <span style={{ padding: '3px 8px', backgroundColor: hoverBg, border: `1px solid ${borderColor}`, borderRadius: '3px', color: textColor, fontSize: '11px', fontWeight: 600, textTransform: 'capitalize' }}>
                       {result.content_type}
                     </span>

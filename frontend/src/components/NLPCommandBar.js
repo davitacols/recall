@@ -143,7 +143,7 @@ export default function NLPCommandBar() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-32 z-50" onClick={() => setIsOpen(false)}>
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-20 md:pt-32 px-3 z-50" onClick={() => setIsOpen(false)}>
       <div className={`${bgSecondary} border ${borderColor} rounded-lg shadow-2xl w-full max-w-2xl`} onClick={(e) => e.stopPropagation()}>
         <div className={`p-4 border-b ${borderColor}`}>
           <div className="flex items-center gap-3">

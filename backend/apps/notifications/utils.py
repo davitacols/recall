@@ -34,10 +34,16 @@ def dispatch_email_notification(notification):
     try:
         from .tasks import send_notification_email
         from django.conf import settings
-        if settings.DEBUG or not hasattr(settings, 'CELERY_BROKER_URL'):
-            send_notification_email(notification.id)
-        else:
-            send_notification_email.delay(notification.id)
+
+        # Default to synchronous delivery for reliability unless explicitly enabled.
+        if getattr(settings, 'NOTIFICATIONS_USE_CELERY', False):
+            try:
+                send_notification_email.delay(notification.id)
+                return
+            except Exception as celery_error:
+                print(f"Celery notification email dispatch failed, falling back to sync: {celery_error}")
+
+        send_notification_email(notification.id)
     except Exception as e:
         print(f"Failed to send email notification: {e}")
 

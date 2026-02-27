@@ -8,9 +8,14 @@ def send_notification_email(notification_id):
     try:
         notification = Notification.objects.get(id=notification_id)
         user = notification.user
+
+        if not user.email:
+            return
         
         # Check if user has email notifications enabled
         if not user.email_notifications:
+            return
+        if getattr(user, 'digest_frequency', None) == 'never':
             return
         
         # Check notification type preferences

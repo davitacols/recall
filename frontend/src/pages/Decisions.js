@@ -14,6 +14,7 @@ import api from "../services/api";
 function Decisions() {
   const { darkMode } = useTheme();
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
 
@@ -26,6 +27,12 @@ function Decisions() {
 
   useEffect(() => {
     fetchDecisions();
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   const fetchDecisions = async () => {
@@ -173,8 +180,8 @@ function Decisions() {
             ))}
           </div>
 
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <div style={{ position: "relative", minWidth: 220, flex: 1 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
+            <div style={{ position: "relative", minWidth: isMobile ? 0 : 220, width: isMobile ? "100%" : "auto", flex: 1 }}>
               <MagnifyingGlassIcon style={{ width: 14, height: 14, position: "absolute", left: 10, top: 10, color: palette.muted }} />
               <input
                 value={query}
@@ -183,7 +190,7 @@ function Decisions() {
                 style={{ ...ui.input, paddingLeft: 30 }}
               />
             </div>
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...ui.input, width: 140, padding: "9px 10px" }}>
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...ui.input, width: isMobile ? "100%" : 140, padding: "9px 10px" }}>
               <option value="recent">Recent</option>
               <option value="oldest">Oldest</option>
               <option value="title">Title</option>
@@ -242,7 +249,7 @@ function Decisions() {
                 </div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{decision.title}</p>
                 {decision.description && <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{decision.description}</p>}
-                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 11, color: palette.muted }}>
+                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 11, color: palette.muted }}>
                   <span>{decision.decision_maker_name || "Unknown"}</span>
                   <span>{formatDate(decision.created_at)}</span>
                 </div>

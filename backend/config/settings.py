@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'apps.decisions',
     'apps.knowledge',
     'apps.users',
-    'apps.notifications',
+    'apps.notifications.apps.NotificationsConfig',
     'apps.agile',
     'apps.business',
     'apps.integrations',
@@ -121,6 +121,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
+NOTIFICATIONS_USE_CELERY = config('NOTIFICATIONS_USE_CELERY', default=False, cast=bool)
 
 # AI Configuration
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')

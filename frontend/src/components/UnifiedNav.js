@@ -25,6 +25,7 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
   const searchRef = useRef(null);
   const searchInputRef = useRef(null);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isCompact, setIsCompact] = useState(window.innerWidth < 1180);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -34,7 +35,10 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const onResize = () => setIsCompact(window.innerWidth < 1180);
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setIsCompact(window.innerWidth < 1180);
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -280,6 +284,10 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
       }
     }
   };
+
+  if (isMobile) {
+    return null;
+  }
 
   return (
     <nav

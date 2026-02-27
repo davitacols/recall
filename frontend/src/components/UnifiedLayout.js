@@ -13,8 +13,15 @@ export default function UnifiedLayout({ children }) {
   const { user, logout } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef(null);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     const onClickOutside = (event) => {
@@ -136,7 +143,7 @@ export default function UnifiedLayout({ children }) {
       />
       <NLCommandBar darkMode={darkMode} />
 
-      <main style={main}>
+      <main style={{ ...main, paddingTop: isMobile ? 0 : 56 }}>
         <div style={contentContainer}>
           <Breadcrumbs darkMode={darkMode} />
           {children}

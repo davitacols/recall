@@ -199,7 +199,7 @@ function IssueDetail() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg, fontFamily: "Space Grotesk, ui-sans-serif, system-ui" }}>
+    <div style={{ minHeight: "100vh", background: palette.bg, fontFamily: "'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <div style={{ ...ambientGlow, background: darkMode ? "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.18),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.16),transparent 36%)" : "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.1),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.08),transparent 36%)" }} />
       <div style={{ ...ui.container, width: "min(1420px,100%)", position: "relative", zIndex: 1 }}>
         <button onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>

@@ -22,6 +22,7 @@ function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const palette = useMemo(
     () =>
@@ -44,6 +45,12 @@ function NotificationBell() {
           },
     [darkMode]
   );
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     fetchNotifications();
@@ -177,7 +184,7 @@ function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div style={{ ...dropdown, background: palette.panel, border: `1px solid ${palette.border}` }}>
+        <div style={{ ...dropdown, width: isMobile ? "min(92vw, 390px)" : dropdown.width, right: isMobile ? -12 : 0, background: palette.panel, border: `1px solid ${palette.border}` }}>
           <div style={{ ...header, borderBottom: `1px solid ${palette.border}` }}>
             <h3 style={{ margin: 0, fontSize: 14, color: palette.text }}>Notifications</h3>
             <div style={{ display: "flex", gap: 8 }}>

@@ -258,7 +258,7 @@ const SectionHeading = ({ title, subtitle }) => (
 );
 
 const page = {
-  fontFamily: "'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif",
+  fontFamily: "'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   color: "#f4efe6",
   background:
     "radial-gradient(1000px 500px at 10% -10%, rgba(255,170,80,0.25), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(12,131,126,0.2), transparent 55%), #161012",

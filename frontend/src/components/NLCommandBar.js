@@ -5,6 +5,7 @@ import { MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 export default function NLCommandBar({ darkMode }) {
   const [open, setOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -15,6 +16,12 @@ export default function NLCommandBar({ darkMode }) {
   const borderColor = darkMode ? '#292524' : '#e5e7eb';
   const hoverBg = darkMode ? '#292524' : '#f3f4f6';
   const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -129,15 +136,17 @@ export default function NLCommandBar({ darkMode }) {
         display: 'flex',
         alignItems: 'start',
         justifyContent: 'center',
-        paddingTop: '100px'
+        paddingTop: isMobile ? '72px' : '100px',
+        paddingLeft: isMobile ? '12px' : 0,
+        paddingRight: isMobile ? '12px' : 0
       }}
       onClick={() => setOpen(false)}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: '600px',
-          maxWidth: '90%',
+          width: isMobile ? '100%' : '600px',
+          maxWidth: isMobile ? '100%' : '90%',
           backgroundColor: bgColor,
           border: `1px solid ${borderColor}`,
           borderRadius: '12px',
@@ -166,7 +175,7 @@ export default function NLCommandBar({ darkMode }) {
               style={{
                 width: '100%',
                 padding: '12px 12px 12px 40px',
-                fontSize: '15px',
+                fontSize: isMobile ? '14px' : '15px',
                 backgroundColor: 'transparent',
                 border: 'none',
                 color: textColor,

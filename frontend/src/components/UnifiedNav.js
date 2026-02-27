@@ -19,6 +19,20 @@ import {
 import api from "../services/api";
 import NotificationBell from "./NotificationBell";
 
+function getAppLaunchTarget(app) {
+  const launchPath = (app?.launch_path || "").trim();
+  if (launchPath) {
+    if (launchPath.startsWith("http://") || launchPath.startsWith("https://")) {
+      return { type: "external", href: launchPath };
+    }
+    return { type: "internal", href: launchPath };
+  }
+  if (app?.docs_url) {
+    return { type: "external", href: app.docs_url };
+  }
+  return { type: "internal", href: "/enterprise" };
+}
+
 export default function UnifiedNav({ darkMode, rightActions = null }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -34,6 +48,7 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
   const [suggestions, setSuggestions] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
+  const [installedApps, setInstalledApps] = useState([]);
 
   useEffect(() => {
     const onResize = () => {
@@ -141,6 +156,29 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
 
     return () => clearTimeout(timer);
   }, [query]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadInstalledApps = async () => {
+      try {
+        const response = await api.get("/api/organizations/enterprise/marketplace/apps/");
+        if (!active) return;
+        const apps = Array.isArray(response.data) ? response.data : [];
+        setInstalledApps(apps.filter((app) => app.installed));
+      } catch {
+        if (!active) return;
+        setInstalledApps([]);
+      }
+    };
+
+    loadInstalledApps();
+    const interval = setInterval(loadInstalledApps, 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const palette = useMemo(
     () =>
@@ -391,6 +429,98 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
               </Link>
             );
           })}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setOpenDropdown(openDropdown === "Apps" ? null : "Apps")}
+              style={{
+                ...topButton,
+                color: installedApps.length ? palette.text : palette.muted,
+                background: openDropdown === "Apps" ? palette.active : "transparent",
+                border: `1px solid ${openDropdown === "Apps" ? palette.border : "transparent"}`,
+              }}
+              title={isCompact ? "Apps" : undefined}
+            >
+              {!isCompact && <span>Apps</span>}
+              {isCompact && <span>Apps</span>}
+              <ChevronDownIcon
+                style={{
+                  ...icon14,
+                  transform: openDropdown === "Apps" ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.15s",
+                }}
+              />
+            </button>
+            {openDropdown === "Apps" && (
+              <div
+                style={{
+                  ...dropdown,
+                  background: palette.navBg,
+                  border: `1px solid ${palette.border}`,
+                  minWidth: 240,
+                }}
+              >
+                {installedApps.length === 0 ? (
+                  <Link
+                    to="/enterprise"
+                    onClick={() => setOpenDropdown(null)}
+                    style={{
+                      ...dropdownItem,
+                      color: palette.muted,
+                    }}
+                  >
+                    No apps installed
+                  </Link>
+                ) : (
+                  installedApps.map((app) => {
+                    const target = getAppLaunchTarget(app);
+                    if (target.type === "external") {
+                      return (
+                        <a
+                          key={app.id}
+                          href={target.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => setOpenDropdown(null)}
+                          style={{
+                            ...dropdownItem,
+                            color: palette.text,
+                            borderLeft: "3px solid transparent",
+                          }}
+                        >
+                          <span>{app.name}</span>
+                        </a>
+                      );
+                    }
+                    return (
+                      <Link
+                        key={app.id}
+                        to={target.href}
+                        onClick={() => setOpenDropdown(null)}
+                        style={{
+                          ...dropdownItem,
+                          color: palette.text,
+                          borderLeft: "3px solid transparent",
+                        }}
+                      >
+                        <span>{app.name}</span>
+                      </Link>
+                    );
+                  })
+                )}
+                <Link
+                  to="/enterprise"
+                  onClick={() => setOpenDropdown(null)}
+                  style={{
+                    ...dropdownItem,
+                    color: palette.muted,
+                    borderTop: `1px solid ${palette.border}`,
+                  }}
+                >
+                  Manage Apps
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
 
         <div ref={searchRef} style={searchWrap}>

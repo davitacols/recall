@@ -4,6 +4,18 @@ import { useTheme } from '../utils/ThemeAndAccessibility';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
+function getAppLaunchTarget(app) {
+  const launchPath = (app?.launch_path || '').trim();
+  if (launchPath) {
+    if (launchPath.startsWith('http://') || launchPath.startsWith('https://')) {
+      return { type: 'external', href: launchPath };
+    }
+    return { type: 'internal', href: launchPath };
+  }
+  if (app?.docs_url) return { type: 'external', href: app.docs_url };
+  return { type: 'internal', href: '/enterprise' };
+}
+
 export default function Enterprise() {
   const { darkMode } = useTheme();
   const [ssoConfig, setSsoConfig] = useState(null);
@@ -437,13 +449,38 @@ export default function Enterprise() {
                   <p className="text-xs text-gray-500 uppercase tracking-wide">{app.category} | {app.vendor} | {app.pricing}</p>
                   <p className="text-sm text-gray-600 mt-2">{app.description}</p>
                 </div>
-                <button
-                  onClick={() => toggleMarketplaceApp(app)}
-                  disabled={busyAppId === app.id}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold ${app.installed ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-cyan-600 text-white hover:bg-cyan-700'} disabled:opacity-50`}
-                >
-                  {busyAppId === app.id ? 'Please wait...' : app.installed ? 'Uninstall' : 'Install'}
-                </button>
+                <div className="flex flex-col gap-2 items-end">
+                  {app.installed && (() => {
+                    const target = getAppLaunchTarget(app);
+                    if (target.type === 'external') {
+                      return (
+                        <a
+                          href={target.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                        >
+                          Open
+                        </a>
+                      );
+                    }
+                    return (
+                      <a
+                        href={target.href}
+                        className="px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                      >
+                        Open
+                      </a>
+                    );
+                  })()}
+                  <button
+                    onClick={() => toggleMarketplaceApp(app)}
+                    disabled={busyAppId === app.id}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold ${app.installed ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-cyan-600 text-white hover:bg-cyan-700'} disabled:opacity-50`}
+                  >
+                    {busyAppId === app.id ? 'Please wait...' : app.installed ? 'Uninstall' : 'Install'}
+                  </button>
+                </div>
               </div>
             </div>
           ))}

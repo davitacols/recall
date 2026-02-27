@@ -719,6 +719,10 @@ def validate_transition(request, issue_id):
     if transition.requires_story_points and not issue.story_points:
         errors.append('Issue must have story points')
     
+    transition_comment = (request.data.get('transition_comment') or request.data.get('comment') or '').strip()
+    if transition.requires_comment and not transition_comment:
+        errors.append('Transition comment is required')
+    
     if errors:
         return Response({
             'valid': False,

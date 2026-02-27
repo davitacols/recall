@@ -23,7 +23,7 @@ from .enterprise_models import (
 )
 from .auditlog_models import AuditLog
 from .permissions import Permission, ROLE_PERMISSIONS
-from apps.agile.models import Project, Sprint, Issue, Blocker
+from apps.agile.models import Project, Sprint, Issue, Blocker, DecisionImpact
 from apps.notifications.utils import create_notification
 from apps.business.models import Task
 from apps.conversations.models import Conversation
@@ -296,6 +296,7 @@ def marketplace_apps(request):
         'category': app.category,
         'pricing': app.pricing,
         'docs_url': app.docs_url,
+        'launch_path': app.launch_path,
         'installed': app.id in installations,
         'status': installations[app.id].status if app.id in installations else None,
         'installed_at': installations[app.id].installed_at if app.id in installations else None,
@@ -430,9 +431,27 @@ def portfolio_report(request):
         active_sprints = Sprint.objects.filter(project=project, organization=org, status='active').count()
         overdue_issues = issues.filter(due_date__lt=today).exclude(status='done').count()
         blockers = Blocker.objects.filter(organization=org, sprint__project=project, status='active').count()
+        dependency_blockers = Blocker.objects.filter(
+            organization=org,
+            sprint__project=project,
+            status='active',
+            blocker_type='dependency',
+        ).count()
+        decision_dependency_impacts = DecisionImpact.objects.filter(
+            organization=org,
+            issue__project=project,
+            impact_type__in=['blocks', 'delays'],
+        ).count()
         completion = round((done_count / issue_count) * 100, 1) if issue_count else 0.0
 
-        risk_score = min(100, (overdue_issues * 12) + (blockers * 16) + (0 if active_sprints else 8))
+        risk_score = min(
+            100,
+            (overdue_issues * 12)
+            + (blockers * 14)
+            + (dependency_blockers * 18)
+            + (decision_dependency_impacts * 10)
+            + (0 if active_sprints else 8),
+        )
         project_rows.append({
             'project_id': project.id,
             'project_name': project.name,
@@ -443,6 +462,11 @@ def portfolio_report(request):
             'active_sprints': active_sprints,
             'overdue_issues': overdue_issues,
             'active_blockers': blockers,
+            'dependency_blockers': dependency_blockers,
+            'decision_dependency_impacts': decision_dependency_impacts,
+            'dependency_density': round(
+                ((dependency_blockers + decision_dependency_impacts) / issue_count), 2
+            ) if issue_count else 0.0,
             'risk_score': risk_score,
         })
 
@@ -453,6 +477,8 @@ def portfolio_report(request):
         'active_sprints': sum(row['active_sprints'] for row in project_rows),
         'overdue_issues': sum(row['overdue_issues'] for row in project_rows),
         'active_blockers': sum(row['active_blockers'] for row in project_rows),
+        'dependency_blockers': sum(row['dependency_blockers'] for row in project_rows),
+        'decision_dependency_impacts': sum(row['decision_dependency_impacts'] for row in project_rows),
     }
     portfolio_totals['completion_percent'] = round(
         (portfolio_totals['done'] / portfolio_totals['issues']) * 100, 1
@@ -462,6 +488,11 @@ def portfolio_report(request):
         'generated_at': timezone.now(),
         'totals': portfolio_totals,
         'projects': sorted(project_rows, key=lambda row: row['risk_score'], reverse=True),
+        'top_dependency_projects': sorted(
+            project_rows,
+            key=lambda row: (row['dependency_blockers'] + row['decision_dependency_impacts']),
+            reverse=True,
+        )[:5],
     })
 
 

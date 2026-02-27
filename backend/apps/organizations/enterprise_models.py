@@ -193,6 +193,7 @@ class MarketplaceApp(models.Model):
     category = models.CharField(max_length=30, choices=APP_CATEGORY_CHOICES, default='engineering')
     pricing = models.CharField(max_length=40, default='free')
     docs_url = models.URLField(blank=True)
+    launch_path = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

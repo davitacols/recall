@@ -7,10 +7,11 @@ from django.db import IntegrityError
 from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
 import re
-from apps.agile.models import Project, Sprint, Issue, Board, Column, IssueComment, IssueLabel, Blocker, Retrospective, SprintUpdate, DecisionImpact
+from apps.agile.models import Project, Sprint, Issue, Board, Column, IssueComment, IssueLabel, Blocker, Retrospective, SprintUpdate, DecisionImpact, WorkflowTransition
 from apps.decisions.models import Decision
 from apps.organizations.models import User
 from apps.organizations.permissions import has_project_permission, Permission
+from apps.organizations.auditlog_models import AuditLog
 from apps.conversations.models import Conversation
 from apps.knowledge.unified_models import UnifiedActivity
 
@@ -472,6 +473,40 @@ def issue_detail(request, issue_id):
     if request.method == 'PUT':
         if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
             return Response({'error': 'Permission denied for this project'}, status=403)
+        old_status = issue.status
+        transition = None
+        transition_comment = (request.data.get('transition_comment') or request.data.get('comment') or '').strip()
+
+        if 'status' in request.data and request.data['status'] != issue.status:
+            target_status = request.data['status']
+            transitions = WorkflowTransition.objects.filter(
+                organization=request.user.organization,
+                from_status=issue.status,
+                to_status=target_status
+            ).filter(Q(issue_type=issue.issue_type) | Q(issue_type=''))
+
+            if not transitions.exists():
+                return Response({
+                    'error': f'Cannot transition from {issue.status} to {target_status}',
+                    'valid': False,
+                }, status=400)
+
+            transition = transitions.first()
+            errors = []
+
+            next_assignee_id = request.data.get('assignee_id', issue.assignee_id)
+            next_story_points = request.data.get('story_points', issue.story_points)
+
+            if transition.requires_assignee and not next_assignee_id:
+                errors.append('Issue must be assigned')
+            if transition.requires_story_points and not next_story_points:
+                errors.append('Issue must have story points')
+            if transition.requires_comment and not transition_comment:
+                errors.append('Transition comment is required')
+
+            if errors:
+                return Response({'valid': False, 'errors': errors}, status=400)
+
         if 'title' in request.data:
             issue.title = request.data['title']
         if 'description' in request.data:
@@ -512,6 +547,29 @@ def issue_detail(request, issue_id):
                 issue.sprint = None
         
         issue.save()
+        if transition and issue.status != old_status:
+            if transition_comment:
+                IssueComment.objects.create(
+                    issue=issue,
+                    author=request.user,
+                    content=f"[Transition {old_status} -> {issue.status}] {transition_comment}",
+                )
+            AuditLog.log(
+                organization=request.user.organization,
+                user=request.user,
+                action='update',
+                resource_type='issue_status_transition',
+                resource_id=issue.id,
+                details={
+                    'issue_key': issue.key,
+                    'from_status': old_status,
+                    'to_status': issue.status,
+                    'transition_id': transition.id,
+                    'requires_comment': transition.requires_comment,
+                    'comment_provided': bool(transition_comment),
+                },
+                request=request,
+            )
         return Response({
             'message': 'Issue updated',
             'id': issue.id,

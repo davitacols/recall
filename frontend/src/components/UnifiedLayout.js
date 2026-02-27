@@ -5,7 +5,6 @@ import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import Breadcrumbs from "./Breadcrumbs";
 import NLCommandBar from "./NLCommandBar";
-import NotificationBell from "./NotificationBell";
 import QuickActions from "./QuickActions";
 import UnifiedNav from "./UnifiedNav";
 
@@ -83,8 +82,6 @@ export default function UnifiedLayout({ children }) {
             >
               {darkMode ? <SunIcon style={icon16} /> : <MoonIcon style={icon16} />}
             </button>
-
-            <NotificationBell />
 
             <div ref={profileRef} style={{ position: "relative" }}>
               <button

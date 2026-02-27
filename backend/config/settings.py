@@ -1,4 +1,5 @@
 import os
+import ssl
 from decouple import config
 import dj_database_url
 from corsheaders.defaults import default_headers
@@ -221,11 +222,29 @@ if DEBUG and redis_url == 'redis://localhost:6379/0':
         }
     }
 else:
+    redis_host = redis_url
+    if redis_url.startswith('rediss://'):
+        ssl_mode = config('REDIS_SSL_CERT_REQS', default='none').strip().lower()
+        ssl_cert_reqs = ssl.CERT_NONE
+        if ssl_mode in ('required', 'require', 'cert_required'):
+            ssl_cert_reqs = ssl.CERT_REQUIRED
+        elif ssl_mode in ('optional', 'cert_optional'):
+            ssl_cert_reqs = ssl.CERT_OPTIONAL
+
+        redis_host = {
+            'address': redis_url,
+            'ssl': {
+                'ssl_cert_reqs': ssl_cert_reqs,
+            },
+        }
+
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
-                'hosts': [redis_url],
+                'hosts': [redis_host],
+                'capacity': config('CHANNELS_CAPACITY', default=1500, cast=int),
+                'expiry': config('CHANNELS_EXPIRY', default=60, cast=int),
             },
         },
     }

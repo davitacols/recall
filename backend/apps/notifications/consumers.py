@@ -1,6 +1,10 @@
 import json
+import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
+
+logger = logging.getLogger(__name__)
+
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -14,7 +18,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             self.room_group_name = f'notifications_{self.user.id}'
             await self.channel_layer.group_add(self.room_group_name, self.channel_name)
             await self.accept()
-        except:
+        except Exception:
+            logger.exception("Notification websocket connect failed")
             await self.close()
 
     async def disconnect(self, close_code):

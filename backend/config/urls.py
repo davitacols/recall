@@ -3,7 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
-from apps.organizations.health import health_check
+from apps.organizations.health import health_check, realtime_health_check
 
 def websocket_unavailable(request):
     return HttpResponse(status=404)
@@ -11,6 +11,7 @@ def websocket_unavailable(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health_check'),
+    path('api/health/realtime/', realtime_health_check, name='realtime_health_check'),
     path('api/auth/', include('apps.users.urls')),
     path('api/conversations/', include('apps.conversations.urls')),
     path('api/recall/', include('apps.conversations.unified_urls')),

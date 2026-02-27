@@ -17,6 +17,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
+import NotificationBell from "./NotificationBell";
 
 export default function UnifiedNav({ darkMode, rightActions = null }) {
   const location = useLocation();
@@ -472,6 +473,7 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
       </div>
 
       <div style={rightWrap}>
+        <NotificationBell />
         {rightActions}
       </div>
     </nav>

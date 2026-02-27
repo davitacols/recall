@@ -1,6 +1,7 @@
 import os
 from decouple import config
 import dj_database_url
+from corsheaders.defaults import default_headers
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -170,6 +171,11 @@ if not DEBUG:
 # Allow mobile app requests
 CORS_ALLOW_ALL_ORIGINS = True  # Required for mobile apps
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'cache-control',
+    'pragma',
+    'expires',
+]
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'

@@ -257,6 +257,8 @@ def sprint_detail(request, sprint_id):
         })
     
     if request.method == 'PUT':
+        if sprint.project_id and not has_project_permission(request.user, Permission.EDIT_SPRINT.value, sprint.project_id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
         if 'name' in request.data:
             sprint.name = request.data['name']
         if 'goal' in request.data:
@@ -284,6 +286,8 @@ def sprint_detail(request, sprint_id):
         })
     
     if request.method == 'DELETE':
+        if sprint.project_id and not has_project_permission(request.user, Permission.DELETE_SPRINT.value, sprint.project_id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
         sprint.delete()
         return Response({'message': 'Sprint deleted'})
 
@@ -412,7 +416,6 @@ def issue_detail(request, issue_id):
         issue = Issue.objects.get(id=issue_id, organization=request.user.organization)
     except Issue.DoesNotExist:
         return Response({'error': 'Issue not found'}, status=404)
-    
     if request.method == 'GET':
         _track_view_activity(
             request,
@@ -533,6 +536,8 @@ def add_comment(request, issue_id):
         issue = Issue.objects.get(id=issue_id, organization=request.user.organization)
     except Issue.DoesNotExist:
         return Response({'error': 'Issue not found'}, status=404)
+    if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
     
     comment = IssueComment.objects.create(
         issue=issue,
@@ -670,6 +675,8 @@ def backlog(request, project_id):
     
     try:
         issue = Issue.objects.get(id=issue_id, project=project)
+        if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, project.id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
         issue.in_backlog = True
         issue.sprint = None
         issue.save()
@@ -756,6 +763,8 @@ def blockers(request):
         sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
     except Sprint.DoesNotExist:
         return Response({'error': 'Sprint not found'}, status=404)
+    if sprint.project_id and not has_project_permission(request.user, Permission.EDIT_SPRINT.value, sprint.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
     
     conversation = Conversation.objects.create(
         organization=request.user.organization,
@@ -786,6 +795,8 @@ def resolve_blocker(request, blocker_id):
     
     try:
         blocker = Blocker.objects.get(id=blocker_id, organization=request.user.organization)
+        if blocker.sprint and blocker.sprint.project_id and not has_project_permission(request.user, Permission.EDIT_SPRINT.value, blocker.sprint.project_id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
         blocker.status = 'resolved'
         blocker.resolved_at = timezone.now()
         blocker.save()
@@ -857,6 +868,8 @@ def assign_issues_to_sprint(request, sprint_id):
         sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
     except Sprint.DoesNotExist:
         return Response({'error': 'Sprint not found'}, status=404)
+    if sprint.project_id and not has_project_permission(request.user, Permission.EDIT_SPRINT.value, sprint.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
     
     # Get all issues in the project that are not assigned to any sprint
     unlinked_issues = Issue.objects.filter(
@@ -956,6 +969,8 @@ def sprint_autopilot(request, sprint_id):
         sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
     except Sprint.DoesNotExist:
         return Response({'error': 'Sprint not found'}, status=404)
+    if sprint.project_id and not has_project_permission(request.user, Permission.EDIT_SPRINT.value, sprint.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
 
     today = timezone.now().date()
     total_days = max(1, (sprint.end_date - sprint.start_date).days + 1)

@@ -402,6 +402,29 @@ def add_comment(request, issue_id):
             author=request.user,
             content=request.data['content']
         )
+
+        # Notify issue participants about new comment activity.
+        try:
+            from apps.notifications.models import Notification
+
+            recipients = set(issue.watchers.exclude(id=request.user.id).values_list('id', flat=True))
+            if issue.assignee_id and issue.assignee_id != request.user.id:
+                recipients.add(issue.assignee_id)
+            if issue.reporter_id and issue.reporter_id != request.user.id:
+                recipients.add(issue.reporter_id)
+
+            actor = request.user.get_full_name() or request.user.username
+            for user_id in recipients:
+                Notification.objects.create(
+                    user_id=user_id,
+                    notification_type='reply',
+                    title=f'New comment on {issue.key}',
+                    message=f'{actor} commented on "{issue.title}"',
+                    link=f'/issues/{issue.id}',
+                )
+        except Exception:
+            pass
+
         return Response(IssueCommentSerializer(comment).data, status=201)
     except Issue.DoesNotExist:
         return Response({'error': 'Issue not found'}, status=404)
@@ -417,9 +440,15 @@ def current_sprint_summary(request):
         today = timezone.now().date()
         sprint = Sprint.objects.filter(
             organization=org,
-            start_date__lte=today,
-            end_date__gte=today
+            status='active',
         ).select_related('project').prefetch_related('issues', 'blockers').order_by('-start_date').first()
+
+        if not sprint:
+            sprint = Sprint.objects.filter(
+                organization=org,
+                start_date__lte=today,
+                end_date__gte=today
+            ).select_related('project').prefetch_related('issues', 'blockers').order_by('-start_date').first()
         
         if not sprint:
             return Response(None)

@@ -15,6 +15,8 @@ from .serializers import (
     IssueAttachmentSerializer, SavedFilterSerializer, IssueTemplateSerializer,
     ReleaseSerializer, ComponentSerializer, ProjectCategorySerializer
 )
+from apps.organizations.permissions import has_project_permission, Permission
+from apps.notifications.models import Notification
 
 
 # Attachments
@@ -23,6 +25,8 @@ from .serializers import (
 def upload_attachment(request, issue_id):
     try:
         issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
+        if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
         file = request.FILES.get('file')
         
         if not file:
@@ -43,6 +47,21 @@ def upload_attachment(request, issue_id):
             file_size=file.size,
             content_type=file.content_type
         )
+
+        recipients = set(issue.watchers.exclude(id=request.user.id).values_list('id', flat=True))
+        if issue.assignee_id and issue.assignee_id != request.user.id:
+            recipients.add(issue.assignee_id)
+        if issue.reporter_id and issue.reporter_id != request.user.id:
+            recipients.add(issue.reporter_id)
+        actor = request.user.get_full_name() or request.user.username
+        for user_id in recipients:
+            Notification.objects.create(
+                user_id=user_id,
+                notification_type='task',
+                title=f'Attachment added to {issue.key}',
+                message=f'{actor} uploaded "{attachment.filename}" on "{issue.title}"',
+                link=f'/issues/{issue.id}',
+            )
         
         return Response(IssueAttachmentSerializer(attachment).data, status=201)
     except Exception as e:
@@ -53,6 +72,8 @@ def upload_attachment(request, issue_id):
 @permission_classes([IsAuthenticated])
 def list_attachments(request, issue_id):
     issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
+    if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
     attachments = issue.attachments.all()
     return Response(IssueAttachmentSerializer(attachments, many=True).data)
 
@@ -61,6 +82,8 @@ def list_attachments(request, issue_id):
 @permission_classes([IsAuthenticated])
 def delete_attachment(request, attachment_id):
     attachment = get_object_or_404(IssueAttachment, id=attachment_id, issue__organization=request.user.organization)
+    if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, attachment.issue.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
     attachment.file.delete()
     attachment.delete()
     return Response(status=204)
@@ -71,6 +94,8 @@ def delete_attachment(request, attachment_id):
 @permission_classes([IsAuthenticated])
 def watch_issue(request, issue_id):
     issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
+    if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
     issue.watchers.add(request.user)
     return Response({'watching': True})
 
@@ -79,6 +104,8 @@ def watch_issue(request, issue_id):
 @permission_classes([IsAuthenticated])
 def unwatch_issue(request, issue_id):
     issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
+    if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
     issue.watchers.remove(request.user)
     return Response({'watching': False})
 
@@ -94,9 +121,14 @@ def bulk_update_issues(request):
     updates = {k: v for k, v in updates.items() if k in allowed_fields}
     
     issues = Issue.objects.filter(id__in=issue_ids, organization=request.user.organization)
+    allowed_issue_ids = [
+        issue.id for issue in issues
+        if has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id)
+    ]
+    issues = issues.filter(id__in=allowed_issue_ids)
     count = issues.update(**updates)
     
-    return Response({'updated': count, 'issues': issue_ids})
+    return Response({'updated': count, 'issues': allowed_issue_ids})
 
 
 # Saved Filters

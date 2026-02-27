@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from django.db.models import Sum, Q
 from .time_tracking_models import WorkLog, TimeEstimate
 from .models import Issue, Sprint, BurndownData
+from apps.organizations.permissions import has_project_permission, Permission
+from apps.notifications.models import Notification
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -16,6 +18,8 @@ def log_work(request, issue_id):
         issue = Issue.objects.get(id=issue_id, organization=request.user.organization)
     except Issue.DoesNotExist:
         return Response({'error': 'Issue not found'}, status=status.HTTP_404_NOT_FOUND)
+    if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=status.HTTP_403_FORBIDDEN)
     
     time_spent = request.data.get('time_spent_minutes')
     description = request.data.get('description', '')
@@ -41,6 +45,21 @@ def log_work(request, issue_id):
     if hasattr(issue, 'time_estimate') and issue.time_estimate.remaining_estimate_minutes:
         issue.time_estimate.remaining_estimate_minutes = max(0, issue.time_estimate.remaining_estimate_minutes - time_spent)
         issue.time_estimate.save()
+
+    recipients = set(issue.watchers.exclude(id=request.user.id).values_list('id', flat=True))
+    if issue.assignee_id and issue.assignee_id != request.user.id:
+        recipients.add(issue.assignee_id)
+    if issue.reporter_id and issue.reporter_id != request.user.id:
+        recipients.add(issue.reporter_id)
+    actor = request.user.get_full_name() or request.user.username
+    for user_id in recipients:
+        Notification.objects.create(
+            user_id=user_id,
+            notification_type='task',
+            title=f'Work logged on {issue.key}',
+            message=f'{actor} logged {time_spent}m on "{issue.title}"',
+            link=f'/issues/{issue.id}',
+        )
     
     return Response({
         'id': work_log.id,
@@ -58,6 +77,8 @@ def get_work_logs(request, issue_id):
         issue = Issue.objects.get(id=issue_id, organization=request.user.organization)
     except Issue.DoesNotExist:
         return Response({'error': 'Issue not found'}, status=status.HTTP_404_NOT_FOUND)
+    if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=status.HTTP_403_FORBIDDEN)
     
     work_logs = WorkLog.objects.filter(issue=issue).select_related('user')
     
@@ -78,6 +99,8 @@ def set_time_estimate(request, issue_id):
         issue = Issue.objects.get(id=issue_id, organization=request.user.organization)
     except Issue.DoesNotExist:
         return Response({'error': 'Issue not found'}, status=status.HTTP_404_NOT_FOUND)
+    if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=status.HTTP_403_FORBIDDEN)
     
     original = request.data.get('original_estimate_minutes')
     remaining = request.data.get('remaining_estimate_minutes')
@@ -88,6 +111,21 @@ def set_time_estimate(request, issue_id):
     if remaining is not None:
         estimate.remaining_estimate_minutes = remaining
     estimate.save()
+
+    recipients = set(issue.watchers.exclude(id=request.user.id).values_list('id', flat=True))
+    if issue.assignee_id and issue.assignee_id != request.user.id:
+        recipients.add(issue.assignee_id)
+    if issue.reporter_id and issue.reporter_id != request.user.id:
+        recipients.add(issue.reporter_id)
+    actor = request.user.get_full_name() or request.user.username
+    for user_id in recipients:
+        Notification.objects.create(
+            user_id=user_id,
+            notification_type='task',
+            title=f'Time estimate updated for {issue.key}',
+            message=f'{actor} updated estimates on "{issue.title}"',
+            link=f'/issues/{issue.id}',
+        )
     
     return Response({
         'original_estimate_minutes': estimate.original_estimate_minutes,

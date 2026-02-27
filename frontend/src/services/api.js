@@ -10,6 +10,20 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
+    config.headers = {
+      ...config.headers,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    };
+
+    if ((config.method || 'get').toLowerCase() === 'get') {
+      config.params = {
+        ...(config.params || {}),
+        _t: Date.now(),
+      };
+    }
+
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

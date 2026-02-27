@@ -1,5 +1,5 @@
 from django.urls import path
-from . import agile_fresh, retrospective_endpoints, views_missing_features, views, ai_endpoints
+from . import agile_fresh, retrospective_endpoints, views_missing_features, views, ai_endpoints, time_tracking_endpoints
 
 urlpatterns = [
     # Projects
@@ -36,6 +36,11 @@ urlpatterns = [
     # Watchers
     path('issues/<int:issue_id>/watch/', views_missing_features.watch_issue, name='watch_issue'),
     path('issues/<int:issue_id>/unwatch/', views_missing_features.unwatch_issue, name='unwatch_issue'),
+
+    # Time Tracking
+    path('issues/<int:issue_id>/log-work/', time_tracking_endpoints.log_work, name='log_work'),
+    path('issues/<int:issue_id>/work-logs/', time_tracking_endpoints.get_work_logs, name='get_work_logs'),
+    path('issues/<int:issue_id>/time-estimate/', time_tracking_endpoints.set_time_estimate, name='set_time_estimate'),
     
     # Bulk Operations
     path('issues/bulk-update/', views_missing_features.bulk_update_issues, name='bulk_update_issues'),

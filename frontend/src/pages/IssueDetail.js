@@ -224,7 +224,7 @@ function IssueDetail() {
           </div>
 
           <div style={heroActions}>
-            <WatchButton issueId={issueId} isWatching={false} />
+            <WatchButton issueId={issueId} isWatching={Boolean(issue.is_watching)} />
             {!editing ? (
               <button onClick={() => setEditing(true)} style={ui.secondaryButton}>
                 <PencilIcon style={icon14} /> Edit

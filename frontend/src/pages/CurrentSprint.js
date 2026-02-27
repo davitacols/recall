@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ExclamationTriangleIcon, PlusIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
@@ -15,13 +15,7 @@ function CurrentSprint() {
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
 
-  useEffect(() => {
-    fetchSprint();
-    const interval = setInterval(fetchSprint, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchSprint = async () => {
+  const fetchSprint = useCallback(async () => {
     try {
       const sprintRes = await api.get("/api/agile/current-sprint/");
       const current = sprintRes.data;
@@ -39,7 +33,24 @@ function CurrentSprint() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSprint();
+    const interval = setInterval(fetchSprint, 5000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        fetchSprint();
+      }
+    };
+    window.addEventListener("focus", fetchSprint);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", fetchSprint);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [fetchSprint]);
 
   if (loading) {
     return (

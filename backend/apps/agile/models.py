@@ -650,6 +650,38 @@ class IssueAttachment(models.Model):
         ordering = ['-uploaded_at']
 
 
+class WorkLog(models.Model):
+    """Per-issue logged work entries."""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='work_logs')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='work_logs')
+    time_spent_minutes = models.IntegerField(help_text='Time spent in minutes')
+    description = models.TextField(blank=True)
+    started_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'work_logs'
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['organization', 'issue', '-started_at']),
+            models.Index(fields=['user', '-started_at']),
+        ]
+
+
+class TimeEstimate(models.Model):
+    """Original and remaining effort estimates for an issue."""
+    issue = models.OneToOneField(Issue, on_delete=models.CASCADE, related_name='time_estimate')
+    original_estimate_minutes = models.IntegerField(null=True, blank=True)
+    remaining_estimate_minutes = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'time_estimates'
+
+
 class SavedFilter(models.Model):
     """Saved search filters for issues"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_filters')

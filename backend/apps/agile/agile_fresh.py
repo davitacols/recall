@@ -418,6 +418,12 @@ def issue_detail(request, issue_id):
             issue.description,
         )
         comments = issue.comments.all()
+        time_estimate = None
+        if hasattr(issue, 'time_estimate') and issue.time_estimate:
+            time_estimate = {
+                'original_estimate_minutes': issue.time_estimate.original_estimate_minutes,
+                'remaining_estimate_minutes': issue.time_estimate.remaining_estimate_minutes,
+            }
         return Response({
             'id': issue.id,
             'key': issue.key,
@@ -446,6 +452,9 @@ def issue_detail(request, issue_id):
             'ci_status': issue.ci_status,
             'ci_url': issue.ci_url,
             'test_coverage': issue.test_coverage,
+            'is_watching': issue.watchers.filter(id=request.user.id).exists(),
+            'watchers_count': issue.watchers.count(),
+            'time_estimate': time_estimate,
             'comments': [{
                 'id': c.id,
                 'author': c.author.get_full_name(),
@@ -863,11 +872,19 @@ def current_sprint(request):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     today = timezone.now().date()
+    # Prefer explicit active status (source of truth in project/sprint management UI),
+    # then fall back to date-window active sprint for older data.
     sprint = Sprint.objects.filter(
         organization=request.user.organization,
-        start_date__lte=today,
-        end_date__gte=today
+        status='active'
     ).order_by('-start_date').first()
+
+    if not sprint:
+        sprint = Sprint.objects.filter(
+            organization=request.user.organization,
+            start_date__lte=today,
+            end_date__gte=today
+        ).order_by('-start_date').first()
     
     if not sprint:
         return Response(None)

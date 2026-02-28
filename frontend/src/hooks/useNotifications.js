@@ -5,6 +5,7 @@ export function useNotifications(onNotification) {
   const retryCount = useRef(0);
   const callbackRef = useRef(onNotification);
   const maxRetries = 3;
+  const wsDisableKey = 'notifications_ws_disabled_until';
 
   useEffect(() => {
     callbackRef.current = onNotification;
@@ -13,6 +14,8 @@ export function useNotifications(onNotification) {
   useEffect(() => {
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     if (!token) return;
+    const disabledUntil = Number(sessionStorage.getItem(wsDisableKey) || 0);
+    if (disabledUntil && Date.now() < disabledUntil) return;
 
     const backendUrl = getApiBaseUrl();
     const protocol = backendUrl.startsWith('https') ? 'wss:' : 'ws:';
@@ -45,6 +48,7 @@ export function useNotifications(onNotification) {
           if (retryCount.current === 0) {
             console.warn('WebSocket unavailable, using polling fallback');
           }
+          sessionStorage.setItem(wsDisableKey, String(Date.now() + 30 * 60 * 1000));
         };
 
         ws.onclose = () => {
@@ -55,6 +59,7 @@ export function useNotifications(onNotification) {
         };
       } catch (error) {
         console.warn('WebSocket connection failed, notifications will use polling');
+        sessionStorage.setItem(wsDisableKey, String(Date.now() + 30 * 60 * 1000));
       }
     };
 

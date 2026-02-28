@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { useToast } from '../components/Toast';
 import { BellIcon } from '@heroicons/react/24/outline';
+import api from '../services/api';
 
 export default function NotificationSettings() {
   const { darkMode } = useTheme();
@@ -30,12 +31,8 @@ export default function NotificationSettings() {
 
   const fetchSettings = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/settings/notifications/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setSettings(data);
+      const res = await api.get('/api/organizations/settings/notifications/');
+      setSettings(res.data || settings);
     } catch (err) {
       error('Failed to load settings');
     } finally {
@@ -44,42 +41,28 @@ export default function NotificationSettings() {
   };
 
   const handleToggle = async (field) => {
-    const newValue = !settings[field];
-    setSettings({ ...settings, [field]: newValue });
+    const nextSettings = { ...settings, [field]: !settings[field] };
+    setSettings(nextSettings);
 
     try {
-      const token = localStorage.getItem('token');
-      await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/settings/notifications/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ ...settings, [field]: newValue })
-      });
+      await api.put('/api/organizations/settings/notifications/', nextSettings);
       success('Settings updated');
     } catch (err) {
       error('Failed to update settings');
-      setSettings({ ...settings, [field]: !newValue });
+      setSettings(settings);
     }
   };
 
   const handleFrequencyChange = async (frequency) => {
-    setSettings({ ...settings, digest_frequency: frequency });
+    const nextSettings = { ...settings, digest_frequency: frequency };
+    setSettings(nextSettings);
 
     try {
-      const token = localStorage.getItem('token');
-      await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/settings/notifications/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ ...settings, digest_frequency: frequency })
-      });
+      await api.put('/api/organizations/settings/notifications/', nextSettings);
       success('Settings updated');
     } catch (err) {
       error('Failed to update settings');
+      setSettings(settings);
     }
   };
 

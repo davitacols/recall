@@ -568,12 +568,13 @@ def issue_detail(request, issue_id):
             next_assignee_id = request.data.get('assignee_id', issue.assignee_id)
             next_story_points = request.data.get('story_points', issue.story_points)
 
-            if transition.requires_assignee and not next_assignee_id:
-                errors.append('Issue must be assigned')
-            if transition.requires_story_points and not next_story_points:
-                errors.append('Issue must have story points')
-            if transition.requires_comment and not transition_comment:
-                errors.append('Transition comment is required')
+            if transition:
+                if transition.requires_assignee and not next_assignee_id:
+                    errors.append('Issue must be assigned')
+                if transition.requires_story_points and not next_story_points:
+                    errors.append('Issue must have story points')
+                if transition.requires_comment and not transition_comment:
+                    errors.append('Transition comment is required')
 
             if errors:
                 return Response({'valid': False, 'errors': errors}, status=400)

@@ -30,7 +30,9 @@ def _resolve_issue_for_user_org(user, issue_id):
 @permission_classes([IsAuthenticated])
 def upload_attachment(request, issue_id):
     try:
-        issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
+        issue = _resolve_issue_for_user_org(request.user, issue_id)
+        if not issue:
+            return Response({'error': 'Issue not found'}, status=404)
         if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
             return Response({'error': 'Permission denied for this project'}, status=403)
         file = request.FILES.get('file')
@@ -54,20 +56,24 @@ def upload_attachment(request, issue_id):
             content_type=file.content_type
         )
 
-        recipients = set(issue.watchers.exclude(id=request.user.id).values_list('id', flat=True))
-        if issue.assignee_id and issue.assignee_id != request.user.id:
-            recipients.add(issue.assignee_id)
-        if issue.reporter_id and issue.reporter_id != request.user.id:
-            recipients.add(issue.reporter_id)
-        actor = request.user.get_full_name() or request.user.username
-        for user_id in recipients:
-            Notification.objects.create(
-                user_id=user_id,
-                notification_type='task',
-                title=f'Attachment added to {issue.key}',
-                message=f'{actor} uploaded "{attachment.filename}" on "{issue.title}"',
-                link=f'/issues/{issue.id}',
-            )
+        try:
+            recipients = set(issue.watchers.exclude(id=request.user.id).values_list('id', flat=True))
+            if issue.assignee_id and issue.assignee_id != request.user.id:
+                recipients.add(issue.assignee_id)
+            if issue.reporter_id and issue.reporter_id != request.user.id:
+                recipients.add(issue.reporter_id)
+            actor = request.user.get_full_name() or request.user.username
+            for user_id in recipients:
+                Notification.objects.create(
+                    user_id=user_id,
+                    notification_type='task',
+                    title=f'Attachment added to {issue.key}',
+                    message=f'{actor} uploaded "{attachment.filename}" on "{issue.title}"',
+                    link=f'/issues/{issue.id}',
+                )
+        except Exception:
+            # Attachment upload should succeed even if notifications cannot be sent.
+            pass
         
         return Response(IssueAttachmentSerializer(attachment).data, status=201)
     except Exception as e:
@@ -77,7 +83,9 @@ def upload_attachment(request, issue_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def list_attachments(request, issue_id):
-    issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
+    issue = _resolve_issue_for_user_org(request.user, issue_id)
+    if not issue:
+        return Response({'error': 'Issue not found'}, status=404)
     if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
         return Response({'error': 'Permission denied for this project'}, status=403)
     attachments = issue.attachments.all()
@@ -87,7 +95,12 @@ def list_attachments(request, issue_id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_attachment(request, attachment_id):
-    attachment = get_object_or_404(IssueAttachment, id=attachment_id, issue__organization=request.user.organization)
+    attachment = get_object_or_404(
+        IssueAttachment.objects.filter(
+            Q(issue__organization=request.user.organization) | Q(issue__project__organization=request.user.organization)
+        ),
+        id=attachment_id,
+    )
     if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, attachment.issue.project_id):
         return Response({'error': 'Permission denied for this project'}, status=403)
     attachment.file.delete()

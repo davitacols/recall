@@ -1,229 +1,181 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import api from "../services/api";
 
-function KnowledgeHealthDashboard() {
+function scoreTone(score) {
+  if (score >= 80) return "#22c55e";
+  if (score >= 60) return "#3b82f6";
+  if (score >= 40) return "#f59e0b";
+  return "#ef4444";
+}
+
+function qualityLabel(score) {
+  if (score >= 80) return "Excellent";
+  if (score >= 60) return "Good";
+  if (score >= 40) return "Needs Work";
+  return "Critical";
+}
+
+function MetricBar({ label, value, palette }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+        <span style={{ fontSize: 12, color: palette.text }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>{value}%</span>
+      </div>
+      <div style={{ width: "100%", height: 8, borderRadius: 999, background: "rgba(120,120,120,0.22)", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${value}%`, background: value >= 60 ? "#3b82f6" : "#f59e0b" }} />
+      </div>
+    </div>
+  );
+}
+
+function IssueCard({ title, value, hint, link, palette, tone }) {
+  return (
+    <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 12 }}>
+      <p style={{ margin: 0, fontSize: 30, fontWeight: 800, color: tone }}>{value}</p>
+      <h3 style={{ margin: "6px 0", fontSize: 14, color: palette.text }}>{title}</h3>
+      <p style={{ margin: "0 0 8px", fontSize: 12, color: palette.muted }}>{hint}</p>
+      {value > 0 && (
+        <Link to={link} style={{ fontSize: 12, color: "#60a5fa", textDecoration: "none", fontWeight: 700 }}>
+          Review now ->
+        </Link>
+      )}
+    </article>
+  );
+}
+
+export default function KnowledgeHealthDashboard() {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchHealth();
+    const load = async () => {
+      try {
+        const response = await api.get("/api/knowledge/health/");
+        const data = response?.data?.data || response?.data || null;
+        setHealth(data);
+      } catch (error) {
+        setHealth(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
-
-  const fetchHealth = async () => {
-    try {
-      console.log('[KnowledgeHealth] Fetching health data...');
-      const response = await api.get('/api/knowledge/health/');
-      console.log('[KnowledgeHealth] Response:', response.data);
-      setHealth(response.data);
-    } catch (error) {
-      console.error('[KnowledgeHealth] Failed to fetch health:', error);
-      console.error('[KnowledgeHealth] Error response:', error.response?.data);
-      console.error('[KnowledgeHealth] Error status:', error.response?.status);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <div style={{ borderRadius: 14, height: 180, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.8 }} />
+        </div>
       </div>
     );
   }
 
   if (!health) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-gray-600">Failed to load health data</div>
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <div style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 14, color: palette.muted }}>
+            Failed to load knowledge health data.
+          </div>
+        </div>
       </div>
     );
   }
 
-  const getScoreColor = (score) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-blue-600';
-    if (score >= 40) return 'text-amber-600';
-    return 'text-red-600';
-  };
-
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-5xl font-bold text-gray-900 mb-3">Knowledge Health</h1>
-        <p className="text-xl text-gray-600">How well is your team documenting decisions</p>
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 12 }}>
+          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: palette.muted }}>KNOWLEDGE HEALTH</p>
+          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.45rem,2.4vw,2.1rem)", color: palette.text }}>Knowledge quality and risk</h1>
+          <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track documentation quality and unresolved memory debt.</p>
+        </section>
+
+        <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 14, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 11, color: palette.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Overall Score</p>
+              <p style={{ margin: "4px 0 0", fontSize: 50, fontWeight: 800, color: scoreTone(health.overall_score || 0) }}>
+                {health.overall_score || 0}
+              </p>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <p style={{ margin: 0, fontSize: 13, color: palette.text }}>{qualityLabel(health.overall_score || 0)}</p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>
+                Based on {health.total_decisions || 0} decisions
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8, marginBottom: 12 }}>
+          <IssueCard
+            title="Decisions Without Owners"
+            value={health.decisions_without_owners || 0}
+            hint="Decisions missing accountable owners."
+            link="/decisions?filter=no_owner"
+            palette={palette}
+            tone="#ef4444"
+          />
+          <IssueCard
+            title="Old Unresolved Questions"
+            value={health.old_unresolved || 0}
+            hint="Questions older than 30 days still open."
+            link="/conversations?type=question&status=unanswered"
+            palette={palette}
+            tone="#f59e0b"
+          />
+          <IssueCard
+            title="Repeated Topics"
+            value={health.repeated_topics || 0}
+            hint="Same discussions repeated across threads."
+            link="/insights/repeated"
+            palette={palette}
+            tone="#3b82f6"
+          />
+          <IssueCard
+            title="Orphaned Conversations"
+            value={health.orphaned_conversations || 0}
+            hint="Conversations without follow-up actions."
+            link="/conversations?filter=orphaned"
+            palette={palette}
+            tone="#94a3b8"
+          />
+        </section>
+
+        <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, marginBottom: 12 }}>
+          <h2 style={{ margin: "0 0 10px", fontSize: 16, color: palette.text }}>Documentation Quality</h2>
+          <div style={{ display: "grid", gap: 10 }}>
+            <MetricBar label="Decisions With Context" value={health.decisions_with_context || 0} palette={palette} />
+            <MetricBar label="Decisions With Alternatives" value={health.decisions_with_alternatives || 0} palette={palette} />
+            <MetricBar label="Decisions With Tradeoffs" value={health.decisions_with_tradeoffs || 0} palette={palette} />
+            <MetricBar label="Decisions Reviewed" value={health.decisions_reviewed || 0} palette={palette} />
+          </div>
+        </section>
+
+        {Array.isArray(health.recommendations) && health.recommendations.length > 0 && (
+          <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: darkMode ? "rgba(59,130,246,0.14)" : "#dbeafe", padding: 12 }}>
+            <h2 style={{ margin: "0 0 8px", fontSize: 16, color: darkMode ? "#bfdbfe" : "#1e40af" }}>Recommendations</h2>
+            <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
+              {health.recommendations.map((item, index) => (
+                <li key={`${item}_${index}`} style={{ fontSize: 13, color: darkMode ? "#dbeafe" : "#1e3a8a" }}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
-
-      {/* Overall Score */}
-      <div className="border-2 border-gray-900 bg-white p-8 mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-2">
-              Overall Health Score
-            </div>
-            <div className={`text-6xl font-bold ${getScoreColor(health.overall_score)}`}>
-              {health.overall_score}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-gray-600 mb-2">
-              {health.overall_score >= 80 ? 'Excellent' :
-               health.overall_score >= 60 ? 'Good' :
-               health.overall_score >= 40 ? 'Needs Work' : 'Critical'}
-            </div>
-            <div className="text-xs text-gray-500">
-              Based on {health.total_decisions} decisions
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Issues Grid */}
-      <div className="grid grid-cols-2 gap-6 mb-8">
-        <div className="border border-gray-200 p-6">
-          <div className="text-4xl font-bold text-red-600 mb-2">
-            {health.decisions_without_owners}
-          </div>
-          <div className="text-sm text-gray-900 font-medium mb-3">Decisions without owners</div>
-          <p className="text-sm text-gray-600 mb-4">
-            Every decision needs someone accountable
-          </p>
-          {health.decisions_without_owners > 0 && (
-            <Link to="/decisions?filter=no_owner" className="text-sm text-gray-900 hover:underline font-medium">
-              View decisions →
-            </Link>
-          )}
-        </div>
-
-        <div className="border border-gray-200 p-6">
-          <div className="text-4xl font-bold text-amber-600 mb-2">
-            {health.old_unresolved}
-          </div>
-          <div className="text-sm text-gray-900 font-medium mb-3">Old unresolved questions</div>
-          <p className="text-sm text-gray-600 mb-4">
-            Questions older than 30 days without answers
-          </p>
-          {health.old_unresolved > 0 && (
-            <Link to="/conversations?type=question&status=unanswered" className="text-sm text-gray-900 hover:underline font-medium">
-              View questions →
-            </Link>
-          )}
-        </div>
-
-        <div className="border border-gray-200 p-6">
-          <div className="text-4xl font-bold text-blue-600 mb-2">
-            {health.repeated_topics}
-          </div>
-          <div className="text-sm text-gray-900 font-medium mb-3">Repeated topics</div>
-          <p className="text-sm text-gray-600 mb-4">
-            Same conversations happening multiple times
-          </p>
-          {health.repeated_topics > 0 && (
-            <Link to="/insights/repeated" className="text-sm text-gray-900 hover:underline font-medium">
-              View topics →
-            </Link>
-          )}
-        </div>
-
-        <div className="border border-gray-200 p-6">
-          <div className="text-4xl font-bold text-gray-600 mb-2">
-            {health.orphaned_conversations}
-          </div>
-          <div className="text-sm text-gray-900 font-medium mb-3">Orphaned conversations</div>
-          <p className="text-sm text-gray-600 mb-4">
-            Conversations with no replies or follow-up
-          </p>
-          {health.orphaned_conversations > 0 && (
-            <Link to="/conversations?filter=orphaned" className="text-sm text-gray-900 hover:underline font-medium">
-              View conversations →
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* Quality Metrics */}
-      <div className="border border-gray-200 p-6 mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-6">Documentation Quality</h2>
-        <div className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-900">Decisions with context</span>
-              <span className="text-sm font-bold text-gray-900">
-                {health.decisions_with_context}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 h-2">
-              <div
-                className="bg-gray-900 h-2 transition-all"
-                style={{ width: `${health.decisions_with_context}%` }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-900">Decisions with alternatives</span>
-              <span className="text-sm font-bold text-gray-900">
-                {health.decisions_with_alternatives}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 h-2">
-              <div
-                className="bg-gray-900 h-2 transition-all"
-                style={{ width: `${health.decisions_with_alternatives}%` }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-900">Decisions with tradeoffs</span>
-              <span className="text-sm font-bold text-gray-900">
-                {health.decisions_with_tradeoffs}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 h-2">
-              <div
-                className="bg-gray-900 h-2 transition-all"
-                style={{ width: `${health.decisions_with_tradeoffs}%` }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-900">Decisions reviewed</span>
-              <span className="text-sm font-bold text-gray-900">
-                {health.decisions_reviewed}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 h-2">
-              <div
-                className="bg-gray-900 h-2 transition-all"
-                style={{ width: `${health.decisions_reviewed}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recommendations */}
-      {health.recommendations && health.recommendations.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 p-6">
-          <h3 className="text-lg font-bold text-blue-900 mb-4">Recommendations</h3>
-          <ul className="space-y-2">
-            {health.recommendations.map((rec, idx) => (
-              <li key={idx} className="flex items-start gap-3">
-                <span className="text-blue-600 font-bold">•</span>
-                <span className="text-sm text-blue-900">{rec}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }
-
-export default KnowledgeHealthDashboard;

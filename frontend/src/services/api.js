@@ -41,6 +41,15 @@ api.interceptors.response.use(
     if (process.env.NODE_ENV === 'development') {
       console.log('[API] Error from', error.config?.url, error.response?.status, error.response?.data);
     }
+    if (error.response?.status === 402) {
+      try {
+        const current = Number(localStorage.getItem('paywall_hits') || '0');
+        localStorage.setItem('paywall_hits', String(current + 1));
+        window.dispatchEvent(new CustomEvent('paywall-hit', { detail: error.response?.data || {} }));
+      } catch (eventError) {
+        // no-op: paywall nudges are best effort
+      }
+    }
     if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('token');

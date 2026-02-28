@@ -4,6 +4,8 @@ import { useTheme } from '../utils/ThemeAndAccessibility';
 import { useToast } from '../components/Toast';
 import { MentionInput } from '../components/MentionInput';
 import { AIEnhancementButton, AIResultsPanel } from '../components/AIEnhancements';
+import RichTextEditor from '../components/RichTextEditor';
+import RichTextRenderer from '../components/RichTextRenderer';
 import { ArrowLeftIcon, TrashIcon, PencilIcon, ChatBubbleLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 
@@ -179,11 +181,11 @@ export default function DocumentDetail() {
               </div>
               <div>
                 <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Content</label>
-                <textarea
+                <RichTextEditor
                   value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  rows={15}
-                  className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
+                  onChange={(value) => setFormData({ ...formData, content: value })}
+                  placeholder="Write document content..."
+                  darkMode={darkMode}
                 />
               </div>
               <div className="flex gap-3 justify-end">
@@ -275,7 +277,7 @@ export default function DocumentDetail() {
                 {document.content && (
                   <div>
                     <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Content</h3>
-                    <div className={`${textPrimary} whitespace-pre-wrap`}>{document.content}</div>
+                    <RichTextRenderer content={document.content} darkMode={darkMode} />
                   </div>
                 )}
               </div>

@@ -3,13 +3,21 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
-from datetime import timedelta
 from .subscription_models import Plan, Subscription, Invoice, UsageLog
+from .subscription_entitlements import (
+    FEATURE_MIN_PLAN,
+    PLAN_ORDER,
+    ensure_default_plans,
+    get_or_create_subscription,
+    subscription_supports_feature,
+)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def plans_list(request):
-    plans = Plan.objects.filter(is_active=True)
+    ensure_default_plans()
+    plans = list(Plan.objects.filter(is_active=True))
+    plans.sort(key=lambda plan: PLAN_ORDER.get(plan.name, 999))
     data = [{
         'id': p.id,
         'name': p.name,
@@ -17,7 +25,9 @@ def plans_list(request):
         'price_per_user': str(p.price_per_user),
         'max_users': p.max_users,
         'storage_gb': p.storage_gb,
-        'features': p.features
+        'features': p.features,
+        'features_included': [k for k, enabled in (p.features or {}).items() if enabled],
+        'is_free': p.name == 'free',
     } for p in plans]
     return Response(data)
 
@@ -25,7 +35,10 @@ def plans_list(request):
 @permission_classes([IsAuthenticated])
 def subscription_detail(request):
     try:
-        sub = request.user.organization.subscription
+        ensure_default_plans()
+        sub = get_or_create_subscription(request.user.organization)
+        sub.user_count = request.user.organization.users.filter(is_active=True).count()
+        sub.save(update_fields=['user_count', 'updated_at'])
         return Response({
             'id': sub.id,
             'plan': {
@@ -33,9 +46,11 @@ def subscription_detail(request):
                 'display_name': sub.plan.get_name_display(),
                 'price_per_user': str(sub.plan.price_per_user),
                 'max_users': sub.plan.max_users,
-                'storage_gb': sub.plan.storage_gb
+                'storage_gb': sub.plan.storage_gb,
+                'features': sub.plan.features or {},
             },
             'status': sub.status,
+            'trial_days_left': max(0, (sub.trial_end - timezone.now()).days) if sub.trial_end and sub.status == 'trial' else 0,
             'user_count': sub.user_count,
             'storage_used_mb': sub.storage_used_mb,
             'storage_limit_mb': sub.storage_limit_mb,
@@ -55,14 +70,21 @@ def upgrade_plan(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
     
+    ensure_default_plans()
     plan_id = request.data.get('plan_id')
+    plan_name = request.data.get('plan_name')
     try:
-        plan = Plan.objects.get(id=plan_id)
-        sub = request.user.organization.subscription
+        if plan_name:
+            plan = Plan.objects.get(name=plan_name)
+        else:
+            plan = Plan.objects.get(id=plan_id)
+        sub = get_or_create_subscription(request.user.organization)
         sub.plan = plan
-        sub.status = 'active'
+        if sub.status in ['expired', 'canceled', 'past_due']:
+            sub.status = 'active'
         sub.save()
-        return Response({'message': 'Plan upgraded successfully'})
+        action = 'downgraded' if plan.name == 'free' else 'upgraded'
+        return Response({'message': f'Plan {action} successfully', 'plan': plan.name})
     except (Plan.DoesNotExist, Subscription.DoesNotExist):
         return Response({'error': 'Invalid request'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -73,10 +95,13 @@ def cancel_subscription(request):
         return Response({'error': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        sub = request.user.organization.subscription
-        sub.status = 'canceled'
+        ensure_default_plans()
+        sub = get_or_create_subscription(request.user.organization)
+        free_plan = Plan.objects.get(name='free')
+        sub.plan = free_plan
+        sub.status = 'active'
         sub.save()
-        return Response({'message': 'Subscription canceled'})
+        return Response({'message': 'Moved to free plan'})
     except Subscription.DoesNotExist:
         return Response({'error': 'No subscription found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -84,7 +109,7 @@ def cancel_subscription(request):
 @permission_classes([IsAuthenticated])
 def invoices_list(request):
     try:
-        sub = request.user.organization.subscription
+        sub = get_or_create_subscription(request.user.organization)
         invoices = sub.invoices.all()[:12]
         data = [{
             'id': inv.id,
@@ -104,7 +129,7 @@ def invoices_list(request):
 @permission_classes([IsAuthenticated])
 def usage_stats(request):
     try:
-        sub = request.user.organization.subscription
+        sub = get_or_create_subscription(request.user.organization)
         logs = sub.usage_logs.all()[:30]
         data = [{
             'user_count': log.user_count,
@@ -122,7 +147,7 @@ def check_limits(request):
     file_size_mb = request.data.get('file_size_mb', 0)
     
     try:
-        sub = request.user.organization.subscription
+        sub = get_or_create_subscription(request.user.organization)
         
         if action == 'add_user':
             if not sub.can_add_user:
@@ -141,3 +166,108 @@ def check_limits(request):
         return Response({'allowed': True})
     except Subscription.DoesNotExist:
         return Response({'allowed': False, 'message': 'No subscription found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def feature_access(request):
+    ensure_default_plans()
+    sub = get_or_create_subscription(request.user.organization)
+    requested = request.GET.get('features', '')
+    if requested:
+        feature_keys = [item.strip() for item in requested.split(',') if item.strip()]
+    else:
+        feature_keys = sorted(FEATURE_MIN_PLAN.keys())
+
+    checks = []
+    for feature_key in feature_keys:
+        allowed = subscription_supports_feature(sub, feature_key)
+        checks.append({
+            'feature': feature_key,
+            'allowed': allowed,
+            'required_plan': FEATURE_MIN_PLAN.get(feature_key, 'free'),
+        })
+
+    return Response({
+        'plan': {
+            'name': sub.plan.name,
+            'display_name': sub.plan.get_name_display(),
+        },
+        'checks': checks,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def conversion_insights(request):
+    ensure_default_plans()
+    sub = get_or_create_subscription(request.user.organization)
+    now = timezone.now()
+    trial_days_left = max(0, (sub.trial_end - now).days) if sub.trial_end and sub.status == 'trial' else 0
+
+    from apps.agile.models import Project, Issue, Sprint
+    from apps.decisions.models import Decision
+
+    org = request.user.organization
+    project_count = Project.objects.filter(organization=org).count()
+    issue_count = Issue.objects.filter(organization=org).count()
+    sprint_count = Sprint.objects.filter(organization=org).count()
+    decision_count = Decision.objects.filter(organization=org).count()
+    member_count = org.users.filter(is_active=True).count()
+
+    milestones = {
+        'project_created': project_count > 0,
+        'issue_created': issue_count > 0,
+        'sprint_created': sprint_count > 0,
+        'decision_logged': decision_count > 0,
+        'teammate_invited': member_count > 1,
+    }
+    completed_milestones = sum(1 for completed in milestones.values() if completed)
+
+    nudges = []
+    if sub.status == 'trial':
+        if trial_days_left <= 3:
+            nudges.append("Your trial ends soon. Upgrade to keep Decision Twin and Decision Debt Ledger.")
+        if not milestones['sprint_created']:
+            nudges.append("Create a sprint to experience forecasting and conversion-ready workflow value.")
+        if not milestones['decision_logged']:
+            nudges.append("Log at least one decision to unlock better debt and risk signals.")
+    elif sub.plan.name in ['free', 'starter']:
+        nudges.append("Upgrade to Professional to unlock Decision Twin and Decision Debt Ledger.")
+        if member_count >= 3:
+            nudges.append("Your team is growing. Professional removes small-team limitations.")
+    else:
+        nudges.append("You are on a paid plan. Keep usage high with weekly sprint and decision reviews.")
+
+    phase = 'paid'
+    if sub.status == 'trial':
+        phase = 'trial'
+    elif sub.plan.name in ['free', 'starter']:
+        phase = 'free_or_starter'
+
+    return Response({
+        'phase': phase,
+        'plan': {
+            'name': sub.plan.name,
+            'display_name': sub.plan.get_name_display(),
+        },
+        'trial': {
+            'is_trial': sub.status == 'trial',
+            'days_left': trial_days_left,
+            'ends_at': sub.trial_end.isoformat() if sub.trial_end else None,
+        },
+        'activation': {
+            'completed_milestones': completed_milestones,
+            'total_milestones': len(milestones),
+            'milestones': milestones,
+        },
+        'usage': {
+            'projects': project_count,
+            'issues': issue_count,
+            'sprints': sprint_count,
+            'decisions': decision_count,
+            'members': member_count,
+        },
+        'nudges': nudges[:4],
+        'recommended_plan': 'professional' if phase != 'paid' else sub.plan.name,
+    })

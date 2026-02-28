@@ -141,6 +141,8 @@ urlpatterns = [
     path('invoices/', subscription_views.invoices_list),
     path('usage/', subscription_views.usage_stats),
     path('check-limits/', subscription_views.check_limits),
+    path('feature-access/', subscription_views.feature_access),
+    path('subscription/conversion/', subscription_views.conversion_insights),
     
     # Stripe Payment
     path('stripe/checkout/', stripe_views.create_checkout_session),

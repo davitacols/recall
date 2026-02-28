@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from .models import Invitation, Organization, User
+from .subscription_entitlements import ensure_default_plans, get_or_create_subscription
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -187,6 +188,8 @@ def create_organization(request):
     
     # Create organization
     org = Organization.objects.create(name=name, slug=slug)
+    ensure_default_plans()
+    get_or_create_subscription(org)
     
     # Create admin user
     user = User.objects.create_user(

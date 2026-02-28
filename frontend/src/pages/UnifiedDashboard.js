@@ -39,6 +39,13 @@ export default function UnifiedDashboard() {
   const [driftAlerts, setDriftAlerts] = useState([]);
   const [driftMeta, setDriftMeta] = useState({ total: 0, critical: 0, high: 0 });
   const [calibrationRows, setCalibrationRows] = useState([]);
+  const [currentSprint, setCurrentSprint] = useState(null);
+  const [decisionTwinSummary, setDecisionTwinSummary] = useState(null);
+  const [decisionTwinError, setDecisionTwinError] = useState("");
+  const [decisionTwinUpgrade, setDecisionTwinUpgrade] = useState(null);
+  const [decisionDebt, setDecisionDebt] = useState(null);
+  const [decisionDebtError, setDecisionDebtError] = useState("");
+  const [decisionDebtUpgrade, setDecisionDebtUpgrade] = useState(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -111,6 +118,82 @@ export default function UnifiedDashboard() {
       const calibrationData = await calibrationRes.json();
       setCalibrationRows(calibrationData.reviewers || []);
 
+      const sprintRes = await fetch(buildApiUrl("/api/agile/current-sprint/"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const sprintData = await sprintRes.json();
+      setCurrentSprint(sprintData || null);
+
+      if (sprintData?.id) {
+        const twinRes = await fetch(
+          buildApiUrl(`/api/agile/sprints/${sprintData.id}/decision-twin/?min_confidence_band=medium&min_probability_delta=1&max_scope_changes=4&allow_backlog_adds=true&enforce_policy=true`),
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (twinRes.ok) {
+          const twinData = await twinRes.json();
+          const scenarios = twinData.scenarios || [];
+          const recommended = scenarios.find((item) => item.id === twinData.recommended_scenario_id) || scenarios[0] || null;
+          setDecisionTwinSummary({
+            sprintId: sprintData.id,
+            objective: twinData.objective,
+            recommendedScenario: recommended,
+            autoApplyScenarioId: twinData.recommended_auto_apply_scenario_id || null,
+          });
+          setDecisionTwinError("");
+          setDecisionTwinUpgrade(null);
+        } else {
+          let twinErrorData = null;
+          try {
+            twinErrorData = await twinRes.json();
+          } catch (_) {
+            twinErrorData = null;
+          }
+          setDecisionTwinSummary(null);
+          if (twinRes.status === 402) {
+            setDecisionTwinError(twinErrorData?.error || "Decision Twin is available on paid plans.");
+            setDecisionTwinUpgrade({
+              required_plan: twinErrorData?.required_plan || "professional",
+              current_plan: twinErrorData?.current_plan || "free",
+            });
+          } else {
+            setDecisionTwinError("Decision Twin not available on this backend deployment.");
+            setDecisionTwinUpgrade(null);
+          }
+        }
+      } else {
+        setDecisionTwinSummary(null);
+        setDecisionTwinError("");
+        setDecisionTwinUpgrade(null);
+      }
+
+      const debtRes = await fetch(buildApiUrl("/api/agile/decisions/debt-ledger/?days=14"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (debtRes.ok) {
+        const debtData = await debtRes.json();
+        setDecisionDebt(debtData);
+        setDecisionDebtError("");
+        setDecisionDebtUpgrade(null);
+      } else {
+        let debtErrorData = null;
+        try {
+          debtErrorData = await debtRes.json();
+        } catch (_) {
+          debtErrorData = null;
+        }
+        setDecisionDebt(null);
+        if (debtRes.status === 402) {
+          setDecisionDebtError(debtErrorData?.error || "Decision Debt Ledger is available on paid plans.");
+          setDecisionDebtUpgrade({
+            required_plan: debtErrorData?.required_plan || "professional",
+            current_plan: debtErrorData?.current_plan || "free",
+          });
+        } else {
+          setDecisionDebtError("Decision Debt Ledger unavailable on this backend deployment.");
+          setDecisionDebtUpgrade(null);
+        }
+      }
+
       setStats({
         activity: timelineData.pagination?.total || results.length,
         nodes: statsData.overall?.decisions?.total || 0,
@@ -137,6 +220,8 @@ export default function UnifiedDashboard() {
             accent: "#ffb476",
             info: "#86c8ff",
             good: "#66d5ab",
+            warn: "#f59e0b",
+            bg: "#0f0b0d",
           }
         : {
             panel: "#fffaf3",
@@ -148,6 +233,8 @@ export default function UnifiedDashboard() {
             accent: "#d9692e",
             info: "#2563eb",
             good: "#1f8f66",
+            warn: "#a16207",
+            bg: "#f5eee3",
           },
     [darkMode]
   );
@@ -213,21 +300,32 @@ export default function UnifiedDashboard() {
   }
 
   return (
-    <div style={pageStyle}>
+    <div style={{ ...pageStyle, background: palette.bg, fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 2%, rgba(249,115,22,0.2), transparent 34%), radial-gradient(circle at 92% 6%, rgba(34,197,94,0.14), transparent 28%)" : "radial-gradient(circle at 8% 2%, rgba(249,115,22,0.14), transparent 34%), radial-gradient(circle at 92% 6%, rgba(34,197,94,0.1), transparent 28%)" }} />
+      <section className="ui-enter" style={{ ...controlStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
+        <Link to="/projects" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Projects</Link>
+        <Link to="/sprint" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Sprint Board</Link>
+        <Link to="/decisions" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Decision Hub</Link>
+      </section>
+
       <section
+        className="ui-enter"
         style={{
           ...hero,
           border: `1px solid ${palette.border}`,
-          background: `linear-gradient(140deg, ${
-            darkMode ? "rgba(255,167,97,0.15)" : "rgba(255,196,146,0.42)"
-          }, ${darkMode ? "rgba(87,205,184,0.13)" : "rgba(152,243,223,0.38)"})`,
+          "--ui-delay": "70ms",
+          background: `linear-gradient(135deg, ${
+            darkMode ? "rgba(59,130,246,0.16)" : "rgba(191,219,254,0.52)"
+          } 0%, ${darkMode ? "rgba(249,115,22,0.15)" : "rgba(255,220,182,0.58)"} 52%, ${
+            darkMode ? "rgba(34,197,94,0.12)" : "rgba(187,247,208,0.44)"
+          } 100%)`,
         }}
       >
         <div>
           <p style={{ ...eyebrow, color: palette.muted }}>UNIFIED DASHBOARD</p>
-          <h1 style={{ ...title, color: palette.text }}>Organization pulse, in one glance</h1>
+          <h1 style={{ ...title, color: palette.text }}>Launch Command Center</h1>
           <p style={{ ...subtitle, color: palette.muted }}>
-            Monitor knowledge activity, decision throughput, and insight quality from one command surface.
+            Run sprint risk, decision debt, outcome quality, and team execution from one operating surface.
           </p>
         </div>
 
@@ -241,7 +339,7 @@ export default function UnifiedDashboard() {
         </div>
       </section>
 
-      <section style={kpiGrid}>
+      <section className="ui-enter" style={{ ...kpiGrid, "--ui-delay": "130ms" }}>
         <StatCard label="Activities" value={stats.activity} icon={ChatBubbleLeftIcon} color={palette.accent} tone={palette} />
         <StatCard label="Decisions" value={stats.nodes} icon={DocumentCheckIcon} color={palette.info} tone={palette} />
         <StatCard label="Links" value={stats.links} icon={LinkIcon} color={palette.dim} tone={palette} />
@@ -249,13 +347,15 @@ export default function UnifiedDashboard() {
       </section>
 
       <section
+        className="ui-enter"
         style={{
           ...mainGrid,
+          "--ui-delay": "190ms",
           gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0, 1fr) 340px",
         }}
       >
         <div style={leftCol}>
-          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
             <div style={panelHeader}>
               <h2 style={{ ...panelTitle, color: palette.text }}>Recent Activity</h2>
             </div>
@@ -267,6 +367,7 @@ export default function UnifiedDashboard() {
                 <div style={activityList}>
                   {timeline.slice(0, 10).map((activity) => (
                     <Link
+                      className="ui-card-lift ui-smooth"
                       key={activity.id}
                       to={getActivityUrl(activity)}
                       style={{ ...activityRow, borderBottom: `1px solid ${palette.border}` }}
@@ -285,6 +386,7 @@ export default function UnifiedDashboard() {
                 {hasMore && (
                   <div style={loadMoreWrap}>
                     <button
+                      className="ui-btn-polish ui-focus-ring"
                       onClick={() => setPage((current) => current + 1)}
                       style={{ ...loadMoreButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}
                     >
@@ -308,7 +410,100 @@ export default function UnifiedDashboard() {
           <MissionControlPanel darkMode={darkMode} />
           <ChiefOfStaffPanel darkMode={darkMode} />
 
-          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            <h3 style={{ ...railTitle, color: palette.text }}>Autonomous Decision Twin</h3>
+            <div style={healthList}>
+              {currentSprint ? (
+                <>
+                  <HealthRow label="Current sprint" value={`${currentSprint.name || `#${currentSprint.id}`}`} tint={palette.info} />
+                  {decisionTwinSummary?.recommendedScenario ? (
+                    <>
+                      <HealthRow
+                        label="Recommended"
+                        value={`${decisionTwinSummary.recommendedScenario.name} (${decisionTwinSummary.recommendedScenario.projected_goal_probability}%)`}
+                        tint={palette.good}
+                      />
+                      <HealthRow
+                        label="Delta"
+                        value={`${decisionTwinSummary.recommendedScenario.delta_vs_baseline >= 0 ? "+" : ""}${decisionTwinSummary.recommendedScenario.delta_vs_baseline}`}
+                        tint={palette.accent}
+                      />
+                      <Link
+                        className="ui-card-lift ui-smooth"
+                        to={`/sprints/${decisionTwinSummary.sprintId}`}
+                        style={{
+                          textDecoration: "none",
+                          border: `1px solid ${palette.border}`,
+                          borderRadius: 10,
+                          padding: "8px 10px",
+                          display: "block",
+                          color: palette.text,
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        Open Sprint Twin
+                      </Link>
+                    </>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                      {decisionTwinError || "Refresh backend deployment to enable Decision Twin recommendations."}
+                      {decisionTwinUpgrade ? ` Upgrade from ${decisionTwinUpgrade.current_plan} to ${decisionTwinUpgrade.required_plan}.` : ""}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                  No active sprint right now.
+                </p>
+              )}
+            </div>
+          </article>
+
+          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+            <h3 style={{ ...railTitle, color: palette.text }}>Decision Debt Ledger</h3>
+            <div style={healthList}>
+              {decisionDebt?.summary ? (
+                <>
+                  <HealthRow label="Debt score" value={`${decisionDebt.summary.decision_debt_score}`} tint={palette.accent} />
+                  <HealthRow label="Interest / week" value={`${decisionDebt.summary.interest_per_week}`} tint={palette.warn || palette.accent} />
+                  <HealthRow label="Unresolved" value={`${decisionDebt.summary.unresolved_count}`} tint={palette.info} />
+                  <HealthRow
+                    label={`Trend (${decisionDebt.summary.trend_window_days}d)`}
+                    value={`${decisionDebt.summary.trend_delta > 0 ? "+" : ""}${decisionDebt.summary.trend_delta}`}
+                    tint={decisionDebt.summary.trend_delta <= 0 ? palette.good : palette.accent}
+                  />
+                  {(decisionDebt.top_items || []).slice(0, 3).map((item) => (
+                    <Link
+                      className="ui-card-lift ui-smooth"
+                      key={item.decision_id}
+                      to={item.link || `/decisions/${item.decision_id}`}
+                      style={{
+                        textDecoration: "none",
+                        border: `1px solid ${palette.border}`,
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        display: "block",
+                        color: palette.text,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 700 }}>{item.title}</div>
+                      <div style={{ fontSize: 11, color: palette.muted }}>
+                        score {item.debt_score} | age {item.age_days}d | {item.status}
+                      </div>
+                    </Link>
+                  ))}
+                </>
+              ) : (
+                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                  {decisionDebtError || "No decision debt data yet."}
+                  {decisionDebtUpgrade ? ` Upgrade from ${decisionDebtUpgrade.current_plan} to ${decisionDebtUpgrade.required_plan}.` : ""}
+                </p>
+              )}
+            </div>
+          </article>
+
+          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
             <h3 style={{ ...railTitle, color: palette.text }}>Health Snapshot</h3>
             <div style={healthList}>
               <HealthRow label="Knowledge freshness" value="High" tint={palette.good} />
@@ -317,7 +512,7 @@ export default function UnifiedDashboard() {
             </div>
           </article>
 
-          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
             <h3 style={{ ...railTitle, color: palette.text }}>Decision Outcomes (Month)</h3>
             <div style={healthList}>
               <HealthRow label="Reviewed" value={`${outcomeStats.reviewed_count}`} tint={palette.info} />
@@ -328,13 +523,14 @@ export default function UnifiedDashboard() {
             </div>
           </article>
 
-          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
             <h3 style={{ ...railTitle, color: palette.text }}>Pending Outcome Reviews</h3>
             <div style={healthList}>
               <HealthRow label="Total pending" value={`${pendingOutcomeMeta.total}`} tint={palette.info} />
               <HealthRow label="Overdue" value={`${pendingOutcomeMeta.overdue}`} tint={palette.accent} />
               {pendingOutcomeReviews.slice(0, 3).map((item) => (
                 <Link
+                  className="ui-card-lift ui-smooth"
                   key={item.id}
                   to={`/decisions/${item.id}`}
                   style={{
@@ -354,6 +550,7 @@ export default function UnifiedDashboard() {
               ))}
               <div style={{ display: "flex", gap: 8 }}>
                 <Link
+                  className="ui-btn-polish ui-focus-ring"
                   to="/decisions?outcome=pending"
                   style={{
                     textDecoration: "none",
@@ -368,6 +565,7 @@ export default function UnifiedDashboard() {
                   Open Queue
                 </Link>
                 <button
+                  className="ui-btn-polish ui-focus-ring"
                   onClick={sendOutcomeReminders}
                   disabled={notifyingOutcomes || pendingOutcomeMeta.overdue === 0}
                   style={{
@@ -385,6 +583,7 @@ export default function UnifiedDashboard() {
                   {notifyingOutcomes ? "Sending..." : "Send Reminders"}
                 </button>
                 <button
+                  className="ui-btn-polish ui-focus-ring"
                   onClick={runFollowUpOrchestrator}
                   disabled={orchestratingOutcomes}
                   style={{
@@ -405,7 +604,7 @@ export default function UnifiedDashboard() {
             </div>
           </article>
 
-          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
             <h3 style={{ ...railTitle, color: palette.text }}>Decision Drift Alerts</h3>
             <div style={healthList}>
               <HealthRow label="Total alerts" value={`${driftMeta.total}`} tint={palette.info} />
@@ -413,6 +612,7 @@ export default function UnifiedDashboard() {
               <HealthRow label="High" value={`${driftMeta.high}`} tint={palette.accent} />
               {driftAlerts.slice(0, 3).map((item) => (
                 <Link
+                  className="ui-card-lift ui-smooth"
                   key={item.decision_id}
                   to={`/decisions/${item.decision_id}`}
                   style={{
@@ -433,7 +633,7 @@ export default function UnifiedDashboard() {
             </div>
           </article>
 
-          <article style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
             <h3 style={{ ...railTitle, color: palette.text }}>Team Calibration</h3>
             <div style={healthList}>
               {calibrationRows.slice(0, 4).map((row) => (
@@ -471,22 +671,51 @@ function StatCard({ label, value, icon: Icon, color, tone }) {
   );
 }
 
-function HealthRow({ label, value, tint }) {
+function HealthRow({ label, value, tint, muted = "#9a8a78" }) {
   return (
     <div style={healthRow}>
-      <p style={healthLabel}>{label}</p>
+      <p style={{ ...healthLabel, color: muted }}>{label}</p>
       <p style={{ ...healthValue, color: tint }}>{value}</p>
     </div>
   );
 }
 
 const pageStyle = {
+  position: "relative",
   padding: "clamp(14px, 2.6vw, 24px)",
   display: "grid",
   gap: 12,
 };
 
+const ambientLayer = {
+  position: "fixed",
+  inset: 0,
+  pointerEvents: "none",
+  zIndex: 0,
+};
+
+const controlStrip = {
+  position: "relative",
+  zIndex: 1,
+  borderRadius: 14,
+  padding: "8px",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const controlPill = {
+  textDecoration: "none",
+  borderRadius: 999,
+  padding: "7px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
 const hero = {
+  position: "relative",
+  zIndex: 1,
   borderRadius: 18,
   padding: "clamp(18px, 3vw, 30px)",
   display: "flex",
@@ -520,6 +749,8 @@ const heroBadge = {
 };
 
 const kpiGrid = {
+  position: "relative",
+  zIndex: 1,
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
   gap: 10,
@@ -530,7 +761,7 @@ const statHead = { display: "flex", justifyContent: "space-between", alignItems:
 const statLabel = { margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
 const statValue = { margin: "9px 0 0", fontSize: 30, lineHeight: 1, fontWeight: 800 };
 
-const mainGrid = { display: "grid", gap: 12 };
+const mainGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
 const leftCol = { display: "grid", gap: 12 };
 const rightCol = { display: "grid", gap: 12, alignContent: "start" };
 

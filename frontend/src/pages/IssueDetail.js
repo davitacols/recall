@@ -6,6 +6,8 @@ import {
   CheckIcon,
   ChatBubbleBottomCenterTextIcon,
   ClockIcon,
+  EyeIcon,
+  PaperClipIcon,
   PencilIcon,
   SparklesIcon,
   TrashIcon,
@@ -202,17 +204,21 @@ function IssueDetail() {
     );
   }
 
+  const commentCount = Array.isArray(issue.comments) ? issue.comments.length : 0;
+  const attachmentCount = Array.isArray(issue.attachments) ? issue.attachments.length : 0;
+  const watcherCount = Number(issue.watchers_count || 0);
+
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, fontFamily: "'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <div style={{ ...ambientGlow, background: darkMode ? "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.18),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.16),transparent 36%)" : "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.1),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.08),transparent 36%)" }} />
       <div style={{ ...ui.container, width: "min(1420px,100%)", position: "relative", zIndex: 1 }}>
-        <button onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
+        <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
           <ArrowLeftIcon style={icon14} /> Back To Board
         </button>
 
         {error && <div style={errorBanner}>{error}</div>}
 
-        <section style={{ ...hero, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(140deg,#1b1417 0%,#140f11 100%)" : "linear-gradient(140deg,#fffdf9 0%,#fff7ea 100%)", boxShadow: darkMode ? "0 26px 60px rgba(0,0,0,0.35)" : "0 26px 60px rgba(20,12,4,0.08)" }}>
+        <section className="ui-enter ui-card-lift ui-smooth" style={{ ...hero, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(140deg,#1b1417 0%,#140f11 100%)" : "linear-gradient(140deg,#fffdf9 0%,#fff7ea 100%)", boxShadow: darkMode ? "0 26px 60px rgba(0,0,0,0.35)" : "0 26px 60px rgba(20,12,4,0.08)", "--ui-delay": "30ms" }}>
           <div style={{ minWidth: 0 }}>
             <p style={{ ...issueKey, color: palette.muted }}>{issue.key || `ISS-${issue.id}`}</p>
             {!editing ? (
@@ -228,37 +234,55 @@ function IssueDetail() {
           </div>
 
           <div style={heroActions}>
-            <WatchButton issueId={resolvedIssueId} isWatching={Boolean(issue.is_watching)} />
+            <div className="ui-btn-polish ui-focus-ring"><WatchButton issueId={resolvedIssueId} isWatching={Boolean(issue.is_watching)} /></div>
             {!editing ? (
-              <button onClick={() => setEditing(true)} style={ui.secondaryButton}>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => setEditing(true)} style={ui.secondaryButton}>
                 <PencilIcon style={icon14} /> Edit
               </button>
             ) : (
               <>
-                <button onClick={handleSave} disabled={saving} style={ui.primaryButton}>
+                <button className="ui-btn-polish ui-focus-ring" onClick={handleSave} disabled={saving} style={ui.primaryButton}>
                   <CheckIcon style={icon14} /> {saving ? "Saving..." : "Save"}
                 </button>
-                <button onClick={() => setEditing(false)} disabled={saving} style={ui.secondaryButton}>
+                <button className="ui-btn-polish ui-focus-ring" onClick={() => setEditing(false)} disabled={saving} style={ui.secondaryButton}>
                   <XMarkIcon style={icon14} /> Cancel
                 </button>
               </>
             )}
-            <button onClick={handleDelete} style={dangerButton}>
+            <button className="ui-btn-polish ui-focus-ring" onClick={handleDelete} style={dangerButton}>
               <TrashIcon style={icon14} />
             </button>
           </div>
         </section>
 
-        <div style={metricsRow}>
-          <Metric icon={UserCircleIcon} label="Reporter" value={issue.reporter_name || "-"} palette={palette} />
-          <Metric icon={ClockIcon} label="Created" value={formatDateTime(issue.created_at)} palette={palette} />
-          <Metric icon={CalendarDaysIcon} label="Due" value={formatDateOnly(issue.due_date)} palette={palette} />
-          <Metric icon={SparklesIcon} label="Story Points" value={issue.story_points ?? "-"} palette={palette} />
+        <section className="ui-enter" style={{ ...signalRail, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "90ms" }}>
+          <p style={{ ...signalTitle, color: palette.muted }}>Execution Snapshot</p>
+          <div style={signalPills}>
+            <span style={{ ...signalPill, ...getSemanticChipStyle(issue.status, "status", darkMode) }}>{formatLabel(issue.status)}</span>
+            <span style={{ ...signalPill, ...getSemanticChipStyle(issue.priority, "priority", darkMode) }}>{formatLabel(issue.priority)} priority</span>
+            <span style={{ ...signalPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+              <EyeIcon style={icon14} /> {watcherCount} watching
+            </span>
+            <span style={{ ...signalPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+              <ChatBubbleBottomCenterTextIcon style={icon14} /> {commentCount} comments
+            </span>
+            <span style={{ ...signalPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+              <PaperClipIcon style={icon14} /> {attachmentCount} attachments
+            </span>
+          </div>
+        </section>
+
+        <div className="ui-enter" style={{ ...metricsRow, "--ui-delay": "140ms" }}>
+          <Metric icon={UserCircleIcon} label="Reporter" value={issue.reporter_name || "-"} palette={palette} className="ui-card-lift ui-smooth" />
+          <Metric icon={UserCircleIcon} label="Assignee" value={issue.assignee_name || "Unassigned"} palette={palette} className="ui-card-lift ui-smooth" />
+          <Metric icon={ClockIcon} label="Created" value={formatDateTime(issue.created_at)} palette={palette} className="ui-card-lift ui-smooth" />
+          <Metric icon={CalendarDaysIcon} label="Due" value={formatDateOnly(issue.due_date)} palette={palette} className="ui-card-lift ui-smooth" />
+          <Metric icon={SparklesIcon} label="Story Points" value={issue.story_points ?? "-"} palette={palette} className="ui-card-lift ui-smooth" />
         </div>
 
-        <div style={contentLayout}>
+        <div className="ui-enter" style={{ ...contentLayout, "--ui-delay": "190ms" }}>
           <main style={mainStack}>
-            <section style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <section className="ui-card-lift ui-smooth" style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
               <h2 style={{ ...sectionTitle, color: palette.text }}>Issue Brief</h2>
               {!editing ? (
                 <p style={{ ...bodyText, color: palette.muted }}>{issue.description || "No description provided yet."}</p>
@@ -267,7 +291,7 @@ function IssueDetail() {
               )}
             </section>
 
-            <section style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <section className="ui-card-lift ui-smooth" style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
               <h2 style={{ ...sectionTitle, color: palette.text }}>
                 <ChatBubbleBottomCenterTextIcon style={icon16} /> Discussion
               </h2>
@@ -284,13 +308,13 @@ function IssueDetail() {
 
               <form onSubmit={handleAddComment} style={commentComposer}>
                 <textarea rows={3} value={newComment} onChange={(event) => setNewComment(event.target.value)} placeholder="Add context, blockers, links..." style={{ ...ui.input, resize: "vertical" }} />
-                <button type="submit" disabled={commenting || !newComment.trim()} style={ui.primaryButton}>
+                <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={commenting || !newComment.trim()} style={ui.primaryButton}>
                   {commenting ? "Posting..." : "Post Comment"}
                 </button>
               </form>
             </section>
 
-            <section style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <section className="ui-card-lift ui-smooth" style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
               <h2 style={{ ...sectionTitle, color: palette.text }}>Delivery Signals</h2>
               <div style={moduleStack}>
                 <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
@@ -304,7 +328,7 @@ function IssueDetail() {
             </section>
           </main>
 
-          <aside style={{ ...sidePanel, border: `1px solid ${palette.border}`, background: palette.card }}>
+          <aside className="ui-card-lift ui-smooth" style={{ ...sidePanel, border: `1px solid ${palette.border}`, background: palette.card }}>
             <h2 style={{ ...sectionTitle, color: palette.text }}>Properties</h2>
 
             <Field label="Status" palette={palette}>
@@ -396,9 +420,9 @@ function Field({ label, children, palette }) {
   );
 }
 
-function Metric({ icon: Icon, label, value, palette }) {
+function Metric({ icon: Icon, label, value, palette, className = "" }) {
   return (
-    <article style={{ ...metricCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+    <article className={className} style={{ ...metricCard, border: `1px solid ${palette.border}`, background: palette.card }}>
       <p style={{ ...metricLabel, color: palette.muted }}>
         <Icon style={icon14} /> {label}
       </p>
@@ -419,11 +443,15 @@ const tagRow = { display: "flex", gap: 8, flexWrap: "wrap" };
 const chip = { borderRadius: 999, padding: "5px 10px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
 const heroActions = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
 const dangerButton = { border: "1px solid rgba(239,68,68,0.45)", borderRadius: 10, padding: 9, color: "#ef4444", background: "rgba(239,68,68,0.1)", cursor: "pointer", display: "grid", placeItems: "center" };
+const signalRail = { marginTop: 10, borderRadius: 14, padding: "10px 12px", display: "grid", gap: 8 };
+const signalTitle = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 };
+const signalPills = { display: "flex", gap: 8, flexWrap: "wrap" };
+const signalPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "5px 10px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
 const metricsRow = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 };
 const metricCard = { borderRadius: 14, padding: "10px 12px" };
 const metricLabel = { margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5 };
 const metricValue = { margin: "7px 0 0", fontSize: 13, fontWeight: 700 };
-const contentLayout = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 10 };
+const contentLayout = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 10, alignItems: "start" };
 const mainStack = { display: "grid", gap: 10 };
 const sidePanel = { borderRadius: 18, padding: "clamp(12px,2vw,18px)", display: "grid", gap: 4, alignContent: "start", position: "sticky", top: 12, height: "fit-content" };
 const sectionTitle = { margin: "0 0 10px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 16, fontWeight: 800, letterSpacing: "-0.01em" };

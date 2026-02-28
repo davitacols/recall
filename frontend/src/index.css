@@ -34,6 +34,66 @@ body {
   box-sizing: border-box;
 }
 
+.ui-smooth {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.ui-card-lift {
+  will-change: transform;
+}
+
+.ui-card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
+}
+
+.ui-card-lift:active {
+  transform: translateY(0);
+}
+
+.ui-btn-polish {
+  transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease;
+}
+
+.ui-btn-polish:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.ui-btn-polish:active {
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+
+.ui-focus-ring:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+@keyframes uiFadeRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ui-enter {
+  opacity: 0;
+  animation: uiFadeRise 360ms ease forwards;
+  animation-delay: var(--ui-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-enter {
+    opacity: 1;
+    animation: none;
+  }
+}
+
 /* Mobile viewport fix */
 @media (max-width: 768px) {
   html {

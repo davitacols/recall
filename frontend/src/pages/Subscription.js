@@ -11,6 +11,7 @@ export default function Subscription() {
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [conversion, setConversion] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
@@ -26,7 +27,7 @@ export default function Subscription() {
   const fetchData = async () => {
     const token = localStorage.getItem('token');
     try {
-      const [subRes, plansRes, invRes] = await Promise.all([
+      const [subRes, plansRes, invRes, conversionRes] = await Promise.all([
         fetch(`${API_BASE}/api/organizations/subscription/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
@@ -34,6 +35,9 @@ export default function Subscription() {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch(`${API_BASE}/api/organizations/invoices/`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE}/api/organizations/subscription/conversion/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -45,6 +49,11 @@ export default function Subscription() {
       }
       setPlans(await plansRes.json());
       setInvoices(await invRes.json());
+      if (conversionRes.ok) {
+        setConversion(await conversionRes.json());
+      } else {
+        setConversion(null);
+      }
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -52,9 +61,29 @@ export default function Subscription() {
     }
   };
 
-  const handleUpgrade = async (planId) => {
+  const handleUpgrade = async (plan) => {
     const token = localStorage.getItem('token');
     try {
+      if (plan.name === 'free') {
+        const downgradeRes = await fetch(`${API_BASE}/api/organizations/subscription/upgrade/`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            plan_id: plan.id
+          })
+        });
+        const downgradeData = await downgradeRes.json();
+        if (!downgradeRes.ok) {
+          alert('Error: ' + (downgradeData.error || 'Failed to switch plan'));
+          return;
+        }
+        await fetchData();
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/api/organizations/stripe/checkout/`, {
         method: 'POST',
         headers: {
@@ -62,9 +91,9 @@ export default function Subscription() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          plan_id: planId,
-          success_url: 'http://localhost:3000/subscription?success=true',
-          cancel_url: 'http://localhost:3000/subscription'
+          plan: plan.name,
+          success_url: `${window.location.origin}/subscription?success=true`,
+          cancel_url: `${window.location.origin}/subscription?canceled=true`
         })
       });
       const data = await res.json();
@@ -91,6 +120,39 @@ export default function Subscription() {
           <h1 className={`text-4xl font-bold ${textPrimary} mb-3`}>Subscription & Billing</h1>
           <p className={`text-lg ${textSecondary}`}>Choose the perfect plan for your team</p>
         </div>
+
+        {conversion && (
+          <div className={`${bgSecondary} border ${borderColor} rounded-2xl p-6 mb-8`}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className={`text-xs uppercase tracking-wider font-semibold ${textSecondary}`}>Launch Readiness</p>
+                <h2 className={`text-xl font-bold ${textPrimary} mt-1`}>
+                  {conversion.phase === 'trial'
+                    ? `Trial in progress: ${conversion.trial?.days_left || 0} day(s) left`
+                    : conversion.phase === 'free_or_starter'
+                      ? 'Free/Starter plan in use'
+                      : 'Paid plan active'}
+                </h2>
+                <p className={`text-sm ${textSecondary} mt-1`}>
+                  Activation milestones: {conversion.activation?.completed_milestones || 0} / {conversion.activation?.total_milestones || 5}
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/projects')}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
+              >
+                Continue setup
+              </button>
+            </div>
+            {(conversion.nudges || []).length > 0 && (
+              <ul className={`mt-4 space-y-2 text-sm ${textSecondary}`}>
+                {(conversion.nudges || []).map((nudge, idx) => (
+                  <li key={`${nudge}-${idx}`}>- {nudge}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* Current Plan - Modern Card */}
         {subscription && (
@@ -223,25 +285,45 @@ export default function Subscription() {
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                      <span>All core features</span>
+                      <span>{plan.is_free ? 'Core features for small teams' : 'All core features'}</span>
                     </li>
-                    {plan.name === 'professional' && (
+                    {plan.features_included?.includes('decision_twin') && (
+                      <>
+                        <li className="flex items-start gap-3">
+                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
+                          <span>Decision Twin scenarios</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
+                          <span>Decision Debt Ledger</span>
+                        </li>
+                      </>
+                    )}
+                    {plan.features_included?.includes('advanced_analytics') && (
                       <>
                         <li className="flex items-start gap-3">
                           <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>Advanced analytics</span>
                         </li>
+                      </>
+                    )}
+                    {plan.features_included?.includes('priority_support') && (
+                      <>
                         <li className="flex items-start gap-3">
                           <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>Priority support</span>
                         </li>
+                      </>
+                    )}
+                    {plan.features_included?.includes('api_access') && (
+                      <>
                         <li className="flex items-start gap-3">
                           <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
                           <span>API access</span>
                         </li>
                       </>
                     )}
-                    {plan.name === 'enterprise' && (
+                    {plan.features_included?.includes('sso_saml') && (
                       <>
                         <li className="flex items-start gap-3">
                           <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
@@ -265,14 +347,14 @@ export default function Subscription() {
 
                   {!isCurrentPlan ? (
                     <button
-                      onClick={() => handleUpgrade(plan.id)}
+                      onClick={() => handleUpgrade(plan)}
                       className={`w-full py-3 rounded-xl font-bold text-white transition-all duration-300 ${
                         isProfessional 
                           ? 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-lg hover:shadow-xl' 
                           : 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800'
                       }`}
                     >
-                      Upgrade to {plan.display_name}
+                      {plan.is_free ? 'Switch to Free' : `Upgrade to ${plan.display_name}`}
                     </button>
                   ) : (
                     <div className={`w-full py-3 rounded-xl font-bold text-center border-2 ${borderColor} ${textSecondary}`}>

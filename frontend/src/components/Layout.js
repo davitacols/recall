@@ -20,6 +20,7 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 import MobileBottomNav from "./MobileBottomNav";
 import NotificationBell from "./NotificationBell";
 import Search from "./Search";
+import api from "../services/api";
 import "../styles/mobile.css";
 
 function AvatarDisplay({ avatar, fullName }) {
@@ -57,6 +58,7 @@ function Layout({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [isResizing, setIsResizing] = useState(false);
+  const [conversion, setConversion] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({
     Main: true,
     Work: true,
@@ -108,6 +110,22 @@ function Layout({ children }) {
     setProfileMenuOpen(false);
     if (isMobile) setMobileMenuOpen(false);
   }, [location.pathname, isMobile]);
+
+  useEffect(() => {
+    const fetchConversion = async () => {
+      try {
+        const response = await api.get("/api/organizations/subscription/conversion/");
+        setConversion(response.data || null);
+      } catch (error) {
+        setConversion(null);
+      }
+    };
+
+    fetchConversion();
+    const onPaywallHit = () => fetchConversion();
+    window.addEventListener("paywall-hit", onPaywallHit);
+    return () => window.removeEventListener("paywall-hit", onPaywallHit);
+  }, []);
 
   const toggleSidebar = () => {
     const next = !sidebarCollapsed;
@@ -226,6 +244,14 @@ function Layout({ children }) {
     : sidebarCollapsed
       ? 74
       : sidebarWidth;
+
+  const shouldShowUpgradeBanner = Boolean(
+    conversion &&
+      (
+        conversion.phase === "trial" ||
+        conversion.phase === "free_or_starter"
+      )
+  );
 
   return (
     <div style={{ ...appShell, background: palette.appBg }}>
@@ -386,7 +412,26 @@ function Layout({ children }) {
           paddingBottom: isMobile ? 74 : 0,
         }}
       >
-        <div style={mainInner}>{children}</div>
+        <div style={mainInner}>
+          {shouldShowUpgradeBanner && (
+            <div style={upgradeBanner}>
+              <div>
+                <p style={upgradeBannerTitle}>
+                  {conversion.phase === "trial"
+                    ? `Trial active: ${conversion.trial?.days_left || 0} day(s) left`
+                    : "Free/Starter plan active"}
+                </p>
+                <p style={upgradeBannerText}>
+                  {(conversion.nudges || [])[0] || "Upgrade to Professional to unlock Decision Twin and Decision Debt Ledger."}
+                </p>
+              </div>
+              <Link to="/subscription" style={upgradeBannerButton}>
+                Upgrade
+              </Link>
+            </div>
+          )}
+          {children}
+        </div>
       </main>
 
       <MobileBottomNav />
@@ -605,6 +650,43 @@ const main = {
 
 const mainInner = {
   padding: "clamp(14px, 2vw, 24px)",
+};
+
+const upgradeBanner = {
+  marginBottom: 12,
+  border: "1px solid rgba(245, 158, 11, 0.45)",
+  background: "rgba(245, 158, 11, 0.12)",
+  borderRadius: 12,
+  padding: "10px 12px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  flexWrap: "wrap",
+};
+
+const upgradeBannerTitle = {
+  margin: 0,
+  fontSize: 12,
+  fontWeight: 800,
+  color: "#f59e0b",
+};
+
+const upgradeBannerText = {
+  margin: "4px 0 0",
+  fontSize: 12,
+  color: "#c7b299",
+};
+
+const upgradeBannerButton = {
+  border: "1px solid rgba(245, 158, 11, 0.55)",
+  color: "#fbbf24",
+  background: "rgba(251, 191, 36, 0.08)",
+  textDecoration: "none",
+  borderRadius: 10,
+  padding: "7px 11px",
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 const avatarFallback = {

@@ -21,6 +21,8 @@ function SprintDetail() {
   const [decisionTwinApplying, setDecisionTwinApplying] = useState(false);
   const [decisionTwinMessage, setDecisionTwinMessage] = useState("");
   const [decisionTwinError, setDecisionTwinError] = useState("");
+  const [decisionTwinUpgrade, setDecisionTwinUpgrade] = useState(null);
+  const [decisionTwinPolicyHints, setDecisionTwinPolicyHints] = useState([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState("");
   const [decisionTwinPolicy, setDecisionTwinPolicy] = useState({
     min_confidence_band: "medium",
@@ -78,10 +80,22 @@ function SprintDetail() {
         setDecisionTwin(payload);
         setSelectedScenarioId(payload?.recommended_scenario_id || "");
         setDecisionTwinError("");
+        setDecisionTwinUpgrade(null);
       } else {
+        const twinStatus = twinRes.reason?.response?.status;
+        const twinBody = twinRes.reason?.response?.data || {};
         setDecisionTwin(null);
         setSelectedScenarioId((prev) => prev || "baseline");
-        setDecisionTwinError("Decision Twin API is unavailable for this sprint. Showing fallback scenarios.");
+        if (twinStatus === 402) {
+          setDecisionTwinError(twinBody?.error || "Decision Twin is a paid feature.");
+          setDecisionTwinUpgrade({
+            required_plan: twinBody?.required_plan || "professional",
+            current_plan: twinBody?.current_plan || "free",
+          });
+        } else {
+          setDecisionTwinError("Decision Twin API is unavailable for this sprint. Showing fallback scenarios.");
+          setDecisionTwinUpgrade(null);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch sprint:", error);
@@ -90,6 +104,7 @@ function SprintDetail() {
       setDecisionTwin(null);
       setSelectedScenarioId((prev) => prev || "baseline");
       setDecisionTwinError("Decision Twin failed to load. Showing fallback scenarios.");
+      setDecisionTwinUpgrade(null);
     } finally {
       setLoading(false);
       setAutopilotLoading(false);
@@ -129,9 +144,20 @@ function SprintDetail() {
       setDecisionTwin(payload);
       setSelectedScenarioId(payload?.recommended_scenario_id || "");
       setDecisionTwinError("");
+      setDecisionTwinUpgrade(null);
     } catch (error) {
       console.error("Failed to refresh decision twin:", error);
-      setDecisionTwinError("Decision Twin refresh failed. Using fallback scenarios.");
+      if (error?.response?.status === 402) {
+        const body = error?.response?.data || {};
+        setDecisionTwinError(body?.error || "Decision Twin is a paid feature.");
+        setDecisionTwinUpgrade({
+          required_plan: body?.required_plan || "professional",
+          current_plan: body?.current_plan || "free",
+        });
+      } else {
+        setDecisionTwinError("Decision Twin refresh failed. Using fallback scenarios.");
+        setDecisionTwinUpgrade(null);
+      }
     } finally {
       setDecisionTwinLoading(false);
     }
@@ -170,12 +196,28 @@ function SprintDetail() {
         create_decision_followups: true,
         ...decisionTwinPolicy,
       });
+      setDecisionTwinPolicyHints([]);
       setDecisionTwinMessage(
         `Applied ${response.data?.scenario_id || "scenario"}: dropped ${response.data?.dropped_count || 0}, added ${response.data?.added_count || 0}, follow-ups ${response.data?.followups_created || 0}.`
       );
       await fetchData();
     } catch (error) {
-      setDecisionTwinMessage(error?.response?.data?.error || "Failed to apply decision twin scenario.");
+      const violations = error?.response?.data?.policy_violations;
+      if (Array.isArray(violations) && violations.length > 0) {
+        setDecisionTwinMessage(`Scenario violates decision twin policy`);
+        setDecisionTwinPolicyHints(buildPolicyAdjustmentHints(violations, decisionTwinPolicy));
+      } else if (error?.response?.status === 402) {
+        const body = error?.response?.data || {};
+        setDecisionTwinMessage(body?.error || "Decision Twin is a paid feature.");
+        setDecisionTwinUpgrade({
+          required_plan: body?.required_plan || "professional",
+          current_plan: body?.current_plan || "free",
+        });
+        setDecisionTwinPolicyHints([]);
+      } else {
+        setDecisionTwinMessage(error?.response?.data?.error || "Failed to apply decision twin scenario.");
+        setDecisionTwinPolicyHints([]);
+      }
     } finally {
       setDecisionTwinApplying(false);
     }
@@ -194,6 +236,7 @@ function SprintDetail() {
         create_decision_followups: true,
         ...decisionTwinPolicy,
       });
+      setDecisionTwinPolicyHints([]);
       setDecisionTwinMessage(
         `Auto-applied ${response.data?.scenario_id || "scenario"}: dropped ${response.data?.dropped_count || 0}, added ${response.data?.added_count || 0}, follow-ups ${response.data?.followups_created || 0}.`
       );
@@ -202,8 +245,18 @@ function SprintDetail() {
       const violations = error?.response?.data?.policy_violations;
       if (Array.isArray(violations) && violations.length > 0) {
         setDecisionTwinMessage(`Failed policy guardrails: ${violations.join(" | ")}`);
+        setDecisionTwinPolicyHints(buildPolicyAdjustmentHints(violations, decisionTwinPolicy));
+      } else if (error?.response?.status === 402) {
+        const body = error?.response?.data || {};
+        setDecisionTwinMessage(body?.error || "Decision Twin is a paid feature.");
+        setDecisionTwinUpgrade({
+          required_plan: body?.required_plan || "professional",
+          current_plan: body?.current_plan || "free",
+        });
+        setDecisionTwinPolicyHints([]);
       } else {
         setDecisionTwinMessage(error?.response?.data?.error || "Failed to auto-apply decision twin scenario.");
+        setDecisionTwinPolicyHints([]);
       }
     } finally {
       setDecisionTwinApplying(false);
@@ -460,11 +513,31 @@ function SprintDetail() {
               {decisionTwinError}
             </p>
           )}
+          {decisionTwinUpgrade && (
+            <p style={{ margin: 0, fontSize: 12, color: "#f59e0b" }}>
+              Current plan: {decisionTwinUpgrade.current_plan}. Required: {decisionTwinUpgrade.required_plan}.{" "}
+              <Link to="/subscription" style={{ color: "#fbbf24", fontWeight: 700 }}>
+                Upgrade plan
+              </Link>
+            </p>
+          )}
 
           {decisionTwinMessage && (
-            <p style={{ margin: 0, fontSize: 12, color: decisionTwinMessage.startsWith("Failed") ? "#ef4444" : "#10b981" }}>
+            <p style={{ margin: 0, fontSize: 12, color: (decisionTwinMessage.startsWith("Failed") || decisionTwinMessage.toLowerCase().includes("violates")) ? "#ef4444" : "#10b981" }}>
               {decisionTwinMessage}
             </p>
+          )}
+          {decisionTwinPolicyHints.length > 0 && (
+            <div style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: 10, background: palette.cardAlt }}>
+              <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>
+                How to make this scenario eligible
+              </p>
+              {decisionTwinPolicyHints.map((hint, idx) => (
+                <p key={`${hint}-${idx}`} style={{ margin: "0 0 4px", fontSize: 11, color: palette.muted }}>
+                  {idx + 1}. {hint}
+                </p>
+              ))}
+            </div>
           )}
         </section>
 
@@ -550,6 +623,33 @@ const issueKey = { margin: 0, fontSize: 11, color: "#9e8d7b", fontWeight: 700 };
 const issueTitle = { margin: "5px 0", fontSize: 13, color: "#f4ece0", fontWeight: 600, lineHeight: 1.35 };
 const issueMeta = { margin: 0, fontSize: 11, color: "#baa892" };
 const icon14 = { width: 14, height: 14 };
+
+function buildPolicyAdjustmentHints(violations, policy) {
+  const hints = [];
+  const lower = (text) => String(text || "").toLowerCase();
+  if (violations.some((v) => lower(v).includes("confidence"))) {
+    hints.push(
+      `Lower Min Confidence from ${policy.min_confidence_band} to low, or choose a higher-confidence scenario.`
+    );
+  }
+  if (violations.some((v) => lower(v).includes("uplift"))) {
+    hints.push(
+      `Lower Min Uplift % from ${policy.min_probability_delta} to 0, or pick a scenario with higher projected gain.`
+    );
+  }
+  if (violations.some((v) => lower(v).includes("scope changes"))) {
+    hints.push(
+      `Increase Max Scope Changes above ${policy.max_scope_changes}, or pick a scenario with fewer adds/drops.`
+    );
+  }
+  if (violations.some((v) => lower(v).includes("backlog adds"))) {
+    hints.push("Enable Allow backlog adds, or use a no-add scenario like Focus Mode/Baseline.");
+  }
+  if (hints.length === 0) {
+    hints.push("Temporarily disable Enforce policy on apply to proceed manually.");
+  }
+  return hints;
+}
 
 export default SprintDetail;
 

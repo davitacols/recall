@@ -3,6 +3,7 @@ from django.utils import timezone
 
 class Plan(models.Model):
     PLAN_TYPES = [
+        ('free', 'Free'),
         ('starter', 'Starter'),
         ('professional', 'Professional'),
         ('enterprise', 'Enterprise'),

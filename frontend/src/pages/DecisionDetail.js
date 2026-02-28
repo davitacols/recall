@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeftIcon,
+  ArrowPathIcon,
   CalendarIcon,
   ChartBarIcon,
   ExclamationTriangleIcon,
@@ -262,15 +263,26 @@ function DecisionDetail() {
 
   const status = (decision.status || "proposed").replace("_", " ");
   const impact = (decision.impact_level || "medium").replace("_", " ");
+  const reliabilityScore = decision.outcome_reliability?.score ?? 0;
+  const confidenceScore = decision.confidence?.score || 0;
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh", background: palette.bg, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.16), transparent 30%)" : "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.1), transparent 30%)" }} />
       <div style={ui.container}>
-        <button onClick={() => navigate("/decisions")} style={{ ...ui.secondaryButton, marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "10ms" }}>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>All Decisions</button>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => setActiveTab("outcome")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Outcome Review</button>
+          <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecision} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+            <ArrowPathIcon style={{ width: 13, height: 13 }} /> Refresh
+          </button>
+        </section>
+
+        <button className="ui-enter ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...ui.secondaryButton, marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 6, "--ui-delay": "60ms" }}>
           <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
         </button>
 
-        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 10 }}>
+        <section className="ui-enter ui-card-lift ui-smooth" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(135deg,#1a1418,#161115)" : "linear-gradient(135deg,#fffdf9,#fff6ec)", padding: 16, marginBottom: 10, "--ui-delay": "120ms" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
@@ -293,13 +305,28 @@ function DecisionDetail() {
               <UndoRedoButtons />
             </div>
           </div>
+          <div style={heroMetrics}>
+            <div style={{ ...metricChip, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+              <p style={{ ...metricLabel, color: palette.muted }}>Confidence</p>
+              <p style={{ ...metricValue, color: palette.text }}>{confidenceScore}%</p>
+            </div>
+            <div style={{ ...metricChip, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+              <p style={{ ...metricLabel, color: palette.muted }}>Reliability</p>
+              <p style={{ ...metricValue, color: palette.text }}>{reliabilityScore}%</p>
+            </div>
+            <div style={{ ...metricChip, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+              <p style={{ ...metricLabel, color: palette.muted }}>Impact trail</p>
+              <p style={{ ...metricValue, color: palette.text }}>{impactTrail.edges?.length || 0} links</p>
+            </div>
+          </div>
         </section>
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 340px", gap: 10 }}>
-          <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+        <div className="ui-enter" style={{ ...mainGrid, gridTemplateColumns: "minmax(0,1fr) 340px", gap: 10, "--ui-delay": "180ms" }}>
+          <section className="ui-card-lift ui-smooth" style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               {["overview", "rationale", "code", "details", "outcome", "impact", "replay"].map((tab) => (
                 <button
+                  className="ui-btn-polish ui-focus-ring"
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   style={{
@@ -317,21 +344,21 @@ function DecisionDetail() {
               ))}
             </div>
 
-            {activeTab === "overview" && <TextBlock title="Overview" text={decision.description} />}
-            {activeTab === "rationale" && <TextBlock title="Rationale" text={decision.rationale || "No rationale provided"} />}
+            {activeTab === "overview" && <TextBlock title="Overview" text={decision.description} palette={palette} />}
+            {activeTab === "rationale" && <TextBlock title="Rationale" text={decision.rationale || "No rationale provided"} palette={palette} />}
 
             {activeTab === "code" && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
                   <h3 style={{ margin: 0, fontSize: 16, color: palette.text }}>Related Code</h3>
-                  <button onClick={() => setShowLinkPR((prev) => !prev)} style={ui.secondaryButton}>{showLinkPR ? "Cancel" : "Link PR"}</button>
+                  <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowLinkPR((prev) => !prev)} style={ui.secondaryButton}>{showLinkPR ? "Cancel" : "Link PR"}</button>
                 </div>
 
                 {showLinkPR && (
                   <form onSubmit={handleLinkPR} style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10, marginBottom: 8, display: "grid", gap: 8 }}>
                     <input type="url" value={prUrl} onChange={(event) => setPrUrl(event.target.value)} placeholder="https://github.com/org/repo/pull/123" style={ui.input} />
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                      <button type="submit" disabled={!prUrl.trim() || linking} style={ui.primaryButton}>{linking ? "Linking..." : "Link"}</button>
+                      <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={!prUrl.trim() || linking} style={ui.primaryButton}>{linking ? "Linking..." : "Link"}</button>
                     </div>
                   </form>
                 )}
@@ -358,7 +385,7 @@ function DecisionDetail() {
 
             {activeTab === "details" && (
               <div style={{ display: "grid", gap: 10 }}>
-                {decision.context_reason && <TextBlock title="Context" text={decision.context_reason} />}
+                {decision.context_reason && <TextBlock title="Context" text={decision.context_reason} palette={palette} />}
 
                 {decision.if_this_fails && (
                   <div style={{ borderRadius: 10, border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.1)", padding: 10 }}>
@@ -481,13 +508,14 @@ function DecisionDetail() {
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
                     <button
                       type="button"
+                      className="ui-btn-polish ui-focus-ring"
                       onClick={runFollowUpOrchestrator}
                       style={ui.secondaryButton}
                       disabled={orchestrating || decision.was_successful !== false}
                     >
                       {orchestrating ? "Running..." : "Auto Create Follow-up Task"}
                     </button>
-                    <button type="submit" style={ui.primaryButton} disabled={outcomeSaving || decision.status !== "implemented"}>
+                    <button className="ui-btn-polish ui-focus-ring" type="submit" style={ui.primaryButton} disabled={outcomeSaving || decision.status !== "implemented"}>
                       {outcomeSaving ? "Saving..." : "Save Outcome Review"}
                     </button>
                   </div>
@@ -503,8 +531,8 @@ function DecisionDetail() {
                 ) : (
                   <>
                     <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
-                      <InfoRow label="Nodes" value={`${impactTrail.nodes.length}`} />
-                      <InfoRow label="Edges" value={`${impactTrail.edges.length}`} />
+                      <InfoRow label="Nodes" value={`${impactTrail.nodes.length}`} palette={palette} />
+                      <InfoRow label="Edges" value={`${impactTrail.edges.length}`} palette={palette} />
                     </div>
                     <div style={{ display: "grid", gap: 6 }}>
                       {(impactTrail.edges || []).slice(0, 8).map((edge, idx) => (
@@ -588,7 +616,7 @@ function DecisionDetail() {
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button type="button" onClick={runReplaySimulation} style={ui.primaryButton} disabled={replayLoading}>
+                    <button className="ui-btn-polish ui-focus-ring" type="button" onClick={runReplaySimulation} style={ui.primaryButton} disabled={replayLoading}>
                       {replayLoading ? "Running..." : "Run Replay Simulation"}
                     </button>
                   </div>
@@ -601,10 +629,10 @@ function DecisionDetail() {
                   <div style={{ display: "grid", gap: 8 }}>
                     <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
                       <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Forecast</p>
-                      <InfoRow label="Failure risk" value={`${replayResult.forecast?.predicted_failure_risk_pct ?? 0}%`} />
-                      <InfoRow label="Expected impact" value={`${replayResult.forecast?.expected_impact_score ?? 0}/100`} />
-                      <InfoRow label="Confidence" value={`${replayResult.forecast?.confidence_pct ?? 0}%`} />
-                      <InfoRow label="Sample size" value={`${replayResult.based_on?.sample_size ?? 0}`} />
+                      <InfoRow label="Failure risk" value={`${replayResult.forecast?.predicted_failure_risk_pct ?? 0}%`} palette={palette} />
+                      <InfoRow label="Expected impact" value={`${replayResult.forecast?.expected_impact_score ?? 0}/100`} palette={palette} />
+                      <InfoRow label="Confidence" value={`${replayResult.forecast?.confidence_pct ?? 0}%`} palette={palette} />
+                      <InfoRow label="Sample size" value={`${replayResult.based_on?.sample_size ?? 0}`} palette={palette} />
                     </div>
 
                     <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
@@ -626,6 +654,7 @@ function DecisionDetail() {
                       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
                         <button
                           type="button"
+                          className="ui-btn-polish ui-focus-ring"
                           onClick={createTasksFromSimulation}
                           disabled={replayTaskSaving || !(replayResult.recommended_safeguards || []).length}
                           style={ui.secondaryButton}
@@ -658,16 +687,16 @@ function DecisionDetail() {
 
             <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
               <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Reliability</h3>
-              <InfoRow label="Outcome reliability" value={`${decision.outcome_reliability?.score ?? 0}%`} />
-              <InfoRow label="Band" value={(decision.outcome_reliability?.band || "low").toUpperCase()} />
+              <InfoRow label="Outcome reliability" value={`${decision.outcome_reliability?.score ?? 0}%`} palette={palette} />
+              <InfoRow label="Band" value={(decision.outcome_reliability?.band || "low").toUpperCase()} palette={palette} />
             </section>
 
             <DecisionReminder decisionId={id} />
 
             <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
               <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Details</h3>
-              <InfoRow label="Decided" value={decision.decided_at ? new Date(decision.decided_at).toLocaleDateString() : "-"} />
-              <InfoRow label="Deadline" value={decision.implementation_deadline ? new Date(decision.implementation_deadline).toLocaleDateString() : "-"} />
+              <InfoRow label="Decided" value={decision.decided_at ? new Date(decision.decided_at).toLocaleDateString() : "-"} palette={palette} />
+              <InfoRow label="Deadline" value={decision.implementation_deadline ? new Date(decision.implementation_deadline).toLocaleDateString() : "-"} palette={palette} />
             </section>
 
             <ContextPanel contentType="decisions.decision" objectId={id} />
@@ -687,11 +716,11 @@ function Pill({ text, tone = "blue" }) {
   return <span style={{ ...style, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 8px", textTransform: "capitalize" }}>{text}</span>;
 }
 
-function TextBlock({ title, text }) {
+function TextBlock({ title, text, palette }) {
   return (
     <div>
-      <h3 style={{ margin: "0 0 8px", fontSize: 16, color: "#f4ece0" }}>{title}</h3>
-      <div style={{ color: "#d9cdbf", fontSize: 13, lineHeight: 1.6 }}>
+      <h3 style={{ margin: "0 0 8px", fontSize: 16, color: palette?.text || "#f4ece0" }}>{title}</h3>
+      <div style={{ color: palette?.muted || "#d9cdbf", fontSize: 13, lineHeight: 1.6 }}>
         {(text || "").split("\n\n").map((paragraph, index) => (
           <p key={index} style={{ margin: "0 0 10px" }}>{paragraph}</p>
         ))}
@@ -700,15 +729,23 @@ function TextBlock({ title, text }) {
   );
 }
 
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, palette }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, marginBottom: 6 }}>
-      <span style={{ color: "#baa892" }}>{label}</span>
-      <span style={{ color: "#f4ece0", fontWeight: 700 }}>{value}</span>
+      <span style={{ color: palette?.muted || "#baa892" }}>{label}</span>
+      <span style={{ color: palette?.text || "#f4ece0", fontWeight: 700 }}>{value}</span>
     </div>
   );
 }
 
 const fieldLabel = { margin: 0, fontSize: 12, color: "#baa892", fontWeight: 700 };
+const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
+const commandStrip = { position: "relative", zIndex: 1, marginBottom: 10, borderRadius: 12, padding: 8, display: "flex", gap: 8, flexWrap: "wrap" };
+const commandPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "7px 11px", background: "transparent", fontSize: 12, fontWeight: 700, cursor: "pointer" };
+const heroMetrics = { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8 };
+const metricChip = { borderRadius: 10, padding: "8px 10px" };
+const metricLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 };
+const metricValue = { margin: "4px 0 0", fontSize: 18, fontWeight: 800 };
+const mainGrid = { position: "relative", zIndex: 1, display: "grid" };
 
 export default DecisionDetail;

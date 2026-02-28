@@ -23,6 +23,7 @@ urlpatterns = [
     path('sprints/<int:sprint_id>/decision-analysis/', agile_fresh.sprint_decision_analysis, name='sprint_decision_analysis'),
     path('sprint-history/', agile_fresh.sprint_history, name='sprint_history'),
     path('current-sprint/', agile_fresh.current_sprint, name='current_sprint'),
+    path('decisions/debt-ledger/', agile_fresh.decision_debt_ledger, name='decision_debt_ledger'),
     
     # Issues
     path('issues/<int:issue_id>/', agile_fresh.issue_detail, name='issue_detail'),

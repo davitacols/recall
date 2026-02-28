@@ -11,6 +11,7 @@ from apps.agile.models import Project, Sprint, Issue, Board, Column, IssueCommen
 from apps.decisions.models import Decision
 from apps.organizations.models import User
 from apps.organizations.permissions import has_project_permission, Permission
+from apps.organizations.subscription_entitlements import get_or_create_subscription, subscription_supports_feature
 from apps.organizations.auditlog_models import AuditLog
 from apps.conversations.models import Conversation
 from apps.knowledge.unified_models import UnifiedActivity
@@ -68,6 +69,19 @@ def _resolve_issue_by_ref(organization, issue_ref):
             return matches.first()
 
     return None
+
+
+def _feature_gate_response(user, feature_key, required_plan='professional'):
+    subscription = get_or_create_subscription(user.organization)
+    if subscription_supports_feature(subscription, feature_key):
+        return None
+    return Response({
+        'error': f"'{feature_key}' is not available on the {subscription.plan.name} plan.",
+        'feature': feature_key,
+        'current_plan': subscription.plan.name,
+        'required_plan': required_plan,
+        'upgrade_hint': f'Upgrade to {required_plan} to use this feature.',
+    }, status=402)
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -1053,6 +1067,158 @@ def sprint_decision_analysis(request, sprint_id):
     })
 
 
+def _decision_debt_score(decision, today):
+    impact_weight = {'low': 1.0, 'medium': 2.0, 'high': 3.5, 'critical': 5.0}.get(decision.impact_level or 'medium', 2.0)
+    status_weight = {'proposed': 1.0, 'under_review': 1.2, 'approved': 1.5, 'implemented': 0.8}.get(decision.status or 'proposed', 1.0)
+    anchor = decision.decided_at or decision.created_at
+    age_days = max(0, (today - anchor.date()).days) if anchor else 0
+    age_multiplier = 1.0 + min(45, age_days) / 30.0
+
+    friction_bonus = 0.0
+    if decision.implementation_deadline and decision.implementation_deadline.date() < today and decision.status in ['proposed', 'under_review', 'approved']:
+        friction_bonus += 0.7
+    if decision.sprint and decision.sprint.end_date and decision.sprint.end_date < today:
+        friction_bonus += 0.8
+
+    score = impact_weight * status_weight * age_multiplier * (1.0 + friction_bonus)
+    interest_per_week = score * 0.12
+    return round(score, 2), age_days, round(interest_per_week, 2)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def decision_debt_ledger(request):
+    """Decision Debt Ledger: unresolved decision debt score + aging/paydown view."""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+    gate = _feature_gate_response(request.user, 'decision_debt_ledger', required_plan='professional')
+    if gate:
+        return gate
+
+    org = request.user.organization
+    today = timezone.now().date()
+    days = request.GET.get('days')
+    try:
+        days = int(days) if str(days).isdigit() else 14
+    except Exception:
+        days = 14
+    days = max(7, min(90, days))
+
+    base_qs = Decision.objects.filter(organization=org).select_related('sprint')
+    scope = {'type': 'organization', 'id': None, 'label': 'Organization'}
+
+    sprint_id = request.GET.get('sprint_id')
+    project_id = request.GET.get('project_id')
+    if sprint_id and str(sprint_id).isdigit():
+        try:
+            sprint = Sprint.objects.get(id=int(sprint_id), organization=org)
+        except Sprint.DoesNotExist:
+            return Response({'error': 'Sprint not found'}, status=404)
+        if sprint.project_id and not has_project_permission(request.user, Permission.EDIT_SPRINT.value, sprint.project_id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
+        base_qs = base_qs.filter(sprint=sprint)
+        scope = {'type': 'sprint', 'id': sprint.id, 'label': sprint.name}
+    elif project_id and str(project_id).isdigit():
+        try:
+            project = Project.objects.get(id=int(project_id), organization=org)
+        except Project.DoesNotExist:
+            return Response({'error': 'Project not found'}, status=404)
+        if not has_project_permission(request.user, Permission.EDIT_SPRINT.value, project.id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
+        base_qs = base_qs.filter(sprint__project=project)
+        scope = {'type': 'project', 'id': project.id, 'label': project.name}
+
+    unresolved_qs = base_qs.filter(
+        Q(status__in=['proposed', 'under_review', 'approved']) |
+        Q(status='implemented', review_completed_at__isnull=True)
+    )
+    unresolved = list(unresolved_qs)
+
+    rows = []
+    total_score = 0.0
+    total_interest = 0.0
+    overdue_count = 0
+    for decision in unresolved:
+        score, age_days, interest = _decision_debt_score(decision, today)
+        total_score += score
+        total_interest += interest
+        if decision.implementation_deadline and decision.implementation_deadline.date() < today:
+            overdue_count += 1
+        rows.append({
+            'decision_id': decision.id,
+            'title': decision.title,
+            'status': decision.status,
+            'impact_level': decision.impact_level,
+            'age_days': age_days,
+            'debt_score': score,
+            'interest_per_week': interest,
+            'sprint_id': decision.sprint_id,
+            'sprint_name': decision.sprint.name if decision.sprint else None,
+            'link': f'/decisions/{decision.id}',
+        })
+    rows.sort(key=lambda item: item['debt_score'], reverse=True)
+
+    unresolved_count = len(rows)
+    avg_age_days = round(sum(item['age_days'] for item in rows) / unresolved_count, 1) if unresolved_count else 0.0
+
+    aging_buckets = [
+        {'label': '0-3d', 'count': 0, 'score': 0.0},
+        {'label': '4-7d', 'count': 0, 'score': 0.0},
+        {'label': '8-14d', 'count': 0, 'score': 0.0},
+        {'label': '15+d', 'count': 0, 'score': 0.0},
+    ]
+    for row in rows:
+        age = row['age_days']
+        idx = 0 if age <= 3 else 1 if age <= 7 else 2 if age <= 14 else 3
+        aging_buckets[idx]['count'] += 1
+        aging_buckets[idx]['score'] += row['debt_score']
+    for bucket in aging_buckets:
+        bucket['score'] = round(bucket['score'], 2)
+
+    window_start = timezone.now() - timedelta(days=days)
+    new_unresolved = base_qs.filter(
+        created_at__gte=window_start
+    ).filter(
+        Q(status__in=['proposed', 'under_review', 'approved']) |
+        Q(status='implemented', review_completed_at__isnull=True)
+    )
+    resolved_recent = base_qs.filter(review_completed_at__gte=window_start)
+    new_score = sum(_decision_debt_score(decision, today)[0] for decision in new_unresolved)
+    resolved_score = sum(_decision_debt_score(decision, today)[0] for decision in resolved_recent)
+    trend_delta = round(new_score - resolved_score, 2)
+
+    paydown_actions = []
+    for row in rows[:3]:
+        paydown_actions.append({
+            'decision_id': row['decision_id'],
+            'action': f"Resolve or review '{row['title']}'",
+            'expected_score_reduction': row['debt_score'],
+        })
+    if overdue_count > 0:
+        paydown_actions.append({
+            'decision_id': None,
+            'action': f'Prioritize {overdue_count} overdue implementation decisions this week',
+            'expected_score_reduction': round(min(total_score, overdue_count * 2.4), 2),
+        })
+
+    return Response({
+        'scope': scope,
+        'generated_at': timezone.now().isoformat(),
+        'summary': {
+            'decision_debt_score': round(total_score, 2),
+            'interest_per_week': round(total_interest, 2),
+            'unresolved_count': unresolved_count,
+            'overdue_count': overdue_count,
+            'avg_age_days': avg_age_days,
+            'trend_delta': trend_delta,
+            'trend_window_days': days,
+        },
+        'aging_buckets': aging_buckets,
+        'top_items': rows[:5],
+        'paydown_actions': paydown_actions[:5],
+    })
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def sprint_autopilot(request, sprint_id):
@@ -1601,6 +1767,9 @@ def sprint_decision_twin(request, sprint_id):
     """Counterfactual scenario engine for sprint execution tradeoffs."""
     if not hasattr(request.user, 'organization') or not request.user.organization:
         return Response({'error': 'User does not have an organization'}, status=400)
+    gate = _feature_gate_response(request.user, 'decision_twin', required_plan='professional')
+    if gate:
+        return gate
 
     try:
         sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
@@ -1619,6 +1788,9 @@ def apply_sprint_decision_twin(request, sprint_id):
     """Apply selected counterfactual scenario generated by sprint_decision_twin."""
     if not hasattr(request.user, 'organization') or not request.user.organization:
         return Response({'error': 'User does not have an organization'}, status=400)
+    gate = _feature_gate_response(request.user, 'decision_twin', required_plan='professional')
+    if gate:
+        return gate
 
     try:
         sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)

@@ -34,7 +34,7 @@ const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette,
 
   return (
     <div style={{ marginLeft: depth > 0 ? 24 : 0 }}>
-      <article style={{ ...replyCard, background: palette.panel, border: `1px solid ${palette.border}` }}>
+      <article className="ui-card-lift ui-smooth" style={{ ...replyCard, background: palette.panel, border: `1px solid ${palette.border}` }}>
         <div style={replyHeader}>
           <div style={replyAuthorWrap}>
             <div style={avatarSmall}>
@@ -82,7 +82,7 @@ const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette,
               rows={3}
               style={{ ...textareaInput, border: `1px solid ${palette.border}`, color: palette.text }}
             />
-            <button onClick={handleSave} style={primaryButton}>
+            <button className="ui-btn-polish ui-focus-ring" onClick={handleSave} style={primaryButton}>
               Save
             </button>
           </div>
@@ -450,16 +450,26 @@ function ConversationDetail() {
     typeof conversation.author === "string"
       ? conversation.author
       : conversation.author?.username || "Unknown";
+  const replyCount = replies.length;
+  const reactionTotal = (reactions.reactions || []).reduce((acc, row) => acc + (row.count || 0), 0);
+  const conversationType = (conversation.post_type || "discussion").replace("_", " ");
 
   return (
-    <div style={page}>
-      <Link to="/conversations" style={{ ...backLink, color: palette.muted }}>
+    <div style={{ ...page, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.16), transparent 30%)" : "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.1), transparent 30%)" }} />
+      <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
+        <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>All Threads</button>
+        <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Decision Hub</button>
+        <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Refresh</button>
+      </section>
+
+      <Link className="ui-enter" to="/conversations" style={{ ...backLink, color: palette.muted, "--ui-delay": "60ms" }}>
         <ArrowLeftIcon style={icon14} /> Back
       </Link>
 
-      <div style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px" }}>
+      <div className="ui-enter" style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", "--ui-delay": "110ms" }}>
         <div>
-          <section style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: darkMode ? "linear-gradient(135deg,#1a1418,#161115)" : "linear-gradient(135deg,#fffdf9,#fff7ec)", border: `1px solid ${palette.border}`, "--ui-delay": "140ms" }}>
             {isEditingPost ? (
               <input
                 value={editTitle}
@@ -469,6 +479,11 @@ function ConversationDetail() {
             ) : (
               <h1 style={{ ...titleMain, color: palette.text }}>{conversation.title}</h1>
             )}
+            <div style={heroSignals}>
+              <span style={{ ...signalChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{conversationType}</span>
+              <span style={{ ...signalChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{replyCount} replies</span>
+              <span style={{ ...signalChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{reactionTotal} reactions</span>
+            </div>
             <div style={authorRow}>
               <div style={avatarWrap}>
                 {getAvatarUrl(conversation.author_avatar || conversation.author?.avatar) ? (
@@ -492,6 +507,7 @@ function ConversationDetail() {
             <div style={actionRow}>
               <QuickLink sourceType="conversations.conversation" sourceId={id} />
               <button
+                className="ui-btn-polish ui-focus-ring"
                 onClick={handleConvertToDecision}
                 disabled={converting || savingPost || deletingPost}
                 style={ghostSuccessButton}
@@ -509,10 +525,10 @@ function ConversationDetail() {
               <UndoRedoButtons />
               {conversation.author_id === currentUserId && (
                 <>
-                  <button onClick={() => setIsEditingPost((value) => !value)} style={smallOutlineButton}>
+                  <button className="ui-btn-polish ui-focus-ring" onClick={() => setIsEditingPost((value) => !value)} style={smallOutlineButton}>
                     {isEditingPost ? "Cancel" : "Edit"}
                   </button>
-                  <button onClick={handleDeletePost} style={smallDangerButton}>
+                  <button className="ui-btn-polish ui-focus-ring" onClick={handleDeletePost} style={smallDangerButton}>
                     {deletingPost ? "Deleting..." : "Delete"}
                   </button>
                 </>
@@ -522,7 +538,7 @@ function ConversationDetail() {
 
           <AIAssistant content={conversation?.content} contentType="conversation" />
 
-          <section style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "180ms" }}>
             {isEditingPost ? (
               <>
                 <textarea
@@ -531,7 +547,7 @@ function ConversationDetail() {
                   rows={10}
                   style={{ ...textareaInput, border: `1px solid ${palette.border}`, color: palette.text }}
                 />
-                <button onClick={handleEditPost} style={primaryButton}>
+                <button className="ui-btn-polish ui-focus-ring" onClick={handleEditPost} style={primaryButton}>
                   {savingPost ? "Saving..." : "Save Changes"}
                 </button>
               </>
@@ -540,7 +556,7 @@ function ConversationDetail() {
             )}
           </section>
 
-          <section style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
             <div style={reactionRow}>
               {[
                 { type: "agree", icon: HandThumbUpIcon, label: "Agree" },
@@ -548,6 +564,7 @@ function ConversationDetail() {
                 { type: "concern", icon: ExclamationTriangleIcon, label: "Concern" },
               ].map(({ type, icon: Icon, label }) => (
                 <button
+                  className="ui-btn-polish ui-focus-ring"
                   key={type}
                   onClick={() => handleReaction(type)}
                   style={{
@@ -564,7 +581,7 @@ function ConversationDetail() {
             </div>
           </section>
 
-          <section style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "260ms" }}>
             <h2 style={{ ...h2, color: palette.text }}>
               <ChatBubbleLeftIcon style={icon18} /> Replies ({replies.length})
             </h2>
@@ -599,7 +616,7 @@ function ConversationDetail() {
                   rows={4}
                   darkMode={darkMode}
                 />
-                <button type="submit" disabled={submitting || !newReply.trim()} style={primaryButton}>
+                <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={submitting || !newReply.trim()} style={primaryButton}>
                   {submitting ? "Posting..." : "Reply"}
                 </button>
               </form>
@@ -618,7 +635,10 @@ function ConversationDetail() {
 }
 
 const page = { maxWidth: 1280, margin: "0 auto" };
-const grid = { display: "grid", gap: 12 };
+const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
+const commandStrip = { position: "relative", zIndex: 1, marginBottom: 10, borderRadius: 12, padding: 8, display: "flex", gap: 8, flexWrap: "wrap" };
+const commandPill = { borderRadius: 999, padding: "7px 11px", fontSize: 12, fontWeight: 700, background: "transparent", cursor: "pointer" };
+const grid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
 const loadingWrap = { minHeight: 320, display: "grid", placeItems: "center" };
 const spinner = {
   width: 28,
@@ -668,6 +688,8 @@ const secondaryButton = {
   border: "1px solid rgba(120,120,120,0.45)",
 };
 const titleMain = { margin: "0 0 10px", fontSize: "clamp(1.3rem,2.8vw,1.8rem)" };
+const heroSignals = { display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 8 };
+const signalChip = { borderRadius: 999, padding: "4px 9px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
 const titleInput = { width: "100%", border: "none", background: "transparent", fontSize: 22, fontWeight: 700, marginBottom: 10, paddingBottom: 8, outline: "none" };
 const authorRow = { display: "flex", alignItems: "center", gap: 8 };
 const avatarWrap = { width: 34, height: 34, borderRadius: 10, overflow: "hidden", background: "linear-gradient(135deg,#ffcb8b,#ff935d)", display: "grid", placeItems: "center" };

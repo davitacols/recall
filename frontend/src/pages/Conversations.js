@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MagnifyingGlassIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, FunnelIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import api from "../services/api";
 import { useToast } from "../components/Toast";
@@ -133,24 +133,37 @@ function Conversations() {
     : 0;
 
   return (
-    <div style={page}>
+    <div style={{ ...page, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 3%, rgba(16,185,129,0.18), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.16), transparent 30%)" : "radial-gradient(circle at 8% 3%, rgba(16,185,129,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.1), transparent 30%)" }} />
+
+      <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
+        <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Decisions</button>
+        <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/activity")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Activity</button>
+        <button className="ui-btn-polish ui-focus-ring" onClick={loadConversations} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+          <ArrowPathIcon style={{ width: 13, height: 13 }} /> Refresh
+        </button>
+      </section>
+
       <section
+        className="ui-enter"
         style={{
           ...hero,
           border: `1px solid ${palette.border}`,
-          background: `linear-gradient(150deg, ${
-            darkMode ? "rgba(255,167,97,0.18)" : "rgba(255,196,146,0.45)"
-          }, ${darkMode ? "rgba(74,194,171,0.15)" : "rgba(150,240,220,0.42)"})`,
+          "--ui-delay": "70ms",
+          background: `linear-gradient(138deg, ${
+            darkMode ? "rgba(16,185,129,0.16)" : "rgba(187,247,208,0.58)"
+          }, ${darkMode ? "rgba(59,130,246,0.16)" : "rgba(191,219,254,0.58)"}, ${darkMode ? "rgba(249,115,22,0.13)" : "rgba(255,220,182,0.52)"})`,
         }}
       >
         <div>
           <p style={{ ...eyebrow, color: palette.muted }}>COLLABORATION THREADS</p>
-          <h1 style={{ ...title, color: palette.text }}>Conversations</h1>
+          <h1 style={{ ...title, color: palette.text }}>Conversation Mission Control</h1>
           <p style={{ ...subtitle, color: palette.muted }}>
-            Capture questions, updates, blockers, and decisions with full context.
+            Capture questions, blockers, and decision context with a searchable, launch-ready communication layer.
           </p>
         </div>
         <button
+          className="ui-btn-polish ui-focus-ring"
           onClick={() => navigate("/conversations/new")}
           style={newConversationButton}
         >
@@ -159,7 +172,7 @@ function Conversations() {
         </button>
       </section>
 
-      <section style={{ ...filterBar, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : filterBar.gridTemplateColumns }}>
+      <section className="ui-enter" style={{ ...filterBar, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : filterBar.gridTemplateColumns, "--ui-delay": "130ms" }}>
         <div style={searchWrap}>
           <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
           <input
@@ -195,10 +208,11 @@ function Conversations() {
       </section>
 
       {conversations.length > 0 && (
-        <section style={statsGrid}>
+        <section className="ui-enter" style={{ ...statsGrid, "--ui-delay": "170ms" }}>
           <StatCard label="Total" value={conversations.length} palette={palette} />
           <StatCard label="This Week" value={thisWeekCount} palette={palette} />
           <StatCard label="Avg Replies" value={averageReplies} palette={palette} />
+          <StatCard label="Filtered" value={filteredConversations.length} palette={palette} />
         </section>
       )}
 
@@ -209,18 +223,22 @@ function Conversations() {
           <NoData type="conversations" onCreate={() => navigate("/conversations/new")} />
         )
       ) : (
-        <section style={listWrap}>
+        <section className="ui-enter" style={{ ...listWrap, "--ui-delay": "210ms" }}>
           {filteredConversations.map((conversation) => (
-            <article
-              key={conversation.id}
-              onClick={() => navigate(`/conversations/${conversation.id}`)}
-              style={{ ...listCard, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : listCard.gridTemplateColumns, background: palette.panelAlt, border: `1px solid ${palette.border}` }}
-            >
-              <div style={cardMain}>
-                <div style={tagRow}>
-                  <span style={{ ...typeTag, border: `1px solid ${palette.border}`, color: palette.text }}>
-                    {conversation.post_type || "discussion"}
-                  </span>
+              <article
+                className="ui-card-lift ui-smooth"
+                key={conversation.id}
+                onClick={() => navigate(`/conversations/${conversation.id}`)}
+                style={{ ...listCard, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : listCard.gridTemplateColumns, background: darkMode ? "linear-gradient(160deg,#1a1418,#171215)" : "linear-gradient(160deg,#ffffff,#fffaf3)", border: `1px solid ${palette.border}` }}
+              >
+                <div style={cardMain}>
+                  <div style={tagRow}>
+                    <span style={{ ...typeTag, border: `1px solid ${palette.border}`, color: palette.muted, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <FunnelIcon style={{ width: 12, height: 12 }} /> {filterType === "all" ? "all" : filterType}
+                    </span>
+                    <span style={{ ...typeTag, border: `1px solid ${palette.border}`, color: palette.text }}>
+                      {conversation.post_type || "discussion"}
+                    </span>
                   {conversation.is_closed && (
                     <span style={{ ...typeTag, border: `1px solid ${palette.border}`, color: palette.muted }}>
                       Closed
@@ -280,6 +298,7 @@ function Conversations() {
                 </p>
 
                 <button
+                  className="ui-btn-polish ui-focus-ring"
                   onClick={(event) => deleteConversation(conversation.id, event)}
                   style={deleteButton}
                 >
@@ -310,7 +329,38 @@ const page = {
   gap: 12,
 };
 
+const ambientLayer = {
+  position: "fixed",
+  inset: 0,
+  pointerEvents: "none",
+  zIndex: 0,
+};
+
+const commandStrip = {
+  position: "relative",
+  zIndex: 1,
+  borderRadius: 12,
+  padding: 8,
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const commandPill = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  borderRadius: 999,
+  padding: "7px 11px",
+  background: "transparent",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
 const hero = {
+  position: "relative",
+  zIndex: 1,
   borderRadius: 18,
   padding: "clamp(18px, 3vw, 28px)",
   display: "flex",
@@ -353,6 +403,8 @@ const newConversationButton = {
 };
 
 const filterBar = {
+  position: "relative",
+  zIndex: 1,
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto auto",
   gap: 8,
@@ -383,6 +435,8 @@ const selectInput = {
 };
 
 const statsGrid = {
+  position: "relative",
+  zIndex: 1,
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
   gap: 8,
@@ -409,6 +463,8 @@ const statValue = {
 };
 
 const listWrap = {
+  position: "relative",
+  zIndex: 1,
   display: "grid",
   gap: 8,
 };

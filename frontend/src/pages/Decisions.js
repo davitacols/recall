@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowPathIcon,
   FunnelIcon,
   ListBulletIcon,
   MagnifyingGlassIcon,
@@ -105,6 +106,8 @@ function Decisions() {
     acc[decision.status] = (acc[decision.status] || 0) + 1;
     return acc;
   }, {});
+  const approvalRate = decisions.length ? Math.round(((statusCounts.approved || 0) / decisions.length) * 100) : 0;
+  const implementedRate = decisions.length ? Math.round(((statusCounts.implemented || 0) / decisions.length) * 100) : 0;
 
   const statusLabel = (status) => statusConfig[status]?.label || statusConfig.default.label;
 
@@ -123,27 +126,39 @@ function Decisions() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh", background: palette.bg, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.19), transparent 34%), radial-gradient(circle at 90% 8%, rgba(168,85,247,0.15), transparent 30%)" : "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.13), transparent 34%), radial-gradient(circle at 90% 8%, rgba(168,85,247,0.1), transparent 30%)" }} />
       <div style={ui.container}>
-        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+        <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "10ms" }}>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Conversations</button>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/sprint")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Current Sprint</button>
+          <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecisions} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+            <ArrowPathIcon style={{ width: 13, height: 13 }} /> Refresh
+          </button>
+        </section>
+
+        <section className="ui-enter" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(138deg,rgba(59,130,246,0.16),rgba(249,115,22,0.12),rgba(168,85,247,0.16))" : "linear-gradient(138deg,rgba(147,197,253,0.5),rgba(254,215,170,0.58),rgba(221,214,254,0.5))", padding: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12, position: "relative", zIndex: 1, "--ui-delay": "70ms" }}>
           <div>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>DECISION CENTER</p>
-            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Decisions</h1>
-            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track choices, review status, and implementation momentum.</p>
+            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.6rem,3.2vw,2.35rem)", color: palette.text, letterSpacing: "-0.02em" }}>Decision Operating System</h1>
+            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track choices, confidence, and execution outcomes from one launch-ready flow.</p>
           </div>
-          <button onClick={() => navigate("/conversations")} style={ui.primaryButton}>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={ui.primaryButton}>
             <PlusIcon style={{ width: 14, height: 14 }} /> New Decision
           </button>
         </section>
 
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8, marginBottom: 12 }}>
+        <section className="ui-enter" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8, marginBottom: 12, "--ui-delay": "130ms" }}>
           <Metric label="Total" value={decisions.length} palette={palette} />
           <Metric label="Approved" value={statusCounts.approved || 0} palette={palette} tone={statusConfig.approved.tone} />
           <Metric label="Under Review" value={statusCounts.under_review || 0} palette={palette} tone={statusConfig.under_review.tone} />
           <Metric label="Implemented" value={statusCounts.implemented || 0} palette={palette} tone={statusConfig.implemented.tone} />
+          <Metric label="Approval Rate" value={`${approvalRate}%`} palette={palette} />
+          <Metric label="Implementation Rate" value={`${implementedRate}%`} palette={palette} />
         </section>
 
         <section
+          className="ui-enter"
           style={{
             borderRadius: 12,
             border: `1px solid ${palette.border}`,
@@ -154,11 +169,13 @@ function Decisions() {
             justifyContent: "space-between",
             gap: 10,
             flexWrap: "wrap",
+            "--ui-delay": "170ms",
           }}
         >
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {["all", "proposed", "under_review", "approved", "implemented"].map((status) => (
               <button
+                className="ui-btn-polish ui-focus-ring"
                 key={status}
                 onClick={() => setFilter(status)}
                 style={{
@@ -196,6 +213,7 @@ function Decisions() {
               <option value="title">Title</option>
             </select>
             <button
+              className="ui-btn-polish ui-focus-ring"
               onClick={() => setViewMode("grid")}
               style={{
                 ...ui.secondaryButton,
@@ -206,6 +224,7 @@ function Decisions() {
               <Squares2X2Icon style={{ width: 15, height: 15 }} />
             </button>
             <button
+              className="ui-btn-polish ui-focus-ring"
               onClick={() => setViewMode("list")}
               style={{
                 ...ui.secondaryButton,
@@ -223,17 +242,19 @@ function Decisions() {
             No decisions found. Try changing filters or search text.
           </div>
         ) : viewMode === "grid" ? (
-          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 10 }}>
+          <section className="ui-enter" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 10, "--ui-delay": "210ms" }}>
             {filteredDecisions.map((decision) => (
               <article
+                className="ui-card-lift ui-smooth"
                 key={decision.id}
                 onClick={() => navigate(`/decisions/${decision.id}`)}
                 style={{
-                  borderRadius: 12,
+                  borderRadius: 14,
                   border: `1px solid ${palette.border}`,
-                  background: palette.card,
-                  padding: 12,
+                  background: darkMode ? "linear-gradient(160deg,#171215,#120f12)" : "linear-gradient(160deg,#fffaf3,#fffdf9)",
+                  padding: 14,
                   cursor: "pointer",
+                  transition: "transform 0.18s ease",
                 }}
               >
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
@@ -247,7 +268,7 @@ function Decisions() {
                     }
                   />
                 </div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{decision.title}</p>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: palette.text }}>{decision.title}</p>
                 {decision.description && <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{decision.description}</p>}
                 <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 11, color: palette.muted }}>
                   <span>{decision.decision_maker_name || "Unknown"}</span>
@@ -257,9 +278,10 @@ function Decisions() {
             ))}
           </section>
         ) : (
-          <section style={{ display: "grid", gap: 8 }}>
+          <section className="ui-enter" style={{ display: "grid", gap: 8, "--ui-delay": "210ms" }}>
             {filteredDecisions.map((decision) => (
               <article
+                className="ui-card-lift ui-smooth"
                 key={decision.id}
                 onClick={() => navigate(`/decisions/${decision.id}`)}
                 style={{
@@ -337,6 +359,10 @@ function Badge({ text, tone }) {
     </span>
   );
 }
+
+const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
+const commandStrip = { position: "relative", zIndex: 1, marginBottom: 10, borderRadius: 12, padding: 8, display: "flex", flexWrap: "wrap", gap: 8 };
+const commandPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "7px 11px", background: "transparent", fontSize: 12, fontWeight: 700, cursor: "pointer" };
 
 function formatDate(rawDate) {
   if (!rawDate) return "Unknown date";

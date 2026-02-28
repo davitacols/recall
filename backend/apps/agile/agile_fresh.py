@@ -50,22 +50,20 @@ def _resolve_issue_by_ref(organization, issue_ref):
     if not ref:
         return None
 
-    if ref.isdigit():
-        try:
-            return Issue.objects.get(id=int(ref), organization=organization)
-        except Issue.DoesNotExist:
-            pass
-
-    try:
-        return Issue.objects.get(organization=organization, key__iexact=ref)
-    except Issue.DoesNotExist:
-        pass
+    org_filter = Q(organization=organization) | Q(project__organization=organization)
+    base_qs = Issue.objects.filter(org_filter)
 
     if ref.isdigit():
-        matches = Issue.objects.filter(
-            organization=organization,
-            key__iendswith=f'-{ref}',
-        ).order_by('-updated_at')
+        issue = base_qs.filter(id=int(ref)).first()
+        if issue:
+            return issue
+
+    issue = base_qs.filter(key__iexact=ref).order_by('-updated_at').first()
+    if issue:
+        return issue
+
+    if ref.isdigit():
+        matches = base_qs.filter(key__iendswith=f'-{ref}').order_by('-updated_at')
         if matches.count() == 1:
             return matches.first()
 

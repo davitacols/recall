@@ -3,10 +3,12 @@ import { useTheme } from '../utils/ThemeAndAccessibility';
 import { useToast } from '../components/Toast';
 import { BellIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 
 export default function NotificationSettings() {
   const { darkMode } = useTheme();
   const { success, error } = useToast();
+  const { user } = useAuth();
   const [settings, setSettings] = useState({
     email_notifications: true,
     mention_notifications: true,
@@ -63,6 +65,24 @@ export default function NotificationSettings() {
     } catch (err) {
       error('Failed to update settings');
       setSettings(settings);
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    try {
+      await api.post('/api/notifications/test/');
+      success('Test in-app notification sent');
+    } catch (err) {
+      error(err?.response?.data?.error || 'Failed to send test notification');
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    try {
+      await api.post('/api/notifications/test-email/');
+      success('Test email sent');
+    } catch (err) {
+      error(err?.response?.data?.error || 'Failed to send test email');
     }
   };
 
@@ -241,6 +261,27 @@ export default function NotificationSettings() {
                   <div className={`text-sm ${textSecondary}`}>{option.desc}</div>
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className={`border-t ${borderColor} pt-6`}>
+            <h2 className={`text-xl font-semibold ${textPrimary} mb-4`}>Diagnostics</h2>
+            <div className={`text-sm ${textSecondary} mb-4`}>Verify notification channels quickly.</div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handleSendTestNotification}
+                className={`px-4 py-2 rounded-lg border ${darkMode ? 'border-stone-700 bg-stone-800 hover:bg-stone-700' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'} ${textPrimary}`}
+              >
+                Send Test In-App Notification
+              </button>
+              {user?.role === 'admin' && (
+                <button
+                  onClick={handleSendTestEmail}
+                  className={`px-4 py-2 rounded-lg border ${darkMode ? 'border-stone-700 bg-stone-800 hover:bg-stone-700' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'} ${textPrimary}`}
+                >
+                  Send Test Email
+                </button>
+              )}
             </div>
           </div>
         </div>

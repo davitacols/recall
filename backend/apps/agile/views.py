@@ -775,10 +775,27 @@ def validate_transition(request, issue_id):
     ).filter(Q(issue_type=issue.issue_type) | Q(issue_type=''))
     
     if not transitions.exists():
-        return Response({
-            'valid': False,
-            'message': f'Cannot transition from {issue.status} to {new_status}'
-        })
+        has_rules_for_from_status = WorkflowTransition.objects.filter(
+            organization=org,
+            from_status=issue.status
+        ).filter(Q(issue_type=issue.issue_type) | Q(issue_type='')).exists()
+
+        default_transitions = {
+            'backlog': {'todo'},
+            'todo': {'in_progress', 'done', 'backlog'},
+            'in_progress': {'in_review', 'testing', 'done', 'todo'},
+            'in_review': {'testing', 'done', 'in_progress'},
+            'testing': {'done', 'in_progress'},
+            'done': {'in_progress'},
+        }
+
+        allowed_by_default = new_status in default_transitions.get(issue.status, set())
+        if has_rules_for_from_status or not allowed_by_default:
+            return Response({
+                'valid': False,
+                'message': f'Cannot transition from {issue.status} to {new_status}'
+            })
+        return Response({'valid': True})
     
     transition = transitions.first()
     errors = []

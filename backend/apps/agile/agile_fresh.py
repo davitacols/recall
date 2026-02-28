@@ -537,12 +537,32 @@ def issue_detail(request, issue_id):
             ).filter(Q(issue_type=issue.issue_type) | Q(issue_type=''))
 
             if not transitions.exists():
-                return Response({
-                    'error': f'Cannot transition from {issue.status} to {target_status}',
-                    'valid': False,
-                }, status=400)
+                # Fallback behavior: if no workflow is configured for this "from" status,
+                # allow standard agile transitions so boards work without manual setup.
+                has_rules_for_from_status = WorkflowTransition.objects.filter(
+                    organization=request.user.organization,
+                    from_status=issue.status
+                ).filter(Q(issue_type=issue.issue_type) | Q(issue_type='')).exists()
 
-            transition = transitions.first()
+                default_transitions = {
+                    'backlog': {'todo'},
+                    'todo': {'in_progress', 'done', 'backlog'},
+                    'in_progress': {'in_review', 'testing', 'done', 'todo'},
+                    'in_review': {'testing', 'done', 'in_progress'},
+                    'testing': {'done', 'in_progress'},
+                    'done': {'in_progress'},
+                }
+
+                allowed_by_default = target_status in default_transitions.get(issue.status, set())
+                if has_rules_for_from_status or not allowed_by_default:
+                    return Response({
+                        'error': f'Cannot transition from {issue.status} to {target_status}',
+                        'valid': False,
+                    }, status=400)
+                transition = None
+            else:
+                transition = transitions.first()
+
             errors = []
 
             next_assignee_id = request.data.get('assignee_id', issue.assignee_id)

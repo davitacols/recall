@@ -354,6 +354,13 @@ def issue_detail(request, issue_id):
     if request.method == 'GET':
         try:
             comments = issue.comments.select_related('author').all()
+            try:
+                is_watching = issue.watchers.filter(id=request.user.id).exists()
+                watchers_count = issue.watchers.count()
+            except Exception:
+                is_watching = False
+                watchers_count = 0
+
             return Response({
                 'id': issue.id,
                 'key': issue.key,
@@ -382,8 +389,8 @@ def issue_detail(request, issue_id):
                 'ci_status': issue.ci_status,
                 'ci_url': issue.ci_url,
                 'test_coverage': issue.test_coverage,
-                'is_watching': issue.watchers.filter(id=request.user.id).exists(),
-                'watchers_count': issue.watchers.count(),
+                'is_watching': is_watching,
+                'watchers_count': watchers_count,
                 'comments': [{
                     'id': c.id,
                     'author': c.author.get_full_name() if getattr(c, 'author', None) else 'Unknown',

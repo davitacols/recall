@@ -20,6 +20,11 @@ from apps.notifications.models import Notification
 from django.utils import timezone
 
 
+def _resolve_issue_for_user_org(user, issue_id):
+    org_filter = Q(organization=user.organization) | Q(project__organization=user.organization)
+    return Issue.objects.filter(org_filter, id=issue_id).first()
+
+
 # Attachments
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -94,7 +99,9 @@ def delete_attachment(request, attachment_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def watch_issue(request, issue_id):
-    issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
+    issue = _resolve_issue_for_user_org(request.user, issue_id)
+    if not issue:
+        return Response({'error': 'Issue not found'}, status=404)
     if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
         return Response({'error': 'Permission denied for this project'}, status=403)
     issue.watchers.add(request.user)
@@ -104,7 +111,9 @@ def watch_issue(request, issue_id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def unwatch_issue(request, issue_id):
-    issue = get_object_or_404(Issue, id=issue_id, organization=request.user.organization)
+    issue = _resolve_issue_for_user_org(request.user, issue_id)
+    if not issue:
+        return Response({'error': 'Issue not found'}, status=404)
     if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
         return Response({'error': 'Permission denied for this project'}, status=403)
     issue.watchers.remove(request.user)

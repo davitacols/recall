@@ -31,23 +31,37 @@ def _check_org(request):
 
 def _resolve_issue_by_ref(organization, issue_ref):
     """
-    Resolve by DB id first, then by unique key suffix (e.g. KEY-113 for ref=113).
+    Resolve by DB id, exact issue key, then by unique key suffix (e.g. KEY-113 for ref=113).
     """
+    ref = str(issue_ref).strip()
+    if not ref:
+        return None
+
+    if ref.isdigit():
+        try:
+            return Issue.objects.select_related('assignee', 'reporter', 'sprint', 'project').get(
+                id=int(ref),
+                organization=organization,
+            )
+        except Issue.DoesNotExist:
+            pass
+
     try:
         return Issue.objects.select_related('assignee', 'reporter', 'sprint', 'project').get(
-            id=issue_ref,
             organization=organization,
+            key__iexact=ref,
         )
     except Issue.DoesNotExist:
         pass
 
-    matches = Issue.objects.select_related('assignee', 'reporter', 'sprint', 'project').filter(
-        organization=organization,
-        key__iendswith=f'-{issue_ref}',
-    ).order_by('-updated_at')
+    if ref.isdigit():
+        matches = Issue.objects.select_related('assignee', 'reporter', 'sprint', 'project').filter(
+            organization=organization,
+            key__iendswith=f'-{ref}',
+        ).order_by('-updated_at')
+        if matches.count() == 1:
+            return matches.first()
 
-    if matches.count() == 1:
-        return matches.first()
     return None
 
 @api_view(['GET', 'POST'])
@@ -346,11 +360,47 @@ def issue_detail(request, issue_id):
         return Response({'error': 'Issue not found'}, status=404)
     
     if request.method == 'GET':
-        comments = issue.comments.select_related('author').all()
-        return Response({
-            **IssueSerializer(issue).data,
-            'comments': IssueCommentSerializer(comments, many=True).data
-        })
+        try:
+            comments = issue.comments.select_related('author').all()
+            return Response({
+                'id': issue.id,
+                'key': issue.key,
+                'title': issue.title,
+                'description': issue.description,
+                'status': issue.status,
+                'priority': issue.priority,
+                'issue_type': issue.issue_type,
+                'assignee': issue.assignee.get_full_name() if issue.assignee else None,
+                'assignee_id': issue.assignee_id,
+                'assignee_name': issue.assignee.get_full_name() if issue.assignee else None,
+                'reporter': issue.reporter.get_full_name() if issue.reporter else None,
+                'reporter_name': issue.reporter.get_full_name() if issue.reporter else None,
+                'story_points': issue.story_points,
+                'sprint_id': issue.sprint_id,
+                'sprint_name': issue.sprint.name if issue.sprint else None,
+                'project_id': issue.project_id,
+                'due_date': issue.due_date.isoformat() if issue.due_date else None,
+                'created_at': issue.created_at.isoformat() if issue.created_at else None,
+                'updated_at': issue.updated_at.isoformat() if issue.updated_at else None,
+                'labels': [l.name for l in issue.labels.all()],
+                'code_review_status': issue.code_review_status,
+                'pr_url': issue.pr_url,
+                'branch_name': issue.branch_name,
+                'commit_hash': issue.commit_hash,
+                'ci_status': issue.ci_status,
+                'ci_url': issue.ci_url,
+                'test_coverage': issue.test_coverage,
+                'is_watching': issue.watchers.filter(id=request.user.id).exists(),
+                'watchers_count': issue.watchers.count(),
+                'comments': [{
+                    'id': c.id,
+                    'author': c.author.get_full_name() if getattr(c, 'author', None) else 'Unknown',
+                    'content': c.content,
+                    'created_at': c.created_at.isoformat() if c.created_at else None
+                } for c in comments]
+            })
+        except Exception as exc:
+            return Response({'error': f'Issue load failed: {str(exc)}'}, status=500)
     
     elif request.method == 'PUT':
         old_assignee_id = issue.assignee_id

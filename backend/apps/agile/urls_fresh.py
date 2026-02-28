@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import agile_fresh, retrospective_endpoints, views_missing_features, views, ai_endpoints, time_tracking_endpoints
 
 urlpatterns = [
@@ -24,6 +24,7 @@ urlpatterns = [
     
     # Issues
     path('issues/<int:issue_id>/', agile_fresh.issue_detail, name='issue_detail'),
+    re_path(r'^issues/(?P<issue_id>[A-Za-z0-9]+-\d+)/$', agile_fresh.issue_detail, name='issue_detail_by_key'),
     path('issues/<int:issue_id>/comments/', agile_fresh.add_comment, name='add_comment'),
     path('issues/<int:issue_id>/decision-impacts/', views.issue_decision_impacts, name='issue_decision_impacts'),
     path('issues/<int:issue_id>/link-decision/', views.link_decision_to_issue, name='link_decision_to_issue'),

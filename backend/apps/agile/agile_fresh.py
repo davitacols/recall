@@ -44,20 +44,31 @@ def _track_view_activity(request, obj, title, description=""):
 
 def _resolve_issue_by_ref(organization, issue_ref):
     """
-    Resolve by DB id first, then by unique key suffix (e.g. KEY-113 for ref=113).
+    Resolve by DB id, exact issue key, then by unique key suffix (e.g. KEY-113 for ref=113).
     """
+    ref = str(issue_ref).strip()
+    if not ref:
+        return None
+
+    if ref.isdigit():
+        try:
+            return Issue.objects.get(id=int(ref), organization=organization)
+        except Issue.DoesNotExist:
+            pass
+
     try:
-        return Issue.objects.get(id=issue_ref, organization=organization)
+        return Issue.objects.get(organization=organization, key__iexact=ref)
     except Issue.DoesNotExist:
         pass
 
-    matches = Issue.objects.filter(
-        organization=organization,
-        key__iendswith=f'-{issue_ref}',
-    ).order_by('-updated_at')
+    if ref.isdigit():
+        matches = Issue.objects.filter(
+            organization=organization,
+            key__iendswith=f'-{ref}',
+        ).order_by('-updated_at')
+        if matches.count() == 1:
+            return matches.first()
 
-    if matches.count() == 1:
-        return matches.first()
     return None
 
 @api_view(['GET', 'POST'])
@@ -436,57 +447,60 @@ def issue_detail(request, issue_id):
     if not issue:
         return Response({'error': 'Issue not found'}, status=404)
     if request.method == 'GET':
-        _track_view_activity(
-            request,
-            issue,
-            issue.title,
-            issue.description,
-        )
-        comments = issue.comments.all()
-        time_estimate = None
-        if hasattr(issue, 'time_estimate') and issue.time_estimate:
-            time_estimate = {
-                'original_estimate_minutes': issue.time_estimate.original_estimate_minutes,
-                'remaining_estimate_minutes': issue.time_estimate.remaining_estimate_minutes,
-            }
-        return Response({
-            'id': issue.id,
-            'key': issue.key,
-            'title': issue.title,
-            'description': issue.description,
-            'status': issue.status,
-            'priority': issue.priority,
-            'issue_type': issue.issue_type,
-            'assignee': issue.assignee.get_full_name() if issue.assignee else None,
-            'assignee_id': issue.assignee_id,
-            'assignee_name': issue.assignee.get_full_name() if issue.assignee else None,
-            'reporter': issue.reporter.get_full_name(),
-            'reporter_name': issue.reporter.get_full_name(),
-            'story_points': issue.story_points,
-            'sprint_id': issue.sprint_id,
-            'sprint_name': issue.sprint.name if issue.sprint else None,
-            'project_id': issue.project.id,
-            'due_date': issue.due_date.isoformat() if issue.due_date else None,
-            'created_at': issue.created_at.isoformat(),
-            'updated_at': issue.updated_at.isoformat(),
-            'labels': [l.name for l in issue.labels.all()],
-            'code_review_status': issue.code_review_status,
-            'pr_url': issue.pr_url,
-            'branch_name': issue.branch_name,
-            'commit_hash': issue.commit_hash,
-            'ci_status': issue.ci_status,
-            'ci_url': issue.ci_url,
-            'test_coverage': issue.test_coverage,
-            'is_watching': issue.watchers.filter(id=request.user.id).exists(),
-            'watchers_count': issue.watchers.count(),
-            'time_estimate': time_estimate,
-            'comments': [{
-                'id': c.id,
-                'author': c.author.get_full_name(),
-                'content': c.content,
-                'created_at': c.created_at.isoformat()
-            } for c in comments]
-        })
+        try:
+            _track_view_activity(
+                request,
+                issue,
+                issue.title,
+                issue.description,
+            )
+            comments = issue.comments.all()
+            time_estimate = None
+            if hasattr(issue, 'time_estimate') and issue.time_estimate:
+                time_estimate = {
+                    'original_estimate_minutes': issue.time_estimate.original_estimate_minutes,
+                    'remaining_estimate_minutes': issue.time_estimate.remaining_estimate_minutes,
+                }
+            return Response({
+                'id': issue.id,
+                'key': issue.key,
+                'title': issue.title,
+                'description': issue.description,
+                'status': issue.status,
+                'priority': issue.priority,
+                'issue_type': issue.issue_type,
+                'assignee': issue.assignee.get_full_name() if issue.assignee else None,
+                'assignee_id': issue.assignee_id,
+                'assignee_name': issue.assignee.get_full_name() if issue.assignee else None,
+                'reporter': issue.reporter.get_full_name() if issue.reporter else None,
+                'reporter_name': issue.reporter.get_full_name() if issue.reporter else None,
+                'story_points': issue.story_points,
+                'sprint_id': issue.sprint_id,
+                'sprint_name': issue.sprint.name if issue.sprint else None,
+                'project_id': issue.project.id if issue.project_id else None,
+                'due_date': issue.due_date.isoformat() if issue.due_date else None,
+                'created_at': issue.created_at.isoformat() if issue.created_at else None,
+                'updated_at': issue.updated_at.isoformat() if issue.updated_at else None,
+                'labels': [l.name for l in issue.labels.all()],
+                'code_review_status': issue.code_review_status,
+                'pr_url': issue.pr_url,
+                'branch_name': issue.branch_name,
+                'commit_hash': issue.commit_hash,
+                'ci_status': issue.ci_status,
+                'ci_url': issue.ci_url,
+                'test_coverage': issue.test_coverage,
+                'is_watching': issue.watchers.filter(id=request.user.id).exists(),
+                'watchers_count': issue.watchers.count(),
+                'time_estimate': time_estimate,
+                'comments': [{
+                    'id': c.id,
+                    'author': c.author.get_full_name() if getattr(c, 'author', None) else 'Unknown',
+                    'content': c.content,
+                    'created_at': c.created_at.isoformat() if c.created_at else None
+                } for c in comments]
+            })
+        except Exception as exc:
+            return Response({'error': f'Issue load failed: {str(exc)}'}, status=500)
     
     if request.method == 'PUT':
         if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):

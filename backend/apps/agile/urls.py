@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import views, kanban_views, views_missing_features, ml_endpoints, time_tracking_endpoints, custom_fields_endpoints, ai_endpoints, sprint_views, blocker_views, retrospective_views
 
 urlpatterns = [
@@ -21,6 +21,7 @@ urlpatterns = [
     
     # Issues
     path('issues/<int:issue_id>/', views.issue_detail, name='issue_detail'),
+    re_path(r'^issues/(?P<issue_id>[A-Za-z0-9]+-\d+)/$', views.issue_detail, name='issue_detail_by_key'),
     path('issues/<int:issue_id>/move/', views.move_issue, name='move_issue'),
     path('issues/<int:issue_id>/comments/', views.add_comment, name='add_comment'),
     path('issues/<int:issue_id>/assign-sprint/', kanban_views.assign_issue_to_sprint, name='assign_issue_to_sprint'),

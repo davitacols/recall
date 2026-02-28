@@ -15,6 +15,7 @@ function KanbanBoard() {
   const [draggedIssue, setDraggedIssue] = useState(null);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
   const [newIssueTitle, setNewIssueTitle] = useState("");
+  const [moveError, setMoveError] = useState("");
 
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -39,22 +40,63 @@ function KanbanBoard() {
     if (!draggedIssue || !board?.columns) return;
 
     const statusMap = {
-      "To Do": "todo",
-      "In Progress": "in_progress",
-      "In Review": "in_review",
-      Done: "done",
-      Testing: "testing",
-      Backlog: "backlog",
+      "to do": "todo",
+      todo: "todo",
+      backlog: "backlog",
+      "in progress": "in_progress",
+      "in review": "in_review",
+      review: "in_review",
+      testing: "testing",
+      done: "done",
     };
 
-    const status = statusMap[column.name] || "todo";
+    const status = statusMap[String(column.name || "").trim().toLowerCase()];
+    if (!status) {
+      setMoveError(`Cannot move to "${column.name}": no status mapping configured.`);
+      setDraggedIssue(null);
+      return;
+    }
+    if (status === draggedIssue.status) {
+      setMoveError("");
+      setDraggedIssue(null);
+      return;
+    }
 
     try {
-      await api.put(`/api/agile/issues/${draggedIssue.id}/`, { status });
+      setMoveError("");
+      const transitionComment = `Moved via board to ${column.name}`;
+
+      // Fresh workflow APIs can enforce transition rules. Validate first when available.
+      try {
+        const validation = await api.post(`/api/agile/issues/${draggedIssue.id}/validate-transition/`, {
+          status,
+          transition_comment: transitionComment,
+        });
+        if (validation?.data && validation.data.valid === false) {
+          const details = validation.data.errors?.join(", ") || validation.data.message || "Invalid workflow transition";
+          setMoveError(details);
+          setDraggedIssue(null);
+          return;
+        }
+      } catch (validationError) {
+        // Ignore validation endpoint issues and attempt the update directly.
+      }
+
+      await api.put(`/api/agile/issues/${draggedIssue.id}/`, {
+        status,
+        transition_comment: transitionComment,
+      });
       setDraggedIssue(null);
       fetchBoard();
     } catch (error) {
       console.error("Failed to move issue:", error);
+      const responseData = error?.response?.data;
+      const detail =
+        responseData?.errors?.join(", ") ||
+        responseData?.error ||
+        responseData?.message ||
+        "Failed to move issue.";
+      setMoveError(detail);
       setDraggedIssue(null);
     }
   };
@@ -113,6 +155,11 @@ function KanbanBoard() {
             <PlusIcon style={icon14} /> New Issue
           </button>
         </section>
+        {moveError && (
+          <div style={{ marginBottom: 10, borderRadius: 10, border: "1px solid rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.08)", color: "#ef4444", padding: "8px 10px", fontSize: 12 }}>
+            {moveError}
+          </div>
+        )}
 
         <section style={boardGrid}>
           {(board.columns || []).map((column) => (

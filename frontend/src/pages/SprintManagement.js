@@ -12,6 +12,7 @@ export default function SprintManagement() {
   const [sprints, setSprints] = useState([]);
   const [currentSprint, setCurrentSprint] = useState(null);
   const [blockers, setBlockers] = useState([]);
+  const [defaultProjectId, setDefaultProjectId] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newSprint, setNewSprint] = useState({ name: "", start_date: "", end_date: "", goal: "" });
   const [loading, setLoading] = useState(true);
@@ -22,16 +23,80 @@ export default function SprintManagement() {
   useEffect(() => {
     fetchSprints();
     fetchBlockers();
+    fetchDefaultProject();
   }, []);
+
+  const normalizeSprint = (sprint, source = "primary") => ({
+    id: sprint.id,
+    name: sprint.name || `Sprint ${sprint.id}`,
+    goal: sprint.goal || "",
+    start_date: sprint.start_date,
+    end_date: sprint.end_date,
+    status: sprint.status || (source === "current" ? "active" : "completed"),
+    completed_count: sprint.completed_count ?? sprint.completed ?? 0,
+    blocked_count: sprint.blocked_count ?? sprint.blocked ?? 0,
+    decisions_made: sprint.decisions_made ?? 0,
+    project_id: sprint.project_id ?? null,
+  });
+
+  const fetchDefaultProject = async () => {
+    try {
+      const response = await api.get("/api/agile/projects/");
+      const projects = Array.isArray(response.data) ? response.data : [];
+      if (projects.length > 0) {
+        setDefaultProjectId(projects[0].id);
+      }
+    } catch (error) {
+      // Best-effort only; creation still attempts legacy endpoint fallback.
+    }
+  };
 
   const fetchSprints = async () => {
     try {
       const response = await api.get("/api/agile/sprints/");
-      const sprintList = response.data || [];
+      const sprintList = (Array.isArray(response.data) ? response.data : []).map((s) => normalizeSprint(s));
       setSprints(sprintList);
       setCurrentSprint(sprintList.find((sprint) => sprint.status === "active") || null);
+      if (!defaultProjectId) {
+        const projectFromSprint = sprintList.find((s) => s.project_id)?.project_id;
+        if (projectFromSprint) setDefaultProjectId(projectFromSprint);
+      }
     } catch (error) {
-      console.error("Failed to fetch sprints:", error);
+      if (error?.response?.status === 404) {
+        try {
+          const [currentResult, historyResult] = await Promise.allSettled([
+            api.get("/api/agile/current-sprint/"),
+            api.get("/api/agile/sprint-history/"),
+          ]);
+
+          const current =
+            currentResult.status === "fulfilled" && currentResult.value?.data
+              ? normalizeSprint(currentResult.value.data, "current")
+              : null;
+          const history =
+            historyResult.status === "fulfilled" && Array.isArray(historyResult.value?.data)
+              ? historyResult.value.data.map((s) => normalizeSprint(s, "history"))
+              : [];
+
+          const mergedMap = new Map();
+          if (current?.id) mergedMap.set(current.id, current);
+          history.forEach((s) => mergedMap.set(s.id, s));
+          const merged = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(b.end_date || b.start_date || 0) - new Date(a.end_date || a.start_date || 0)
+          );
+
+          setSprints(merged);
+          setCurrentSprint(current || merged.find((s) => s.status === "active") || null);
+          if (!defaultProjectId) {
+            const projectFromSprint = merged.find((s) => s.project_id)?.project_id;
+            if (projectFromSprint) setDefaultProjectId(projectFromSprint);
+          }
+        } catch (fallbackError) {
+          console.error("Failed to fetch sprints:", fallbackError);
+        }
+      } else {
+        console.error("Failed to fetch sprints:", error);
+      }
     } finally {
       setLoading(false);
     }
@@ -49,12 +114,28 @@ export default function SprintManagement() {
   const handleCreate = async (event) => {
     event.preventDefault();
     try {
-      await api.post("/api/agile/sprints/", newSprint);
+      if (defaultProjectId) {
+        await api.post(`/api/agile/projects/${defaultProjectId}/sprints/`, newSprint);
+      } else {
+        await api.post("/api/agile/sprints/", newSprint);
+      }
       setShowCreate(false);
       setNewSprint({ name: "", start_date: "", end_date: "", goal: "" });
       fetchSprints();
     } catch (error) {
-      console.error("Failed to create sprint:", error);
+      if (error?.response?.status === 404 && defaultProjectId) {
+        try {
+          await api.post("/api/agile/sprints/", newSprint);
+          setShowCreate(false);
+          setNewSprint({ name: "", start_date: "", end_date: "", goal: "" });
+          fetchSprints();
+          return;
+        } catch (fallbackError) {
+          console.error("Failed to create sprint:", fallbackError);
+        }
+      } else {
+        console.error("Failed to create sprint:", error);
+      }
     }
   };
 

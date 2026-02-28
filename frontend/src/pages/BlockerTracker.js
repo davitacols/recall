@@ -1,240 +1,339 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ExclamationTriangleIcon, PlusIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  FunnelIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+
+const TYPE_OPTIONS = ["all", "technical", "dependency", "decision", "resource", "external"];
+
+const TYPE_COLORS = {
+  technical: { bg: "rgba(239,68,68,0.12)", text: "#ef4444", border: "rgba(239,68,68,0.35)" },
+  dependency: { bg: "rgba(249,115,22,0.12)", text: "#f97316", border: "rgba(249,115,22,0.35)" },
+  decision: { bg: "rgba(37,99,235,0.12)", text: "#2563eb", border: "rgba(37,99,235,0.35)" },
+  resource: { bg: "rgba(245,158,11,0.12)", text: "#f59e0b", border: "rgba(245,158,11,0.35)" },
+  external: { bg: "rgba(168,85,247,0.12)", text: "#a855f7", border: "rgba(168,85,247,0.35)" },
+  default: { bg: "rgba(120,120,120,0.12)", text: "#8b8b8b", border: "rgba(120,120,120,0.35)" },
+};
 
 function Blockers() {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [blockers, setBlockers] = useState([]);
   const [sprints, setSprints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSprint, setSelectedSprint] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const [selectedSprint, setSelectedSprint] = useState("");
+  const [selectedType, setSelectedType] = useState("all");
+
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', type: 'technical', sprint_id: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [resolvingId, setResolvingId] = useState(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    type: "technical",
+    sprint_id: "",
+  });
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
+    setLoading(true);
+    setErrorMsg("");
     try {
       const [blockersRes, sprintsRes] = await Promise.all([
-        api.get('/api/agile/blockers/'),
-        api.get('/api/agile/sprint-history/')
+        api.get("/api/agile/blockers/"),
+        api.get("/api/agile/sprint-history/"),
       ]);
-      setBlockers(blockersRes.data);
-      setSprints(sprintsRes.data);
+      setBlockers(Array.isArray(blockersRes.data) ? blockersRes.data : []);
+      setSprints(Array.isArray(sprintsRes.data) ? sprintsRes.data : []);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error("Failed to fetch data:", error);
+      setErrorMsg(error?.response?.data?.error || "Failed to load blockers.");
+      setBlockers([]);
+      setSprints([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateBlocker = async (e) => {
-    e.preventDefault();
+  const handleCreateBlocker = async (event) => {
+    event.preventDefault();
     if (!formData.sprint_id) {
-      alert('Please select a sprint');
+      setErrorMsg("Please select a sprint before reporting a blocker.");
       return;
     }
 
+    setSubmitting(true);
+    setErrorMsg("");
     try {
-      await api.post('/api/agile/blockers/', formData);
+      await api.post("/api/agile/blockers/", {
+        ...formData,
+        sprint_id: Number(formData.sprint_id),
+      });
       setShowCreateModal(false);
-      setFormData({ title: '', description: '', type: 'technical', sprint_id: '' });
-      fetchData();
+      setFormData({ title: "", description: "", type: "technical", sprint_id: "" });
+      await fetchData();
     } catch (error) {
-      console.error('Failed to create blocker:', error);
+      console.error("Failed to create blocker:", error);
+      setErrorMsg(error?.response?.data?.error || "Failed to create blocker.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleResolveBlocker = async (blockerId) => {
+    setResolvingId(blockerId);
+    setErrorMsg("");
     try {
       await api.post(`/api/agile/blockers/${blockerId}/resolve/`);
-      fetchData();
+      await fetchData();
     } catch (error) {
-      console.error('Failed to resolve blocker:', error);
+      console.error("Failed to resolve blocker:", error);
+      setErrorMsg(error?.response?.data?.error || "Failed to resolve blocker.");
+    } finally {
+      setResolvingId(null);
     }
   };
 
-  const filteredBlockers = selectedSprint
-    ? blockers.filter(b => b.sprint_id === selectedSprint)
-    : blockers;
+  const filteredBlockers = useMemo(() => {
+    return blockers.filter((b) => {
+      const sprintMatch = !selectedSprint || String(b.sprint_id) === String(selectedSprint);
+      const typeMatch = selectedType === "all" || b.type === selectedType;
+      return sprintMatch && typeMatch;
+    });
+  }, [blockers, selectedSprint, selectedType]);
+
+  const stats = useMemo(() => {
+    const total = blockers.length;
+    const critical = blockers.filter((b) => Number(b.days_open || 0) >= 7).length;
+    const technical = blockers.filter((b) => b.type === "technical").length;
+    const avgDays = total === 0 ? 0 : (blockers.reduce((acc, b) => acc + Number(b.days_open || 0), 0) / total).toFixed(1);
+    return { total, critical, technical, avgDays };
+  }, [blockers]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
+      <div style={{ minHeight: "100vh", background: palette.bg }}>
+        <div style={ui.container}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} style={{ height: 120, borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, opacity: 0.75 }} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-12">
-          <div>
-            <div className="flex items-center gap-4 mb-6">
-              <ExclamationTriangleIcon className="w-8 h-8 text-red-600" />
-              <h1 className="text-5xl font-black text-gray-900">Blockers</h1>
+    <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={ui.container}>
+        <section
+          className="ui-enter"
+          style={{
+            borderRadius: 18,
+            border: `1px solid ${palette.border}`,
+            background: darkMode
+              ? "radial-gradient(circle at 8% 15%, rgba(239,68,68,0.24), rgba(18,18,18,0.25) 52%), linear-gradient(140deg, rgba(255,167,97,0.16), rgba(87,205,184,0.14))"
+              : "radial-gradient(circle at 8% 15%, rgba(239,68,68,0.18), rgba(255,255,255,0.2) 54%), linear-gradient(140deg, rgba(255,196,146,0.52), rgba(152,243,223,0.42))",
+            padding: 16,
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>RISK BOARD</p>
+              <h1 style={{ margin: "8px 0 5px", fontSize: "clamp(1.6rem,3vw,2.35rem)", color: palette.text }}>Blocker Tracker</h1>
+              <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track active delivery risks and clear blockers before they stall the sprint.</p>
             </div>
-            <p className="text-lg text-gray-600 font-light">Track and resolve sprint blockers</p>
+            <button onClick={() => setShowCreateModal(true)} className="ui-btn-polish" style={ui.primaryButton}>
+              <PlusIcon style={{ width: 15, height: 15 }} />
+              Report Blocker
+            </button>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-8 py-4 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
-          >
-            <PlusIcon className="w-5 h-5" />
-            Report Blocker
-          </button>
-        </div>
+        </section>
 
-        {/* Filter */}
-        {sprints.length > 0 && (
-          <div className="p-8 bg-white border border-gray-200 mb-12">
-            <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Filter by Sprint</label>
-            <select
-              value={selectedSprint || ''}
-              onChange={(e) => setSelectedSprint(e.target.value ? parseInt(e.target.value) : null)}
-              className="w-full max-w-xs px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-            >
+        {errorMsg && (
+          <div style={{ marginBottom: 10, borderRadius: 10, border: "1px solid rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.08)", color: "#ef4444", padding: "8px 10px", fontSize: 12 }}>
+            {errorMsg}
+          </div>
+        )}
+
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
+          <MetricCard label="Active Blockers" value={stats.total} palette={palette} />
+          <MetricCard label="Open 7+ Days" value={stats.critical} palette={palette} />
+          <MetricCard label="Technical" value={stats.technical} palette={palette} />
+          <MetricCard label="Avg Days Open" value={stats.avgDays} palette={palette} />
+        </section>
+
+        <section
+          className="ui-enter"
+          style={{
+            borderRadius: 14,
+            border: `1px solid ${palette.border}`,
+            background: palette.card,
+            padding: 10,
+            marginBottom: 12,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <FunnelIcon style={{ width: 14, height: 14, color: palette.muted }} />
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.muted, letterSpacing: "0.08em" }}>FILTERS</p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 8 }}>
+            <select value={selectedSprint} onChange={(e) => setSelectedSprint(e.target.value)} style={ui.input}>
               <option value="">All Sprints</option>
-              {sprints.map(sprint => (
+              {sprints.map((sprint) => (
                 <option key={sprint.id} value={sprint.id}>
-                  {sprint.sprint_name} ({sprint.project_name})
+                  {(sprint.name || sprint.sprint_name || `Sprint ${sprint.id}`) + (sprint.project_name ? ` (${sprint.project_name})` : "")}
+                </option>
+              ))}
+            </select>
+            <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} style={ui.input}>
+              {TYPE_OPTIONS.map((type) => (
+                <option key={type} value={type}>
+                  {type === "all" ? "All Types" : type[0].toUpperCase() + type.slice(1)}
                 </option>
               ))}
             </select>
           </div>
-        )}
+        </section>
 
-        {/* Blockers List */}
         {filteredBlockers.length === 0 ? (
-          <div className="text-center py-24 bg-white border border-gray-200">
-            <ExclamationTriangleIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-3xl font-black text-gray-900 mb-3">No blockers</h3>
-            <p className="text-lg text-gray-600 font-light mb-8">Great! No active blockers to resolve</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-8 py-4 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
-            >
-              Report First Blocker
-            </button>
-          </div>
+          <section style={{ borderRadius: 14, border: `1px dashed ${palette.border}`, background: palette.card, padding: "28px 14px", textAlign: "center" }}>
+            <ExclamationTriangleIcon style={{ width: 38, height: 38, color: palette.muted, margin: "0 auto 8px" }} />
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: palette.text }}>No Active Blockers</p>
+            <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>Everything looks clear for current filters.</p>
+          </section>
         ) : (
-          <div className="space-y-6">
-            {filteredBlockers.map(blocker => (
-              <div key={blocker.id} className="p-8 bg-white border-l-4 border-red-600 hover:shadow-lg transition-all">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide ${
-                        blocker.type === 'technical' ? 'bg-red-100 text-red-700' :
-                        blocker.type === 'dependency' ? 'bg-orange-100 text-orange-700' :
-                        blocker.type === 'decision' ? 'bg-purple-100 text-purple-700' :
-                        blocker.type === 'resource' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {blocker.type}
-                      </span>
-                      <span className="text-xs text-gray-600 font-medium">{blocker.days_open} days open</span>
+          <section style={{ display: "grid", gap: 10 }}>
+            {filteredBlockers.map((blocker) => {
+              const tone = TYPE_COLORS[blocker.type] || TYPE_COLORS.default;
+              return (
+                <article
+                  key={blocker.id}
+                  className="ui-card-lift ui-smooth"
+                  style={{
+                    borderRadius: 14,
+                    border: `1px solid ${palette.border}`,
+                    borderLeft: `4px solid ${tone.text}`,
+                    background: palette.cardAlt,
+                    padding: 12,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                        <span style={{ borderRadius: 999, border: `1px solid ${tone.border}`, background: tone.bg, color: tone.text, padding: "3px 9px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" }}>
+                          {blocker.type || "other"}
+                        </span>
+                        <span style={{ fontSize: 11, color: palette.muted, fontWeight: 700 }}>
+                          {Number(blocker.days_open || 0)} day{Number(blocker.days_open || 0) === 1 ? "" : "s"} open
+                        </span>
+                      </div>
+                      <h3 style={{ margin: 0, fontSize: 16, color: palette.text }}>{blocker.title || "Untitled blocker"}</h3>
+                      <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted, lineHeight: 1.5 }}>
+                        {blocker.description || "No description provided."}
+                      </p>
+                      <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11, color: palette.muted }}>
+                        <span>Sprint: <strong style={{ color: palette.text }}>{blocker.sprint_name || "Unassigned"}</strong></span>
+                        <span>Reported by: <strong style={{ color: palette.text }}>{blocker.blocked_by || "Unknown"}</strong></span>
+                        {blocker.assigned_to && <span>Assigned to: <strong style={{ color: palette.text }}>{blocker.assigned_to}</strong></span>}
+                      </div>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{blocker.title}</h3>
-                    <p className="text-gray-600 mb-4">{blocker.description}</p>
-                    <div className="flex gap-6 text-sm text-gray-600">
-                      <span>Sprint: <strong>{blocker.sprint_name || 'Unassigned'}</strong></span>
-                      <span>Reported by: <strong>{blocker.blocked_by}</strong></span>
-                      {blocker.assigned_to && (
-                        <span>Assigned to: <strong>{blocker.assigned_to}</strong></span>
-                      )}
-                    </div>
+
+                    <button
+                      onClick={() => handleResolveBlocker(blocker.id)}
+                      className="ui-btn-polish"
+                      style={{
+                        ...ui.secondaryButton,
+                        borderColor: "rgba(16,185,129,0.45)",
+                        color: "#10b981",
+                        padding: "8px 10px",
+                        opacity: resolvingId === blocker.id ? 0.7 : 1,
+                      }}
+                      disabled={resolvingId === blocker.id}
+                    >
+                      <CheckCircleIcon style={{ width: 14, height: 14 }} />
+                      {resolvingId === blocker.id ? "Resolving..." : "Resolve"}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleResolveBlocker(blocker.id)}
-                    className="px-6 py-3 bg-green-600 text-white hover:bg-green-700 font-bold uppercase text-sm transition-all"
-                  >
-                    Resolve
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+                </article>
+              );
+            })}
+          </section>
         )}
 
-        {/* Create Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-8 w-full max-w-md">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Report Blocker</h2>
+          <div style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(0,0,0,0.66)", display: "grid", placeItems: "center", padding: 14 }} onClick={() => !submitting && setShowCreateModal(false)}>
+            <div style={{ width: "min(620px,100%)", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }} onClick={(e) => e.stopPropagation()}>
+              <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>Report Blocker</h2>
+              <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted }}>Capture what is blocked and where escalation is needed.</p>
 
-              <form onSubmit={handleCreateBlocker} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Sprint *</label>
-                  <select
-                    value={formData.sprint_id}
-                    onChange={(e) => setFormData({ ...formData, sprint_id: parseInt(e.target.value) })}
-                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-                    required
-                  >
-                    <option value="">Select a sprint</option>
-                    {sprints.map(sprint => (
-                      <option key={sprint.id} value={sprint.id}>
-                        {sprint.sprint_name} ({sprint.project_name})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <form onSubmit={handleCreateBlocker} style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                <select
+                  value={formData.sprint_id}
+                  onChange={(e) => setFormData({ ...formData, sprint_id: e.target.value })}
+                  style={ui.input}
+                  required
+                >
+                  <option value="">Select Sprint</option>
+                  {sprints.map((sprint) => (
+                    <option key={sprint.id} value={sprint.id}>
+                      {(sprint.name || sprint.sprint_name || `Sprint ${sprint.id}`) + (sprint.project_name ? ` (${sprint.project_name})` : "")}
+                    </option>
+                  ))}
+                </select>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Title *</label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="What's blocking progress?"
-                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-                    required
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="What is blocked?"
+                  style={ui.input}
+                  required
+                />
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Type</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-                  >
-                    <option value="technical">Technical</option>
-                    <option value="dependency">Dependency</option>
-                    <option value="decision">Decision Needed</option>
-                    <option value="resource">Resource</option>
-                    <option value="external">External</option>
-                  </select>
-                </div>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  style={ui.input}
+                >
+                  <option value="technical">Technical</option>
+                  <option value="dependency">Dependency</option>
+                  <option value="decision">Decision Needed</option>
+                  <option value="resource">Resource</option>
+                  <option value="external">External</option>
+                </select>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Provide context..."
-                    className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all min-h-24"
-                  />
-                </div>
+                <textarea
+                  rows={5}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Add context, impact, and next action."
+                  style={ui.input}
+                />
 
-                <div className="flex gap-3 justify-end pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all"
-                  >
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                  <button type="button" onClick={() => setShowCreateModal(false)} className="ui-btn-polish" style={ui.secondaryButton} disabled={submitting}>
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all"
-                  >
-                    Report Blocker
+                  <button type="submit" className="ui-btn-polish" style={{ ...ui.primaryButton, opacity: submitting ? 0.7 : 1 }} disabled={submitting}>
+                    {submitting ? "Reporting..." : "Report Blocker"}
                   </button>
                 </div>
               </form>
@@ -243,6 +342,15 @@ function Blockers() {
         )}
       </div>
     </div>
+  );
+}
+
+function MetricCard({ label, value, palette }) {
+  return (
+    <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 10 }}>
+      <p style={{ margin: 0, fontSize: 10, color: palette.muted, letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase" }}>{label}</p>
+      <p style={{ margin: "3px 0 0", fontSize: 24, color: palette.text, fontWeight: 800 }}>{value}</p>
+    </article>
   );
 }
 

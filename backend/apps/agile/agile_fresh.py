@@ -41,6 +41,25 @@ def _track_view_activity(request, obj, title, description=""):
     except Exception:
         pass
 
+
+def _resolve_issue_by_ref(organization, issue_ref):
+    """
+    Resolve by DB id first, then by unique key suffix (e.g. KEY-113 for ref=113).
+    """
+    try:
+        return Issue.objects.get(id=issue_ref, organization=organization)
+    except Issue.DoesNotExist:
+        pass
+
+    matches = Issue.objects.filter(
+        organization=organization,
+        key__iendswith=f'-{issue_ref}',
+    ).order_by('-updated_at')
+
+    if matches.count() == 1:
+        return matches.first()
+    return None
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def projects(request):
@@ -413,9 +432,8 @@ def issue_detail(request, issue_id):
     if not hasattr(request.user, 'organization') or not request.user.organization:
         return Response({'error': 'User does not have an organization'}, status=400)
     
-    try:
-        issue = Issue.objects.get(id=issue_id, organization=request.user.organization)
-    except Issue.DoesNotExist:
+    issue = _resolve_issue_by_ref(request.user.organization, issue_id)
+    if not issue:
         return Response({'error': 'Issue not found'}, status=404)
     if request.method == 'GET':
         _track_view_activity(

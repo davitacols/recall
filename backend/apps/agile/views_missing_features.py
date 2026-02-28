@@ -8,8 +8,8 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from .models import (
-    Issue, IssueAttachment, SavedFilter, IssueTemplate, 
-    Release, Component, ProjectCategory, Column
+    Issue, IssueAttachment, SavedFilter, IssueTemplate,
+    Release, Component, ProjectCategory, Column, IssueLabel, Project, Board
 )
 from .serializers import (
     IssueAttachmentSerializer, SavedFilterSerializer, IssueTemplateSerializer,
@@ -17,6 +17,7 @@ from .serializers import (
 )
 from apps.organizations.permissions import has_project_permission, Permission
 from apps.notifications.models import Notification
+from django.utils import timezone
 
 
 # Attachments
@@ -262,3 +263,168 @@ def check_wip_limit(request, column_id):
         'current_count': column.issues.filter(status__in=['in_progress', 'in_review']).count(),
         'at_limit': column.is_at_wip_limit()
     })
+
+
+# Service Desk (Jira Service Management-style)
+SERVICE_DESK_LABEL = 'service-desk'
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def service_desk_overview(request):
+    status_filter = request.query_params.get('status', 'open')
+    include_mine = request.query_params.get('mine') == '1'
+
+    issues = Issue.objects.filter(
+        organization=request.user.organization,
+        labels__name=SERVICE_DESK_LABEL,
+    ).select_related('project', 'assignee', 'reporter').distinct()
+
+    if status_filter == 'open':
+        issues = issues.exclude(status='done')
+    elif status_filter == 'closed':
+        issues = issues.filter(status='done')
+
+    if include_mine:
+        issues = issues.filter(assignee=request.user)
+
+    now = timezone.now().date()
+    all_service_issues = Issue.objects.filter(
+        organization=request.user.organization,
+        labels__name=SERVICE_DESK_LABEL,
+    ).distinct()
+    open_issues = all_service_issues.exclude(status='done')
+    queue = issues.order_by('-updated_at')[:60]
+
+    queue_data = []
+    for issue in queue:
+        queue_data.append({
+            'id': issue.id,
+            'key': issue.key,
+            'title': issue.title,
+            'status': issue.status,
+            'priority': issue.priority,
+            'project': issue.project.name,
+            'assignee': issue.assignee.get_full_name() if issue.assignee else None,
+            'reporter': issue.reporter.get_full_name() or issue.reporter.username,
+            'due_date': issue.due_date,
+            'updated_at': issue.updated_at,
+        })
+
+    return Response({
+        'summary': {
+            'total_requests': all_service_issues.count(),
+            'open_requests': open_issues.count(),
+            'unassigned': open_issues.filter(assignee__isnull=True).count(),
+            'overdue': open_issues.filter(due_date__lt=now).count(),
+        },
+        'request_types': [
+            {'key': 'access', 'name': 'Access Request'},
+            {'key': 'bug', 'name': 'Bug Report'},
+            {'key': 'incident', 'name': 'Incident'},
+            {'key': 'service', 'name': 'Service Request'},
+            {'key': 'change', 'name': 'Change Request'},
+            {'key': 'general', 'name': 'General Support'},
+        ],
+        'queue': queue_data,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_service_request(request):
+    title = (request.data.get('title') or '').strip()
+    if not title:
+        return Response({'error': 'Title is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    project_id = request.data.get('project_id')
+    request_type = (request.data.get('request_type') or 'general').strip().lower()
+    priority = (request.data.get('priority') or 'medium').strip().lower()
+    description = request.data.get('description') or ''
+    due_date = request.data.get('due_date') or None
+
+    allowed_priorities = {'lowest', 'low', 'medium', 'high', 'highest'}
+    if priority not in allowed_priorities:
+        priority = 'medium'
+
+    if project_id:
+        project = get_object_or_404(
+            Project,
+            id=project_id,
+            organization=request.user.organization,
+        )
+    else:
+        project = Project.objects.filter(organization=request.user.organization).order_by('id').first()
+        if not project:
+            return Response(
+                {'error': 'Create a project first before submitting service requests.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    board = Board.objects.filter(organization=request.user.organization, project=project).order_by('id').first()
+    if not board:
+        board = Board.objects.create(
+            organization=request.user.organization,
+            project=project,
+            name=f'{project.name} Service Desk',
+            board_type='kanban',
+        )
+
+    column = Column.objects.filter(board=board).order_by('order', 'id').first()
+    if not column:
+        column = Column.objects.create(board=board, name='To Do', order=0)
+
+    issue_count = Issue.objects.filter(project=project).count() + 1
+    key = f'{project.key}-{issue_count}'
+    while Issue.objects.filter(project=project, key=key).exists():
+        issue_count += 1
+        key = f'{project.key}-{issue_count}'
+
+    issue = Issue.objects.create(
+        organization=request.user.organization,
+        project=project,
+        board=board,
+        column=column,
+        key=key,
+        title=title,
+        description=description,
+        issue_type='task',
+        priority=priority,
+        status='todo',
+        assignee=project.lead,
+        reporter=request.user,
+        in_backlog=False,
+        due_date=due_date,
+    )
+
+    label, _ = IssueLabel.objects.get_or_create(
+        organization=request.user.organization,
+        name=SERVICE_DESK_LABEL,
+        defaults={'color': '#0EA5E9'},
+    )
+    issue.labels.add(label)
+    type_label, _ = IssueLabel.objects.get_or_create(
+        organization=request.user.organization,
+        name=f'request-{request_type[:30]}',
+        defaults={'color': '#22C55E'},
+    )
+    issue.labels.add(type_label)
+
+    if project.lead_id and project.lead_id != request.user.id:
+        Notification.objects.create(
+            user_id=project.lead_id,
+            notification_type='task',
+            title='New Service Request',
+            message=f'{request.user.get_full_name() or request.user.username} created {issue.key}: {issue.title}',
+            link=f'/issues/{issue.id}',
+        )
+
+    return Response({
+        'id': issue.id,
+        'key': issue.key,
+        'title': issue.title,
+        'status': issue.status,
+        'priority': issue.priority,
+        'project': issue.project.name,
+        'assignee': issue.assignee.get_full_name() if issue.assignee else None,
+    }, status=status.HTTP_201_CREATED)

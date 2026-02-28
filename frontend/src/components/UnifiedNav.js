@@ -231,6 +231,7 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
         { name: "Projects", href: "/projects", icon: CubeIcon },
         { name: "Goals", href: "/business/goals", icon: FlagIcon },
         { name: "Tasks", href: "/business/tasks", icon: ClipboardDocumentListIcon },
+        { name: "Service Desk", href: "/service-desk", icon: ClipboardDocumentListIcon },
         { name: "Sprints", href: "/sprint-history", icon: RocketLaunchIcon },
       ],
     },

@@ -95,6 +95,7 @@ import Subscription from './pages/Subscription';
 import Security from './pages/Security';
 import Enterprise from './pages/Enterprise';
 import ImportExport from './pages/ImportExport';
+import ServiceDesk from './pages/ServiceDesk';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
@@ -676,6 +677,13 @@ function AppContent() {
           <ProtectedRoute adminOnly={true}>
             <UnifiedLayout>
               <ImportExport />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/service-desk" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <ServiceDesk />
             </UnifiedLayout>
           </ProtectedRoute>
         } />

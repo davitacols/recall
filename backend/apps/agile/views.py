@@ -28,6 +28,28 @@ def _check_org(request):
         return None
     return request.user.organization
 
+
+def _resolve_issue_by_ref(organization, issue_ref):
+    """
+    Resolve by DB id first, then by unique key suffix (e.g. KEY-113 for ref=113).
+    """
+    try:
+        return Issue.objects.select_related('assignee', 'reporter', 'sprint', 'project').get(
+            id=issue_ref,
+            organization=organization,
+        )
+    except Issue.DoesNotExist:
+        pass
+
+    matches = Issue.objects.select_related('assignee', 'reporter', 'sprint', 'project').filter(
+        organization=organization,
+        key__iendswith=f'-{issue_ref}',
+    ).order_by('-updated_at')
+
+    if matches.count() == 1:
+        return matches.first()
+    return None
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated, IsOrgMember])
 def projects(request):
@@ -319,9 +341,8 @@ def issue_detail(request, issue_id):
     if not org:
         return Response({'error': 'User does not have an organization'}, status=400)
     
-    try:
-        issue = Issue.objects.select_related('assignee', 'reporter', 'sprint', 'project').get(id=issue_id)
-    except Issue.DoesNotExist:
+    issue = _resolve_issue_by_ref(org, issue_id)
+    if not issue:
         return Response({'error': 'Issue not found'}, status=404)
     
     if request.method == 'GET':

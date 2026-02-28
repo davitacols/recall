@@ -64,6 +64,10 @@ urlpatterns = [
     
     # WIP Limits
     path('columns/<int:column_id>/wip-check/', views_missing_features.check_wip_limit, name='check_wip_limit'),
+    
+    # Service Desk
+    path('service-desk/', views_missing_features.service_desk_overview, name='service_desk_overview'),
+    path('service-desk/requests/', views_missing_features.create_service_request, name='create_service_request'),
     path('workflow/transitions/', views.workflow_transitions, name='workflow_transitions'),
     path('issues/<int:issue_id>/validate-transition/', views.validate_transition, name='validate_transition'),
     

@@ -76,11 +76,15 @@ function IssueDetail() {
   const [commenting, setCommenting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  const resolvedIssueId = issue?.id ? String(issue.id) : String(issueId);
 
   const fetchIssue = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/api/agile/issues/${issueId}/`);
+      if (String(response.data?.id || "") !== String(issueId)) {
+        navigate(`/issues/${response.data.id}`, { replace: true });
+      }
       setIssue(response.data);
       setFormData({
         title: response.data.title || "",
@@ -104,7 +108,7 @@ function IssueDetail() {
     } finally {
       setLoading(false);
     }
-  }, [issueId]);
+  }, [issueId, navigate]);
 
   const fetchTeamMembers = useCallback(async () => {
     try {
@@ -140,7 +144,7 @@ function IssueDetail() {
         due_date: formData.due_date || null,
       };
 
-      await api.put(`/api/agile/issues/${issueId}/`, payload);
+      await api.put(`/api/agile/issues/${resolvedIssueId}/`, payload);
       setEditing(false);
       await fetchIssue();
     } catch (err) {
@@ -153,7 +157,7 @@ function IssueDetail() {
   const handleDelete = async () => {
     if (!window.confirm("Delete this issue? This action cannot be undone.")) return;
     try {
-      await api.delete(`/api/agile/issues/${issueId}/`);
+      await api.delete(`/api/agile/issues/${resolvedIssueId}/`);
       navigate(issue?.project_id ? `/projects/${issue.project_id}` : "/projects");
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to delete issue"));
@@ -165,7 +169,7 @@ function IssueDetail() {
     if (!newComment.trim()) return;
     setCommenting(true);
     try {
-      await api.post(`/api/agile/issues/${issueId}/comments/`, { content: newComment.trim() });
+      await api.post(`/api/agile/issues/${resolvedIssueId}/comments/`, { content: newComment.trim() });
       setNewComment("");
       await fetchIssue();
     } catch (err) {
@@ -224,7 +228,7 @@ function IssueDetail() {
           </div>
 
           <div style={heroActions}>
-            <WatchButton issueId={issueId} isWatching={Boolean(issue.is_watching)} />
+            <WatchButton issueId={resolvedIssueId} isWatching={Boolean(issue.is_watching)} />
             {!editing ? (
               <button onClick={() => setEditing(true)} style={ui.secondaryButton}>
                 <PencilIcon style={icon14} /> Edit
@@ -290,12 +294,12 @@ function IssueDetail() {
               <h2 style={{ ...sectionTitle, color: palette.text }}>Delivery Signals</h2>
               <div style={moduleStack}>
                 <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                  <TimeTracker issueId={issueId} />
+                  <TimeTracker issueId={resolvedIssueId} />
                 </div>
                 <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                  <IssueAttachments issueId={issueId} />
+                  <IssueAttachments issueId={resolvedIssueId} />
                 </div>
-                <DecisionImpactPanel issueId={issueId} issueTitle={issue.title} />
+                <DecisionImpactPanel issueId={resolvedIssueId} issueTitle={issue.title} />
               </div>
             </section>
           </main>
@@ -374,7 +378,7 @@ function IssueDetail() {
             </Field>
 
             <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt, marginTop: 4 }}>
-              <TimeEstimate issueId={issueId} estimate={issue.time_estimate} onUpdate={fetchIssue} />
+              <TimeEstimate issueId={resolvedIssueId} estimate={issue.time_estimate} onUpdate={fetchIssue} />
             </div>
           </aside>
         </div>

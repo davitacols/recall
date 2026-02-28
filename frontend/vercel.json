@@ -19,10 +19,7 @@
       ]
     }
   ],
-  "routes": [
-    { "src": "/sitemap.xml", "dest": "/sitemap.xml" },
-    { "src": "/robots.txt", "dest": "/robots.txt" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/((?!sitemap\\.xml$|robots\\.txt$|static/|manifest\\.json$|favicon\\.ico$).*)", "destination": "/index.html" }
   ]
 }

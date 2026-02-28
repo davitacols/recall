@@ -5,6 +5,7 @@ from rest_framework import status
 from django.conf import settings
 from .models import Notification
 from .email_service import send_email
+from .utils import create_notification
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -63,12 +64,6 @@ def send_test_email(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    if not settings.RESEND_API_KEY:
-        return Response(
-            {'error': 'RESEND_API_KEY is not configured'},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
     app_name = 'Knoledgr'
     subject = f'{app_name} email test'
     html = f"""
@@ -93,4 +88,24 @@ def send_test_email(request):
             'from': settings.DEFAULT_FROM_EMAIL,
         },
         status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_test_notification(request):
+    """Create a deterministic in-app notification for the current user."""
+    notification = create_notification(
+        user=request.user,
+        notification_type='system',
+        title='Notification test',
+        message='This is a test notification generated from settings.',
+        link='/notifications',
+    )
+    return Response(
+        {
+            'message': 'Test notification created',
+            'notification_id': notification.id,
+        },
+        status=status.HTTP_201_CREATED,
     )

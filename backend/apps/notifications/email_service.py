@@ -5,18 +5,32 @@ from urllib.parse import urljoin
 
 import requests
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 
 logger = logging.getLogger(__name__)
 
 
 def send_email(to_email, subject, html_content, text_content=None, reply_to=None):
-    """Send transactional email through Resend REST API."""
-    if not settings.RESEND_API_KEY:
-        logger.warning("RESEND_API_KEY is missing; email skipped for %s", to_email)
-        return False
-
     if not text_content:
         text_content = html_to_text(html_content)
+
+    # Prefer Resend when configured; otherwise fallback to Django email backend.
+    if not settings.RESEND_API_KEY:
+        try:
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[to_email],
+                reply_to=[reply_to] if reply_to else None,
+            )
+            msg.attach_alternative(html_content, "text/html")
+            msg.send(fail_silently=False)
+            logger.info("Sent email via Django backend to %s (Resend key not configured)", to_email)
+            return True
+        except Exception:
+            logger.exception("Fallback Django email send failed for %s", to_email)
+            return False
 
     payload = {
         "from": settings.DEFAULT_FROM_EMAIL,

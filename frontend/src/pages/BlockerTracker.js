@@ -4,7 +4,13 @@ import {
   ExclamationTriangleIcon,
   FunnelIcon,
   PlusIcon,
+  RectangleStackIcon,
+  RocketLaunchIcon,
+  QueueListIcon,
+  ClockIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import { Link, useLocation } from "react-router-dom";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
@@ -21,6 +27,7 @@ const TYPE_COLORS = {
 };
 
 function Blockers() {
+  const location = useLocation();
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -36,6 +43,7 @@ function Blockers() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
+  const [isNarrow, setIsNarrow] = useState(typeof window !== "undefined" ? window.innerWidth < 1024 : false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -45,6 +53,12 @@ function Blockers() {
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 1024);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   const fetchData = async () => {
@@ -122,6 +136,15 @@ function Blockers() {
     return { total, critical, technical, avgDays };
   }, [blockers]);
 
+  const projectNavItems = [
+    { label: "Projects", href: "/projects", icon: RectangleStackIcon },
+    { label: "Current Sprint", href: "/sprint", icon: RocketLaunchIcon },
+    { label: "Sprint History", href: "/sprint-history", icon: ClockIcon },
+    { label: "Sprint Management", href: "/sprint-management", icon: QueueListIcon },
+    { label: "Blockers", href: "/blockers", icon: ExclamationTriangleIcon },
+    { label: "Retrospectives", href: "/retrospectives", icon: ArrowPathIcon },
+  ];
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: palette.bg }}>
@@ -170,113 +193,182 @@ function Blockers() {
           </div>
         )}
 
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
-          <MetricCard label="Active Blockers" value={stats.total} palette={palette} />
-          <MetricCard label="Open 7+ Days" value={stats.critical} palette={palette} />
-          <MetricCard label="Technical" value={stats.technical} palette={palette} />
-          <MetricCard label="Avg Days Open" value={stats.avgDays} palette={palette} />
-        </section>
-
         <section
-          className="ui-enter"
           style={{
-            borderRadius: 14,
-            border: `1px solid ${palette.border}`,
-            background: palette.card,
-            padding: 10,
-            marginBottom: 12,
             display: "grid",
-            gap: 8,
+            gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(250px,320px) minmax(0,1fr)",
+            gap: 10,
+            alignItems: "start",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <FunnelIcon style={{ width: 14, height: 14, color: palette.muted }} />
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.muted, letterSpacing: "0.08em" }}>FILTERS</p>
-          </div>
+          <aside style={{ position: isNarrow ? "static" : "sticky", top: 78, display: "grid", gap: 10 }}>
+            <section
+              className="ui-enter"
+              style={{
+                borderRadius: 14,
+                border: `1px solid ${palette.border}`,
+                background: palette.card,
+                padding: 10,
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 700, color: palette.muted, letterSpacing: "0.08em" }}>PROJECT NAVIGATION</p>
+              {projectNavItems.map((item) => {
+                const active =
+                  location.pathname === item.href ||
+                  (item.href !== "/" && location.pathname.startsWith(`${item.href}/`));
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      borderRadius: 10,
+                      border: `1px solid ${active ? palette.border : "transparent"}`,
+                      background: active ? palette.cardAlt : "transparent",
+                      color: active ? palette.text : palette.muted,
+                      textDecoration: "none",
+                      fontSize: 12,
+                      fontWeight: active ? 700 : 600,
+                      padding: "8px 9px",
+                    }}
+                  >
+                    <Icon style={{ width: 14, height: 14 }} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </section>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 8 }}>
-            <select value={selectedSprint} onChange={(e) => setSelectedSprint(e.target.value)} style={ui.input}>
-              <option value="">All Sprints</option>
-              {sprints.map((sprint) => (
-                <option key={sprint.id} value={sprint.id}>
-                  {(sprint.name || sprint.sprint_name || `Sprint ${sprint.id}`) + (sprint.project_name ? ` (${sprint.project_name})` : "")}
-                </option>
-              ))}
-            </select>
-            <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} style={ui.input}>
-              {TYPE_OPTIONS.map((type) => (
-                <option key={type} value={type}>
-                  {type === "all" ? "All Types" : type[0].toUpperCase() + type.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </section>
+            <section
+              className="ui-enter"
+              style={{
+                borderRadius: 14,
+                border: `1px solid ${palette.border}`,
+                background: palette.card,
+                padding: 10,
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.muted, letterSpacing: "0.08em" }}>OVERVIEW</p>
+              <MetricCard label="Active Blockers" value={stats.total} palette={palette} compact />
+              <MetricCard label="Open 7+ Days" value={stats.critical} palette={palette} compact />
+              <MetricCard label="Technical" value={stats.technical} palette={palette} compact />
+              <MetricCard label="Avg Days Open" value={stats.avgDays} palette={palette} compact />
+            </section>
 
-        {filteredBlockers.length === 0 ? (
-          <section style={{ borderRadius: 14, border: `1px dashed ${palette.border}`, background: palette.card, padding: "28px 14px", textAlign: "center" }}>
-            <ExclamationTriangleIcon style={{ width: 38, height: 38, color: palette.muted, margin: "0 auto 8px" }} />
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: palette.text }}>No Active Blockers</p>
-            <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>Everything looks clear for current filters.</p>
-          </section>
-        ) : (
-          <section style={{ display: "grid", gap: 10 }}>
-            {filteredBlockers.map((blocker) => {
-              const tone = TYPE_COLORS[blocker.type] || TYPE_COLORS.default;
-              return (
-                <article
-                  key={blocker.id}
-                  className="ui-card-lift ui-smooth"
-                  style={{
-                    borderRadius: 14,
-                    border: `1px solid ${palette.border}`,
-                    borderLeft: `4px solid ${tone.text}`,
-                    background: palette.cardAlt,
-                    padding: 12,
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                        <span style={{ borderRadius: 999, border: `1px solid ${tone.border}`, background: tone.bg, color: tone.text, padding: "3px 9px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" }}>
-                          {blocker.type || "other"}
-                        </span>
-                        <span style={{ fontSize: 11, color: palette.muted, fontWeight: 700 }}>
-                          {Number(blocker.days_open || 0)} day{Number(blocker.days_open || 0) === 1 ? "" : "s"} open
-                        </span>
-                      </div>
-                      <h3 style={{ margin: 0, fontSize: 16, color: palette.text }}>{blocker.title || "Untitled blocker"}</h3>
-                      <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted, lineHeight: 1.5 }}>
-                        {blocker.description || "No description provided."}
-                      </p>
-                      <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11, color: palette.muted }}>
-                        <span>Sprint: <strong style={{ color: palette.text }}>{blocker.sprint_name || "Unassigned"}</strong></span>
-                        <span>Reported by: <strong style={{ color: palette.text }}>{blocker.blocked_by || "Unknown"}</strong></span>
-                        {blocker.assigned_to && <span>Assigned to: <strong style={{ color: palette.text }}>{blocker.assigned_to}</strong></span>}
-                      </div>
-                    </div>
+            <section
+              className="ui-enter"
+              style={{
+                borderRadius: 14,
+                border: `1px solid ${palette.border}`,
+                background: palette.card,
+                padding: 10,
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <FunnelIcon style={{ width: 14, height: 14, color: palette.muted }} />
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.muted, letterSpacing: "0.08em" }}>FILTERS</p>
+              </div>
 
-                    <button
-                      onClick={() => handleResolveBlocker(blocker.id)}
-                      className="ui-btn-polish"
+              <select value={selectedSprint} onChange={(e) => setSelectedSprint(e.target.value)} style={ui.input}>
+                <option value="">All Sprints</option>
+                {sprints.map((sprint) => (
+                  <option key={sprint.id} value={sprint.id}>
+                    {(sprint.name || sprint.sprint_name || `Sprint ${sprint.id}`) + (sprint.project_name ? ` (${sprint.project_name})` : "")}
+                  </option>
+                ))}
+              </select>
+
+              <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} style={ui.input}>
+                {TYPE_OPTIONS.map((type) => (
+                  <option key={type} value={type}>
+                    {type === "all" ? "All Types" : type[0].toUpperCase() + type.slice(1)}
+                  </option>
+                ))}
+              </select>
+
+              <button onClick={() => setShowCreateModal(true)} className="ui-btn-polish" style={{ ...ui.primaryButton, justifyContent: "center" }}>
+                <PlusIcon style={{ width: 14, height: 14 }} />
+                New Blocker
+              </button>
+            </section>
+          </aside>
+
+          <main>
+            {filteredBlockers.length === 0 ? (
+              <section style={{ borderRadius: 14, border: `1px dashed ${palette.border}`, background: palette.card, padding: "28px 14px", textAlign: "center" }}>
+                <ExclamationTriangleIcon style={{ width: 38, height: 38, color: palette.muted, margin: "0 auto 8px" }} />
+                <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: palette.text }}>No Active Blockers</p>
+                <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>Everything looks clear for current filters.</p>
+              </section>
+            ) : (
+              <section style={{ display: "grid", gap: 10 }}>
+                {filteredBlockers.map((blocker) => {
+                  const tone = TYPE_COLORS[blocker.type] || TYPE_COLORS.default;
+                  return (
+                    <article
+                      key={blocker.id}
+                      className="ui-card-lift ui-smooth"
                       style={{
-                        ...ui.secondaryButton,
-                        borderColor: "rgba(16,185,129,0.45)",
-                        color: "#10b981",
-                        padding: "8px 10px",
-                        opacity: resolvingId === blocker.id ? 0.7 : 1,
+                        borderRadius: 14,
+                        border: `1px solid ${palette.border}`,
+                        borderLeft: `4px solid ${tone.text}`,
+                        background: palette.cardAlt,
+                        padding: 12,
                       }}
-                      disabled={resolvingId === blocker.id}
                     >
-                      <CheckCircleIcon style={{ width: 14, height: 14 }} />
-                      {resolvingId === blocker.id ? "Resolving..." : "Resolve"}
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-        )}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                            <span style={{ borderRadius: 999, border: `1px solid ${tone.border}`, background: tone.bg, color: tone.text, padding: "3px 9px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" }}>
+                              {blocker.type || "other"}
+                            </span>
+                            <span style={{ fontSize: 11, color: palette.muted, fontWeight: 700 }}>
+                              {Number(blocker.days_open || 0)} day{Number(blocker.days_open || 0) === 1 ? "" : "s"} open
+                            </span>
+                          </div>
+                          <h3 style={{ margin: 0, fontSize: 16, color: palette.text }}>{blocker.title || "Untitled blocker"}</h3>
+                          <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted, lineHeight: 1.5 }}>
+                            {blocker.description || "No description provided."}
+                          </p>
+                          <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11, color: palette.muted }}>
+                            <span>Sprint: <strong style={{ color: palette.text }}>{blocker.sprint_name || "Unassigned"}</strong></span>
+                            <span>Reported by: <strong style={{ color: palette.text }}>{blocker.blocked_by || "Unknown"}</strong></span>
+                            {blocker.assigned_to && <span>Assigned to: <strong style={{ color: palette.text }}>{blocker.assigned_to}</strong></span>}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleResolveBlocker(blocker.id)}
+                          className="ui-btn-polish"
+                          style={{
+                            ...ui.secondaryButton,
+                            borderColor: "rgba(16,185,129,0.45)",
+                            color: "#10b981",
+                            padding: "8px 10px",
+                            opacity: resolvingId === blocker.id ? 0.7 : 1,
+                          }}
+                          disabled={resolvingId === blocker.id}
+                        >
+                          <CheckCircleIcon style={{ width: 14, height: 14 }} />
+                          {resolvingId === blocker.id ? "Resolving..." : "Resolve"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </section>
+            )}
+          </main>
+        </section>
 
         {showCreateModal && (
           <div style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(0,0,0,0.66)", display: "grid", placeItems: "center", padding: 14 }} onClick={() => !submitting && setShowCreateModal(false)}>
@@ -345,11 +437,11 @@ function Blockers() {
   );
 }
 
-function MetricCard({ label, value, palette }) {
+function MetricCard({ label, value, palette, compact = false }) {
   return (
-    <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 10 }}>
+    <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: compact ? 8 : 10 }}>
       <p style={{ margin: 0, fontSize: 10, color: palette.muted, letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase" }}>{label}</p>
-      <p style={{ margin: "3px 0 0", fontSize: 24, color: palette.text, fontWeight: 800 }}>{value}</p>
+      <p style={{ margin: "3px 0 0", fontSize: compact ? 20 : 24, color: palette.text, fontWeight: 800 }}>{value}</p>
     </article>
   );
 }

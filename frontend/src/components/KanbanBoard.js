@@ -12,6 +12,7 @@ function KanbanBoard() {
   const [loading, setLoading] = useState(true);
   const [draggedIssue, setDraggedIssue] = useState(null);
   const [selectedIssueId, setSelectedIssueId] = useState(null);
+  const [moveError, setMoveError] = useState('');
 
   useEffect(() => {
     fetchBoard();
@@ -52,24 +53,63 @@ function KanbanBoard() {
     if (!draggedIssue) return;
 
     const statusMap = {
-      'To Do': 'todo',
-      'In Progress': 'in_progress',
-      'In Review': 'in_review',
-      'Done': 'done'
+      'to do': 'todo',
+      'todo': 'todo',
+      'in progress': 'in_progress',
+      'in review': 'in_review',
+      'review': 'in_review',
+      'testing': 'testing',
+      'done': 'done',
+      'backlog': 'backlog',
     };
 
     const column = columns.find(c => c.id === columnId);
-    const newStatus = statusMap[column?.name] || 'todo';
+    const newStatus = statusMap[String(column?.name || '').trim().toLowerCase()];
+    if (!newStatus) {
+      setMoveError(`Cannot move to "${column?.name || 'unknown'}": unsupported column status mapping.`);
+      setDraggedIssue(null);
+      return;
+    }
+    if (newStatus === draggedIssue.status) {
+      setMoveError('');
+      setDraggedIssue(null);
+      return;
+    }
 
     try {
+      setMoveError('');
+      const transitionComment = `Moved via board to ${column?.name || 'column'}`;
+      try {
+        const validation = await api.post(`/api/agile/issues/${draggedIssue.id}/validate-transition/`, {
+          status: newStatus,
+          transition_comment: transitionComment,
+        });
+        if (validation?.data?.valid === false) {
+          const details = validation.data.errors?.join(', ') || validation.data.message || 'Invalid workflow transition';
+          setMoveError(details);
+          setDraggedIssue(null);
+          return;
+        }
+      } catch {
+        // Validation endpoint is optional across deployments; fallback to direct update.
+      }
+
       await api.put(`/api/agile/issues/${draggedIssue.id}/`, {
-        status: newStatus
+        status: newStatus,
+        transition_comment: transitionComment,
       });
       
       setDraggedIssue(null);
       await fetchBoard();
     } catch (error) {
       console.error('Failed to move issue:', error);
+      const responseData = error?.response?.data;
+      const details =
+        responseData?.errors?.join(', ') ||
+        responseData?.error ||
+        responseData?.message ||
+        'Failed to move issue.';
+      setMoveError(details);
     }
   };
 
@@ -95,6 +135,11 @@ function KanbanBoard() {
 
   return (
     <div>
+      {moveError && (
+        <div style={{ marginBottom: spacing.md, padding: `${spacing.sm} ${spacing.md}`, borderRadius: radius.md, border: '1px solid rgba(239,68,68,0.45)', backgroundColor: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '12px' }}>
+          {moveError}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
         <h1 style={{ fontSize: '28px', fontWeight: 700, color: colors.primary, margin: 0 }}>
           {board.name}

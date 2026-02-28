@@ -3,7 +3,12 @@ import { getApiBaseUrl } from '../utils/apiBase';
 
 export function useNotifications(onNotification) {
   const retryCount = useRef(0);
+  const callbackRef = useRef(onNotification);
   const maxRetries = 3;
+
+  useEffect(() => {
+    callbackRef.current = onNotification;
+  }, [onNotification]);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
@@ -28,8 +33,8 @@ export function useNotifications(onNotification) {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            if (data.type === 'notification' && onNotification) {
-              onNotification(data.notification);
+            if (data.type === 'notification' && callbackRef.current) {
+              callbackRef.current(data.notification);
             }
           } catch (e) {
             console.warn('Failed to parse notification:', e);
@@ -61,5 +66,5 @@ export function useNotifications(onNotification) {
         ws.close();
       }
     };
-  }, [onNotification]);
+  }, []);
 }

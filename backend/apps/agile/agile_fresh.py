@@ -1212,6 +1212,347 @@ def sprint_autopilot(request, sprint_id):
     })
 
 
+def _evaluate_goal_probability(completion_ratio, time_elapsed_ratio, in_progress_count, unresolved_count, blockers_count):
+    score = 55.0
+    score += (completion_ratio - time_elapsed_ratio) * 60.0
+    score -= min(20.0, in_progress_count * 2.5)
+    score -= min(22.0, unresolved_count * 4.0)
+    score -= min(15.0, blockers_count * 5.0)
+    return max(3.0, min(98.0, score))
+
+
+def _confidence_from_probability(probability):
+    if probability >= 75:
+        return 'high'
+    if probability >= 50:
+        return 'medium'
+    return 'low'
+
+
+def _parse_decision_twin_policy(source):
+    confidence_order = {'low': 1, 'medium': 2, 'high': 3}
+    policy = {
+        'min_confidence_band': str(source.get('min_confidence_band') or 'medium').lower(),
+        'min_probability_delta': float(source.get('min_probability_delta') or 1.0),
+        'max_scope_changes': int(source.get('max_scope_changes') or 4),
+        'allow_backlog_adds': str(source.get('allow_backlog_adds') if source.get('allow_backlog_adds') is not None else 'true').lower() in ['1', 'true', 'yes'],
+        'enforce_policy': str(source.get('enforce_policy') if source.get('enforce_policy') is not None else 'true').lower() in ['1', 'true', 'yes'],
+    }
+    if policy['min_confidence_band'] not in confidence_order:
+        policy['min_confidence_band'] = 'medium'
+    policy['min_probability_delta'] = max(-10.0, min(25.0, policy['min_probability_delta']))
+    policy['max_scope_changes'] = max(0, min(20, policy['max_scope_changes']))
+    return policy
+
+
+def _evaluate_scenario_guardrails(scenario, policy):
+    confidence_order = {'low': 1, 'medium': 2, 'high': 3}
+    required_confidence = confidence_order.get(policy.get('min_confidence_band') or 'medium', 2)
+    current_confidence = confidence_order.get(scenario.get('confidence_band') or 'low', 1)
+    drops = len((scenario.get('plan') or {}).get('drop_issue_ids') or [])
+    adds = len((scenario.get('plan') or {}).get('add_issue_ids') or [])
+    scope_changes = drops + adds
+    delta = float(scenario.get('delta_vs_baseline') or 0.0)
+    violations = []
+    if current_confidence < required_confidence:
+        violations.append(f"Confidence {scenario.get('confidence_band')} below policy minimum {policy.get('min_confidence_band')}")
+    if delta < float(policy.get('min_probability_delta') or 0.0):
+        violations.append(f"Projected uplift {delta} below minimum {policy.get('min_probability_delta')}")
+    if scope_changes > int(policy.get('max_scope_changes') or 0):
+        violations.append(f"Scope changes {scope_changes} exceed max {policy.get('max_scope_changes')}")
+    if not bool(policy.get('allow_backlog_adds', True)) and adds > 0:
+        violations.append('Backlog adds are disallowed by policy')
+    return {
+        'auto_apply_eligible': len(violations) == 0,
+        'violations': violations,
+        'scope_changes': scope_changes,
+        'drops': drops,
+        'adds': adds,
+    }
+
+
+def _build_decision_twin_payload(user, sprint, policy):
+    today = timezone.now().date()
+    total_days = max(1, (sprint.end_date - sprint.start_date).days + 1)
+    elapsed_days = max(0, min(total_days, (today - sprint.start_date).days + 1))
+    time_elapsed_ratio = elapsed_days / total_days
+
+    issues = list(sprint.issues.all().select_related('assignee', 'reporter'))
+    total_issues = len(issues)
+    done_issues = [i for i in issues if i.status == 'done']
+    in_progress_issues = [i for i in issues if i.status in ['in_progress', 'in_review', 'testing']]
+    active_issues = [i for i in issues if i.status in ['todo', 'backlog', 'in_progress', 'in_review', 'testing']]
+    completion_ratio = (len(done_issues) / total_issues) if total_issues else 0.0
+
+    blockers_count = Blocker.objects.filter(
+        organization=user.organization,
+        sprint=sprint,
+        status='active'
+    ).count()
+
+    unresolved_count = Decision.objects.filter(
+        organization=user.organization,
+        sprint=sprint
+    ).filter(
+        Q(status__in=['proposed', 'under_review', 'approved']) |
+        Q(status='implemented', review_completed_at__isnull=True)
+    ).count()
+
+    decision_impacts = list(
+        DecisionImpact.objects.filter(organization=user.organization, sprint=sprint)
+        .select_related('issue', 'decision')
+    )
+    issue_exposure = {}
+    for impact in decision_impacts:
+        issue_id = impact.issue_id
+        if issue_id not in issue_exposure:
+            issue_exposure[issue_id] = 0.0
+        weight = 1.8 if impact.impact_type in ['blocks', 'delays'] else 1.1 if impact.impact_type == 'changes' else 0.7
+        issue_exposure[issue_id] += weight
+        if impact.decision and impact.decision.review_completed_at is None:
+            issue_exposure[issue_id] += 0.7
+
+    drop_candidates = []
+    for issue in active_issues:
+        exposure = issue_exposure.get(issue.id, 0.0)
+        priority_weight = {'highest': 0, 'high': 1, 'medium': 2, 'low': 3, 'lowest': 4}.get(issue.priority or 'medium', 2)
+        score = (exposure * 1.9) + (priority_weight * 0.8)
+        if issue.status in ['in_progress', 'in_review', 'testing']:
+            score += 0.8
+        drop_candidates.append((issue, score))
+    drop_candidates.sort(key=lambda row: row[1], reverse=True)
+
+    backlog_candidates = list(
+        Issue.objects.filter(
+            organization=user.organization,
+            project=sprint.project,
+            sprint__isnull=True
+        ).order_by('-priority', '-created_at')[:80]
+    )
+    add_candidates = []
+    for issue in backlog_candidates:
+        exposure = issue_exposure.get(issue.id, 0.0)
+        priority_bonus = {'highest': 3.0, 'high': 2.2, 'medium': 1.2, 'low': 0.7, 'lowest': 0.3}.get(issue.priority or 'medium', 1.2)
+        score = priority_bonus - (exposure * 1.5)
+        add_candidates.append((issue, score))
+    add_candidates.sort(key=lambda row: row[1], reverse=True)
+
+    baseline_probability = _evaluate_goal_probability(
+        completion_ratio=completion_ratio,
+        time_elapsed_ratio=time_elapsed_ratio,
+        in_progress_count=len(in_progress_issues),
+        unresolved_count=unresolved_count,
+        blockers_count=blockers_count,
+    )
+
+    def to_preview_rows(pairs):
+        rows = []
+        for issue, score in pairs:
+            rows.append({
+                'issue_id': issue.id,
+                'key': issue.key,
+                'title': issue.title,
+                'status': issue.status,
+                'priority': issue.priority,
+                'score': round(score, 2),
+            })
+        return rows
+
+    baseline = {
+        'id': 'baseline',
+        'name': 'Baseline Plan',
+        'summary': 'Keep current sprint scope and execution order.',
+        'projected_goal_probability': round(baseline_probability, 1),
+        'delta_vs_baseline': 0.0,
+        'confidence_band': _confidence_from_probability(baseline_probability),
+        'tradeoffs': ['No scope churn', 'Decision risk remains unchanged'],
+        'evidence': [
+            f'Completion {round(completion_ratio * 100, 1)}% vs time elapsed {round(time_elapsed_ratio * 100, 1)}%',
+            f'{unresolved_count} unresolved decisions and {blockers_count} active blockers currently open',
+        ],
+        'plan': {'drop_issue_ids': [], 'add_issue_ids': [], 'create_decision_followups': False},
+        'preview': {'drops': [], 'adds': []},
+    }
+
+    swap_drop_pairs = drop_candidates[:2]
+    swap_add_pairs = add_candidates[:2]
+    swap_drop_ids = [issue.id for issue, _ in swap_drop_pairs]
+    swap_add_ids = [issue.id for issue, _ in swap_add_pairs]
+    swap_exposure_reduction = sum(issue_exposure.get(issue.id, 0.0) for issue, _ in swap_drop_pairs)
+    swap_probability = _evaluate_goal_probability(
+        completion_ratio=completion_ratio,
+        time_elapsed_ratio=time_elapsed_ratio,
+        in_progress_count=max(0, len(in_progress_issues) - len([i for i, _ in swap_drop_pairs if i.status in ['in_progress', 'in_review', 'testing']])),
+        unresolved_count=max(0, int(round(unresolved_count - min(unresolved_count, swap_exposure_reduction / 2.6)))),
+        blockers_count=max(0, blockers_count - (1 if swap_exposure_reduction >= 2.0 else 0)),
+    )
+    scope_swap = {
+        'id': 'scope_swap',
+        'name': 'Scope Swap',
+        'summary': 'Drop decision-heavy items and add low-dependency backlog work.',
+        'projected_goal_probability': round(swap_probability, 1),
+        'delta_vs_baseline': round(swap_probability - baseline_probability, 1),
+        'confidence_band': _confidence_from_probability(swap_probability),
+        'tradeoffs': ['Reduces decision risk quickly', 'May defer strategically important work'],
+        'evidence': [
+            f'Removes {len(swap_drop_ids)} high-exposure issues and introduces {len(swap_add_ids)} lower-risk issues',
+            f'Estimated decision exposure reduction: {round(swap_exposure_reduction, 1)} points',
+        ],
+        'plan': {
+            'drop_issue_ids': swap_drop_ids,
+            'add_issue_ids': swap_add_ids,
+            'create_decision_followups': True,
+        },
+        'preview': {
+            'drops': to_preview_rows(swap_drop_pairs),
+            'adds': to_preview_rows(swap_add_pairs),
+        },
+    }
+
+    focus_drop_pairs = drop_candidates[:3]
+    focus_drop_ids = [issue.id for issue, _ in focus_drop_pairs]
+    focus_exposure_reduction = sum(issue_exposure.get(issue.id, 0.0) for issue, _ in focus_drop_pairs)
+    focus_probability = _evaluate_goal_probability(
+        completion_ratio=completion_ratio,
+        time_elapsed_ratio=time_elapsed_ratio,
+        in_progress_count=max(0, len(in_progress_issues) - len([i for i, _ in focus_drop_pairs if i.status in ['in_progress', 'in_review', 'testing']])),
+        unresolved_count=max(0, int(round(unresolved_count - min(unresolved_count, focus_exposure_reduction / 2.0)))),
+        blockers_count=max(0, blockers_count - (1 if focus_exposure_reduction >= 2.5 else 0)),
+    )
+    focus_mode = {
+        'id': 'focus_mode',
+        'name': 'Focus Mode',
+        'summary': 'De-scope non-critical work to maximize delivery certainty.',
+        'projected_goal_probability': round(focus_probability, 1),
+        'delta_vs_baseline': round(focus_probability - baseline_probability, 1),
+        'confidence_band': _confidence_from_probability(focus_probability),
+        'tradeoffs': ['Fastest path to sprint completion', 'Lower breadth of delivered scope'],
+        'evidence': [
+            f'Reduces active WIP by up to {len(focus_drop_ids)} issues',
+            f'Projected blocker/decision pressure reduction from de-scoping high-exposure items',
+        ],
+        'plan': {
+            'drop_issue_ids': focus_drop_ids,
+            'add_issue_ids': [],
+            'create_decision_followups': True,
+        },
+        'preview': {
+            'drops': to_preview_rows(focus_drop_pairs),
+            'adds': [],
+        },
+    }
+
+    scenarios = [baseline, scope_swap, focus_mode]
+    eligible_scenarios = []
+    for scenario in scenarios:
+        policy_result = _evaluate_scenario_guardrails(scenario, policy)
+        scenario['policy_result'] = policy_result
+        if policy_result['auto_apply_eligible']:
+            eligible_scenarios.append(scenario)
+    scenarios.sort(key=lambda item: item['projected_goal_probability'], reverse=True)
+    recommended = scenarios[0] if scenarios else baseline
+    recommended_auto_apply = sorted(eligible_scenarios, key=lambda item: item['projected_goal_probability'], reverse=True)[0] if eligible_scenarios else None
+
+    return {
+        'sprint_id': sprint.id,
+        'objective': 'Maximize sprint goal probability while controlling decision risk.',
+        'generated_at': timezone.now().isoformat(),
+        'signals': {
+            'completion_ratio': round(completion_ratio * 100, 1),
+            'time_elapsed_ratio': round(time_elapsed_ratio * 100, 1),
+            'unresolved_decisions': unresolved_count,
+            'active_blockers': blockers_count,
+            'in_progress_issues': len(in_progress_issues),
+            'total_issues': total_issues,
+        },
+        'recommended_scenario_id': recommended['id'],
+        'recommended_auto_apply_scenario_id': recommended_auto_apply['id'] if recommended_auto_apply else None,
+        'policy': policy,
+        'scenarios': scenarios,
+        'explainability': {
+            'model_version': 'decision_twin_v1',
+            'assumptions': [
+                'Higher unresolved decision load lowers execution predictability.',
+                'High WIP lowers throughput and increases context switching risk.',
+                'Lower-dependency backlog items are safer substitutes under schedule pressure.',
+            ],
+        },
+    }
+
+
+def _apply_scope_swap_plan(user, sprint, drop_issue_ids, add_issue_ids, create_decision_followups, source_label):
+    dropped = []
+    for issue in Issue.objects.filter(organization=user.organization, sprint=sprint, id__in=drop_issue_ids):
+        issue.sprint = None
+        issue.in_backlog = True
+        if issue.status != 'done':
+            issue.status = 'backlog'
+        issue.save()
+        dropped.append({'issue_id': issue.id, 'key': issue.key, 'title': issue.title})
+
+    added = []
+    for issue in Issue.objects.filter(
+        organization=user.organization,
+        project=sprint.project,
+        sprint__isnull=True,
+        id__in=add_issue_ids
+    ):
+        issue.sprint = sprint
+        issue.in_backlog = False
+        if issue.status == 'backlog':
+            issue.status = 'todo'
+        issue.save()
+        added.append({'issue_id': issue.id, 'key': issue.key, 'title': issue.title})
+
+    created_followups = []
+    if create_decision_followups:
+        from apps.business.models import Task
+        from apps.notifications.utils import create_notification
+
+        unresolved = Decision.objects.filter(
+            organization=user.organization,
+            sprint=sprint
+        ).filter(
+            Q(status__in=['proposed', 'under_review', 'approved']) |
+            Q(status='implemented', review_completed_at__isnull=True)
+        )[:5]
+
+        for decision in unresolved:
+            title = f"{source_label}: resolve decision #{decision.id}"
+            if Task.objects.filter(organization=user.organization, decision=decision, title=title).exists():
+                continue
+            task = Task.objects.create(
+                organization=user.organization,
+                title=title,
+                description=(
+                    f"Auto-created while applying {source_label.lower()} plan for sprint '{sprint.name}'.\n\n"
+                    f"Decision: {decision.title}\n"
+                    f"Status: {decision.status}\n"
+                    f"Action: provide resolution or updated outcome review."
+                ),
+                status='todo',
+                priority='high' if decision.impact_level in ['high', 'critical'] else 'medium',
+                assigned_to=decision.decision_maker,
+                decision=decision,
+                due_date=min(sprint.end_date, timezone.now().date() + timedelta(days=5)),
+            )
+            created_followups.append({'task_id': task.id, 'title': task.title, 'decision_id': decision.id})
+            if decision.decision_maker and decision.decision_maker != user:
+                create_notification(
+                    user=decision.decision_maker,
+                    notification_type='task',
+                    title=f'{source_label} follow-up assigned',
+                    message=f'Resolve decision "{decision.title}" for sprint "{sprint.name}"',
+                    link='/business/tasks'
+                )
+
+    return {
+        'dropped': dropped,
+        'added': added,
+        'decision_followups': created_followups,
+    }
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def apply_sprint_autopilot_plan(request, sprint_id):
@@ -1234,79 +1575,120 @@ def apply_sprint_autopilot_plan(request, sprint_id):
     drop_issue_ids = [int(i) for i in drop_issue_ids[:10] if str(i).isdigit()]
     add_issue_ids = [int(i) for i in add_issue_ids[:10] if str(i).isdigit()]
 
-    dropped = []
-    for issue in Issue.objects.filter(organization=request.user.organization, sprint=sprint, id__in=drop_issue_ids):
-        issue.sprint = None
-        issue.in_backlog = True
-        if issue.status != 'done':
-            issue.status = 'backlog'
-        issue.save()
-        dropped.append({'issue_id': issue.id, 'key': issue.key, 'title': issue.title})
-
-    added = []
-    for issue in Issue.objects.filter(
-        organization=request.user.organization,
-        project=sprint.project,
-        sprint__isnull=True,
-        id__in=add_issue_ids
-    ):
-        issue.sprint = sprint
-        issue.in_backlog = False
-        if issue.status == 'backlog':
-            issue.status = 'todo'
-        issue.save()
-        added.append({'issue_id': issue.id, 'key': issue.key, 'title': issue.title})
-
-    created_followups = []
-    if create_decision_followups:
-        from apps.business.models import Task
-        from apps.notifications.utils import create_notification
-
-        unresolved = Decision.objects.filter(
-            organization=request.user.organization,
-            sprint=sprint
-        ).filter(
-            Q(status__in=['proposed', 'under_review', 'approved']) |
-            Q(status='implemented', review_completed_at__isnull=True)
-        )[:5]
-
-        for decision in unresolved:
-            title = f"Sprint Autopilot: resolve decision #{decision.id}"
-            if Task.objects.filter(organization=request.user.organization, decision=decision, title=title).exists():
-                continue
-            task = Task.objects.create(
-                organization=request.user.organization,
-                title=title,
-                description=(
-                    f"Auto-created while applying sprint autopilot plan for sprint '{sprint.name}'.\n\n"
-                    f"Decision: {decision.title}\n"
-                    f"Status: {decision.status}\n"
-                    f"Action: provide resolution or updated outcome review."
-                ),
-                status='todo',
-                priority='high' if decision.impact_level in ['high', 'critical'] else 'medium',
-                assigned_to=decision.decision_maker,
-                decision=decision,
-                due_date=min(sprint.end_date, timezone.now().date() + timedelta(days=5)),
-            )
-            created_followups.append({'task_id': task.id, 'title': task.title, 'decision_id': decision.id})
-            if decision.decision_maker and decision.decision_maker != request.user:
-                create_notification(
-                    user=decision.decision_maker,
-                    notification_type='task',
-                    title='Sprint autopilot follow-up assigned',
-                    message=f'Resolve decision "{decision.title}" for sprint "{sprint.name}"',
-                    link='/business/tasks'
-                )
+    results = _apply_scope_swap_plan(
+        user=request.user,
+        sprint=sprint,
+        drop_issue_ids=drop_issue_ids,
+        add_issue_ids=add_issue_ids,
+        create_decision_followups=create_decision_followups,
+        source_label='Sprint Autopilot',
+    )
 
     return Response({
         'message': 'Autopilot plan applied',
-        'dropped_count': len(dropped),
-        'added_count': len(added),
-        'followups_created': len(created_followups),
-        'dropped': dropped,
-        'added': added,
-        'decision_followups': created_followups,
+        'dropped_count': len(results['dropped']),
+        'added_count': len(results['added']),
+        'followups_created': len(results['decision_followups']),
+        'dropped': results['dropped'],
+        'added': results['added'],
+        'decision_followups': results['decision_followups'],
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def sprint_decision_twin(request, sprint_id):
+    """Counterfactual scenario engine for sprint execution tradeoffs."""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+
+    try:
+        sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
+    except Sprint.DoesNotExist:
+        return Response({'error': 'Sprint not found'}, status=404)
+    if sprint.project_id and not has_project_permission(request.user, Permission.EDIT_SPRINT.value, sprint.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
+
+    policy = _parse_decision_twin_policy(request.GET)
+    return Response(_build_decision_twin_payload(request.user, sprint, policy))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def apply_sprint_decision_twin(request, sprint_id):
+    """Apply selected counterfactual scenario generated by sprint_decision_twin."""
+    if not hasattr(request.user, 'organization') or not request.user.organization:
+        return Response({'error': 'User does not have an organization'}, status=400)
+
+    try:
+        sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
+    except Sprint.DoesNotExist:
+        return Response({'error': 'Sprint not found'}, status=404)
+    if sprint.project_id and not has_project_permission(request.user, Permission.EDIT_SPRINT.value, sprint.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
+
+    policy = _parse_decision_twin_policy(request.data)
+    auto_apply = bool(request.data.get('auto_apply', False))
+    scenario_id = request.data.get('scenario_id')
+    create_decision_followups = bool(request.data.get('create_decision_followups', True))
+    drop_issue_ids = request.data.get('drop_issue_ids')
+    add_issue_ids = request.data.get('add_issue_ids')
+
+    if auto_apply:
+        twin_payload = _build_decision_twin_payload(request.user, sprint, policy)
+        scenario_id = twin_payload.get('recommended_auto_apply_scenario_id')
+        if not scenario_id:
+            return Response({'error': 'No auto-apply eligible scenario under current policy'}, status=400)
+
+    selected = None
+    if not isinstance(drop_issue_ids, list) or not isinstance(add_issue_ids, list):
+        twin_payload = _build_decision_twin_payload(request.user, sprint, policy)
+        scenario_map = {row['id']: row for row in twin_payload.get('scenarios', [])}
+        selected = scenario_map.get(scenario_id) if scenario_id else None
+        if not selected:
+            selected = scenario_map.get(twin_payload.get('recommended_scenario_id'))
+        if not selected:
+            return Response({'error': 'No applicable decision twin scenario available'}, status=400)
+        plan = selected.get('plan') or {}
+        drop_issue_ids = plan.get('drop_issue_ids') or []
+        add_issue_ids = plan.get('add_issue_ids') or []
+        create_decision_followups = bool(plan.get('create_decision_followups', create_decision_followups))
+        scenario_id = selected.get('id')
+
+    if selected is None:
+        twin_payload = _build_decision_twin_payload(request.user, sprint, policy)
+        scenario_map = {row['id']: row for row in twin_payload.get('scenarios', [])}
+        selected = scenario_map.get(scenario_id) if scenario_id else None
+    if selected and bool(policy.get('enforce_policy', True)):
+        policy_result = selected.get('policy_result') or _evaluate_scenario_guardrails(selected, policy)
+        if not policy_result.get('auto_apply_eligible'):
+            return Response({
+                'error': 'Scenario violates decision twin policy',
+                'policy_violations': policy_result.get('violations') or [],
+            }, status=400)
+
+    drop_issue_ids = [int(i) for i in (drop_issue_ids or [])[:10] if str(i).isdigit()]
+    add_issue_ids = [int(i) for i in (add_issue_ids or [])[:10] if str(i).isdigit()]
+
+    results = _apply_scope_swap_plan(
+        user=request.user,
+        sprint=sprint,
+        drop_issue_ids=drop_issue_ids,
+        add_issue_ids=add_issue_ids,
+        create_decision_followups=create_decision_followups,
+        source_label='Decision Twin',
+    )
+
+    return Response({
+        'message': 'Decision twin scenario applied',
+        'scenario_id': scenario_id,
+        'policy': policy,
+        'dropped_count': len(results['dropped']),
+        'added_count': len(results['added']),
+        'followups_created': len(results['decision_followups']),
+        'dropped': results['dropped'],
+        'added': results['added'],
+        'decision_followups': results['decision_followups'],
     })
 
 @api_view(['GET'])

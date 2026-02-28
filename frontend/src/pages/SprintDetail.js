@@ -16,6 +16,19 @@ function SprintDetail() {
   const [autopilotLoading, setAutopilotLoading] = useState(false);
   const [autopilotApplying, setAutopilotApplying] = useState(false);
   const [autopilotMessage, setAutopilotMessage] = useState("");
+  const [decisionTwin, setDecisionTwin] = useState(null);
+  const [decisionTwinLoading, setDecisionTwinLoading] = useState(false);
+  const [decisionTwinApplying, setDecisionTwinApplying] = useState(false);
+  const [decisionTwinMessage, setDecisionTwinMessage] = useState("");
+  const [decisionTwinError, setDecisionTwinError] = useState("");
+  const [selectedScenarioId, setSelectedScenarioId] = useState("");
+  const [decisionTwinPolicy, setDecisionTwinPolicy] = useState({
+    min_confidence_band: "medium",
+    min_probability_delta: 1.0,
+    max_scope_changes: 4,
+    allow_backlog_adds: true,
+    enforce_policy: true,
+  });
 
   const palette = useMemo(
     () =>
@@ -45,19 +58,42 @@ function SprintDetail() {
 
   const fetchData = async () => {
     try {
-      const [sprintRes, autopilotRes] = await Promise.all([
+      const [sprintRes, autopilotRes, twinRes] = await Promise.allSettled([
         api.get(`/api/agile/sprints/${id}/detail/`),
         api.get(`/api/agile/sprints/${id}/autopilot/`),
+        api.get(`/api/agile/sprints/${id}/decision-twin/`, { params: decisionTwinPolicy }),
       ]);
-      setSprint(sprintRes.data.data || sprintRes.data);
-      setAutopilot(autopilotRes.data || null);
+      if (sprintRes.status === "fulfilled") {
+        setSprint(sprintRes.value.data.data || sprintRes.value.data);
+      } else {
+        setSprint(null);
+      }
+      if (autopilotRes.status === "fulfilled") {
+        setAutopilot(autopilotRes.value.data || null);
+      } else {
+        setAutopilot(null);
+      }
+      if (twinRes.status === "fulfilled") {
+        const payload = twinRes.value.data || null;
+        setDecisionTwin(payload);
+        setSelectedScenarioId(payload?.recommended_scenario_id || "");
+        setDecisionTwinError("");
+      } else {
+        setDecisionTwin(null);
+        setSelectedScenarioId((prev) => prev || "baseline");
+        setDecisionTwinError("Decision Twin API is unavailable for this sprint. Showing fallback scenarios.");
+      }
     } catch (error) {
       console.error("Failed to fetch sprint:", error);
       setSprint(null);
       setAutopilot(null);
+      setDecisionTwin(null);
+      setSelectedScenarioId((prev) => prev || "baseline");
+      setDecisionTwinError("Decision Twin failed to load. Showing fallback scenarios.");
     } finally {
       setLoading(false);
       setAutopilotLoading(false);
+      setDecisionTwinLoading(false);
     }
   };
 
@@ -85,6 +121,22 @@ function SprintDetail() {
     }
   };
 
+  const refreshDecisionTwin = async () => {
+    setDecisionTwinLoading(true);
+    try {
+      const response = await api.get(`/api/agile/sprints/${id}/decision-twin/`, { params: decisionTwinPolicy });
+      const payload = response.data || null;
+      setDecisionTwin(payload);
+      setSelectedScenarioId(payload?.recommended_scenario_id || "");
+      setDecisionTwinError("");
+    } catch (error) {
+      console.error("Failed to refresh decision twin:", error);
+      setDecisionTwinError("Decision Twin refresh failed. Using fallback scenarios.");
+    } finally {
+      setDecisionTwinLoading(false);
+    }
+  };
+
   const applyAutopilotPlan = async () => {
     if (!autopilot) return;
     setAutopilotApplying(true);
@@ -108,6 +160,56 @@ function SprintDetail() {
     }
   };
 
+  const applyDecisionTwinPlan = async () => {
+    if (!decisionTwin && !selectedScenarioId) return;
+    setDecisionTwinApplying(true);
+    setDecisionTwinMessage("");
+    try {
+      const response = await api.post(`/api/agile/sprints/${id}/decision-twin/apply/`, {
+        scenario_id: selectedScenarioId || decisionTwin.recommended_scenario_id,
+        create_decision_followups: true,
+        ...decisionTwinPolicy,
+      });
+      setDecisionTwinMessage(
+        `Applied ${response.data?.scenario_id || "scenario"}: dropped ${response.data?.dropped_count || 0}, added ${response.data?.added_count || 0}, follow-ups ${response.data?.followups_created || 0}.`
+      );
+      await fetchData();
+    } catch (error) {
+      setDecisionTwinMessage(error?.response?.data?.error || "Failed to apply decision twin scenario.");
+    } finally {
+      setDecisionTwinApplying(false);
+    }
+  };
+
+  const autoApplyDecisionTwinPlan = async () => {
+    if (!decisionTwin) {
+      setDecisionTwinMessage("Auto-apply requires Decision Twin API data. Click Refresh Twin after backend deploy.");
+      return;
+    }
+    setDecisionTwinApplying(true);
+    setDecisionTwinMessage("");
+    try {
+      const response = await api.post(`/api/agile/sprints/${id}/decision-twin/apply/`, {
+        auto_apply: true,
+        create_decision_followups: true,
+        ...decisionTwinPolicy,
+      });
+      setDecisionTwinMessage(
+        `Auto-applied ${response.data?.scenario_id || "scenario"}: dropped ${response.data?.dropped_count || 0}, added ${response.data?.added_count || 0}, follow-ups ${response.data?.followups_created || 0}.`
+      );
+      await fetchData();
+    } catch (error) {
+      const violations = error?.response?.data?.policy_violations;
+      if (Array.isArray(violations) && violations.length > 0) {
+        setDecisionTwinMessage(`Failed policy guardrails: ${violations.join(" | ")}`);
+      } else {
+        setDecisionTwinMessage(error?.response?.data?.error || "Failed to auto-apply decision twin scenario.");
+      }
+    } finally {
+      setDecisionTwinApplying(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
@@ -127,6 +229,13 @@ function SprintDetail() {
   const issues = sprint.issues || [];
   const progress = sprint.issue_count > 0 ? Math.round(((sprint.completed || 0) / sprint.issue_count) * 100) : 0;
   const statuses = ["backlog", "todo", "in_progress", "in_review", "testing", "done"];
+  const scenarioOptions = (decisionTwin?.scenarios && decisionTwin.scenarios.length > 0)
+    ? decisionTwin.scenarios
+    : [
+        { id: "baseline", name: "Baseline Plan", projected_goal_probability: "--", delta_vs_baseline: 0 },
+        { id: "scope_swap", name: "Scope Swap", projected_goal_probability: "--", delta_vs_baseline: 0 },
+        { id: "focus_mode", name: "Focus Mode", projected_goal_probability: "--", delta_vs_baseline: 0 },
+      ];
 
   return (
     <div style={{ minHeight: "100vh", background: palette.bg }}>
@@ -229,6 +338,134 @@ function SprintDetail() {
               )}
             </div>
           </div>
+        </section>
+
+        <section style={{ ...progressCard, background: palette.card, border: `1px solid ${palette.border}`, display: "grid", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 11, color: palette.muted, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>
+                Autonomous Decision Twin
+              </p>
+              <p style={{ margin: "4px 0 0", fontSize: 15, color: palette.text, fontWeight: 800 }}>
+                Counterfactual Plan Engine
+              </p>
+              {decisionTwin && (
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>
+                  Objective: {decisionTwin.objective}
+                </p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={refreshDecisionTwin} disabled={decisionTwinLoading} style={secondaryButton}>
+                {decisionTwinLoading ? "Refreshing..." : "Refresh Twin"}
+              </button>
+              <button onClick={applyDecisionTwinPlan} disabled={decisionTwinApplying || !selectedScenarioId} style={secondaryButton}>
+                {decisionTwinApplying ? "Applying..." : "Apply Selected Scenario"}
+              </button>
+              <button onClick={autoApplyDecisionTwinPlan} disabled={decisionTwinApplying || !decisionTwin} style={secondaryButton}>
+                {decisionTwinApplying ? "Applying..." : "Auto-Apply Guarded"}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8 }}>
+            <label style={{ display: "grid", gap: 4, fontSize: 11, color: palette.muted }}>
+              Min Confidence
+              <select
+                value={decisionTwinPolicy.min_confidence_band}
+                onChange={(event) => setDecisionTwinPolicy((prev) => ({ ...prev, min_confidence_band: event.target.value }))}
+                style={{ borderRadius: 8, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, padding: "7px 8px", fontSize: 12 }}
+              >
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 4, fontSize: 11, color: palette.muted }}>
+              Min Uplift %
+              <input
+                type="number"
+                step="0.1"
+                value={decisionTwinPolicy.min_probability_delta}
+                onChange={(event) => setDecisionTwinPolicy((prev) => ({ ...prev, min_probability_delta: Number(event.target.value || 0) }))}
+                style={{ borderRadius: 8, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, padding: "7px 8px", fontSize: 12 }}
+              />
+            </label>
+            <label style={{ display: "grid", gap: 4, fontSize: 11, color: palette.muted }}>
+              Max Scope Changes
+              <input
+                type="number"
+                min="0"
+                max="20"
+                value={decisionTwinPolicy.max_scope_changes}
+                onChange={(event) => setDecisionTwinPolicy((prev) => ({ ...prev, max_scope_changes: Number(event.target.value || 0) }))}
+                style={{ borderRadius: 8, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, padding: "7px 8px", fontSize: 12 }}
+              />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: palette.muted }}>
+              <input
+                type="checkbox"
+                checked={decisionTwinPolicy.allow_backlog_adds}
+                onChange={(event) => setDecisionTwinPolicy((prev) => ({ ...prev, allow_backlog_adds: event.target.checked }))}
+              />
+              Allow backlog adds
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: palette.muted }}>
+              <input
+                type="checkbox"
+                checked={decisionTwinPolicy.enforce_policy}
+                onChange={(event) => setDecisionTwinPolicy((prev) => ({ ...prev, enforce_policy: event.target.checked }))}
+              />
+              Enforce policy on apply
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <select
+              value={selectedScenarioId || scenarioOptions[0]?.id || "baseline"}
+              onChange={(event) => setSelectedScenarioId(event.target.value)}
+              style={{ borderRadius: 8, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, padding: "8px 10px", fontSize: 13 }}
+            >
+              {scenarioOptions.map((scenario) => (
+                <option key={scenario.id} value={scenario.id}>
+                  {scenario.name} | {scenario.projected_goal_probability}% ({scenario.delta_vs_baseline >= 0 ? "+" : ""}{scenario.delta_vs_baseline})
+                </option>
+              ))}
+            </select>
+
+            {(scenarioOptions || [])
+              .filter((scenario) => scenario.id === (selectedScenarioId || scenarioOptions[0]?.id))
+              .map((scenario) => (
+                <div key={scenario.id} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: 10, background: palette.cardAlt }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>
+                    {scenario.name} | {scenario.projected_goal_probability}% | Confidence {String(scenario.confidence_band || "--").toUpperCase()}
+                  </p>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, color: palette.muted }}>{scenario.summary || "Refresh Twin to load projected tradeoffs and evidence."}</p>
+                  {scenario.tradeoffs && (
+                    <p style={{ margin: "0 0 6px", fontSize: 12, color: palette.muted }}>
+                      Tradeoffs: {(scenario.tradeoffs || []).join(" | ")}
+                    </p>
+                  )}
+                  {scenario.policy_result && (
+                    <p style={{ margin: "0 0 6px", fontSize: 11, color: (scenario.policy_result?.auto_apply_eligible ? "#10b981" : "#ef4444") }}>
+                      Policy: {scenario.policy_result?.auto_apply_eligible ? "auto-apply eligible" : "blocked"}
+                    </p>
+                  )}
+                </div>
+              ))}
+          </div>
+
+          {decisionTwinError && (
+            <p style={{ margin: 0, fontSize: 12, color: "#f59e0b" }}>
+              {decisionTwinError}
+            </p>
+          )}
+
+          {decisionTwinMessage && (
+            <p style={{ margin: 0, fontSize: 12, color: decisionTwinMessage.startsWith("Failed") ? "#ef4444" : "#10b981" }}>
+              {decisionTwinMessage}
+            </p>
+          )}
         </section>
 
         <section style={{ ...progressCard, background: palette.card, border: `1px solid ${palette.border}` }}>

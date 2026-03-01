@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from .models import (
     Issue, IssueAttachment, SavedFilter, IssueTemplate,
-    Release, Component, ProjectCategory, Column, IssueLabel, Project, Board
+    Release, Component, ProjectCategory, Column, IssueLabel, Project, Board, ServiceDeskAITriage
 )
 from .serializers import (
     IssueAttachmentSerializer, SavedFilterSerializer, IssueTemplateSerializer,
@@ -320,6 +320,7 @@ def service_desk_overview(request):
 
     queue_data = []
     for issue in queue:
+        ai_triage = getattr(issue, 'service_desk_ai', None)
         queue_data.append({
             'id': issue.id,
             'key': issue.key,
@@ -331,6 +332,13 @@ def service_desk_overview(request):
             'reporter': issue.reporter.get_full_name() or issue.reporter.username,
             'due_date': issue.due_date,
             'updated_at': issue.updated_at,
+            'ai_triage': {
+                'risk_status': ai_triage.risk_status,
+                'confidence': ai_triage.confidence,
+                'suggested_request_type': ai_triage.suggested_request_type,
+                'suggested_priority': ai_triage.suggested_priority,
+                'updated_at': ai_triage.updated_at,
+            } if ai_triage else None,
         })
 
     return Response({
@@ -364,6 +372,7 @@ def create_service_request(request):
     priority = (request.data.get('priority') or 'medium').strip().lower()
     description = request.data.get('description') or ''
     due_date = request.data.get('due_date') or None
+    ai_triage = request.data.get('ai_triage') or {}
 
     allowed_priorities = {'lowest', 'low', 'medium', 'high', 'highest'}
     if priority not in allowed_priorities:
@@ -419,6 +428,28 @@ def create_service_request(request):
         due_date=due_date,
     )
 
+    if isinstance(ai_triage, dict) and ai_triage:
+        actions = ai_triage.get('next_actions') or ai_triage.get('suggested_actions') or []
+        if not isinstance(actions, list):
+            actions = []
+        confidence_value = ai_triage.get('confidence', 0)
+        try:
+            confidence_value = int(confidence_value)
+        except (TypeError, ValueError):
+            confidence_value = 0
+        ServiceDeskAITriage.objects.create(
+            issue=issue,
+            organization=request.user.organization,
+            generated_by=request.user,
+            risk_status=(ai_triage.get('risk_status') or ai_triage.get('riskStatus') or 'watch')[:20],
+            confidence=max(0, min(100, confidence_value)),
+            suggested_request_type=(ai_triage.get('suggested_request_type') or ai_triage.get('suggestedType') or request_type)[:30],
+            suggested_priority=(ai_triage.get('suggested_priority') or ai_triage.get('suggestedPriority') or priority)[:20],
+            ai_answer=ai_triage.get('answer') or '',
+            suggested_actions=actions[:8],
+            raw_payload=ai_triage,
+        )
+
     label, _ = IssueLabel.objects.get_or_create(
         organization=request.user.organization,
         name=SERVICE_DESK_LABEL,
@@ -449,4 +480,5 @@ def create_service_request(request):
         'priority': issue.priority,
         'project': issue.project.name,
         'assignee': issue.assignee.get_full_name() if issue.assignee else None,
+        'ai_triage_saved': bool(isinstance(ai_triage, dict) and ai_triage),
     }, status=status.HTTP_201_CREATED)

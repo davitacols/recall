@@ -239,6 +239,34 @@ class IssueLabel(models.Model):
         db_table = 'issue_labels'
         unique_together = ['organization', 'name']
 
+
+class ServiceDeskAITriage(models.Model):
+    """Persist AI triage metadata for Service Desk requests."""
+    issue = models.OneToOneField(Issue, on_delete=models.CASCADE, related_name='service_desk_ai')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    generated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    risk_status = models.CharField(max_length=20, blank=True, default='watch')
+    confidence = models.IntegerField(default=0)
+    suggested_request_type = models.CharField(max_length=30, blank=True, default='general')
+    suggested_priority = models.CharField(max_length=20, blank=True, default='medium')
+    ai_answer = models.TextField(blank=True)
+    suggested_actions = models.JSONField(default=list, blank=True)
+    raw_payload = models.JSONField(default=dict, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'service_desk_ai_triage'
+        indexes = [
+            models.Index(fields=['organization', 'risk_status']),
+            models.Index(fields=['organization', '-updated_at']),
+        ]
+
+    def __str__(self):
+        return f'AI triage for {self.issue.key}'
+
 class Blocker(models.Model):
     BLOCKER_TYPES = [
         ('technical', 'Technical'),

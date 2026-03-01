@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
 
 const REQUEST_TYPES = [
   { key: "access", name: "Access Request" },
@@ -12,9 +13,12 @@ const REQUEST_TYPES = [
 ];
 
 export default function ServiceDesk() {
+  const { darkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [queue, setQueue] = useState([]);
+  const [aiGuide, setAiGuide] = useState(null);
   const [summary, setSummary] = useState({
     total_requests: 0,
     open_requests: 0,
@@ -31,6 +35,39 @@ export default function ServiceDesk() {
     due_date: "",
   });
   const [error, setError] = useState("");
+  const [aiError, setAiError] = useState("");
+
+  const palette = useMemo(
+    () =>
+      darkMode
+        ? {
+            page: "#0f0b0d",
+            panel: "#171215",
+            panelAlt: "#1e171b",
+            border: "rgba(255,225,193,0.14)",
+            text: "#f4ece0",
+            muted: "#baa892",
+            accent: "#ffb476",
+            accentSoft: "rgba(255,180,118,0.22)",
+            good: "#66d5ab",
+            warn: "#f59e0b",
+            bad: "#ef4444",
+          }
+        : {
+            page: "#f5eee3",
+            panel: "#fffaf3",
+            panelAlt: "#ffffff",
+            border: "#eadfce",
+            text: "#231814",
+            muted: "#7d6d5a",
+            accent: "#d9692e",
+            accentSoft: "rgba(217,105,46,0.2)",
+            good: "#1f8f66",
+            warn: "#a16207",
+            bad: "#b91c1c",
+          },
+    [darkMode]
+  );
 
   const cards = useMemo(
     () => [
@@ -65,13 +102,106 @@ export default function ServiceDesk() {
     fetchData();
   }, [statusFilter, mineOnly]);
 
+  const inferRequestType = (guide) => {
+    const text = `${guide?.answer || ""} ${form.title || ""} ${form.description || ""}`.toLowerCase();
+    if (text.includes("access") || text.includes("permission")) return "access";
+    if (text.includes("incident") || text.includes("outage") || text.includes("sev")) return "incident";
+    if (text.includes("bug") || text.includes("error") || text.includes("exception")) return "bug";
+    if (text.includes("change") || text.includes("rollout") || text.includes("migration")) return "change";
+    if (text.includes("service") || text.includes("request")) return "service";
+    return "general";
+  };
+
+  const inferPriority = (guide) => {
+    const status = guide?.riskStatus;
+    const confidence = Number(guide?.confidence || 0);
+    if (status === "critical") return "highest";
+    if (status === "watch") return confidence >= 75 ? "high" : "medium";
+    return confidence >= 80 ? "medium" : "low";
+  };
+
+  const mapCopilotResponse = (payload) => ({
+    answer: payload?.answer || "No AI guidance generated.",
+    confidence: payload?.confidence || 0,
+    riskStatus: payload?.risk_status || "watch",
+    nextActions: Array.isArray(payload?.recommended_interventions)
+      ? payload.recommended_interventions.slice(0, 4)
+      : [],
+  });
+
+  const analyzeWithAI = async () => {
+    if (!form.title.trim()) return;
+    setAnalyzing(true);
+    setAiError("");
+    try {
+      const prompt = `Support request triage.\nTitle: ${form.title}\nDescription: ${form.description}\nRequest type: ${form.request_type}\nPriority: ${form.priority}\nProvide triage risk and top handling actions.`;
+      const response = await api.post("/api/knowledge/ai/copilot/", {
+        query: prompt,
+        execute: false,
+        max_actions: 4,
+      });
+      setAiGuide(mapCopilotResponse(response.data));
+    } catch (err) {
+      try {
+        const [missionRes] = await Promise.all([
+          api.get("/api/knowledge/ai/mission-control/"),
+        ]);
+        const fallback = {
+          answer: "AI copilot fallback guidance generated from mission control and recommendations.",
+          confidence: 62,
+          riskStatus: missionRes?.data?.north_star?.status || "watch",
+          nextActions: (missionRes?.data?.autonomous_actions || []).slice(0, 4),
+        };
+        setAiGuide(fallback);
+      } catch (_fallbackErr) {
+        setAiError(err?.response?.data?.error || "Unable to generate AI guidance.");
+      }
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const applyAiGuidance = () => {
+    if (!aiGuide) return;
+    const suggestedType = inferRequestType(aiGuide);
+    const suggestedPriority = inferPriority(aiGuide);
+    const actionLines = (aiGuide.nextActions || [])
+      .map((a, idx) => `${idx + 1}. ${a.title || a}`)
+      .join("\n");
+
+    setForm((prev) => ({
+      ...prev,
+      request_type: suggestedType,
+      priority: suggestedPriority,
+      description: `${prev.description || ""}${prev.description ? "\n\n" : ""}AI triage notes:\n${aiGuide.answer}${actionLines ? `\n\nSuggested actions:\n${actionLines}` : ""}`,
+    }));
+  };
+
   const submitRequest = async (event) => {
     event.preventDefault();
     if (!form.title.trim()) return;
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/api/agile/service-desk/requests/", form);
+      const aiTriagePayload = aiGuide
+        ? {
+            answer: aiGuide.answer,
+            confidence: aiGuide.confidence,
+            risk_status: aiGuide.riskStatus,
+            suggested_request_type: inferRequestType(aiGuide),
+            suggested_priority: inferPriority(aiGuide),
+            next_actions: (aiGuide.nextActions || []).map((action) => ({
+              title: action?.title || action,
+              reason: action?.reason || "",
+              confidence: action?.confidence ?? null,
+              impact: action?.impact ?? null,
+            })),
+          }
+        : null;
+      await api.post("/api/agile/service-desk/requests/", {
+        ...form,
+        ai_triage: aiTriagePayload,
+      });
       setForm({
         title: "",
         description: "",
@@ -79,6 +209,8 @@ export default function ServiceDesk() {
         priority: "medium",
         due_date: "",
       });
+      setAiGuide(null);
+      setAiError("");
       fetchData();
     } catch (err) {
       setError(err?.response?.data?.error || "Unable to submit request.");
@@ -88,57 +220,57 @@ export default function ServiceDesk() {
   };
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <section style={hero}>
+    <div style={{ display: "grid", gap: 14, background: palette.page, borderRadius: 14, padding: 10 }}>
+      <section style={{ ...hero, border: `1px solid ${palette.border}`, background: palette.panel }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 23 }}>Service Desk</h1>
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#6b7280" }}>
+          <h1 style={{ margin: 0, fontSize: 23, color: palette.text }}>Service Desk</h1>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>
             Jira Service Management-style intake and queue for support requests.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={input}>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ ...input, ...themedInput(palette) }}>
             <option value="open">Open</option>
             <option value="closed">Closed</option>
             <option value="all">All</option>
           </select>
-          <button onClick={() => setMineOnly((v) => !v)} style={mineOnly ? btnActive : btnGhost}>
+          <button onClick={() => setMineOnly((v) => !v)} style={mineOnly ? themedBtnActive(palette) : themedBtnGhost(palette)}>
             {mineOnly ? "Showing Mine" : "Show Mine"}
           </button>
-          <button onClick={fetchData} style={btnPrimary}>Refresh</button>
+          <button onClick={fetchData} style={themedBtnPrimary(palette)}>Refresh</button>
         </div>
       </section>
 
       <section style={statsGrid}>
         {cards.map((card) => (
-          <article key={card.label} style={cardStyle}>
-            <p style={{ margin: 0, color: "#6b7280", fontSize: 12 }}>{card.label}</p>
-            <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 20 }}>{card.value || 0}</p>
+          <article key={card.label} style={{ ...cardStyle, border: `1px solid ${palette.border}`, background: palette.panel }}>
+            <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>{card.label}</p>
+            <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 20, color: palette.text }}>{card.value || 0}</p>
           </article>
         ))}
       </section>
 
-      <section style={panel}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>Create Request</h2>
+      <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panel }}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 16, color: palette.text }}>Create Request</h2>
         <form onSubmit={submitRequest} style={{ display: "grid", gap: 8 }}>
           <input
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
             placeholder="Request title"
-            style={input}
+            style={{ ...input, ...themedInput(palette) }}
             required
           />
           <textarea
             value={form.description}
             onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
             placeholder="Describe the request"
-            style={{ ...input, minHeight: 84, resize: "vertical" }}
+            style={{ ...input, ...themedInput(palette), minHeight: 84, resize: "vertical" }}
           />
           <div style={twoCol}>
             <select
               value={form.request_type}
               onChange={(e) => setForm((prev) => ({ ...prev, request_type: e.target.value }))}
-              style={input}
+              style={{ ...input, ...themedInput(palette) }}
             >
               {REQUEST_TYPES.map((type) => (
                 <option key={type.key} value={type.key}>{type.name}</option>
@@ -147,7 +279,7 @@ export default function ServiceDesk() {
             <select
               value={form.priority}
               onChange={(e) => setForm((prev) => ({ ...prev, priority: e.target.value }))}
-              style={input}
+              style={{ ...input, ...themedInput(palette) }}
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -159,35 +291,76 @@ export default function ServiceDesk() {
             type="date"
             value={form.due_date}
             onChange={(e) => setForm((prev) => ({ ...prev, due_date: e.target.value }))}
-            style={input}
+            style={{ ...input, ...themedInput(palette) }}
           />
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button type="submit" style={btnPrimary} disabled={submitting}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={analyzeWithAI} style={themedBtnGhost(palette)} disabled={analyzing || !form.title.trim()}>
+                {analyzing ? "Analyzing..." : "Analyze with AI"}
+              </button>
+              <button type="button" onClick={applyAiGuidance} style={themedBtnActive(palette)} disabled={!aiGuide}>
+                Apply AI Guidance
+              </button>
+            </div>
+            <button type="submit" style={themedBtnPrimary(palette)} disabled={submitting}>
               {submitting ? "Submitting..." : "Submit Request"}
             </button>
           </div>
         </form>
       </section>
 
-      <section style={panel}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>Queue</h2>
+      {(aiGuide || aiError) && (
+        <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+          <h2 style={{ margin: "0 0 8px", fontSize: 16, color: palette.text }}>AI Support Guide</h2>
+          {aiError ? (
+            <p style={{ ...muted, color: palette.bad }}>{aiError}</p>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              <p style={{ margin: 0, color: palette.muted, fontSize: 13 }}>{aiGuide?.answer}</p>
+              <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>
+                Risk: <strong style={{ color: palette.text }}>{aiGuide?.riskStatus}</strong> | Confidence:{" "}
+                <strong style={{ color: palette.text }}>{aiGuide?.confidence}%</strong> | Suggested type:{" "}
+                <strong style={{ color: palette.text }}>{inferRequestType(aiGuide)}</strong> | Suggested priority:{" "}
+                <strong style={{ color: palette.text }}>{inferPriority(aiGuide)}</strong>
+              </p>
+              {Array.isArray(aiGuide?.nextActions) && aiGuide.nextActions.length > 0 && (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {aiGuide.nextActions.slice(0, 4).map((action, idx) => (
+                    <div key={idx} style={{ border: `1px solid ${palette.border}`, borderRadius: 8, padding: 8, color: palette.text }}>
+                      {(action.title || action)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panel }}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 16, color: palette.text }}>Queue</h2>
         {loading ? (
-          <p style={muted}>Loading queue...</p>
+          <p style={{ ...muted, color: palette.muted }}>Loading queue...</p>
         ) : queue.length === 0 ? (
-          <p style={muted}>No requests found for this filter.</p>
+          <p style={{ ...muted, color: palette.muted }}>No requests found for this filter.</p>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
             {queue.map((item) => (
-              <article key={item.id} style={queueRow}>
+              <article key={item.id} style={{ ...queueRow, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
                 <div style={{ minWidth: 0 }}>
-                  <Link to={`/issues/${item.id}`} style={{ color: "#111827", fontWeight: 700, textDecoration: "none" }}>
+                  <Link to={`/issues/${item.id}`} style={{ color: palette.text, fontWeight: 700, textDecoration: "none" }}>
                     {item.key} - {item.title}
                   </Link>
-                  <p style={{ margin: "4px 0 0", color: "#6b7280", fontSize: 12 }}>
+                  <p style={{ margin: "4px 0 0", color: palette.muted, fontSize: 12 }}>
                     {item.project} | {item.status} | {item.priority} | {item.assignee || "Unassigned"}
                   </p>
+                  {item.ai_triage ? (
+                    <p style={{ margin: "4px 0 0", color: palette.muted, fontSize: 11 }}>
+                      AI: {item.ai_triage.risk_status} risk, {item.ai_triage.confidence}% confidence
+                    </p>
+                  ) : null}
                 </div>
-                <span style={{ color: "#6b7280", fontSize: 12 }}>
+                <span style={{ color: palette.muted, fontSize: 12 }}>
                   {new Date(item.updated_at).toLocaleString()}
                 </span>
               </article>
@@ -196,7 +369,7 @@ export default function ServiceDesk() {
         )}
       </section>
 
-      {error ? <p style={{ ...muted, color: "#dc2626" }}>{error}</p> : null}
+      {error ? <p style={{ ...muted, color: palette.bad }}>{error}</p> : null}
     </div>
   );
 }
@@ -259,36 +432,42 @@ const twoCol = {
   gap: 8,
 };
 
-const btnPrimary = {
-  border: "1px solid #111827",
-  borderRadius: 8,
-  background: "#111827",
-  color: "#ffffff",
-  padding: "9px 14px",
-  fontWeight: 700,
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const btnGhost = {
-  border: "1px solid #d1d5db",
-  borderRadius: 8,
-  background: "#ffffff",
-  color: "#111827",
-  padding: "9px 14px",
-  fontWeight: 700,
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const btnActive = {
-  ...btnGhost,
-  border: "1px solid #111827",
-  background: "#f3f4f6",
-};
-
 const muted = {
   margin: 0,
   color: "#6b7280",
   fontSize: 13,
 };
+
+const themedInput = (palette) => ({
+  border: `1px solid ${palette.border}`,
+  background: palette.panelAlt,
+  color: palette.text,
+});
+
+const themedBtnPrimary = (palette) => ({
+  border: `1px solid ${palette.accent}`,
+  borderRadius: 8,
+  background: palette.accent,
+  color: "#ffffff",
+  padding: "9px 14px",
+  fontWeight: 700,
+  fontSize: 13,
+  cursor: "pointer",
+});
+
+const themedBtnGhost = (palette) => ({
+  border: `1px solid ${palette.border}`,
+  borderRadius: 8,
+  background: palette.panelAlt,
+  color: palette.text,
+  padding: "9px 14px",
+  fontWeight: 700,
+  fontSize: 13,
+  cursor: "pointer",
+});
+
+const themedBtnActive = (palette) => ({
+  ...themedBtnGhost(palette),
+  border: `1px solid ${palette.accent}`,
+  boxShadow: `inset 0 0 0 1px ${palette.accentSoft}`,
+});

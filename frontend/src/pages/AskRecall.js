@@ -43,30 +43,30 @@ export default function AskRecall() {
     () =>
       darkMode
         ? {
-            bg: '#0d1217',
-            panel: '#151d25',
-            panelAlt: '#1b2631',
-            border: 'rgba(145, 181, 214, 0.24)',
-            text: '#e8f0f8',
-            muted: '#9ab0c7',
-            accent: '#58b5ff',
-            accentSoft: 'rgba(88, 181, 255, 0.2)',
-            success: '#34d399',
+            bg: '#0f0b0d',
+            panel: '#171215',
+            panelAlt: '#1e171b',
+            border: 'rgba(255,225,193,0.14)',
+            text: '#f4ece0',
+            muted: '#baa892',
+            accent: '#ffb476',
+            accentSoft: 'rgba(255,180,118,0.2)',
+            success: '#66d5ab',
             warning: '#f59e0b',
-            danger: '#fb7185',
+            danger: '#ef4444',
           }
         : {
-            bg: '#f4f8fc',
-            panel: '#ffffff',
-            panelAlt: '#f8fbff',
-            border: '#d5e4f1',
-            text: '#102233',
-            muted: '#567089',
-            accent: '#0a84d8',
-            accentSoft: 'rgba(10, 132, 216, 0.12)',
-            success: '#1d9a66',
-            warning: '#b7791f',
-            danger: '#dc4c64',
+            bg: '#f5eee3',
+            panel: '#fffaf3',
+            panelAlt: '#ffffff',
+            border: '#eadfce',
+            text: '#231814',
+            muted: '#7d6d5a',
+            accent: '#d9692e',
+            accentSoft: 'rgba(217,105,46,0.12)',
+            success: '#1f8f66',
+            warning: '#a16207',
+            danger: '#b91c1c',
           },
     [darkMode]
   );
@@ -230,6 +230,8 @@ export default function AskRecall() {
         margin: '0 auto',
         padding: '28px 18px 48px',
         color: theme.text,
+        background: theme.bg,
+        borderRadius: 18,
       }}
     >
       <section
@@ -238,9 +240,9 @@ export default function AskRecall() {
           borderRadius: 20,
           padding: 24,
           background: darkMode
-            ? 'linear-gradient(145deg, rgba(24,39,54,0.96), rgba(17,27,35,0.96))'
-            : 'linear-gradient(145deg, rgba(255,255,255,0.98), rgba(241,248,255,0.98))',
-          boxShadow: darkMode ? '0 16px 48px rgba(3,9,14,0.34)' : '0 14px 36px rgba(12,67,112,0.09)',
+            ? 'linear-gradient(135deg, rgba(59,130,246,0.16) 0%, rgba(249,115,22,0.15) 52%, rgba(34,197,94,0.12) 100%)'
+            : 'linear-gradient(135deg, rgba(191,219,254,0.52) 0%, rgba(255,220,182,0.58) 52%, rgba(187,247,208,0.44) 100%)',
+          boxShadow: darkMode ? '0 16px 44px rgba(8,6,7,0.38)' : '0 14px 30px rgba(110,84,58,0.12)',
           marginBottom: 22,
         }}
       >

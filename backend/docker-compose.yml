@@ -19,7 +19,7 @@ services:
 
   web:
     build: .
-    command: gunicorn --bind 0.0.0.0:8000 --workers 3 recall.wsgi:application
+    command: gunicorn --bind 0.0.0.0:8000 --workers 3 config.wsgi:application
     volumes:
       - .:/app
     ports:
@@ -39,7 +39,7 @@ services:
 
   celery:
     build: .
-    command: celery -A recall worker --loglevel=info
+    command: celery -A config worker --loglevel=info
     volumes:
       - .:/app
     environment:

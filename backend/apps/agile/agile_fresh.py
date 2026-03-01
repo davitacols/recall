@@ -15,6 +15,7 @@ from apps.organizations.subscription_entitlements import get_or_create_subscript
 from apps.organizations.auditlog_models import AuditLog
 from apps.conversations.models import Conversation
 from apps.knowledge.unified_models import UnifiedActivity
+from apps.notifications.utils import create_notification
 
 
 def _track_view_activity(request, obj, title, description=""):
@@ -69,6 +70,45 @@ def _resolve_issue_by_ref(organization, issue_ref):
             return matches.first()
 
     return None
+
+
+def _notify_issue_assignment(actor, issue, assignee_id):
+    if not assignee_id:
+        return
+    if assignee_id == getattr(actor, 'id', None):
+        return
+    assignee = User.objects.filter(id=assignee_id, organization=actor.organization).first()
+    if not assignee:
+        return
+    create_notification(
+        user=assignee,
+        notification_type='issue_assigned',
+        title=f'Issue {issue.key} assigned to you',
+        message=f'{actor.get_full_name() or actor.username} assigned {issue.title} to you',
+        link=f'/issues/{issue.id}',
+    )
+
+
+def _notify_issue_status_change(actor, issue, from_status, to_status):
+    if from_status == to_status:
+        return
+    recipients = {}
+    if issue.assignee_id and issue.assignee_id != getattr(actor, 'id', None):
+        recipients[issue.assignee_id] = issue.assignee
+    if issue.reporter_id and issue.reporter_id != getattr(actor, 'id', None):
+        recipients[issue.reporter_id] = issue.reporter
+
+    actor_name = actor.get_full_name() or actor.username
+    for recipient in recipients.values():
+        if not recipient:
+            continue
+        create_notification(
+            user=recipient,
+            notification_type='task',
+            title=f'Issue {issue.key} moved to {to_status.replace("_", " ").title()}',
+            message=f'{actor_name} moved {issue.title} from {from_status} to {to_status}',
+            link=f'/issues/{issue.id}',
+        )
 
 
 def _feature_gate_response(user, feature_key, required_plan='professional'):
@@ -446,6 +486,8 @@ def issues(request, project_id):
     except Exception as exc:
         return Response({'error': str(exc)}, status=400)
 
+    _notify_issue_assignment(request.user, issue, issue.assignee_id)
+
     return Response({'id': issue.id, 'key': issue.key, 'title': issue.title})
 
 @api_view(['GET', 'PUT', 'DELETE'])
@@ -525,6 +567,7 @@ def issue_detail(request, issue_id):
         if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
             return Response({'error': 'Permission denied for this project'}, status=403)
         old_status = issue.status
+        old_assignee_id = issue.assignee_id
         transition = None
         transition_comment = (request.data.get('transition_comment') or request.data.get('comment') or '').strip()
 
@@ -619,6 +662,10 @@ def issue_detail(request, issue_id):
                 issue.sprint = None
         
         issue.save()
+        if issue.assignee_id and issue.assignee_id != old_assignee_id:
+            _notify_issue_assignment(request.user, issue, issue.assignee_id)
+        if issue.status != old_status:
+            _notify_issue_status_change(request.user, issue, old_status, issue.status)
         if transition and issue.status != old_status:
             if transition_comment:
                 IssueComment.objects.create(
@@ -674,6 +721,26 @@ def add_comment(request, issue_id):
         author=request.user,
         content=request.data['content']
     )
+
+    actor_name = request.user.get_full_name() or request.user.username
+    notified_ids = {request.user.id}
+    if issue.assignee_id and issue.assignee_id not in notified_ids:
+        create_notification(
+            user=issue.assignee,
+            notification_type='task',
+            title=f'New comment on {issue.key}',
+            message=f'{actor_name} commented on {issue.title}',
+            link=f'/issues/{issue.id}',
+        )
+        notified_ids.add(issue.assignee_id)
+    if issue.reporter_id and issue.reporter_id not in notified_ids:
+        create_notification(
+            user=issue.reporter,
+            notification_type='task',
+            title=f'New comment on {issue.key}',
+            message=f'{actor_name} commented on {issue.title}',
+            link=f'/issues/{issue.id}',
+        )
     
     return Response({
         'id': comment.id,
@@ -895,6 +962,17 @@ def blockers(request):
         return Response({'error': 'Sprint not found'}, status=404)
     if sprint.project_id and not has_project_permission(request.user, Permission.EDIT_SPRINT.value, sprint.project_id):
         return Response({'error': 'Permission denied for this project'}, status=403)
+
+    assigned_to_id = request.data.get('assigned_to_id')
+    if assigned_to_id in ('', None, 'null'):
+        assigned_to_id = None
+    if assigned_to_id is not None:
+        try:
+            assigned_to_id = int(assigned_to_id)
+        except (TypeError, ValueError):
+            return Response({'error': 'assigned_to_id must be an integer'}, status=400)
+        if not User.objects.filter(id=assigned_to_id, organization=request.user.organization).exists():
+            return Response({'error': 'Invalid assigned_to_id for this organization'}, status=400)
     
     conversation = Conversation.objects.create(
         organization=request.user.organization,
@@ -911,8 +989,27 @@ def blockers(request):
         title=request.data['title'],
         description=request.data.get('description', ''),
         blocker_type=request.data.get('type', 'technical'),
-        blocked_by=request.user
+        blocked_by=request.user,
+        assigned_to_id=assigned_to_id,
     )
+
+    if blocker.assigned_to_id and blocker.assigned_to_id != request.user.id:
+        create_notification(
+            user=blocker.assigned_to,
+            notification_type='task',
+            title=f'Blocker assigned in {sprint.name}',
+            message=f'{request.user.get_full_name() or request.user.username} assigned blocker "{blocker.title}" to you',
+            link='/blockers',
+        )
+
+    if sprint.project and sprint.project.lead_id and sprint.project.lead_id != request.user.id:
+        create_notification(
+            user=sprint.project.lead,
+            notification_type='system',
+            title=f'New blocker in {sprint.name}',
+            message=f'{request.user.get_full_name() or request.user.username} reported blocker "{blocker.title}"',
+            link='/blockers',
+        )
     
     return Response({'id': blocker.id, 'title': blocker.title, 'sprint_id': sprint.id})
 
@@ -930,6 +1027,22 @@ def resolve_blocker(request, blocker_id):
         blocker.status = 'resolved'
         blocker.resolved_at = timezone.now()
         blocker.save()
+
+        recipients = {}
+        if blocker.blocked_by_id and blocker.blocked_by_id != request.user.id:
+            recipients[blocker.blocked_by_id] = blocker.blocked_by
+        if blocker.assigned_to_id and blocker.assigned_to_id != request.user.id:
+            recipients[blocker.assigned_to_id] = blocker.assigned_to
+        for recipient in recipients.values():
+            if not recipient:
+                continue
+            create_notification(
+                user=recipient,
+                notification_type='system',
+                title='Blocker resolved',
+                message=f'{request.user.get_full_name() or request.user.username} resolved blocker "{blocker.title}"',
+                link='/blockers',
+            )
         return Response({'message': 'Blocker resolved'})
     except Blocker.DoesNotExist:
         return Response({'error': 'Blocker not found'}, status=404)
@@ -1694,7 +1807,6 @@ def _apply_scope_swap_plan(user, sprint, drop_issue_ids, add_issue_ids, create_d
     created_followups = []
     if create_decision_followups:
         from apps.business.models import Task
-        from apps.notifications.utils import create_notification
 
         unresolved = Decision.objects.filter(
             organization=user.organization,

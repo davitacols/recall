@@ -2,22 +2,77 @@ services:
   - type: web
     name: recall-backend
     env: python
+    rootDir: backend
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
     startCommand: daphne -b 0.0.0.0 -p $PORT config.asgi:application
     envVars:
-      - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_TBtxv7d8LAEs@ep-rough-thunder-a44a4ps0-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
-      - key: REDIS_URL
-        value: rediss://default:AR3KAAImcDFlNzhmYmViNTRkNTQ0YWJjYTQwN2MxNDMwOWYwOTgxY3AxNzYyNg@steady-collie-7626.upstash.io:6379
+      - key: PYTHON_VERSION
+        value: 3.11.10
       - key: SECRET_KEY
         generateValue: true
-      - key: AWS_ACCESS_KEY_ID
-        value: AKIAUHPTTS4AJTY5KHPF
-      - key: AWS_SECRET_ACCESS_KEY
-        value: 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
-      - key: AWS_REGION
-        value: us-east-1
       - key: DEBUG
-        value: False
+        value: "False"
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: NOTIFICATIONS_USE_CELERY
+        value: "True"
+
+  - type: worker
+    name: recall-worker
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m celery -A config worker --loglevel=info --pool=solo
+    envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11.10
+      - key: SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: NOTIFICATIONS_USE_CELERY
+        value: "True"
+
+  - type: worker
+    name: recall-beat
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m celery -A config beat --loglevel=info
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.10
+      - key: SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: NOTIFICATIONS_USE_CELERY
+        value: "True"

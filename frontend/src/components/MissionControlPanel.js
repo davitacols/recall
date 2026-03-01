@@ -37,28 +37,94 @@ export default function MissionControlPanel({ darkMode }) {
     fetchData();
   }, []);
 
+  const mapPlanToMissionControl = (plan) => {
+    const readiness = Number(plan?.readiness_score ?? 50);
+    const status = plan?.status || "watch";
+    const summary =
+      status === "stable"
+        ? "Execution is healthy based on chief-of-staff readiness."
+        : status === "watch"
+        ? "Execution risk is rising; intervention is recommended."
+        : "Critical execution risk detected; immediate intervention required.";
+
+    const interventions = Array.isArray(plan?.interventions) ? plan.interventions : [];
+    const autonomousActions = interventions.map((item) => ({
+      title: item.title,
+      impact_estimate: item.impact || "medium",
+      time_to_value_hours: 8,
+      confidence: item.confidence || 70,
+      url: item.url || "/",
+    }));
+
+    const projected = Math.max(5, Math.min(99, readiness + Math.min(20, interventions.length * 3)));
+    return {
+      generated_at: plan?.generated_at,
+      north_star: {
+        critical_path_score: readiness,
+        status,
+        summary,
+      },
+      autonomous_actions: autonomousActions,
+      simulation_24h: {
+        projected_critical_path_score: projected,
+        probability_on_track_pct: Math.max(10, Math.min(98, projected - 2)),
+      },
+      evidence: [],
+      degraded: true,
+      fallback_source: "chief_of_staff_plan",
+    };
+  };
+
+  const readJsonSafe = async (response, fallback = null) => {
+    try {
+      const text = await response.text();
+      if (!text) return fallback;
+      return JSON.parse(text);
+    } catch (_e) {
+      return fallback;
+    }
+  };
+
   const fetchData = async () => {
     setError("");
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(buildApiUrl("/api/knowledge/ai/mission-control/"), {
+      const missionResponse = await fetch(buildApiUrl("/api/knowledge/ai/mission-control/"), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) {
-        let message = `Request failed (${response.status})`;
-        try {
-          const errBody = await response.json();
-          if (errBody?.error) message = errBody.error;
-          else if (errBody?.detail) message = errBody.detail;
-        } catch (_e) {
-          // Keep fallback message.
+
+      if (missionResponse.ok) {
+        const missionBody = await readJsonSafe(missionResponse, null);
+        if (missionBody) {
+          setData(missionBody);
+          return;
         }
-        setData(null);
-        setError(message);
-        return;
       }
-      const result = await response.json();
-      setData(result);
+
+      // Fallback to chief-of-staff plan when mission-control endpoint fails.
+      const planResponse = await fetch(buildApiUrl("/api/knowledge/ai/chief-of-staff/plan/"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (planResponse.ok) {
+        const planBody = await readJsonSafe(planResponse, null);
+        if (planBody) {
+          setData(mapPlanToMissionControl(planBody));
+          setError("Mission Control fallback mode is active.");
+          return;
+        }
+      }
+
+      const missionErr = await readJsonSafe(missionResponse, null);
+      const planErr = await readJsonSafe(planResponse, null);
+      const message =
+        missionErr?.error ||
+        missionErr?.detail ||
+        planErr?.error ||
+        planErr?.detail ||
+        `Mission Control unavailable (${missionResponse.status}/${planResponse.status})`;
+      setData(null);
+      setError(message);
     } catch (error) {
       setData(null);
       setError("Unable to load Mission Control data");
@@ -106,7 +172,9 @@ export default function MissionControlPanel({ darkMode }) {
       <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10, marginBottom: 8 }}>
         <p style={{ margin: 0, fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Critical Path Score</p>
         <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 800, color: palette.text }}>{data.north_star?.critical_path_score ?? "--"}</p>
-        <p style={{ margin: "2px 0 0", fontSize: 12, color: statusColor, fontWeight: 700 }}>{status.toUpperCase()}</p>
+        <p style={{ margin: "2px 0 0", fontSize: 12, color: statusColor, fontWeight: 700 }}>
+          {status.toUpperCase()} {data.degraded ? "(FALLBACK)" : ""}
+        </p>
         <p style={{ margin: "6px 0 0", fontSize: 12, color: palette.muted }}>{data.north_star?.summary}</p>
       </div>
 

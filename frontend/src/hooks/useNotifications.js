@@ -52,6 +52,10 @@ export function useNotifications(onNotification) {
         };
 
         ws.onclose = () => {
+          const disabledUntilNow = Number(sessionStorage.getItem(wsDisableKey) || 0);
+          if (disabledUntilNow && Date.now() < disabledUntilNow) {
+            return;
+          }
           if (retryCount.current < maxRetries) {
             retryCount.current++;
             reconnectTimeout = setTimeout(connect, 5000 * retryCount.current);

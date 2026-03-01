@@ -8,6 +8,7 @@ from .ai_intelligence import (
     mission_control_briefing,
     chief_of_staff_plan,
     chief_of_staff_execute,
+    agi_copilot,
 )
 from .advanced_ai import check_similar_failures, get_success_rates, detect_bottlenecks, detect_knowledge_gaps, detect_patterns
 from .enhanced_features import daily_digest, team_expertise, trend_analysis, auto_tag_content, metrics_tracking, sentiment_analysis
@@ -23,6 +24,7 @@ urlpatterns = [
     path('ai/mission-control/', mission_control_briefing, name='mission_control_briefing'),
     path('ai/chief-of-staff/plan/', chief_of_staff_plan, name='chief_of_staff_plan'),
     path('ai/chief-of-staff/execute/', chief_of_staff_execute, name='chief_of_staff_execute'),
+    path('ai/copilot/', agi_copilot, name='agi_copilot'),
     path('ai/check-failures/', check_similar_failures, name='check_similar_failures'),
     path('ai/success-rates/', get_success_rates, name='get_success_rates'),
     path('ai/bottlenecks/', detect_bottlenecks, name='detect_bottlenecks'),

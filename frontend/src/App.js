@@ -7,7 +7,6 @@ import { CommandPalette } from './components/CommandPalette';
 import { GlobalSearch } from './components/GlobalSearch';
 import { OnboardingFlow } from './components/OnboardingFlow';
 import { MobileNav } from './components/MobileNav';
-import { AIAssistant } from './components/AIFeatures';
 import { CommandBar } from './components/GestureControls';
 import NLPCommandBar from './components/NLPCommandBar';
 import ImpactAnalysisModal from './components/ImpactAnalysisModal';
@@ -167,7 +166,6 @@ function AppContent() {
       <CommandPalette />
       <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
       {user && <MobileNav onSearchOpen={() => setShowSearch(true)} />}
-      {user && <AIAssistant />}
       {user && <CommandBar onCommand={(cmd) => {
         if (cmd === 'create-issue') window.location.href = '/projects';
         else if (cmd === 'new-sprint') window.location.href = '/sprint-history';

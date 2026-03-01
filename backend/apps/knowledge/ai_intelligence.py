@@ -12,6 +12,7 @@ from apps.business.models import Task
 from apps.agile.models import Blocker, Sprint
 from apps.organizations.auditlog_models import AuditLog
 from apps.notifications.utils import create_notification
+from .search_engine import get_search_engine
 
 
 def _time_decay(days_old, half_life_days=3.0):
@@ -490,29 +491,13 @@ def _build_chief_of_staff_plan(org, now):
     }
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def chief_of_staff_plan(request):
-    """Generate autonomous intervention plan that requires explicit approval."""
-    plan = _build_chief_of_staff_plan(request.user.organization, timezone.now())
-    plan['requires_approval'] = True
-    return Response(plan)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def chief_of_staff_execute(request):
-    """Execute approved interventions and produce audit trail."""
-    org = request.user.organization
-    user = request.user
-    now = timezone.now()
-
-    intervention_ids = request.data.get('intervention_ids') or []
-    dry_run = bool(request.data.get('dry_run', False))
+def _execute_interventions(org, user, request, intervention_ids, dry_run=False, plan=None, now=None):
+    """Execute selected interventions from a generated plan."""
     if not isinstance(intervention_ids, list):
-        return Response({'error': 'intervention_ids must be an array'}, status=400)
+        return {'error': 'intervention_ids must be an array'}, 400
 
-    plan = _build_chief_of_staff_plan(org, now)
+    now = now or timezone.now()
+    plan = plan or _build_chief_of_staff_plan(org, now)
     plan_map = {item['id']: item for item in plan['interventions']}
     selected = [plan_map[item_id] for item_id in intervention_ids if item_id in plan_map]
 
@@ -646,7 +631,7 @@ def chief_of_staff_execute(request):
         else:
             skipped.append({'id': item['id'], 'reason': 'unsupported_kind'})
 
-    return Response({
+    return {
         'dry_run': dry_run,
         'selected': len(selected),
         'executed_count': len(executed),
@@ -654,4 +639,135 @@ def chief_of_staff_execute(request):
         'executed': executed,
         'skipped': skipped,
         'audit_log_ids': audit_records,
-    })
+    }, 200
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def chief_of_staff_plan(request):
+    """Generate autonomous intervention plan that requires explicit approval."""
+    plan = _build_chief_of_staff_plan(request.user.organization, timezone.now())
+    plan['requires_approval'] = True
+    return Response(plan)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def chief_of_staff_execute(request):
+    """Execute approved interventions and produce audit trail."""
+    org = request.user.organization
+    user = request.user
+    now = timezone.now()
+
+    intervention_ids = request.data.get('intervention_ids') or []
+    dry_run = bool(request.data.get('dry_run', False))
+    payload, status_code = _execute_interventions(
+        org=org,
+        user=user,
+        request=request,
+        intervention_ids=intervention_ids,
+        dry_run=dry_run,
+        now=now,
+    )
+    return Response(payload, status=status_code)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def agi_copilot(request):
+    """
+    Organization copilot endpoint:
+    - diagnoses current operating risk
+    - proposes prioritized interventions
+    - can execute safe interventions when requested
+    """
+    org = request.user.organization
+    user = request.user
+    now = timezone.now()
+
+    query = (request.data.get('query') or '').strip()
+    if not query:
+        return Response({'error': 'query is required'}, status=400)
+
+    execute = bool(request.data.get('execute', False))
+    try:
+        max_actions = int(request.data.get('max_actions', 3) or 3)
+    except (TypeError, ValueError):
+        max_actions = 3
+    max_actions = max(1, min(max_actions, 5))
+
+    search_engine = get_search_engine()
+    search_data = search_engine.search(query, org.id, filters={}, limit=6)
+
+    plan = _build_chief_of_staff_plan(org, now)
+    interventions = plan.get('interventions', [])
+    recommended = interventions[:max_actions]
+    intervention_ids = [item['id'] for item in recommended]
+
+    confidence = 32
+    confidence += min(36, int(search_data.get('total', 0)) * 6)
+    confidence += min(18, len(recommended) * 5)
+    if plan.get('status') == 'critical':
+        confidence += 8
+    confidence = max(18, min(96, confidence))
+
+    top_conv = (search_data.get('conversations') or [None])[0]
+    top_dec = (search_data.get('decisions') or [None])[0]
+    evidence = []
+    if top_conv:
+        evidence.append(f'conversation "{top_conv.get("title", "")}"')
+    if top_dec:
+        evidence.append(f'decision "{top_dec.get("title", "")}"')
+    evidence_line = (
+        f"Strongest evidence: {', '.join([item for item in evidence if item])}."
+        if evidence
+        else "Strongest evidence is currently limited; expand linked artifacts for better precision."
+    )
+
+    response_payload = {
+        'query': query,
+        'answer': (
+            f'For "{query}", organizational readiness is {plan.get("status")} '
+            f'with score {plan.get("readiness_score")}. '
+            f'I found {search_data.get("total", 0)} related memory records and prepared '
+            f'{len(recommended)} interventions to reduce execution risk. {evidence_line}'
+        ),
+        'confidence': confidence,
+        'risk_status': plan.get('status'),
+        'readiness_score': plan.get('readiness_score'),
+        'counts': plan.get('counts', {}),
+        'sources': {
+            'conversations': search_data.get('conversations', []),
+            'decisions': search_data.get('decisions', []),
+            'total': search_data.get('total', 0),
+        },
+        'recommended_interventions': recommended,
+        'requires_approval_for_execution': True,
+        'execution': {
+            'performed': False,
+            'dry_run': True,
+            'result': None,
+        },
+        'generated_at': now.isoformat(),
+    }
+
+    if execute:
+        execution_result, status_code = _execute_interventions(
+            org=org,
+            user=user,
+            request=request,
+            intervention_ids=intervention_ids,
+            dry_run=False,
+            plan=plan,
+            now=now,
+        )
+        if status_code != 200:
+            return Response(execution_result, status=status_code)
+        response_payload['execution'] = {
+            'performed': True,
+            'dry_run': False,
+            'selected_ids': intervention_ids,
+            'result': execution_result,
+        }
+
+    return Response(response_payload)

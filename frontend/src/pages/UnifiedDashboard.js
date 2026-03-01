@@ -61,6 +61,16 @@ export default function UnifiedDashboard() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  const readJsonSafe = async (response, fallback = {}) => {
+    try {
+      const text = await response.text();
+      if (!text) return fallback;
+      return JSON.parse(text);
+    } catch (_) {
+      return fallback;
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -69,7 +79,7 @@ export default function UnifiedDashboard() {
         buildApiUrl(`/api/knowledge/timeline/?days=7&page=${page}&per_page=10`),
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      const timelineData = await timelineRes.json();
+      const timelineData = await readJsonSafe(timelineRes, { results: [], pagination: { has_next: false } });
       const results = timelineData.results || timelineData;
       setTimeline((prev) => (page === 1 ? results : [...prev, ...results]));
       setHasMore(timelineData.pagination?.has_next || false);
@@ -77,12 +87,12 @@ export default function UnifiedDashboard() {
       const statsRes = await fetch(buildApiUrl("/api/knowledge/ai/success-rates/"), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const statsData = await statsRes.json();
+      const statsData = await readJsonSafe(statsRes, {});
 
       const outcomesRes = await fetch(buildApiUrl("/api/decisions/outcomes/stats/"), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const outcomesData = await outcomesRes.json();
+      const outcomesData = await readJsonSafe(outcomesRes, {});
       setOutcomeStats({
         reviewed_count: outcomesData.reviewed_count || 0,
         success_count: outcomesData.success_count || 0,
@@ -94,7 +104,7 @@ export default function UnifiedDashboard() {
       const pendingRes = await fetch(buildApiUrl("/api/decisions/outcomes/pending/?overdue_only=false"), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const pendingData = await pendingRes.json();
+      const pendingData = await readJsonSafe(pendingRes, { items: [] });
       setPendingOutcomeReviews(pendingData.items || []);
       setPendingOutcomeMeta({
         total: pendingData.total || 0,
@@ -104,7 +114,7 @@ export default function UnifiedDashboard() {
       const driftRes = await fetch(buildApiUrl("/api/decisions/outcomes/drift-alerts/"), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const driftData = await driftRes.json();
+      const driftData = await readJsonSafe(driftRes, { items: [] });
       setDriftAlerts(driftData.items || []);
       setDriftMeta({
         total: driftData.total || 0,
@@ -115,13 +125,13 @@ export default function UnifiedDashboard() {
       const calibrationRes = await fetch(buildApiUrl("/api/decisions/outcomes/calibration/?days=120"), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const calibrationData = await calibrationRes.json();
+      const calibrationData = await readJsonSafe(calibrationRes, { reviewers: [] });
       setCalibrationRows(calibrationData.reviewers || []);
 
       const sprintRes = await fetch(buildApiUrl("/api/agile/current-sprint/"), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const sprintData = await sprintRes.json();
+      const sprintData = await readJsonSafe(sprintRes, null);
       setCurrentSprint(sprintData || null);
 
       if (sprintData?.id) {
@@ -130,7 +140,7 @@ export default function UnifiedDashboard() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (twinRes.ok) {
-          const twinData = await twinRes.json();
+          const twinData = await readJsonSafe(twinRes, {});
           const scenarios = twinData.scenarios || [];
           const recommended = scenarios.find((item) => item.id === twinData.recommended_scenario_id) || scenarios[0] || null;
           setDecisionTwinSummary({
@@ -142,12 +152,7 @@ export default function UnifiedDashboard() {
           setDecisionTwinError("");
           setDecisionTwinUpgrade(null);
         } else {
-          let twinErrorData = null;
-          try {
-            twinErrorData = await twinRes.json();
-          } catch (_) {
-            twinErrorData = null;
-          }
+          const twinErrorData = await readJsonSafe(twinRes, null);
           setDecisionTwinSummary(null);
           if (twinRes.status === 402) {
             setDecisionTwinError(twinErrorData?.error || "Decision Twin is available on paid plans.");
@@ -170,17 +175,12 @@ export default function UnifiedDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (debtRes.ok) {
-        const debtData = await debtRes.json();
+        const debtData = await readJsonSafe(debtRes, {});
         setDecisionDebt(debtData);
         setDecisionDebtError("");
         setDecisionDebtUpgrade(null);
       } else {
-        let debtErrorData = null;
-        try {
-          debtErrorData = await debtRes.json();
-        } catch (_) {
-          debtErrorData = null;
-        }
+        const debtErrorData = await readJsonSafe(debtRes, null);
         setDecisionDebt(null);
         if (debtRes.status === 402) {
           setDecisionDebtError(debtErrorData?.error || "Decision Debt Ledger is available on paid plans.");
@@ -306,6 +306,7 @@ export default function UnifiedDashboard() {
         <Link to="/projects" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Projects</Link>
         <Link to="/sprint" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Sprint Board</Link>
         <Link to="/decisions" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Decision Hub</Link>
+        <Link to="/ask" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Ask Recall</Link>
       </section>
 
       <section

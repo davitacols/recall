@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import api from '../services/api';
+import { useTheme } from '../utils/ThemeAndAccessibility';
 
 function toDisplayDate(value) {
   if (!value) return '';
@@ -31,11 +32,44 @@ function normalizeSources(sources) {
   ].slice(0, 8);
 }
 
-function AskRecall() {
+export default function AskRecall() {
+  const { darkMode } = useTheme();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
+
+  const theme = useMemo(
+    () =>
+      darkMode
+        ? {
+            bg: '#0d1217',
+            panel: '#151d25',
+            panelAlt: '#1b2631',
+            border: 'rgba(145, 181, 214, 0.24)',
+            text: '#e8f0f8',
+            muted: '#9ab0c7',
+            accent: '#58b5ff',
+            accentSoft: 'rgba(88, 181, 255, 0.2)',
+            success: '#34d399',
+            warning: '#f59e0b',
+            danger: '#fb7185',
+          }
+        : {
+            bg: '#f4f8fc',
+            panel: '#ffffff',
+            panelAlt: '#f8fbff',
+            border: '#d5e4f1',
+            text: '#102233',
+            muted: '#567089',
+            accent: '#0a84d8',
+            accentSoft: 'rgba(10, 132, 216, 0.12)',
+            success: '#1d9a66',
+            warning: '#b7791f',
+            danger: '#dc4c64',
+          },
+    [darkMode]
+  );
 
   const suggestedQuestions = [
     'Where is execution risk highest this week?',
@@ -67,6 +101,7 @@ function AskRecall() {
       confidence: payload.confidence || 0,
       riskStatus: payload.risk_status || 'unknown',
       readinessScore: payload.readiness_score,
+      learningModel: payload.learning_model || {},
       counts: payload.counts || {},
       linkedDecisions,
       nextActions,
@@ -75,31 +110,95 @@ function AskRecall() {
     };
   };
 
+  const mapLegacyResponseToViewModel = (searchPayload, recommendationsPayload, missionPayload, q) => {
+    const conversations = searchPayload?.results?.conversations || [];
+    const decisions = searchPayload?.results?.decisions || [];
+    const total = Number(searchPayload?.results?.total || 0);
+    const recCount = (recommendationsPayload?.recommendations || []).length;
+    const interventions =
+      (missionPayload?.autonomous_actions || []).map((item, idx) => ({
+        id: item.id || `legacy-${idx}`,
+        title: item.title || 'Review intervention',
+        impact: item.impact_estimate || 'medium',
+        confidence: item.confidence || 60,
+        reason: item.suggested_path || 'Suggested by mission control',
+        href: item.url || '/dashboard',
+      })) || [];
+
+    return {
+      question: q,
+      answer:
+        total > 0
+          ? `I found ${total} related records, ${recCount} recommendation signals, and generated ${interventions.length} suggested interventions.`
+          : 'No direct evidence found for this query in current indexed records.',
+      confidence: total > 0 ? Math.min(90, 62 + recCount * 4) : 28,
+      riskStatus: missionPayload?.north_star?.status || 'watch',
+      readinessScore: missionPayload?.north_star?.critical_path_score ?? null,
+      learningModel: {},
+      counts: {
+        unresolved_decisions: decisions.length,
+        active_blockers: 0,
+        high_priority_unassigned_tasks: 0,
+      },
+      linkedDecisions: decisions.slice(0, 3).map((item) => ({
+        id: item.id,
+        title: item.title || `Decision #${item.id}`,
+        date: toDisplayDate(item.created_at),
+      })),
+      nextActions: interventions.slice(0, 3),
+      sources: normalizeSources({ conversations, decisions }),
+      execution: { performed: false, result: null },
+    };
+  };
+
   const queryCopilot = async ({ execute = false } = {}) => {
-    const response = await api.post('/api/knowledge/ai/copilot/', {
-      query,
-      execute,
-      max_actions: 3,
-    });
-    return mapResponseToViewModel(response.data);
+    try {
+      const response = await api.post('/api/knowledge/ai/copilot/', {
+        query,
+        execute,
+        max_actions: 3,
+      });
+      return mapResponseToViewModel(response.data);
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status === 404 || status === 405 || status === 500) {
+        const [searchRes, recsRes, missionRes] = await Promise.allSettled([
+          api.post('/api/knowledge/search/', { query }),
+          api.get('/api/knowledge/ai/recommendations/'),
+          api.get('/api/knowledge/ai/mission-control/'),
+        ]);
+
+        const searchData =
+          searchRes.status === 'fulfilled'
+            ? searchRes.value.data
+            : { results: { conversations: [], decisions: [], total: 0 } };
+        const recsData = recsRes.status === 'fulfilled' ? recsRes.value.data : { recommendations: [] };
+        const missionData = missionRes.status === 'fulfilled' ? missionRes.value.data : {};
+        return mapLegacyResponseToViewModel(searchData, recsData, missionData, query);
+      }
+      throw error;
+    }
   };
 
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
-
     setLoading(true);
     try {
       const data = await queryCopilot({ execute: false });
       setResults(data);
     } catch (error) {
-      console.error('Copilot query failed:', error);
+      const detail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.error ||
+        'AGI copilot is temporarily unavailable. Please try again.';
       setResults({
         question: query,
-        answer: 'AGI copilot is temporarily unavailable. Please try again.',
+        answer: detail,
         confidence: 0,
         riskStatus: 'unknown',
         readinessScore: null,
+        learningModel: {},
         counts: {},
         linkedDecisions: [],
         nextActions: [],
@@ -117,196 +216,345 @@ function AskRecall() {
     try {
       const data = await queryCopilot({ execute: true });
       setResults(data);
-    } catch (error) {
-      console.error('Copilot execution failed:', error);
     } finally {
       setExecuting(false);
     }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-12">
-        <h1 className="text-5xl font-bold text-gray-900 mb-3">Ask Knoledgr AGI</h1>
-        <p className="text-xl text-gray-600">
-          Diagnose risk, recommend interventions, and execute safe organizational fixes.
-        </p>
-      </div>
+  const confidenceWidth = `${Math.max(0, Math.min(100, Number(results?.confidence || 0)))}%`;
 
-      <form onSubmit={handleSearch} className="mb-12">
-        <div className="border border-gray-300 focus-within:border-gray-900 transition-colors">
-          <input
-            type="text"
+  return (
+    <div
+      style={{
+        maxWidth: 1040,
+        margin: '0 auto',
+        padding: '28px 18px 48px',
+        color: theme.text,
+      }}
+    >
+      <section
+        style={{
+          border: `1px solid ${theme.border}`,
+          borderRadius: 20,
+          padding: 24,
+          background: darkMode
+            ? 'linear-gradient(145deg, rgba(24,39,54,0.96), rgba(17,27,35,0.96))'
+            : 'linear-gradient(145deg, rgba(255,255,255,0.98), rgba(241,248,255,0.98))',
+          boxShadow: darkMode ? '0 16px 48px rgba(3,9,14,0.34)' : '0 14px 36px rgba(12,67,112,0.09)',
+          marginBottom: 22,
+        }}
+      >
+        <p style={{ fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase', color: theme.muted, margin: 0 }}>
+          Organizational Copilot
+        </p>
+        <h1 style={{ margin: '8px 0 8px', fontSize: 'clamp(1.6rem, 3vw, 2.35rem)' }}>Ask Recall</h1>
+        <p style={{ margin: 0, color: theme.muted }}>
+          Diagnose risk, recommend interventions, and run safe autonomous fixes.
+        </p>
+      </section>
+
+      <form onSubmit={handleSearch} style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            border: `1px solid ${theme.border}`,
+            borderRadius: 16,
+            background: theme.panel,
+            padding: 14,
+          }}
+        >
+          <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Describe the organizational problem to solve..."
-            className="w-full px-6 py-5 text-lg focus:outline-none"
+            rows={3}
+            style={{
+              width: '100%',
+              resize: 'vertical',
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              color: theme.text,
+              fontSize: 16,
+              lineHeight: 1.5,
+              minHeight: 84,
+            }}
           />
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              type="submit"
+              disabled={loading || !query.trim()}
+              style={{
+                border: 'none',
+                borderRadius: 12,
+                padding: '10px 14px',
+                background: theme.accent,
+                color: '#fff',
+                fontWeight: 700,
+                cursor: loading || !query.trim() ? 'not-allowed' : 'pointer',
+                opacity: loading || !query.trim() ? 0.6 : 1,
+              }}
+            >
+              {loading ? 'Analyzing...' : 'Analyze & Plan'}
+            </button>
+            <button
+              type="button"
+              onClick={handleExecute}
+              disabled={executing || !results || results.nextActions.length === 0}
+              style={{
+                borderRadius: 12,
+                padding: '10px 14px',
+                border: `1px solid ${theme.border}`,
+                background: theme.panelAlt,
+                color: theme.text,
+                fontWeight: 700,
+                cursor: executing || !results || results.nextActions.length === 0 ? 'not-allowed' : 'pointer',
+                opacity: executing || !results || results.nextActions.length === 0 ? 0.6 : 1,
+              }}
+            >
+              {executing ? 'Executing...' : 'Run Autonomous Fixes'}
+            </button>
+          </div>
         </div>
-        <button
-          type="submit"
-          disabled={loading || !query.trim()}
-          className="mt-4 recall-btn-primary disabled:opacity-50"
-        >
-          {loading ? 'Analyzing...' : 'Analyze & Plan'}
-        </button>
       </form>
 
       {!results && !loading && (
-        <div className="mb-12">
-          <p className="text-base font-bold text-gray-900 mb-4">Suggested prompts:</p>
-          <div className="space-y-2">
-            {suggestedQuestions.map((item, idx) => (
+        <section
+          style={{
+            border: `1px solid ${theme.border}`,
+            borderRadius: 16,
+            background: theme.panel,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <p style={{ marginTop: 0, marginBottom: 10, fontWeight: 700 }}>Suggested Prompts</p>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {suggestedQuestions.map((item) => (
               <button
-                key={idx}
+                key={item}
                 onClick={() => setQuery(item)}
-                className="w-full text-left px-5 py-3 border border-gray-200 text-gray-700 hover:border-gray-900 transition-all text-base"
+                style={{
+                  textAlign: 'left',
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 10,
+                  background: theme.panelAlt,
+                  color: theme.text,
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                }}
               >
                 {item}
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {loading && (
-        <div className="py-20">
-          <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-          <p className="text-center text-base text-gray-600">Analyzing organization state...</p>
-        </div>
+        <section style={{ padding: 24, textAlign: 'center', color: theme.muted }}>
+          <div
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: '50%',
+              border: `2px solid ${theme.border}`,
+              borderTopColor: theme.accent,
+              margin: '0 auto 12px',
+              animation: 'spin 1s linear infinite',
+            }}
+          />
+          <p style={{ margin: 0 }}>Analyzing organization state...</p>
+        </section>
       )}
 
       {results && !loading && (
-        <div className="space-y-8">
-          <div className="bg-gray-50 border border-gray-200 p-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">AGI Diagnosis</h2>
-            <p className="text-base text-gray-700 leading-relaxed mb-6">{results.answer}</p>
-            <div className="mb-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Confidence</span>
-                <span className="text-sm font-bold text-gray-900">{results.confidence}%</span>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
+            <h2 style={{ marginTop: 0 }}>AGI Diagnosis</h2>
+            <p style={{ color: theme.muted }}>{results.answer}</p>
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ color: theme.muted }}>Confidence</span>
+                <strong>{results.confidence}%</strong>
               </div>
-              <div className="w-full bg-gray-200 h-2">
-                <div className="bg-gray-900 h-2" style={{ width: `${results.confidence}%` }}></div>
+              <div style={{ background: theme.panelAlt, borderRadius: 999, height: 10, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: confidenceWidth,
+                    height: '100%',
+                    background: `linear-gradient(90deg, ${theme.accent}, ${theme.success})`,
+                  }}
+                />
               </div>
             </div>
-            <button
-              onClick={handleExecute}
-              disabled={executing || results.nextActions.length === 0}
-              className="recall-btn-primary disabled:opacity-50"
-            >
-              {executing ? 'Executing...' : 'Run Autonomous Fixes'}
-            </button>
-          </div>
+          </section>
 
-          <div className="bg-white border border-gray-200 p-5">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">Operational Risk</h2>
-            <p className="text-base text-gray-700 mb-2">
-              Status: <span className="font-semibold capitalize">{results.riskStatus}</span>
+          <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
+            <h3 style={{ marginTop: 0 }}>Operational Risk</h3>
+            <p style={{ margin: '4px 0', color: theme.muted }}>
+              Status:{' '}
+              <strong style={{ color: results.riskStatus === 'critical' ? theme.danger : results.riskStatus === 'watch' ? theme.warning : theme.success }}>
+                {results.riskStatus}
+              </strong>
             </p>
             {results.readinessScore !== null && (
-              <p className="text-base text-gray-700 mb-2">
-                Readiness Score: <span className="font-semibold">{results.readinessScore}</span>
+              <p style={{ margin: '4px 0', color: theme.muted }}>
+                Readiness Score: <strong style={{ color: theme.text }}>{results.readinessScore}</strong>
               </p>
             )}
-            <p className="text-sm text-gray-600">
-              Unresolved decisions: {results.counts.unresolved_decisions || 0} | Active blockers:{' '}
-              {results.counts.active_blockers || 0} | Unassigned high-priority tasks:{' '}
+            <p style={{ margin: '4px 0', color: theme.muted }}>
+              Unresolved decisions: {results.counts.unresolved_decisions || 0} | Active blockers: {results.counts.active_blockers || 0} | Unassigned high-priority tasks:{' '}
               {results.counts.high_priority_unassigned_tasks || 0}
             </p>
-          </div>
+          </section>
 
           {results.execution?.performed && results.execution?.result && (
-            <div className="bg-white border border-gray-200 p-5">
-              <h2 className="text-lg font-bold text-gray-900 mb-3">Execution Result</h2>
-              <p className="text-base text-gray-700">
-                Executed: {results.execution.result.executed_count} | Skipped:{' '}
-                {results.execution.result.skipped_count}
+            <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
+              <h3 style={{ marginTop: 0 }}>Execution Result</h3>
+              <p style={{ margin: 0, color: theme.muted }}>
+                Executed: {results.execution.result.executed_count} | Skipped: {results.execution.result.skipped_count}
               </p>
-            </div>
+            </section>
+          )}
+
+          {!!results.learningModel && Object.keys(results.learningModel).length > 0 && (
+            <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
+              <h3 style={{ marginTop: 0 }}>Learning Model Signals</h3>
+              <p style={{ margin: '0 0 8px', color: theme.muted }}>
+                Horizon: {results.learningModel.horizon_days || 0} days
+              </p>
+              <p style={{ margin: '0 0 8px', color: theme.muted }}>
+                Scope: {results.learningModel.scope || 'org_plus_user'}
+              </p>
+              <p style={{ margin: '0 0 8px', color: theme.muted }}>
+                Bias (decision/blocker/task): {(results.learningModel.action_bias?.decision_resolution ?? 1).toFixed(2)} /{' '}
+                {(results.learningModel.action_bias?.blocker_escalation ?? 1).toFixed(2)} /{' '}
+                {(results.learningModel.action_bias?.task_ownership ?? 1).toFixed(2)}
+              </p>
+              {Array.isArray(results.learningModel.top_keywords) && results.learningModel.top_keywords.length > 0 && (
+                <p style={{ margin: 0, color: theme.muted }}>
+                  Top keywords: {results.learningModel.top_keywords.slice(0, 4).map((k) => k.keyword).join(', ')}
+                </p>
+              )}
+              {Array.isArray(results.learningModel.focus_keywords) && results.learningModel.focus_keywords.length > 0 && (
+                <p style={{ margin: '8px 0 0', color: theme.muted }}>
+                  User focus: {results.learningModel.focus_keywords.slice(0, 4).map((k) => k.keyword).join(', ')}
+                </p>
+              )}
+            </section>
           )}
 
           {results.linkedDecisions.length > 0 && (
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Related Decisions</h2>
-              <div className="space-y-2">
+            <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
+              <h3 style={{ marginTop: 0 }}>Related Decisions</h3>
+              <div style={{ display: 'grid', gap: 10 }}>
                 {results.linkedDecisions.map((decision) => (
                   <a
                     key={decision.id}
                     href={`/decisions/${decision.id}`}
-                    className="block border border-gray-200 p-4 hover:border-gray-900 transition-all"
+                    style={{
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 12,
+                      padding: 12,
+                      background: theme.panelAlt,
+                      textDecoration: 'none',
+                      color: theme.text,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                    }}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-medium text-gray-900">{decision.title}</span>
-                      <span className="text-sm text-gray-500">{decision.date}</span>
-                    </div>
+                    <span>{decision.title}</span>
+                    <span style={{ color: theme.muted, fontSize: 12 }}>{decision.date}</span>
                   </a>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {results.nextActions.length > 0 && (
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Planned Interventions</h2>
-              <div className="space-y-2">
+            <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
+              <h3 style={{ marginTop: 0 }}>Planned Interventions</h3>
+              <div style={{ display: 'grid', gap: 10 }}>
                 {results.nextActions.map((action) => (
                   <a
                     key={action.id}
                     href={action.href || '#'}
-                    className="block border border-gray-200 p-4 hover:border-gray-900 transition-all"
+                    style={{
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 12,
+                      padding: 12,
+                      background: theme.panelAlt,
+                      textDecoration: 'none',
+                      color: theme.text,
+                    }}
                   >
-                    <p className="text-base font-medium text-gray-900">{action.title}</p>
-                    <p className="text-sm text-gray-600 mt-1">{action.reason}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p style={{ margin: '0 0 4px', fontWeight: 700 }}>{action.title}</p>
+                    <p style={{ margin: '0 0 4px', color: theme.muted }}>{action.reason}</p>
+                    <p style={{ margin: 0, color: theme.muted, fontSize: 12 }}>
                       Impact: {action.impact} | Confidence: {action.confidence}%
                     </p>
                   </a>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {results.sources.length > 0 && (
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Evidence Sources</h2>
-              <div className="space-y-2">
+            <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
+              <h3 style={{ marginTop: 0 }}>Evidence Sources</h3>
+              <div style={{ display: 'grid', gap: 10 }}>
                 {results.sources.map((source) => (
                   <a
                     key={`${source.type}-${source.id}`}
                     href={source.href}
-                    className="block border border-gray-200 p-4 hover:border-gray-900 transition-all"
+                    style={{
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 12,
+                      padding: 12,
+                      background: theme.panelAlt,
+                      textDecoration: 'none',
+                      color: theme.text,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                    }}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-base font-medium text-gray-900">{source.title}</span>
-                        <span className="ml-3 text-xs px-2 py-1 bg-gray-100 text-gray-700 font-medium">
-                          {source.type}
-                        </span>
-                      </div>
-                      <span className="text-sm text-gray-500">{source.date}</span>
-                    </div>
+                    <span>{source.title}</span>
+                    <span style={{ color: theme.muted, fontSize: 12 }}>
+                      {source.type} | {source.date}
+                    </span>
                   </a>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
-          <div className="pt-4">
-            <button
-              onClick={() => {
-                setQuery('');
-                setResults(null);
-              }}
-              className="recall-btn-secondary"
-            >
-              New Analysis
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setQuery('');
+              setResults(null);
+            }}
+            style={{
+              borderRadius: 12,
+              border: `1px solid ${theme.border}`,
+              background: theme.panelAlt,
+              color: theme.text,
+              padding: '10px 12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            New Analysis
+          </button>
         </div>
       )}
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+      `}</style>
     </div>
   );
 }
-
-export default AskRecall;

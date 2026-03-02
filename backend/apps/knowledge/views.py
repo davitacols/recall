@@ -10,6 +10,7 @@ from .search_engine import get_search_engine
 from apps.conversations.models import Conversation, ConversationReply
 from apps.decisions.models import Decision
 from apps.organizations.models import Organization
+from apps.organizations.models import SearchAnalytics
 
 @csrf_exempt
 @api_view(['POST'])
@@ -170,7 +171,7 @@ def knowledge_stats(request):
             Conversation.objects.filter(organization=org, created_at__gte=week_ago).count() +
             Decision.objects.filter(organization=org, created_at__gte=week_ago).count()
         ),
-        'total_searches': 342  # Placeholder - would need search log table
+        'total_searches': SearchAnalytics.objects.filter(organization=org).count()
     }
     
     return Response(stats)

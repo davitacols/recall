@@ -1,495 +1,642 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
-import Button from '../components/Button';
+import React, { useEffect, useMemo, useState } from "react";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
 
-function Integrations() {
+const PROVIDERS = [
+  {
+    key: "slack",
+    name: "Slack",
+    category: "Comms",
+    desc: "Push decisions, blockers, and sprint summaries to channels.",
+  },
+  {
+    key: "github",
+    name: "GitHub",
+    category: "Engineering",
+    desc: "Link PRs to decisions and track implementation flow.",
+  },
+  {
+    key: "jira",
+    name: "Jira",
+    category: "Delivery",
+    desc: "Sync work items and keep status aligned across systems.",
+  },
+];
+
+export default function Integrations() {
+  const { darkMode } = useTheme();
+  const [active, setActive] = useState("slack");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [flash, setFlash] = useState(null);
+
   const [slack, setSlack] = useState(null);
   const [github, setGithub] = useState(null);
   const [jira, setJira] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('slack');
-  const [testing, setTesting] = useState(null);
+
+  const [slackForm, setSlackForm] = useState({
+    webhook_url: "",
+    channel: "#general",
+    post_decisions: true,
+    post_blockers: true,
+    post_sprint_summary: false,
+    enabled: false,
+  });
+  const [githubForm, setGithubForm] = useState({
+    access_token: "",
+    repo_owner: "",
+    repo_name: "",
+    auto_link_prs: true,
+    enabled: false,
+  });
+  const [jiraForm, setJiraForm] = useState({
+    site_url: "",
+    email: "",
+    api_token: "",
+    auto_sync_issues: false,
+    enabled: false,
+  });
 
   useEffect(() => {
     fetchIntegrations();
   }, []);
 
+  useEffect(() => {
+    if (!slack) return;
+    setSlackForm({
+      webhook_url: slack.webhook_url || "",
+      channel: slack.channel || "#general",
+      post_decisions: slack.post_decisions ?? true,
+      post_blockers: slack.post_blockers ?? true,
+      post_sprint_summary: slack.post_sprint_summary ?? false,
+      enabled: Boolean(slack.enabled),
+    });
+  }, [slack]);
+
+  useEffect(() => {
+    if (!github) return;
+    setGithubForm({
+      access_token: github.access_token || "",
+      repo_owner: github.repo_owner || "",
+      repo_name: github.repo_name || "",
+      auto_link_prs: github.auto_link_prs ?? true,
+      enabled: Boolean(github.enabled),
+    });
+  }, [github]);
+
+  useEffect(() => {
+    if (!jira) return;
+    setJiraForm({
+      site_url: jira.site_url || "",
+      email: jira.email || "",
+      api_token: jira.api_token || "",
+      auto_sync_issues: jira.auto_sync_issues ?? false,
+      enabled: Boolean(jira.enabled),
+    });
+  }, [jira]);
+
+  const byKey = { slack, github, jira };
+  const connectedCount = useMemo(
+    () => Object.values(byKey).filter((item) => Boolean(item?.enabled)).length,
+    [slack, github, jira]
+  );
+  const activeProvider = PROVIDERS.find((p) => p.key === active);
+  const activeData = byKey[active] || {};
+  const tone = useMemo(
+    () =>
+      darkMode
+        ? {
+            hero: "rounded-2xl border border-stone-700 bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 p-6",
+            heroEyebrow: "text-xs font-semibold tracking-[0.16em] text-stone-400 uppercase",
+            heroTitle: "mt-2 text-2xl md:text-3xl font-black text-stone-100",
+            heroText: "mt-2 text-sm text-stone-300 max-w-2xl",
+            card: "rounded-xl border border-stone-700 bg-stone-900 px-3 py-2 text-center min-w-[95px]",
+            cardValue: "text-lg font-bold text-stone-100",
+            cardLabel: "text-[10px] tracking-wider uppercase text-stone-400",
+            shellAside: "rounded-2xl border border-stone-700 bg-stone-900 p-3",
+            shellMain: "space-y-4 rounded-2xl border border-stone-700 bg-stone-900 p-5",
+            muted: "text-stone-400",
+            text: "text-stone-100",
+            subtext: "text-stone-300",
+            testBtn: "rounded-lg border border-stone-600 px-3 py-2 text-xs font-semibold text-stone-200 hover:bg-stone-800 disabled:opacity-60",
+            saveBtn: "rounded-lg border border-emerald-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60",
+          }
+        : {
+            hero: "rounded-2xl border border-stone-200 bg-gradient-to-r from-amber-50 via-orange-50 to-emerald-50 p-6",
+            heroEyebrow: "text-xs font-semibold tracking-[0.16em] text-stone-500 uppercase",
+            heroTitle: "mt-2 text-2xl md:text-3xl font-black text-stone-900",
+            heroText: "mt-2 text-sm text-stone-600 max-w-2xl",
+            card: "rounded-xl border border-stone-200 bg-white px-3 py-2 text-center min-w-[95px]",
+            cardValue: "text-lg font-bold text-stone-900",
+            cardLabel: "text-[10px] tracking-wider uppercase text-stone-500",
+            shellAside: "rounded-2xl border border-stone-200 bg-white p-3",
+            shellMain: "space-y-4 rounded-2xl border border-stone-200 bg-white p-5",
+            muted: "text-stone-500",
+            text: "text-stone-900",
+            subtext: "text-stone-600",
+            testBtn: "rounded-lg border border-stone-300 px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-60",
+            saveBtn: "rounded-lg border border-stone-900 bg-stone-900 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-800 disabled:opacity-60",
+          },
+    [darkMode]
+  );
+
   const fetchIntegrations = async () => {
+    setLoading(true);
     try {
-      const [slackRes, githubRes, jiraRes] = await Promise.all([
-        api.get('/api/integrations/slack/'),
-        api.get('/api/integrations/github/'),
-        api.get('/api/integrations/jira/')
+      const [s, g, j] = await Promise.all([
+        api.get("/api/integrations/slack/"),
+        api.get("/api/integrations/github/"),
+        api.get("/api/integrations/jira/"),
       ]);
-      setSlack(slackRes.data);
-      setGithub(githubRes.data);
-      setJira(jiraRes.data);
-      setLoading(false);
+      setSlack(s.data || null);
+      setGithub(g.data || null);
+      setJira(j.data || null);
     } catch (error) {
-      console.error('Failed to fetch integrations:', error);
+      setFlash({ type: "error", text: "Failed to load integrations." });
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleTestIntegration = async (type) => {
-    setTesting(type);
+  const handleTest = async () => {
+    setTesting(true);
+    setFlash(null);
     try {
-      const response = await api.post(`/api/integrations/test/${type}/`);
-      alert(`✓ ${type} connection successful`);
-    } catch (error) {
-      alert(`✗ ${type} connection failed`);
+      await api.post(`/api/integrations/test/${active}/`);
+      setFlash({ type: "success", text: `${activeProvider?.name} test passed.` });
+    } catch {
+      setFlash({ type: "error", text: `${activeProvider?.name} test failed.` });
     } finally {
-      setTesting(null);
+      setTesting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setFlash(null);
+    try {
+      if (active === "slack") {
+        await api.post("/api/integrations/slack/", slackForm);
+      } else if (active === "github") {
+        await api.post("/api/integrations/github/", githubForm);
+      } else {
+        await api.post("/api/integrations/jira/", jiraForm);
+      }
+      await fetchIntegrations();
+      setFlash({ type: "success", text: `${activeProvider?.name} settings saved.` });
+    } catch {
+      setFlash({ type: "error", text: `Failed to save ${activeProvider?.name} settings.` });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleEnabled = () => {
+    if (active === "slack") {
+      setSlackForm((prev) => ({ ...prev, enabled: !prev.enabled }));
+    } else if (active === "github") {
+      setGithubForm((prev) => ({ ...prev, enabled: !prev.enabled }));
+    } else {
+      setJiraForm((prev) => ({ ...prev, enabled: !prev.enabled }));
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-[50vh] grid place-items-center">
+        <div
+          className={`w-8 h-8 rounded-full border-2 border-t-transparent animate-spin ${
+            darkMode ? "border-stone-500" : "border-stone-300"
+          }`}
+        />
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Integrations</h1>
-        <p className="text-base text-gray-600">Connect Recall to your favorite tools</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-4 mb-8 border-b border-gray-200">
-        {['slack', 'github', 'jira'].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-gray-900 text-gray-900'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Slack */}
-      {activeTab === 'slack' && <SlackPanel data={slack} onTest={() => handleTestIntegration('slack')} testing={testing === 'slack'} onRefresh={fetchIntegrations} />}
-
-      {/* GitHub */}
-      {activeTab === 'github' && <GitHubPanel data={github} onTest={() => handleTestIntegration('github')} testing={testing === 'github'} onRefresh={fetchIntegrations} />}
-
-      {/* Jira */}
-      {activeTab === 'jira' && <JiraPanel data={jira} onTest={() => handleTestIntegration('jira')} testing={testing === 'jira'} onRefresh={fetchIntegrations} />}
-    </div>
-  );
-}
-
-function SlackPanel({ data, onTest, testing, onRefresh }) {
-  const [webhookUrl, setWebhookUrl] = useState(data?.webhook_url || '');
-  const [channel, setChannel] = useState(data?.channel || '#general');
-  const [postDecisions, setPostDecisions] = useState(data?.post_decisions ?? true);
-  const [postBlockers, setPostBlockers] = useState(data?.post_blockers ?? true);
-  const [postSprintSummary, setPostSprintSummary] = useState(data?.post_sprint_summary ?? false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await api.post('/api/integrations/slack/', {
-        webhook_url: webhookUrl,
-        channel,
-        post_decisions: postDecisions,
-        post_blockers: postBlockers,
-        post_sprint_summary: postSprintSummary,
-        enabled: true
-      });
-      alert('Slack integration saved');
-      onRefresh();
-    } catch (error) {
-      alert('Failed to save Slack integration');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="max-w-2xl">
-      <div className="border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Slack Integration</h2>
-        
-        {data?.enabled ? (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200">
-            <p className="text-sm text-green-800">✓ Connected</p>
-          </div>
-        ) : (
-          <div className="mb-6 p-4 bg-gray-50 border border-gray-200">
-            <p className="text-sm text-gray-600">Not connected</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
+      <section className={tone.hero}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Webhook URL</label>
-            <input
-              type="url"
-              value={webhookUrl}
-              onChange={(e) => setWebhookUrl(e.target.value)}
-              placeholder="https://hooks.slack.com/services/..."
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">Get this from Slack App settings</p>
+            <p className={tone.heroEyebrow}>Integrations Hub</p>
+            <h1 className={tone.heroTitle}>Connect Your Workspace Stack</h1>
+            <p className={tone.heroText}>
+              Centralize comms, delivery, and code tooling so decisions and execution stay synchronized.
+            </p>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Channel</label>
-            <input
-              type="text"
-              value={channel}
-              onChange={(e) => setChannel(e.target.value)}
-              placeholder="#general"
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-            />
+          <div className="grid grid-cols-3 gap-2">
+            <Stat label="Providers" value={`${PROVIDERS.length}`} tone={tone} />
+            <Stat label="Connected" value={`${connectedCount}`} tone={tone} />
+            <Stat label="Not Connected" value={`${PROVIDERS.length - connectedCount}`} tone={tone} />
           </div>
+        </div>
+      </section>
 
-          <div className="space-y-3">
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={postDecisions}
-                onChange={(e) => setPostDecisions(e.target.checked)}
-                className="w-4 h-4 border border-gray-900"
-              />
-              <span className="text-sm text-gray-900">Post decisions to Slack</span>
-            </label>
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={postBlockers}
-                onChange={(e) => setPostBlockers(e.target.checked)}
-                className="w-4 h-4 border border-gray-900"
-              />
-              <span className="text-sm text-gray-900">Post blockers to Slack</span>
-            </label>
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={postSprintSummary}
-                onChange={(e) => setPostSprintSummary(e.target.checked)}
-                className="w-4 h-4 border border-gray-900"
-              />
-              <span className="text-sm text-gray-900">Post sprint summaries to Slack</span>
-            </label>
+      {flash ? (
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm ${
+            flash.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-rose-50 border-rose-200 text-rose-700"
+          }`}
+        >
+          {flash.text}
+        </div>
+      ) : null}
+
+      <section className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className={tone.shellAside}>
+          <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Providers</p>
+          <div className="space-y-2">
+            {PROVIDERS.map((provider) => {
+              const connected = Boolean(byKey[provider.key]?.enabled);
+              const isActive = provider.key === active;
+              return (
+                <button
+                  key={provider.key}
+                  onClick={() => setActive(provider.key)}
+                  className={`w-full rounded-xl border p-3 text-left transition ${
+                    isActive
+                      ? darkMode
+                        ? "border-emerald-500 bg-emerald-600 text-white"
+                        : "border-stone-900 bg-stone-900 text-white"
+                      : darkMode
+                      ? "border-stone-700 bg-stone-900 hover:border-stone-500"
+                      : "border-stone-200 bg-white hover:border-stone-300"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className={`text-sm font-semibold ${isActive ? "text-white" : tone.text}`}>
+                        {provider.name}
+                      </p>
+                      <p className={`mt-1 text-xs ${isActive ? "text-stone-100" : tone.muted}`}>
+                        {provider.desc}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        connected
+                          ? isActive
+                            ? "bg-emerald-500 text-white"
+                            : "bg-emerald-100 text-emerald-700"
+                          : isActive
+                          ? "bg-stone-700 text-stone-200"
+                          : "bg-stone-100 text-stone-600"
+                      }`}
+                    >
+                      {connected ? "Connected" : "Not connected"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
+        </aside>
 
-          <div className="flex gap-3">
-            <Button type="submit" loading={submitting}>Save</Button>
-            <Button type="button" variant="secondary" onClick={onTest} loading={testing}>Test Connection</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function GitHubPanel({ data, onTest, testing, onRefresh }) {
-  const [accessToken, setAccessToken] = useState(data?.access_token || '');
-  const [repoOwner, setRepoOwner] = useState(data?.repo_owner || '');
-  const [repoName, setRepoName] = useState(data?.repo_name || '');
-  const [autoLinkPrs, setAutoLinkPrs] = useState(data?.auto_link_prs ?? true);
-  const [submitting, setSubmitting] = useState(false);
-  const [showPrSearch, setShowPrSearch] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await api.post('/api/integrations/github/', {
-        access_token: accessToken,
-        repo_owner: repoOwner,
-        repo_name: repoName,
-        auto_link_prs: autoLinkPrs,
-        enabled: true
-      });
-      alert('GitHub integration saved');
-      onRefresh();
-    } catch (error) {
-      alert('Failed to save GitHub integration');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="max-w-2xl">
-      <div className="border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">GitHub Integration</h2>
-        
-        {data?.enabled ? (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200">
-            <p className="text-sm text-green-800">✓ Connected</p>
-          </div>
-        ) : (
-          <div className="mb-6 p-4 bg-gray-50 border border-gray-200">
-            <p className="text-sm text-gray-600">Not connected</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Access Token</label>
-            <input
-              type="password"
-              value={accessToken}
-              onChange={(e) => setAccessToken(e.target.value)}
-              placeholder="ghp_..."
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">Create a personal access token in GitHub settings</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <main className={tone.shellMain}>
+          <div className={`flex flex-wrap items-center justify-between gap-3 border-b pb-4 ${darkMode ? "border-stone-700" : "border-stone-200"}`}>
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Repository Owner</label>
-              <input
-                type="text"
-                value={repoOwner}
-                onChange={(e) => setRepoOwner(e.target.value)}
-                placeholder="username"
-                className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-                required
-              />
+              <p className={`text-xs uppercase tracking-widest ${tone.muted}`}>{activeProvider?.category}</p>
+              <h2 className={`mt-1 text-xl font-bold ${tone.text}`}>{activeProvider?.name}</h2>
+              <p className={`mt-1 text-sm ${tone.subtext}`}>{activeProvider?.desc}</p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Repository Name</label>
-              <input
-                type="text"
-                value={repoName}
-                onChange={(e) => setRepoName(e.target.value)}
-                placeholder="repo-name"
-                className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-                required
-              />
-            </div>
-          </div>
-
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={autoLinkPrs}
-              onChange={(e) => setAutoLinkPrs(e.target.checked)}
-              className="w-4 h-4 border border-gray-900"
-            />
-            <span className="text-sm text-gray-900">Auto-link pull requests to decisions</span>
-          </label>
-
-          <div className="flex gap-3">
-            <Button type="submit" loading={submitting}>Save</Button>
-            <Button type="button" variant="secondary" onClick={onTest} loading={testing}>Test Connection</Button>
-            {data?.enabled && (
+            <div className="flex items-center gap-2">
               <button
-                type="button"
-                onClick={() => setShowPrSearch(!showPrSearch)}
-                className="px-4 py-2 border border-gray-900 text-gray-900 font-medium hover:bg-gray-50 transition-colors"
+                onClick={toggleEnabled}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold border ${
+                  activeData?.enabled
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : darkMode
+                    ? "border-stone-600 bg-stone-800 text-stone-200"
+                    : "border-stone-300 bg-stone-50 text-stone-700"
+                }`}
               >
-                {showPrSearch ? 'Hide' : 'Search'} PRs
+                {activeData?.enabled ? "Disable" : "Enable"}
               </button>
-            )}
+              <button
+                onClick={handleTest}
+                disabled={testing}
+                className={tone.testBtn}
+              >
+                {testing ? "Testing..." : "Test"}
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={tone.saveBtn}
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
           </div>
-        </form>
-      </div>
 
-      {showPrSearch && <GitHubPrSearch />}
+          {active === "slack" ? (
+            <SlackConfig value={slackForm} onChange={setSlackForm} darkMode={darkMode} />
+          ) : null}
+          {active === "github" ? (
+            <GitHubConfig value={githubForm} onChange={setGithubForm} darkMode={darkMode} />
+          ) : null}
+          {active === "jira" ? (
+            <JiraConfig value={jiraForm} onChange={setJiraForm} darkMode={darkMode} />
+          ) : null}
+        </main>
+      </section>
     </div>
   );
 }
 
-function GitHubPrSearch() {
-  const [decisionId, setDecisionId] = useState('');
+function Stat({ label, value, tone }) {
+  return (
+    <div className={tone.card}>
+      <p className={tone.cardValue}>{value}</p>
+      <p className={tone.cardLabel}>{label}</p>
+    </div>
+  );
+}
+
+function Field({ label, hint, children, darkMode }) {
+  return (
+    <div>
+      <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{label}</label>
+      {children}
+      {hint ? <p className={`mt-1 text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>{hint}</p> : null}
+    </div>
+  );
+}
+
+function TextInput({ darkMode, ...props }) {
+  return (
+    <input
+      {...props}
+      className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${
+        darkMode
+          ? "border-stone-600 bg-stone-800 text-stone-100 focus:border-stone-400"
+          : "border-stone-300 bg-white text-stone-900 focus:border-stone-500"
+      }`}
+    />
+  );
+}
+
+function Check({ checked, onChange, label, darkMode }) {
+  return (
+    <label
+      className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${
+        darkMode ? "border-stone-700 bg-stone-800" : "border-stone-200"
+      }`}
+    >
+      <input type="checkbox" checked={checked} onChange={onChange} className="h-4 w-4" />
+      <span className={`text-sm ${darkMode ? "text-stone-200" : "text-stone-800"}`}>{label}</span>
+    </label>
+  );
+}
+
+function SlackConfig({ value, onChange, darkMode }) {
+  return (
+    <div className="space-y-5">
+      <Field label="Webhook URL" hint="Create an incoming webhook in your Slack app settings." darkMode={darkMode}>
+        <TextInput
+          darkMode={darkMode}
+          type="url"
+          value={value.webhook_url}
+          placeholder="https://hooks.slack.com/services/..."
+          onChange={(e) => onChange((prev) => ({ ...prev, webhook_url: e.target.value }))}
+        />
+      </Field>
+      <Field label="Channel" darkMode={darkMode}>
+        <TextInput
+          darkMode={darkMode}
+          value={value.channel}
+          placeholder="#general"
+          onChange={(e) => onChange((prev) => ({ ...prev, channel: e.target.value }))}
+        />
+      </Field>
+      <div className="grid gap-2 md:grid-cols-2">
+        <Check
+          checked={value.post_decisions}
+          onChange={(e) => onChange((prev) => ({ ...prev, post_decisions: e.target.checked }))}
+          label="Post decisions to Slack"
+          darkMode={darkMode}
+        />
+        <Check
+          checked={value.post_blockers}
+          onChange={(e) => onChange((prev) => ({ ...prev, post_blockers: e.target.checked }))}
+          label="Post blockers to Slack"
+          darkMode={darkMode}
+        />
+        <Check
+          checked={value.post_sprint_summary}
+          onChange={(e) => onChange((prev) => ({ ...prev, post_sprint_summary: e.target.checked }))}
+          label="Post sprint summary"
+          darkMode={darkMode}
+        />
+      </div>
+    </div>
+  );
+}
+
+function GitHubConfig({ value, onChange, darkMode }) {
+  return (
+    <div className="space-y-5">
+      <Field label="Access Token" hint="Use a PAT with repo read access." darkMode={darkMode}>
+        <TextInput
+          darkMode={darkMode}
+          type="password"
+          value={value.access_token}
+          placeholder="ghp_..."
+          onChange={(e) => onChange((prev) => ({ ...prev, access_token: e.target.value }))}
+        />
+      </Field>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Repository Owner" darkMode={darkMode}>
+          <TextInput
+            darkMode={darkMode}
+            value={value.repo_owner}
+            placeholder="org-or-user"
+            onChange={(e) => onChange((prev) => ({ ...prev, repo_owner: e.target.value }))}
+          />
+        </Field>
+        <Field label="Repository Name" darkMode={darkMode}>
+          <TextInput
+            darkMode={darkMode}
+            value={value.repo_name}
+            placeholder="repo-name"
+            onChange={(e) => onChange((prev) => ({ ...prev, repo_name: e.target.value }))}
+          />
+        </Field>
+      </div>
+      <Check
+        checked={value.auto_link_prs}
+        onChange={(e) => onChange((prev) => ({ ...prev, auto_link_prs: e.target.checked }))}
+        label="Auto-link pull requests to decisions"
+        darkMode={darkMode}
+      />
+      <GitHubDecisionLinker enabled={value.enabled} darkMode={darkMode} />
+    </div>
+  );
+}
+
+function JiraConfig({ value, onChange, darkMode }) {
+  return (
+    <div className="space-y-5">
+      <Field label="Site URL" hint="Example: https://your-team.atlassian.net" darkMode={darkMode}>
+        <TextInput
+          darkMode={darkMode}
+          type="url"
+          value={value.site_url}
+          placeholder="https://your-team.atlassian.net"
+          onChange={(e) => onChange((prev) => ({ ...prev, site_url: e.target.value }))}
+        />
+      </Field>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Jira Email" darkMode={darkMode}>
+          <TextInput
+            darkMode={darkMode}
+            type="email"
+            value={value.email}
+            placeholder="name@company.com"
+            onChange={(e) => onChange((prev) => ({ ...prev, email: e.target.value }))}
+          />
+        </Field>
+        <Field label="API Token" darkMode={darkMode}>
+          <TextInput
+            darkMode={darkMode}
+            type="password"
+            value={value.api_token}
+            placeholder="Atlassian API token"
+            onChange={(e) => onChange((prev) => ({ ...prev, api_token: e.target.value }))}
+          />
+        </Field>
+      </div>
+      <Check
+        checked={value.auto_sync_issues}
+        onChange={(e) => onChange((prev) => ({ ...prev, auto_sync_issues: e.target.checked }))}
+        label="Auto-sync Jira issues"
+        darkMode={darkMode}
+      />
+    </div>
+  );
+}
+
+function GitHubDecisionLinker({ enabled, darkMode }) {
+  const [decisionId, setDecisionId] = useState("");
+  const [decisions, setDecisions] = useState([]);
   const [prs, setPrs] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [decisions, setDecisions] = useState([]);
+  const [linking, setLinking] = useState(null);
 
   useEffect(() => {
+    if (!enabled) return;
     fetchDecisions();
-  }, []);
+  }, [enabled]);
 
   const fetchDecisions = async () => {
     try {
-      const res = await api.get('/api/decisions/');
-      setDecisions(res.data);
-    } catch (error) {
-      console.error('Failed to fetch decisions:', error);
+      const res = await api.get("/api/decisions/");
+      const payload = Array.isArray(res.data) ? res.data : res.data?.results || [];
+      setDecisions(payload);
+    } catch {
+      setDecisions([]);
     }
   };
 
-  const handleSearch = async () => {
+  const searchPRs = async () => {
     if (!decisionId) return;
     setLoading(true);
     try {
       const res = await api.get(`/api/integrations/github/search/${decisionId}/`);
-      setPrs(res.data.prs);
-      console.log('PRs found:', res.data.prs);
-    } catch (error) {
-      console.error('Search error:', error);
-      alert('Failed to search PRs: ' + (error.response?.data?.error || error.message));
+      setPrs(res.data?.prs || []);
+    } catch {
+      setPrs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLinkPr = async (prUrl) => {
+  const linkPR = async (prUrl) => {
+    setLinking(prUrl);
     try {
       await api.post(`/api/integrations/github/link/${decisionId}/`, { pr_url: prUrl });
-      alert('PR linked to decision');
-    } catch (error) {
-      alert('Failed to link PR');
+    } finally {
+      setLinking(null);
     }
   };
 
+  if (!enabled) {
+    return (
+      <div
+        className={`rounded-xl border border-dashed p-4 text-sm ${
+          darkMode ? "border-stone-600 text-stone-400" : "border-stone-300 text-stone-500"
+        }`}
+      >
+        Enable GitHub integration to search and link pull requests.
+      </div>
+    );
+  }
+
   return (
-    <div className="border border-gray-200 p-6 mt-6">
-      <h3 className="text-lg font-bold text-gray-900 mb-4">Link PRs to Decisions</h3>
-      
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-900 mb-2">Select Decision</label>
+    <div
+      className={`rounded-xl border p-4 space-y-3 ${
+        darkMode ? "border-stone-700 bg-stone-800/70" : "border-stone-200 bg-stone-50/60"
+      }`}
+    >
+      <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Link PRs To Decisions</p>
+      <div className="flex flex-col gap-2 md:flex-row">
         <select
+          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+            darkMode ? "border-stone-600 bg-stone-900 text-stone-100" : "border-stone-300 bg-white"
+          }`}
           value={decisionId}
           onChange={(e) => setDecisionId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
         >
-          <option value="">Choose a decision...</option>
-          {decisions.map(d => (
-            <option key={d.id} value={d.id}>{d.title}</option>
+          <option value="">Select a decision...</option>
+          {decisions.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.title}
+            </option>
           ))}
         </select>
+        <button
+          onClick={searchPRs}
+          disabled={!decisionId || loading}
+          className={`rounded-lg border px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 ${
+            darkMode ? "border-emerald-500 bg-emerald-600" : "border-stone-900 bg-stone-900"
+          }`}
+        >
+          {loading ? "Searching..." : "Search PRs"}
+        </button>
       </div>
-
-      <Button onClick={handleSearch} loading={loading} className="mb-6">Search Related PRs</Button>
-
-      {prs.length > 0 && (
-        <div className="space-y-3">
-          {prs.map(pr => (
-            <div key={pr.number} className="border border-gray-200 p-4 flex items-start justify-between">
-              <div>
-                <h4 className="font-medium text-gray-900">{pr.title}</h4>
-                <p className="text-sm text-gray-600">#{pr.number} - {pr.state}</p>
-                <a href={pr.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
-                  View on GitHub
-                </a>
+      {prs.length > 0 ? (
+        <div className="space-y-2">
+          {prs.map((pr) => (
+            <div
+              key={pr.number}
+              className={`rounded-lg border p-3 ${
+                darkMode ? "border-stone-700 bg-stone-900" : "border-stone-200 bg-white"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{pr.title}</p>
+                  <p className={`text-xs mt-1 ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                    #{pr.number} | {pr.state}
+                  </p>
+                </div>
+                <button
+                  onClick={() => linkPR(pr.url)}
+                  disabled={linking === pr.url}
+                  className={`rounded-md border px-2 py-1 text-xs font-semibold ${
+                    darkMode ? "border-stone-600 text-stone-200" : "border-stone-300 text-stone-700"
+                  }`}
+                >
+                  {linking === pr.url ? "Linking..." : "Link"}
+                </button>
               </div>
-              <Button onClick={() => handleLinkPr(pr.url)} variant="secondary">Link</Button>
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
-
-function JiraPanel({ data, onTest, testing, onRefresh }) {
-  const [siteUrl, setSiteUrl] = useState(data?.site_url || '');
-  const [email, setEmail] = useState(data?.email || '');
-  const [apiToken, setApiToken] = useState(data?.api_token || '');
-  const [autoSyncIssues, setAutoSyncIssues] = useState(data?.auto_sync_issues ?? false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await api.post('/api/integrations/jira/', {
-        site_url: siteUrl,
-        email,
-        api_token: apiToken,
-        auto_sync_issues: autoSyncIssues,
-        enabled: true
-      });
-      alert('Jira integration saved');
-      onRefresh();
-    } catch (error) {
-      alert('Failed to save Jira integration');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="max-w-2xl">
-      <div className="border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Jira Integration</h2>
-        
-        {data?.enabled ? (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200">
-            <p className="text-sm text-green-800">✓ Connected</p>
-          </div>
-        ) : (
-          <div className="mb-6 p-4 bg-gray-50 border border-gray-200">
-            <p className="text-sm text-gray-600">Not connected</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Jira Site URL</label>
-            <input
-              type="url"
-              value={siteUrl}
-              onChange={(e) => setSiteUrl(e.target.value)}
-              placeholder="https://your-domain.atlassian.net"
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">API Token</label>
-            <input
-              type="password"
-              value={apiToken}
-              onChange={(e) => setApiToken(e.target.value)}
-              placeholder="Your Jira API token"
-              className="w-full px-3 py-2 border border-gray-900 focus:outline-none"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">Create an API token in Jira account settings</p>
-          </div>
-
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={autoSyncIssues}
-              onChange={(e) => setAutoSyncIssues(e.target.checked)}
-              className="w-4 h-4 border border-gray-900"
-            />
-            <span className="text-sm text-gray-900">Auto-sync blockers with Jira issues</span>
-          </label>
-
-          <div className="flex gap-3">
-            <Button type="submit" loading={submitting}>Save</Button>
-            <Button type="button" variant="secondary" onClick={onTest} loading={testing}>Test Connection</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-export default Integrations;

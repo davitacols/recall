@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ChartBarIcon,
   ChatBubbleLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ChevronDownIcon,
   ClipboardDocumentListIcon,
   CubeIcon,
@@ -17,7 +19,6 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
-import NotificationBell from "./NotificationBell";
 
 function getAppLaunchTarget(app) {
   const launchPath = (app?.launch_path || "").trim();
@@ -33,7 +34,15 @@ function getAppLaunchTarget(app) {
   return { type: "internal", href: "/enterprise" };
 }
 
-export default function UnifiedNav({ darkMode, rightActions = null }) {
+export default function UnifiedNav({
+  darkMode,
+  sidebarWidth = 272,
+  collapsed = false,
+  onToggleCollapse = () => {},
+  onResizeWidth = () => {},
+  minWidth = 220,
+  maxWidth = 420,
+}) {
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
@@ -41,7 +50,6 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
   const searchInputRef = useRef(null);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [isCompact, setIsCompact] = useState(window.innerWidth < 1180);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [results, setResults] = useState([]);
@@ -49,19 +57,44 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
   const [installedApps, setInstalledApps] = useState([]);
+  const isResizingRef = useRef(false);
 
   useEffect(() => {
     const onResize = () => {
       setIsMobile(window.innerWidth < 768);
-      setIsCompact(window.innerWidth < 1180);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
   useEffect(() => {
+    const onMouseMove = (event) => {
+      if (!isResizingRef.current || collapsed) return;
+      onResizeWidth(event.clientX);
+    };
+
+    const onMouseUp = () => {
+      isResizingRef.current = false;
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [collapsed, onResizeWidth]);
+
+  useEffect(() => {
     setOpenDropdown(null);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!collapsed) return;
+    setSearchOpen(false);
+    setSelectedIndex(-1);
+    setOpenDropdown(null);
+  }, [collapsed]);
 
   useEffect(() => {
     const onClickOutside = (event) => {
@@ -79,6 +112,7 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
 
   useEffect(() => {
     const onKeyDown = (event) => {
+      if (collapsed) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setSearchOpen(true);
@@ -91,7 +125,7 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [collapsed]);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -184,22 +218,28 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
     () =>
       darkMode
         ? {
-            navBg: "rgba(23,18,21,0.9)",
+            navBg: "rgba(23,18,21,0.94)",
             border: "rgba(255,225,193,0.14)",
             text: "#f4ece0",
             muted: "#b9a997",
             hover: "rgba(255,255,255,0.06)",
             active: "rgba(255,173,105,0.18)",
-            searchBg: "rgba(255,255,255,0.03)",
+            searchBg: "rgba(255,255,255,0.04)",
+            panelAlt: "rgba(255,255,255,0.03)",
+            accentA: "#ffad69",
+            accentB: "#6ee7d3",
           }
         : {
-            navBg: "rgba(255,250,243,0.94)",
+            navBg: "rgba(255,250,243,0.96)",
             border: "#eadfce",
             text: "#231814",
             muted: "#7b6a58",
             hover: "rgba(35,24,20,0.06)",
             active: "rgba(255,158,87,0.2)",
             searchBg: "rgba(255,255,255,0.8)",
+            panelAlt: "rgba(35,24,20,0.03)",
+            accentA: "#ea7b2c",
+            accentB: "#0f9488",
           },
     [darkMode]
   );
@@ -330,205 +370,52 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
   }
 
   return (
-    <nav
+    <aside
       data-unified-nav-search="true"
       style={{
-        ...nav,
+        ...sidebar,
+        width: sidebarWidth,
         background: palette.navBg,
-        borderBottom: `1px solid ${palette.border}`,
+        borderRight: `1px solid ${palette.border}`,
+        padding: collapsed ? "10px 6px" : sidebar.padding,
+        gridTemplateRows: collapsed ? "auto minmax(0,1fr)" : sidebar.gridTemplateRows,
+        transition: "width 0.2s ease, padding 0.2s ease",
       }}
     >
-      <div style={brandWrap}>
-        <Link to="/" style={{ ...brand, color: palette.text }}>
-          Knoledgr
+      <div style={{ ...sidebarTextureA, background: `radial-gradient(circle, ${palette.accentA}55, transparent 68%)` }} />
+      <div style={{ ...sidebarTextureB, background: `radial-gradient(circle, ${palette.accentB}4a, transparent 72%)` }} />
+
+      <div
+        style={{
+          ...brandWrap,
+          justifyContent: collapsed ? "center" : "flex-start",
+          padding: collapsed ? "0" : brandWrap.padding,
+        }}
+      >
+        <button
+          onClick={onToggleCollapse}
+          style={{
+            ...collapseButton,
+            color: palette.muted,
+            border: `1px solid ${palette.border}`,
+            background: palette.searchBg,
+          }}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <ChevronRightIcon style={icon14} /> : <ChevronLeftIcon style={icon14} />}
+        </button>
+        <Link to="/" style={{ ...brand, color: palette.text, display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span style={brandMark} />
+          {!collapsed && "Knoledgr"}
         </Link>
       </div>
 
-      <div style={centerWrap}>
-        <div style={navList} ref={dropdownRef}>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = isTopLevelActive(item);
-
-            if (item.items) {
-              const expanded = openDropdown === item.name;
-              return (
-                <div key={item.name} style={{ position: "relative" }}>
-                  <button
-                    onClick={() => setOpenDropdown(expanded ? null : item.name)}
-                    style={{
-                      ...topButton,
-                      color: active ? palette.text : palette.muted,
-                      background: active ? palette.active : "transparent",
-                      border: `1px solid ${active ? palette.border : "transparent"}`,
-                    }}
-                    title={isCompact ? item.name : undefined}
-                  >
-                    <Icon style={icon16} />
-                    {!isCompact && <span>{item.name}</span>}
-                    {!isCompact && (
-                      <ChevronDownIcon
-                        style={{
-                          ...icon14,
-                          transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-                          transition: "transform 0.15s",
-                        }}
-                      />
-                    )}
-                  </button>
-
-                  {expanded && (
-                    <div
-                      style={{
-                        ...dropdown,
-                        background: palette.navBg,
-                        border: `1px solid ${palette.border}`,
-                      }}
-                    >
-                      {item.items.map((subItem) => {
-                        const SubIcon = subItem.icon;
-                        const subActive =
-                          location.pathname === subItem.href ||
-                          (subItem.href !== "/" && location.pathname.startsWith(`${subItem.href}/`));
-                        return (
-                          <Link
-                            key={subItem.href}
-                            to={subItem.href}
-                            onClick={() => setOpenDropdown(null)}
-                            style={{
-                              ...dropdownItem,
-                              color: subActive ? palette.text : palette.muted,
-                              background: subActive ? palette.active : "transparent",
-                              borderLeft: `3px solid ${subActive ? "#ffab69" : "transparent"}`,
-                            }}
-                          >
-                            <SubIcon style={icon16} />
-                            <span>{subItem.name}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                style={{
-                  ...topButton,
-                  color: active ? palette.text : palette.muted,
-                  background: active ? palette.active : "transparent",
-                  border: `1px solid ${active ? palette.border : "transparent"}`,
-                }}
-                title={isCompact ? item.name : undefined}
-              >
-                <Icon style={icon16} />
-                {!isCompact && <span>{item.name}</span>}
-              </Link>
-            );
-          })}
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setOpenDropdown(openDropdown === "Apps" ? null : "Apps")}
-              style={{
-                ...topButton,
-                color: installedApps.length ? palette.text : palette.muted,
-                background: openDropdown === "Apps" ? palette.active : "transparent",
-                border: `1px solid ${openDropdown === "Apps" ? palette.border : "transparent"}`,
-              }}
-              title={isCompact ? "Apps" : undefined}
-            >
-              {!isCompact && <span>Apps</span>}
-              {isCompact && <span>Apps</span>}
-              <ChevronDownIcon
-                style={{
-                  ...icon14,
-                  transform: openDropdown === "Apps" ? "rotate(180deg)" : "rotate(0deg)",
-                  transition: "transform 0.15s",
-                }}
-              />
-            </button>
-            {openDropdown === "Apps" && (
-              <div
-                style={{
-                  ...dropdown,
-                  background: palette.navBg,
-                  border: `1px solid ${palette.border}`,
-                  minWidth: 240,
-                }}
-              >
-                {installedApps.length === 0 ? (
-                  <Link
-                    to="/enterprise"
-                    onClick={() => setOpenDropdown(null)}
-                    style={{
-                      ...dropdownItem,
-                      color: palette.muted,
-                    }}
-                  >
-                    No apps installed
-                  </Link>
-                ) : (
-                  installedApps.map((app) => {
-                    const target = getAppLaunchTarget(app);
-                    if (target.type === "external") {
-                      return (
-                        <a
-                          key={app.id}
-                          href={target.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={() => setOpenDropdown(null)}
-                          style={{
-                            ...dropdownItem,
-                            color: palette.text,
-                            borderLeft: "3px solid transparent",
-                          }}
-                        >
-                          <span>{app.name}</span>
-                        </a>
-                      );
-                    }
-                    return (
-                      <Link
-                        key={app.id}
-                        to={target.href}
-                        onClick={() => setOpenDropdown(null)}
-                        style={{
-                          ...dropdownItem,
-                          color: palette.text,
-                          borderLeft: "3px solid transparent",
-                        }}
-                      >
-                        <span>{app.name}</span>
-                      </Link>
-                    );
-                  })
-                )}
-                <Link
-                  to="/enterprise"
-                  onClick={() => setOpenDropdown(null)}
-                  style={{
-                    ...dropdownItem,
-                    color: palette.muted,
-                    borderTop: `1px solid ${palette.border}`,
-                  }}
-                >
-                  Manage Apps
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div ref={searchRef} style={searchWrap}>
+      {!collapsed && (
+        <div style={searchWrap} ref={searchRef}>
           <div
             style={{
               ...searchShell,
-              width: isCompact ? 170 : 260,
               background: palette.searchBg,
               border: `1px solid ${searchOpen ? "#ffab69" : palette.border}`,
             }}
@@ -552,9 +439,7 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
                 <XMarkIcon style={icon14} />
               </button>
             ) : (
-              !isCompact && window.innerWidth >= 1320 && (
-                <kbd style={{ ...kbd, border: `1px solid ${palette.border}` }}>Ctrl+K</kbd>
-              )
+              <kbd style={{ ...kbd, border: `1px solid ${palette.border}` }}>Ctrl+K</kbd>
             )}
           </div>
 
@@ -601,94 +486,385 @@ export default function UnifiedNav({ darkMode, rightActions = null }) {
             </div>
           )}
         </div>
+      )}
+
+      {!collapsed && (
+        <div style={sectionLabelWrap}>
+          <span style={{ ...sectionLabel, color: palette.muted }}>Navigation</span>
+        </div>
+      )}
+
+      <div style={{ ...navList, padding: collapsed ? 0 : navList.padding }} ref={dropdownRef}>
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const active = isTopLevelActive(item);
+
+          if (item.items) {
+            const expanded = openDropdown === item.name;
+            return (
+              <div key={item.name} style={{ position: "relative" }}>
+                <button
+                  onClick={() => {
+                    if (collapsed) {
+                      navigate(item.items[0]?.href || "/");
+                      return;
+                    }
+                    setOpenDropdown(expanded ? null : item.name);
+                  }}
+                  style={{
+                    ...topButton,
+                    color: active ? palette.text : palette.muted,
+                    background: active ? palette.active : "transparent",
+                    border: `1px solid ${active ? palette.border : "transparent"}`,
+                    justifyContent: collapsed ? "center" : "flex-start",
+                    padding: collapsed ? "8px" : topButton.padding,
+                  }}
+                  title={item.name}
+                >
+                  <span style={{ ...iconPill, background: active ? `${palette.accentA}30` : palette.panelAlt }}>
+                    <Icon style={icon16} />
+                  </span>
+                  {!collapsed && <span>{item.name}</span>}
+                  {!collapsed && (
+                    <ChevronDownIcon
+                      style={{
+                        ...icon14,
+                        marginLeft: "auto",
+                        transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+                        transition: "transform 0.15s",
+                      }}
+                    />
+                  )}
+                </button>
+
+                {expanded && !collapsed && (
+                  <div
+                    style={{
+                      ...inlineDropdown,
+                      background: palette.panelAlt,
+                      border: `1px solid ${palette.border}`,
+                    }}
+                  >
+                    {item.items.map((subItem) => {
+                      const SubIcon = subItem.icon;
+                      const subActive =
+                        location.pathname === subItem.href ||
+                        (subItem.href !== "/" && location.pathname.startsWith(`${subItem.href}/`));
+                      return (
+                        <Link
+                          key={subItem.href}
+                          to={subItem.href}
+                          onClick={() => setOpenDropdown(null)}
+                          style={{
+                            ...dropdownItem,
+                            color: subActive ? palette.text : palette.muted,
+                            background: subActive ? palette.active : "transparent",
+                            borderLeft: `3px solid ${subActive ? "#ffab69" : "transparent"}`,
+                          }}
+                        >
+                          <SubIcon style={icon16} />
+                          <span>{subItem.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={item.name}
+              to={item.href}
+              style={{
+                ...topButton,
+                color: active ? palette.text : palette.muted,
+                background: active ? palette.active : "transparent",
+                border: `1px solid ${active ? palette.border : "transparent"}`,
+                justifyContent: collapsed ? "center" : "flex-start",
+                padding: collapsed ? "8px" : topButton.padding,
+              }}
+              title={item.name}
+            >
+              <span style={{ ...iconPill, background: active ? `${palette.accentA}30` : palette.panelAlt }}>
+                <Icon style={icon16} />
+              </span>
+              {!collapsed && <span>{item.name}</span>}
+            </Link>
+          );
+        })}
+
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => {
+              if (collapsed) {
+                navigate("/enterprise");
+                return;
+              }
+              setOpenDropdown(openDropdown === "Apps" ? null : "Apps");
+            }}
+            style={{
+              ...topButton,
+              color: installedApps.length ? palette.text : palette.muted,
+              background: openDropdown === "Apps" ? palette.active : "transparent",
+              border: `1px solid ${openDropdown === "Apps" ? palette.border : "transparent"}`,
+              justifyContent: collapsed ? "center" : "flex-start",
+              padding: collapsed ? "8px" : topButton.padding,
+            }}
+            title="Apps"
+          >
+            {collapsed ? (
+              <span style={{ ...iconPill, background: palette.panelAlt }}>
+                <CubeIcon style={icon16} />
+              </span>
+            ) : (
+              <span style={{ ...appsGlyph, background: palette.panelAlt }}>Apps</span>
+            )}
+            {!collapsed && (
+              <ChevronDownIcon
+                style={{
+                  ...icon14,
+                  marginLeft: "auto",
+                  transform: openDropdown === "Apps" ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.15s",
+                }}
+              />
+            )}
+          </button>
+          {openDropdown === "Apps" && !collapsed && (
+            <div
+              style={{
+                ...inlineDropdown,
+                background: palette.panelAlt,
+                border: `1px solid ${palette.border}`,
+              }}
+            >
+              {installedApps.length === 0 ? (
+                <Link
+                  to="/enterprise"
+                  onClick={() => setOpenDropdown(null)}
+                  style={{
+                    ...dropdownItem,
+                    color: palette.muted,
+                  }}
+                >
+                  No apps installed
+                </Link>
+              ) : (
+                installedApps.map((app) => {
+                  const target = getAppLaunchTarget(app);
+                  if (target.type === "external") {
+                    return (
+                      <a
+                        key={app.id}
+                        href={target.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => setOpenDropdown(null)}
+                        style={{
+                          ...dropdownItem,
+                          color: palette.text,
+                          borderLeft: "3px solid transparent",
+                        }}
+                      >
+                        <span>{app.name}</span>
+                      </a>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={app.id}
+                      to={target.href}
+                      onClick={() => setOpenDropdown(null)}
+                      style={{
+                        ...dropdownItem,
+                        color: palette.text,
+                        borderLeft: "3px solid transparent",
+                      }}
+                    >
+                      <span>{app.name}</span>
+                    </Link>
+                  );
+                })
+              )}
+              <Link
+                to="/enterprise"
+                onClick={() => setOpenDropdown(null)}
+                style={{
+                  ...dropdownItem,
+                  color: palette.muted,
+                  borderTop: `1px solid ${palette.border}`,
+                }}
+              >
+                Manage Apps
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div style={rightWrap}>
-        <NotificationBell />
-        {rightActions}
-      </div>
-    </nav>
+      {!collapsed && (
+        <div style={{ ...insightCard, background: palette.panelAlt, border: `1px solid ${palette.border}` }}>
+          <p style={{ ...insightLabel, color: palette.muted }}>Memory Health</p>
+          <p style={{ ...insightValue, color: palette.text }}>91%</p>
+          <div style={insightTrack}>
+            <div style={{ ...insightFill, background: `linear-gradient(90deg, ${palette.accentA}, ${palette.accentB})` }} />
+          </div>
+        </div>
+      )}
+
+      {!collapsed && (
+        <div
+          onMouseDown={() => {
+            isResizingRef.current = true;
+          }}
+          style={resizeHandle}
+          title={`Drag to resize (${minWidth}-${maxWidth}px)`}
+        />
+      )}
+    </aside>
   );
 }
 
-const nav = {
+const sidebar = {
   position: "fixed",
   top: 0,
   left: 0,
-  right: 0,
-  height: 56,
+  bottom: 0,
   display: "grid",
-  gridTemplateColumns: "auto minmax(0, 1fr) auto",
-  alignItems: "center",
-  gap: 8,
-  padding: "0 14px",
+  gridTemplateRows: "auto auto auto minmax(0,1fr) auto",
+  gap: 12,
+  padding: "12px 10px",
   zIndex: 70,
-  backdropFilter: "blur(10px)",
+  backdropFilter: "blur(12px)",
+  overflow: "hidden",
 };
 
 const brandWrap = {
-  paddingRight: 8,
+  padding: "0 8px",
+  minHeight: 36,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
+
+const sidebarTextureA = {
+  position: "absolute",
+  width: 160,
+  height: 160,
+  borderRadius: "50%",
+  top: -70,
+  right: -55,
+  pointerEvents: "none",
+  zIndex: 0,
+};
+
+const sidebarTextureB = {
+  position: "absolute",
+  width: 200,
+  height: 200,
+  borderRadius: "50%",
+  bottom: -110,
+  left: -90,
+  pointerEvents: "none",
+  zIndex: 0,
+};
+
+const brandMark = {
+  width: 18,
+  height: 18,
+  borderRadius: 6,
+  background: "conic-gradient(from 210deg at 55% 55%, #ff8d4f, #ffd08d 45%, #0e9a8f 72%, #ff8d4f)",
+  boxShadow: "0 6px 14px rgba(0,0,0,0.2)",
+  flexShrink: 0,
 };
 
 const brand = {
   textDecoration: "none",
-  fontSize: 20,
+  fontSize: 18,
   fontWeight: 800,
   letterSpacing: "-0.02em",
+  position: "relative",
+  zIndex: 1,
+};
+
+const sectionLabelWrap = {
+  padding: "0 10px",
+};
+
+const sectionLabel = {
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
 };
 
 const navList = {
-  display: "flex",
+  display: "grid",
   gap: 6,
   minWidth: 0,
-  overflow: "visible",
-};
-
-const centerWrap = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  minWidth: 0,
-  justifyContent: "space-between",
+  overflowY: "auto",
+  overflowX: "hidden",
+  padding: "0 2px",
+  position: "relative",
+  zIndex: 1,
 };
 
 const topButton = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 7,
+  gap: 8,
   borderRadius: 10,
   fontSize: 13,
   fontWeight: 600,
   textDecoration: "none",
-  padding: "7px 10px",
+  padding: "9px 10px",
   cursor: "pointer",
   whiteSpace: "nowrap",
+  width: "100%",
+  textAlign: "left",
+  transition: "all 0.2s ease",
+  backdropFilter: "blur(3px)",
 };
 
-const dropdown = {
-  position: "absolute",
-  top: "calc(100% + 6px)",
-  left: 0,
-  minWidth: 210,
-  borderRadius: 12,
+const inlineDropdown = {
+  marginTop: 4,
+  marginLeft: 8,
+  borderRadius: 10,
   overflow: "hidden",
-  boxShadow: "0 18px 40px rgba(0,0,0,0.22)",
-  zIndex: 85,
 };
 
 const dropdownItem = {
   display: "flex",
   alignItems: "center",
   gap: 10,
-  padding: "10px 12px",
+  padding: "9px 10px",
   textDecoration: "none",
   fontSize: 13,
   fontWeight: 600,
 };
 
+const iconPill = {
+  width: 24,
+  height: 24,
+  borderRadius: 8,
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
+};
+
+const appsGlyph = {
+  borderRadius: 8,
+  padding: "4px 8px",
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: "0.03em",
+};
+
 const searchWrap = {
   position: "relative",
-  flexShrink: 0,
+  padding: "0 2px",
 };
 
 const searchShell = {
@@ -699,6 +875,7 @@ const searchShell = {
   padding: "6px 8px",
   height: 36,
   minWidth: 0,
+  width: "100%",
 };
 
 const searchInput = {
@@ -711,10 +888,61 @@ const searchInput = {
   fontFamily: "inherit",
 };
 
-const rightWrap = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
+const insightCard = {
+  borderRadius: 12,
+  padding: "10px 12px",
+  marginTop: 2,
+  position: "relative",
+  zIndex: 1,
+};
+
+const insightLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.09em",
+  textTransform: "uppercase",
+};
+
+const insightValue = {
+  margin: "5px 0 8px",
+  fontSize: 22,
+  fontWeight: 800,
+  letterSpacing: "-0.02em",
+};
+
+const insightTrack = {
+  width: "100%",
+  height: 6,
+  borderRadius: 999,
+  background: "rgba(148,163,184,0.22)",
+  overflow: "hidden",
+};
+
+const insightFill = {
+  width: "91%",
+  height: "100%",
+  borderRadius: 999,
+};
+
+const collapseButton = {
+  width: 24,
+  height: 24,
+  borderRadius: 6,
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+  flexShrink: 0,
+};
+
+const resizeHandle = {
+  position: "absolute",
+  right: -3,
+  top: 0,
+  bottom: 0,
+  width: 6,
+  cursor: "col-resize",
+  zIndex: 75,
 };
 
 const clearButton = {
@@ -739,8 +967,8 @@ const kbd = {
 const resultsDropdown = {
   position: "absolute",
   top: "calc(100% + 6px)",
+  left: 0,
   right: 0,
-  width: 360,
   maxHeight: 360,
   overflowY: "auto",
   borderRadius: 12,

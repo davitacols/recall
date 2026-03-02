@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BellIcon } from "@heroicons/react/24/outline";
 import { useNotifications } from "../hooks/useNotifications";
@@ -12,7 +12,7 @@ import {
 } from "../services/notifications";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 
-function NotificationBell() {
+function NotificationBell({ openDirection = "down", align = "right" }) {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const { addToast } = useToast();
@@ -23,6 +23,7 @@ function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const hasFetchedRef = useRef(false);
 
   const palette = useMemo(
     () =>
@@ -52,11 +53,45 @@ function NotificationBell() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      if (!hasFetchedRef.current) {
+        setLoading(true);
+      }
+      const { notifications: items, unreadCount: unread } = await listNotifications();
+      setNotifications(items);
+      setUnreadCount(unread);
+      hasFetchedRef.current = true;
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 12000);
+    const interval = setInterval(fetchNotifications, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      fetchNotifications();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchNotifications();
+      }
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const onOutsideClick = (event) => {
@@ -64,8 +99,17 @@ function NotificationBell() {
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", onOutsideClick);
-    return () => document.removeEventListener("mousedown", onOutsideClick);
+    const onEscape = (event) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onOutsideClick, true);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("pointerdown", onOutsideClick, true);
+      document.removeEventListener("keydown", onEscape);
+    };
   }, []);
 
   const handleIncomingNotification = (payload) => {
@@ -87,19 +131,6 @@ function NotificationBell() {
   };
 
   useNotifications(handleIncomingNotification);
-
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true);
-      const { notifications: items, unreadCount: unread } = await listNotifications();
-      setNotifications(items);
-      setUnreadCount(unread);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const onMarkAsRead = async (notification) => {
     if (!notification || notification.is_read) return;
@@ -178,13 +209,36 @@ function NotificationBell() {
 
   return (
     <div style={{ position: "relative" }} ref={dropdownRef}>
-      <button onClick={() => setIsOpen((open) => !open)} style={bellButton} aria-label="Notifications">
+      <button
+        onClick={() =>
+          setIsOpen((open) => {
+            const next = !open;
+            if (next) fetchNotifications();
+            return next;
+          })
+        }
+        style={bellButton}
+        aria-label="Notifications"
+      >
         <BellIcon style={{ width: 20, height: 20 }} />
         {unreadCount > 0 && <span style={badge}>{unreadCount > 99 ? "99+" : unreadCount}</span>}
       </button>
 
       {isOpen && (
-        <div style={{ ...dropdown, width: isMobile ? "min(92vw, 390px)" : dropdown.width, right: isMobile ? -12 : 0, background: palette.panel, border: `1px solid ${palette.border}` }}>
+        <div
+          style={{
+            ...dropdown,
+            ...(openDirection === "up"
+              ? { top: "auto", bottom: "calc(100% + 8px)" }
+              : { top: "calc(100% + 8px)", bottom: "auto" }),
+            ...(align === "left"
+              ? { left: isMobile ? -12 : 0, right: "auto" }
+              : { right: isMobile ? -12 : 0, left: "auto" }),
+            width: isMobile ? "min(92vw, 390px)" : dropdown.width,
+            background: palette.panel,
+            border: `1px solid ${palette.border}`,
+          }}
+        >
           <div style={{ ...header, borderBottom: `1px solid ${palette.border}` }}>
             <h3 style={{ margin: 0, fontSize: 14, color: palette.text }}>Notifications</h3>
             <div style={{ display: "flex", gap: 8 }}>

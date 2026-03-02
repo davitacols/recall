@@ -88,15 +88,16 @@ export default function Homepage() {
               style={heroGrid}
             >
               <div>
-                <p style={eyebrow}>TEAM MEMORY PLATFORM</p>
+                <p style={eyebrow}>DECISION MEMORY PLATFORM</p>
                 <h1 style={heroTitle}>
                   Decisions stay clear.
                   <br />
                   Momentum keeps moving.
                 </h1>
                 <p style={heroSubtitle}>
-                  Knoledgr turns fragmented team knowledge into a living system
-                  your company can trust.
+                  Knoledgr is your competitive edge: every decision, rationale,
+                  and owner stays traceable so teams move faster without losing
+                  context.
                 </p>
                 <div style={ctaRow}>
                   <button
@@ -256,8 +257,8 @@ export default function Homepage() {
         <section style={section}>
           <div style={container}>
             <SectionHeading
-              title="Built for teams that move fast"
-              subtitle="One place to preserve institutional context without adding process overhead."
+              title="Your strategic advantage is retained context"
+              subtitle="Other tools track tasks. Knoledgr preserves decision memory so execution stays aligned over time."
             />
             <div style={featureGrid}>
               {features.map((feature, index) => (
@@ -280,8 +281,8 @@ export default function Homepage() {
         <section style={timelineSection}>
           <div style={container}>
             <SectionHeading
-              title="How Knoledgr works"
-              subtitle="Simple workflow, compounding value."
+              title="How your advantage compounds"
+              subtitle="Capture decisions once. Reuse context forever."
             />
             <div style={stepsGrid}>
               {steps.map((step) => (
@@ -298,7 +299,7 @@ export default function Homepage() {
         <section style={ctaSection}>
           <div style={container}>
             <div style={ctaPanel}>
-              <h2 style={ctaTitle}>Build a memory system your team can trust</h2>
+              <h2 style={ctaTitle}>Turn decision memory into your moat</h2>
               <p style={ctaSubtitle}>
                 Start with one workspace. Scale with every decision you keep.
               </p>

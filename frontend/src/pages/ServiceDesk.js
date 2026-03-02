@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
@@ -31,6 +31,11 @@ const SERVICE_FLOW = [
     detail: "Teams update progress, close requests, and maintain an auditable service timeline.",
   },
 ];
+const CHATBOT_SUGGESTIONS = [
+  "Email access blocked for onboarding users. What should we do first?",
+  "Production bug impacting checkout. Help me triage this incident.",
+  "A user requests role change and system permissions update.",
+];
 
 export default function ServiceDesk() {
   const { darkMode } = useTheme();
@@ -56,6 +61,18 @@ export default function ServiceDesk() {
   });
   const [error, setError] = useState("");
   const [aiError, setAiError] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: "welcome",
+      role: "assistant",
+      text: "I am Recall Helpdesk AI. Describe the issue, and I will suggest triage, risk, and next actions.",
+      guide: null,
+    },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState("");
+  const chatEndRef = useRef(null);
 
   const palette = useMemo(
     () =>
@@ -122,6 +139,10 @@ export default function ServiceDesk() {
     fetchData();
   }, [statusFilter, mineOnly]);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [chatMessages, chatLoading]);
+
   const inferRequestType = (guide) => {
     const text = `${guide?.answer || ""} ${form.title || ""} ${form.description || ""}`.toLowerCase();
     if (text.includes("access") || text.includes("permission")) return "access";
@@ -149,52 +170,92 @@ export default function ServiceDesk() {
       : [],
   });
 
+  const getSupportGuidance = async (prompt) => {
+    try {
+      const response = await api.post("/api/knowledge/ai/copilot/", {
+        query: prompt,
+        execute: false,
+        max_actions: 4,
+      });
+      return mapCopilotResponse(response.data);
+    } catch (err) {
+      try {
+        const missionRes = await api.get("/api/knowledge/ai/mission-control/");
+        return {
+          answer: "AI copilot fallback guidance generated from mission control and recommendations.",
+          confidence: 62,
+          riskStatus: missionRes?.data?.north_star?.status || "watch",
+          nextActions: (missionRes?.data?.autonomous_actions || []).slice(0, 4),
+        };
+      } catch (_fallbackErr) {
+        throw err;
+      }
+    }
+  };
+
   const analyzeWithAI = async () => {
     if (!form.title.trim()) return;
     setAnalyzing(true);
     setAiError("");
     try {
       const prompt = `Support request triage.\nTitle: ${form.title}\nDescription: ${form.description}\nRequest type: ${form.request_type}\nPriority: ${form.priority}\nProvide triage risk and top handling actions.`;
-      const response = await api.post("/api/knowledge/ai/copilot/", {
-        query: prompt,
-        execute: false,
-        max_actions: 4,
-      });
-      setAiGuide(mapCopilotResponse(response.data));
+      setAiGuide(await getSupportGuidance(prompt));
     } catch (err) {
-      try {
-        const [missionRes] = await Promise.all([
-          api.get("/api/knowledge/ai/mission-control/"),
-        ]);
-        const fallback = {
-          answer: "AI copilot fallback guidance generated from mission control and recommendations.",
-          confidence: 62,
-          riskStatus: missionRes?.data?.north_star?.status || "watch",
-          nextActions: (missionRes?.data?.autonomous_actions || []).slice(0, 4),
-        };
-        setAiGuide(fallback);
-      } catch (_fallbackErr) {
-        setAiError(err?.response?.data?.error || "Unable to generate AI guidance.");
-      }
+      setAiError(err?.response?.data?.error || "Unable to generate AI guidance.");
     } finally {
       setAnalyzing(false);
     }
   };
 
-  const applyAiGuidance = () => {
-    if (!aiGuide) return;
-    const suggestedType = inferRequestType(aiGuide);
-    const suggestedPriority = inferPriority(aiGuide);
-    const actionLines = (aiGuide.nextActions || [])
+  const applyGuidanceToForm = (guide, userPrompt = "") => {
+    if (!guide) return;
+    const suggestedType = inferRequestType(guide);
+    const suggestedPriority = inferPriority(guide);
+    const actionLines = (guide.nextActions || [])
       .map((a, idx) => `${idx + 1}. ${a.title || a}`)
       .join("\n");
-
+    const baseDescription = userPrompt || form.description || "";
     setForm((prev) => ({
       ...prev,
+      title: prev.title || userPrompt.slice(0, 120),
       request_type: suggestedType,
       priority: suggestedPriority,
-      description: `${prev.description || ""}${prev.description ? "\n\n" : ""}AI triage notes:\n${aiGuide.answer}${actionLines ? `\n\nSuggested actions:\n${actionLines}` : ""}`,
+      description: `${baseDescription}${baseDescription ? "\n\n" : ""}AI triage notes:\n${guide.answer}${actionLines ? `\n\nSuggested actions:\n${actionLines}` : ""}`,
     }));
+    setAiGuide(guide);
+  };
+
+  const submitChatPrompt = async (promptText) => {
+    const cleaned = promptText.trim();
+    if (!cleaned || chatLoading) return;
+
+    const userMessage = { id: `u-${Date.now()}`, role: "user", text: cleaned };
+    setChatMessages((prev) => [...prev, userMessage]);
+    setChatInput("");
+    setChatLoading(true);
+    setChatError("");
+    try {
+      const prompt = [
+        "You are Recall Helpdesk AI for enterprise service operations.",
+        "Respond with practical triage guidance for this support request.",
+        `User issue: ${cleaned}`,
+        `Existing request type: ${form.request_type}`,
+        `Existing priority: ${form.priority}`,
+      ].join("\n");
+      const guide = await getSupportGuidance(prompt);
+      setChatMessages((prev) => [
+        ...prev,
+        { id: `a-${Date.now()}`, role: "assistant", text: guide.answer, guide, prompt: cleaned },
+      ]);
+    } catch (err) {
+      setChatError(err?.response?.data?.error || "Helpdesk AI is temporarily unavailable.");
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const applyAiGuidance = () => {
+    applyGuidanceToForm(aiGuide, form.title || form.description);
   };
 
   const submitRequest = async (event) => {
@@ -285,6 +346,86 @@ export default function ServiceDesk() {
               <p style={{ margin: "4px 0 0", color: palette.muted, fontSize: 12 }}>{step.detail}</p>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panel }}>
+        <h2 style={{ margin: "0 0 6px", fontSize: 16, color: palette.text }}>Recall Helpdesk AI</h2>
+        <p style={{ margin: "0 0 10px", color: palette.muted, fontSize: 12 }}>
+          Chat with the assistant for triage guidance, then apply the response directly to the request form.
+        </p>
+        <div style={{ border: `1px solid ${palette.border}`, borderRadius: 10, background: palette.panelAlt, padding: 10 }}>
+          <div style={{ display: "grid", gap: 8, maxHeight: 260, overflowY: "auto", paddingRight: 2 }}>
+            {chatMessages.map((message) => (
+              <div
+                key={message.id}
+                style={{
+                  justifySelf: message.role === "user" ? "end" : "start",
+                  maxWidth: "92%",
+                  border: `1px solid ${palette.border}`,
+                  background: message.role === "user" ? palette.accentSoft : palette.panel,
+                  color: palette.text,
+                  borderRadius: 10,
+                  padding: "8px 10px",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 13, whiteSpace: "pre-wrap" }}>{message.text}</p>
+                {message.guide ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: palette.muted }}>
+                      Risk: {message.guide.riskStatus} | Confidence: {message.guide.confidence}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => applyGuidanceToForm(message.guide, message.prompt || "")}
+                      style={{ ...themedBtnGhost(palette), padding: "5px 8px", fontSize: 11 }}
+                    >
+                      Apply to Request
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+            {chatLoading ? (
+              <p style={{ ...muted, color: palette.muted, fontSize: 12 }}>Recall Helpdesk AI is thinking...</p>
+            ) : null}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+            {CHATBOT_SUGGESTIONS.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => submitChatPrompt(prompt)}
+                style={{ ...themedBtnGhost(palette), padding: "6px 9px", fontSize: 11 }}
+                disabled={chatLoading}
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitChatPrompt(chatInput);
+            }}
+            style={{ display: "grid", gap: 8, marginTop: 10 }}
+          >
+            <textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Describe the support issue and ask Recall Helpdesk AI..."
+              style={{ ...input, ...themedInput(palette), minHeight: 72, resize: "vertical" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {chatError ? <span style={{ color: palette.bad, fontSize: 12 }}>{chatError}</span> : <span style={{ color: palette.muted, fontSize: 12 }}>Responses are organization-aware and support-focused.</span>}
+              <button type="submit" style={themedBtnPrimary(palette)} disabled={chatLoading || !chatInput.trim()}>
+                {chatLoading ? "Sending..." : "Send to Recall AI"}
+              </button>
+            </div>
+          </form>
         </div>
       </section>
 

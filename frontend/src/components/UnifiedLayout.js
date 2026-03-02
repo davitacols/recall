@@ -1,18 +1,34 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import Breadcrumbs from "./Breadcrumbs";
 import NLCommandBar from "./NLCommandBar";
-import QuickActions from "./QuickActions";
+import NotificationBell from "./NotificationBell";
 import UnifiedNav from "./UnifiedNav";
+
+const SIDEBAR_STORAGE_KEY = "unifiedSidebarWidth";
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "unifiedSidebarCollapsed";
+const SIDEBAR_WIDTH_DEFAULT = 272;
+const SIDEBAR_WIDTH_COLLAPSED = 72;
+const SIDEBAR_WIDTH_MIN = 220;
+const SIDEBAR_WIDTH_MAX = 420;
 
 export default function UnifiedLayout({ children }) {
   const { user, logout } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = Number(window.localStorage.getItem(SIDEBAR_STORAGE_KEY));
+    if (!Number.isFinite(saved)) return SIDEBAR_WIDTH_DEFAULT;
+    return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, saved));
+  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true"
+  );
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef(null);
 
@@ -58,6 +74,22 @@ export default function UnifiedLayout({ children }) {
 
   const avatar = user?.avatar;
   const initial = user?.full_name?.charAt(0)?.toUpperCase() || "U";
+  const activeSidebarWidth = sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidth;
+  const pageTitle = getPageTitle(location.pathname);
+
+  const handleSidebarWidthChange = (nextWidth) => {
+    const clamped = Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, nextWidth));
+    setSidebarWidth(clamped);
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(clamped));
+  };
+
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(next));
+      return next;
+    });
+  };
 
   return (
     <div style={{ ...page, background: palette.pageBg }}>
@@ -66,83 +98,102 @@ export default function UnifiedLayout({ children }) {
 
       <UnifiedNav
         darkMode={darkMode}
-        rightActions={
-          <>
-            <QuickActions darkMode={darkMode} />
-
-            <button
-              onClick={toggleDarkMode}
-              style={{
-                ...iconButton,
-                color: palette.text,
-                background: palette.hover,
-                border: `1px solid ${palette.border}`,
-              }}
-              aria-label="Toggle theme"
-            >
-              {darkMode ? <SunIcon style={icon16} /> : <MoonIcon style={icon16} />}
-            </button>
-
-            <div ref={profileRef} style={{ position: "relative" }}>
-              <button
-                onClick={() => setShowProfile((value) => !value)}
-                style={{ ...avatarButton, border: `1px solid ${palette.border}` }}
-                aria-label="Open profile menu"
-              >
-                {avatar ? (
-                  <img src={avatar} alt={user?.full_name || "User"} style={avatarImage} />
-                ) : (
-                  <span style={avatarInitial}>{initial}</span>
-                )}
-              </button>
-
-              {showProfile && (
-                <div
-                  style={{
-                    ...profileMenu,
-                    background: palette.panelBgAlt,
-                    border: `1px solid ${palette.border}`,
-                  }}
-                >
-                  <div style={{ ...profileHead, borderBottom: `1px solid ${palette.border}` }}>
-                    <p style={{ ...nameLine, color: palette.text }}>{user?.full_name || "User"}</p>
-                    <p style={{ ...emailLine, color: palette.muted }}>{user?.email || ""}</p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      navigate("/profile");
-                      setShowProfile(false);
-                    }}
-                    style={{ ...menuButton, color: palette.text }}
-                  >
-                    Profile
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      navigate("/settings");
-                      setShowProfile(false);
-                    }}
-                    style={{ ...menuButton, color: palette.text }}
-                  >
-                    Settings
-                  </button>
-
-                  <button onClick={logout} style={{ ...menuButton, color: "#ef4444" }}>
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        }
+        sidebarWidth={activeSidebarWidth}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
+        onResizeWidth={handleSidebarWidthChange}
+        minWidth={SIDEBAR_WIDTH_MIN}
+        maxWidth={SIDEBAR_WIDTH_MAX}
       />
       <NLCommandBar darkMode={darkMode} />
 
-      <main style={{ ...main, paddingTop: isMobile ? 0 : 56 }}>
+      <main style={{ ...main, paddingTop: 0, paddingLeft: isMobile ? 0 : activeSidebarWidth }}>
         <div style={contentContainer}>
-          <Breadcrumbs darkMode={darkMode} />
+          <header
+            style={{
+              ...layoutHeader,
+              background: palette.panelBg,
+              border: `1px solid ${palette.border}`,
+            }}
+          >
+            <div style={headerTop}>
+              <div>
+                <p style={{ ...headerEyebrow, color: palette.muted }}>Workspace</p>
+                <h1 style={{ ...headerTitle, color: palette.text }}>{pageTitle}</h1>
+              </div>
+              <div style={headerActions}>
+                <NotificationBell />
+                <button
+                  onClick={toggleDarkMode}
+                  style={{
+                    ...iconButton,
+                    color: palette.text,
+                    background: palette.hover,
+                    border: `1px solid ${palette.border}`,
+                  }}
+                  aria-label="Toggle theme"
+                >
+                  {darkMode ? <SunIcon style={icon16} /> : <MoonIcon style={icon16} />}
+                </button>
+
+                <div ref={profileRef} style={{ position: "relative" }}>
+                  <button
+                    onClick={() => setShowProfile((value) => !value)}
+                    style={{ ...avatarButton, border: `1px solid ${palette.border}` }}
+                    aria-label="Open profile menu"
+                  >
+                    {avatar ? (
+                      <img src={avatar} alt={user?.full_name || "User"} style={avatarImage} />
+                    ) : (
+                      <span style={avatarInitial}>{initial}</span>
+                    )}
+                  </button>
+
+                  {showProfile && (
+                    <div
+                      style={{
+                        ...profileMenu,
+                        background: palette.panelBgAlt,
+                        border: `1px solid ${palette.border}`,
+                      }}
+                    >
+                      <div style={{ ...profileHead, borderBottom: `1px solid ${palette.border}` }}>
+                        <p style={{ ...nameLine, color: palette.text }}>{user?.full_name || "User"}</p>
+                        <p style={{ ...emailLine, color: palette.muted }}>{user?.email || ""}</p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          navigate("/profile");
+                          setShowProfile(false);
+                        }}
+                        style={{ ...menuButton, color: palette.text }}
+                      >
+                        Profile
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          navigate("/settings");
+                          setShowProfile(false);
+                        }}
+                        style={{ ...menuButton, color: palette.text }}
+                      >
+                        Settings
+                      </button>
+
+                      <button onClick={logout} style={{ ...menuButton, color: "#ef4444" }}>
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div style={headerBreadcrumbs}>
+              <Breadcrumbs darkMode={darkMode} />
+            </div>
+          </header>
           {children}
         </div>
       </main>
@@ -153,7 +204,7 @@ export default function UnifiedLayout({ children }) {
 const page = {
   minHeight: "100vh",
   position: "relative",
-  overflow: "hidden",
+  overflowX: "hidden",
 };
 
 const ambientGlowOne = {
@@ -221,6 +272,7 @@ const profileMenu = {
   borderRadius: 12,
   overflow: "hidden",
   boxShadow: "0 20px 40px rgba(0,0,0,0.28)",
+  zIndex: 120,
 };
 
 const profileHead = {
@@ -252,8 +304,8 @@ const menuButton = {
 const main = {
   position: "relative",
   zIndex: 1,
-  paddingTop: 56,
   minHeight: "100vh",
+  transition: "padding-left 0.2s ease",
 };
 
 const contentContainer = {
@@ -261,5 +313,75 @@ const contentContainer = {
   margin: "0 auto",
   padding: "0 clamp(14px, 2vw, 24px) 24px",
 };
+
+const layoutHeader = {
+  position: "sticky",
+  top: 0,
+  zIndex: 80,
+  borderRadius: 12,
+  padding: "12px 14px 10px",
+  marginBottom: 12,
+  backdropFilter: "blur(6px)",
+};
+
+const headerEyebrow = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const headerTitle = {
+  margin: "4px 0 8px",
+  fontSize: "clamp(1.05rem, 2vw, 1.35rem)",
+  letterSpacing: "-0.01em",
+};
+
+const headerTop = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+};
+
+const headerActions = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
+
+const headerBreadcrumbs = {
+  marginTop: 4,
+};
+
+function getPageTitle(pathname) {
+  const routeTitles = [
+    { prefix: "/conversations", title: "Conversations" },
+    { prefix: "/decisions", title: "Decisions" },
+    { prefix: "/knowledge/graph", title: "Knowledge Graph" },
+    { prefix: "/knowledge/analytics", title: "Knowledge Analytics" },
+    { prefix: "/knowledge", title: "Knowledge" },
+    { prefix: "/projects", title: "Projects" },
+    { prefix: "/business/goals", title: "Goals" },
+    { prefix: "/business/meetings", title: "Meetings" },
+    { prefix: "/business/tasks", title: "Tasks" },
+    { prefix: "/business/documents", title: "Documents" },
+    { prefix: "/service-desk", title: "Service Desk" },
+    { prefix: "/sprint", title: "Sprints" },
+    { prefix: "/docs", title: "Documentation" },
+    { prefix: "/settings", title: "Settings" },
+    { prefix: "/profile", title: "Profile" },
+    { prefix: "/notifications", title: "Notifications" },
+    { prefix: "/messages", title: "Messages" },
+    { prefix: "/business", title: "Business" },
+  ];
+
+  const matched = routeTitles.find((route) => pathname.startsWith(route.prefix));
+  if (matched) return matched.title;
+  if (pathname === "/" || pathname === "/dashboard") return "Dashboard";
+  return "Workspace";
+}
 
 const icon16 = { width: 16, height: 16 };

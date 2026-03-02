@@ -32,10 +32,10 @@ export function TeamExpertiseMap() {
     }
   };
 
-  if (loading) return <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6`}>Loading...</div>;
+  if (loading) return <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 self-start`}>Loading...</div>;
 
   return (
-    <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6`}>
+    <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 self-start`}>
       <div className="flex items-center gap-2 mb-4">
         <UserGroupIcon className={`w-5 h-5 ${textSecondary}`} />
         <h3 className={`text-lg font-semibold ${textPrimary}`}>Team Expertise</h3>
@@ -96,10 +96,10 @@ export function TrendAnalysis() {
     }
   };
 
-  if (loading) return <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6`}>Loading...</div>;
+  if (loading) return <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 self-start`}>Loading...</div>;
 
   return (
-    <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6`}>
+    <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 self-start`}>
       <div className="flex items-center gap-2 mb-4">
         <ArrowTrendingUpIcon className={`w-5 h-5 ${textSecondary}`} />
         <h3 className={`text-lg font-semibold ${textPrimary}`}>Trends (Last 30 Days)</h3>
@@ -166,10 +166,10 @@ export function MetricsTracker() {
     }
   };
 
-  if (loading) return <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6`}>Loading...</div>;
+  if (loading) return <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 self-start`}>Loading...</div>;
 
   return (
-    <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6`}>
+    <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6 self-start`}>
       <div className="flex items-center gap-2 mb-4">
         <ChartBarIcon className={`w-5 h-5 ${textSecondary}`} />
         <h3 className={`text-lg font-semibold ${textPrimary}`}>Platform Metrics</h3>

@@ -31,23 +31,23 @@ export default function AIRecommendations({ darkMode }) {
   if (loading || recommendations.length === 0) return null;
 
   return (
-    <section style={{ ...aiCard(palette), padding: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+    <section style={{ ...aiCard(palette), padding: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <SparklesIcon style={{ width: 16, height: 16, color: palette.warm }} />
         <h3 style={{ margin: 0, fontSize: 14, color: palette.text }}>AI Recommendations</h3>
       </div>
 
-      <div style={{ display: "grid", gap: 6 }}>
+      <div style={{ display: "grid", gap: 10 }}>
         {recommendations.slice(0, 5).map((item, idx) => {
           const Icon = getIcon(item.type);
           return (
-            <Link key={idx} to={getLink(item)} style={{ borderRadius: 9, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 9, textDecoration: "none", display: "grid", gridTemplateColumns: "auto 1fr", gap: 8 }}>
-              <Icon style={{ width: 14, height: 14, color: palette.muted, marginTop: 1 }} />
+            <Link key={idx} to={getLink(item)} style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 12, textDecoration: "none", display: "grid", gridTemplateColumns: "auto 1fr", gap: 10 }}>
+              <Icon style={{ width: 15, height: 15, color: palette.muted, marginTop: 2 }} />
               <div>
                 <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text }}>{item.title}</p>
-                <p style={{ margin: "3px 0 0", fontSize: 11, color: palette.muted }}>{item.reason}</p>
+                <p style={{ margin: "4px 0 0", fontSize: 11, lineHeight: 1.5, color: palette.muted }}>{item.reason}</p>
                 {item.source_breakdown?.length > 0 && (
-                  <p style={{ margin: "3px 0 0", fontSize: 10, color: palette.muted }}>
+                  <p style={{ margin: "6px 0 0", fontSize: 10, lineHeight: 1.45, color: palette.muted }}>
                     {item.source_breakdown
                       .slice(0, 2)
                       .map((s) => `${s.source}: ${Number(s.score).toFixed(2)}`)

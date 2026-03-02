@@ -278,34 +278,86 @@ def get_knowledge_graph(request):
     
     nodes = {}
     edges = []
-    
+    edge_seen = set()
+
+    def ensure_node(key, node_type, label):
+        if key in nodes:
+            return
+        nodes[key] = {
+            'id': key,
+            'type': node_type,
+            'label': (label or 'Untitled')[:50],
+        }
+
+    def ensure_edge(source, target, edge_type='relates_to', strength=1.0):
+        key = (source, target, edge_type)
+        if key in edge_seen:
+            return
+        edge_seen.add(key)
+        edges.append({
+            'source': source,
+            'target': target,
+            'type': edge_type,
+            'strength': strength,
+        })
+
     for link in links:
         # Add source node
         source_key = f"{link.source_content_type.model}_{link.source_object_id}"
-        if source_key not in nodes:
-            nodes[source_key] = {
-                'id': source_key,
-                'type': link.source_content_type.model,
-                'label': str(link.source_object)[:50] if link.source_object else 'Unknown',
-            }
-        
+        ensure_node(
+            source_key,
+            link.source_content_type.model,
+            str(link.source_object) if link.source_object else 'Unknown'
+        )
+
         # Add target node
         target_key = f"{link.target_content_type.model}_{link.target_object_id}"
-        if target_key not in nodes:
-            nodes[target_key] = {
-                'id': target_key,
-                'type': link.target_content_type.model,
-                'label': str(link.target_object)[:50] if link.target_object else 'Unknown',
-            }
-        
+        ensure_node(
+            target_key,
+            link.target_content_type.model,
+            str(link.target_object) if link.target_object else 'Unknown'
+        )
+
         # Add edge
-        edges.append({
-            'source': source_key,
-            'target': target_key,
-            'type': link.link_type,
-            'strength': link.strength,
-        })
-    
+        ensure_edge(source_key, target_key, link.link_type, link.strength)
+
+    # Add recent items so graph is not empty even when explicit links are sparse.
+    from apps.conversations.models import Conversation
+    from apps.decisions.models import Decision
+
+    conversations = Conversation.objects.filter(
+        organization=request.user.organization
+    ).order_by('-created_at')[:40]
+    decisions = Decision.objects.filter(
+        organization=request.user.organization
+    ).select_related('conversation').order_by('-created_at')[:40]
+
+    for conv in conversations:
+        conv_key = f"conversation_{conv.id}"
+        ensure_node(conv_key, 'conversation', conv.title)
+
+    for decision in decisions:
+        dec_key = f"decision_{decision.id}"
+        ensure_node(dec_key, 'decision', decision.title)
+        if decision.conversation_id:
+            conv_key = f"conversation_{decision.conversation_id}"
+            ensure_node(conv_key, 'conversation', getattr(decision.conversation, 'title', f'Conversation #{decision.conversation_id}'))
+            ensure_edge(conv_key, dec_key, 'decision_context', 0.85)
+
+    # Optional business nodes.
+    try:
+        from apps.business.models import Task, Meeting
+        from apps.business.document_models import Document
+
+        for task in Task.objects.filter(organization=request.user.organization).order_by('-created_at')[:30]:
+            ensure_node(f"task_{task.id}", 'task', task.title)
+        for meeting in Meeting.objects.filter(organization=request.user.organization).order_by('-created_at')[:30]:
+            ensure_node(f"meeting_{meeting.id}", 'meeting', meeting.title)
+        for document in Document.objects.filter(organization=request.user.organization).order_by('-created_at')[:30]:
+            ensure_node(f"document_{document.id}", 'document', document.title)
+    except Exception:
+        pass
+
     return Response({
         'nodes': list(nodes.values()),
         'edges': edges,

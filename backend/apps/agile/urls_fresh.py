@@ -1,5 +1,18 @@
 from django.urls import path, re_path
-from . import agile_fresh, retrospective_endpoints, views_missing_features, views, ai_endpoints, time_tracking_endpoints
+from . import (
+    agile_fresh,
+    retrospective_endpoints,
+    views_missing_features,
+    views,
+    ai_endpoints,
+    time_tracking_endpoints,
+    custom_fields_endpoints,
+    ml_endpoints,
+    sprint_views,
+    blocker_views,
+    retrospective_views,
+    kanban_views,
+)
 
 urlpatterns = [
     # Projects
@@ -24,10 +37,15 @@ urlpatterns = [
     path('sprint-history/', agile_fresh.sprint_history, name='sprint_history'),
     path('current-sprint/', agile_fresh.current_sprint, name='current_sprint'),
     path('decisions/debt-ledger/', agile_fresh.decision_debt_ledger, name='decision_debt_ledger'),
+    # Legacy Sprint APIs (compatibility)
+    path('sprints/', sprint_views.sprints_list, name='sprints_list'),
+    path('sprints/<int:pk>/', sprint_views.sprint_detail, name='sprint_detail_new'),
+    path('sprints/current/', sprint_views.current_sprint, name='current_sprint_new'),
     
     # Issues
     path('issues/<int:issue_id>/', agile_fresh.issue_detail, name='issue_detail'),
     re_path(r'^issues/(?P<issue_id>[A-Za-z0-9]+-\d+)/$', agile_fresh.issue_detail, name='issue_detail_by_key'),
+    path('issues/<int:issue_id>/move/', views.move_issue, name='move_issue'),
     path('issues/<int:issue_id>/comments/', agile_fresh.add_comment, name='add_comment'),
     path('issues/<int:issue_id>/decision-impacts/', views.issue_decision_impacts, name='issue_decision_impacts'),
     path('issues/<int:issue_id>/link-decision/', views.link_decision_to_issue, name='link_decision_to_issue'),
@@ -52,6 +70,10 @@ urlpatterns = [
     # Saved Filters
     path('filters/', views_missing_features.saved_filters, name='saved_filters'),
     path('filters/<int:filter_id>/', views_missing_features.delete_saved_filter, name='delete_saved_filter'),
+    # Advanced Filters (legacy compatibility)
+    path('filter-issues/', custom_fields_endpoints.filter_issues, name='filter_issues'),
+    path('saved-filters/', custom_fields_endpoints.saved_filters, name='saved_filters_legacy'),
+    path('saved-filters/<int:filter_id>/', custom_fields_endpoints.manage_saved_filter, name='manage_saved_filter'),
     
     # Issue Templates
     path('templates/', views_missing_features.issue_templates, name='issue_templates'),
@@ -62,6 +84,7 @@ urlpatterns = [
     
     # Components
     path('projects/<int:project_id>/components/', views_missing_features.components, name='components'),
+    path('projects/<int:project_id>/issues-unified/', views.project_issues_unified, name='project_issues_unified'),
     
     # Project Categories
     path('categories/', views_missing_features.project_categories, name='project_categories'),
@@ -74,19 +97,45 @@ urlpatterns = [
     path('service-desk/requests/', views_missing_features.create_service_request, name='create_service_request'),
     path('workflow/transitions/', views.workflow_transitions, name='workflow_transitions'),
     path('issues/<int:issue_id>/validate-transition/', views.validate_transition, name='validate_transition'),
+    path('issues/<int:issue_id>/assign-sprint/', kanban_views.assign_issue_to_sprint, name='assign_issue_to_sprint'),
     
     # Boards
     path('boards/<int:board_id>/', agile_fresh.board_detail, name='board_detail'),
+    path('boards/<int:board_id>/filters/', custom_fields_endpoints.board_filters, name='board_filters'),
     
     # Blockers
     path('blockers/', agile_fresh.blockers, name='blockers'),
+    path('blockers/<int:pk>/', blocker_views.blocker_detail, name='blocker_detail'),
     path('blockers/<int:blocker_id>/resolve/', agile_fresh.resolve_blocker, name='resolve_blocker'),
     
     # Retrospectives
     path('retrospective-insights/', agile_fresh.retrospective_insights, name='retrospective_insights'),
+    path('retrospectives/', retrospective_views.retrospectives_list, name='retrospectives_list'),
+    path('retrospectives/<int:pk>/', retrospective_views.retrospective_detail, name='retrospective_detail'),
+    path('retrospectives/<int:pk>/items/', retrospective_views.retrospective_add_item, name='retrospective_add_item'),
     path('sprints/<int:sprint_id>/auto-retrospective/', retrospective_endpoints.auto_generate_retrospective, name='auto-retrospective'),
     path('sprints/<int:sprint_id>/analytics/', retrospective_endpoints.sprint_analytics, name='sprint-analytics'),
     path('sprints/trends/', retrospective_endpoints.sprint_trends, name='sprint-trends'),
+    path('decisions/impact-report/', views.decision_impact_report, name='decision_impact_report'),
+
+    # Time Tracking (legacy charts)
+    path('sprints/<int:sprint_id>/burndown/', time_tracking_endpoints.get_burndown_chart, name='get_burndown_chart'),
+    path('sprints/<int:sprint_id>/time-tracking/', time_tracking_endpoints.get_sprint_time_tracking, name='get_sprint_time_tracking'),
+
+    # Custom Fields
+    path('projects/<int:project_id>/custom-fields/', custom_fields_endpoints.custom_fields, name='custom_fields'),
+    path('custom-fields/<int:field_id>/', custom_fields_endpoints.delete_custom_field, name='delete_custom_field'),
+    path('issues/<int:issue_id>/custom-fields/', custom_fields_endpoints.get_issue_custom_fields, name='get_issue_custom_fields'),
+    path('issues/<int:issue_id>/set-custom-field/', custom_fields_endpoints.set_custom_field_value, name='set_custom_field_value'),
+    path('projects/<int:project_id>/issue-types/', custom_fields_endpoints.custom_issue_types, name='custom_issue_types'),
+    path('issue-types/<int:type_id>/', custom_fields_endpoints.delete_custom_issue_type, name='delete_custom_issue_type'),
+
+    # ML/AI compatibility endpoints
+    path('ml/suggest-assignee/', ml_endpoints.suggest_assignee, name='ml_suggest_assignee'),
+    path('ml/predict-sprint/<int:sprint_id>/', ml_endpoints.predict_sprint, name='ml_predict_sprint'),
+    path('ml/auto-tag/', ml_endpoints.auto_tag, name='ml_auto_tag'),
+    path('ml/analyze-issue/', ml_endpoints.analyze_issue, name='ml_analyze_issue'),
+    path('ml/sprint-insights/<int:sprint_id>/', ml_endpoints.sprint_insights, name='ml_sprint_insights'),
     
     # AI Features
     path('ai/chat/', ai_endpoints.ai_chat, name='ai_chat'),

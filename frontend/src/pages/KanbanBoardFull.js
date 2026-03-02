@@ -161,7 +161,7 @@ function KanbanBoard() {
           </div>
         )}
 
-        <section style={boardGrid}>
+        <section style={boardLane}>
           {(board.columns || []).map((column) => (
             <article key={column.id} style={{ ...columnCard, background: palette.card, border: `1px solid ${palette.border}` }}>
               <div style={columnHead}>
@@ -241,8 +241,8 @@ const backButton = { display: "inline-flex", alignItems: "center", gap: 6, borde
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
 const subtitle = { margin: 0, fontSize: 13 };
-const boardGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 8 };
-const columnCard = { borderRadius: 12, padding: 10, minHeight: 520, display: "flex", flexDirection: "column" };
+const boardLane = { display: "grid", gridAutoFlow: "column", gridAutoColumns: "minmax(280px, 340px)", gap: 8, overflowX: "auto", overflowY: "hidden", paddingBottom: 4, alignItems: "start" };
+const columnCard = { borderRadius: 12, padding: 10, minHeight: 520, display: "flex", flexDirection: "column", minWidth: 280 };
 const columnHead = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
 const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid rgba(120,120,120,0.4)", color: "#9e8d7b", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
 const issuesWrap = { display: "grid", gap: 8, alignContent: "start", flex: 1 };

@@ -6,7 +6,6 @@ import {
   ClipboardDocumentCheckIcon, 
   DocumentCheckIcon, 
   CalendarIcon,
-  PlusIcon,
   ChatBubbleLeftIcon,
   FlagIcon
 } from '@heroicons/react/24/outline';
@@ -76,20 +75,20 @@ export default function DashboardWidgets() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Quick Actions */}
-      <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-        <h3 className={`text-sm font-semibold ${textPrimary} mb-3`}>Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-2">
+      <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
+        <h3 className={`text-sm font-semibold ${textPrimary} mb-4`}>Quick Actions</h3>
+        <div className="grid grid-cols-2 gap-3">
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
               <button
                 key={action.label}
                 onClick={() => navigate(action.path)}
-                className={`p-3 border rounded-lg ${getColorClass(action.color)} ${hoverBg} transition-all text-left`}
+                className={`p-3.5 border rounded-lg ${getColorClass(action.color)} ${hoverBg} transition-all text-left`}
               >
-                <Icon className="w-5 h-5 mb-2" />
+                <Icon className="w-5 h-5 mb-2.5" />
                 <div className="text-xs font-medium">{action.label}</div>
               </button>
             );
@@ -99,14 +98,14 @@ export default function DashboardWidgets() {
 
       {/* Pending Tasks */}
       {digest?.pending_tasks && digest.pending_tasks.length > 0 && (
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-          <h3 className={`text-sm font-semibold ${textPrimary} mb-3`}>Pending Tasks</h3>
-          <div className="space-y-2">
+        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
+          <h3 className={`text-sm font-semibold ${textPrimary} mb-4`}>Pending Tasks</h3>
+          <div className="space-y-3">
             {digest.pending_tasks.map((task) => (
               <div
                 key={task.id}
                 onClick={() => navigate('/business/tasks')}
-                className={`p-3 border ${borderColor} rounded cursor-pointer ${hoverBg} transition-all`}
+                className={`p-3.5 border ${borderColor} rounded cursor-pointer ${hoverBg} transition-all`}
               >
                 <div className="flex items-start justify-between mb-1">
                   <div className={`text-sm font-medium ${textPrimary}`}>{task.title}</div>
@@ -127,18 +126,18 @@ export default function DashboardWidgets() {
 
       {/* Decisions Needing Input */}
       {digest?.decisions_needing_input && digest.decisions_needing_input.length > 0 && (
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-          <h3 className={`text-sm font-semibold ${textPrimary} mb-3`}>Decisions Needing Input</h3>
-          <div className="space-y-2">
+        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
+          <h3 className={`text-sm font-semibold ${textPrimary} mb-4`}>Decisions Needing Input</h3>
+          <div className="space-y-3">
             {digest.decisions_needing_input.map((decision) => (
               <div
                 key={decision.id}
                 onClick={() => navigate(`/decisions/${decision.id}`)}
-                className={`p-3 border ${borderColor} rounded cursor-pointer ${hoverBg} transition-all`}
+                className={`p-3.5 border ${borderColor} rounded cursor-pointer ${hoverBg} transition-all`}
               >
                 <div className={`text-sm font-medium ${textPrimary} mb-1`}>{decision.title}</div>
                 <div className={`text-xs ${textSecondary} capitalize`}>
-                  {decision.impact_level} impact • {decision.status}
+                  {decision.impact_level} impact | {decision.status}
                 </div>
               </div>
             ))}
@@ -148,21 +147,21 @@ export default function DashboardWidgets() {
 
       {/* Upcoming Meetings */}
       {digest?.upcoming_meetings && digest.upcoming_meetings.length > 0 && (
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-          <h3 className={`text-sm font-semibold ${textPrimary} mb-3 flex items-center gap-2`}>
+        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
+          <h3 className={`text-sm font-semibold ${textPrimary} mb-4 flex items-center gap-2`}>
             <CalendarIcon className="w-4 h-4" />
             Today's Meetings
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {digest.upcoming_meetings.map((meeting) => (
               <div
                 key={meeting.id}
                 onClick={() => navigate(`/business/meetings/${meeting.id}`)}
-                className={`p-3 border ${borderColor} rounded cursor-pointer ${hoverBg} transition-all`}
+                className={`p-3.5 border ${borderColor} rounded cursor-pointer ${hoverBg} transition-all`}
               >
                 <div className={`text-sm font-medium ${textPrimary} mb-1`}>{meeting.title}</div>
                 <div className={`text-xs ${textSecondary}`}>
-                  {new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {meeting.duration_minutes} min
+                  {new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} | {meeting.duration_minutes} min
                 </div>
               </div>
             ))}
@@ -172,14 +171,14 @@ export default function DashboardWidgets() {
 
       {/* Activity Summary */}
       {digest?.activity_summary && (
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
-          <h3 className={`text-sm font-semibold ${textPrimary} mb-3`}>Last 24 Hours</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
+          <h3 className={`text-sm font-semibold ${textPrimary} mb-4`}>Last 24 Hours</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className={`border ${borderColor} rounded-lg p-3`}>
               <div className={`text-2xl font-bold ${textPrimary}`}>{digest.activity_summary.decisions}</div>
               <div className={`text-xs ${textSecondary}`}>Decisions</div>
             </div>
-            <div>
+            <div className={`border ${borderColor} rounded-lg p-3`}>
               <div className={`text-2xl font-bold ${textPrimary}`}>{digest.activity_summary.conversations}</div>
               <div className={`text-xs ${textSecondary}`}>Conversations</div>
             </div>
@@ -189,3 +188,5 @@ export default function DashboardWidgets() {
     </div>
   );
 }
+
+

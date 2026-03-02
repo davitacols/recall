@@ -13,6 +13,8 @@ import {
 import {
   ArrowTrendingUpIcon,
   ChatBubbleLeftIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   ClipboardDocumentListIcon,
   DocumentCheckIcon,
   LinkIcon,
@@ -20,6 +22,57 @@ import {
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { buildApiUrl } from "../utils/apiBase";
+
+const DASHBOARD_CARD_ORDER_KEY = "unifiedDashboardCardOrderV1";
+const LEFT_CARD_IDS = [
+  "mission-control",
+  "chief-of-staff",
+  "health-snapshot",
+  "trends-metrics",
+  "team-expertise",
+  "daily-digest",
+];
+const RIGHT_CARD_IDS = [
+  "decision-twin",
+  "decision-debt",
+  "decision-outcomes",
+  "pending-outcomes",
+  "decision-drift",
+  "team-calibration",
+  "advanced-insights",
+  "ai-recommendations",
+];
+
+function normalizeOrder(columnOrder, defaults) {
+  const seen = new Set();
+  const cleaned = [];
+  for (const id of columnOrder || []) {
+    if (defaults.includes(id) && !seen.has(id)) {
+      seen.add(id);
+      cleaned.push(id);
+    }
+  }
+  for (const id of defaults) {
+    if (!seen.has(id)) cleaned.push(id);
+  }
+  return cleaned;
+}
+
+function loadCardOrder() {
+  try {
+    const raw = window.localStorage.getItem(DASHBOARD_CARD_ORDER_KEY);
+    if (!raw) {
+      return { left: LEFT_CARD_IDS, right: RIGHT_CARD_IDS };
+    }
+    const parsed = JSON.parse(raw);
+    return {
+      left: normalizeOrder(parsed?.left, LEFT_CARD_IDS),
+      right: normalizeOrder(parsed?.right, RIGHT_CARD_IDS),
+    };
+  } catch {
+    return { left: LEFT_CARD_IDS, right: RIGHT_CARD_IDS };
+  }
+}
 
 export default function UnifiedDashboard() {
   const { darkMode } = useTheme();
@@ -50,6 +103,7 @@ export default function UnifiedDashboard() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1160);
+  const [cardOrder, setCardOrder] = useState(loadCardOrder);
 
   useEffect(() => {
     fetchDashboardData();
@@ -60,6 +114,10 @@ export default function UnifiedDashboard() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(DASHBOARD_CARD_ORDER_KEY, JSON.stringify(cardOrder));
+  }, [cardOrder]);
 
   const readJsonSafe = async (response, fallback = {}) => {
     try {
@@ -291,10 +349,51 @@ export default function UnifiedDashboard() {
     }
   };
 
+  const getCardOrder = (column, cardId) => {
+    const index = cardOrder[column]?.indexOf(cardId);
+    return index < 0 ? 999 : index;
+  };
+
+  const moveCard = (column, cardId, direction) => {
+    setCardOrder((prev) => {
+      const nextColumn = [...(prev[column] || [])];
+      const index = nextColumn.indexOf(cardId);
+      if (index < 0) return prev;
+      const target = index + direction;
+      if (target < 0 || target >= nextColumn.length) return prev;
+      const temp = nextColumn[target];
+      nextColumn[target] = nextColumn[index];
+      nextColumn[index] = temp;
+      return { ...prev, [column]: nextColumn };
+    });
+  };
+
   if (loading) {
     return (
-      <div style={loadingWrap}>
-        <p style={{ color: palette.text }}>Loading dashboard...</p>
+      <div style={{ ...loadingWrap, color: palette.text }}>
+        <div
+          style={{
+            ...loadingCard,
+            background: palette.panel,
+            border: `1px solid ${palette.border}`,
+          }}
+        >
+          <div style={loadingTop}>
+            <span className="spinner" aria-hidden="true" />
+            <div style={{ minWidth: 0 }}>
+              <p style={loadingTitle}>Hydrating your command center</p>
+              <p style={{ ...loadingSubtitle, color: palette.muted }}>
+                Pulling activity, decisions, outcomes, and sprint signals
+              </p>
+            </div>
+          </div>
+
+          <div style={loadingSkeletonGrid}>
+            <div style={{ ...loadingSkeletonBar, width: "78%", background: palette.panelAlt }} />
+            <div style={{ ...loadingSkeletonBar, width: "92%", background: palette.panelAlt }} />
+            <div style={{ ...loadingSkeletonBar, width: "66%", background: palette.panelAlt }} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -352,15 +451,11 @@ export default function UnifiedDashboard() {
         style={{
           ...mainGrid,
           "--ui-delay": "190ms",
-          gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0, 1fr) 340px",
+          gridTemplateColumns: "minmax(0,1fr)",
         }}
       >
         <div style={leftCol}>
-          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
-            <div style={panelHeader}>
-              <h2 style={{ ...panelTitle, color: palette.text }}>Recent Activity</h2>
-            </div>
-
+          <CollapsibleCard title="Recent Activity" palette={palette} defaultExpanded>
             {timeline.length === 0 ? (
               <div style={{ ...emptyState, color: palette.dim }}>No activity</div>
             ) : (
@@ -397,22 +492,117 @@ export default function UnifiedDashboard() {
                 )}
               </>
             )}
-          </article>
+          </CollapsibleCard>
+        </div>
 
-          <div style={analyticsRow}>
-            <TrendAnalysis />
-            <MetricsTracker />
-          </div>
+      </section>
 
-          <TeamExpertiseMap />
+      <section
+        className="ui-enter"
+        style={{
+          ...mainGrid,
+          "--ui-delay": "240ms",
+          gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "repeat(2, minmax(0, 1fr))",
+        }}
+      >
+        <div style={leftCol}>
+          <CollapsibleCard
+            title="Mission Control"
+            palette={palette}
+            defaultExpanded
+            cardId="mission-control"
+            column="left"
+            order={getCardOrder("left", "mission-control")}
+            onMoveUp={() => moveCard("left", "mission-control", -1)}
+            onMoveDown={() => moveCard("left", "mission-control", 1)}
+          >
+            <MissionControlPanel darkMode={darkMode} />
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            title="Chief Of Staff"
+            palette={palette}
+            defaultExpanded
+            cardId="chief-of-staff"
+            column="left"
+            order={getCardOrder("left", "chief-of-staff")}
+            onMoveUp={() => moveCard("left", "chief-of-staff", -1)}
+            onMoveDown={() => moveCard("left", "chief-of-staff", 1)}
+          >
+            <ChiefOfStaffPanel darkMode={darkMode} />
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            title="Health Snapshot"
+            palette={palette}
+            defaultExpanded
+            cardId="health-snapshot"
+            column="left"
+            order={getCardOrder("left", "health-snapshot")}
+            onMoveUp={() => moveCard("left", "health-snapshot", -1)}
+            onMoveDown={() => moveCard("left", "health-snapshot", 1)}
+          >
+            <div style={healthList}>
+              <HealthRow label="Knowledge freshness" value="High" tint={palette.good} />
+              <HealthRow label="Decision throughput" value={`${stats.nodes}`} tint={palette.info} />
+              <HealthRow label="Pending links" value={`${stats.links}`} tint={palette.accent} />
+            </div>
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            title="Trends And Metrics"
+            palette={palette}
+            defaultExpanded
+            cardId="trends-metrics"
+            column="left"
+            order={getCardOrder("left", "trends-metrics")}
+            onMoveUp={() => moveCard("left", "trends-metrics", -1)}
+            onMoveDown={() => moveCard("left", "trends-metrics", 1)}
+          >
+            <div style={analyticsRow}>
+              <TrendAnalysis />
+              <MetricsTracker />
+            </div>
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            title="Team Expertise"
+            palette={palette}
+            defaultExpanded
+            cardId="team-expertise"
+            column="left"
+            order={getCardOrder("left", "team-expertise")}
+            onMoveUp={() => moveCard("left", "team-expertise", -1)}
+            onMoveDown={() => moveCard("left", "team-expertise", 1)}
+          >
+            <TeamExpertiseMap />
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            title="Daily Digest"
+            palette={palette}
+            defaultExpanded
+            cardId="daily-digest"
+            column="left"
+            order={getCardOrder("left", "daily-digest")}
+            onMoveUp={() => moveCard("left", "daily-digest", -1)}
+            onMoveDown={() => moveCard("left", "daily-digest", 1)}
+          >
+            <DashboardWidgets />
+          </CollapsibleCard>
         </div>
 
         <aside style={rightCol}>
-          <MissionControlPanel darkMode={darkMode} />
-          <ChiefOfStaffPanel darkMode={darkMode} />
-
-          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
-            <h3 style={{ ...railTitle, color: palette.text }}>Autonomous Decision Twin</h3>
+          <CollapsibleCard
+            title="Autonomous Decision Twin"
+            palette={palette}
+            defaultExpanded
+            cardId="decision-twin"
+            column="right"
+            order={getCardOrder("right", "decision-twin")}
+            onMoveUp={() => moveCard("right", "decision-twin", -1)}
+            onMoveDown={() => moveCard("right", "decision-twin", 1)}
+          >
             <div style={healthList}>
               {currentSprint ? (
                 <>
@@ -459,10 +649,18 @@ export default function UnifiedDashboard() {
                 </p>
               )}
             </div>
-          </article>
+          </CollapsibleCard>
 
-          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
-            <h3 style={{ ...railTitle, color: palette.text }}>Decision Debt Ledger</h3>
+          <CollapsibleCard
+            title="Decision Debt Ledger"
+            palette={palette}
+            defaultExpanded
+            cardId="decision-debt"
+            column="right"
+            order={getCardOrder("right", "decision-debt")}
+            onMoveUp={() => moveCard("right", "decision-debt", -1)}
+            onMoveDown={() => moveCard("right", "decision-debt", 1)}
+          >
             <div style={healthList}>
               {decisionDebt?.summary ? (
                 <>
@@ -502,19 +700,18 @@ export default function UnifiedDashboard() {
                 </p>
               )}
             </div>
-          </article>
+          </CollapsibleCard>
 
-          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
-            <h3 style={{ ...railTitle, color: palette.text }}>Health Snapshot</h3>
-            <div style={healthList}>
-              <HealthRow label="Knowledge freshness" value="High" tint={palette.good} />
-              <HealthRow label="Decision throughput" value={`${stats.nodes}`} tint={palette.info} />
-              <HealthRow label="Pending links" value={`${stats.links}`} tint={palette.accent} />
-            </div>
-          </article>
-
-          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
-            <h3 style={{ ...railTitle, color: palette.text }}>Decision Outcomes (Month)</h3>
+          <CollapsibleCard
+            title="Decision Outcomes (Month)"
+            palette={palette}
+            defaultExpanded
+            cardId="decision-outcomes"
+            column="right"
+            order={getCardOrder("right", "decision-outcomes")}
+            onMoveUp={() => moveCard("right", "decision-outcomes", -1)}
+            onMoveDown={() => moveCard("right", "decision-outcomes", 1)}
+          >
             <div style={healthList}>
               <HealthRow label="Reviewed" value={`${outcomeStats.reviewed_count}`} tint={palette.info} />
               <HealthRow label="Successful" value={`${outcomeStats.success_count}`} tint={palette.good} />
@@ -522,10 +719,18 @@ export default function UnifiedDashboard() {
               <HealthRow label="Success rate" value={`${outcomeStats.success_rate}%`} tint={palette.good} />
               <HealthRow label="Avg reliability" value={`${outcomeStats.avg_reliability}%`} tint={palette.info} />
             </div>
-          </article>
+          </CollapsibleCard>
 
-          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
-            <h3 style={{ ...railTitle, color: palette.text }}>Pending Outcome Reviews</h3>
+          <CollapsibleCard
+            title="Pending Outcome Reviews"
+            palette={palette}
+            defaultExpanded
+            cardId="pending-outcomes"
+            column="right"
+            order={getCardOrder("right", "pending-outcomes")}
+            onMoveUp={() => moveCard("right", "pending-outcomes", -1)}
+            onMoveDown={() => moveCard("right", "pending-outcomes", 1)}
+          >
             <div style={healthList}>
               <HealthRow label="Total pending" value={`${pendingOutcomeMeta.total}`} tint={palette.info} />
               <HealthRow label="Overdue" value={`${pendingOutcomeMeta.overdue}`} tint={palette.accent} />
@@ -603,10 +808,18 @@ export default function UnifiedDashboard() {
                 </button>
               </div>
             </div>
-          </article>
+          </CollapsibleCard>
 
-          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
-            <h3 style={{ ...railTitle, color: palette.text }}>Decision Drift Alerts</h3>
+          <CollapsibleCard
+            title="Decision Drift Alerts"
+            palette={palette}
+            defaultExpanded
+            cardId="decision-drift"
+            column="right"
+            order={getCardOrder("right", "decision-drift")}
+            onMoveUp={() => moveCard("right", "decision-drift", -1)}
+            onMoveDown={() => moveCard("right", "decision-drift", 1)}
+          >
             <div style={healthList}>
               <HealthRow label="Total alerts" value={`${driftMeta.total}`} tint={palette.info} />
               <HealthRow label="Critical" value={`${driftMeta.critical}`} tint={palette.accent} />
@@ -632,10 +845,18 @@ export default function UnifiedDashboard() {
                 </Link>
               ))}
             </div>
-          </article>
+          </CollapsibleCard>
 
-          <article className="ui-card-lift ui-smooth" style={{ ...panel, background: palette.panel, border: `1px solid ${palette.border}` }}>
-            <h3 style={{ ...railTitle, color: palette.text }}>Team Calibration</h3>
+          <CollapsibleCard
+            title="Team Calibration"
+            palette={palette}
+            defaultExpanded
+            cardId="team-calibration"
+            column="right"
+            order={getCardOrder("right", "team-calibration")}
+            onMoveUp={() => moveCard("right", "team-calibration", -1)}
+            onMoveDown={() => moveCard("right", "team-calibration", 1)}
+          >
             <div style={healthList}>
               {calibrationRows.slice(0, 4).map((row) => (
                 <div key={`${row.reviewer_id}-${row.reviewer_name}`} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: "8px 10px" }}>
@@ -649,11 +870,32 @@ export default function UnifiedDashboard() {
                 <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>No calibration data yet.</p>
               )}
             </div>
-          </article>
+          </CollapsibleCard>
 
-          <DashboardWidgets />
-          <AdvancedAIInsights />
-          <AIRecommendations darkMode={darkMode} />
+          <CollapsibleCard
+            title="Advanced AI Insights"
+            palette={palette}
+            defaultExpanded
+            cardId="advanced-insights"
+            column="right"
+            order={getCardOrder("right", "advanced-insights")}
+            onMoveUp={() => moveCard("right", "advanced-insights", -1)}
+            onMoveDown={() => moveCard("right", "advanced-insights", 1)}
+          >
+            <AdvancedAIInsights />
+          </CollapsibleCard>
+          <CollapsibleCard
+            title="AI Recommendations"
+            palette={palette}
+            defaultExpanded
+            cardId="ai-recommendations"
+            column="right"
+            order={getCardOrder("right", "ai-recommendations")}
+            onMoveUp={() => moveCard("right", "ai-recommendations", -1)}
+            onMoveDown={() => moveCard("right", "ai-recommendations", 1)}
+          >
+            <AIRecommendations darkMode={darkMode} />
+          </CollapsibleCard>
         </aside>
       </section>
     </div>
@@ -678,6 +920,62 @@ function HealthRow({ label, value, tint, muted = "#9a8a78" }) {
       <p style={{ ...healthLabel, color: muted }}>{label}</p>
       <p style={{ ...healthValue, color: tint }}>{value}</p>
     </div>
+  );
+}
+
+function CollapsibleCard({
+  title,
+  children,
+  palette,
+  defaultExpanded = true,
+  order = 0,
+  onMoveUp,
+  onMoveDown,
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  return (
+    <article
+      className="ui-card-lift ui-smooth"
+      style={{ ...panel, order, background: palette.panel, border: `1px solid ${palette.border}` }}
+    >
+      <div style={{ ...collapseHeaderRow, borderBottom: expanded ? `1px solid ${palette.border}` : "none" }}>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          style={collapseHeaderMain}
+          aria-expanded={expanded}
+        >
+          <span style={{ ...panelTitle, margin: 0, color: palette.text }}>{title}</span>
+          <ChevronDownIcon
+            style={{
+              ...icon16,
+              color: palette.muted,
+              transform: expanded ? "rotate(0deg)" : "rotate(-90deg)",
+              transition: "transform 0.18s ease",
+            }}
+          />
+        </button>
+        <div style={moveControls}>
+          <button
+            onClick={onMoveUp}
+            style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}` }}
+            aria-label={`Move ${title} up`}
+            title="Move up"
+          >
+            <ChevronUpIcon style={icon14} />
+          </button>
+          <button
+            onClick={onMoveDown}
+            style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}` }}
+            aria-label={`Move ${title} down`}
+            title="Move down"
+          >
+            <ChevronDownIcon style={icon14} />
+          </button>
+        </div>
+      </div>
+      {expanded ? <div>{children}</div> : null}
+    </article>
   );
 }
 
@@ -762,13 +1060,46 @@ const statHead = { display: "flex", justifyContent: "space-between", alignItems:
 const statLabel = { margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
 const statValue = { margin: "9px 0 0", fontSize: 30, lineHeight: 1, fontWeight: 800 };
 
-const mainGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
-const leftCol = { display: "grid", gap: 12 };
+const mainGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12, alignItems: "start" };
+const leftCol = { display: "grid", gap: 12, alignContent: "start", alignItems: "start", gridAutoRows: "max-content" };
 const rightCol = { display: "grid", gap: 12, alignContent: "start" };
 
 const panel = { borderRadius: 14, overflow: "hidden" };
-const panelHeader = { padding: "14px 14px 12px" };
 const panelTitle = { margin: 0, fontSize: 16 };
+const collapseHeaderRow = {
+  display: "flex",
+  alignItems: "stretch",
+};
+const collapseHeaderMain = {
+  flex: 1,
+  minWidth: 0,
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  padding: "12px 14px",
+  textAlign: "left",
+  cursor: "pointer",
+};
+const moveControls = {
+  display: "flex",
+  alignItems: "center",
+  gap: 2,
+  paddingRight: 8,
+};
+const moveButton = {
+  width: 24,
+  height: 24,
+  border: "none",
+  borderRadius: 6,
+  background: "transparent",
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+};
 
 const activityList = { display: "grid" };
 const activityRow = {
@@ -794,7 +1125,12 @@ const activityDate = { margin: "4px 0 0", fontSize: 12 };
 const loadMoreWrap = { padding: 12, textAlign: "center" };
 const loadMoreButton = { borderRadius: 10, padding: "8px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
 
-const analyticsRow = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 };
+const analyticsRow = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gap: 12,
+  alignItems: "start",
+};
 
 const railTitle = { margin: 0, padding: "14px 14px 4px", fontSize: 14, fontWeight: 700 };
 const healthList = { padding: "8px 14px 14px", display: "grid", gap: 8 };
@@ -803,5 +1139,43 @@ const healthLabel = { margin: 0, fontSize: 12, color: "#9a8a78" };
 const healthValue = { margin: 0, fontSize: 12, fontWeight: 700 };
 
 const emptyState = { padding: "26px 14px", textAlign: "center" };
-const loadingWrap = { padding: 40, textAlign: "center" };
+const loadingWrap = {
+  padding: "clamp(16px, 3vw, 28px)",
+  minHeight: "50vh",
+  display: "grid",
+  placeItems: "center",
+};
+const loadingCard = {
+  width: "min(560px, 100%)",
+  borderRadius: 16,
+  padding: "16px 16px 14px",
+  boxShadow: "0 18px 40px rgba(0,0,0,0.16)",
+};
+const loadingTop = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 12,
+};
+const loadingTitle = {
+  margin: 0,
+  fontSize: 15,
+  fontWeight: 800,
+  letterSpacing: "-0.01em",
+};
+const loadingSubtitle = {
+  margin: "4px 0 0",
+  fontSize: 12,
+};
+const loadingSkeletonGrid = {
+  display: "grid",
+  gap: 8,
+};
+const loadingSkeletonBar = {
+  height: 10,
+  borderRadius: 999,
+  opacity: 0.85,
+  animation: "glow 1.8s ease-in-out infinite",
+};
+const icon14 = { width: 14, height: 14 };
 const icon16 = { width: 16, height: 16 };

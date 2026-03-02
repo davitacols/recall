@@ -4,8 +4,7 @@ import { getApiBaseUrl } from '../utils/apiBase';
 export function useNotifications(onNotification) {
   const retryCount = useRef(0);
   const callbackRef = useRef(onNotification);
-  const maxRetries = 3;
-  const wsDisableKey = 'notifications_ws_disabled_until';
+  const maxRetries = 10;
 
   useEffect(() => {
     callbackRef.current = onNotification;
@@ -14,8 +13,6 @@ export function useNotifications(onNotification) {
   useEffect(() => {
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     if (!token) return;
-    const disabledUntil = Number(sessionStorage.getItem(wsDisableKey) || 0);
-    if (disabledUntil && Date.now() < disabledUntil) return;
 
     const backendUrl = getApiBaseUrl();
     const protocol = backendUrl.startsWith('https') ? 'wss:' : 'ws:';
@@ -45,25 +42,21 @@ export function useNotifications(onNotification) {
         };
 
         ws.onerror = () => {
-          if (retryCount.current === 0) {
-            console.warn('WebSocket unavailable, using polling fallback');
-          }
-          sessionStorage.setItem(wsDisableKey, String(Date.now() + 30 * 60 * 1000));
+          console.warn('Notifications websocket error; retrying connection');
         };
 
         ws.onclose = () => {
-          const disabledUntilNow = Number(sessionStorage.getItem(wsDisableKey) || 0);
-          if (disabledUntilNow && Date.now() < disabledUntilNow) {
-            return;
-          }
           if (retryCount.current < maxRetries) {
             retryCount.current++;
-            reconnectTimeout = setTimeout(connect, 5000 * retryCount.current);
+            reconnectTimeout = setTimeout(connect, Math.min(10000, 1000 * retryCount.current));
           }
         };
       } catch (error) {
-        console.warn('WebSocket connection failed, notifications will use polling');
-        sessionStorage.setItem(wsDisableKey, String(Date.now() + 30 * 60 * 1000));
+        console.warn('WebSocket connection failed, retrying shortly');
+        if (retryCount.current < maxRetries) {
+          retryCount.current++;
+          reconnectTimeout = setTimeout(connect, Math.min(10000, 1000 * retryCount.current));
+        }
       }
     };
 

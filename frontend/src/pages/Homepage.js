@@ -159,9 +159,29 @@ export default function Homepage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.55 }}
+              animate={{ y: [0, -4, 0] }}
+              whileHover={{ scale: 1.01 }}
+              transition={{
+                duration: 0.55,
+                y: { duration: 5.5, repeat: Infinity, ease: "easeInOut" },
+              }}
               style={videoShell}
             >
+              <motion.div
+                animate={{ x: [-12, 10, -12], y: [0, -8, 0], opacity: [0.34, 0.55, 0.34] }}
+                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+                style={videoGlowA}
+              />
+              <motion.div
+                animate={{ x: [10, -10, 10], y: [0, 9, 0], opacity: [0.28, 0.46, 0.28] }}
+                transition={{ duration: 8.5, repeat: Infinity, ease: "easeInOut" }}
+                style={videoGlowB}
+              />
+              <motion.div
+                animate={{ x: ["-35%", "125%"] }}
+                transition={{ duration: 3.8, repeat: Infinity, repeatDelay: 1.6, ease: "easeInOut" }}
+                style={videoShimmer}
+              />
               <div style={videoTopBar}>
                 <span style={videoDotWarm} />
                 <span style={videoDotCool} />
@@ -596,11 +616,43 @@ const demoSection = {
 };
 
 const videoShell = {
+  position: "relative",
   borderRadius: 20,
   border: "1px solid rgba(255,231,198,0.14)",
   background: "linear-gradient(160deg, rgba(6,56,53,0.34), rgba(20,16,18,0.95) 62%)",
   boxShadow: "0 26px 70px rgba(0,0,0,0.38)",
   overflow: "hidden",
+};
+
+const videoGlowA = {
+  position: "absolute",
+  top: -30,
+  right: -20,
+  width: 180,
+  height: 180,
+  borderRadius: "50%",
+  background: "radial-gradient(circle, rgba(114,217,200,0.34), rgba(114,217,200,0))",
+  pointerEvents: "none",
+};
+
+const videoGlowB = {
+  position: "absolute",
+  bottom: -54,
+  left: -36,
+  width: 210,
+  height: 210,
+  borderRadius: "50%",
+  background: "radial-gradient(circle, rgba(255,159,98,0.28), rgba(255,159,98,0))",
+  pointerEvents: "none",
+};
+
+const videoShimmer = {
+  position: "absolute",
+  top: 0,
+  bottom: 0,
+  width: "22%",
+  background: "linear-gradient(110deg, transparent, rgba(255,255,255,0.1), transparent)",
+  pointerEvents: "none",
 };
 
 const videoTopBar = {

@@ -14,7 +14,7 @@ SPECTACULAR_SETTINGS = {
     ],
     'CONTACT': {
         'name': 'RECALL Support',
-        'email': 'support@recall.dev',
+        'email': 'support@knoledgr.com',
     },
     'LICENSE': {
         'name': 'MIT',
@@ -32,3 +32,4 @@ SPECTACULAR_SETTINGS = {
         }
     },
 }
+

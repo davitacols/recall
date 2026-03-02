@@ -12,6 +12,26 @@ const REQUEST_TYPES = [
   { key: "general", name: "General Support" },
 ];
 
+const SUPPORT_EMAIL = "support@knoledgr.com";
+const SERVICE_FLOW = [
+  {
+    title: "Submit Request",
+    detail: "Provide title, description, request type, priority, and optional due date.",
+  },
+  {
+    title: "AI Triage",
+    detail: "Analyze with AI to get risk, confidence, suggested request type, and handling actions.",
+  },
+  {
+    title: "Queue & Assignment",
+    detail: "The request enters the Service Desk queue with status, priority, and assignee visibility.",
+  },
+  {
+    title: "Resolution & Tracking",
+    detail: "Teams update progress, close requests, and maintain an auditable service timeline.",
+  },
+];
+
 export default function ServiceDesk() {
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(true);
@@ -225,7 +245,10 @@ export default function ServiceDesk() {
         <div>
           <h1 style={{ margin: 0, fontSize: 23, color: palette.text }}>Service Desk</h1>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>
-            Jira Service Management-style intake and queue for support requests.
+            Centralized intake and queue management for incidents, requests, and support operations.
+          </p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>
+            Need help? Email <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: palette.accent }}>{SUPPORT_EMAIL}</a>.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -248,6 +271,21 @@ export default function ServiceDesk() {
             <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 20, color: palette.text }}>{card.value || 0}</p>
           </article>
         ))}
+      </section>
+
+      <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panel }}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 16, color: palette.text }}>How Service Desk Works</h2>
+        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))" }}>
+          {SERVICE_FLOW.map((step, idx) => (
+            <article key={step.title} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: 10, background: palette.panelAlt }}>
+              <p style={{ margin: 0, color: palette.accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>
+                STEP {idx + 1}
+              </p>
+              <p style={{ margin: "4px 0 0", color: palette.text, fontWeight: 700, fontSize: 14 }}>{step.title}</p>
+              <p style={{ margin: "4px 0 0", color: palette.muted, fontSize: 12 }}>{step.detail}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panel }}>

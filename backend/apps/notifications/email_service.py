@@ -1,5 +1,6 @@
 import logging
 import re
+import uuid
 from html import escape
 from urllib.parse import urljoin
 
@@ -13,6 +14,13 @@ logger = logging.getLogger(__name__)
 def send_email(to_email, subject, html_content, text_content=None, reply_to=None):
     if not text_content:
         text_content = html_to_text(html_content)
+    support_email = reply_to or get_support_email()
+    entity_ref_id = f"knoledgr-{uuid.uuid4()}"
+    headers = {
+        "X-Entity-Ref-ID": entity_ref_id,
+        "X-Auto-Response-Suppress": "OOF, AutoReply",
+        "List-Unsubscribe": f"<mailto:{support_email}?subject=unsubscribe>",
+    }
 
     # Prefer Resend when configured; otherwise fallback to Django email backend.
     if not settings.RESEND_API_KEY:
@@ -22,7 +30,8 @@ def send_email(to_email, subject, html_content, text_content=None, reply_to=None
                 body=text_content,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[to_email],
-                reply_to=[reply_to] if reply_to else None,
+                reply_to=[support_email] if support_email else None,
+                headers=headers,
             )
             msg.attach_alternative(html_content, "text/html")
             msg.send(fail_silently=False)
@@ -38,13 +47,10 @@ def send_email(to_email, subject, html_content, text_content=None, reply_to=None
         "subject": subject,
         "html": html_content,
         "text": text_content,
-        "headers": {
-            "X-Entity-Ref-ID": "knoledgr-transactional",
-            "X-Auto-Response-Suppress": "OOF, AutoReply",
-        },
+        "headers": headers,
     }
-    if reply_to:
-        payload["reply_to"] = reply_to
+    if support_email:
+        payload["reply_to"] = support_email
 
     try:
         response = requests.post(
@@ -117,6 +123,67 @@ def send_invitation_email(email, token, inviter):
         reason_text=reason,
     )
     return send_email(email, subject, html, text_content=text, reply_to=get_support_email())
+
+def send_welcome_email(user):
+    app_name = "Knoledgr"
+    user_name = user.get_full_name() or user.username
+    subject = f"Welcome to {app_name}, {user_name}"
+    home_url = build_frontend_url("/")
+    reason = "You received this email because a new account was created with this address."
+    html = render_email_template(
+        preheader=f"Welcome to {app_name}",
+        title=f"Welcome to {app_name}",
+        body_html=(
+            f"<p>Hi {escape(user_name)},</p>"
+            f"<p>Your workspace is ready. You can now capture decisions, organize context, "
+            f"and keep team knowledge searchable.</p>"
+        ),
+        cta_label="Open Workspace",
+        cta_url=home_url,
+        reason_text=reason,
+    )
+    text = build_text_email(
+        title=f"Welcome to {app_name}",
+        body_lines=[
+            f"Hi {user_name},",
+            "Your workspace is ready.",
+            "You can now capture decisions, organize context, and keep team knowledge searchable.",
+        ],
+        cta_label="Open Workspace",
+        cta_url=home_url,
+        reason_text=reason,
+    )
+    return send_email(user.email, subject, html, text_content=text, reply_to=get_support_email())
+
+def send_password_reset_email(user, reset_url):
+    app_name = "Knoledgr"
+    user_name = user.get_full_name() or user.username
+    subject = f"Reset your {app_name} password"
+    reason = "You received this email because a password reset was requested for this account."
+    html = render_email_template(
+        preheader=f"Reset your {app_name} password",
+        title="Reset your password",
+        body_html=(
+            f"<p>Hi {escape(user_name)},</p>"
+            "<p>We received a request to reset your password.</p>"
+            "<p>If this was you, use the button below. If not, you can ignore this email.</p>"
+        ),
+        cta_label="Reset Password",
+        cta_url=reset_url,
+        reason_text=reason,
+    )
+    text = build_text_email(
+        title="Reset your password",
+        body_lines=[
+            f"Hi {user_name},",
+            "We received a request to reset your password.",
+            "If this was you, use the link below. If not, you can ignore this email.",
+        ],
+        cta_label="Reset Password",
+        cta_url=reset_url,
+        reason_text=reason,
+    )
+    return send_email(user.email, subject, html, text_content=text, reply_to=get_support_email())
 
 
 def build_frontend_url(path):
@@ -207,6 +274,9 @@ def html_to_text(html):
 
 
 def get_support_email():
+    configured_support_email = (getattr(settings, "SUPPORT_EMAIL", "") or "").strip()
+    if configured_support_email:
+        return configured_support_email
     from_email = settings.DEFAULT_FROM_EMAIL or ""
     match = re.search(r"<([^>]+)>", from_email)
     if match:

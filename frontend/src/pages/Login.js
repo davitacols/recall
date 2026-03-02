@@ -14,6 +14,8 @@ function Login() {
   const [credentials, setCredentials] = useState({
     username: inviteEmail || "",
     password: "",
+    confirmPassword: "",
+    full_name: "",
     token: inviteToken || "",
     organization: "",
   });
@@ -24,6 +26,24 @@ function Login() {
   const { login, register } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+
+  const passwordChecks = [
+    { key: "len", label: "At least 8 characters", valid: credentials.password.length >= 8 },
+    { key: "upper", label: "One uppercase letter", valid: /[A-Z]/.test(credentials.password) },
+    { key: "lower", label: "One lowercase letter", valid: /[a-z]/.test(credentials.password) },
+    { key: "digit", label: "One number", valid: /\d/.test(credentials.password) },
+  ];
+
+  const validateSignup = () => {
+    if (!credentials.username.trim()) return "Email is required";
+    if (!inviteToken && !credentials.organization.trim()) return "Organization name is required";
+    if (!credentials.full_name.trim()) return "Full name is required";
+    if (credentials.password !== credentials.confirmPassword) return "Passwords do not match";
+    if (passwordChecks.some((check) => !check.valid)) {
+      return "Password does not meet the required strength";
+    }
+    return null;
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -40,12 +60,22 @@ function Login() {
         addToast(result.error, "error");
       }
     } else {
+      const signupError = validateSignup();
+      if (signupError) {
+        setError(signupError);
+        addToast(signupError, "error");
+        setLoading(false);
+        return;
+      }
+
       const result = await register(credentials);
       if (result.success) {
         setIsLogin(true);
         setCredentials({
           username: inviteEmail || "",
           password: "",
+          confirmPassword: "",
+          full_name: "",
           token: "",
           organization: "",
         });
@@ -130,14 +160,20 @@ function Login() {
               <div style={modeToggleWrap}>
                 <button
                   type="button"
-                  onClick={() => setIsLogin(true)}
+                  onClick={() => {
+                    setIsLogin(true);
+                    setError("");
+                  }}
                   style={isLogin ? activeToggleButton : inactiveToggleButton}
                 >
                   Log in
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsLogin(false)}
+                  onClick={() => {
+                    setIsLogin(false);
+                    setError("");
+                  }}
                   style={!isLogin ? activeToggleButton : inactiveToggleButton}
                 >
                   Sign up
@@ -160,6 +196,24 @@ function Login() {
                       setCredentials({
                         ...credentials,
                         organization: event.target.value,
+                      })
+                    }
+                  />
+                </Field>
+              )}
+
+              {!isLogin && (
+                <Field label="Full name">
+                  <input
+                    type="text"
+                    required
+                    style={input}
+                    placeholder="Jane Doe"
+                    value={credentials.full_name}
+                    onChange={(event) =>
+                      setCredentials({
+                        ...credentials,
+                        full_name: event.target.value,
                       })
                     }
                   />
@@ -207,6 +261,31 @@ function Login() {
                 </div>
               </Field>
 
+              {!isLogin && (
+                <>
+                  <Field label="Confirm password">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      style={input}
+                      placeholder="********"
+                      value={credentials.confirmPassword}
+                      onChange={(event) =>
+                        setCredentials({ ...credentials, confirmPassword: event.target.value })
+                      }
+                    />
+                  </Field>
+                  <div style={passwordGuide}>
+                    {passwordChecks.map((check) => (
+                      <div key={check.key} style={{ ...passwordRule, color: check.valid ? "#87e7b4" : "rgba(247,239,227,0.7)" }}>
+                        <span style={{ ...ruleDot, background: check.valid ? "#22c55e" : "rgba(247,239,227,0.35)" }} />
+                        {check.label}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
               <button type="submit" disabled={loading} style={submitButton(loading)}>
                 {loading ? "Please wait..." : isLogin ? "Sign in" : "Create account"}
               </button>
@@ -214,16 +293,25 @@ function Login() {
 
             <div style={footerActions}>
               {isLogin && !inviteToken && (
-                <p style={smallText}>
-                  No account?{" "}
+                <div style={loginLinks}>
+                  <p style={smallText}>
+                    No account?{" "}
+                    <button
+                      onClick={() => setIsLogin(false)}
+                      style={inlineLinkButton}
+                      type="button"
+                    >
+                      Sign up
+                    </button>
+                  </p>
                   <button
-                    onClick={() => setIsLogin(false)}
-                    style={inlineLinkButton}
                     type="button"
+                    onClick={() => navigate("/forgot-password")}
+                    style={inlineLinkButton}
                   >
-                    Sign up
+                    Forgot password?
                   </button>
-                </p>
+                </div>
               )}
               <button
                 onClick={() => navigate("/")}
@@ -575,6 +663,12 @@ const footerActions = {
   justifyItems: "center",
 };
 
+const loginLinks = {
+  display: "grid",
+  gap: 6,
+  justifyItems: "center",
+};
+
 const smallText = {
   margin: 0,
   color: "rgba(247,239,227,0.72)",
@@ -599,6 +693,29 @@ const backButton = {
   cursor: "pointer",
   fontFamily: "inherit",
   fontSize: 13,
+};
+
+const passwordGuide = {
+  border: "1px solid rgba(255,240,222,0.12)",
+  borderRadius: 10,
+  padding: "8px 10px",
+  display: "grid",
+  gap: 5,
+  background: "rgba(255,255,255,0.02)",
+};
+
+const passwordRule = {
+  fontSize: 12,
+  display: "inline-flex",
+  gap: 7,
+  alignItems: "center",
+};
+
+const ruleDot = {
+  width: 7,
+  height: 7,
+  borderRadius: "50%",
+  flexShrink: 0,
 };
 
 export default Login;

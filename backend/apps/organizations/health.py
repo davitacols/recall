@@ -5,6 +5,8 @@ from django.conf import settings
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 import redis
+import re
+from urllib.parse import urlparse
 
 @csrf_exempt
 def health_check(request):
@@ -87,3 +89,90 @@ def realtime_health_check(request):
 
     http_status = 200 if status['status'] == 'healthy' else 503
     return JsonResponse(status, status=http_status)
+
+
+def _extract_email_address(value):
+    if not value:
+        return ''
+    match = re.search(r'<([^>]+)>', value)
+    if match:
+        return match.group(1).strip().lower()
+    return str(value).strip().lower()
+
+
+def _extract_domain(email_or_host):
+    if not email_or_host:
+        return ''
+    if '@' in email_or_host:
+        return email_or_host.split('@', 1)[1].strip().lower()
+    return str(email_or_host).strip().lower()
+
+
+def _base_domain(host):
+    if not host:
+        return ''
+    parts = host.split('.')
+    if len(parts) <= 2:
+        return host
+    second_level_suffixes = {'co.uk', 'org.uk', 'gov.uk', 'com.au', 'co.nz', 'com.ng', 'com.br'}
+    last_two = '.'.join(parts[-2:])
+    last_three = '.'.join(parts[-3:])
+    if last_two in second_level_suffixes and len(parts) >= 3:
+        return last_three
+    return last_two
+
+
+@csrf_exempt
+def email_deliverability_health_check(request):
+    default_from_raw = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or ''
+    support_email_raw = getattr(settings, 'SUPPORT_EMAIL', '') or ''
+    frontend_url = getattr(settings, 'FRONTEND_URL', '') or ''
+
+    default_from_email = _extract_email_address(default_from_raw)
+    support_email = _extract_email_address(support_email_raw)
+    frontend_host = (urlparse(frontend_url).hostname or '').lower()
+
+    sender_domain = _extract_domain(default_from_email)
+    support_domain = _extract_domain(support_email)
+    frontend_domain = _base_domain(frontend_host)
+    sender_base_domain = _base_domain(sender_domain)
+    support_base_domain = _base_domain(support_domain)
+
+    warnings = []
+    checks = {
+        'default_from_configured': bool(default_from_email),
+        'support_email_configured': bool(support_email),
+        'frontend_url_configured': bool(frontend_host),
+        'sender_domain_not_resend_default': sender_domain != 'resend.dev',
+        'sender_frontend_domain_aligned': bool(sender_base_domain and frontend_domain and sender_base_domain == frontend_domain),
+        'support_sender_domain_aligned': bool(support_base_domain and sender_base_domain and support_base_domain == sender_base_domain),
+    }
+
+    if not checks['default_from_configured']:
+        warnings.append('DEFAULT_FROM_EMAIL is not configured.')
+    if checks['default_from_configured'] and not checks['sender_domain_not_resend_default']:
+        warnings.append('DEFAULT_FROM_EMAIL is using resend.dev; use your verified domain.')
+    if not checks['support_email_configured']:
+        warnings.append('SUPPORT_EMAIL is not configured.')
+    if not checks['frontend_url_configured']:
+        warnings.append('FRONTEND_URL is not configured.')
+    if checks['frontend_url_configured'] and checks['default_from_configured'] and not checks['sender_frontend_domain_aligned']:
+        warnings.append('Sender domain and FRONTEND_URL domain are not aligned.')
+    if checks['support_email_configured'] and checks['default_from_configured'] and not checks['support_sender_domain_aligned']:
+        warnings.append('SUPPORT_EMAIL domain should match sender domain.')
+
+    status = 'healthy' if not warnings else 'degraded'
+    response = {
+        'status': status,
+        'checks': checks,
+        'domains': {
+            'sender_domain': sender_domain,
+            'sender_base_domain': sender_base_domain,
+            'support_domain': support_domain,
+            'support_base_domain': support_base_domain,
+            'frontend_host': frontend_host,
+            'frontend_base_domain': frontend_domain,
+        },
+        'warnings': warnings,
+    }
+    return JsonResponse(response, status=200)

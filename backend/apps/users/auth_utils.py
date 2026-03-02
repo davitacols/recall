@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timedelta
+from django.core.exceptions import ValidationError
 
 def check_rate_limit(user_id, action='login', limit=5, window=3600):
     """Check if user has exceeded rate limit"""
@@ -8,24 +8,23 @@ def check_rate_limit(user_id, action='login', limit=5, window=3600):
 def validate_email(email):
     """Validate email format"""
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(pattern, email) is not None
+    if not email or not re.match(pattern, email):
+        raise ValidationError('Please enter a valid email address')
 
 def validate_password(password):
     """Validate password strength"""
     if len(password) < 8:
-        return False, "Password must be at least 8 characters"
+        raise ValidationError('Password must be at least 8 characters')
     if not re.search(r'[A-Z]', password):
-        return False, "Password must contain uppercase letter"
+        raise ValidationError('Password must contain at least one uppercase letter')
     if not re.search(r'[a-z]', password):
-        return False, "Password must contain lowercase letter"
+        raise ValidationError('Password must contain at least one lowercase letter')
     if not re.search(r'[0-9]', password):
-        return False, "Password must contain number"
-    return True, "Valid"
+        raise ValidationError('Password must contain at least one number')
 
 def validate_username(username):
     """Validate username format"""
     if len(username) < 3:
-        return False, "Username must be at least 3 characters"
+        raise ValidationError('Username must be at least 3 characters')
     if not re.match(r'^[a-zA-Z0-9_-]+$', username):
-        return False, "Username can only contain letters, numbers, underscores, and hyphens"
-    return True, "Valid"
+        raise ValidationError('Username can only contain letters, numbers, underscores, and hyphens')

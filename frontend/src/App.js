@@ -17,6 +17,8 @@ import UnifiedLayout from './components/UnifiedLayout';
 import SmartSearch from './components/SmartSearch';
 import SeoManager from './components/SeoManager';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
 import Dashboard from './pages/Dashboard';
 import UnifiedDashboard from './pages/UnifiedDashboard';
@@ -176,6 +178,8 @@ function AppContent() {
       <Routes>
         <Route path="/home" element={<Homepage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/signup" element={<Navigate to="/login" replace />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/" element={<RootRoute />} />
@@ -468,6 +472,7 @@ function AppContent() {
             </UnifiedLayout>
           </ProtectedRoute>
         } />
+        <Route path="/boards" element={<Navigate to="/projects" replace />} />
         <Route path="/projects/:projectId/manage" element={
           <ProtectedRoute>
             <UnifiedLayout>
@@ -594,6 +599,7 @@ function AppContent() {
             </UnifiedLayout>
           </ProtectedRoute>
         } />
+        <Route path="/issues" element={<Navigate to="/projects" replace />} />
         <Route path="/business/goals" element={
           <ProtectedRoute>
             <UnifiedLayout>

@@ -133,7 +133,8 @@ ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 
 # Email Configuration (Resend)
 RESEND_API_KEY = config('RESEND_API_KEY', default='')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Recall <onboarding@resend.dev>')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Knoledgr <support@knoledgr.com>')
+SUPPORT_EMAIL = config('SUPPORT_EMAIL', default='support@knoledgr.com')
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 
 # Stripe Configuration

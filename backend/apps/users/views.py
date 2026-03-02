@@ -5,10 +5,14 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model, authenticate
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
 import logging
 import boto3
 from django.conf import settings
 from .auth_utils import check_rate_limit, validate_email, validate_password, validate_username
+from apps.notifications.email_service import send_password_reset_email, send_welcome_email, build_frontend_url
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -130,6 +134,7 @@ def register(request):
     password = request.data.get('password', '')
     token = request.data.get('token')
     organization_name = request.data.get('organization', '').strip()
+    full_name = (request.data.get('full_name') or '').strip()
     
     # Rate limiting
     if not check_rate_limit(f'register:{email}'):
@@ -182,7 +187,7 @@ def register(request):
             org = Organization.objects.create(name=organization_name, slug=org_slug)
             
             username = email.split('@')[0]
-            display_name = username.replace('.', ' ').replace('_', ' ').title()
+            display_name = full_name or username.replace('.', ' ').replace('_', ' ').title()
             user = User.objects.create_user(
                 username=email,
                 email=email,
@@ -194,6 +199,10 @@ def register(request):
             )
             
             logger.info(f"New organization created: {organization_name} by {email}")
+            try:
+                send_welcome_email(user)
+            except Exception:
+                logger.exception("Failed to send welcome email to %s", email)
             
             return Response({
                 'message': 'Organization created successfully',
@@ -224,7 +233,7 @@ def register(request):
                                status=status.HTTP_400_BAD_REQUEST)
             
             username = email.split('@')[0]
-            display_name = username.replace('.', ' ').replace('_', ' ').title()
+            display_name = full_name or username.replace('.', ' ').replace('_', ' ').title()
             user = User.objects.create_user(
                 username=email,
                 email=email,
@@ -240,6 +249,10 @@ def register(request):
             invitation.save()
             
             logger.info(f"User registered via invitation: {email}")
+            try:
+                send_welcome_email(user)
+            except Exception:
+                logger.exception("Failed to send welcome email to invited user %s", email)
             
             return Response({
                 'message': 'Account created successfully',
@@ -253,3 +266,73 @@ def register(request):
     
     return Response({'error': 'Invalid registration request'}, 
                    status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    email = (request.data.get('email') or '').strip().lower()
+    if not email:
+        return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Always return success to avoid email enumeration.
+    generic_response = {
+        'message': 'If an account exists for this email, a password reset link has been sent.'
+    }
+
+    try:
+        validate_email(email)
+    except ValidationError:
+        return Response(generic_response, status=status.HTTP_200_OK)
+
+    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    if not user:
+        return Response(generic_response, status=status.HTTP_200_OK)
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    reset_url = build_frontend_url(f"/reset-password?uid={uid}&token={token}")
+
+    try:
+        send_password_reset_email(user, reset_url)
+    except Exception:
+        logger.exception("Failed to send password reset email to %s", email)
+
+    return Response(generic_response, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    uid = request.data.get('uid')
+    token = request.data.get('token')
+    password = request.data.get('password', '')
+    confirm_password = request.data.get('confirm_password', '')
+
+    if not uid or not token or not password:
+        return Response(
+            {'error': 'uid, token, and password are required'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if confirm_password and password != confirm_password:
+        return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        validate_password(password)
+    except ValidationError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user_id = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id, is_active=True)
+    except Exception:
+        return Response({'error': 'Invalid or expired reset link'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not default_token_generator.check_token(user, token):
+        return Response({'error': 'Invalid or expired reset link'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(password)
+    user.save(update_fields=['password'])
+
+    return Response({'message': 'Password has been reset successfully'}, status=status.HTTP_200_OK)

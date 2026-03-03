@@ -21,7 +21,7 @@ def noop_reverse(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('organizations', '0018_projectpermissionscope_slarule_incidentescalationrule_and_more'),
+        ('organizations', '0021_free_plan_and_feature_entitlements'),
     ]
 
     operations = [

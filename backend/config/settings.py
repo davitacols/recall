@@ -219,6 +219,13 @@ else:
 # Remove duplicates while preserving order.
 CORS_ALLOWED_ORIGINS = list(dict.fromkeys(CORS_ALLOWED_ORIGINS))
 
+SECURITY_PREFLIGHT_REQUIRED_ORIGINS = _parse_csv(
+    config(
+        'SECURITY_PREFLIGHT_REQUIRED_ORIGINS',
+        default='https://knoledgr.com,https://www.knoledgr.com,https://recall-three-plum.vercel.app'
+    )
+)
+
 CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=DEBUG, cast=bool)
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [

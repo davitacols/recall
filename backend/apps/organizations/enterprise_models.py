@@ -23,7 +23,7 @@ class SSOConfig(models.Model):
     
     # Additional settings
     auto_provision_users = models.BooleanField(default=True)
-    default_role = models.CharField(max_length=20, default='member')
+    default_role = models.CharField(max_length=20, default='contributor')
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

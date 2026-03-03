@@ -12,6 +12,13 @@ from apps.users.bot_protection import verify_turnstile_token
 
 logger = logging.getLogger(__name__)
 
+
+def _normalize_invite_role(role):
+    if role == 'member':
+        return 'contributor'
+    return role
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def invite_user(request):
@@ -22,7 +29,7 @@ def invite_user(request):
         return Response({'error': 'Only admins can invite users'}, status=status.HTTP_403_FORBIDDEN)
     
     email = (request.data.get('email') or '').strip().lower()
-    role = request.data.get('role', 'contributor')
+    role = _normalize_invite_role(request.data.get('role', 'contributor'))
     allowed_roles = {'admin', 'manager', 'contributor', 'member'}
     
     if not email:
@@ -69,7 +76,7 @@ def invite_user(request):
         'invite_link': invite_link,
         'email_sent': email_sent,
         'email': invitation.email,
-        'role': invitation.role
+        'role': _normalize_invite_role(invitation.role)
     }, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
@@ -90,7 +97,7 @@ def verify_invitation(request, token):
         return Response({
             'organization': invitation.organization.name,
             'email': invitation.email,
-            'role': invitation.role
+            'role': _normalize_invite_role(invitation.role)
         })
     except Invitation.DoesNotExist:
         return Response({'error': 'Invalid invitation'}, status=status.HTTP_404_NOT_FOUND)
@@ -133,7 +140,7 @@ def accept_invitation(request, token):
             email=invitation.email,
             password=password,
             organization=invitation.organization,
-            role=invitation.role,
+            role=_normalize_invite_role(invitation.role),
             full_name=full_name
         )
         
@@ -180,7 +187,7 @@ def list_invitations(request):
     data = [({
         'id': inv.id,
         'email': inv.email,
-        'role': inv.role,
+        'role': _normalize_invite_role(inv.role),
         'token': str(inv.token),
         'invited_by': inv.invited_by.get_full_name() if inv.invited_by else None,
         'created_at': inv.created_at,

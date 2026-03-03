@@ -62,8 +62,22 @@ ROLE_PERMISSIONS = {
         Permission.EDIT_ISSUE.value,
         Permission.CREATE_DECISION.value,
         Permission.EDIT_DECISION.value,
-    ]
+    ],
+    # Legacy alias kept for backwards compatibility with older invitations/configs.
+    'member': [
+        Permission.CREATE_ISSUE.value,
+        Permission.EDIT_ISSUE.value,
+        Permission.CREATE_DECISION.value,
+        Permission.EDIT_DECISION.value,
+    ],
 }
+
+
+def normalize_role(role):
+    """Map legacy role values to canonical roles."""
+    if role == 'member':
+        return 'contributor'
+    return role
 
 class HasPermission(BasePermission):
     def __init__(self, required_permission):
@@ -73,7 +87,7 @@ class HasPermission(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         
-        user_permissions = ROLE_PERMISSIONS.get(request.user.role, [])
+        user_permissions = get_user_permissions(request.user)
         return self.required_permission in user_permissions
 
 def require_permission(permission):
@@ -95,7 +109,8 @@ def require_permission(permission):
 
 def get_user_permissions(user):
     """Get all permissions for a user based on their role"""
-    base_permissions = set(ROLE_PERMISSIONS.get(user.role, []))
+    normalized_role = normalize_role(getattr(user, 'role', None))
+    base_permissions = set(ROLE_PERMISSIONS.get(normalized_role, []))
     try:
         if not getattr(user, 'organization', None):
             return list(base_permissions)
@@ -104,7 +119,7 @@ def get_user_permissions(user):
         if not policy:
             return list(base_permissions)
 
-        role_config = (policy.role_overrides or {}).get(user.role, {})
+        role_config = (policy.role_overrides or {}).get(normalized_role, {})
         add_perms = role_config.get('add', []) if isinstance(role_config, dict) else []
         remove_perms = role_config.get('remove', []) if isinstance(role_config, dict) else []
         base_permissions.update([p for p in add_perms if isinstance(p, str)])
@@ -122,12 +137,13 @@ def has_project_permission(user, permission, project_id):
     """Check permission with optional project-level overrides."""
     if permission not in get_user_permissions(user):
         return False
+    normalized_role = normalize_role(getattr(user, 'role', None))
     try:
         from .enterprise_models import ProjectPermissionScope
         scope = ProjectPermissionScope.objects.filter(
             organization=user.organization,
             project_id=project_id,
-            role=user.role,
+            role=normalized_role,
         ).first()
         if not scope:
             return True

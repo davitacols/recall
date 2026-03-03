@@ -50,7 +50,9 @@ api.interceptors.response.use(
         // no-op: paywall nudges are best effort
       }
     }
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    // Only unauthenticated/expired sessions should force logout.
+    // 403 can be a valid authorization denial (e.g. missing create-issue permission).
+    if (error.response?.status === 401) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('token');
       localStorage.removeItem('user');

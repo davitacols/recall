@@ -24,7 +24,12 @@ def get_team_members(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_role_info(request, user_id):
-    return Response({'role': 'member', 'permissions': []})
+    try:
+        member = User.objects.get(id=user_id, organization=request.user.organization, is_active=True)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
+    role = 'contributor' if member.role == 'member' else member.role
+    return Response({'role': role, 'permissions': []})
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

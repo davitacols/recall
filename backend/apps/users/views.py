@@ -18,6 +18,13 @@ from apps.notifications.email_service import send_password_reset_email, send_wel
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+
+def _normalize_user_role(role):
+    if role == 'member':
+        return 'contributor'
+    return role
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
@@ -242,7 +249,7 @@ def register(request):
                 organization=invitation.organization,
                 full_name=display_name,
                 first_name=display_name.split()[0] if display_name else username,
-                role=invitation.role or 'contributor'
+                role=_normalize_user_role(invitation.role or 'contributor')
             )
             
             invitation.is_accepted = True

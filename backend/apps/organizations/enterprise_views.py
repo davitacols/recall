@@ -37,6 +37,7 @@ def sso_config(request):
     if request.method == 'GET':
         try:
             config = SSOConfig.objects.get(organization=org)
+            default_role = 'contributor' if config.default_role == 'member' else config.default_role
             return Response({
                 'id': config.id,
                 'provider': config.provider,
@@ -44,7 +45,7 @@ def sso_config(request):
                 'entity_id': config.entity_id,
                 'sso_url': config.sso_url,
                 'auto_provision_users': config.auto_provision_users,
-                'default_role': config.default_role,
+                'default_role': default_role,
             })
         except SSOConfig.DoesNotExist:
             return Response({'enabled': False})
@@ -60,7 +61,12 @@ def sso_config(request):
         config.sso_url = request.data.get('sso_url', config.sso_url)
         config.x509_cert = request.data.get('x509_cert', config.x509_cert)
         config.auto_provision_users = request.data.get('auto_provision_users', config.auto_provision_users)
-        config.default_role = request.data.get('default_role', config.default_role)
+        requested_default_role = request.data.get('default_role', config.default_role)
+        if requested_default_role == 'member':
+            requested_default_role = 'contributor'
+        if requested_default_role not in ['admin', 'manager', 'contributor']:
+            return Response({'error': 'Invalid default_role'}, status=status.HTTP_400_BAD_REQUEST)
+        config.default_role = requested_default_role
         config.save()
         
         return Response({'message': 'SSO configuration saved', 'id': config.id})

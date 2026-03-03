@@ -3,12 +3,20 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.hashers import check_password, make_password
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 from .models import Organization, User
 from apps.conversations.models import UserPreferences, Badge
 from apps.notifications.models import Notification
+
+
+def _normalize_role(role):
+    if role == 'member':
+        return 'contributor'
+    return role
+
 
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
@@ -310,10 +318,12 @@ def invite_member(request):
         return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
     email = request.data.get('email')
-    role = request.data.get('role', 'contributor')
+    role = _normalize_role(request.data.get('role', 'contributor'))
     
     if not email:
         return Response({'error': 'Email required'}, status=status.HTTP_400_BAD_REQUEST)
+    if role not in ['admin', 'manager', 'contributor']:
+        return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
     
     # Check if user already exists
     if User.objects.filter(email=email).exists():
@@ -518,7 +528,7 @@ def get_invitation_links(request):
         links.append({
             'id': inv.id,
             'email': inv.email,
-            'role': inv.role,
+            'role': _normalize_role(inv.role),
             'link': f"{settings.FRONTEND_URL}/invite/{inv.token}",
             'created_at': inv.created_at,
             'expires_at': inv.expires_at

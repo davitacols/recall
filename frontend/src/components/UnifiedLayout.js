@@ -14,6 +14,37 @@ const SIDEBAR_WIDTH_DEFAULT = 272;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
 const SIDEBAR_WIDTH_MIN = 220;
 const SIDEBAR_WIDTH_MAX = 420;
+const ASK_FAB_STORAGE_KEY = "askRecallFabPosV1";
+const ASK_FAB_WIDTH = 132;
+const ASK_FAB_HEIGHT = 44;
+const ASK_FAB_PAD = 14;
+
+function clampFabPosition(x, y) {
+  const maxX = Math.max(ASK_FAB_PAD, window.innerWidth - ASK_FAB_WIDTH - ASK_FAB_PAD);
+  const maxY = Math.max(ASK_FAB_PAD, window.innerHeight - ASK_FAB_HEIGHT - ASK_FAB_PAD);
+  return {
+    x: Math.min(Math.max(ASK_FAB_PAD, x), maxX),
+    y: Math.min(Math.max(ASK_FAB_PAD, y), maxY),
+  };
+}
+
+function getDefaultFabPosition() {
+  if (typeof window === "undefined") return { x: 24, y: 24 };
+  return clampFabPosition(window.innerWidth - ASK_FAB_WIDTH - 24, window.innerHeight - ASK_FAB_HEIGHT - 24);
+}
+
+function loadFabPosition() {
+  if (typeof window === "undefined") return { x: 24, y: 24 };
+  try {
+    const raw = window.localStorage.getItem(ASK_FAB_STORAGE_KEY);
+    if (!raw) return getDefaultFabPosition();
+    const parsed = JSON.parse(raw);
+    if (!Number.isFinite(parsed?.x) || !Number.isFinite(parsed?.y)) return getDefaultFabPosition();
+    return clampFabPosition(parsed.x, parsed.y);
+  } catch {
+    return getDefaultFabPosition();
+  }
+}
 
 export default function UnifiedLayout({ children }) {
   const { user, logout } = useAuth();
@@ -29,11 +60,29 @@ export default function UnifiedLayout({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true"
   );
+  const [askFabPos, setAskFabPos] = useState(loadFabPosition);
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef(null);
+  const askFabDragRef = useRef({
+    active: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    offsetX: 0,
+    offsetY: 0,
+    moved: false,
+  });
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => {
+      setAskFabPos((current) => clampFabPosition(current.x, current.y));
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -76,6 +125,8 @@ export default function UnifiedLayout({ children }) {
   const initial = user?.full_name?.charAt(0)?.toUpperCase() || "U";
   const activeSidebarWidth = sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidth;
   const pageTitle = getPageTitle(location.pathname);
+  const showAskFab =
+    location.pathname === "/" || location.pathname === "/dashboard" || location.pathname === "/business";
 
   const handleSidebarWidthChange = (nextWidth) => {
     const clamped = Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, nextWidth));
@@ -89,6 +140,52 @@ export default function UnifiedLayout({ children }) {
       window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(next));
       return next;
     });
+  };
+
+  const handleAskFabPointerDown = (event) => {
+    askFabDragRef.current = {
+      active: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: event.clientX - askFabPos.x,
+      offsetY: event.clientY - askFabPos.y,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleAskFabPointerMove = (event) => {
+    if (!askFabDragRef.current.active || askFabDragRef.current.pointerId !== event.pointerId) return;
+    const distance = Math.hypot(
+      event.clientX - askFabDragRef.current.startX,
+      event.clientY - askFabDragRef.current.startY
+    );
+    const x = event.clientX - askFabDragRef.current.offsetX;
+    const y = event.clientY - askFabDragRef.current.offsetY;
+    askFabDragRef.current.moved = distance > 4;
+    setAskFabPos(clampFabPosition(x, y));
+  };
+
+  const handleAskFabPointerUp = (event) => {
+    if (askFabDragRef.current.pointerId !== event.pointerId) return;
+    const moved = askFabDragRef.current.moved;
+    askFabDragRef.current = {
+      active: false,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      offsetX: 0,
+      offsetY: 0,
+      moved: false,
+    };
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch (_) {
+      // ignore release failures
+    }
+    window.localStorage.setItem(ASK_FAB_STORAGE_KEY, JSON.stringify(askFabPos));
+    if (!moved) navigate("/ask");
   };
 
   return (
@@ -197,6 +294,37 @@ export default function UnifiedLayout({ children }) {
           {children}
         </div>
       </main>
+      {showAskFab && (
+        <button
+          type="button"
+          onPointerDown={handleAskFabPointerDown}
+          onPointerMove={handleAskFabPointerMove}
+          onPointerUp={handleAskFabPointerUp}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              navigate("/ask");
+            }
+          }}
+          style={{
+            ...askFabButton,
+            left: askFabPos.x,
+            top: askFabPos.y,
+            color: "#231713",
+            border: darkMode
+              ? "1px solid rgba(255,225,193,0.35)"
+              : "1px solid rgba(217,105,46,0.28)",
+            background: darkMode
+              ? "linear-gradient(135deg, #ffd190, #ff9f62)"
+              : "linear-gradient(135deg, #ffe0b0, #ffb475)",
+          }}
+          className="ui-btn-polish ui-focus-ring"
+          aria-label="Open Ask Recall"
+          title="Ask Recall (drag to move)"
+        >
+          Ask Recall
+        </button>
+      )}
     </div>
   );
 }
@@ -385,3 +513,20 @@ function getPageTitle(pathname) {
 }
 
 const icon16 = { width: 16, height: 16 };
+
+const askFabButton = {
+  position: "fixed",
+  zIndex: 150,
+  width: ASK_FAB_WIDTH,
+  height: ASK_FAB_HEIGHT,
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  fontSize: 13,
+  fontWeight: 800,
+  letterSpacing: "0.01em",
+  boxShadow: "0 12px 28px rgba(2,6,23,0.28)",
+  cursor: "grab",
+  userSelect: "none",
+  touchAction: "none",
+};

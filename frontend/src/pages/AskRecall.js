@@ -32,6 +32,13 @@ function normalizeSources(sources) {
   ].slice(0, 8);
 }
 
+function getConfidenceLabel(value) {
+  const score = Number(value || 0);
+  if (score >= 75) return 'High';
+  if (score >= 50) return 'Medium';
+  return 'Low';
+}
+
 export default function AskRecall() {
   const { darkMode } = useTheme();
   const [query, setQuery] = useState('');
@@ -76,6 +83,14 @@ export default function AskRecall() {
     'What decisions are blocking delivery?',
     'Which high-priority tasks should we reassign now?',
     'What should leadership resolve in the next 24 hours?',
+  ];
+
+  const capabilityList = [
+    'Answer organizational questions using your conversations and decisions.',
+    'Show confidence, risk status, and readiness signals.',
+    'Suggest next actions and link to relevant records.',
+    'Provide quick navigation links when your intent is tool-finding.',
+    'Optionally run autonomous fixes when safe actions are available.',
   ];
 
   const mapResponseToViewModel = (payload) => {
@@ -222,6 +237,28 @@ export default function AskRecall() {
   };
 
   const confidenceWidth = `${Math.max(0, Math.min(100, Number(results?.confidence || 0)))}%`;
+  const confidenceLabel = getConfidenceLabel(results?.confidence);
+  const queryLower = query.toLowerCase();
+  const isNavigationIntent =
+    queryLower.includes('where') ||
+    queryLower.includes('find') ||
+    queryLower.includes('tool') ||
+    queryLower.includes('navigate') ||
+    queryLower.includes('agile') ||
+    queryLower.includes('sprint') ||
+    queryLower.includes('task');
+  const lowEvidence =
+    !!results &&
+    (Number(results.confidence || 0) < 55 || (results.sources?.length || 0) === 0);
+  const canRunAutonomousFixes =
+    !!results && results.nextActions.length > 0 && !lowEvidence && !isNavigationIntent;
+
+  const quickToolLinks = [
+    { label: 'Sprint Board', href: '/sprint' },
+    { label: 'Projects', href: '/projects' },
+    { label: 'Task Board', href: '/business/tasks' },
+    { label: 'Decisions', href: '/decisions' },
+  ];
 
   return (
     <div
@@ -255,6 +292,30 @@ export default function AskRecall() {
         </p>
       </section>
 
+      <section
+        style={{
+          border: `1px solid ${theme.border}`,
+          borderRadius: 16,
+          background: theme.panel,
+          padding: 16,
+          marginBottom: 16,
+        }}
+      >
+        <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>How Ask Recall Works</h2>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {capabilityList.map((item) => (
+            <p key={item} style={{ margin: 0, color: theme.muted, fontSize: 14 }}>
+              • {item}
+            </p>
+          ))}
+        </div>
+        <p style={{ margin: '10px 0 0', color: theme.muted, fontSize: 12 }}>
+          Confidence guide: <strong style={{ color: theme.text }}>75%+ High</strong>,{' '}
+          <strong style={{ color: theme.text }}>50-74% Medium</strong>,{' '}
+          <strong style={{ color: theme.text }}>below 50% Low</strong>.
+        </p>
+      </section>
+
       <form onSubmit={handleSearch} style={{ marginBottom: 16 }}>
         <div
           style={{
@@ -267,6 +328,14 @@ export default function AskRecall() {
           <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (query.trim() && !loading) {
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }
+            }}
             placeholder="Describe the organizational problem to solve..."
             rows={3}
             style={{
@@ -296,12 +365,12 @@ export default function AskRecall() {
                 opacity: loading || !query.trim() ? 0.6 : 1,
               }}
             >
-              {loading ? 'Analyzing...' : 'Analyze & Plan'}
+              {loading ? 'Thinking...' : 'Ask Recall'}
             </button>
             <button
               type="button"
               onClick={handleExecute}
-              disabled={executing || !results || results.nextActions.length === 0}
+              disabled={executing || !canRunAutonomousFixes}
               style={{
                 borderRadius: 12,
                 padding: '10px 14px',
@@ -309,13 +378,22 @@ export default function AskRecall() {
                 background: theme.panelAlt,
                 color: theme.text,
                 fontWeight: 700,
-                cursor: executing || !results || results.nextActions.length === 0 ? 'not-allowed' : 'pointer',
-                opacity: executing || !results || results.nextActions.length === 0 ? 0.6 : 1,
+                cursor: executing || !canRunAutonomousFixes ? 'not-allowed' : 'pointer',
+                opacity: executing || !canRunAutonomousFixes ? 0.6 : 1,
               }}
             >
               {executing ? 'Executing...' : 'Run Autonomous Fixes'}
             </button>
           </div>
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: theme.muted }}>
+            Type a question, then click <strong style={{ color: theme.text }}>Ask Recall</strong> or press{' '}
+            <strong style={{ color: theme.text }}>Ctrl+Enter</strong>.
+          </p>
+          {results && !canRunAutonomousFixes && (
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: theme.warning }}>
+              Autonomous fixes are disabled until confidence and evidence are strong.
+            </p>
+          )}
         </div>
       </form>
 
@@ -371,13 +449,60 @@ export default function AskRecall() {
 
       {results && !loading && (
         <div style={{ display: 'grid', gap: 14 }}>
+          {isNavigationIntent && (
+            <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
+              <h2 style={{ marginTop: 0 }}>Quick Links</h2>
+              <p style={{ margin: '0 0 10px', color: theme.muted }}>
+                It looks like you are trying to find a tool. Start here:
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {quickToolLinks.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    style={{
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 10,
+                      padding: '8px 12px',
+                      background: theme.panelAlt,
+                      textDecoration: 'none',
+                      color: theme.text,
+                      fontWeight: 700,
+                      fontSize: 13,
+                    }}
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
-            <h2 style={{ marginTop: 0 }}>AGI Diagnosis</h2>
+            <h2 style={{ marginTop: 0 }}>Answer</h2>
+            {lowEvidence && (
+              <div
+                style={{
+                  marginBottom: 10,
+                  border: `1px solid ${theme.warning}`,
+                  borderRadius: 10,
+                  background: theme.accentSoft,
+                  padding: '8px 10px',
+                  color: theme.warning,
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                Low evidence: this answer may be incomplete. Please use the links below and ask a more specific question.
+              </div>
+            )}
             <p style={{ color: theme.muted }}>{results.answer}</p>
             <div style={{ marginTop: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ color: theme.muted }}>Confidence</span>
-                <strong>{results.confidence}%</strong>
+                <strong>
+                  {results.confidence}% ({confidenceLabel})
+                </strong>
               </div>
               <div style={{ background: theme.panelAlt, borderRadius: 999, height: 10, overflow: 'hidden' }}>
                 <div
@@ -392,7 +517,7 @@ export default function AskRecall() {
           </section>
 
           <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
-            <h3 style={{ marginTop: 0 }}>Operational Risk</h3>
+            <h3 style={{ marginTop: 0 }}>Current Status</h3>
             <p style={{ margin: '4px 0', color: theme.muted }}>
               Status:{' '}
               <strong style={{ color: results.riskStatus === 'critical' ? theme.danger : results.riskStatus === 'watch' ? theme.warning : theme.success }}>
@@ -421,7 +546,7 @@ export default function AskRecall() {
 
           {!!results.learningModel && Object.keys(results.learningModel).length > 0 && (
             <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
-              <h3 style={{ marginTop: 0 }}>Learning Model Signals</h3>
+              <h3 style={{ marginTop: 0 }}>Why This Answer</h3>
               <p style={{ margin: '0 0 8px', color: theme.muted }}>
                 Horizon: {results.learningModel.horizon_days || 0} days
               </p>
@@ -475,9 +600,9 @@ export default function AskRecall() {
             </section>
           )}
 
-          {results.nextActions.length > 0 && (
+          {results.nextActions.length > 0 && !isNavigationIntent && !lowEvidence && (
             <section style={{ border: `1px solid ${theme.border}`, borderRadius: 16, background: theme.panel, padding: 18 }}>
-              <h3 style={{ marginTop: 0 }}>Planned Interventions</h3>
+              <h3 style={{ marginTop: 0 }}>Suggested Next Actions</h3>
               <div style={{ display: 'grid', gap: 10 }}>
                 {results.nextActions.map((action) => (
                   <a

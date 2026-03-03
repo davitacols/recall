@@ -1,17 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useTheme } from "../utils/ThemeAndAccessibility";
 
 function AcceptInvite() {
   const { token } = useParams();
   const navigate = useNavigate();
+  const { darkMode } = useTheme();
+
   const [invitation, setInvitation] = useState(null);
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    full_name: ''
+    username: "",
+    password: "",
+    full_name: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const palette = useMemo(
+    () =>
+      darkMode
+        ? {
+            bg: "#0f0b0d",
+            panel: "#171215",
+            panelAlt: "#1e171b",
+            border: "rgba(255,225,193,0.14)",
+            text: "#f4ece0",
+            muted: "#baa892",
+            accent: "#ffb476",
+            danger: "#ef4444",
+          }
+        : {
+            bg: "#f6f8fb",
+            panel: "#ffffff",
+            panelAlt: "#f8fbff",
+            border: "#dbe4ef",
+            text: "#0f172a",
+            muted: "#475569",
+            accent: "#d9692e",
+            danger: "#b91c1c",
+          },
+    [darkMode]
+  );
 
   useEffect(() => {
     verifyInvitation();
@@ -20,145 +50,277 @@ function AcceptInvite() {
   const verifyInvitation = async () => {
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/invitations/${token}/`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
       });
       const data = await response.json();
       if (response.ok) {
         setInvitation(data);
       } else {
-        setError(data.error || 'Invalid invitation');
+        setError(data.error || "Invalid invitation");
       }
-    } catch (err) {
-      setError('Invalid invitation');
+    } catch (_) {
+      setError("Invalid invitation");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAccept = async (e) => {
-    e.preventDefault();
+  const handleAccept = async (event) => {
+    event.preventDefault();
+    setSubmitting(true);
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/invitations/${token}/accept/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
       const data = await response.json();
-      
+
       if (response.ok) {
-        // Store token and user data
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Redirect to dashboard
-        window.location.href = '/';
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        window.location.href = "/";
       } else {
-        setError(data.error || 'Failed to accept invitation');
+        setError(data.error || "Failed to accept invitation");
       }
-    } catch (err) {
-      setError('Failed to accept invitation');
+    } catch (_) {
+      setError("Failed to accept invitation");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+      <div style={centerWrap(palette)}>
+        <div style={{ ...panel(palette), width: 420, textAlign: "center" }}>
+          <div style={spinner(palette)} />
+          <p style={{ margin: "10px 0 0", color: palette.muted }}>Verifying invitation...</p>
+        </div>
       </div>
     );
   }
 
   if (error && !invitation) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white border border-gray-200 p-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Invalid Invitation</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <a href="/login" className="text-gray-900 font-medium hover:underline">
+      <div style={centerWrap(palette)}>
+        <div style={{ ...panel(palette), width: 460, textAlign: "center" }}>
+          <h1 style={{ margin: 0, fontSize: 28, color: palette.text }}>Invitation Invalid</h1>
+          <p style={{ margin: "10px 0 18px", color: palette.muted }}>{error}</p>
+          <button onClick={() => navigate("/login")} style={secondaryBtn(palette)}>
             Go to Login
-          </a>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white border border-gray-200 p-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Join {invitation.organization}</h1>
-        <p className="text-gray-600 mb-8">
-          You've been invited as a <span className="font-bold">{invitation.role}</span>
-        </p>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-600 text-red-700">
-            {error}
+    <div style={centerWrap(palette)}>
+      <div
+        style={{
+          width: "min(980px, 94vw)",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 14,
+          alignItems: "start",
+        }}
+      >
+        <section
+          style={{
+            ...panel(palette),
+            background: darkMode
+              ? "linear-gradient(140deg, rgba(59,130,246,0.2), rgba(249,115,22,0.18) 55%, rgba(34,197,94,0.12))"
+              : "linear-gradient(140deg, rgba(191,219,254,0.72), rgba(255,225,196,0.78) 55%, rgba(209,250,229,0.75))",
+          }}
+        >
+          <p style={{ ...eyebrow(palette), marginTop: 0 }}>WORKSPACE INVITATION</p>
+          <h1 style={{ margin: "8px 0 10px", fontSize: "clamp(1.6rem, 3.4vw, 2.3rem)", color: palette.text }}>
+            Join {invitation.organization}
+          </h1>
+          <p style={{ margin: "0 0 14px", color: palette.muted }}>
+            You were invited as <strong style={{ color: palette.text }}>{invitation.role}</strong>. Complete your account
+            setup to continue.
+          </p>
+          <div style={{ ...metaCard(palette), marginBottom: 8 }}>
+            <p style={metaLabel(palette)}>Email</p>
+            <p style={metaValue(palette)}>{invitation.email}</p>
           </div>
-        )}
+          <div style={metaCard(palette)}>
+            <p style={metaLabel(palette)}>Role</p>
+            <p style={metaValue(palette)}>{invitation.role}</p>
+          </div>
+        </section>
 
-        <form onSubmit={handleAccept}>
-          <div className="mb-6">
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-              Full Name
-            </label>
-            <input
-              type="text"
+        <section style={panel(palette)}>
+          <h2 style={{ margin: "0 0 4px", color: palette.text }}>Create your account</h2>
+          <p style={{ margin: "0 0 14px", color: palette.muted }}>This takes less than a minute.</p>
+
+          {error && (
+            <div
+              style={{
+                marginBottom: 12,
+                border: `1px solid ${palette.danger}`,
+                borderRadius: 10,
+                background: darkMode ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.08)",
+                color: palette.danger,
+                padding: "9px 10px",
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleAccept} style={{ display: "grid", gap: 10 }}>
+            <Field
+              label="Full Name"
               value={formData.full_name}
-              onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-              className="w-full p-3 border border-gray-300 focus:outline-none focus:border-gray-900"
-              required
+              onChange={(value) => setFormData((prev) => ({ ...prev, full_name: value }))}
+              palette={palette}
             />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-              Username
-            </label>
-            <input
-              type="text"
+            <Field
+              label="Username"
               value={formData.username}
-              onChange={(e) => setFormData({...formData, username: e.target.value})}
-              className="w-full p-3 border border-gray-300 focus:outline-none focus:border-gray-900"
-              required
+              onChange={(value) => setFormData((prev) => ({ ...prev, username: value }))}
+              palette={palette}
             />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-              Email
-            </label>
-            <input
-              type="email"
-              value={invitation.email}
-              disabled
-              className="w-full p-3 border border-gray-300 bg-gray-100"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-              Password
-            </label>
-            <input
-              type="password"
+            <Field label="Email" value={invitation.email} palette={palette} disabled />
+            <Field
+              label="Password"
               value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full p-3 border border-gray-300 focus:outline-none focus:border-gray-900"
-              required
+              onChange={(value) => setFormData((prev) => ({ ...prev, password: value }))}
+              palette={palette}
+              type="password"
             />
-          </div>
 
-          <button
-            type="submit"
-            className="w-full py-3 bg-gray-900 text-white hover:bg-gray-800 font-medium"
-          >
-            Accept Invitation
-          </button>
-        </form>
+            <button type="submit" disabled={submitting} style={{ ...primaryBtn(palette), opacity: submitting ? 0.7 : 1 }}>
+              {submitting ? "Creating account..." : "Accept Invitation"}
+            </button>
+          </form>
+        </section>
       </div>
     </div>
   );
 }
+
+function Field({ label, value, onChange, palette, type = "text", disabled = false }) {
+  return (
+    <label style={{ display: "grid", gap: 6 }}>
+      <span style={fieldLabel(palette)}>{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange?.(event.target.value)}
+        disabled={disabled}
+        required={!disabled}
+        style={{
+          ...fieldInput(palette),
+          background: disabled ? (palette.panelAlt || "#f8fafc") : palette.panelAlt,
+          opacity: disabled ? 0.86 : 1,
+          cursor: disabled ? "not-allowed" : "text",
+        }}
+      />
+    </label>
+  );
+}
+
+const centerWrap = (palette) => ({
+  minHeight: "100vh",
+  display: "grid",
+  placeItems: "center",
+  padding: 16,
+  background: palette.bg,
+});
+
+const panel = (palette) => ({
+  borderRadius: 16,
+  border: `1px solid ${palette.border}`,
+  background: palette.panel,
+  padding: "18px 18px 16px",
+  boxShadow: "0 14px 34px rgba(2,6,23,0.08)",
+});
+
+const eyebrow = (palette) => ({
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+  color: palette.muted,
+});
+
+const metaCard = (palette) => ({
+  border: `1px solid ${palette.border}`,
+  borderRadius: 12,
+  padding: "10px 12px",
+  background: palette.panelAlt,
+});
+
+const metaLabel = (palette) => ({
+  margin: 0,
+  fontSize: 11,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: palette.muted,
+  fontWeight: 700,
+});
+
+const metaValue = (palette) => ({
+  margin: "4px 0 0",
+  fontSize: 14,
+  color: palette.text,
+  fontWeight: 700,
+});
+
+const fieldLabel = (palette) => ({
+  fontSize: 12,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.07em",
+  color: palette.muted,
+});
+
+const fieldInput = (palette) => ({
+  borderRadius: 10,
+  border: `1px solid ${palette.border}`,
+  padding: "11px 12px",
+  fontSize: 14,
+  color: palette.text,
+  outline: "none",
+});
+
+const primaryBtn = (palette) => ({
+  marginTop: 4,
+  border: "none",
+  borderRadius: 12,
+  padding: "11px 14px",
+  background: "linear-gradient(135deg, #ffd190, #ff9f62)",
+  color: "#231713",
+  fontSize: 14,
+  fontWeight: 800,
+  cursor: "pointer",
+});
+
+const secondaryBtn = (palette) => ({
+  border: `1px solid ${palette.border}`,
+  borderRadius: 10,
+  padding: "10px 12px",
+  background: palette.panelAlt,
+  color: palette.text,
+  fontWeight: 700,
+  cursor: "pointer",
+});
+
+const spinner = (palette) => ({
+  width: 30,
+  height: 30,
+  borderRadius: "50%",
+  border: `2px solid ${palette.border}`,
+  borderTopColor: palette.accent,
+  margin: "0 auto",
+  animation: "spin 1s linear infinite",
+});
 
 export default AcceptInvite;

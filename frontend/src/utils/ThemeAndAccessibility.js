@@ -3,14 +3,21 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
+  const getPreferredTheme = () => {
+    if (typeof window === 'undefined') return 'dark';
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    return media.matches ? 'dark' : 'light';
+  };
+
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
-    return saved ? saved === 'dark' : true;
+    return saved ? saved === 'dark' : getPreferredTheme() === 'dark';
   });
 
   useEffect(() => {
     const theme = darkMode ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme;
     localStorage.setItem('theme', theme);
   }, [darkMode]);
 

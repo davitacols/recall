@@ -368,6 +368,35 @@ export default function UnifiedDashboard() {
     });
   };
 
+  const sprintBlocked = currentSprint?.blocked_count || currentSprint?.blocked || 0;
+  const sprintInProgress = currentSprint?.in_progress || 0;
+  const topFocusCards = [
+    {
+      title: "Outcome Reviews",
+      value: `${pendingOutcomeMeta.overdue} overdue`,
+      helper: `${pendingOutcomeMeta.total} pending total`,
+      ctaLabel: "Open Queue",
+      ctaTo: "/decisions?outcome=pending",
+      tone: pendingOutcomeMeta.overdue > 0 ? palette.accent : palette.good,
+    },
+    {
+      title: "Decision Drift",
+      value: `${driftMeta.critical} critical`,
+      helper: `${driftMeta.high} high severity`,
+      ctaLabel: "Review Decisions",
+      ctaTo: "/decisions",
+      tone: driftMeta.critical > 0 ? palette.accent : palette.info,
+    },
+    {
+      title: "Sprint Risk",
+      value: `${sprintBlocked} blocked`,
+      helper: `${sprintInProgress} in progress now`,
+      ctaLabel: "Open Sprint",
+      ctaTo: "/sprint",
+      tone: sprintBlocked > 0 ? palette.warn : palette.good,
+    },
+  ];
+
   if (loading) {
     return (
       <div style={{ ...loadingWrap, color: palette.text }}>
@@ -423,9 +452,9 @@ export default function UnifiedDashboard() {
       >
         <div>
           <p style={{ ...eyebrow, color: palette.muted }}>UNIFIED DASHBOARD</p>
-          <h1 style={{ ...title, color: palette.text }}>Launch Command Center</h1>
+          <h1 style={{ ...title, color: palette.text }}>Unified Operations Command Center</h1>
           <p style={{ ...subtitle, color: palette.muted }}>
-            Run sprint risk, decision debt, outcome quality, and team execution from one operating surface.
+            Understand what needs attention now, what is healthy, and where to act next across decisions, outcomes, and sprint execution.
           </p>
         </div>
 
@@ -446,6 +475,34 @@ export default function UnifiedDashboard() {
         <StatCard label="Success Rate" value={`${stats.rate}%`} icon={ArrowTrendingUpIcon} color={palette.good} tone={palette} />
       </section>
 
+      <section className="ui-enter" style={{ ...focusSection, "--ui-delay": "160ms" }}>
+        <div style={sectionHeader}>
+          <p style={{ ...sectionEyebrow, color: palette.muted }}>Immediate Focus</p>
+          <p style={{ ...sectionHelper, color: palette.muted }}>
+            Start here to resolve the biggest blockers before scanning detailed widgets.
+          </p>
+        </div>
+        <div style={focusGrid}>
+          {topFocusCards.map((card) => (
+            <article
+              key={card.title}
+              className="ui-card-lift ui-smooth"
+              style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}
+            >
+              <p style={{ ...focusLabel, color: palette.muted }}>{card.title}</p>
+              <p style={{ ...focusValue, color: card.tone }}>{card.value}</p>
+              <p style={{ ...focusHelper, color: palette.dim }}>{card.helper}</p>
+              <Link
+                to={card.ctaTo}
+                style={{ ...focusLink, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}
+              >
+                {card.ctaLabel}
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section
         className="ui-enter"
         style={{
@@ -455,7 +512,7 @@ export default function UnifiedDashboard() {
         }}
       >
         <div style={leftCol}>
-          <CollapsibleCard title="Recent Activity" palette={palette} defaultExpanded>
+          <CollapsibleCard title="Latest Signals (last 7 days)" palette={palette} defaultExpanded>
             {timeline.length === 0 ? (
               <div style={{ ...emptyState, color: palette.dim }}>No activity</div>
             ) : (
@@ -1053,6 +1110,49 @@ const kpiGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
   gap: 10,
+};
+
+const focusSection = {
+  position: "relative",
+  zIndex: 1,
+  display: "grid",
+  gap: 10,
+};
+
+const sectionHeader = { display: "grid", gap: 4 };
+const sectionEyebrow = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
+};
+const sectionHelper = { margin: 0, fontSize: 13 };
+
+const focusGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+  gap: 10,
+};
+
+const focusCard = {
+  borderRadius: 13,
+  padding: "12px 12px 11px",
+  display: "grid",
+  gap: 6,
+};
+
+const focusLabel = { margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" };
+const focusValue = { margin: 0, fontSize: 22, fontWeight: 800, lineHeight: 1.1 };
+const focusHelper = { margin: 0, fontSize: 12 };
+const focusLink = {
+  marginTop: 4,
+  textDecoration: "none",
+  borderRadius: 10,
+  padding: "7px 10px",
+  fontSize: 12,
+  fontWeight: 700,
+  textAlign: "center",
 };
 
 const statCard = { borderRadius: 13, padding: "12px 12px 11px" };

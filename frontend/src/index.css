@@ -13,12 +13,12 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --bg-tertiary: #f3f4f6;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --border-color: #e5e7eb;
+  --bg-primary: #f6f8fb;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #eef2f7;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-color: #dbe4ef;
 }
 
 body {
@@ -47,6 +47,11 @@ body {
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
 }
 
+.ui-card-lift[data-theme="light"]:hover,
+[data-theme="light"] .ui-card-lift:hover {
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+}
+
 .ui-card-lift:active {
   transform: translateY(0);
 }
@@ -60,6 +65,10 @@ body {
   filter: brightness(1.03);
 }
 
+[data-theme="light"] .ui-btn-polish:hover {
+  filter: brightness(1.01);
+}
+
 .ui-btn-polish:active {
   transform: translateY(0);
   filter: brightness(0.98);
@@ -68,6 +77,11 @@ body {
 .ui-focus-ring:focus-visible {
   outline: 2px solid #60a5fa;
   outline-offset: 2px;
+}
+
+[data-theme="light"] .ui-focus-ring:focus-visible {
+  outline: 2px solid #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 @keyframes uiFadeRise {

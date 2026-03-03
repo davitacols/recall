@@ -453,19 +453,34 @@ function ConversationDetail() {
   const replyCount = replies.length;
   const reactionTotal = (reactions.reactions || []).reduce((acc, row) => acc + (row.count || 0), 0);
   const conversationType = (conversation.post_type || "discussion").replace("_", " ");
+  const createdLabel = new Date(conversation.created_at).toLocaleDateString();
+  const updatedLabel = conversation.updated_at
+    ? new Date(conversation.updated_at).toLocaleDateString()
+    : createdLabel;
 
   return (
     <div style={{ ...page, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
       <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.16), transparent 30%)" : "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.1), transparent 30%)" }} />
-      <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
-        <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>All Threads</button>
-        <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Decision Hub</button>
-        <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Refresh</button>
+      <section className="ui-enter ui-card-lift ui-smooth" style={{ ...masthead, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
+        <div style={mastheadTopRow}>
+          <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...backPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+            <ArrowLeftIcon style={icon14} /> All Conversations
+          </Link>
+          <div style={commandStrip}>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+              Decision Hub
+            </button>
+            <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+              Refresh
+            </button>
+          </div>
+        </div>
+        <p style={{ ...eyebrow, color: palette.muted }}>CONVERSATION THREAD #{id}</p>
+        <h1 style={{ ...mastheadTitle, color: palette.text }}>{conversation.title}</h1>
+        <p style={{ ...mastheadSub, color: palette.muted }}>
+          Track discussion context, reactions, and decisions from one structured workspace.
+        </p>
       </section>
-
-      <Link className="ui-enter" to="/conversations" style={{ ...backLink, color: palette.muted, "--ui-delay": "60ms" }}>
-        <ArrowLeftIcon style={icon14} /> Back
-      </Link>
 
       <div className="ui-enter" style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", "--ui-delay": "110ms" }}>
         <div>
@@ -499,7 +514,7 @@ function ConversationDetail() {
               <div>
                 <p style={{ ...authorNameStyle, color: palette.text }}>{authorName}</p>
                 <p style={{ ...metaText, color: palette.muted }}>
-                  {new Date(conversation.created_at).toLocaleDateString()}
+                  Created {createdLabel}
                 </p>
               </div>
             </div>
@@ -536,9 +551,12 @@ function ConversationDetail() {
             </div>
           </section>
 
-          <AIAssistant content={conversation?.content} contentType="conversation" />
-
           <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "180ms" }}>
+            {!isEditingPost && (
+              <div style={sectionLabelRow}>
+                <p style={{ ...sectionLabel, color: palette.muted }}>Conversation Content</p>
+              </div>
+            )}
             {isEditingPost ? (
               <>
                 <textarea
@@ -557,6 +575,9 @@ function ConversationDetail() {
           </section>
 
           <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
+            <div style={sectionLabelRow}>
+              <p style={{ ...sectionLabel, color: palette.muted }}>Team Signal</p>
+            </div>
             <div style={reactionRow}>
               {[
                 { type: "agree", icon: HandThumbUpIcon, label: "Agree" },
@@ -624,8 +645,36 @@ function ConversationDetail() {
           </section>
         </div>
 
-        <div>
-          <ContextPanel contentType="conversations.conversation" objectId={id} />
+        <div style={isNarrow ? railStackMobile : railStack}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "200ms" }}>
+            <h2 style={{ ...h2, color: palette.text, marginBottom: 14 }}>Thread Snapshot</h2>
+            <div style={snapshotGrid}>
+              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                <p style={{ ...snapshotLabel, color: palette.muted }}>Type</p>
+                <p style={{ ...snapshotValue, color: palette.text }}>{conversationType}</p>
+              </div>
+              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                <p style={{ ...snapshotLabel, color: palette.muted }}>Replies</p>
+                <p style={{ ...snapshotValue, color: palette.text }}>{replyCount}</p>
+              </div>
+              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                <p style={{ ...snapshotLabel, color: palette.muted }}>Reactions</p>
+                <p style={{ ...snapshotValue, color: palette.text }}>{reactionTotal}</p>
+              </div>
+              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                <p style={{ ...snapshotLabel, color: palette.muted }}>Updated</p>
+                <p style={{ ...snapshotValue, color: palette.text }}>{updatedLabel}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
+            <AIAssistant content={conversation?.content} contentType="conversation" />
+          </section>
+
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "240ms" }}>
+            <ContextPanel contentType="conversations.conversation" objectId={id} />
+          </section>
         </div>
       </div>
 
@@ -636,8 +685,14 @@ function ConversationDetail() {
 
 const page = { maxWidth: 1280, margin: "0 auto" };
 const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
-const commandStrip = { position: "relative", zIndex: 1, marginBottom: 10, borderRadius: 12, padding: 8, display: "flex", gap: 8, flexWrap: "wrap" };
+const masthead = { position: "relative", zIndex: 1, borderRadius: 16, padding: "14px 16px", marginBottom: 12 };
+const mastheadTopRow = { display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" };
+const backPill = { display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none", borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
+const commandStrip = { display: "flex", gap: 8, flexWrap: "wrap" };
 const commandPill = { borderRadius: 999, padding: "7px 11px", fontSize: 12, fontWeight: 700, background: "transparent", cursor: "pointer" };
+const eyebrow = { margin: "10px 0 0", fontSize: 11, letterSpacing: "0.13em", fontWeight: 700 };
+const mastheadTitle = { margin: "7px 0 6px", fontSize: "clamp(1.35rem, 2.8vw, 2.1rem)", lineHeight: 1.15 };
+const mastheadSub = { margin: 0, fontSize: 14, lineHeight: 1.45, maxWidth: 760 };
 const grid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
 const loadingWrap = { minHeight: 320, display: "grid", placeItems: "center" };
 const spinner = {
@@ -660,7 +715,7 @@ const backLink = {
 const h1 = { margin: "0 0 8px", fontSize: "clamp(1.7rem, 3.5vw, 2.2rem)" };
 const h2 = { margin: "0 0 10px", fontSize: 16, display: "flex", alignItems: "center", gap: 7 };
 const sub = { margin: "0 0 12px", fontSize: 14 };
-const card = { borderRadius: 14, padding: 14, marginBottom: 10 };
+const card = { borderRadius: 14, padding: 16, marginBottom: 12 };
 const typeGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 };
 const typeCard = { borderRadius: 14, padding: 16, textAlign: "left", cursor: "pointer" };
 const typeLabel = { margin: "0 0 6px", fontSize: 16, fontWeight: 700 };
@@ -703,11 +758,20 @@ const actionRow = { display: "flex", alignItems: "center", gap: 6, marginTop: 10
 const ghostSuccessButton = { border: "1px solid rgba(16,185,129,0.45)", borderRadius: 8, background: "rgba(16,185,129,0.08)", color: "#10b981", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
 const smallOutlineButton = { border: "1px solid rgba(120,120,120,0.45)", borderRadius: 8, background: "transparent", color: "#94a3b8", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
 const smallDangerButton = { border: "1px solid rgba(239,68,68,0.5)", borderRadius: 8, background: "rgba(239,68,68,0.1)", color: "#ef4444", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
+const sectionLabelRow = { marginBottom: 8 };
+const sectionLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" };
 const reactionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
 const reactionButton = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 10, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer" };
 const emptyState = { borderRadius: 10, padding: "24px 14px", textAlign: "center", fontSize: 13, marginBottom: 10 };
 const replyList = { display: "grid", gap: 8, marginBottom: 10 };
 const composer = { borderRadius: 10, padding: 12 };
+const railStack = { display: "grid", gap: 12, alignContent: "start", position: "sticky", top: 12 };
+const railStackMobile = { display: "grid", gap: 12, alignContent: "start" };
+const sideCard = { borderRadius: 14, padding: 14 };
+const snapshotGrid = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 };
+const snapshotItem = { borderRadius: 10, padding: "9px 10px" };
+const snapshotLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" };
+const snapshotValue = { margin: "5px 0 0", fontSize: 13, fontWeight: 700, textTransform: "capitalize" };
 const replyCard = { borderRadius: 10, padding: 10, marginBottom: 8 };
 const replyHeader = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 };
 const replyAuthorWrap = { display: "flex", alignItems: "center", gap: 8 };

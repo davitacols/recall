@@ -14,6 +14,8 @@ import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 
+const dashboardIllustration = "/illustrations/5252473.jpg";
+
 function Dashboard() {
   const { user } = useAuth();
   const { darkMode } = useTheme();
@@ -146,7 +148,7 @@ function Dashboard() {
           border: `1px solid ${palette.border}`,
         }}
       >
-        <div>
+        <div style={heroMain}>
           <p style={{ ...eyebrow, color: palette.muted }}>KNOLEDGR DASHBOARD</p>
           <h1 style={{ ...heroTitle, color: palette.text }}>
             Welcome back, {user?.full_name?.split(" ")[0] || "there"}
@@ -155,15 +157,28 @@ function Dashboard() {
             Track decision velocity, sprint health, and recent organizational
             memory updates in one place.
           </p>
+          <div style={heroActions}>
+            <Link to="/conversations/new" style={primaryAction}>
+              New Conversation
+            </Link>
+            <Link to="/decisions/new" style={secondaryAction}>
+              New Decision
+            </Link>
+          </div>
         </div>
-        <div style={heroActions}>
-          <Link to="/conversations/new" style={primaryAction}>
-            New Conversation
-          </Link>
-          <Link to="/decisions/new" style={secondaryAction}>
-            New Decision
-          </Link>
-        </div>
+        {!isNarrow && (
+          <div style={{ ...heroMediaFrame, border: `1px solid ${palette.border}` }}>
+            <img
+              src={dashboardIllustration}
+              alt="Illustration of collaborative work and planning"
+              style={heroMediaImage}
+            />
+            <div style={heroMediaOverlay}>
+              <p style={heroMediaTitle}>Atlassian-style workflow clarity</p>
+              <p style={heroMediaText}>Projects, updates, and decisions aligned in one snapshot.</p>
+            </div>
+          </div>
+        )}
       </section>
 
       <section style={metricGrid}>
@@ -353,11 +368,15 @@ const container = {
 const hero = {
   borderRadius: 18,
   padding: "clamp(18px, 3vw, 28px)",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-end",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 320px)",
+  alignItems: "center",
   flexWrap: "wrap",
   gap: 16,
+};
+
+const heroMain = {
+  minWidth: 0,
 };
 
 const eyebrow = {
@@ -384,6 +403,46 @@ const heroActions = {
   display: "flex",
   gap: 8,
   flexWrap: "wrap",
+  marginTop: 14,
+};
+
+const heroMediaFrame = {
+  borderRadius: 14,
+  overflow: "hidden",
+  background: "rgba(255,255,255,0.06)",
+  minHeight: 170,
+  display: "grid",
+  alignContent: "end",
+  position: "relative",
+};
+
+const heroMediaImage = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+};
+
+const heroMediaOverlay = {
+  position: "relative",
+  zIndex: 1,
+  padding: "12px 12px 14px",
+  background: "linear-gradient(180deg, rgba(12,8,6,0), rgba(12,8,6,0.76))",
+};
+
+const heroMediaTitle = {
+  margin: 0,
+  color: "#f8f0e4",
+  fontWeight: 700,
+  fontSize: 13,
+};
+
+const heroMediaText = {
+  margin: "6px 0 0",
+  color: "rgba(248,240,228,0.86)",
+  fontSize: 12,
+  lineHeight: 1.4,
 };
 
 const sharedAction = {

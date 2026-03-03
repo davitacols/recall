@@ -108,7 +108,7 @@ export default function DocumentDetail() {
       });
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = window.document.createElement('a');
       a.href = url;
       a.download = `${document.title}.pdf`;
       a.click();
@@ -156,144 +156,140 @@ export default function DocumentDetail() {
   if (loading) return <div className={`min-h-screen ${bgPrimary} p-8`}><div className={textPrimary}>Loading...</div></div>;
   if (!document) return <div className={`min-h-screen ${bgPrimary} p-8`}><div className={textPrimary}>Document not found</div></div>;
 
+  const updatedAt = document.updated_at ? new Date(document.updated_at).toLocaleDateString() : "N/A";
+  const createdAt = document.created_at ? new Date(document.created_at).toLocaleDateString() : "N/A";
+  const typeLabel = document.document_type || "general";
+  const versionLabel = document.version || "-";
+
   return (
     <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <button
-          onClick={() => navigate('/business/documents')}
-          className={`flex items-center gap-2 px-3 py-2 mb-6 bg-transparent border ${borderColor} ${textPrimary} rounded ${hoverBg} text-sm transition-all`}
-        >
-          <ArrowLeftIcon className="w-4 h-4" />
-          Back
-        </button>
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5 md:p-6 mb-6`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button
+              onClick={() => navigate('/business/documents')}
+              className={`inline-flex items-center gap-2 px-3 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} text-sm transition-all`}
+            >
+              <ArrowLeftIcon className="w-4 h-4" />
+              All Documents
+            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleExportPDF}
+                className={`inline-flex items-center gap-2 px-3 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} text-sm transition-all`}
+                title="Export to PDF"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                Export PDF
+              </button>
+              {!editing && (
+                <button
+                  onClick={() => setEditing(true)}
+                  className={`inline-flex items-center gap-2 px-3 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} text-sm transition-all`}
+                >
+                  <PencilIcon className="w-4 h-4" />
+                  Edit
+                </button>
+              )}
+            </div>
+          </div>
+          <p className={`mt-4 text-xs font-semibold tracking-[0.14em] ${textTertiary}`}>DOCUMENT WORKSPACE</p>
+          <h1 className={`mt-2 text-2xl md:text-3xl font-bold ${textPrimary}`}>{document.title}</h1>
+          <p className={`mt-2 text-sm ${textSecondary}`}>
+            Keep file context, document content, and team comments in one structured page.
+          </p>
+        </section>
 
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-8`}>
-          {editing ? (
-            <form onSubmit={handleUpdate} className="space-y-4">
-              <div>
-                <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Title</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded focus:outline-none focus:border-stone-600`}
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Content</label>
-                <RichTextEditor
-                  value={formData.content}
-                  onChange={(value) => setFormData({ ...formData, content: value })}
-                  placeholder="Write document content..."
-                  darkMode={darkMode}
-                />
-              </div>
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setEditing(false)}
-                  className={`px-4 py-2 bg-transparent ${textTertiary} border-2 ${borderColor} rounded ${hoverBg} font-medium text-sm`}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={`px-4 py-2 bg-transparent border-2 ${inputBorder} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm`}
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          ) : (
-            <>
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>{document.title}</h1>
-                  <div className={`flex gap-4 text-sm ${textSecondary}`}>
-                    <span>Type: {document.document_type}</span>
-                    <span>Version: {document.version}</span>
-                    <span>Updated: {new Date(document.updated_at).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <AIEnhancementButton
-                    content={document.content || document.description || ''}
-                    title={document.title}
-                    type="document"
-                    documentId={document.id}
-                    onResult={(feature, data) => setAiResults(data)}
-                  />
-                  <button
-                    onClick={handleExportPDF}
-                    className={`p-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} transition-all`}
-                    title="Export to PDF"
-                  >
-                    <ArrowDownTrayIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setEditing(true)}
-                    className={`p-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} transition-all`}
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    className={`p-2 bg-transparent border-2 border-red-600 text-red-600 rounded hover:bg-red-600 hover:text-white transition-all`}
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <div className={`prose prose-stone ${darkMode ? 'prose-invert' : ''} max-w-none`}>
-                <p className={`${textTertiary} mb-6`}>{document.description}</p>
-                {document.has_file && fileUrl && (
-                  <div className={`mb-6 p-6 ${inputBg} border ${borderColor} rounded`}>
-                    <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Attached File</h3>
-                    {document.file_type?.includes('pdf') ? (
-                      <iframe
-                        src={fileUrl}
-                        className={`w-full h-[600px] border ${borderColor} rounded`}
-                        title="Document Preview"
-                      />
-                    ) : (
-                      <div>
-                        <p className={`${textSecondary} mb-3`}>File: {document.file_name}</p>
-                        <a 
-                          href={fileUrl}
-                          download={document.file_name}
-                          className={`inline-block px-4 py-2 bg-transparent border-2 ${borderColor} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm transition-all`}
-                        >
-                          Download File
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {!document.has_file && document.file_url && (
-                  <div className={`mb-6 p-4 ${inputBg} border border-yellow-600 rounded`}>
-                    <p className={`text-yellow-500 text-sm`}>âš ï¸ This document uses old file storage. Please re-upload the file.</p>
-                  </div>
-                )}
-                {document.content && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <main className="lg:col-span-8 space-y-6">
+            <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5 md:p-6`}>
+              {editing ? (
+                <form onSubmit={handleUpdate} className="space-y-4">
                   <div>
-                    <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Content</h3>
-                    <RichTextRenderer content={document.content} darkMode={darkMode} />
+                    <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Title</label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded-md focus:outline-none focus:border-stone-600`}
+                    />
                   </div>
-                )}
-              </div>
-              {document.created_by && (
-                <div className={`mt-8 pt-6 border-t ${borderColor} text-sm ${textSecondary}`}>
-                  Created by {document.created_by.full_name} â€¢ Last updated by {document.updated_by?.full_name || 'Unknown'}
+                  <div>
+                    <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Content</label>
+                    <RichTextEditor
+                      value={formData.content}
+                      onChange={(value) => setFormData({ ...formData, content: value })}
+                      placeholder="Write document content..."
+                      darkMode={darkMode}
+                    />
+                  </div>
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(false)}
+                      className={`px-4 py-2 bg-transparent ${textTertiary} border ${borderColor} rounded-md ${hoverBg} font-medium text-sm`}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className={`px-4 py-2 bg-transparent border ${inputBorder} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} font-medium text-sm`}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className={`prose prose-stone ${darkMode ? 'prose-invert' : ''} max-w-none`}>
+                  {document.description && <p className={`${textTertiary} mb-6`}>{document.description}</p>}
+
+                  {document.has_file && fileUrl && (
+                    <div className={`mb-6 p-5 ${inputBg} border ${borderColor} rounded-xl`}>
+                      <h3 className={`text-lg font-semibold ${textPrimary} mb-4 not-prose`}>Attached File</h3>
+                      {document.file_type?.includes('pdf') ? (
+                        <iframe
+                          src={fileUrl}
+                          className={`w-full h-[560px] border ${borderColor} rounded-lg`}
+                          title="Document Preview"
+                        />
+                      ) : (
+                        <div className="not-prose">
+                          <p className={`${textSecondary} mb-3 text-sm`}>File: {document.file_name}</p>
+                          <a
+                            href={fileUrl}
+                            download={document.file_name}
+                            className={`inline-block px-4 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} font-medium text-sm transition-all`}
+                          >
+                            Download File
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!document.has_file && document.file_url && (
+                    <div className={`mb-6 p-4 ${inputBg} border border-yellow-600 rounded-lg`}>
+                      <p className="text-yellow-500 text-sm">Warning: this document uses old file storage. Please re-upload the file.</p>
+                    </div>
+                  )}
+
+                  {document.content && (
+                    <div>
+                      <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Content</h3>
+                      <RichTextRenderer content={document.content} darkMode={darkMode} />
+                    </div>
+                  )}
                 </div>
               )}
+            </section>
 
-              {/* Comments Section */}
-              <div className={`mt-8 pt-6 border-t ${borderColor}`}>
+            {!editing && (
+              <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5 md:p-6`}>
                 <h3 className={`text-lg font-semibold ${textPrimary} mb-4 flex items-center gap-2`}>
                   <ChatBubbleLeftIcon className="w-5 h-5" />
                   Comments ({comments.length})
                 </h3>
-                
+
                 <form onSubmit={handleAddComment} className="mb-6">
                   <MentionInput
                     value={newComment}
@@ -305,16 +301,16 @@ export default function DocumentDetail() {
                   <button
                     type="submit"
                     disabled={!newComment.trim()}
-                    className={`mt-2 px-4 py-2 bg-transparent border-2 ${inputBorder} ${textPrimary} rounded ${hoverBg} ${hoverBorder} font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
+                    className={`mt-2 px-4 py-2 bg-transparent border ${inputBorder} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     Post Comment
                   </button>
                 </form>
 
                 <div className="space-y-4">
-                  {comments.map(comment => (
-                    <div key={comment.id} className={`p-4 ${inputBg} border ${borderColor} rounded`}>
-                      <div className="flex justify-between items-start mb-2">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className={`p-4 ${inputBg} border ${borderColor} rounded-lg`}>
+                      <div className="flex justify-between items-start mb-2 gap-3">
                         <span className={`font-medium ${textPrimary}`}>{comment.user.full_name}</span>
                         <span className={`text-xs ${textTertiary}`}>
                           {new Date(comment.created_at).toLocaleString()}
@@ -324,12 +320,73 @@ export default function DocumentDetail() {
                     </div>
                   ))}
                   {comments.length === 0 && (
-                    <p className={`text-center ${textTertiary} py-8`}>No comments yet. Be the first to comment!</p>
+                    <p className={`text-center ${textTertiary} py-8`}>No comments yet. Be the first to comment.</p>
                   )}
                 </div>
+              </section>
+            )}
+          </main>
+
+          <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-6 self-start">
+            <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5`}>
+              <h3 className={`text-sm font-semibold tracking-[0.11em] ${textTertiary} uppercase mb-4`}>Document Snapshot</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className={`${inputBg} border ${borderColor} rounded-lg p-3`}>
+                  <p className={`text-[11px] uppercase tracking-[0.08em] ${textTertiary}`}>Type</p>
+                  <p className={`mt-1 text-sm font-semibold ${textPrimary} capitalize`}>{typeLabel}</p>
+                </div>
+                <div className={`${inputBg} border ${borderColor} rounded-lg p-3`}>
+                  <p className={`text-[11px] uppercase tracking-[0.08em] ${textTertiary}`}>Version</p>
+                  <p className={`mt-1 text-sm font-semibold ${textPrimary}`}>{versionLabel}</p>
+                </div>
+                <div className={`${inputBg} border ${borderColor} rounded-lg p-3`}>
+                  <p className={`text-[11px] uppercase tracking-[0.08em] ${textTertiary}`}>Created</p>
+                  <p className={`mt-1 text-sm font-semibold ${textPrimary}`}>{createdAt}</p>
+                </div>
+                <div className={`${inputBg} border ${borderColor} rounded-lg p-3`}>
+                  <p className={`text-[11px] uppercase tracking-[0.08em] ${textTertiary}`}>Updated</p>
+                  <p className={`mt-1 text-sm font-semibold ${textPrimary}`}>{updatedAt}</p>
+                </div>
               </div>
-            </>
-          )}
+            </section>
+
+            <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5`}>
+              <h3 className={`text-sm font-semibold tracking-[0.11em] ${textTertiary} uppercase mb-3`}>Ownership</h3>
+              <p className={`text-sm ${textSecondary}`}>
+                Created by <span className={textPrimary}>{document.created_by?.full_name || "Unknown"}</span>
+              </p>
+              <p className={`text-sm ${textSecondary} mt-2`}>
+                Last updated by <span className={textPrimary}>{document.updated_by?.full_name || "Unknown"}</span>
+              </p>
+            </section>
+
+            <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5`}>
+              <h3 className={`text-sm font-semibold tracking-[0.11em] ${textTertiary} uppercase mb-3`}>Actions</h3>
+              <div className="flex flex-wrap gap-2">
+                <AIEnhancementButton
+                  content={document.content || document.description || ''}
+                  title={document.title}
+                  type="document"
+                  documentId={document.id}
+                  onResult={(feature, data) => setAiResults(data)}
+                />
+                <button
+                  onClick={() => setEditing(true)}
+                  className={`inline-flex items-center gap-2 px-3 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} text-sm transition-all`}
+                >
+                  <PencilIcon className="w-4 h-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-transparent border border-red-600 text-red-600 rounded-md hover:bg-red-600 hover:text-white text-sm transition-all"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
+            </section>
+          </aside>
         </div>
       </div>
       

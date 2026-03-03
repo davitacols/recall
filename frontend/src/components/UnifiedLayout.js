@@ -61,13 +61,13 @@ export default function UnifiedLayout({ children }) {
             hover: "rgba(255,255,255,0.06)",
           }
         : {
-            pageBg: "#f6f1ea",
-            panelBg: "#fffaf3",
+            pageBg: "#f6f8fb",
+            panelBg: "#ffffff",
             panelBgAlt: "#ffffff",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7d6d5a",
-            hover: "rgba(35,24,20,0.06)",
+            border: "#dbe4ef",
+            text: "#0f172a",
+            muted: "#475569",
+            hover: "rgba(15,23,42,0.05)",
           },
     [darkMode]
   );

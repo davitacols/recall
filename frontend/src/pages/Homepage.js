@@ -52,6 +52,34 @@ const reelEvents = [
   { title: "Action synced", time: "00:29", tone: "#f7c4ff" },
 ];
 
+const illustrations = {
+  teamwork:
+    "/illustrations/Tiny%20business%20persons%20working%20on%20jigsaw%20puzzle%20together.jpg",
+  planning: "/illustrations/4653319.jpg",
+  delivery: "/illustrations/5252473.jpg",
+};
+
+const illustrationHighlights = [
+  {
+    title: "Align teams faster",
+    description:
+      "Shared context keeps product, operations, and leadership moving in one direction.",
+    image: illustrations.teamwork,
+  },
+  {
+    title: "Plan with confidence",
+    description:
+      "Decision trails show what changed and why, so planning is grounded and auditable.",
+    image: illustrations.planning,
+  },
+  {
+    title: "Ship with fewer surprises",
+    description:
+      "Risks and blockers surface early when project memory is connected across tools.",
+    image: illustrations.delivery,
+  },
+];
+
 export default function Homepage() {
   const navigate = useNavigate();
 
@@ -117,6 +145,11 @@ export default function Homepage() {
                 transition={{ delay: 0.15, duration: 0.7 }}
                 style={showcaseCard}
               >
+                <img
+                  src={illustrations.teamwork}
+                  alt="Team members collaborating on a shared project puzzle"
+                  style={showcaseImage}
+                />
                 <p style={showcaseKicker}>Decision Health</p>
                 <h3 style={showcaseTitle}>Q1 Product Strategy</h3>
                 <p style={showcaseCopy}>
@@ -256,6 +289,26 @@ export default function Homepage() {
 
         <section style={section}>
           <div style={container}>
+            <div style={illustrationGrid}>
+              {illustrationHighlights.map((item, index) => (
+                <motion.article
+                  key={item.title}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.35 }}
+                  transition={{ delay: index * 0.06, duration: 0.45 }}
+                  style={illustrationCard}
+                >
+                  <img src={item.image} alt={item.title} style={illustrationImage} />
+                  <div style={illustrationBody}>
+                    <h3 style={illustrationTitle}>{item.title}</h3>
+                    <p style={illustrationDescription}>{item.description}</p>
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+
+            <div style={{ height: 28 }} />
             <SectionHeading
               title="Your strategic advantage is retained context"
               subtitle="Other tools track tasks. Knoledgr preserves decision memory so execution stays aligned over time."
@@ -522,6 +575,15 @@ const showcaseCard = {
   boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
 };
 
+const showcaseImage = {
+  width: "100%",
+  height: 188,
+  objectFit: "cover",
+  borderRadius: 14,
+  marginBottom: 14,
+  border: "1px solid rgba(255,255,255,0.12)",
+};
+
 const showcaseKicker = {
   margin: 0,
   fontSize: 12,
@@ -610,6 +672,43 @@ const statLabel = {
 
 const section = {
   padding: "52px 0 68px",
+};
+
+const illustrationGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 14,
+};
+
+const illustrationCard = {
+  borderRadius: 16,
+  overflow: "hidden",
+  border: "1px solid rgba(255,231,198,0.14)",
+  background: "rgba(255,255,255,0.03)",
+};
+
+const illustrationImage = {
+  width: "100%",
+  height: 180,
+  objectFit: "cover",
+  display: "block",
+};
+
+const illustrationBody = {
+  padding: "14px 16px 16px",
+};
+
+const illustrationTitle = {
+  margin: 0,
+  fontSize: 20,
+  letterSpacing: "-0.01em",
+};
+
+const illustrationDescription = {
+  margin: "8px 0 0",
+  color: "rgba(244,239,230,0.76)",
+  lineHeight: 1.5,
+  fontSize: 14,
 };
 
 const demoSection = {

@@ -190,15 +190,34 @@ os.environ['TEMP'] = TEMP_DIR
 os.environ['TMP'] = TEMP_DIR
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000').split(',')
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS]
+def _parse_csv(value):
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+CORS_ALLOWED_ORIGINS = _parse_csv(
+    config(
+        'CORS_ALLOWED_ORIGINS',
+        default='http://localhost:3000,http://127.0.0.1:3000'
+    )
+)
 
 if not DEBUG:
     CORS_ALLOWED_ORIGINS.extend([
+        'https://knoledgr.com',
+        'https://www.knoledgr.com',
         'https://recall-three-plum.vercel.app',
         'https://recall-frontend.onrender.com',
         'https://recall.dev',
+        FRONTEND_URL.strip(),
     ])
+    # Allow Vercel preview URLs when needed (for example: branch-name-project.vercel.app)
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r"^https:\/\/.*\.vercel\.app$",
+    ]
+else:
+    CORS_ALLOWED_ORIGIN_REGEXES = []
+
+# Remove duplicates while preserving order.
+CORS_ALLOWED_ORIGINS = list(dict.fromkeys(CORS_ALLOWED_ORIGINS))
 
 CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=DEBUG, cast=bool)
 CORS_ALLOW_CREDENTIALS = True
@@ -207,20 +226,22 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     'pragma',
     'expires',
 ]
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in config(
+CSRF_TRUSTED_ORIGINS = _parse_csv(
+    config(
         'CSRF_TRUSTED_ORIGINS',
         default='http://localhost:3000,http://127.0.0.1:3000'
-    ).split(',')
-    if origin.strip()
-]
+    )
+)
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS.extend([
+        'https://knoledgr.com',
+        'https://www.knoledgr.com',
         'https://recall-three-plum.vercel.app',
         'https://recall-frontend.onrender.com',
         'https://recall.dev',
+        FRONTEND_URL.strip(),
     ])
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS))
 
 # Request size limits to reduce abuse and parser pressure.
 API_MAX_BODY_SIZE_BYTES = config('API_MAX_BODY_SIZE_BYTES', default=10 * 1024 * 1024, cast=int)

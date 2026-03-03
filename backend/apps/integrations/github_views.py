@@ -82,15 +82,41 @@ def get_decision_prs(request, decision_id):
 @permission_classes([AllowAny])
 def github_webhook(request):
     """Handle GitHub webhook events"""
-    
-    # Verify webhook signature
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return Response({'error': 'invalid_json'}, status=status.HTTP_400_BAD_REQUEST)
+
+    repo = payload.get('repository', {})
+    repo_owner = repo.get('owner', {}).get('login')
+    repo_name = repo.get('name')
+    if not repo_owner or not repo_name:
+        return Response({'error': 'invalid_repository_payload'}, status=status.HTTP_400_BAD_REQUEST)
+
+    integration = GitHubIntegration.objects.filter(repo_owner=repo_owner, repo_name=repo_name).first()
+    if not integration:
+        return Response({'error': 'integration_not_found'}, status=status.HTTP_404_NOT_FOUND)
+
     signature = request.headers.get('X-Hub-Signature-256', '')
+    webhook_secret = integration.get_webhook_secret()
+    if webhook_secret:
+        if not signature.startswith('sha256='):
+            return Response({'error': 'missing_signature'}, status=status.HTTP_401_UNAUTHORIZED)
+        expected = hmac.new(
+            webhook_secret.encode('utf-8'),
+            request.body,
+            hashlib.sha256,
+        ).hexdigest()
+        provided = signature.split('=', 1)[1]
+        if not hmac.compare_digest(expected, provided):
+            return Response({'error': 'invalid_signature'}, status=status.HTTP_401_UNAUTHORIZED)
+
     event = request.headers.get('X-GitHub-Event', '')
     
     if event == 'pull_request':
-        return handle_pull_request_event(request.data)
+        return handle_pull_request_event(payload)
     elif event == 'push':
-        return handle_push_event(request.data)
+        return handle_push_event(payload)
     
     return Response({'message': 'Event received'})
 

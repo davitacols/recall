@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Q
+from apps.users.auth_utils import check_rate_limit
 from apps.knowledge.context_engine import ContextEngine
 from apps.knowledge.unified_models import ContentLink, UnifiedActivity
 
@@ -110,9 +111,24 @@ def create_link(request):
 @permission_classes([IsAuthenticated])
 def get_unified_timeline(request):
     """Get unified activity timeline with pagination"""
-    days = int(request.GET.get('days', 7))
-    page = int(request.GET.get('page', 1))
-    per_page = int(request.GET.get('per_page', 20))
+    if not check_rate_limit(f"timeline:{request.user.id}", limit=240, window=3600):
+        return Response({'error': 'Too many requests'}, status=429)
+
+    try:
+        days = int(request.GET.get('days', 7))
+    except (TypeError, ValueError):
+        days = 7
+    days = max(1, min(days, 90))
+    try:
+        page = int(request.GET.get('page', 1))
+    except (TypeError, ValueError):
+        page = 1
+    page = max(1, page)
+    try:
+        per_page = int(request.GET.get('per_page', 20))
+    except (TypeError, ValueError):
+        per_page = 20
+    per_page = max(1, min(per_page, 100))
     user_id = request.GET.get('user_id')
     
     user = None
@@ -159,9 +175,14 @@ def get_unified_timeline(request):
 @permission_classes([IsAuthenticated])
 def search_everything(request):
     """Universal search across all modules"""
-    query = request.GET.get('q', '')
+    if not check_rate_limit(f"search_all:{request.user.id}", limit=240, window=3600):
+        return Response({'error': 'Too many requests'}, status=429)
+
+    query = (request.GET.get('q', '') or '').strip()
     if not query:
         return Response({'results': []})
+    if len(query) > 200:
+        return Response({'error': 'Query too long'}, status=400)
     q_lower = query.lower()
     
     from apps.conversations.models import Conversation

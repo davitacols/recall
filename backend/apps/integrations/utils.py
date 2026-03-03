@@ -8,7 +8,9 @@ def post_to_slack(organization, message, blocks=None):
         payload = {'text': message}
         if blocks:
             payload['blocks'] = blocks
-        requests.post(slack.webhook_url, json=payload, timeout=5)
+        webhook_url = slack.get_webhook_url()
+        if webhook_url:
+            requests.post(webhook_url, json=payload, timeout=5)
     except SlackIntegration.DoesNotExist:
         pass
     except Exception as e:
@@ -54,7 +56,7 @@ def post_sprint_summary(organization, summary):
 def fetch_github_pr(integration, pr_number):
     """Fetch PR details from GitHub"""
     url = f"https://api.github.com/repos/{integration.repo_owner}/{integration.repo_name}/pulls/{pr_number}"
-    headers = {'Authorization': f'token {integration.access_token}'}
+    headers = {'Authorization': f'token {integration.get_access_token()}'}
     try:
         response = requests.get(url, headers=headers, timeout=5)
         if response.status_code == 200:
@@ -66,7 +68,7 @@ def fetch_github_pr(integration, pr_number):
 def search_github_prs(integration, query):
     """Search for PRs matching a query"""
     url = f"https://api.github.com/search/issues"
-    headers = {'Authorization': f'token {integration.access_token}'}
+    headers = {'Authorization': f'token {integration.get_access_token()}'}
     search_query = f"repo:{integration.repo_owner}/{integration.repo_name} type:pr {query}"
     params = {'q': search_query, 'per_page': 5}
     try:
@@ -113,7 +115,7 @@ def auto_sync_jira_blocker(blocker):
         
         # Create issue in Jira
         url = f"{jira.site_url}/rest/api/3/issue"
-        auth = (jira.email, jira.api_token)
+        auth = (jira.email, jira.get_api_token())
         payload = {
             'fields': {
                 'project': {'key': 'RECALL'},
@@ -136,7 +138,7 @@ def auto_sync_jira_blocker(blocker):
 def sync_jira_issue(integration, issue_key):
     """Fetch issue from Jira"""
     url = f"{integration.site_url}/rest/api/3/issue/{issue_key}"
-    auth = (integration.email, integration.api_token)
+    auth = (integration.email, integration.get_api_token())
     try:
         response = requests.get(url, auth=auth, timeout=5)
         if response.status_code == 200:

@@ -14,6 +14,7 @@ from apps.business.models import Task
 from apps.agile.models import Blocker, Sprint
 from apps.organizations.auditlog_models import AuditLog
 from apps.notifications.utils import create_notification
+from apps.users.auth_utils import check_rate_limit
 from .search_engine import get_search_engine
 
 
@@ -1015,12 +1016,26 @@ def chief_of_staff_plan(request):
 @permission_classes([IsAuthenticated])
 def chief_of_staff_execute(request):
     """Execute approved interventions and produce audit trail."""
+    if not check_rate_limit(f"chief_execute:{request.user.id}", limit=30, window=3600):
+        return Response({'error': 'Too many execution requests'}, status=429)
+
     org = request.user.organization
     user = request.user
     now = timezone.now()
 
     intervention_ids = request.data.get('intervention_ids') or []
+    if not isinstance(intervention_ids, list):
+        return Response({'error': 'intervention_ids must be an array'}, status=400)
+    if len(intervention_ids) > 10:
+        return Response({'error': 'Too many interventions selected'}, status=400)
+
     dry_run = bool(request.data.get('dry_run', False))
+    if not dry_run:
+        if getattr(user, 'role', None) not in ['admin', 'manager']:
+            return Response({'error': 'Only admins/managers can execute interventions'}, status=403)
+        if request.data.get('confirm_execute') is not True:
+            return Response({'error': 'confirm_execute=true required for execution'}, status=400)
+
     payload, status_code = _execute_interventions(
         org=org,
         user=user,
@@ -1048,13 +1063,23 @@ def agi_copilot(request):
 
     user = request.user
     now = timezone.now()
+    if not check_rate_limit(f"agi_copilot:{user.id}", limit=180, window=3600):
+        return Response({'error': 'Too many requests'}, status=429)
 
     query = (request.data.get('query') or '').strip()
     if not query:
         return Response({'error': 'query is required'}, status=400)
+    if len(query) > 400:
+        return Response({'error': 'query too long'}, status=400)
 
     try:
         execute = bool(request.data.get('execute', False))
+        if execute:
+            if getattr(user, 'role', None) not in ['admin', 'manager']:
+                return Response({'error': 'Only admins/managers can execute interventions'}, status=403)
+            if request.data.get('confirm_execute') is not True:
+                return Response({'error': 'confirm_execute=true required for execution'}, status=400)
+
         try:
             max_actions = int(request.data.get('max_actions', 3) or 3)
         except (TypeError, ValueError):
@@ -1089,14 +1114,23 @@ def agi_copilot(request):
             else "Strongest evidence is currently limited; expand linked artifacts for better precision."
         )
 
-        response_payload = {
-            'query': query,
-            'answer': (
+        if int(search_data.get("total", 0) or 0) == 0:
+            answer_text = (
+                f'For "{query}", I could not find directly related memory records. '
+                f'Organizational readiness is {plan.get("status")} with score {plan.get("readiness_score")}, '
+                f'and I prepared {len(recommended)} interventions based on current org signals.'
+            )
+        else:
+            answer_text = (
                 f'For "{query}", organizational readiness is {plan.get("status")} '
                 f'with score {plan.get("readiness_score")}. '
                 f'I found {search_data.get("total", 0)} related memory records and prepared '
                 f'{len(recommended)} interventions to reduce execution risk. {evidence_line}'
-            ),
+            )
+
+        response_payload = {
+            'query': query,
+            'answer': answer_text,
             'confidence': confidence,
             'risk_status': plan.get('status'),
             'readiness_score': plan.get('readiness_score'),

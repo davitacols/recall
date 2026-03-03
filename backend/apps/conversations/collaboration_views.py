@@ -1,13 +1,16 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Q
 from apps.conversations.models import Conversation, ConversationReply, Reaction
-from apps.organizations.models import User, Organization
+from apps.organizations.models import User
 from apps.notifications.models import Notification
+from apps.users.auth_utils import check_rate_limit
 import re
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def conversation_replies(request, conversation_id):
     """Get or create replies for a conversation"""
     try:
@@ -34,7 +37,13 @@ def conversation_replies(request, conversation_id):
         return Response(data)
     
     elif request.method == 'POST':
+        if not check_rate_limit(f"conversation_reply:{request.user.id}", limit=300, window=3600):
+            return Response({'error': 'Too many requests'}, status=429)
         content = request.data.get('content', '')
+        if not content or len(content.strip()) < 1:
+            return Response({'error': 'content is required'}, status=400)
+        if len(content) > 5000:
+            return Response({'error': 'content too long'}, status=400)
         
         reply = ConversationReply.objects.create(
             conversation=conversation,
@@ -76,6 +85,7 @@ def conversation_replies(request, conversation_id):
         })
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def add_reaction(request, conversation_id):
     """Add reaction to conversation"""
     try:
@@ -87,6 +97,8 @@ def add_reaction(request, conversation_id):
         return Response({'error': 'Conversation not found'}, status=404)
     
     reaction_type = request.data.get('reaction_type')
+    if not reaction_type:
+        return Response({'error': 'reaction_type required'}, status=400)
     
     reaction, created = Reaction.objects.update_or_create(
         conversation=conversation,
@@ -111,6 +123,7 @@ def add_reaction(request, conversation_id):
     })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def conversation_reactions(request, conversation_id):
     """Get all reactions for a conversation"""
     try:
@@ -139,6 +152,7 @@ def conversation_reactions(request, conversation_id):
     return Response(reaction_summary)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def activity_feed(request):
     """Get activity feed for user's organization"""
     org = request.user.organization
@@ -180,6 +194,7 @@ def activity_feed(request):
     return Response(activity[:100])
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def mention_suggestions(request):
     """Get user suggestions for mentions"""
     query = request.GET.get('q', '')

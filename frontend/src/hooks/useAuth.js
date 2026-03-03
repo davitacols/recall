@@ -46,7 +46,8 @@ export function AuthProvider({ children }) {
         password: userData.password,
         token: userData.token,
         organization: userData.organization,
-        full_name: userData.full_name || ''
+        full_name: userData.full_name || '',
+        turnstile_token: userData.turnstile_token || '',
       };
       const response = await api.post('/api/auth/register/', payload);
       return { success: true, message: response.data.message };

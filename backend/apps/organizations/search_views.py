@@ -7,13 +7,19 @@ from apps.knowledge.models import KnowledgeEntry
 from apps.agile.models import Project, Issue
 from apps.business.models import Goal, Meeting, Task
 from apps.business.document_models import Document
+from apps.users.auth_utils import check_rate_limit
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def global_search(request):
-    query = request.GET.get('q', '')
+    if not check_rate_limit(f"org_global_search:{request.user.id}", limit=240, window=3600):
+        return Response({'error': 'Too many requests'}, status=429)
+
+    query = (request.GET.get('q', '') or '').strip()
     if not query:
         return Response([])
+    if len(query) > 200:
+        return Response({'error': 'Query too long'}, status=400)
     
     org = request.user.organization
     results = []

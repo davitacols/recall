@@ -2,11 +2,14 @@
 Linking views for Decisions to Sprints and Issues
 """
 from rest_framework.decorators import api_view
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from apps.decisions.models import Decision
 from apps.agile.models import Sprint, DecisionIssueLink
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def decision_related_sprints(request, decision_id):
     """Get sprints related to a decision"""
     try:

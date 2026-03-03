@@ -1,10 +1,19 @@
 from django.db import models
 from apps.organizations.models import Organization, User
 from apps.decisions.models import Decision
+from apps.organizations.encryption_service import EncryptionService
+
+
+def _encrypt_if_needed(value):
+    return EncryptionService.encrypt(value) if value else value
+
+
+def _decrypt_if_needed(value):
+    return EncryptionService.decrypt(value) if value else value
 
 class SlackIntegration(models.Model):
     organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='slack')
-    webhook_url = models.URLField()
+    webhook_url = models.TextField()
     channel = models.CharField(max_length=100, default='#general')
     enabled = models.BooleanField(default=True)
     post_decisions = models.BooleanField(default=True)
@@ -15,12 +24,19 @@ class SlackIntegration(models.Model):
     class Meta:
         db_table = 'slack_integrations'
 
+    def save(self, *args, **kwargs):
+        self.webhook_url = _encrypt_if_needed(self.webhook_url)
+        super().save(*args, **kwargs)
+
+    def get_webhook_url(self):
+        return _decrypt_if_needed(self.webhook_url)
+
 class GitHubIntegration(models.Model):
     organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='github')
-    access_token = models.CharField(max_length=255)
+    access_token = models.TextField()
     repo_owner = models.CharField(max_length=100)
     repo_name = models.CharField(max_length=100)
-    webhook_secret = models.CharField(max_length=255, blank=True)
+    webhook_secret = models.TextField(blank=True)
     enabled = models.BooleanField(default=True)
     auto_link_prs = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -28,17 +44,35 @@ class GitHubIntegration(models.Model):
     class Meta:
         db_table = 'github_integrations'
 
+    def save(self, *args, **kwargs):
+        self.access_token = _encrypt_if_needed(self.access_token)
+        self.webhook_secret = _encrypt_if_needed(self.webhook_secret)
+        super().save(*args, **kwargs)
+
+    def get_access_token(self):
+        return _decrypt_if_needed(self.access_token)
+
+    def get_webhook_secret(self):
+        return _decrypt_if_needed(self.webhook_secret)
+
 class JiraIntegration(models.Model):
     organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='jira')
     site_url = models.URLField()
     email = models.EmailField()
-    api_token = models.CharField(max_length=255)
+    api_token = models.TextField()
     enabled = models.BooleanField(default=True)
     auto_sync_issues = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         db_table = 'jira_integrations'
+
+    def save(self, *args, **kwargs):
+        self.api_token = _encrypt_if_needed(self.api_token)
+        super().save(*args, **kwargs)
+
+    def get_api_token(self):
+        return _decrypt_if_needed(self.api_token)
 
 
 class PullRequest(models.Model):

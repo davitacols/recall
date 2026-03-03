@@ -1,41 +1,36 @@
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q, Count
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
 from .models import KnowledgeEntry
 from .search_engine import get_search_engine
 from apps.conversations.models import Conversation, ConversationReply
 from apps.decisions.models import Decision
-from apps.organizations.models import Organization
 from apps.organizations.models import SearchAnalytics
+from apps.users.auth_utils import check_rate_limit
 
-@csrf_exempt
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def search_knowledge(request):
     """Search knowledge base"""
+    if not check_rate_limit(f"knowledge_search:{request.user.id}", limit=180, window=3600):
+        return Response({'error': 'Too many requests'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
     query = request.data.get('query', '').strip()
     filters = request.data.get('filters', {})
     
     if not query:
         return Response({'error': 'Query required'}, 
                        status=status.HTTP_400_BAD_REQUEST)
-    
-    # Get organization
-    if request.user and request.user.is_authenticated:
-        org_id = request.user.organization_id
-    else:
-        org = Organization.objects.first()
-        org_id = org.id if org else None
-    
-    if not org_id:
-        return Response({'query': query, 'results': [], 'total': 0})
+    if len(query) > 200:
+        return Response({'error': 'Query too long'}, status=status.HTTP_400_BAD_REQUEST)
     
     # Use search engine
     search_engine = get_search_engine()
-    results = search_engine.search(query, org_id, filters, limit=20)
+    results = search_engine.search(query, request.user.organization_id, filters, limit=20)
     
     return Response({
         'query': query,
@@ -44,29 +39,24 @@ def search_knowledge(request):
         'total': results.get('total', 0)
     })
 
-@csrf_exempt
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def enhanced_search(request):
+    if not check_rate_limit(f"enhanced_search:{request.user.id}", limit=180, window=3600):
+        return Response({'error': 'Too many requests'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
     query = request.data.get('query', '').strip()
     filters = request.data.get('filters', {})
     
     if not query:
         return Response({'error': 'Query required'}, 
                        status=status.HTTP_400_BAD_REQUEST)
-    
-    # Get organization
-    if request.user and request.user.is_authenticated:
-        org_id = request.user.organization_id
-    else:
-        org = Organization.objects.first()
-        org_id = org.id if org else None
-    
-    if not org_id:
-        return Response({'query': query, 'results': [], 'total': 0})
+    if len(query) > 200:
+        return Response({'error': 'Query too long'}, status=status.HTTP_400_BAD_REQUEST)
     
     # Use enhanced search engine
     search_engine = get_search_engine()
-    results = search_engine.search(query, org_id, filters, limit=20)
+    results = search_engine.search(query, request.user.organization_id, filters, limit=20)
     
     return Response({
         'query': query,
@@ -76,27 +66,20 @@ def enhanced_search(request):
     })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def search_suggestions(request):
     query = request.GET.get('q', '').strip()
     
     if not query or len(query) < 2:
         return Response({'suggestions': []})
     
-    if request.user and request.user.is_authenticated:
-        org_id = request.user.organization_id
-    else:
-        org = Organization.objects.first()
-        org_id = org.id if org else None
-    
-    if not org_id:
-        return Response({'suggestions': []})
-    
     search_engine = get_search_engine()
-    suggestions = search_engine.get_suggestions(query, org_id)
+    suggestions = search_engine.get_suggestions(query, request.user.organization_id)
     
     return Response({'suggestions': suggestions})
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def recent_decisions(request):
     decisions = Decision.objects.filter(
         organization=request.user.organization,
@@ -116,15 +99,9 @@ def recent_decisions(request):
     return Response(decisions_data)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def trending_topics(request):
-    # Get organization
-    if request.user and request.user.is_authenticated:
-        org = request.user.organization
-    else:
-        org = Organization.objects.first()
-    
-    if not org:
-        return Response([])
+    org = request.user.organization
     
     # Get most discussed keywords from recent conversations
     recent_conversations = Conversation.objects.filter(
@@ -147,18 +124,9 @@ def trending_topics(request):
     ])
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def knowledge_stats(request):
-    if request.user and request.user.is_authenticated:
-        org = request.user.organization
-    else:
-        org = Organization.objects.first()
-    
-    if not org:
-        return Response({
-            'total_items': 0,
-            'this_week': 0,
-            'total_searches': 0
-        })
+    org = request.user.organization
     
     week_ago = timezone.now() - timedelta(days=7)
     
@@ -177,15 +145,10 @@ def knowledge_stats(request):
     return Response(stats)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def memory_score(request):
     """Calculate organization memory score"""
-    if request.user and request.user.is_authenticated:
-        org = request.user.organization
-    else:
-        org = Organization.objects.first()
-    
-    if not org:
-        return Response({'score': 0, 'grade': 'N/A', 'metrics': {}})
+    org = request.user.organization
     
     # Calculate metrics
     total_conversations = Conversation.objects.filter(organization=org).count()
@@ -255,15 +218,10 @@ def memory_score(request):
     })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def onboarding_package(request):
     """Generate onboarding package for new employees"""
-    if request.user and request.user.is_authenticated:
-        org = request.user.organization
-    else:
-        org = Organization.objects.first()
-    
-    if not org:
-        return Response({'error': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+    org = request.user.organization
     
     # Get key decisions
     key_decisions = Decision.objects.filter(
@@ -324,21 +282,15 @@ def onboarding_package(request):
         'organization_name': org.name
     })
 
-@csrf_exempt
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def before_you_ask(request):
     """Suggest related content before posting a question"""
     query = request.data.get('query', '').strip()
     if not query or len(query) < 10:
         return Response({'suggestions': []})
     
-    if request.user and request.user.is_authenticated:
-        org = request.user.organization
-    else:
-        org = Organization.objects.first()
-    
-    if not org:
-        return Response({'suggestions': []})
+    org = request.user.organization
     
     # Search for similar questions
     similar_questions = Conversation.objects.filter(
@@ -394,15 +346,10 @@ def before_you_ask(request):
     })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def memory_gaps(request):
     """Detect topics with no clear decisions"""
-    if request.user and request.user.is_authenticated:
-        org = request.user.organization
-    else:
-        org = Organization.objects.first()
-    
-    if not org:
-        return Response({'gaps': []})
+    org = request.user.organization
     
     # Get frequently discussed topics without decisions
     recent_conversations = Conversation.objects.filter(
@@ -450,15 +397,10 @@ def memory_gaps(request):
     return Response({'gaps': gaps[:10]})
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def faq(request):
     """Generate FAQ from repeated questions"""
-    if request.user and request.user.is_authenticated:
-        org = request.user.organization
-    else:
-        org = Organization.objects.first()
-    
-    if not org:
-        return Response({'faq_items': []})
+    org = request.user.organization
     
     # Get resolved questions with replies
     questions = Conversation.objects.filter(
@@ -489,15 +431,10 @@ def faq(request):
     return Response({'faq_items': faq_items})
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def forgotten_knowledge(request):
     """Detect decisions not referenced in months"""
-    if request.user and request.user.is_authenticated:
-        org = request.user.organization
-    else:
-        org = Organization.objects.first()
-    
-    if not org:
-        return Response({'forgotten': []})
+    org = request.user.organization
     
     # Get approved decisions older than 90 days
     ninety_days_ago = timezone.now() - timedelta(days=90)
@@ -533,6 +470,7 @@ def forgotten_knowledge(request):
     return Response({'forgotten': forgotten[:10]})
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def personalized_suggestions(request):
     """Personalized reading suggestions based on role and activity"""
     if not request.user or not request.user.is_authenticated:
@@ -615,6 +553,7 @@ def personalized_suggestions(request):
     return Response({'suggestions': suggestions[:10]})
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def time_comparison(request):
     """Compare what changed between two time periods"""
     if not request.user or not request.user.is_authenticated:
@@ -709,14 +648,13 @@ def time_comparison(request):
     })
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def cultural_memory(request):
     """Manage cultural memories"""
     from apps.conversations.models import CulturalMemory
     
     if request.method == 'GET':
-        org = request.user.organization if request.user.is_authenticated else Organization.objects.first()
-        if not org:
-            return Response({'memories': []})
+        org = request.user.organization
         
         memories = CulturalMemory.objects.filter(organization=org).order_by('-year')[:50]
         return Response({
@@ -743,11 +681,10 @@ def cultural_memory(request):
         return Response({'id': memory.id, 'message': 'Memory created'}, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def legacy_content(request):
     """Get archived/historical content"""
-    org = request.user.organization if request.user.is_authenticated else Organization.objects.first()
-    if not org:
-        return Response({'legacy': []})
+    org = request.user.organization
     
     # Get old archived conversations
     old_conversations = Conversation.objects.filter(
@@ -785,6 +722,7 @@ def legacy_content(request):
     return Response({'legacy': legacy[:30]})
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def personal_reflection(request):
     """Get personal activity summary"""
     if not request.user or not request.user.is_authenticated:

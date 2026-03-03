@@ -1,20 +1,30 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import TurnstileWidget from "../components/TurnstileWidget";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileEnabled = Boolean(process.env.REACT_APP_TURNSTILE_SITE_KEY);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
     setMessage("");
+    if (turnstileEnabled && !turnstileToken) {
+      setError("Please complete bot verification.");
+      return;
+    }
     setLoading(true);
     try {
-      const response = await api.post("/api/auth/forgot-password/", { email });
+      const response = await api.post("/api/auth/forgot-password/", {
+        email,
+        turnstile_token: turnstileToken,
+      });
       setMessage(response.data?.message || "If an account exists for this email, a reset link has been sent.");
     } catch (err) {
       setError(err?.response?.data?.error || "Unable to process request.");
@@ -37,6 +47,14 @@ export default function ForgotPassword() {
             placeholder="you@company.com"
             style={input}
           />
+          {turnstileEnabled && (
+            <TurnstileWidget
+              theme="dark"
+              onVerify={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken("")}
+              onError={() => setTurnstileToken("")}
+            />
+          )}
           {error && <div style={errorBox}>{error}</div>}
           {message && <div style={successBox}>{message}</div>}
           <button type="submit" disabled={loading} style={button(loading)}>
@@ -106,4 +124,3 @@ const button = (loading) => ({
   opacity: loading ? 0.65 : 1,
 });
 const link = { color: "#ffd390", textDecoration: "none", fontSize: 13, marginTop: 12, display: "inline-block" };
-

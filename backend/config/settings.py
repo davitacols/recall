@@ -8,9 +8,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',') if host.strip()]
 if not DEBUG:
-    ALLOWED_HOSTS.extend(['.onrender.com', '.vercel.app', '*'])
+    ALLOWED_HOSTS.extend([
+        host.strip()
+        for host in config('EXTRA_ALLOWED_HOSTS', default='.onrender.com,.vercel.app').split(',')
+        if host.strip()
+    ])
+if config('ALLOW_ALL_HOSTS', default=False, cast=bool):
+    ALLOWED_HOSTS.append('*')
 
 # Security Settings
 SECURE_BROWSER_XSS_FILTER = True
@@ -22,9 +28,16 @@ SECURE_HSTS_PRELOAD = True
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 # Behind Render/other reverse proxies, trust forwarded HTTPS headers to avoid redirect loops.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
+SECURE_REDIRECT_EXEMPT = [r'^api/health/']
 
 # Custom User Model
 AUTH_USER_MODEL = 'organizations.User'
@@ -56,6 +69,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'config.security_middleware.RequestSecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -100,6 +114,14 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': config('DRF_ANON_THROTTLE_RATE', default='60/min'),
+        'user': config('DRF_USER_THROTTLE_RATE', default='300/min'),
+    },
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20
 }
@@ -130,6 +152,14 @@ AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
 AWS_REGION = config('AWS_REGION', default='us-east-1')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
+
+# Bot protection (Cloudflare Turnstile)
+TURNSTILE_ENABLED = config('TURNSTILE_ENABLED', default=False, cast=bool)
+TURNSTILE_SECRET_KEY = config('TURNSTILE_SECRET_KEY', default='')
+TURNSTILE_VERIFY_URL = config(
+    'TURNSTILE_VERIFY_URL',
+    default='https://challenges.cloudflare.com/turnstile/v0/siteverify'
+)
 
 # Email Configuration (Resend)
 RESEND_API_KEY = config('RESEND_API_KEY', default='')
@@ -170,14 +200,33 @@ if not DEBUG:
         'https://recall.dev',
     ])
 
-# Allow mobile app requests
-CORS_ALLOW_ALL_ORIGINS = True  # Required for mobile apps
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=DEBUG, cast=bool)
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'cache-control',
     'pragma',
     'expires',
 ]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in config(
+        'CSRF_TRUSTED_ORIGINS',
+        default='http://localhost:3000,http://127.0.0.1:3000'
+    ).split(',')
+    if origin.strip()
+]
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend([
+        'https://recall-three-plum.vercel.app',
+        'https://recall-frontend.onrender.com',
+        'https://recall.dev',
+    ])
+
+# Request size limits to reduce abuse and parser pressure.
+API_MAX_BODY_SIZE_BYTES = config('API_MAX_BODY_SIZE_BYTES', default=10 * 1024 * 1024, cast=int)
+DATA_UPLOAD_MAX_MEMORY_SIZE = config('DATA_UPLOAD_MAX_MEMORY_SIZE', default=10 * 1024 * 1024, cast=int)
+FILE_UPLOAD_MAX_MEMORY_SIZE = config('FILE_UPLOAD_MAX_MEMORY_SIZE', default=10 * 1024 * 1024, cast=int)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = config('DATA_UPLOAD_MAX_NUMBER_FIELDS', default=2000, cast=int)
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -252,10 +301,10 @@ else:
 
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': False,
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=config('JWT_ACCESS_TOKEN_HOURS', default=8, cast=int)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=config('JWT_REFRESH_TOKEN_DAYS', default=7, cast=int)),
+    'ROTATE_REFRESH_TOKENS': config('JWT_ROTATE_REFRESH_TOKENS', default=False, cast=bool),
+    'BLACKLIST_AFTER_ROTATION': config('JWT_BLACKLIST_AFTER_ROTATION', default=False, cast=bool),
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,

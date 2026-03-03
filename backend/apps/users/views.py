@@ -1,6 +1,6 @@
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model, authenticate
 from django.utils import timezone
@@ -12,6 +12,7 @@ import logging
 import boto3
 from django.conf import settings
 from .auth_utils import check_rate_limit, validate_email, validate_password, validate_username
+from .bot_protection import verify_turnstile_token
 from apps.notifications.email_service import send_password_reset_email, send_welcome_email, build_frontend_url
 
 User = get_user_model()
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 def login(request):
     username = request.data.get('username', '').strip()
     password = request.data.get('password', '')
+    turnstile_token = request.data.get('turnstile_token')
     
     if not username or not password:
         return Response({'error': 'Username and password required'}, 
@@ -34,6 +36,9 @@ def login(request):
             {'error': 'Too many login attempts. Try again later.'},
             status=status.HTTP_429_TOO_MANY_REQUESTS
         )
+    ok, captcha_error = verify_turnstile_token(request, turnstile_token)
+    if not ok:
+        return Response({'error': captcha_error}, status=status.HTTP_400_BAD_REQUEST)
     
     # Input validation
     try:
@@ -79,13 +84,9 @@ def login(request):
                    status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def team(request):
     """Get all team members in the user's organization"""
-    if not request.user.is_authenticated:
-        return Response({'error': 'Authentication required'}, 
-                       status=status.HTTP_401_UNAUTHORIZED)
-    
     organization = request.user.organization
     users = User.objects.filter(organization=organization).values(
         'id', 'username', 'email', 'full_name', 'role'
@@ -93,12 +94,8 @@ def team(request):
     return Response(list(users))
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def profile(request):
-    if not request.user.is_authenticated:
-        return Response({'error': 'Authentication required'}, 
-                       status=status.HTTP_401_UNAUTHORIZED)
-    
     user = request.user
     
     avatar_url = None
@@ -132,6 +129,7 @@ def profile(request):
 def register(request):
     email = request.data.get('email', '').strip()
     password = request.data.get('password', '')
+    turnstile_token = request.data.get('turnstile_token')
     token = request.data.get('token')
     organization_name = request.data.get('organization', '').strip()
     full_name = (request.data.get('full_name') or '').strip()
@@ -143,6 +141,9 @@ def register(request):
             {'error': 'Too many registration attempts. Try again later.'},
             status=status.HTTP_429_TOO_MANY_REQUESTS
         )
+    ok, captcha_error = verify_turnstile_token(request, turnstile_token)
+    if not ok:
+        return Response({'error': captcha_error}, status=status.HTTP_400_BAD_REQUEST)
     
     # Input validation
     try:
@@ -272,8 +273,14 @@ def register(request):
 @permission_classes([AllowAny])
 def forgot_password(request):
     email = (request.data.get('email') or '').strip().lower()
+    turnstile_token = request.data.get('turnstile_token')
     if not email:
         return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+    if not check_rate_limit(f'forgot_password:{email}', limit=10, window=3600):
+        return Response({'error': 'Too many attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    ok, captcha_error = verify_turnstile_token(request, turnstile_token)
+    if not ok:
+        return Response({'error': captcha_error}, status=status.HTTP_400_BAD_REQUEST)
 
     # Always return success to avoid email enumeration.
     generic_response = {

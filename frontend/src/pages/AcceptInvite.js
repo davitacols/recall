@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+import TurnstileWidget from "../components/TurnstileWidget";
 
 function AcceptInvite() {
   const { token } = useParams();
@@ -16,6 +17,8 @@ function AcceptInvite() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileEnabled = Boolean(process.env.REACT_APP_TURNSTILE_SITE_KEY);
 
   const palette = useMemo(
     () =>
@@ -68,12 +71,19 @@ function AcceptInvite() {
 
   const handleAccept = async (event) => {
     event.preventDefault();
+    if (turnstileEnabled && !turnstileToken) {
+      setError("Please complete bot verification.");
+      return;
+    }
     setSubmitting(true);
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/organizations/invitations/${token}/accept/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          turnstile_token: turnstileToken,
+        }),
       });
       const data = await response.json();
 
@@ -195,6 +205,14 @@ function AcceptInvite() {
               palette={palette}
               type="password"
             />
+            {turnstileEnabled && (
+              <TurnstileWidget
+                theme={darkMode ? "dark" : "light"}
+                onVerify={(tokenValue) => setTurnstileToken(tokenValue)}
+                onExpire={() => setTurnstileToken("")}
+                onError={() => setTurnstileToken("")}
+              />
+            )}
 
             <button type="submit" disabled={submitting} style={{ ...primaryBtn(palette), opacity: submitting ? 0.7 : 1 }}>
               {submitting ? "Creating account..." : "Accept Invitation"}

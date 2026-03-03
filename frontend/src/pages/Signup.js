@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import '../pages/Homepage.css';
+import TurnstileWidget from '../components/TurnstileWidget';
 
 function Signup() {
   const navigate = useNavigate();
@@ -15,14 +16,24 @@ function Signup() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileEnabled = Boolean(process.env.REACT_APP_TURNSTILE_SITE_KEY);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    if (turnstileEnabled && !turnstileToken) {
+      setError('Please complete bot verification.');
+      setLoading(false);
+      return;
+    }
 
     try {
-      const response = await api.post('/api/organizations/signup/', formData);
+      const response = await api.post('/api/organizations/signup/', {
+        ...formData,
+        turnstile_token: turnstileToken,
+      });
       localStorage.setItem('access_token', response.data.access_token);
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -195,6 +206,16 @@ function Signup() {
                   'Create Organization'
                 )}
               </button>
+              {turnstileEnabled && (
+                <div style={{ marginTop: '10px' }}>
+                  <TurnstileWidget
+                    theme="light"
+                    onVerify={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken('')}
+                    onError={() => setTurnstileToken('')}
+                  />
+                </div>
+              )}
             </form>
 
             <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: '#6B778C' }}>

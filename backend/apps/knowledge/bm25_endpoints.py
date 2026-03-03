@@ -6,11 +6,11 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 import time
 
 from .bm25_search import search_service
+from apps.users.auth_utils import check_rate_limit
 
 
 @api_view(['POST'])
@@ -19,8 +19,14 @@ def search(request):
     """
     Search conversations, decisions, and agile items
     """
+    if not check_rate_limit(f"bm25_search:{request.user.id}", limit=240, window=3600):
+        return Response({'error': 'Too many requests', 'results': []}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
     query = request.data.get('query', '').strip()
-    limit = min(int(request.data.get('limit', 20)), 100)
+    try:
+        limit = min(int(request.data.get('limit', 20)), 100)
+    except (TypeError, ValueError):
+        limit = 20
     
     if not query or len(query) < 2:
         return Response({
@@ -142,10 +148,9 @@ def search(request):
         })
     
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        
         return Response({
-            'error': str(e),
+            'error': 'Operation failed',
             'results': []
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -177,7 +182,10 @@ def search_suggestions(request):
         }
     """
     query = request.GET.get('q', '').strip()
-    limit = min(int(request.GET.get('limit', 10)), 50)
+    try:
+        limit = min(int(request.GET.get('limit', 10)), 50)
+    except (TypeError, ValueError):
+        limit = 10
     
     if not query or len(query) < 1:
         return Response({'suggestions': []})
@@ -193,7 +201,7 @@ def search_suggestions(request):
     
     except Exception as e:
         return Response({
-            'error': str(e),
+            'error': 'Operation failed',
             'suggestions': []
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -222,8 +230,14 @@ def search_trending(request):
     from apps.knowledge.models import SearchQuery
     from django.db.models import Count, Avg
     
-    days = int(request.GET.get('days', 7))
-    limit = min(int(request.GET.get('limit', 10)), 50)
+    try:
+        days = int(request.GET.get('days', 7))
+    except (TypeError, ValueError):
+        days = 7
+    try:
+        limit = min(int(request.GET.get('limit', 10)), 50)
+    except (TypeError, ValueError):
+        limit = 10
     
     cutoff_date = timezone.now() - timezone.timedelta(days=days)
     
@@ -243,7 +257,7 @@ def search_trending(request):
     
     except Exception as e:
         return Response({
-            'error': str(e),
+            'error': 'Operation failed',
             'trending': []
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -290,7 +304,7 @@ def search_analytics(request):
     
     except Exception as e:
         return Response({
-            'error': str(e)
+            'error': 'Operation failed'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -330,7 +344,7 @@ def search_conversations_only(request):
     
     except Exception as e:
         return Response({
-            'error': str(e),
+            'error': 'Operation failed',
             'results': []
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -371,7 +385,7 @@ def search_decisions_only(request):
     
     except Exception as e:
         return Response({
-            'error': str(e),
+            'error': 'Operation failed',
             'results': []
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -422,7 +436,7 @@ def search_by_tag(request, tag_name):
     
     except Exception as e:
         return Response({
-            'error': str(e),
+            'error': 'Operation failed',
             'results': []
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -575,4 +589,5 @@ def search_filtered(request):
         })
     
     except Exception as e:
-        return Response({'error': str(e), 'results': []}, status=500)
+        return Response({'error': 'Operation failed', 'results': []}, status=500)
+

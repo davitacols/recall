@@ -2,9 +2,14 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from apps.integrations.webhook_models import Webhook, ExternalIntegration, WebhookDelivery
 from apps.integrations.webhook_service import WebhookService, SlackService, TeamsService, GitService
+from apps.users.auth_utils import check_rate_limit
 import secrets
+
+url_validator = URLValidator()
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -25,10 +30,19 @@ def webhooks(request):
         return Response(data)
     
     elif request.method == 'POST':
+        if not check_rate_limit(f"webhook_create:{request.user.id}", limit=60, window=3600):
+            return Response({'error': 'Too many requests'}, status=429)
+        url = (request.data.get('url') or '').strip()
+        if not url:
+            return Response({'error': 'url required'}, status=400)
+        try:
+            url_validator(url)
+        except ValidationError:
+            return Response({'error': 'Invalid url'}, status=400)
         webhook = Webhook.objects.create(
             organization=org,
             name=request.data.get('name'),
-            url=request.data.get('url'),
+            url=url,
             events=request.data.get('events', []),
             secret=secrets.token_hex(32)
         )
@@ -50,8 +64,16 @@ def webhook_detail(request, webhook_id):
         return Response({'error': 'Not found'}, status=404)
     
     if request.method == 'PUT':
+        if not check_rate_limit(f"webhook_update:{request.user.id}", limit=120, window=3600):
+            return Response({'error': 'Too many requests'}, status=429)
+        url = request.data.get('url', webhook.url)
+        if url:
+            try:
+                url_validator(url)
+            except ValidationError:
+                return Response({'error': 'Invalid url'}, status=400)
         webhook.name = request.data.get('name', webhook.name)
-        webhook.url = request.data.get('url', webhook.url)
+        webhook.url = url
         webhook.events = request.data.get('events', webhook.events)
         webhook.is_active = request.data.get('is_active', webhook.is_active)
         webhook.save()
@@ -116,10 +138,16 @@ def integrations(request):
         return Response(data)
     
     elif request.method == 'POST':
+        if not check_rate_limit(f"external_integration_create:{request.user.id}", limit=60, window=3600):
+            return Response({'error': 'Too many requests'}, status=429)
+        integration_type = (request.data.get('type') or '').strip()
+        integration_name = (request.data.get('name') or '').strip()
+        if not integration_type or not integration_name:
+            return Response({'error': 'type and name required'}, status=400)
         integration = ExternalIntegration.objects.create(
             organization=org,
-            type=request.data.get('type'),
-            name=request.data.get('name'),
+            type=integration_type,
+            name=integration_name,
             config=request.data.get('config', {})
         )
         return Response({
@@ -146,6 +174,10 @@ def slack_test(request):
     webhook_url = request.data.get('webhook_url')
     if not webhook_url:
         return Response({'error': 'webhook_url required'}, status=400)
+    try:
+        url_validator(webhook_url)
+    except ValidationError:
+        return Response({'error': 'Invalid webhook_url'}, status=400)
     
     success = SlackService.send_message(
         webhook_url,
@@ -162,6 +194,10 @@ def teams_test(request):
     webhook_url = request.data.get('webhook_url')
     if not webhook_url:
         return Response({'error': 'webhook_url required'}, status=400)
+    try:
+        url_validator(webhook_url)
+    except ValidationError:
+        return Response({'error': 'Invalid webhook_url'}, status=400)
     
     success = TeamsService.send_message(
         webhook_url,
@@ -180,6 +216,8 @@ def gitlab_commits(request):
     
     if not project_id or not token:
         return Response({'error': 'project_id and token required'}, status=400)
+    if not check_rate_limit(f"gitlab_commits:{request.user.id}", limit=120, window=3600):
+        return Response({'error': 'Too many requests'}, status=429)
     
     commits = GitService.get_gitlab_commits(project_id, token)
     return Response({'commits': commits})
@@ -194,6 +232,8 @@ def bitbucket_commits(request):
     
     if not all([workspace, repo, token]):
         return Response({'error': 'workspace, repo, and token required'}, status=400)
+    if not check_rate_limit(f"bitbucket_commits:{request.user.id}", limit=120, window=3600):
+        return Response({'error': 'Too many requests'}, status=429)
     
     commits = GitService.get_bitbucket_commits(workspace, repo, token)
     return Response({'commits': commits})

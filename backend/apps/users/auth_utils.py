@@ -1,9 +1,28 @@
 import re
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 
 def check_rate_limit(user_id, action='login', limit=5, window=3600):
-    """Check if user has exceeded rate limit"""
-    return True
+    """Simple fixed-window rate limiter using Django cache."""
+    if not user_id:
+        user_id = "anonymous"
+    key = f"rl:{action}:{str(user_id).lower()}"
+    try:
+        # Initialize counter with TTL if key does not exist.
+        created = cache.add(key, 1, timeout=window)
+        if created:
+            return True
+        count = cache.get(key, 0)
+        if count >= limit:
+            return False
+        try:
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, count + 1, timeout=window)
+        return True
+    except Exception:
+        # Fail open to avoid auth outage if cache backend is unavailable.
+        return True
 
 def validate_email(email):
     """Validate email format"""

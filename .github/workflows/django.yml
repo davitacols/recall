@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ci-secret-key
+      DEBUG: "False"
 
     steps:
     - uses: actions/checkout@v4
@@ -24,3 +27,8 @@ jobs:
     - name: Run Tests
       working-directory: backend
       run: python manage.py test
+    - name: Run Security Checks
+      working-directory: backend
+      run: |
+        python manage.py check --deploy --fail-level WARNING
+        python manage.py test apps.integrations.tests_security config.tests_security apps.users.tests_bot_protection

@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useToast } from "../components/Toast";
 import { useAuth } from "../hooks/useAuth";
+import TurnstileWidget from "../components/TurnstileWidget";
 
 function Login() {
   const [searchParams] = useSearchParams();
@@ -22,6 +23,8 @@ function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileEnabled = Boolean(process.env.REACT_APP_TURNSTILE_SITE_KEY);
 
   const { login, register } = useAuth();
   const { addToast } = useToast();
@@ -51,7 +54,12 @@ function Login() {
     setError("");
 
     if (isLogin) {
-      const result = await login(credentials);
+      if (turnstileEnabled && !turnstileToken) {
+        setError("Please complete bot verification.");
+        setLoading(false);
+        return;
+      }
+      const result = await login({ ...credentials, turnstile_token: turnstileToken });
       if (result.success) {
         addToast("Welcome back!", "success");
         window.location.href = "/";
@@ -68,7 +76,12 @@ function Login() {
         return;
       }
 
-      const result = await register(credentials);
+      if (turnstileEnabled && !turnstileToken) {
+        setError("Please complete bot verification.");
+        setLoading(false);
+        return;
+      }
+      const result = await register({ ...credentials, turnstile_token: turnstileToken });
       if (result.success) {
         setIsLogin(true);
         setCredentials({
@@ -284,6 +297,16 @@ function Login() {
                     ))}
                   </div>
                 </>
+              )}
+              {turnstileEnabled && (
+                <div style={{ display: "grid", justifyContent: "start" }}>
+                  <TurnstileWidget
+                    theme="dark"
+                    onVerify={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken("")}
+                    onError={() => setTurnstileToken("")}
+                  />
+                </div>
               )}
 
               <button type="submit" disabled={loading} style={submitButton(loading)}>

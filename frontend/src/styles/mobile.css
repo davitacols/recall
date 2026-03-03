@@ -45,7 +45,7 @@
     height: 3.5rem;
     background: #111827;
     color: white;
-    border-radius: 9999px;
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;

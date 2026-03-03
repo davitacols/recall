@@ -41,7 +41,13 @@ input[type="submit"],
 input[type="reset"],
 [role="button"],
 .btn,
-.ui-btn-polish {
+.ui-btn-polish,
+a.btn,
+a.ui-btn-polish,
+button[class*="rounded"],
+a[role="button"],
+[role="button"][class*="rounded"],
+a[role="button"][class*="rounded"] {
   border-radius: 0 !important;
 }
 

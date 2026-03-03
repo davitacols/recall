@@ -116,7 +116,7 @@ a:hover {
 button, .btn {
   font-family: inherit;
   font-weight: 500;
-  border-radius: 6px;
+  border-radius: 0 !important;
   padding: 10px 20px;
   font-size: 14px;
   border: none;
@@ -167,7 +167,7 @@ input, textarea, select {
   background: rgba(28, 25, 23, 0.4);
   backdrop-filter: blur(8px);
   border: 1.5px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 0 !important;
   padding: 10px 14px;
   font-size: 14px;
   color: var(--text-primary);

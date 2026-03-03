@@ -519,7 +519,7 @@ const askFabButton = {
   zIndex: 150,
   width: ASK_FAB_WIDTH,
   height: ASK_FAB_HEIGHT,
-  borderRadius: 999,
+  borderRadius: 0,
   display: "grid",
   placeItems: "center",
   fontSize: 13,

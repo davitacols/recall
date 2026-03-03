@@ -9,6 +9,10 @@ from .ai_intelligence import (
     chief_of_staff_plan,
     chief_of_staff_execute,
     agi_copilot,
+    agi_copilot_feedback,
+    agi_copilot_feedback_summary,
+    agi_copilot_feedback_trend,
+    agi_copilot_what_if,
 )
 from .advanced_ai import check_similar_failures, get_success_rates, detect_bottlenecks, detect_knowledge_gaps, detect_patterns
 from .enhanced_features import daily_digest, team_expertise, trend_analysis, auto_tag_content, metrics_tracking, sentiment_analysis
@@ -25,6 +29,10 @@ urlpatterns = [
     path('ai/chief-of-staff/plan/', chief_of_staff_plan, name='chief_of_staff_plan'),
     path('ai/chief-of-staff/execute/', chief_of_staff_execute, name='chief_of_staff_execute'),
     path('ai/copilot/', agi_copilot, name='agi_copilot'),
+    path('ai/copilot/feedback/', agi_copilot_feedback, name='agi_copilot_feedback'),
+    path('ai/copilot/feedback-summary/', agi_copilot_feedback_summary, name='agi_copilot_feedback_summary'),
+    path('ai/copilot/feedback-trend/', agi_copilot_feedback_trend, name='agi_copilot_feedback_trend'),
+    path('ai/copilot/what-if/', agi_copilot_what_if, name='agi_copilot_what_if'),
     path('ai/check-failures/', check_similar_failures, name='check_similar_failures'),
     path('ai/success-rates/', get_success_rates, name='get_success_rates'),
     path('ai/bottlenecks/', detect_bottlenecks, name='detect_bottlenecks'),

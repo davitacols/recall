@@ -4,7 +4,8 @@ from rest_framework.response import Response
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.core.cache import cache
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
+from uuid import uuid4
 from django.contrib.contenttypes.models import ContentType
 from collections import Counter
 from apps.conversations.models import Conversation
@@ -16,6 +17,357 @@ from apps.organizations.auditlog_models import AuditLog
 from apps.notifications.utils import create_notification
 from apps.users.auth_utils import check_rate_limit
 from .search_engine import get_search_engine
+
+
+NAVIGATION_TOOL_REGISTRY = [
+    {
+        'id': 'agile_board',
+        'label': 'Sprint Board',
+        'url': '/sprint',
+        'keywords': {'agile', 'sprint', 'board', 'scrum', 'kanban'},
+        'reason': 'Manage sprint planning and delivery flow.',
+    },
+    {
+        'id': 'projects',
+        'label': 'Projects',
+        'url': '/projects',
+        'keywords': {'project', 'projects', 'roadmap', 'milestone'},
+        'reason': 'Browse active projects and ownership.',
+    },
+    {
+        'id': 'tasks',
+        'label': 'Task Board',
+        'url': '/business/tasks',
+        'keywords': {'task', 'tasks', 'todo', 'ticket', 'issue', 'issues'},
+        'reason': 'Track and assign implementation tasks.',
+    },
+    {
+        'id': 'decisions',
+        'label': 'Decisions',
+        'url': '/decisions',
+        'keywords': {'decision', 'decisions', 'approve', 'approval'},
+        'reason': 'Review decisions, status, and outcomes.',
+    },
+    {
+        'id': 'documents',
+        'label': 'Documents',
+        'url': '/business/documents',
+        'keywords': {'document', 'documents', 'doc', 'docs', 'spec', 'policy'},
+        'reason': 'Find team docs and knowledge artifacts.',
+    },
+    {
+        'id': 'conversations',
+        'label': 'Conversations',
+        'url': '/conversations',
+        'keywords': {'conversation', 'conversations', 'chat', 'thread', 'discussion'},
+        'reason': 'Open discussion history and linked context.',
+    },
+]
+
+
+def _confidence_band(score):
+    try:
+        value = int(score)
+    except (TypeError, ValueError):
+        value = 0
+    if value >= 75:
+        return 'high'
+    if value >= 50:
+        return 'medium'
+    return 'low'
+
+
+def _parse_source_created_at(value):
+    if not value:
+        return None
+    if hasattr(value, 'tzinfo'):
+        return value
+    try:
+        text = str(value).strip()
+        if not text:
+            return None
+        # Support ISO timestamps with trailing Z.
+        if text.endswith('Z'):
+            text = text.replace('Z', '+00:00')
+        return datetime.fromisoformat(text)
+    except Exception:
+        return None
+
+
+def _build_evidence_contract(search_data, now):
+    conversations = search_data.get('conversations', []) or []
+    decisions = search_data.get('decisions', []) or []
+    total = int(search_data.get('total', 0) or 0)
+
+    source_types = []
+    if conversations:
+        source_types.append('conversation')
+    if decisions:
+        source_types.append('decision')
+
+    timestamps = []
+    for item in conversations[:20]:
+        dt = _parse_source_created_at(item.get('created_at'))
+        if dt is not None:
+            timestamps.append(dt)
+    for item in decisions[:20]:
+        dt = _parse_source_created_at(item.get('created_at'))
+        if dt is not None:
+            timestamps.append(dt)
+
+    freshness_days = None
+    if timestamps:
+        try:
+            newest = max(timestamps)
+            if timezone.is_naive(newest):
+                newest = timezone.make_aware(newest, dt_timezone.utc)
+            freshness_days = max(0, (now - newest).days)
+        except Exception:
+            freshness_days = None
+
+    # Coverage balances quantity, evidence diversity, and recency.
+    quantity_score = min(60.0, total * 12.0)
+    diversity_score = 20.0 if len(source_types) >= 2 else 10.0 if len(source_types) == 1 else 0.0
+    recency_score = 0.0
+    if freshness_days is not None:
+        recency_score = max(0.0, 20.0 - min(20.0, freshness_days * 1.5))
+    coverage_score = round(min(100.0, quantity_score + diversity_score + recency_score), 1)
+
+    missing_evidence = []
+    if total == 0:
+        missing_evidence.extend([
+            'No linked conversations or decisions matched this query.',
+            'Add or link related artifacts before relying on this diagnosis.',
+        ])
+    else:
+        if 'conversation' not in source_types:
+            missing_evidence.append('No related conversations found; link discussion context for better precision.')
+        if 'decision' not in source_types:
+            missing_evidence.append('No related decisions found; link decision records to reduce ambiguity.')
+        if freshness_days is not None and freshness_days > 30:
+            missing_evidence.append('Most evidence is older than 30 days; refresh with recent updates.')
+        if total < 2:
+            missing_evidence.append('Evidence set is small; expand linked artifacts for higher confidence.')
+
+    return {
+        'evidence_count': total,
+        'source_types': source_types,
+        'freshness_days': freshness_days,
+        'coverage_score': coverage_score,
+        'missing_evidence': missing_evidence,
+    }
+
+
+def _tokenize_for_match(text):
+    words = []
+    for raw in str(text or '').lower().replace('-', ' ').split():
+        cleaned = ''.join(ch for ch in raw if ch.isalnum())
+        if len(cleaned) >= 4:
+            words.append(cleaned)
+    return set(words)
+
+
+def _detect_navigation_intent(query):
+    text = str(query or '').lower()
+    if not text:
+        return False
+    navigation_triggers = {
+        'where', 'find', 'open', 'navigate', 'location', 'tool', 'page', 'screen', 'go', 'access',
+    }
+    tokens = set(''.join(ch for ch in part if ch.isalnum()) for part in text.split())
+    tokens.discard('')
+    if navigation_triggers.intersection(tokens):
+        return True
+    return any(token in text for token in ['where can i', 'how do i get to', 'take me to'])
+
+
+def _build_navigation_links(query, limit=4):
+    terms = _tokenize_for_match(query)
+    scored = []
+    for item in NAVIGATION_TOOL_REGISTRY:
+        overlap = len(terms.intersection(item['keywords']))
+        # Keep broad navigational fallback links even when overlap is low.
+        boost = 1 if item['id'] in ['agile_board', 'projects', 'tasks'] else 0
+        score = overlap + boost
+        scored.append((score, item))
+
+    scored.sort(key=lambda row: (-row[0], row[1]['label']))
+    links = []
+    for _, item in scored[:limit]:
+        links.append({
+            'id': item['id'],
+            'label': item['label'],
+            'url': item['url'],
+            'reason': item['reason'],
+        })
+    return links
+
+
+def _build_evidence_items(search_data):
+    items = []
+    for convo in search_data.get('conversations', []) or []:
+        created_at = convo.get('created_at')
+        items.append({
+            'id': convo.get('id'),
+            'type': 'conversation',
+            'title': convo.get('title') or f'Conversation #{convo.get("id")}',
+            'url': f'/conversations/{convo.get("id")}',
+            'created_at': created_at,
+            '_ts': _parse_source_created_at(created_at),
+        })
+    for dec in search_data.get('decisions', []) or []:
+        created_at = dec.get('created_at')
+        items.append({
+            'id': dec.get('id'),
+            'type': 'decision',
+            'title': dec.get('title') or f'Decision #{dec.get("id")}',
+            'url': f'/decisions/{dec.get("id")}',
+            'created_at': created_at,
+            '_ts': _parse_source_created_at(created_at),
+        })
+    items.sort(key=lambda x: x.get('_ts') or datetime.min, reverse=True)
+    return items
+
+
+def _attach_intervention_evidence(interventions, evidence_items):
+    enriched = []
+    for item in interventions:
+        target_terms = _tokenize_for_match(item.get('title')) | _tokenize_for_match(item.get('reason'))
+        scored = []
+        for evidence in evidence_items:
+            evidence_terms = _tokenize_for_match(evidence.get('title'))
+            overlap = len(target_terms.intersection(evidence_terms))
+            scored.append((overlap, evidence))
+        scored.sort(key=lambda pair: (pair[0], pair[1].get('_ts') or datetime.min), reverse=True)
+        linked = [row[1] for row in scored[:3]]
+        cleaned_links = []
+        for ev in linked:
+            cleaned_links.append({
+                'id': ev.get('id'),
+                'type': ev.get('type'),
+                'title': ev.get('title'),
+                'url': ev.get('url'),
+                'created_at': ev.get('created_at'),
+            })
+        updated = dict(item)
+        updated['evidence_links'] = cleaned_links
+        enriched.append(updated)
+    return enriched
+
+
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _status_from_readiness(score):
+    if score >= 75:
+        return 'stable'
+    if score >= 50:
+        return 'watch'
+    return 'critical'
+
+
+def _simulate_counterfactual(plan, action_type, units, horizon_days):
+    counts = plan.get('counts', {}) or {}
+    base_score = float(plan.get('readiness_score') or 50.0)
+    unresolved = _safe_int(counts.get('unresolved_decisions'), 0)
+    blockers = _safe_int(counts.get('active_blockers'), 0)
+    unassigned = _safe_int(counts.get('high_priority_unassigned_tasks'), 0)
+
+    decision_gain = 0.0
+    blocker_gain = 0.0
+    ownership_gain = 0.0
+    assumptions = []
+
+    if action_type == 'resolve_decisions':
+        resolved = min(unresolved, units)
+        decision_gain = resolved * 3.5
+        assumptions.append(f'Resolve up to {resolved} unresolved decisions in {horizon_days} days.')
+    elif action_type == 'clear_blockers':
+        cleared = min(blockers, units)
+        blocker_gain = cleared * 7.0
+        assumptions.append(f'Clear up to {cleared} active blockers in {horizon_days} days.')
+    elif action_type == 'assign_high_priority_tasks':
+        assigned = min(unassigned, units)
+        ownership_gain = assigned * 3.0
+        assumptions.append(f'Assign owners for up to {assigned} high-priority tasks in {horizon_days} days.')
+    else:
+        assumptions.append('No recognized action was selected; simulation is baseline only.')
+
+    projected_score = max(5.0, min(100.0, base_score + decision_gain + blocker_gain + ownership_gain))
+    delta = round(projected_score - base_score, 1)
+    uncertainty = max(2.0, round(9.5 - min(7.0, units * 1.2), 1))
+
+    return {
+        'action_type': action_type,
+        'units': units,
+        'horizon_days': horizon_days,
+        'baseline': {
+            'readiness_score': round(base_score, 1),
+            'status': _status_from_readiness(base_score),
+            'counts': {
+                'unresolved_decisions': unresolved,
+                'active_blockers': blockers,
+                'high_priority_unassigned_tasks': unassigned,
+            },
+        },
+        'projected': {
+            'readiness_score': round(projected_score, 1),
+            'status': _status_from_readiness(projected_score),
+            'delta': delta,
+            'uncertainty_interval': {
+                'low': round(max(5.0, projected_score - uncertainty), 1),
+                'high': round(min(100.0, projected_score + uncertainty), 1),
+            },
+        },
+        'assumptions': assumptions,
+    }
+
+
+def _score_intervention(item):
+    kind = item.get('kind')
+    impact = str(item.get('impact') or 'medium').lower()
+    confidence = _safe_float(item.get('confidence'), default=70.0)
+
+    # Conservative defaults tuned for "risk reduction per effort hour".
+    effort_hours_by_kind = {
+        'decision_resolution': 6.0,
+        'blocker_escalation': 4.0,
+        'task_ownership': 2.0,
+    }
+    base_reduction_by_kind = {
+        'decision_resolution': 7.0,
+        'blocker_escalation': 10.0,
+        'task_ownership': 4.5,
+    }
+    impact_multiplier = {'high': 1.2, 'medium': 1.0, 'low': 0.8}
+
+    effort_hours = effort_hours_by_kind.get(kind, 4.0)
+    base_reduction = base_reduction_by_kind.get(kind, 5.0) * impact_multiplier.get(impact, 1.0)
+    expected_risk_reduction = round(base_reduction * (confidence / 100.0), 1)
+    priority_score = round((expected_risk_reduction / max(1.0, effort_hours)) * 100.0, 1)
+
+    scored = dict(item)
+    scored['effort_hours'] = round(effort_hours, 1)
+    scored['expected_risk_reduction'] = expected_risk_reduction
+    scored['priority_score'] = priority_score
+    return scored
+
+
+def _rank_interventions(interventions):
+    scored = [_score_intervention(item) for item in interventions]
+    scored.sort(key=lambda x: (-x.get('priority_score', 0), -_safe_float(x.get('confidence'), 0), x.get('title', '')))
+    return scored
 
 
 def _time_decay(days_old, half_life_days=3.0):
@@ -819,7 +1171,7 @@ def _build_chief_of_staff_plan(org, now, user=None):
         })
 
     interventions = _apply_learning_to_interventions(interventions, learning_profile)
-    interventions.sort(key=lambda x: (0 if x['impact'] == 'high' else 1, -x['confidence']))
+    interventions = _rank_interventions(interventions)
 
     readiness_score = 100.0
     readiness_score -= min(40.0, len(unresolved_decisions) * 3.5)
@@ -1086,12 +1438,48 @@ def agi_copilot(request):
             max_actions = 3
         max_actions = max(1, min(max_actions, 5))
 
+        navigation_intent = _detect_navigation_intent(query)
+        if navigation_intent:
+            plan = _build_chief_of_staff_plan(org, now, user=user)
+            tool_links = _build_navigation_links(query)
+            confidence = 82 if tool_links else 64
+            return Response({
+                'analysis_id': str(uuid4()),
+                'query': query,
+                'answer': 'I interpreted this as a navigation request. Use these links to open the right workspace directly.',
+                'confidence': confidence,
+                'confidence_band': _confidence_band(confidence),
+                'response_mode': 'navigation',
+                'evidence_count': 0,
+                'source_types': [],
+                'freshness_days': None,
+                'coverage_score': 0,
+                'missing_evidence': [],
+                'tool_links': tool_links,
+                'risk_status': plan.get('status'),
+                'readiness_score': plan.get('readiness_score'),
+                'learning_model': plan.get('learning_model', {}),
+                'counts': plan.get('counts', {}),
+                'sources': {'conversations': [], 'decisions': [], 'total': 0},
+                'recommended_interventions': [],
+                'requires_approval_for_execution': True,
+                'execution': {
+                    'performed': False,
+                    'dry_run': True,
+                    'result': None,
+                },
+                'generated_at': now.isoformat(),
+            })
+
         search_engine = get_search_engine()
         search_data = search_engine.search(query, org.id, filters={}, limit=6)
 
         plan = _build_chief_of_staff_plan(org, now, user=user)
         interventions = plan.get('interventions', [])
         recommended = interventions[:max_actions]
+        recommended = _rank_interventions(recommended)
+        evidence_items = _build_evidence_items(search_data)
+        recommended = _attach_intervention_evidence(recommended, evidence_items)
         intervention_ids = [item['id'] for item in recommended]
 
         confidence = 32
@@ -1100,6 +1488,7 @@ def agi_copilot(request):
         if plan.get('status') == 'critical':
             confidence += 8
         confidence = max(18, min(96, confidence))
+        evidence_contract = _build_evidence_contract(search_data, now)
 
         top_conv = (search_data.get('conversations') or [None])[0]
         top_dec = (search_data.get('decisions') or [None])[0]
@@ -1128,10 +1517,32 @@ def agi_copilot(request):
                 f'{len(recommended)} interventions to reduce execution risk. {evidence_line}'
             )
 
+        low_evidence_mode = (
+            evidence_contract.get('evidence_count', 0) == 0
+            or float(evidence_contract.get('coverage_score', 0.0) or 0.0) < 45.0
+        )
+        if low_evidence_mode:
+            confidence = min(confidence, 64)
+            if evidence_contract.get('missing_evidence'):
+                first_gap = evidence_contract['missing_evidence'][0]
+                answer_text = f'{answer_text} Evidence gap: {first_gap}'
+
+        confidence_band = _confidence_band(confidence)
+        response_mode = 'needs_evidence' if low_evidence_mode else 'diagnosis'
+
         response_payload = {
+            'analysis_id': str(uuid4()),
             'query': query,
             'answer': answer_text,
             'confidence': confidence,
+            'confidence_band': confidence_band,
+            'response_mode': response_mode,
+            'evidence_count': evidence_contract.get('evidence_count', 0),
+            'source_types': evidence_contract.get('source_types', []),
+            'freshness_days': evidence_contract.get('freshness_days'),
+            'coverage_score': evidence_contract.get('coverage_score', 0),
+            'missing_evidence': evidence_contract.get('missing_evidence', []),
+            'tool_links': [],
             'risk_status': plan.get('status'),
             'readiness_score': plan.get('readiness_score'),
             'learning_model': plan.get('learning_model', {}),
@@ -1173,3 +1584,180 @@ def agi_copilot(request):
         return Response(response_payload)
     except Exception as exc:
         return Response({'error': 'agi_copilot_failed', 'detail': str(exc)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def agi_copilot_feedback(request):
+    try:
+        org = request.user.organization
+    except Exception:
+        return Response({'error': 'User organization is not configured'}, status=400)
+
+    user = request.user
+    if not check_rate_limit(f"agi_copilot_feedback:{user.id}", limit=400, window=3600):
+        return Response({'error': 'Too many requests'}, status=429)
+
+    feedback = str(request.data.get('feedback') or '').strip().lower()
+    if feedback not in ['up', 'down']:
+        return Response({'error': 'feedback must be "up" or "down"'}, status=400)
+
+    outcome = str(request.data.get('outcome') or '').strip().lower()
+    if outcome and outcome not in ['improved', 'neutral', 'worse']:
+        return Response({'error': 'outcome must be improved, neutral, or worse'}, status=400)
+
+    details = {
+        'analysis_id': str(request.data.get('analysis_id') or '').strip(),
+        'query': str(request.data.get('query') or '').strip()[:500],
+        'feedback': feedback,
+        'outcome': outcome or None,
+        'response_mode': str(request.data.get('response_mode') or '').strip()[:50],
+        'confidence_band': str(request.data.get('confidence_band') or '').strip()[:20],
+        'evidence_count': _safe_int(request.data.get('evidence_count'), default=0),
+        'coverage_score': _safe_float(request.data.get('coverage_score'), default=0.0),
+        'has_actions': bool(request.data.get('has_actions', False)),
+    }
+
+    AuditLog.log(
+        organization=org,
+        user=user,
+        action='update',
+        resource_type='agi_copilot_feedback',
+        details=details,
+        request=request,
+    )
+    return Response({'message': 'Feedback recorded'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def agi_copilot_feedback_summary(request):
+    try:
+        org = request.user.organization
+    except Exception:
+        return Response({'error': 'User organization is not configured'}, status=400)
+
+    now = timezone.now()
+    since = now - timedelta(days=30)
+    rows = AuditLog.objects.filter(
+        organization=org,
+        resource_type='agi_copilot_feedback',
+        created_at__gte=since,
+    ).only('details')
+
+    up = 0
+    down = 0
+    outcomes = {'improved': 0, 'neutral': 0, 'worse': 0}
+    for row in rows:
+        details = row.details or {}
+        fb = str(details.get('feedback') or '').lower()
+        if fb == 'up':
+            up += 1
+        elif fb == 'down':
+            down += 1
+        outcome = str(details.get('outcome') or '').lower()
+        if outcome in outcomes:
+            outcomes[outcome] += 1
+
+    total = up + down
+    positive_rate = round((up / total) * 100, 1) if total else None
+    return Response({
+        'window_days': 30,
+        'total_feedback': total,
+        'upvotes': up,
+        'downvotes': down,
+        'positive_rate': positive_rate,
+        'outcomes': outcomes,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def agi_copilot_feedback_trend(request):
+    try:
+        org = request.user.organization
+    except Exception:
+        return Response({'error': 'User organization is not configured'}, status=400)
+
+    raw_days = request.query_params.get('days', 14)
+    days = _safe_int(raw_days, default=14)
+    days = max(3, min(days, 90))
+
+    now = timezone.now()
+    since = now - timedelta(days=days - 1)
+    rows = AuditLog.objects.filter(
+        organization=org,
+        resource_type='agi_copilot_feedback',
+        created_at__gte=since,
+    ).only('details', 'created_at')
+
+    buckets = {}
+    for i in range(days):
+        day = (since + timedelta(days=i)).date().isoformat()
+        buckets[day] = {'upvotes': 0, 'downvotes': 0}
+
+    for row in rows:
+        day = row.created_at.date().isoformat()
+        if day not in buckets:
+            continue
+        fb = str((row.details or {}).get('feedback') or '').lower()
+        if fb == 'up':
+            buckets[day]['upvotes'] += 1
+        elif fb == 'down':
+            buckets[day]['downvotes'] += 1
+
+    points = []
+    up_total = 0
+    down_total = 0
+    for day in sorted(buckets.keys()):
+        up = buckets[day]['upvotes']
+        down = buckets[day]['downvotes']
+        total = up + down
+        up_total += up
+        down_total += down
+        points.append({
+            'date': day,
+            'upvotes': up,
+            'downvotes': down,
+            'total': total,
+            'positive_rate': round((up / total) * 100, 1) if total else None,
+        })
+
+    total_feedback = up_total + down_total
+    return Response({
+        'window_days': days,
+        'points': points,
+        'totals': {
+            'total_feedback': total_feedback,
+            'upvotes': up_total,
+            'downvotes': down_total,
+            'positive_rate': round((up_total / total_feedback) * 100, 1) if total_feedback else None,
+        },
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def agi_copilot_what_if(request):
+    try:
+        org = request.user.organization
+    except Exception:
+        return Response({'error': 'User organization is not configured'}, status=400)
+
+    user = request.user
+    if not check_rate_limit(f"agi_copilot_what_if:{user.id}", limit=240, window=3600):
+        return Response({'error': 'Too many requests'}, status=429)
+
+    action_type = str(request.data.get('action_type') or '').strip()
+    if action_type not in ['resolve_decisions', 'clear_blockers', 'assign_high_priority_tasks']:
+        return Response({'error': 'action_type is required and must be one of resolve_decisions, clear_blockers, assign_high_priority_tasks'}, status=400)
+
+    units = _safe_int(request.data.get('units'), default=1)
+    units = max(1, min(units, 10))
+    horizon_days = _safe_int(request.data.get('horizon_days'), default=14)
+    horizon_days = max(1, min(horizon_days, 120))
+
+    plan = _build_chief_of_staff_plan(org, timezone.now(), user=user)
+    simulation = _simulate_counterfactual(plan, action_type, units, horizon_days)
+    simulation['generated_at'] = timezone.now().isoformat()
+    return Response(simulation)

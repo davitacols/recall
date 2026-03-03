@@ -28,6 +28,7 @@ const LEFT_CARD_IDS = [
   "mission-control",
   "chief-of-staff",
   "health-snapshot",
+  "copilot-feedback",
   "trends-metrics",
   "team-expertise",
   "daily-digest",
@@ -99,6 +100,8 @@ export default function UnifiedDashboard() {
   const [decisionDebt, setDecisionDebt] = useState(null);
   const [decisionDebtError, setDecisionDebtError] = useState("");
   const [decisionDebtUpgrade, setDecisionDebtUpgrade] = useState(null);
+  const [copilotFeedback, setCopilotFeedback] = useState(null);
+  const [copilotFeedbackTrend, setCopilotFeedbackTrend] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -250,6 +253,27 @@ export default function UnifiedDashboard() {
           setDecisionDebtError("Decision Debt Ledger unavailable on this backend deployment.");
           setDecisionDebtUpgrade(null);
         }
+      }
+
+      const [copilotFeedbackRes, copilotFeedbackTrendRes] = await Promise.all([
+        fetch(buildApiUrl("/api/knowledge/ai/copilot/feedback-summary/"), {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(buildApiUrl("/api/knowledge/ai/copilot/feedback-trend/?days=7"), {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      if (copilotFeedbackRes.ok) {
+        const feedbackData = await readJsonSafe(copilotFeedbackRes, null);
+        setCopilotFeedback(feedbackData);
+      } else {
+        setCopilotFeedback(null);
+      }
+      if (copilotFeedbackTrendRes.ok) {
+        const trendData = await readJsonSafe(copilotFeedbackTrendRes, { points: [] });
+        setCopilotFeedbackTrend((trendData.points || []).slice(-7));
+      } else {
+        setCopilotFeedbackTrend([]);
       }
 
       setStats({
@@ -619,6 +643,74 @@ export default function UnifiedDashboard() {
             <div style={analyticsRow}>
               <TrendAnalysis />
               <MetricsTracker />
+            </div>
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            title="Copilot Feedback"
+            palette={palette}
+            defaultExpanded
+            cardId="copilot-feedback"
+            column="left"
+            order={getCardOrder("left", "copilot-feedback")}
+            onMoveUp={() => moveCard("left", "copilot-feedback", -1)}
+            onMoveDown={() => moveCard("left", "copilot-feedback", 1)}
+          >
+            <div style={healthList}>
+              {copilotFeedback ? (
+                <>
+                  <HealthRow
+                    label={`Total (${copilotFeedback.window_days || 30}d)`}
+                    value={`${copilotFeedback.total_feedback || 0}`}
+                    tint={palette.info}
+                  />
+                  <HealthRow
+                    label="Positive rate"
+                    value={
+                      copilotFeedback.positive_rate !== null && copilotFeedback.positive_rate !== undefined
+                        ? `${copilotFeedback.positive_rate}%`
+                        : "--"
+                    }
+                    tint={palette.good}
+                  />
+                  <HealthRow label="Upvotes" value={`${copilotFeedback.upvotes || 0}`} tint={palette.good} />
+                  <HealthRow label="Downvotes" value={`${copilotFeedback.downvotes || 0}`} tint={palette.warn} />
+                  <HealthRow
+                    label="Outcomes"
+                    value={`${copilotFeedback.outcomes?.improved || 0}/${copilotFeedback.outcomes?.neutral || 0}/${copilotFeedback.outcomes?.worse || 0}`}
+                    tint={palette.accent}
+                  />
+                  {copilotFeedbackTrend.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <p style={{ margin: "0 0 6px", fontSize: 11, color: palette.muted }}>7-day trend (up/down)</p>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 6 }}>
+                        {copilotFeedbackTrend.map((point) => {
+                          const total = Number(point.total || 0);
+                          const up = Number(point.upvotes || 0);
+                          const ratio = total > 0 ? Math.max(0.1, up / total) : 0.5;
+                          return (
+                            <div
+                              key={point.date}
+                              title={`${point.date}: ${up}/${total}`}
+                              style={{
+                                height: 26,
+                                border: `1px solid ${palette.border}`,
+                                borderRadius: 6,
+                                background: `linear-gradient(180deg, ${palette.good} ${Math.round(ratio * 100)}%, ${palette.warn} ${Math.round(ratio * 100)}%)`,
+                                opacity: total > 0 ? 1 : 0.35,
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                  No copilot feedback data yet.
+                </p>
+              )}
             </div>
           </CollapsibleCard>
 

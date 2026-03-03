@@ -29,7 +29,7 @@ export function getProjectUi(palette) {
     },
     primaryButton: {
       border: "none",
-      borderRadius: 10,
+      borderRadius: 0,
       padding: "9px 12px",
       fontSize: 13,
       fontWeight: 700,
@@ -42,7 +42,7 @@ export function getProjectUi(palette) {
     },
     secondaryButton: {
       border: "1px solid rgba(120,120,120,0.45)",
-      borderRadius: 10,
+      borderRadius: 0,
       padding: "9px 12px",
       fontSize: 13,
       fontWeight: 700,
@@ -52,7 +52,7 @@ export function getProjectUi(palette) {
     },
     input: {
       width: "100%",
-      borderRadius: 10,
+      borderRadius: 0,
       border: `1px solid ${palette.border}`,
       background: palette.cardAlt,
       color: palette.text,

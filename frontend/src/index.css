@@ -34,6 +34,17 @@ body {
   box-sizing: border-box;
 }
 
+/* Enforce square buttons across the entire app */
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"],
+.btn,
+.ui-btn-polish {
+  border-radius: 0 !important;
+}
+
 .ui-smooth {
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease;
 }

@@ -1,5 +1,5 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
 const features = [
@@ -82,6 +82,15 @@ const illustrationHighlights = [
 
 export default function Homepage() {
   const navigate = useNavigate();
+  const heroWords = ["clear.", "searchable.", "auditable.", "aligned."];
+  const [heroWordIndex, setHeroWordIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroWordIndex((prev) => (prev + 1) % heroWords.length);
+    }, 2200);
+    return () => clearInterval(timer);
+  }, [heroWords.length]);
 
   return (
     <div style={page}>
@@ -118,7 +127,21 @@ export default function Homepage() {
               <div>
                 <p style={eyebrow}>DECISION MEMORY PLATFORM</p>
                 <h1 style={heroTitle}>
-                  Decisions stay clear.
+                  Decisions stay{" "}
+                  <span style={heroAnimatedWordSlot}>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={heroWords[heroWordIndex]}
+                        initial={{ opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.28 }}
+                        style={heroAnimatedWord}
+                      >
+                        {heroWords[heroWordIndex]}
+                      </motion.span>
+                    </AnimatePresence>
+                  </span>
                   <br />
                   Momentum keeps moving.
                 </h1>
@@ -487,7 +510,7 @@ const headerActions = {
 };
 
 const baseButton = {
-  borderRadius: 12,
+  borderRadius: 0,
   padding: "10px 16px",
   cursor: "pointer",
   fontWeight: 600,
@@ -531,6 +554,18 @@ const heroTitle = {
   lineHeight: 1.05,
   letterSpacing: "-0.03em",
   margin: 0,
+};
+
+const heroAnimatedWordSlot = {
+  position: "relative",
+  display: "inline-block",
+  minWidth: "6.4ch",
+};
+
+const heroAnimatedWord = {
+  display: "inline-block",
+  color: "#ffd390",
+  textShadow: "0 0 24px rgba(255,165,102,0.22)",
 };
 
 const heroSubtitle = {
@@ -1055,7 +1090,7 @@ const footerLinkButton = {
   border: "1px solid rgba(255,231,198,0.14)",
   background: "rgba(255,255,255,0.02)",
   color: "#f4efe6",
-  borderRadius: 10,
+  borderRadius: 0,
   padding: "8px 12px",
   fontSize: 12,
   fontWeight: 600,

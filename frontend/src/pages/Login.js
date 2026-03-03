@@ -119,14 +119,14 @@ function Login() {
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55 }}
-          style={sidePanel}
+          style={isLogin ? sidePanel : sidePanelCompact}
         >
           <button onClick={() => navigate("/")} style={brandButton}>
             <span style={brandMark}>K</span>
             <span style={brandText}>Knoledgr</span>
           </button>
 
-          <div>
+          <div style={isLogin ? heroCopyWrap : heroCopyWrapCompact}>
             <p style={eyebrow}>KNOWLEDGE OPERATING SYSTEM</p>
             <h1 style={headline}>Team memory that compounds every sprint.</h1>
             <p style={supportingCopy}>
@@ -135,7 +135,7 @@ function Login() {
             </p>
           </div>
 
-          <div style={signalList}>
+          <div style={isLogin ? signalList : signalListCompact}>
             {[
               "Decision history with source links",
               "Meeting and doc context in one timeline",
@@ -451,6 +451,13 @@ const sidePanel = {
     "linear-gradient(165deg, rgba(255,157,86,0.12), rgba(255,255,255,0.02) 45%, rgba(93,210,193,0.08))",
 };
 
+const sidePanelCompact = {
+  ...sidePanel,
+  padding: "34px 34px 30px",
+  justifyContent: "flex-start",
+  gap: 18,
+};
+
 const brandButton = {
   display: "inline-flex",
   alignItems: "center",
@@ -503,10 +510,21 @@ const supportingCopy = {
   lineHeight: 1.55,
 };
 
+const heroCopyWrap = {};
+
+const heroCopyWrapCompact = {
+  marginTop: 8,
+};
+
 const signalList = {
   display: "grid",
   gap: 12,
   marginTop: 32,
+};
+
+const signalListCompact = {
+  ...signalList,
+  marginTop: 12,
 };
 
 const signalItem = {

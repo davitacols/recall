@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 import logging
@@ -207,8 +208,6 @@ def list_invitations(request):
     if request.user.role != 'admin':
         return Response({'error': 'Only admins can view invitations'}, status=status.HTTP_403_FORBIDDEN)
     
-    from django.conf import settings
-    
     invitations = Invitation.objects.filter(
         organization=request.user.organization,
         is_accepted=False
@@ -243,6 +242,42 @@ def revoke_invitation(request, invitation_id):
         return Response({'message': 'Invitation revoked'})
     except Invitation.DoesNotExist:
         return Response({'error': 'Invitation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def resend_invitation(request, invitation_id):
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admins can resend invitations'}, status=status.HTTP_403_FORBIDDEN)
+
+    if not check_rate_limit(request.user.id, action="resend_invitation", limit=60, window=3600):
+        return Response({"error": "Too many resend attempts. Try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+    try:
+        invitation = Invitation.objects.get(id=invitation_id, organization=request.user.organization)
+    except Invitation.DoesNotExist:
+        return Response({'error': 'Invitation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if invitation.is_accepted:
+        return Response({'error': 'Invitation already accepted'}, status=status.HTTP_400_BAD_REQUEST)
+
+    invitation.expires_at = timezone.now() + timezone.timedelta(days=7)
+    invitation.save(update_fields=['expires_at'])
+
+    email_sent = False
+    try:
+        from apps.notifications.email_service import send_invitation_email
+        email_sent = send_invitation_email(invitation.email, invitation.token, request.user)
+    except Exception:
+        logger.exception("Failed to resend invitation email")
+
+    return Response({
+        'message': 'Invitation resent',
+        'email_sent': email_sent,
+        'email': invitation.email,
+        'invite_link': f"{settings.FRONTEND_URL}/invite/{invitation.token}",
+        'expires_at': invitation.expires_at,
+    })
 
 @api_view(['POST'])
 @permission_classes([])

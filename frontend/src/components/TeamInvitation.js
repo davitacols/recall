@@ -12,6 +12,7 @@ export default function TeamInvitation() {
   const [error, setError] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [generatedLink, setGeneratedLink] = useState(null);
+  const [resendingId, setResendingId] = useState(null);
 
   const bgColor = darkMode ? '#000000' : '#ffffff';
   const textColor = darkMode ? '#f3f4f6' : '#111827';
@@ -64,6 +65,19 @@ export default function TeamInvitation() {
       fetchInvitations();
     } catch (err) {
       setError('Failed to cancel invitation');
+    }
+  };
+
+  const handleResend = async (invitationId) => {
+    setResendingId(invitationId);
+    setError('');
+    try {
+      await api.post(`/api/organizations/invitations/${invitationId}/resend/`);
+      fetchInvitations();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to resend invitation');
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -203,6 +217,28 @@ export default function TeamInvitation() {
                         Copy Link
                       </>
                     )}
+                  </button>
+                  <button
+                    onClick={() => handleResend(inv.id)}
+                    disabled={resendingId === inv.id}
+                    style={{
+                      paddingLeft: '12px',
+                      paddingRight: '12px',
+                      paddingTop: '8px',
+                      paddingBottom: '8px',
+                      backgroundColor: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 600,
+                      fontSize: '12px',
+                      cursor: resendingId === inv.id ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: resendingId === inv.id ? 0.6 : 1,
+                    }}
+                    onMouseEnter={(e) => resendingId !== inv.id && (e.target.style.backgroundColor = '#1d4ed8')}
+                    onMouseLeave={(e) => resendingId !== inv.id && (e.target.style.backgroundColor = '#2563eb')}
+                  >
+                    {resendingId === inv.id ? 'Resending...' : 'Resend'}
                   </button>
                   <button
                     onClick={() => handleRevoke(inv.id)}

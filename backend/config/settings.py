@@ -6,8 +6,22 @@ from corsheaders.defaults import default_headers
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+
+def _env_bool(key, default=False):
+    raw = config(key, default=str(default))
+    if isinstance(raw, bool):
+        return raw
+    value = str(raw).strip().lower()
+    if value in {'1', 'true', 't', 'yes', 'y', 'on'}:
+        return True
+    if value in {'0', 'false', 'f', 'no', 'n', 'off', ''}:
+        return False
+    # Fail closed for ambiguous non-boolean values (e.g. "release", "prod").
+    return bool(default)
+
+
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = _env_bool('DEBUG', default=False)
 ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',') if host.strip()]
 if not DEBUG:
     ALLOWED_HOSTS.extend([
@@ -15,7 +29,7 @@ if not DEBUG:
         for host in config('EXTRA_ALLOWED_HOSTS', default='.onrender.com,.vercel.app').split(',')
         if host.strip()
     ])
-if config('ALLOW_ALL_HOSTS', default=False, cast=bool):
+if _env_bool('ALLOW_ALL_HOSTS', default=False):
     ALLOWED_HOSTS.append('*')
 
 # Security Settings
@@ -145,7 +159,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
-NOTIFICATIONS_USE_CELERY = config('NOTIFICATIONS_USE_CELERY', default=False, cast=bool)
+NOTIFICATIONS_USE_CELERY = _env_bool('NOTIFICATIONS_USE_CELERY', default=False)
 
 # AI Configuration
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
@@ -154,7 +168,7 @@ AWS_REGION = config('AWS_REGION', default='us-east-1')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 
 # Bot protection (Cloudflare Turnstile)
-TURNSTILE_ENABLED = config('TURNSTILE_ENABLED', default=False, cast=bool)
+TURNSTILE_ENABLED = _env_bool('TURNSTILE_ENABLED', default=False)
 TURNSTILE_SECRET_KEY = config('TURNSTILE_SECRET_KEY', default='')
 TURNSTILE_VERIFY_URL = config(
     'TURNSTILE_VERIFY_URL',
@@ -226,7 +240,7 @@ SECURITY_PREFLIGHT_REQUIRED_ORIGINS = _parse_csv(
     )
 )
 
-CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=DEBUG, cast=bool)
+CORS_ALLOW_ALL_ORIGINS = _env_bool('CORS_ALLOW_ALL_ORIGINS', default=DEBUG)
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'cache-control',
@@ -331,8 +345,8 @@ from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=config('JWT_ACCESS_TOKEN_HOURS', default=8, cast=int)),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=config('JWT_REFRESH_TOKEN_DAYS', default=7, cast=int)),
-    'ROTATE_REFRESH_TOKENS': config('JWT_ROTATE_REFRESH_TOKENS', default=False, cast=bool),
-    'BLACKLIST_AFTER_ROTATION': config('JWT_BLACKLIST_AFTER_ROTATION', default=False, cast=bool),
+    'ROTATE_REFRESH_TOKENS': _env_bool('JWT_ROTATE_REFRESH_TOKENS', default=False),
+    'BLACKLIST_AFTER_ROTATION': _env_bool('JWT_BLACKLIST_AFTER_ROTATION', default=False),
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,

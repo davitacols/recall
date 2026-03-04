@@ -75,6 +75,9 @@ import Messages from './pages/Messages';
 import IssueDetail from './pages/IssueDetail';
 import Backlog from './pages/Backlog';
 import Homepage from './pages/Homepage';
+import PrivacyEnterprise from './pages/PrivacyEnterprise';
+import TermsEnterprise from './pages/TermsEnterprise';
+import SecurityAnnex from './pages/SecurityAnnex';
 import BusinessDashboard from './pages/BusinessDashboard';
 import Goals from './pages/Goals';
 import GoalDetail from './pages/GoalDetail';
@@ -177,6 +180,9 @@ function AppContent() {
       }} />}
       <Routes>
         <Route path="/home" element={<Homepage />} />
+        <Route path="/privacy" element={<PrivacyEnterprise />} />
+        <Route path="/terms" element={<TermsEnterprise />} />
+        <Route path="/security-annex" element={<SecurityAnnex />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />

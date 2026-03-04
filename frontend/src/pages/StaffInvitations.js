@@ -10,6 +10,7 @@ function StaffInvitations() {
   const [inviteRole, setInviteRole] = useState('contributor');
   const [generatedLink, setGeneratedLink] = useState('');
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [resendingId, setResendingId] = useState(null);
 
   useEffect(() => {
     loadInvitations();
@@ -66,6 +67,19 @@ function StaffInvitations() {
       loadInvitations();
     } catch (err) {
       addToast('Failed to revoke invitation', 'error');
+    }
+  };
+
+  const resendInvitation = async (invitationId) => {
+    try {
+      setResendingId(invitationId);
+      await api.post(`/api/organizations/invitations/${invitationId}/resend/`);
+      addToast('Invitation resent', 'success');
+      loadInvitations();
+    } catch (err) {
+      addToast(err.response?.data?.error || 'Failed to resend invitation', 'error');
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -182,6 +196,13 @@ function StaffInvitations() {
                     className="px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs"
                   >
                     Copy Link
+                  </button>
+                  <button
+                    onClick={() => resendInvitation(invitation.id)}
+                    disabled={resendingId === invitation.id}
+                    className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-bold uppercase text-xs disabled:opacity-60"
+                  >
+                    {resendingId === invitation.id ? 'Resending...' : 'Resend'}
                   </button>
                   <button
                     onClick={() => revokeInvitation(invitation.id)}

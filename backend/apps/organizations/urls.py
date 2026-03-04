@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import OrganizationDetailView
 from .activity_views import activity_feed, activity_stats
-from .invitation_views import invite_user, verify_invitation, accept_invitation, list_invitations, create_organization, revoke_invitation
+from .invitation_views import invite_user, verify_invitation, accept_invitation, list_invitations, create_organization, revoke_invitation, resend_invitation
 from .settings_views import (
     user_profile, change_password, user_stats, notification_settings,
     organization_settings, update_organization, organization_members,
@@ -50,6 +50,7 @@ urlpatterns = [
     path('invitations/<uuid:token>/', verify_invitation, name='verify_invitation'),
     path('invitations/<uuid:token>/accept/', accept_invitation, name='accept_invitation'),
     path('invitations/<int:invitation_id>/revoke/', revoke_invitation, name='revoke_invitation'),
+    path('invitations/<int:invitation_id>/resend/', resend_invitation, name='resend_invitation'),
     path('signup/', create_organization, name='create_organization'),
     
     # Settings endpoints

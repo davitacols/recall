@@ -425,11 +425,11 @@ export default function Homepage() {
           </div>
 
           <div style={footerBottom}>
-            <span>© {new Date().getFullYear()} Knoledgr. All rights reserved.</span>
+            <span>(c) {new Date().getFullYear()} Knoledgr. All rights reserved.</span>
             <div style={footerLegal}>
-              <button style={footerMutedButton}>Privacy</button>
-              <button style={footerMutedButton}>Terms</button>
-              <button style={footerMutedButton}>Security</button>
+              <button onClick={() => navigate("/privacy")} style={footerMutedButton}>Privacy</button>
+              <button onClick={() => navigate("/terms")} style={footerMutedButton}>Terms</button>
+              <button onClick={() => navigate("/security-annex")} style={footerMutedButton}>Security</button>
             </div>
           </div>
         </div>
@@ -1123,4 +1123,3 @@ const footerMutedButton = {
   cursor: "pointer",
   padding: 0,
 };
-

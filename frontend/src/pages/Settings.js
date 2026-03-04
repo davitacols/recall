@@ -44,6 +44,7 @@ function Settings() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("contributor");
   const [generatedLink, setGeneratedLink] = useState(null);
+  const [resendingInvitationId, setResendingInvitationId] = useState(null);
   const [orgName, setOrgName] = useState("");
   const [orgDescription, setOrgDescription] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -207,6 +208,19 @@ function Settings() {
       fetchPendingInvitations();
     } catch (error) {
       addToast("Failed to cancel invitation", "error");
+    }
+  };
+
+  const resendInvitation = async (invitationId) => {
+    try {
+      setResendingInvitationId(invitationId);
+      await api.post(`/api/organizations/invitations/${invitationId}/resend/`);
+      addToast("Invitation resent", "success");
+      fetchPendingInvitations();
+    } catch (error) {
+      addToast(error.response?.data?.error || "Failed to resend invitation", "error");
+    } finally {
+      setResendingInvitationId(null);
     }
   };
 
@@ -455,12 +469,27 @@ function Settings() {
                         <p style={rowLabel(palette)}>{invitation.email}</p>
                         <p style={rowDesc(palette)}>Role: {invitation.role}</p>
                       </div>
-                      <button
-                        onClick={() => setConfirmDelete({ type: "invitation", id: invitation.id })}
-                        style={dangerButton(palette)}
-                      >
-                        Cancel
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          onClick={() => resendInvitation(invitation.id)}
+                          disabled={resendingInvitationId === invitation.id}
+                          style={{
+                            ...copyButton(palette),
+                            background: "#2563eb",
+                            color: "#ffffff",
+                            cursor: resendingInvitationId === invitation.id ? "not-allowed" : "pointer",
+                            opacity: resendingInvitationId === invitation.id ? 0.6 : 1,
+                          }}
+                        >
+                          {resendingInvitationId === invitation.id ? "Resending..." : "Resend"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete({ type: "invitation", id: invitation.id })}
+                          style={dangerButton(palette)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

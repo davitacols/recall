@@ -48,8 +48,15 @@ def invite_user(request):
         return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     
     # Check if user already exists
-    if User.objects.filter(email=email, organization=request.user.organization).exists():
-        return Response({'error': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
+    existing_user = User.objects.filter(
+        email__iexact=email,
+        organization=request.user.organization
+    ).first()
+    if existing_user and existing_user.is_active:
+        return Response(
+            {'error': 'User already exists in this organization'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     # Create or update invitation
     invitation, created = Invitation.objects.update_or_create(

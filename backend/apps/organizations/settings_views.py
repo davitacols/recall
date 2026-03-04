@@ -379,7 +379,7 @@ def invite_member(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
-    email = request.data.get('email')
+    email = (request.data.get('email') or '').strip().lower()
     role = _normalize_role(request.data.get('role', 'contributor'))
     
     if not email:
@@ -387,9 +387,16 @@ def invite_member(request):
     if role not in ['admin', 'manager', 'contributor']:
         return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Check if user already exists
-    if User.objects.filter(email=email).exists():
-        return Response({'error': 'User with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+    # Allow same email across different organizations; block only if active in this org.
+    existing_user = User.objects.filter(
+        email__iexact=email,
+        organization=request.user.organization
+    ).first()
+    if existing_user and existing_user.is_active:
+        return Response(
+            {'error': 'User already exists in this organization'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     from apps.organizations.models import Invitation
     

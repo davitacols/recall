@@ -88,25 +88,26 @@ def login(request):
         # Backward compatibility: direct username login.
         user = authenticate(username=username, password=password)
 
-        # Email login fallback: force org disambiguation if email belongs to multiple orgs.
+        # Email login fallback without frontend org picker.
+        # If multiple org accounts share the same email, resolve by password match,
+        # then prefer the most recently active account when still ambiguous.
         if not user and '@' in username:
             matches = User.objects.filter(email__iexact=username, is_active=True).select_related('organization')
-            match_count = matches.count()
-            if match_count > 1:
-                return Response(
-                    {
-                        'error': 'Multiple organizations found for this email. Provide org_slug to continue.',
-                        'organizations': [
-                            {
-                                'slug': m.organization.slug,
-                                'name': m.organization.name,
-                            }
-                            for m in matches
-                        ]
-                    },
-                    status=status.HTTP_409_CONFLICT
+            matched_by_password = [candidate for candidate in matches if candidate.check_password(password)]
+
+            if len(matched_by_password) == 1:
+                user = matched_by_password[0]
+            elif len(matched_by_password) > 1:
+                matched_by_password.sort(
+                    key=lambda candidate: (
+                        1 if candidate.last_login else 0,
+                        candidate.last_login.timestamp() if candidate.last_login else 0,
+                        candidate.id,
+                    ),
+                    reverse=True,
                 )
-            if match_count == 1:
+                user = matched_by_password[0]
+            elif matches.count() == 1:
                 user = authenticate(username=matches.first().username, password=password)
     
     if user:

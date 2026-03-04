@@ -13,12 +13,13 @@ import { useAuth } from '../hooks/useAuth';
 
 export const MobileNav = ({ onSearchOpen }) => {
   const location = useLocation();
-  const { user, listWorkspaces, switchWorkspace } = useAuth();
+  const { user, listWorkspaces, requestWorkspaceSwitchCode, switchWorkspace } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [workspaces, setWorkspaces] = useState([]);
   const [workspacePassword, setWorkspacePassword] = useState('');
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  const [requestingCodeOrgSlug, setRequestingCodeOrgSlug] = useState(null);
   const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
   const [workspaceError, setWorkspaceError] = useState('');
 
@@ -47,13 +48,13 @@ export const MobileNav = ({ onSearchOpen }) => {
 
   const handleSwitchWorkspace = async (orgSlug) => {
     if (!workspacePassword.trim()) {
-      setWorkspaceError('Enter password to switch workspace');
+      setWorkspaceError('Enter verification code to switch workspace');
       return;
     }
 
     setWorkspaceError('');
     setSwitchingOrgSlug(orgSlug);
-    const result = await switchWorkspace({ org_slug: orgSlug, password: workspacePassword });
+    const result = await switchWorkspace({ org_slug: orgSlug, otp_code: workspacePassword });
     setSwitchingOrgSlug(null);
 
     if (!result.success) {
@@ -64,6 +65,18 @@ export const MobileNav = ({ onSearchOpen }) => {
     setMenuOpen(false);
     setWorkspacePassword('');
     window.location.href = '/';
+  };
+
+  const handleRequestWorkspaceCode = async (orgSlug) => {
+    setWorkspaceError('');
+    setRequestingCodeOrgSlug(orgSlug);
+    const result = await requestWorkspaceSwitchCode({ org_slug: orgSlug });
+    setRequestingCodeOrgSlug(null);
+    if (!result.success) {
+      setWorkspaceError(result.error || 'Failed to send verification code');
+      return;
+    }
+    setWorkspaceError('Verification code sent to your email');
   };
 
   if (!isMobile) return null;
@@ -140,10 +153,10 @@ export const MobileNav = ({ onSearchOpen }) => {
             <div className="mt-6 pt-4 border-t border-gray-200">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Switch Workspace</p>
               <input
-                type="password"
+                type="text"
                 value={workspacePassword}
                 onChange={(e) => setWorkspacePassword(e.target.value)}
-                placeholder="Confirm password"
+                placeholder="Enter 6-digit code"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2"
               />
               {workspaceError ? <p className="text-xs text-red-600 mb-2">{workspaceError}</p> : null}
@@ -162,13 +175,22 @@ export const MobileNav = ({ onSearchOpen }) => {
                         {isCurrent ? (
                           <span className="inline-block text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 font-semibold">Current</span>
                         ) : (
-                          <button
-                            onClick={() => handleSwitchWorkspace(workspace.org_slug)}
-                            disabled={switchingOrgSlug === workspace.org_slug}
-                            className="text-xs px-3 py-1.5 rounded bg-gray-900 text-white font-semibold disabled:opacity-60"
-                          >
-                            {switchingOrgSlug === workspace.org_slug ? 'Switching...' : 'Switch'}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleRequestWorkspaceCode(workspace.org_slug)}
+                              disabled={requestingCodeOrgSlug === workspace.org_slug}
+                              className="text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-800 font-semibold disabled:opacity-60"
+                            >
+                              {requestingCodeOrgSlug === workspace.org_slug ? 'Sending...' : 'Send'}
+                            </button>
+                            <button
+                              onClick={() => handleSwitchWorkspace(workspace.org_slug)}
+                              disabled={switchingOrgSlug === workspace.org_slug}
+                              className="text-xs px-3 py-1.5 rounded bg-gray-900 text-white font-semibold disabled:opacity-60"
+                            >
+                              {switchingOrgSlug === workspace.org_slug ? 'Switching...' : 'Switch'}
+                            </button>
+                          </div>
                         )}
                       </div>
                     );

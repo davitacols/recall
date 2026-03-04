@@ -5,11 +5,14 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model, authenticate
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 import logging
 import boto3
+import secrets
+import hashlib
 from django.conf import settings
 from .auth_utils import (
     check_rate_limit,
@@ -19,10 +22,46 @@ from .auth_utils import (
     generate_unique_org_username,
 )
 from .bot_protection import verify_turnstile_token
-from apps.notifications.email_service import send_password_reset_email, send_welcome_email, build_frontend_url
+from apps.notifications.email_service import (
+    send_password_reset_email,
+    send_welcome_email,
+    send_workspace_switch_code_email,
+    build_frontend_url,
+)
+from apps.organizations.auditlog_models import AuditLog
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+WORKSPACE_SWITCH_CODE_TTL_SECONDS = 600
+
+
+def _workspace_switch_code_cache_key(user_id, org_slug):
+    return f"workspace_switch_code:{user_id}:{org_slug}"
+
+
+def _log_auth_audit(organization, user, resource_type, details, request):
+    try:
+        AuditLog.log(
+            organization=organization,
+            user=user,
+            action='login',
+            resource_type=resource_type,
+            resource_id=user.id if user else None,
+            details=details or {},
+            request=request,
+        )
+    except Exception:
+        logger.exception("Failed to write auth audit log for resource_type=%s", resource_type)
+
+
+def _log_auth_audit_throttled(organization, user, resource_type, details, request, throttle_key, ttl_seconds=300):
+    if not organization:
+        return
+    cache_key = f"auth_audit_throttle:{throttle_key}"
+    if cache.get(cache_key):
+        return
+    cache.set(cache_key, 1, timeout=ttl_seconds)
+    _log_auth_audit(organization, user, resource_type, details, request)
 
 
 def _normalize_user_role(role):
@@ -69,6 +108,22 @@ def login(request):
     # Rate limiting
     if not check_rate_limit(username):
         logger.warning(f"Rate limit exceeded for login attempt: {username}")
+        if '@' in username:
+            matched_orgs = User.objects.filter(email__iexact=username, is_active=True).values_list('organization_id', flat=True).distinct()
+            for org_id in matched_orgs:
+                org_user = User.objects.filter(organization_id=org_id).only('organization').first()
+                if not org_user:
+                    continue
+                throttled_hash = hashlib.sha256(f"{username}:{org_id}:login_rate_limited".encode()).hexdigest()[:16]
+                _log_auth_audit_throttled(
+                    organization=org_user.organization,
+                    user=None,
+                    resource_type='auth_login_rate_limited',
+                    details={'input_is_email': True},
+                    request=request,
+                    throttle_key=throttled_hash,
+                    ttl_seconds=600,
+                )
         return Response(
             {'error': 'Too many login attempts. Try again later.'},
             status=status.HTTP_429_TOO_MANY_REQUESTS
@@ -107,6 +162,16 @@ def login(request):
 
         if user_obj:
             user = authenticate(username=user_obj.username, password=password)
+            if not user:
+                _log_auth_audit_throttled(
+                    organization=user_obj.organization,
+                    user=user_obj,
+                    resource_type='auth_login_failed',
+                    details={'reason': 'invalid_credentials', 'org_slug': org_slug, 'org_scoped': True},
+                    request=request,
+                    throttle_key=f"org_login_failed:{user_obj.id}",
+                    ttl_seconds=300,
+                )
     else:
         # Backward compatibility: direct username login.
         user = authenticate(username=username, password=password)
@@ -144,9 +209,35 @@ def login(request):
     
     if user:
         logger.info(f"Successful login for user: {user.username}")
+        _log_auth_audit(
+            organization=user.organization,
+            user=user,
+            resource_type='auth_login',
+            details={
+                'method': 'password',
+                'org_slug': user.organization.slug,
+                'input_is_email': '@' in username,
+            },
+            request=request,
+        )
         return Response(_build_auth_payload(user))
     
     logger.warning(f"Failed login attempt for: {username}")
+    if '@' in username:
+        matched_users = User.objects.filter(email__iexact=username, is_active=True).select_related('organization')
+        for matched_user in matched_users:
+            throttle_hash = hashlib.sha256(
+                f"{username}:{matched_user.organization_id}:login_failed".encode()
+            ).hexdigest()[:16]
+            _log_auth_audit_throttled(
+                organization=matched_user.organization,
+                user=matched_user,
+                resource_type='auth_login_failed',
+                details={'reason': 'invalid_credentials', 'org_slug': matched_user.organization.slug, 'org_scoped': bool(org_slug)},
+                request=request,
+                throttle_key=throttle_hash,
+                ttl_seconds=300,
+            )
     return Response({'error': 'Invalid credentials'}, 
                    status=status.HTTP_401_UNAUTHORIZED)
 
@@ -188,14 +279,105 @@ def workspaces(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def request_workspace_switch_code(request):
+    org_slug = (request.data.get('org_slug') or '').strip().lower()
+    if not org_slug:
+        return Response({'error': 'org_slug is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not check_rate_limit(
+        f"switch_workspace_code:{request.user.id}",
+        action='switch_workspace_code',
+        limit=20,
+        window=3600,
+    ):
+        _log_auth_audit_throttled(
+            organization=request.user.organization,
+            user=request.user,
+            resource_type='workspace_switch_code_rate_limited',
+            details={'reason': 'rate_limited'},
+            request=request,
+            throttle_key=f"switch_code_rate_limited:{request.user.id}",
+            ttl_seconds=600,
+        )
+        return Response({'error': 'Too many code requests. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+    target_user = User.objects.filter(
+        email__iexact=request.user.email,
+        organization__slug=org_slug,
+        is_active=True
+    ).select_related('organization').first()
+    if not target_user:
+        _log_auth_audit_throttled(
+            organization=request.user.organization,
+            user=request.user,
+            resource_type='workspace_switch_code_failed',
+            details={'reason': 'workspace_not_found', 'target_org_slug': org_slug},
+            request=request,
+            throttle_key=f"switch_code_missing_workspace:{request.user.id}:{org_slug}",
+            ttl_seconds=300,
+        )
+        return Response({'error': 'Workspace not found for this account'}, status=status.HTTP_404_NOT_FOUND)
+
+    otp_code = f"{secrets.randbelow(1000000):06d}"
+    cache.set(
+        _workspace_switch_code_cache_key(request.user.id, org_slug),
+        {'code': otp_code, 'target_user_id': target_user.id},
+        timeout=WORKSPACE_SWITCH_CODE_TTL_SECONDS,
+    )
+
+    sent = send_workspace_switch_code_email(request.user, target_user.organization.name, otp_code)
+    if not sent:
+        _log_auth_audit_throttled(
+            organization=request.user.organization,
+            user=request.user,
+            resource_type='workspace_switch_code_failed',
+            details={'reason': 'email_send_failed', 'target_org_slug': org_slug},
+            request=request,
+            throttle_key=f"switch_code_email_failed:{request.user.id}:{org_slug}",
+            ttl_seconds=300,
+        )
+        return Response({'error': 'Unable to send verification code right now'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    _log_auth_audit(
+        organization=request.user.organization,
+        user=request.user,
+        resource_type='workspace_switch_code_requested',
+        details={
+            'target_org_slug': org_slug,
+            'target_org_name': target_user.organization.name,
+            'expires_in_seconds': WORKSPACE_SWITCH_CODE_TTL_SECONDS,
+        },
+        request=request,
+    )
+
+    return Response({
+        'message': 'Verification code sent',
+        'expires_in_seconds': WORKSPACE_SWITCH_CODE_TTL_SECONDS,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def switch_workspace(request):
     org_slug = (request.data.get('org_slug') or '').strip().lower()
     password = request.data.get('password') or ''
+    otp_code = (request.data.get('otp_code') or '').strip()
 
-    if not org_slug or not password:
-        return Response({'error': 'org_slug and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+    if not org_slug:
+        return Response({'error': 'org_slug is required'}, status=status.HTTP_400_BAD_REQUEST)
+    if not password and not otp_code:
+        return Response({'error': 'Provide password or otp_code'}, status=status.HTTP_400_BAD_REQUEST)
 
     if not check_rate_limit(f"switch_workspace:{request.user.id}", action='switch_workspace', limit=30, window=3600):
+        _log_auth_audit_throttled(
+            organization=request.user.organization,
+            user=request.user,
+            resource_type='workspace_switch_rate_limited',
+            details={'reason': 'rate_limited'},
+            request=request,
+            throttle_key=f"switch_workspace_rate_limited:{request.user.id}",
+            ttl_seconds=600,
+        )
         return Response({'error': 'Too many workspace switch attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
     target_user = User.objects.filter(
@@ -204,13 +386,70 @@ def switch_workspace(request):
         is_active=True
     ).first()
     if not target_user:
+        _log_auth_audit_throttled(
+            organization=request.user.organization,
+            user=request.user,
+            resource_type='workspace_switch_failed',
+            details={'reason': 'workspace_not_found', 'target_org_slug': org_slug},
+            request=request,
+            throttle_key=f"switch_workspace_missing:{request.user.id}:{org_slug}",
+            ttl_seconds=300,
+        )
         return Response({'error': 'Workspace not found for this account'}, status=status.HTTP_404_NOT_FOUND)
 
-    authenticated = authenticate(username=target_user.username, password=password)
-    if not authenticated:
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+    authenticated = None
+    if otp_code:
+        cached_data = cache.get(_workspace_switch_code_cache_key(request.user.id, org_slug))
+        if not cached_data:
+            _log_auth_audit_throttled(
+                organization=request.user.organization,
+                user=request.user,
+                resource_type='workspace_switch_failed',
+                details={'reason': 'otp_missing_or_expired', 'target_org_slug': org_slug, 'verification_method': 'otp'},
+                request=request,
+                throttle_key=f"switch_workspace_otp_expired:{request.user.id}:{org_slug}",
+                ttl_seconds=300,
+            )
+            return Response({'error': 'Invalid or expired verification code'}, status=status.HTTP_401_UNAUTHORIZED)
+        if cached_data.get('code') != otp_code or cached_data.get('target_user_id') != target_user.id:
+            _log_auth_audit_throttled(
+                organization=request.user.organization,
+                user=request.user,
+                resource_type='workspace_switch_failed',
+                details={'reason': 'otp_invalid', 'target_org_slug': org_slug, 'verification_method': 'otp'},
+                request=request,
+                throttle_key=f"switch_workspace_otp_invalid:{request.user.id}:{org_slug}",
+                ttl_seconds=300,
+            )
+            return Response({'error': 'Invalid or expired verification code'}, status=status.HTTP_401_UNAUTHORIZED)
+        cache.delete(_workspace_switch_code_cache_key(request.user.id, org_slug))
+        authenticated = target_user
+    else:
+        authenticated = authenticate(username=target_user.username, password=password)
+        if not authenticated:
+            _log_auth_audit_throttled(
+                organization=request.user.organization,
+                user=request.user,
+                resource_type='workspace_switch_failed',
+                details={'reason': 'invalid_credentials', 'target_org_slug': org_slug, 'verification_method': 'password'},
+                request=request,
+                throttle_key=f"switch_workspace_password_invalid:{request.user.id}:{org_slug}",
+                ttl_seconds=300,
+            )
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
     logger.info("Workspace switch for user email=%s to org=%s", request.user.email, org_slug)
+    _log_auth_audit(
+        organization=authenticated.organization,
+        user=authenticated,
+        resource_type='workspace_switch',
+        details={
+            'from_org_slug': request.user.organization.slug,
+            'to_org_slug': authenticated.organization.slug,
+            'verification_method': 'otp' if otp_code else 'password',
+        },
+        request=request,
+    )
     return Response(_build_auth_payload(authenticated))
 
 

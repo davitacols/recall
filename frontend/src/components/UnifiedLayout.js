@@ -47,7 +47,7 @@ function loadFabPosition() {
 }
 
 export default function UnifiedLayout({ children }) {
-  const { user, logout, listWorkspaces, switchWorkspace } = useAuth();
+  const { user, logout, listWorkspaces, requestWorkspaceSwitchCode, switchWorkspace } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,6 +65,7 @@ export default function UnifiedLayout({ children }) {
   const [workspaces, setWorkspaces] = useState([]);
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
   const [workspacePassword, setWorkspacePassword] = useState("");
+  const [requestingCodeOrgSlug, setRequestingCodeOrgSlug] = useState(null);
   const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
   const [workspaceError, setWorkspaceError] = useState("");
   const profileRef = useRef(null);
@@ -213,13 +214,13 @@ export default function UnifiedLayout({ children }) {
 
   const handleSwitchWorkspace = async (orgSlug) => {
     if (!workspacePassword.trim()) {
-      setWorkspaceError("Enter password to switch workspace");
+      setWorkspaceError("Enter verification code to switch workspace");
       return;
     }
 
     setWorkspaceError("");
     setSwitchingOrgSlug(orgSlug);
-    const result = await switchWorkspace({ org_slug: orgSlug, password: workspacePassword });
+    const result = await switchWorkspace({ org_slug: orgSlug, otp_code: workspacePassword });
     setSwitchingOrgSlug(null);
 
     if (!result.success) {
@@ -230,6 +231,18 @@ export default function UnifiedLayout({ children }) {
     setWorkspacePassword("");
     setShowProfile(false);
     window.location.href = "/";
+  };
+
+  const handleRequestWorkspaceCode = async (orgSlug) => {
+    setWorkspaceError("");
+    setRequestingCodeOrgSlug(orgSlug);
+    const result = await requestWorkspaceSwitchCode({ org_slug: orgSlug });
+    setRequestingCodeOrgSlug(null);
+    if (!result.success) {
+      setWorkspaceError(result.error || "Failed to send verification code");
+      return;
+    }
+    setWorkspaceError("Verification code sent to your email");
   };
 
   return (
@@ -330,10 +343,10 @@ export default function UnifiedLayout({ children }) {
                       <div style={{ ...workspaceMenuSection, borderTop: `1px solid ${palette.border}` }}>
                         <p style={{ ...workspaceTitle, color: palette.muted }}>Switch Workspace</p>
                         <input
-                          type="password"
+                          type="text"
                           value={workspacePassword}
                           onChange={(event) => setWorkspacePassword(event.target.value)}
-                          placeholder="Confirm password"
+                          placeholder="Enter 6-digit code"
                           style={{
                             ...workspacePasswordInput,
                             background: palette.panelBg,
@@ -342,7 +355,7 @@ export default function UnifiedLayout({ children }) {
                           }}
                         />
                         {workspaceError ? (
-                          <p style={{ ...workspaceMeta, color: "#ef4444" }}>{workspaceError}</p>
+                          <p style={{ ...workspaceMeta, color: workspaceError.includes("sent") ? palette.muted : "#ef4444" }}>{workspaceError}</p>
                         ) : null}
                         {workspacesLoading ? (
                           <p style={{ ...workspaceMeta, color: palette.muted }}>Loading workspaces...</p>
@@ -367,20 +380,36 @@ export default function UnifiedLayout({ children }) {
                                       Current
                                     </span>
                                   ) : (
-                                    <button
-                                      onClick={() => handleSwitchWorkspace(workspace.org_slug)}
-                                      disabled={switchingOrgSlug === workspace.org_slug}
-                                      style={{
-                                        ...workspaceSwitchButton,
-                                        background: palette.hover,
-                                        color: palette.text,
-                                        border: `1px solid ${palette.border}`,
-                                        opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
-                                        cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
-                                      }}
-                                    >
-                                      {switchingOrgSlug === workspace.org_slug ? "Switching..." : "Switch"}
-                                    </button>
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                      <button
+                                        onClick={() => handleRequestWorkspaceCode(workspace.org_slug)}
+                                        disabled={requestingCodeOrgSlug === workspace.org_slug}
+                                        style={{
+                                          ...workspaceSwitchButton,
+                                          background: "transparent",
+                                          color: palette.text,
+                                          border: `1px solid ${palette.border}`,
+                                          opacity: requestingCodeOrgSlug === workspace.org_slug ? 0.65 : 1,
+                                          cursor: requestingCodeOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
+                                        }}
+                                      >
+                                        {requestingCodeOrgSlug === workspace.org_slug ? "Sending..." : "Send"}
+                                      </button>
+                                      <button
+                                        onClick={() => handleSwitchWorkspace(workspace.org_slug)}
+                                        disabled={switchingOrgSlug === workspace.org_slug}
+                                        style={{
+                                          ...workspaceSwitchButton,
+                                          background: palette.hover,
+                                          color: palette.text,
+                                          border: `1px solid ${palette.border}`,
+                                          opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
+                                          cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
+                                        }}
+                                      >
+                                        {switchingOrgSlug === workspace.org_slug ? "Switching..." : "Switch"}
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               );

@@ -186,6 +186,38 @@ def send_password_reset_email(user, reset_url):
     return send_email(user.email, subject, html, text_content=text, reply_to=get_support_email())
 
 
+def send_workspace_switch_code_email(user, organization_name, code):
+    app_name = "Knoledgr"
+    user_name = user.get_full_name() or user.username
+    subject = f"Your {app_name} workspace switch code"
+    reason = "You received this email because a workspace switch was requested."
+    html = render_email_template(
+        preheader=f"Workspace switch code for {organization_name}",
+        title="Verify workspace switch",
+        body_html=(
+            f"<p>Hi {escape(user_name)},</p>"
+            f"<p>Use this verification code to switch to <strong>{escape(organization_name)}</strong>:</p>"
+            f"<p style=\"font-size:28px;font-weight:800;letter-spacing:0.18em;margin:10px 0 6px;\">{escape(code)}</p>"
+            "<p>This code expires in 10 minutes.</p>"
+        ),
+        cta_label="Open Knoledgr",
+        cta_url=build_frontend_url("/"),
+        reason_text=reason,
+    )
+    text = build_text_email(
+        title="Verify workspace switch",
+        body_lines=[
+            f"Hi {user_name},",
+            f"Use this verification code to switch to {organization_name}: {code}",
+            "This code expires in 10 minutes.",
+        ],
+        cta_label="Open Knoledgr",
+        cta_url=build_frontend_url("/"),
+        reason_text=reason,
+    )
+    return send_email(user.email, subject, html, text_content=text, reply_to=get_support_email())
+
+
 def build_frontend_url(path):
     base = settings.FRONTEND_URL.rstrip("/") + "/"
     relative = (path or "/").lstrip("/")

@@ -125,9 +125,39 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const switchWorkspace = async ({ org_slug, password }) => {
+  const requestWorkspaceSwitchCode = async ({ org_slug }) => {
     try {
-      const response = await api.post('/api/auth/workspaces/switch/', { org_slug, password });
+      const response = await api.post('/api/auth/workspaces/switch/request-code/', { org_slug });
+      return { success: true, data: response.data };
+    } catch (error) {
+      const status = error.response?.status;
+      if (status === 404) {
+        return {
+          success: false,
+          error: 'Workspace switch OTP endpoint is unavailable. Deploy latest backend update first.',
+        };
+      }
+      if (status === 429) {
+        return {
+          success: false,
+          error: error.response?.data?.error || 'Too many verification code requests. Try again later.',
+        };
+      }
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Failed to send verification code',
+      };
+    }
+  };
+
+  const switchWorkspace = async ({ org_slug, password, otp_code }) => {
+    try {
+      const payload = {
+        org_slug,
+        ...(otp_code ? { otp_code } : {}),
+        ...(password ? { password } : {}),
+      };
+      const response = await api.post('/api/auth/workspaces/switch/', payload);
       const responseData = response.data.data || response.data;
       const { access_token, user: userData } = responseData;
 
@@ -155,7 +185,7 @@ export function AuthProvider({ children }) {
       if (status === 401) {
         return {
           success: false,
-          error: error.response?.data?.error || 'Invalid password.',
+          error: error.response?.data?.error || 'Invalid credentials.',
         };
       }
       return {
@@ -186,6 +216,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     listWorkspaces,
+    requestWorkspaceSwitchCode,
     switchWorkspace,
     refreshUser,
     loading

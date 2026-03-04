@@ -26,7 +26,7 @@ async function requestWithFallback(requests) {
 }
 
 function Settings() {
-  const { user, listWorkspaces, switchWorkspace } = useAuth();
+  const { user, listWorkspaces, requestWorkspaceSwitchCode, switchWorkspace } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const { addToast } = useToast();
   const [isCompact, setIsCompact] = useState(window.innerWidth < 980);
@@ -47,6 +47,7 @@ function Settings() {
   const [resendingInvitationId, setResendingInvitationId] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
   const [workspacePassword, setWorkspacePassword] = useState("");
+  const [requestingCodeOrgSlug, setRequestingCodeOrgSlug] = useState(null);
   const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
   const [orgName, setOrgName] = useState("");
   const [orgDescription, setOrgDescription] = useState("");
@@ -239,12 +240,12 @@ function Settings() {
 
   const handleSwitchWorkspace = async (orgSlug) => {
     if (!workspacePassword.trim()) {
-      addToast("Enter your password to switch workspace", "error");
+      addToast("Enter the verification code to switch workspace", "error");
       return;
     }
 
     setSwitchingOrgSlug(orgSlug);
-    const result = await switchWorkspace({ org_slug: orgSlug, password: workspacePassword });
+    const result = await switchWorkspace({ org_slug: orgSlug, otp_code: workspacePassword });
     setSwitchingOrgSlug(null);
 
     if (!result.success) {
@@ -255,6 +256,17 @@ function Settings() {
     setWorkspacePassword("");
     addToast(`Switched to ${result.user?.organization_name || orgSlug}`, "success");
     window.location.href = "/";
+  };
+
+  const handleRequestWorkspaceCode = async (orgSlug) => {
+    setRequestingCodeOrgSlug(orgSlug);
+    const result = await requestWorkspaceSwitchCode({ org_slug: orgSlug });
+    setRequestingCodeOrgSlug(null);
+    if (!result.success) {
+      addToast(result.error, "error");
+      return;
+    }
+    addToast("Verification code sent to your email", "success");
   };
 
   const removeMember = async (memberId) => {
@@ -563,10 +575,11 @@ function Settings() {
                 Use this to move between organizations tied to your email.
               </p>
               <Input
-                label="Confirm Password"
-                type="password"
+                label="Verification Code"
+                type="text"
                 value={workspacePassword}
                 onChange={(event) => setWorkspacePassword(event.target.value)}
+                placeholder="Enter 6-digit code"
                 palette={palette}
               />
               {workspaces.length <= 1 ? (
@@ -588,17 +601,31 @@ function Settings() {
                         {isCurrent ? (
                           <span style={chip(palette)}>Current</span>
                         ) : (
-                          <button
-                            onClick={() => handleSwitchWorkspace(workspace.org_slug)}
-                            disabled={switchingOrgSlug === workspace.org_slug}
-                            style={{
-                              ...copyButton(palette),
-                              cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
-                              opacity: switchingOrgSlug === workspace.org_slug ? 0.6 : 1,
-                            }}
-                          >
-                            {switchingOrgSlug === workspace.org_slug ? "Switching..." : "Switch"}
-                          </button>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              onClick={() => handleRequestWorkspaceCode(workspace.org_slug)}
+                              disabled={requestingCodeOrgSlug === workspace.org_slug}
+                              style={{
+                                ...copyButton(palette),
+                                background: palette.panelAlt,
+                                cursor: requestingCodeOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
+                                opacity: requestingCodeOrgSlug === workspace.org_slug ? 0.6 : 1,
+                              }}
+                            >
+                              {requestingCodeOrgSlug === workspace.org_slug ? "Sending..." : "Send Code"}
+                            </button>
+                            <button
+                              onClick={() => handleSwitchWorkspace(workspace.org_slug)}
+                              disabled={switchingOrgSlug === workspace.org_slug}
+                              style={{
+                                ...copyButton(palette),
+                                cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
+                                opacity: switchingOrgSlug === workspace.org_slug ? 0.6 : 1,
+                              }}
+                            >
+                              {switchingOrgSlug === workspace.org_slug ? "Switching..." : "Switch"}
+                            </button>
+                          </div>
                         )}
                       </div>
                     );

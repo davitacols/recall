@@ -23,6 +23,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [filter, setFilter] = useState("all");
   const hasFetchedRef = useRef(false);
 
   const palette = useMemo(
@@ -31,18 +32,26 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
         ? {
             panel: "#1d171b",
             border: "rgba(255,225,193,0.14)",
+            borderStrong: "rgba(255,225,193,0.24)",
             text: "#f4ece0",
             muted: "#baa892",
-            rowHover: "rgba(255,255,255,0.06)",
+            rowHover: "rgba(255,255,255,0.08)",
             unreadDot: "#ff8a4c",
+            accent: "#ffb476",
+            accentText: "#20120d",
+            badgeBg: "rgba(255,180,118,0.18)",
           }
         : {
             panel: "#fffaf3",
             border: "#eadfce",
+            borderStrong: "#d8cab6",
             text: "#231814",
             muted: "#7d6d5a",
-            rowHover: "rgba(35,24,20,0.06)",
+            rowHover: "rgba(35,24,20,0.045)",
             unreadDot: "#e85d04",
+            accent: "#d9692e",
+            accentText: "#fff7ee",
+            badgeBg: "rgba(217,105,46,0.14)",
           },
     [darkMode]
   );
@@ -167,20 +176,40 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
     }
   };
 
-  const attention = notifications.filter((n) => ["mention", "decision", "task", "goal", "meeting"].includes(n.type));
-  const fyi = notifications.filter((n) => !["mention", "decision", "task", "goal", "meeting"].includes(n.type));
+  const visible = filter === "unread" ? notifications.filter((n) => !n.is_read) : notifications;
+  const visibleAttention = visible.filter((n) => ["mention", "decision", "task", "goal", "meeting"].includes(n.type));
+  const visibleFYI = visible.filter((n) => !["mention", "decision", "task", "goal", "meeting"].includes(n.type));
+
+  const formatTime = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    const diffMs = Date.now() - date.getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString();
+  };
 
   const renderItem = (item) => (
-    <article key={item.id} style={{ ...row, borderBottom: `1px solid ${palette.border}` }}>
+    <article
+      key={item.id}
+      style={{
+        ...row,
+        border: `1px solid ${item.is_read ? palette.border : palette.borderStrong}`,
+        background: item.is_read ? "transparent" : palette.badgeBg,
+      }}
+    >
       <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <p style={{ ...title, color: palette.text }}>{item.title}</p>
           {!item.is_read && <span style={{ ...unreadDot, background: palette.unreadDot }} />}
         </div>
         <p style={{ ...message, color: palette.muted }}>{item.message}</p>
-        <p style={{ ...timestamp, color: palette.muted }}>
-          {item.created_at ? new Date(item.created_at).toLocaleString() : ""}
-        </p>
+        <p style={{ ...timestamp, color: palette.muted }}>{formatTime(item.created_at)}</p>
         <div style={actionsRow}>
           {item.link ? (
             <Link
@@ -189,17 +218,17 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
                 onMarkAsRead(item);
                 setIsOpen(false);
               }}
-              style={actionLink}
+              style={{ ...actionLink, borderColor: palette.border, color: palette.text }}
             >
               Open
             </Link>
           ) : null}
           {!item.is_read ? (
-            <button onClick={() => onMarkAsRead(item)} style={actionButton}>
+            <button onClick={() => onMarkAsRead(item)} style={{ ...actionButton, borderColor: palette.border, color: palette.text }}>
               Mark read
             </button>
           ) : null}
-          <button onClick={() => onDelete(item)} style={{ ...actionButton, color: "#ef4444" }}>
+          <button onClick={() => onDelete(item)} style={{ ...actionButton, borderColor: "rgba(239,68,68,0.4)", color: "#ef4444" }}>
             Delete
           </button>
         </div>
@@ -234,16 +263,42 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
             ...(align === "left"
               ? { left: isMobile ? -12 : 0, right: "auto" }
               : { right: isMobile ? -12 : 0, left: "auto" }),
-            width: isMobile ? "min(92vw, 390px)" : dropdown.width,
+            width: isMobile ? "min(94vw, 430px)" : dropdown.width,
             background: palette.panel,
             border: `1px solid ${palette.border}`,
           }}
         >
           <div style={{ ...header, borderBottom: `1px solid ${palette.border}` }}>
-            <h3 style={{ margin: 0, fontSize: 14, color: palette.text }}>Notifications</h3>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: palette.text }}>Notifications</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={() => setFilter("all")}
+                  style={{
+                    ...filterPill,
+                    border: `1px solid ${palette.border}`,
+                    background: filter === "all" ? palette.badgeBg : "transparent",
+                    color: palette.text,
+                  }}
+                >
+                  All ({notifications.length})
+                </button>
+                <button
+                  onClick={() => setFilter("unread")}
+                  style={{
+                    ...filterPill,
+                    border: `1px solid ${palette.border}`,
+                    background: filter === "unread" ? palette.badgeBg : "transparent",
+                    color: palette.text,
+                  }}
+                >
+                  Unread ({unreadCount})
+                </button>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {unreadCount > 0 ? (
-                <button onClick={onMarkAllAsRead} style={actionButton}>
+                <button onClick={onMarkAllAsRead} style={{ ...headerAction, border: `1px solid ${palette.border}`, color: palette.text }}>
                   Mark all read
                 </button>
               ) : null}
@@ -252,24 +307,24 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
                   navigate("/notifications");
                   setIsOpen(false);
                 }}
-                style={actionButton}
+                style={{ ...headerAction, border: `1px solid ${palette.border}`, color: palette.text }}
               >
                 View all
               </button>
             </div>
           </div>
 
-          <div style={{ maxHeight: 420, overflowY: "auto" }}>
+          <div style={{ maxHeight: 480, overflowY: "auto", padding: "10px 12px 12px", display: "grid", gap: 10 }}>
             {loading ? (
               <div style={{ ...empty, color: palette.muted }}>Loading notifications...</div>
-            ) : notifications.length === 0 ? (
+            ) : visible.length === 0 ? (
               <div style={{ ...empty, color: palette.muted }}>You are all caught up.</div>
             ) : (
               <>
-                {attention.length > 0 ? <div style={sectionTag}>Attention</div> : null}
-                {attention.slice(0, 4).map(renderItem)}
-                {fyi.length > 0 ? <div style={sectionTag}>FYI</div> : null}
-                {fyi.slice(0, 3).map(renderItem)}
+                {visibleAttention.length > 0 ? <div style={{ ...sectionTag, color: palette.muted }}>Attention</div> : null}
+                {visibleAttention.slice(0, 5).map(renderItem)}
+                {visibleFYI.length > 0 ? <div style={{ ...sectionTag, color: palette.muted }}>FYI</div> : null}
+                {visibleFYI.slice(0, 5).map(renderItem)}
               </>
             )}
           </div>
@@ -311,36 +366,37 @@ const dropdown = {
   position: "absolute",
   top: "calc(100% + 8px)",
   right: 0,
-  width: 390,
-  borderRadius: 12,
+  width: 430,
+  borderRadius: 16,
   overflow: "hidden",
   boxShadow: "0 20px 40px rgba(0,0,0,0.24)",
   zIndex: 100,
 };
 
 const header = {
-  padding: "10px 12px",
+  padding: "12px 14px",
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   justifyContent: "space-between",
+  gap: 10,
 };
 
 const sectionTag = {
-  padding: "8px 12px",
-  fontSize: 10,
+  padding: "2px 2px 0",
+  fontSize: 11,
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: "0.08em",
-  color: "#9ca3af",
 };
 
 const row = {
-  padding: "10px 12px",
+  borderRadius: 12,
+  padding: "11px 12px",
 };
 
 const title = {
   margin: 0,
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 700,
   lineHeight: 1.35,
   overflow: "hidden",
@@ -350,13 +406,13 @@ const title = {
 
 const message = {
   margin: 0,
-  fontSize: 12,
+  fontSize: 13,
   lineHeight: 1.45,
 };
 
 const timestamp = {
-  margin: "2px 0 0",
-  fontSize: 11,
+  margin: "3px 0 0",
+  fontSize: 12,
 };
 
 const unreadDot = {
@@ -369,25 +425,48 @@ const unreadDot = {
 const actionsRow = {
   display: "flex",
   gap: 8,
-  marginTop: 4,
+  marginTop: 6,
   alignItems: "center",
+  flexWrap: "wrap",
 };
 
 const actionButton = {
-  border: "none",
+  border: "1px solid",
   background: "transparent",
-  padding: 0,
-  fontSize: 11,
+  padding: "5px 9px",
+  borderRadius: 999,
+  fontSize: 12,
   fontWeight: 600,
-  color: "#60a5fa",
   cursor: "pointer",
 };
 
 const actionLink = {
-  fontSize: 11,
+  border: "1px solid",
+  background: "transparent",
+  padding: "5px 9px",
+  borderRadius: 999,
+  fontSize: 12,
   fontWeight: 600,
-  color: "#60a5fa",
   textDecoration: "none",
+};
+
+const headerAction = {
+  border: "1px solid",
+  background: "transparent",
+  borderRadius: 999,
+  padding: "6px 10px",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const filterPill = {
+  border: "1px solid",
+  borderRadius: 999,
+  padding: "5px 10px",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
 };
 
 const empty = {

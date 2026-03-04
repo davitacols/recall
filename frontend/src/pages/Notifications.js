@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BellIcon, CheckIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { BellIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import {
   deleteNotification,
@@ -8,6 +8,22 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "../services/notifications";
+
+const ATTENTION_TYPES = new Set(["mention", "decision", "task", "goal", "meeting"]);
+
+function toRelativeTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  const diffMs = Date.now() - date.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
 
 function Notifications() {
   const { darkMode } = useTheme();
@@ -20,21 +36,27 @@ function Notifications() {
       darkMode
         ? {
             bg: "#0f0b0d",
-            card: "#171215",
+            panel: "#171215",
+            panelSoft: "#1d171b",
             border: "rgba(255,225,193,0.14)",
+            borderStrong: "rgba(255,225,193,0.24)",
             text: "#f4ece0",
             muted: "#baa892",
-            unread: "rgba(255,138,76,0.14)",
-            attention: "#ff8a4c",
+            accent: "#ffb476",
+            accentText: "#20120d",
+            unreadBg: "rgba(255,180,118,0.14)",
           }
         : {
             bg: "#f6f1ea",
-            card: "#fffaf3",
+            panel: "#fffaf3",
+            panelSoft: "#ffffff",
             border: "#eadfce",
+            borderStrong: "#d8cab6",
             text: "#231814",
             muted: "#7d6d5a",
-            unread: "rgba(232,93,4,0.1)",
-            attention: "#e85d04",
+            accent: "#d9692e",
+            accentText: "#fff7ee",
+            unreadBg: "rgba(217,105,46,0.1)",
           },
     [darkMode]
   );
@@ -47,7 +69,7 @@ function Notifications() {
     try {
       setLoading(true);
       const { notifications } = await listNotifications();
-      setItems(notifications);
+      setItems(Array.isArray(notifications) ? notifications : []);
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
       setItems([]);
@@ -85,111 +107,160 @@ function Notifications() {
   };
 
   const unreadCount = items.filter((item) => !item.is_read).length;
-  const typeCounts = items.reduce((acc, item) => {
-    acc[item.type] = (acc[item.type] || 0) + 1;
-    return acc;
-  }, {});
+  const readCount = items.length - unreadCount;
+  const attentionCount = items.filter((item) => ATTENTION_TYPES.has(item.type)).length;
+  const fyiCount = items.length - attentionCount;
 
   const filtered = items.filter((item) => {
     if (filter === "all") return true;
     if (filter === "unread") return !item.is_read;
     if (filter === "read") return item.is_read;
-    return item.type === filter;
+    if (filter === "attention") return ATTENTION_TYPES.has(item.type);
+    if (filter === "fyi") return !ATTENTION_TYPES.has(item.type);
+    return true;
   });
 
-  const filters = ["all", "unread", "read", ...Object.keys(typeCounts).slice(0, 4)];
+  const visibleAttention = filtered.filter((item) => ATTENTION_TYPES.has(item.type));
+  const visibleFYI = filtered.filter((item) => !ATTENTION_TYPES.has(item.type));
+
+  const filterPills = [
+    { key: "all", label: `All (${items.length})` },
+    { key: "unread", label: `Unread (${unreadCount})` },
+    { key: "read", label: `Read (${readCount})` },
+    { key: "attention", label: `Attention (${attentionCount})` },
+    { key: "fyi", label: `FYI (${fyiCount})` },
+  ];
+
+  const renderRow = (item) => (
+    <article
+      key={item.id}
+      style={{
+        ...rowCard,
+        border: `1px solid ${item.is_read ? palette.border : palette.borderStrong}`,
+        background: item.is_read ? palette.panelSoft : palette.unreadBg,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.muted }}>
+            {item.type || "system"}
+          </span>
+          {!item.is_read ? <span style={{ ...unreadDot, background: palette.accent }} /> : null}
+          <span style={{ ...timestamp, color: palette.muted }}>{toRelativeTime(item.created_at)}</span>
+        </div>
+        <h3 style={{ ...rowTitle, color: palette.text }}>{item.title}</h3>
+        <p style={{ ...rowMessage, color: palette.muted }}>{item.message}</p>
+      </div>
+
+      <div style={rowActions}>
+        {item.link ? (
+          <Link
+            to={item.link}
+            onClick={() => onMarkRead(item)}
+            style={{
+              ...actionPill,
+              border: `1px solid ${palette.border}`,
+              color: palette.text,
+            }}
+          >
+            Open
+          </Link>
+        ) : null}
+        {!item.is_read ? (
+          <button
+            onClick={() => onMarkRead(item)}
+            style={{
+              ...actionPill,
+              border: `1px solid ${palette.border}`,
+              color: palette.text,
+              background: "transparent",
+            }}
+          >
+            Mark read
+          </button>
+        ) : null}
+        <button
+          onClick={() => onDelete(item)}
+          style={{
+            ...actionPill,
+            border: "1px solid rgba(239,68,68,0.45)",
+            color: "#ef4444",
+            background: "transparent",
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    </article>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: palette.bg }}>
       <div style={container}>
-        <header style={{ ...headerCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <BellIcon style={{ width: 20, height: 20, color: palette.text }} />
-              <h1 style={{ margin: 0, fontSize: 24, color: palette.text }}>Notifications</h1>
+        <header style={{ ...hero, background: palette.panel, border: `1px solid ${palette.border}` }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <BellIcon style={{ width: 22, height: 22, color: palette.text }} />
+              <h1 style={{ margin: 0, fontSize: "clamp(1.2rem,2vw,1.6rem)", color: palette.text }}>Notifications</h1>
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>
-              {unreadCount} unread out of {items.length}
+              {unreadCount} unread of {items.length} total
             </p>
           </div>
-          {unreadCount > 0 ? (
-            <button onClick={onMarkAllRead} style={actionButton}>
-              Mark all read
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={fetchData}
+              style={{ ...heroAction, border: `1px solid ${palette.border}`, color: palette.text, background: "transparent" }}
+            >
+              Refresh
             </button>
-          ) : null}
+            {unreadCount > 0 ? (
+              <button
+                onClick={onMarkAllRead}
+                style={{
+                  ...heroAction,
+                  border: `1px solid ${darkMode ? "rgba(255,180,118,0.5)" : "#b95322"}`,
+                  background: palette.accent,
+                  color: palette.accentText,
+                }}
+              >
+                Mark all read
+              </button>
+            ) : null}
+          </div>
         </header>
 
-        <div style={filtersWrap}>
-          {filters.map((item) => (
+        <section style={filtersWrap}>
+          {filterPills.map((pill) => (
             <button
-              key={item}
-              onClick={() => setFilter(item)}
+              key={pill.key}
+              onClick={() => setFilter(pill.key)}
               style={{
-                ...filterButton,
+                ...filterPill,
                 border: `1px solid ${palette.border}`,
-                background: filter === item ? palette.attention : palette.card,
-                color: filter === item ? "#fff" : palette.text,
+                background: filter === pill.key ? palette.unreadBg : palette.panel,
+                color: palette.text,
               }}
             >
-              {item}
+              {pill.label}
             </button>
           ))}
-        </div>
+        </section>
 
         {loading ? (
-          <div style={{ ...empty, color: palette.muted, border: `1px solid ${palette.border}`, background: palette.card }}>
+          <div style={{ ...emptyCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.muted }}>
             Loading notifications...
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ ...empty, color: palette.muted, border: `1px solid ${palette.border}`, background: palette.card }}>
-            No notifications for this filter.
+          <div style={{ ...emptyCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.muted }}>
+            Nothing to show for this filter.
           </div>
         ) : (
-          <div style={list}>
-            {filtered.map((item) => (
-              <article
-                key={item.id}
-                style={{
-                  ...row,
-                  border: `1px solid ${palette.border}`,
-                  background: item.is_read ? palette.card : palette.unread,
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.muted }}>
-                      {item.type}
-                    </span>
-                    {!item.is_read ? <span style={{ ...dot, background: palette.attention }} /> : null}
-                  </div>
-                  <h3 style={{ ...rowTitle, color: palette.text }}>{item.title}</h3>
-                  <p style={{ ...rowMessage, color: palette.muted }}>{item.message}</p>
-                  <p style={{ ...rowMeta, color: palette.muted }}>
-                    {item.created_at ? new Date(item.created_at).toLocaleString() : ""}
-                  </p>
-                </div>
-
-                <div style={rowActions}>
-                  {item.link ? (
-                    <Link
-                      to={item.link}
-                      onClick={() => onMarkRead(item)}
-                      style={{ ...linkButton, border: `1px solid ${palette.border}` }}
-                    >
-                      Open
-                    </Link>
-                  ) : null}
-                  {!item.is_read ? (
-                    <button onClick={() => onMarkRead(item)} style={iconAction} title="Mark as read">
-                      <CheckIcon style={{ width: 15, height: 15 }} />
-                    </button>
-                  ) : null}
-                  <button onClick={() => onDelete(item)} style={{ ...iconAction, color: "#ef4444" }} title="Delete">
-                    <TrashIcon style={{ width: 15, height: 15 }} />
-                  </button>
-                </div>
-              </article>
-            ))}
+          <div style={{ display: "grid", gap: 12 }}>
+            {visibleAttention.length > 0 ? <p style={{ ...sectionTitle, color: palette.muted }}>Attention</p> : null}
+            {visibleAttention.map(renderRow)}
+            {visibleFYI.length > 0 ? <p style={{ ...sectionTitle, color: palette.muted }}>FYI</p> : null}
+            {visibleFYI.map(renderRow)}
           </div>
         )}
       </div>
@@ -201,119 +272,110 @@ const container = {
   width: "min(1100px, 100%)",
   margin: "0 auto",
   padding: "clamp(12px,2.2vw,24px)",
+  display: "grid",
+  gap: 12,
 };
 
-const headerCard = {
-  borderRadius: 14,
+const hero = {
+  borderRadius: 16,
   padding: "14px 16px",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
+  flexWrap: "wrap",
 };
 
-const actionButton = {
-  border: "none",
-  borderRadius: 9,
+const heroAction = {
+  borderRadius: 999,
   padding: "8px 12px",
-  background: "linear-gradient(135deg,#ffd390,#ff9f62)",
-  color: "#20140f",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
 };
 
 const filtersWrap = {
-  marginTop: 10,
   display: "flex",
   gap: 8,
   flexWrap: "wrap",
 };
 
-const filterButton = {
+const filterPill = {
   borderRadius: 999,
-  padding: "6px 11px",
+  padding: "7px 12px",
   fontSize: 12,
-  textTransform: "capitalize",
+  fontWeight: 700,
   cursor: "pointer",
 };
 
-const list = {
-  marginTop: 12,
-  display: "grid",
-  gap: 8,
+const sectionTitle = {
+  margin: "4px 2px 0",
+  fontSize: 11,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  fontWeight: 800,
 };
 
-const row = {
-  borderRadius: 12,
+const rowCard = {
+  borderRadius: 14,
   padding: "12px 12px",
   display: "grid",
-  gridTemplateColumns: "minmax(0,1fr) auto",
-  gap: 10,
+  gridTemplateColumns: "minmax(0,1fr)",
+  gap: 12,
 };
 
 const typeBadge = {
   borderRadius: 999,
   fontSize: 10,
-  padding: "2px 8px",
+  padding: "3px 8px",
   fontWeight: 700,
   textTransform: "uppercase",
   width: "fit-content",
 };
 
-const dot = {
+const unreadDot = {
   width: 7,
   height: 7,
   borderRadius: "50%",
 };
 
+const timestamp = {
+  fontSize: 12,
+};
+
 const rowTitle = {
-  margin: "7px 0 4px",
-  fontSize: 14,
+  margin: "8px 0 4px",
+  fontSize: 15,
   fontWeight: 700,
+  lineHeight: 1.35,
 };
 
 const rowMessage = {
   margin: 0,
   fontSize: 13,
-  lineHeight: 1.4,
-};
-
-const rowMeta = {
-  margin: "6px 0 0",
-  fontSize: 11,
+  lineHeight: 1.45,
 };
 
 const rowActions = {
   display: "flex",
-  alignItems: "flex-start",
-  gap: 6,
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
 };
 
-const iconAction = {
-  border: "none",
-  background: "transparent",
-  cursor: "pointer",
-  color: "#60a5fa",
-  display: "grid",
-  placeItems: "center",
-  padding: 2,
-};
-
-const linkButton = {
+const actionPill = {
   textDecoration: "none",
-  borderRadius: 8,
-  padding: "6px 9px",
+  borderRadius: 999,
+  padding: "6px 10px",
   fontSize: 12,
-  fontWeight: 600,
-  color: "#60a5fa",
+  fontWeight: 700,
+  cursor: "pointer",
 };
 
-const empty = {
-  marginTop: 12,
-  borderRadius: 12,
+const emptyCard = {
+  borderRadius: 14,
   textAlign: "center",
-  padding: "28px 14px",
+  padding: "30px 14px",
   fontSize: 13,
 };
 

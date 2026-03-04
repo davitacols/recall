@@ -277,21 +277,35 @@ def register(request):
                 return Response({'error': 'Invalid or expired invitation'}, 
                                status=status.HTTP_400_BAD_REQUEST)
             
-            if User.objects.filter(email=email, organization=invitation.organization).exists():
+            existing_user = User.objects.filter(
+                email__iexact=email,
+                organization=invitation.organization
+            ).first()
+
+            display_name = full_name or email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
+            if existing_user and existing_user.is_active:
                 return Response({'error': 'User already exists in this organization'}, 
                                status=status.HTTP_400_BAD_REQUEST)
-            
-            username = generate_unique_org_username(email, invitation.organization.slug)
-            display_name = full_name or email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-            user = User.objects.create_user(
-                username=username,
-                email=email,
-                password=password,
-                organization=invitation.organization,
-                full_name=display_name,
-                first_name=display_name.split()[0] if display_name else email.split('@')[0],
-                role=_normalize_user_role(invitation.role or 'contributor')
-            )
+
+            if existing_user:
+                user = existing_user
+                user.set_password(password)
+                user.is_active = True
+                user.role = _normalize_user_role(invitation.role or 'contributor')
+                user.full_name = display_name or user.full_name
+                user.first_name = display_name.split()[0] if display_name else user.first_name
+                user.save(update_fields=['password', 'is_active', 'role', 'full_name', 'first_name'])
+            else:
+                username = generate_unique_org_username(email, invitation.organization.slug)
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    organization=invitation.organization,
+                    full_name=display_name,
+                    first_name=display_name.split()[0] if display_name else email.split('@')[0],
+                    role=_normalize_user_role(invitation.role or 'contributor')
+                )
             
             invitation.is_accepted = True
             invitation.accepted_at = timezone.now()

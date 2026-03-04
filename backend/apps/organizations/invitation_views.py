@@ -142,20 +142,34 @@ def accept_invitation(request, token):
             validate_password(password)
         except ValidationError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        if User.objects.filter(email__iexact=invitation.email, organization=invitation.organization).exists():
+        existing_user = User.objects.filter(
+            email__iexact=invitation.email,
+            organization=invitation.organization
+        ).first()
+        if existing_user and existing_user.is_active:
             return Response({'error': 'User already exists in this organization'}, status=status.HTTP_400_BAD_REQUEST)
 
-        generated_username = generate_unique_org_username(username, invitation.organization.slug)
+        if existing_user:
+            # Re-activate existing inactive account instead of failing invitation acceptance.
+            user = existing_user
+            user.set_password(password)
+            user.role = _normalize_invite_role(invitation.role)
+            user.is_active = True
+            if full_name:
+                user.full_name = full_name
+            user.save(update_fields=['password', 'role', 'is_active', 'full_name'])
+        else:
+            generated_username = generate_unique_org_username(username, invitation.organization.slug)
 
-        # Create user with the organization from the invitation
-        user = User.objects.create_user(
-            username=generated_username,
-            email=invitation.email,
-            password=password,
-            organization=invitation.organization,
-            role=_normalize_invite_role(invitation.role),
-            full_name=full_name
-        )
+            # Create user with the organization from the invitation
+            user = User.objects.create_user(
+                username=generated_username,
+                email=invitation.email,
+                password=password,
+                organization=invitation.organization,
+                role=_normalize_invite_role(invitation.role),
+                full_name=full_name
+            )
         
         # Mark invitation as accepted
         invitation.is_accepted = True

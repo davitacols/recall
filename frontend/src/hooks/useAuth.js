@@ -91,6 +91,42 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const listWorkspaces = async () => {
+    try {
+      const response = await api.get('/api/auth/workspaces/');
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Failed to load workspaces',
+      };
+    }
+  };
+
+  const switchWorkspace = async ({ org_slug, password }) => {
+    try {
+      const response = await api.post('/api/auth/workspaces/switch/', { org_slug, password });
+      const responseData = response.data.data || response.data;
+      const { access_token, user: userData } = responseData;
+
+      if (!access_token || !userData) {
+        throw new Error('Invalid response format');
+      }
+
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      setUser(userData);
+      return { success: true, user: userData };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Workspace switch failed',
+      };
+    }
+  };
+
   const refreshUser = async () => {
     try {
       const response = await api.get('/api/auth/profile/');
@@ -111,6 +147,8 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    listWorkspaces,
+    switchWorkspace,
     refreshUser,
     loading
   };

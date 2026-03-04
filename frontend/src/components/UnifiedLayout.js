@@ -47,7 +47,7 @@ function loadFabPosition() {
 }
 
 export default function UnifiedLayout({ children }) {
-  const { user, logout } = useAuth();
+  const { user, logout, listWorkspaces, switchWorkspace } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,6 +62,11 @@ export default function UnifiedLayout({ children }) {
   );
   const [askFabPos, setAskFabPos] = useState(loadFabPosition);
   const [showProfile, setShowProfile] = useState(false);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [workspacesLoading, setWorkspacesLoading] = useState(false);
+  const [workspacePassword, setWorkspacePassword] = useState("");
+  const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
+  const [workspaceError, setWorkspaceError] = useState("");
   const profileRef = useRef(null);
   const askFabDragRef = useRef({
     active: false,
@@ -96,6 +101,24 @@ export default function UnifiedLayout({ children }) {
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+
+  useEffect(() => {
+    const loadWorkspaces = async () => {
+      if (!showProfile) return;
+      setWorkspaceError("");
+      setWorkspacesLoading(true);
+      const result = await listWorkspaces();
+      if (result.success) {
+        const items = Array.isArray(result.data?.workspaces) ? result.data.workspaces : [];
+        setWorkspaces(items);
+      } else {
+        setWorkspaceError(result.error || "Failed to load workspaces");
+      }
+      setWorkspacesLoading(false);
+    };
+
+    loadWorkspaces();
+  }, [showProfile]);
 
   const palette = useMemo(
     () =>
@@ -186,6 +209,27 @@ export default function UnifiedLayout({ children }) {
     }
     window.localStorage.setItem(ASK_FAB_STORAGE_KEY, JSON.stringify(askFabPos));
     if (!moved) navigate("/ask");
+  };
+
+  const handleSwitchWorkspace = async (orgSlug) => {
+    if (!workspacePassword.trim()) {
+      setWorkspaceError("Enter password to switch workspace");
+      return;
+    }
+
+    setWorkspaceError("");
+    setSwitchingOrgSlug(orgSlug);
+    const result = await switchWorkspace({ org_slug: orgSlug, password: workspacePassword });
+    setSwitchingOrgSlug(null);
+
+    if (!result.success) {
+      setWorkspaceError(result.error || "Workspace switch failed");
+      return;
+    }
+
+    setWorkspacePassword("");
+    setShowProfile(false);
+    window.location.href = "/";
   };
 
   return (
@@ -282,6 +326,68 @@ export default function UnifiedLayout({ children }) {
                       <button onClick={logout} style={{ ...menuButton, color: "#ef4444" }}>
                         Sign out
                       </button>
+
+                      <div style={{ ...workspaceMenuSection, borderTop: `1px solid ${palette.border}` }}>
+                        <p style={{ ...workspaceTitle, color: palette.muted }}>Switch Workspace</p>
+                        <input
+                          type="password"
+                          value={workspacePassword}
+                          onChange={(event) => setWorkspacePassword(event.target.value)}
+                          placeholder="Confirm password"
+                          style={{
+                            ...workspacePasswordInput,
+                            background: palette.panelBg,
+                            color: palette.text,
+                            border: `1px solid ${palette.border}`,
+                          }}
+                        />
+                        {workspaceError ? (
+                          <p style={{ ...workspaceMeta, color: "#ef4444" }}>{workspaceError}</p>
+                        ) : null}
+                        {workspacesLoading ? (
+                          <p style={{ ...workspaceMeta, color: palette.muted }}>Loading workspaces...</p>
+                        ) : null}
+                        {!workspacesLoading && workspaces.length <= 1 ? (
+                          <p style={{ ...workspaceMeta, color: palette.muted }}>No other workspace found.</p>
+                        ) : null}
+                        {!workspacesLoading && workspaces.length > 1 ? (
+                          <div style={workspaceList}>
+                            {workspaces.map((workspace) => {
+                              const isCurrent = workspace.org_slug === user?.organization_slug;
+                              return (
+                                <div key={`${workspace.user_id}-${workspace.org_slug}`} style={workspaceItem}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <p style={{ ...workspaceName, color: palette.text }}>{workspace.org_name}</p>
+                                    <p style={{ ...workspaceMeta, color: palette.muted }}>
+                                      {workspace.org_slug} • {workspace.role}
+                                    </p>
+                                  </div>
+                                  {isCurrent ? (
+                                    <span style={{ ...workspaceTag, border: `1px solid ${palette.border}`, color: palette.text }}>
+                                      Current
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleSwitchWorkspace(workspace.org_slug)}
+                                      disabled={switchingOrgSlug === workspace.org_slug}
+                                      style={{
+                                        ...workspaceSwitchButton,
+                                        background: palette.hover,
+                                        color: palette.text,
+                                        border: `1px solid ${palette.border}`,
+                                        opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
+                                        cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
+                                      }}
+                                    >
+                                      {switchingOrgSlug === workspace.org_slug ? "Switching..." : "Switch"}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -416,6 +522,69 @@ const nameLine = {
 const emailLine = {
   margin: "3px 0 0",
   fontSize: 11,
+};
+
+const workspaceMenuSection = {
+  padding: "10px 12px",
+  display: "grid",
+  gap: 8,
+};
+
+const workspaceTitle = {
+  margin: 0,
+  fontSize: 11,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  fontWeight: 700,
+};
+
+const workspacePasswordInput = {
+  width: "100%",
+  borderRadius: 8,
+  padding: "7px 8px",
+  fontSize: 12,
+  outline: "none",
+};
+
+const workspaceList = {
+  display: "grid",
+  gap: 7,
+};
+
+const workspaceItem = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+};
+
+const workspaceName = {
+  margin: 0,
+  fontSize: 12,
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const workspaceMeta = {
+  margin: "2px 0 0",
+  fontSize: 11,
+};
+
+const workspaceSwitchButton = {
+  borderRadius: 8,
+  padding: "5px 8px",
+  fontSize: 11,
+  fontWeight: 700,
+};
+
+const workspaceTag = {
+  borderRadius: 8,
+  padding: "4px 7px",
+  fontSize: 10,
+  fontWeight: 700,
+  textTransform: "uppercase",
 };
 
 const menuButton = {

@@ -31,6 +31,28 @@ def _normalize_user_role(role):
     return role
 
 
+def _build_auth_payload(user):
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    refresh = RefreshToken.for_user(user)
+    refresh['organization_id'] = user.organization_id
+    refresh['organization_slug'] = user.organization.slug
+
+    return {
+        'access_token': str(refresh.access_token),
+        'id_token': str(refresh.access_token),
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'full_name': user.get_full_name(),
+            'role': user.role,
+            'organization_name': user.organization.name,
+            'organization_slug': user.organization.slug,
+        }
+    }
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
@@ -111,25 +133,8 @@ def login(request):
                 user = authenticate(username=matches.first().username, password=password)
     
     if user:
-        from rest_framework_simplejwt.tokens import RefreshToken
-        refresh = RefreshToken.for_user(user)
-        refresh['organization_id'] = user.organization_id
-        refresh['organization_slug'] = user.organization.slug
         logger.info(f"Successful login for user: {user.username}")
-        
-        return Response({
-            'access_token': str(refresh.access_token),
-            'id_token': str(refresh.access_token),
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'full_name': user.get_full_name(),
-                'role': user.role,
-                'organization_name': user.organization.name,
-                'organization_slug': user.organization.slug,
-            }
-        })
+        return Response(_build_auth_payload(user))
     
     logger.warning(f"Failed login attempt for: {username}")
     return Response({'error': 'Invalid credentials'}, 
@@ -144,6 +149,60 @@ def team(request):
         'id', 'username', 'email', 'full_name', 'role'
     )
     return Response(list(users))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def workspaces(request):
+    user = request.user
+    workspace_users = (
+        User.objects.filter(email__iexact=user.email, is_active=True)
+        .select_related('organization')
+        .order_by('organization__name', 'id')
+    )
+
+    return Response({
+        'current_org_slug': user.organization.slug,
+        'workspaces': [
+            {
+                'org_id': wu.organization_id,
+                'org_name': wu.organization.name,
+                'org_slug': wu.organization.slug,
+                'role': wu.role,
+                'user_id': wu.id,
+            }
+            for wu in workspace_users
+        ],
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def switch_workspace(request):
+    org_slug = (request.data.get('org_slug') or '').strip().lower()
+    password = request.data.get('password') or ''
+
+    if not org_slug or not password:
+        return Response({'error': 'org_slug and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not check_rate_limit(f"switch_workspace:{request.user.id}", action='switch_workspace', limit=30, window=3600):
+        return Response({'error': 'Too many workspace switch attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+    target_user = User.objects.filter(
+        email__iexact=request.user.email,
+        organization__slug=org_slug,
+        is_active=True
+    ).first()
+    if not target_user:
+        return Response({'error': 'Workspace not found for this account'}, status=status.HTTP_404_NOT_FOUND)
+
+    authenticated = authenticate(username=target_user.username, password=password)
+    if not authenticated:
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    logger.info("Workspace switch for user email=%s to org=%s", request.user.email, org_slug)
+    return Response(_build_auth_payload(authenticated))
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -168,6 +227,7 @@ def profile(request):
         'timezone': user.timezone,
         'avatar': avatar_url,
         'organization_name': user.organization.name,
+        'organization_slug': user.organization.slug,
         'organization_logo': org_logo_url,
         'organization_color': user.organization.primary_color,
         'onboarding_completed': user.onboarding_completed,

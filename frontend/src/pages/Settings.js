@@ -26,7 +26,7 @@ async function requestWithFallback(requests) {
 }
 
 function Settings() {
-  const { user } = useAuth();
+  const { user, listWorkspaces, switchWorkspace } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const { addToast } = useToast();
   const [isCompact, setIsCompact] = useState(window.innerWidth < 980);
@@ -45,6 +45,9 @@ function Settings() {
   const [inviteRole, setInviteRole] = useState("contributor");
   const [generatedLink, setGeneratedLink] = useState(null);
   const [resendingInvitationId, setResendingInvitationId] = useState(null);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [workspacePassword, setWorkspacePassword] = useState("");
+  const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
   const [orgName, setOrgName] = useState("");
   const [orgDescription, setOrgDescription] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -52,6 +55,7 @@ function Settings() {
 
   useEffect(() => {
     fetchSettings();
+    fetchWorkspaces();
     if (user?.role === "admin") {
       fetchOrganization();
       fetchMembers();
@@ -211,6 +215,15 @@ function Settings() {
     }
   };
 
+  const fetchWorkspaces = async () => {
+    const result = await listWorkspaces();
+    if (!result.success) {
+      return;
+    }
+    const available = Array.isArray(result.data?.workspaces) ? result.data.workspaces : [];
+    setWorkspaces(available);
+  };
+
   const resendInvitation = async (invitationId) => {
     try {
       setResendingInvitationId(invitationId);
@@ -222,6 +235,26 @@ function Settings() {
     } finally {
       setResendingInvitationId(null);
     }
+  };
+
+  const handleSwitchWorkspace = async (orgSlug) => {
+    if (!workspacePassword.trim()) {
+      addToast("Enter your password to switch workspace", "error");
+      return;
+    }
+
+    setSwitchingOrgSlug(orgSlug);
+    const result = await switchWorkspace({ org_slug: orgSlug, password: workspacePassword });
+    setSwitchingOrgSlug(null);
+
+    if (!result.success) {
+      addToast(result.error, "error");
+      return;
+    }
+
+    setWorkspacePassword("");
+    addToast(`Switched to ${result.user?.organization_name || orgSlug}`, "success");
+    window.location.href = "/";
   };
 
   const removeMember = async (memberId) => {
@@ -524,6 +557,55 @@ function Settings() {
           <article style={panel(palette)}>
             <h2 style={title(palette)}>Privacy & Data</h2>
             <p style={subtitle(palette)}>Your data is scoped to your workspace. Contact support for data export and deletion requests.</p>
+            <div style={{ borderTop: `1px solid ${palette.border}`, paddingTop: 10, display: "grid", gap: 10 }}>
+              <h3 style={{ margin: 0, color: palette.text, fontSize: 15 }}>Workspace Switch</h3>
+              <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>
+                Use this to move between organizations tied to your email.
+              </p>
+              <Input
+                label="Confirm Password"
+                type="password"
+                value={workspacePassword}
+                onChange={(event) => setWorkspacePassword(event.target.value)}
+                palette={palette}
+              />
+              {workspaces.length <= 1 ? (
+                <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>
+                  No additional workspaces available for this account.
+                </p>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {workspaces.map((workspace) => {
+                    const isCurrent = workspace.org_slug === user?.organization_slug;
+                    return (
+                      <div key={`${workspace.user_id}-${workspace.org_slug}`} style={memberRow(palette)}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={rowLabel(palette)}>{workspace.org_name}</p>
+                          <p style={rowDesc(palette)}>
+                            {workspace.org_slug} • {workspace.role}
+                          </p>
+                        </div>
+                        {isCurrent ? (
+                          <span style={chip(palette)}>Current</span>
+                        ) : (
+                          <button
+                            onClick={() => handleSwitchWorkspace(workspace.org_slug)}
+                            disabled={switchingOrgSlug === workspace.org_slug}
+                            style={{
+                              ...copyButton(palette),
+                              cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
+                              opacity: switchingOrgSlug === workspace.org_slug ? 0.6 : 1,
+                            }}
+                          >
+                            {switchingOrgSlug === workspace.org_slug ? "Switching..." : "Switch"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </article>
         )}
       </section>

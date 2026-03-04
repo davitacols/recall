@@ -5,6 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.hashers import check_password, make_password
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Count
+from django.db.models.functions import Lower
 from django.utils import timezone
 from datetime import timedelta
 from .models import Organization, User
@@ -191,6 +193,66 @@ def organization_settings(request):
             'require_approval': getattr(org, 'require_approval', True),
             'max_users': getattr(org, 'max_users', 100)
         }
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def email_duplicate_risk_report(request):
+    """Report duplicate emails (case-insensitive) within the current organization."""
+    user = request.user
+    org = user.organization
+
+    if user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    include_inactive_param = str(request.query_params.get('include_inactive', 'true')).strip().lower()
+    include_inactive = include_inactive_param in {'1', 'true', 'yes', 'on'}
+
+    users_qs = User.objects.filter(organization=org).exclude(email__isnull=True).exclude(email='')
+    if not include_inactive:
+        users_qs = users_qs.filter(is_active=True)
+
+    duplicate_groups = (
+        users_qs
+        .annotate(email_norm=Lower('email'))
+        .values('email_norm')
+        .annotate(count=Count('id'))
+        .filter(count__gt=1)
+        .order_by('email_norm')
+    )
+
+    groups = []
+    total_affected_users = 0
+    for group in duplicate_groups:
+        email_norm = group['email_norm']
+        members = list(
+            users_qs
+            .filter(email__iexact=email_norm)
+            .order_by('-is_active', '-last_login', 'id')
+            .values('id', 'username', 'email', 'is_active', 'role', 'last_login', 'date_joined')
+        )
+        total_affected_users += len(members)
+        groups.append({
+            'email_normalized': email_norm,
+            'count': group['count'],
+            'users': members,
+        })
+
+    return Response({
+        'organization': {
+            'id': org.id,
+            'slug': org.slug,
+            'name': org.name,
+        },
+        'filters': {
+            'include_inactive': include_inactive,
+        },
+        'summary': {
+            'duplicate_groups': len(groups),
+            'affected_users': total_affected_users,
+        },
+        'groups': groups,
     })
 
 @api_view(['PUT'])

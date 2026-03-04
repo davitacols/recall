@@ -7,7 +7,13 @@ from django.core.exceptions import ValidationError
 import logging
 from .models import Invitation, Organization, User
 from .subscription_entitlements import ensure_default_plans, get_or_create_subscription
-from apps.users.auth_utils import check_rate_limit, validate_email, validate_password, validate_username
+from apps.users.auth_utils import (
+    check_rate_limit,
+    validate_email,
+    validate_password,
+    validate_username,
+    generate_unique_org_username,
+)
 from apps.users.bot_protection import verify_turnstile_token
 
 logger = logging.getLogger(__name__)
@@ -129,14 +135,14 @@ def accept_invitation(request, token):
             validate_password(password)
         except ValidationError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        if User.objects.filter(username__iexact=username).exists():
-            return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
         if User.objects.filter(email__iexact=invitation.email, organization=invitation.organization).exists():
             return Response({'error': 'User already exists in this organization'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        generated_username = generate_unique_org_username(username, invitation.organization.slug)
+
         # Create user with the organization from the invitation
         user = User.objects.create_user(
-            username=username,
+            username=generated_username,
             email=invitation.email,
             password=password,
             organization=invitation.organization,
@@ -152,6 +158,8 @@ def accept_invitation(request, token):
         # Generate token
         from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(user)
+        refresh['organization_id'] = user.organization_id
+        refresh['organization_slug'] = user.organization.slug
         
         return Response({
             'access_token': str(refresh.access_token),
@@ -162,7 +170,8 @@ def accept_invitation(request, token):
                 'full_name': user.full_name,
                 'role': user.role,
                 'organization': user.organization.name,
-                'organization_name': user.organization.name
+                'organization_name': user.organization.name,
+                'organization_slug': user.organization.slug,
             }
         })
     except Invitation.DoesNotExist:
@@ -249,9 +258,11 @@ def create_organization(request):
     ensure_default_plans()
     get_or_create_subscription(org)
     
+    generated_username = generate_unique_org_username(admin_username or admin_email, org.slug)
+
     # Create admin user
     user = User.objects.create_user(
-        username=admin_username,
+        username=generated_username,
         email=admin_email,
         password=admin_password,
         organization=org,
@@ -262,6 +273,8 @@ def create_organization(request):
     # Generate token
     from rest_framework_simplejwt.tokens import RefreshToken
     refresh = RefreshToken.for_user(user)
+    refresh['organization_id'] = user.organization_id
+    refresh['organization_slug'] = user.organization.slug
     
     return Response({
         'access_token': str(refresh.access_token),
@@ -271,6 +284,7 @@ def create_organization(request):
             'email': user.email,
             'full_name': user.full_name,
             'role': user.role,
-            'organization': org.name
+            'organization': org.name,
+            'organization_slug': org.slug,
         }
     })

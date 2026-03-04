@@ -89,6 +89,9 @@ class User(AbstractUser):
     class Meta:
         db_table = 'users'
         unique_together = ['username', 'organization']
+        constraints = [
+            models.UniqueConstraint(fields=['organization', 'email'], name='users_org_email_unique'),
+        ]
         indexes = [
             models.Index(fields=['organization', 'role']),
             models.Index(fields=['organization', 'is_active']),

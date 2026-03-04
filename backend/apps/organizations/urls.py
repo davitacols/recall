@@ -7,7 +7,7 @@ from .settings_views import (
     organization_settings, update_organization, organization_members,
     update_member_role, remove_member, invite_member, api_keys,
     generate_api_key, export_data, delete_account, activity_log, security_log, get_invitation_link,
-    get_invitation_links
+    get_invitation_links, email_duplicate_risk_report
 )
 from .team_views import (
     get_team_members, get_user_role_info, change_user_role, remove_user,
@@ -60,6 +60,7 @@ urlpatterns = [
     path('settings/organization/', organization_settings, name='organization-settings'),
     path('settings/organization/update/', update_organization, name='update-organization'),
     path('settings/members/', organization_members, name='organization-members'),
+    path('settings/members/email-duplicates/', email_duplicate_risk_report, name='email-duplicate-risk-report'),
     path('settings/members/<int:user_id>/role/', update_member_role, name='update-member-role'),
     path('settings/members/<int:user_id>/remove/', remove_member, name='remove-member'),
     path('settings/members/invite/', invite_member, name='invite-member'),

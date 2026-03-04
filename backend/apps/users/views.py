@@ -11,7 +11,13 @@ from django.contrib.auth.tokens import default_token_generator
 import logging
 import boto3
 from django.conf import settings
-from .auth_utils import check_rate_limit, validate_email, validate_password, validate_username
+from .auth_utils import (
+    check_rate_limit,
+    validate_email,
+    validate_password,
+    validate_username,
+    generate_unique_org_username,
+)
 from .bot_protection import verify_turnstile_token
 from apps.notifications.email_service import send_password_reset_email, send_welcome_email, build_frontend_url
 
@@ -31,6 +37,7 @@ def login(request):
     username = request.data.get('username', '').strip()
     password = request.data.get('password', '')
     turnstile_token = request.data.get('turnstile_token')
+    org_slug = (request.data.get('org_slug') or request.data.get('organization_slug') or request.data.get('organization') or '').strip().lower()
     
     if not username or not password:
         return Response({'error': 'Username and password required'}, 
@@ -57,20 +64,56 @@ def login(request):
         logger.warning(f"Invalid input for login: {username}")
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Try local authentication
-    user = authenticate(username=username, password=password)
-    
-    if not user:
-        try:
-            user_obj = User.objects.filter(email__iexact=username).first()
-            if user_obj:
-                user = authenticate(username=user_obj.username, password=password)
-        except User.DoesNotExist:
-            pass
+    user = None
+
+    # Org-scoped login: prevent cross-organization account collisions by email.
+    if org_slug:
+        user_obj = None
+        if '@' in username:
+            user_obj = User.objects.filter(
+                email__iexact=username,
+                organization__slug=org_slug,
+                is_active=True
+            ).first()
+        else:
+            user_obj = User.objects.filter(
+                username__iexact=username,
+                organization__slug=org_slug,
+                is_active=True
+            ).first()
+
+        if user_obj:
+            user = authenticate(username=user_obj.username, password=password)
+    else:
+        # Backward compatibility: direct username login.
+        user = authenticate(username=username, password=password)
+
+        # Email login fallback: force org disambiguation if email belongs to multiple orgs.
+        if not user and '@' in username:
+            matches = User.objects.filter(email__iexact=username, is_active=True).select_related('organization')
+            match_count = matches.count()
+            if match_count > 1:
+                return Response(
+                    {
+                        'error': 'Multiple organizations found for this email. Provide org_slug to continue.',
+                        'organizations': [
+                            {
+                                'slug': m.organization.slug,
+                                'name': m.organization.name,
+                            }
+                            for m in matches
+                        ]
+                    },
+                    status=status.HTTP_409_CONFLICT
+                )
+            if match_count == 1:
+                user = authenticate(username=matches.first().username, password=password)
     
     if user:
         from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(user)
+        refresh['organization_id'] = user.organization_id
+        refresh['organization_slug'] = user.organization.slug
         logger.info(f"Successful login for user: {user.username}")
         
         return Response({
@@ -82,7 +125,8 @@ def login(request):
                 'email': user.email,
                 'full_name': user.get_full_name(),
                 'role': user.role,
-                'organization_name': user.organization.name
+                'organization_name': user.organization.name,
+                'organization_slug': user.organization.slug,
             }
         })
     
@@ -188,21 +232,17 @@ def register(request):
                 return Response({'error': 'Organization name already exists'}, 
                                status=status.HTTP_400_BAD_REQUEST)
             
-            if User.objects.filter(email=email).exists():
-                return Response({'error': 'Email already exists'}, 
-                               status=status.HTTP_400_BAD_REQUEST)
-            
             org = Organization.objects.create(name=organization_name, slug=org_slug)
             
-            username = email.split('@')[0]
-            display_name = full_name or username.replace('.', ' ').replace('_', ' ').title()
+            username = generate_unique_org_username(email, org_slug)
+            display_name = full_name or email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
             user = User.objects.create_user(
-                username=email,
+                username=username,
                 email=email,
                 password=password,
                 organization=org,
                 full_name=display_name,
-                first_name=display_name.split()[0] if display_name else username,
+                first_name=display_name.split()[0] if display_name else email.split('@')[0],
                 role='admin'
             )
             
@@ -214,7 +254,7 @@ def register(request):
             
             return Response({
                 'message': 'Organization created successfully',
-                'username': email
+                'username': user.username
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
@@ -240,15 +280,15 @@ def register(request):
                 return Response({'error': 'User already exists in this organization'}, 
                                status=status.HTTP_400_BAD_REQUEST)
             
-            username = email.split('@')[0]
-            display_name = full_name or username.replace('.', ' ').replace('_', ' ').title()
+            username = generate_unique_org_username(email, invitation.organization.slug)
+            display_name = full_name or email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
             user = User.objects.create_user(
-                username=email,
+                username=username,
                 email=email,
                 password=password,
                 organization=invitation.organization,
                 full_name=display_name,
-                first_name=display_name.split()[0] if display_name else username,
+                first_name=display_name.split()[0] if display_name else email.split('@')[0],
                 role=_normalize_user_role(invitation.role or 'contributor')
             )
             
@@ -264,7 +304,7 @@ def register(request):
             
             return Response({
                 'message': 'Account created successfully',
-                'username': email
+                'username': user.username
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:

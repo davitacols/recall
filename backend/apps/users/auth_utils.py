@@ -1,6 +1,7 @@
 import re
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
+from django.contrib.auth import get_user_model
 
 def check_rate_limit(user_id, action='login', limit=5, window=3600):
     """Simple fixed-window rate limiter using Django cache."""
@@ -47,3 +48,25 @@ def validate_username(username):
         raise ValidationError('Username must be at least 3 characters')
     if not re.match(r'^[a-zA-Z0-9_-]+$', username):
         raise ValidationError('Username can only contain letters, numbers, underscores, and hyphens')
+
+
+def generate_unique_org_username(seed_value, org_slug, max_length=150):
+    """Generate a globally-unique username namespaced by organization slug."""
+    base = (seed_value or '').strip().lower()
+    if '@' in base:
+        base = base.split('@')[0]
+    base = re.sub(r'[^a-z0-9_-]+', '-', base).strip('-') or 'user'
+
+    org_part = re.sub(r'[^a-z0-9-]+', '-', (org_slug or '').strip().lower()).strip('-') or 'org'
+    prefix = f"{base}__{org_part}"
+    prefix = prefix[:max_length]
+
+    User = get_user_model()
+    candidate = prefix
+    suffix = 1
+    while User.objects.filter(username__iexact=candidate).exists():
+        suffix_text = f"-{suffix}"
+        candidate = f"{prefix[:max_length - len(suffix_text)]}{suffix_text}"
+        suffix += 1
+
+    return candidate

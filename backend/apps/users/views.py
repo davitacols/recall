@@ -39,12 +39,12 @@ def _workspace_switch_code_cache_key(user_id, org_slug):
     return f"workspace_switch_code:{user_id}:{org_slug}"
 
 
-def _log_auth_audit(organization, user, resource_type, details, request):
+def _log_auth_audit(organization, user, resource_type, details, request, action='login'):
     try:
         AuditLog.log(
             organization=organization,
             user=user,
-            action='login',
+            action=action,
             resource_type=resource_type,
             resource_id=user.id if user else None,
             details=details or {},
@@ -54,14 +54,14 @@ def _log_auth_audit(organization, user, resource_type, details, request):
         logger.exception("Failed to write auth audit log for resource_type=%s", resource_type)
 
 
-def _log_auth_audit_throttled(organization, user, resource_type, details, request, throttle_key, ttl_seconds=300):
+def _log_auth_audit_throttled(organization, user, resource_type, details, request, throttle_key, ttl_seconds=300, action='login'):
     if not organization:
         return
     cache_key = f"auth_audit_throttle:{throttle_key}"
     if cache.get(cache_key):
         return
     cache.set(cache_key, 1, timeout=ttl_seconds)
-    _log_auth_audit(organization, user, resource_type, details, request)
+    _log_auth_audit(organization, user, resource_type, details, request, action=action)
 
 
 def _normalize_user_role(role):
@@ -79,6 +79,7 @@ def _build_auth_payload(user):
 
     return {
         'access_token': str(refresh.access_token),
+        'refresh_token': str(refresh),
         'id_token': str(refresh.access_token),
         'user': {
             'id': user.id,
@@ -451,6 +452,57 @@ def switch_workspace(request):
         request=request,
     )
     return Response(_build_auth_payload(authenticated))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout(request):
+    refresh_token = (request.data.get('refresh_token') or '').strip()
+
+    if refresh_token:
+        try:
+            from rest_framework_simplejwt.tokens import RefreshToken
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except Exception:
+            logger.warning("Failed to blacklist refresh token on logout for user_id=%s", request.user.id)
+
+    _log_auth_audit(
+        organization=request.user.organization,
+        user=request.user,
+        resource_type='auth_logout',
+        details={'all_devices': False},
+        request=request,
+        action='logout',
+    )
+    return Response({'message': 'Logged out'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_all(request):
+    try:
+        from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+
+        outstanding = OutstandingToken.objects.filter(user=request.user)
+        blacklisted_count = 0
+        for token in outstanding:
+            _, created = BlacklistedToken.objects.get_or_create(token=token)
+            if created:
+                blacklisted_count += 1
+    except Exception:
+        logger.exception("Failed to blacklist all refresh tokens for user_id=%s", request.user.id)
+        return Response({'error': 'Failed to revoke sessions'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    _log_auth_audit(
+        organization=request.user.organization,
+        user=request.user,
+        resource_type='auth_logout_all',
+        details={'all_devices': True, 'blacklisted_tokens': blacklisted_count},
+        request=request,
+        action='logout',
+    )
+    return Response({'message': 'Logged out from all devices', 'revoked_sessions': blacklisted_count}, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])

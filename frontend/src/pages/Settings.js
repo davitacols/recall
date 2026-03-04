@@ -26,7 +26,7 @@ async function requestWithFallback(requests) {
 }
 
 function Settings() {
-  const { user, listWorkspaces, requestWorkspaceSwitchCode, switchWorkspace } = useAuth();
+  const { user, logout, listWorkspaces, requestWorkspaceSwitchCode, switchWorkspace } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const { addToast } = useToast();
   const [isCompact, setIsCompact] = useState(window.innerWidth < 980);
@@ -53,6 +53,7 @@ function Settings() {
   const [orgDescription, setOrgDescription] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [signingOutAll, setSigningOutAll] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -278,6 +279,13 @@ function Settings() {
     } catch (error) {
       addToast("Failed to remove member", "error");
     }
+  };
+
+  const handleLogoutAllDevices = async () => {
+    setSigningOutAll(true);
+    await logout({ allDevices: true });
+    setSigningOutAll(false);
+    window.location.href = "/login";
   };
 
   const toggleNotification = (key) => {
@@ -632,6 +640,22 @@ function Settings() {
                   })}
                 </div>
               )}
+              <div style={{ borderTop: `1px solid ${palette.border}`, paddingTop: 10, marginTop: 6 }}>
+                <p style={{ margin: "0 0 8px", color: palette.muted, fontSize: 12 }}>
+                  Security session control.
+                </p>
+                <button
+                  onClick={handleLogoutAllDevices}
+                  disabled={signingOutAll}
+                  style={{
+                    ...dangerButton(palette),
+                    cursor: signingOutAll ? "not-allowed" : "pointer",
+                    opacity: signingOutAll ? 0.7 : 1,
+                  }}
+                >
+                  {signingOutAll ? "Signing out..." : "Sign Out All Devices"}
+                </button>
+              </div>
             </div>
           </article>
         )}

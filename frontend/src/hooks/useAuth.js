@@ -3,6 +3,7 @@ import api from '../services/api';
 
 const AuthContext = createContext();
 const LAST_WORKSPACE_SLUG_KEY = 'last_workspace_slug';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 
 function LoadingScreen() {
   return (
@@ -32,6 +33,7 @@ export function AuthProvider({ children }) {
         })
         .catch(() => {
           localStorage.removeItem('access_token');
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
           localStorage.removeItem('user');
         })
         .finally(() => setLoading(false));
@@ -69,13 +71,16 @@ export function AuthProvider({ children }) {
       };
       const response = await api.post('/api/auth/login/', payload);
       const responseData = response.data.data || response.data;
-      const { access_token, user: userData } = responseData;
+      const { access_token, refresh_token, user: userData } = responseData;
       
       if (!access_token || !userData) {
         throw new Error('Invalid response format');
       }
       
       localStorage.setItem('access_token', access_token);
+      if (refresh_token) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
+      }
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
       if (userData?.organization_slug) {
@@ -93,8 +98,17 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
+  const logout = async ({ allDevices = false } = {}) => {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    try {
+      await api.post(allDevices ? '/api/auth/logout-all/' : '/api/auth/logout/', {
+        refresh_token: refreshToken || '',
+      });
+    } catch (error) {
+      // Continue local cleanup even if server revocation fails.
+    }
     localStorage.removeItem('access_token');
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem('user');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
@@ -159,13 +173,16 @@ export function AuthProvider({ children }) {
       };
       const response = await api.post('/api/auth/workspaces/switch/', payload);
       const responseData = response.data.data || response.data;
-      const { access_token, user: userData } = responseData;
+      const { access_token, refresh_token, user: userData } = responseData;
 
       if (!access_token || !userData) {
         throw new Error('Invalid response format');
       }
 
       localStorage.setItem('access_token', access_token);
+      if (refresh_token) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
+      }
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
       if (userData?.organization_slug) {

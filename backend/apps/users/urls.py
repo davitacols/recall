@@ -4,6 +4,8 @@ from .profile_views import update_profile, change_password, profile_stats
 
 urlpatterns = [
     path('login/', views.login, name='login'),
+    path('logout/', views.logout, name='logout'),
+    path('logout-all/', views.logout_all, name='logout_all'),
     path('workspaces/', views.workspaces, name='workspaces'),
     path('workspaces/switch/request-code/', views.request_workspace_switch_code, name='request_workspace_switch_code'),
     path('workspaces/switch/', views.switch_workspace, name='switch_workspace'),

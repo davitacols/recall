@@ -177,6 +177,7 @@ export default function NotificationSettings() {
                 <button
                   onClick={() => handleToggle(item.key)}
                   disabled={busyField === item.key}
+                  className="ui-btn-polish ui-focus-ring"
                   style={{
                     ...toggleWrap,
                     background: settings[item.key] ? palette.accent : darkMode ? "#3f352f" : "#ddd2c3",
@@ -203,6 +204,7 @@ export default function NotificationSettings() {
                 key={option.value}
                 onClick={() => handleFrequencyChange(option.value)}
                 disabled={busyDigest}
+                className="ui-btn-polish ui-focus-ring"
                 style={{
                   ...digestRow,
                   border: `1px solid ${palette.border}`,
@@ -227,6 +229,7 @@ export default function NotificationSettings() {
             <button
               onClick={handleSendTestNotification}
               disabled={sendingTest === "inapp"}
+              className="ui-btn-polish ui-focus-ring"
               style={{
                 ...diagButton,
                 border: `1px solid ${palette.border}`,
@@ -241,6 +244,7 @@ export default function NotificationSettings() {
               <button
                 onClick={handleSendTestEmail}
                 disabled={sendingTest === "email"}
+                className="ui-btn-polish ui-focus-ring"
                 style={{
                   ...diagButton,
                   border: `1px solid ${darkMode ? "rgba(255,180,118,0.5)" : "#b95322"}`,
@@ -260,7 +264,7 @@ export default function NotificationSettings() {
 }
 
 const container = {
-  width: "min(980px, 100%)",
+  width: "min(1100px, 100%)",
   margin: "0 auto",
   padding: "clamp(12px,2.2vw,24px)",
   display: "grid",
@@ -270,6 +274,11 @@ const container = {
 const hero = {
   borderRadius: 16,
   padding: "14px 16px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
 };
 
 const panel = {

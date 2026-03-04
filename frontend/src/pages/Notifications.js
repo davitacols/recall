@@ -157,6 +157,7 @@ function Notifications() {
           <Link
             to={item.link}
             onClick={() => onMarkRead(item)}
+            className="ui-btn-polish ui-focus-ring"
             style={{
               ...actionPill,
               border: `1px solid ${palette.border}`,
@@ -169,6 +170,7 @@ function Notifications() {
         {!item.is_read ? (
           <button
             onClick={() => onMarkRead(item)}
+            className="ui-btn-polish ui-focus-ring"
             style={{
               ...actionPill,
               border: `1px solid ${palette.border}`,
@@ -181,6 +183,7 @@ function Notifications() {
         ) : null}
         <button
           onClick={() => onDelete(item)}
+          className="ui-btn-polish ui-focus-ring"
           style={{
             ...actionPill,
             border: "1px solid rgba(239,68,68,0.45)",
@@ -210,6 +213,7 @@ function Notifications() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <button
               onClick={fetchData}
+              className="ui-btn-polish ui-focus-ring"
               style={{ ...heroAction, border: `1px solid ${palette.border}`, color: palette.text, background: "transparent" }}
             >
               Refresh
@@ -217,6 +221,7 @@ function Notifications() {
             {unreadCount > 0 ? (
               <button
                 onClick={onMarkAllRead}
+                className="ui-btn-polish ui-focus-ring"
                 style={{
                   ...heroAction,
                   border: `1px solid ${darkMode ? "rgba(255,180,118,0.5)" : "#b95322"}`,
@@ -235,6 +240,7 @@ function Notifications() {
             <button
               key={pill.key}
               onClick={() => setFilter(pill.key)}
+              className="ui-btn-polish ui-focus-ring"
               style={{
                 ...filterPill,
                 border: `1px solid ${palette.border}`,

@@ -218,17 +218,26 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
                 onMarkAsRead(item);
                 setIsOpen(false);
               }}
+              className="ui-btn-polish ui-focus-ring"
               style={{ ...actionLink, borderColor: palette.border, color: palette.text }}
             >
               Open
             </Link>
           ) : null}
           {!item.is_read ? (
-            <button onClick={() => onMarkAsRead(item)} style={{ ...actionButton, borderColor: palette.border, color: palette.text }}>
+            <button
+              onClick={() => onMarkAsRead(item)}
+              className="ui-btn-polish ui-focus-ring"
+              style={{ ...actionButton, borderColor: palette.border, color: palette.text }}
+            >
               Mark read
             </button>
           ) : null}
-          <button onClick={() => onDelete(item)} style={{ ...actionButton, borderColor: "rgba(239,68,68,0.4)", color: "#ef4444" }}>
+          <button
+            onClick={() => onDelete(item)}
+            className="ui-btn-polish ui-focus-ring"
+            style={{ ...actionButton, borderColor: "rgba(239,68,68,0.4)", color: "#ef4444" }}
+          >
             Delete
           </button>
         </div>
@@ -246,8 +255,11 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
             return next;
           })
         }
+        className="ui-btn-polish ui-focus-ring"
         style={bellButton}
         aria-label="Notifications"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
       >
         <BellIcon style={{ width: 20, height: 20 }} />
         {unreadCount > 0 && <span style={badge}>{unreadCount > 99 ? "99+" : unreadCount}</span>}
@@ -274,6 +286,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   onClick={() => setFilter("all")}
+                  className="ui-btn-polish ui-focus-ring"
                   style={{
                     ...filterPill,
                     border: `1px solid ${palette.border}`,
@@ -285,6 +298,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
                 </button>
                 <button
                   onClick={() => setFilter("unread")}
+                  className="ui-btn-polish ui-focus-ring"
                   style={{
                     ...filterPill,
                     border: `1px solid ${palette.border}`,
@@ -298,7 +312,11 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {unreadCount > 0 ? (
-                <button onClick={onMarkAllAsRead} style={{ ...headerAction, border: `1px solid ${palette.border}`, color: palette.text }}>
+                <button
+                  onClick={onMarkAllAsRead}
+                  className="ui-btn-polish ui-focus-ring"
+                  style={{ ...headerAction, border: `1px solid ${palette.border}`, color: palette.text }}
+                >
                   Mark all read
                 </button>
               ) : null}
@@ -307,6 +325,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
                   navigate("/notifications");
                   setIsOpen(false);
                 }}
+                className="ui-btn-polish ui-focus-ring"
                 style={{ ...headerAction, border: `1px solid ${palette.border}`, color: palette.text }}
               >
                 View all
@@ -390,7 +409,7 @@ const sectionTag = {
 };
 
 const row = {
-  borderRadius: 12,
+  borderRadius: 14,
   padding: "11px 12px",
 };
 
@@ -436,7 +455,7 @@ const actionButton = {
   padding: "5px 9px",
   borderRadius: 999,
   fontSize: 12,
-  fontWeight: 600,
+  fontWeight: 700,
   cursor: "pointer",
 };
 
@@ -446,7 +465,7 @@ const actionLink = {
   padding: "5px 9px",
   borderRadius: 999,
   fontSize: 12,
-  fontWeight: 600,
+  fontWeight: 700,
   textDecoration: "none",
 };
 
@@ -454,7 +473,7 @@ const headerAction = {
   border: "1px solid",
   background: "transparent",
   borderRadius: 999,
-  padding: "6px 10px",
+  padding: "8px 12px",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
@@ -463,7 +482,7 @@ const headerAction = {
 const filterPill = {
   border: "1px solid",
   borderRadius: 999,
-  padding: "5px 10px",
+  padding: "7px 12px",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",

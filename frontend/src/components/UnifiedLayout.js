@@ -321,6 +321,7 @@ export default function UnifiedLayout({ children }) {
                           navigate("/profile");
                           setShowProfile(false);
                         }}
+                        className="ui-btn-polish ui-focus-ring"
                         style={{ ...menuButton, color: palette.text }}
                       >
                         Profile
@@ -331,12 +332,13 @@ export default function UnifiedLayout({ children }) {
                           navigate("/settings");
                           setShowProfile(false);
                         }}
+                        className="ui-btn-polish ui-focus-ring"
                         style={{ ...menuButton, color: palette.text }}
                       >
                         Settings
                       </button>
 
-                      <button onClick={logout} style={{ ...menuButton, color: "#ef4444" }}>
+                      <button onClick={logout} className="ui-btn-polish ui-focus-ring" style={{ ...menuButton, color: "#ef4444" }}>
                         Sign out
                       </button>
 
@@ -347,6 +349,7 @@ export default function UnifiedLayout({ children }) {
                           value={workspacePassword}
                           onChange={(event) => setWorkspacePassword(event.target.value)}
                           placeholder="Enter 6-digit code"
+                          className="ui-focus-ring"
                           style={{
                             ...workspacePasswordInput,
                             background: palette.panelBg,
@@ -368,7 +371,14 @@ export default function UnifiedLayout({ children }) {
                             {workspaces.map((workspace) => {
                               const isCurrent = workspace.org_slug === user?.organization_slug;
                               return (
-                                <div key={`${workspace.user_id}-${workspace.org_slug}`} style={workspaceItem}>
+                                <div
+                                  key={`${workspace.user_id}-${workspace.org_slug}`}
+                                  style={{
+                                    ...workspaceItem,
+                                    border: `1px solid ${palette.border}`,
+                                    background: palette.panelBg,
+                                  }}
+                                >
                                   <div style={{ minWidth: 0 }}>
                                     <p style={{ ...workspaceName, color: palette.text }}>{workspace.org_name}</p>
                                     <p style={{ ...workspaceMeta, color: palette.muted }}>
@@ -384,6 +394,7 @@ export default function UnifiedLayout({ children }) {
                                       <button
                                         onClick={() => handleRequestWorkspaceCode(workspace.org_slug)}
                                         disabled={requestingCodeOrgSlug === workspace.org_slug}
+                                        className="ui-btn-polish ui-focus-ring"
                                         style={{
                                           ...workspaceSwitchButton,
                                           background: palette.panelBg,
@@ -398,6 +409,7 @@ export default function UnifiedLayout({ children }) {
                                       <button
                                         onClick={() => handleSwitchWorkspace(workspace.org_slug)}
                                         disabled={switchingOrgSlug === workspace.org_slug}
+                                        className="ui-btn-polish ui-focus-ring"
                                         style={{
                                           ...workspaceSwitchButton,
                                           background: darkMode ? "#ffb476" : "#d9692e",
@@ -586,7 +598,6 @@ const workspaceItem = {
   gridTemplateColumns: "1fr auto",
   alignItems: "center",
   gap: 10,
-  border: "1px solid rgba(120,120,120,0.14)",
   borderRadius: 12,
   padding: "10px 11px",
 };

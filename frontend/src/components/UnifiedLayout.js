@@ -372,7 +372,7 @@ export default function UnifiedLayout({ children }) {
                                   <div style={{ minWidth: 0 }}>
                                     <p style={{ ...workspaceName, color: palette.text }}>{workspace.org_name}</p>
                                     <p style={{ ...workspaceMeta, color: palette.muted }}>
-                                      {workspace.org_slug} • {workspace.role}
+                                      {workspace.org_slug} | {workspace.role}
                                     </p>
                                   </div>
                                   {isCurrent ? (
@@ -380,29 +380,29 @@ export default function UnifiedLayout({ children }) {
                                       Current
                                     </span>
                                   ) : (
-                                    <div style={{ display: "flex", gap: 6 }}>
+                                    <div style={workspaceActions}>
                                       <button
                                         onClick={() => handleRequestWorkspaceCode(workspace.org_slug)}
                                         disabled={requestingCodeOrgSlug === workspace.org_slug}
                                         style={{
                                           ...workspaceSwitchButton,
-                                          background: "transparent",
+                                          background: palette.panelBg,
                                           color: palette.text,
                                           border: `1px solid ${palette.border}`,
                                           opacity: requestingCodeOrgSlug === workspace.org_slug ? 0.65 : 1,
                                           cursor: requestingCodeOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
                                         }}
                                       >
-                                        {requestingCodeOrgSlug === workspace.org_slug ? "Sending..." : "Send"}
+                                        {requestingCodeOrgSlug === workspace.org_slug ? "Sending..." : "Send Code"}
                                       </button>
                                       <button
                                         onClick={() => handleSwitchWorkspace(workspace.org_slug)}
                                         disabled={switchingOrgSlug === workspace.org_slug}
                                         style={{
                                           ...workspaceSwitchButton,
-                                          background: palette.hover,
-                                          color: palette.text,
-                                          border: `1px solid ${palette.border}`,
+                                          background: darkMode ? "#ffb476" : "#d9692e",
+                                          color: darkMode ? "#20120d" : "#fff7ee",
+                                          border: `1px solid ${darkMode ? "rgba(255,180,118,0.5)" : "#b95322"}`,
                                           opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
                                           cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
                                         }}
@@ -504,8 +504,8 @@ const iconButton = {
 };
 
 const avatarButton = {
-  width: 32,
-  height: 32,
+  width: 38,
+  height: 38,
   borderRadius: "50%",
   overflow: "hidden",
   display: "grid",
@@ -524,44 +524,45 @@ const avatarImage = {
 };
 
 const avatarInitial = {
-  fontSize: 13,
+  fontSize: 15,
 };
 
 const profileMenu = {
   position: "absolute",
   right: 0,
-  top: 40,
-  minWidth: 190,
-  borderRadius: 12,
+  top: 46,
+  minWidth: 340,
+  maxWidth: 420,
+  borderRadius: 16,
   overflow: "hidden",
   boxShadow: "0 20px 40px rgba(0,0,0,0.28)",
   zIndex: 120,
 };
 
 const profileHead = {
-  padding: "10px 12px",
+  padding: "14px 16px",
 };
 
 const nameLine = {
   margin: 0,
-  fontSize: 13,
+  fontSize: 15,
   fontWeight: 700,
 };
 
 const emailLine = {
-  margin: "3px 0 0",
-  fontSize: 11,
+  margin: "4px 0 0",
+  fontSize: 13,
 };
 
 const workspaceMenuSection = {
-  padding: "10px 12px",
+  padding: "14px 16px 16px",
   display: "grid",
-  gap: 8,
+  gap: 10,
 };
 
 const workspaceTitle = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 12,
   letterSpacing: "0.08em",
   textTransform: "uppercase",
   fontWeight: 700,
@@ -569,27 +570,30 @@ const workspaceTitle = {
 
 const workspacePasswordInput = {
   width: "100%",
-  borderRadius: 8,
-  padding: "7px 8px",
-  fontSize: 12,
+  borderRadius: 10,
+  padding: "10px 11px",
+  fontSize: 14,
   outline: "none",
 };
 
 const workspaceList = {
   display: "grid",
-  gap: 7,
+  gap: 10,
 };
 
 const workspaceItem = {
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "1fr auto",
   alignItems: "center",
-  justifyContent: "space-between",
-  gap: 8,
+  gap: 10,
+  border: "1px solid rgba(120,120,120,0.14)",
+  borderRadius: 12,
+  padding: "10px 11px",
 };
 
 const workspaceName = {
   margin: 0,
-  fontSize: 12,
+  fontSize: 14,
   fontWeight: 700,
   whiteSpace: "nowrap",
   overflow: "hidden",
@@ -597,21 +601,22 @@ const workspaceName = {
 };
 
 const workspaceMeta = {
-  margin: "2px 0 0",
-  fontSize: 11,
+  margin: "4px 0 0",
+  fontSize: 12,
 };
 
 const workspaceSwitchButton = {
-  borderRadius: 8,
-  padding: "5px 8px",
-  fontSize: 11,
+  borderRadius: 10,
+  padding: "8px 12px",
+  fontSize: 12,
   fontWeight: 700,
+  minWidth: 92,
 };
 
 const workspaceTag = {
-  borderRadius: 8,
-  padding: "4px 7px",
-  fontSize: 10,
+  borderRadius: 999,
+  padding: "6px 10px",
+  fontSize: 11,
   fontWeight: 700,
   textTransform: "uppercase",
 };
@@ -621,10 +626,17 @@ const menuButton = {
   textAlign: "left",
   border: "none",
   background: "transparent",
-  padding: "10px 12px",
-  fontSize: 13,
+  padding: "12px 16px",
+  fontSize: 14,
   cursor: "pointer",
   fontFamily: "inherit",
+  fontWeight: 700,
+};
+
+const workspaceActions = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
 };
 
 const main = {
@@ -728,3 +740,4 @@ const askFabButton = {
   userSelect: "none",
   touchAction: "none",
 };
+

@@ -60,6 +60,7 @@ def login(request):
     password = request.data.get('password', '')
     turnstile_token = request.data.get('turnstile_token')
     org_slug = (request.data.get('org_slug') or request.data.get('organization_slug') or request.data.get('organization') or '').strip().lower()
+    preferred_org_slug = (request.data.get('preferred_org_slug') or '').strip().lower()
     
     if not username or not password:
         return Response({'error': 'Username and password required'}, 
@@ -120,15 +121,24 @@ def login(request):
             if len(matched_by_password) == 1:
                 user = matched_by_password[0]
             elif len(matched_by_password) > 1:
-                matched_by_password.sort(
-                    key=lambda candidate: (
-                        1 if candidate.last_login else 0,
-                        candidate.last_login.timestamp() if candidate.last_login else 0,
-                        candidate.id,
-                    ),
-                    reverse=True,
-                )
-                user = matched_by_password[0]
+                preferred_match = None
+                if preferred_org_slug:
+                    preferred_match = next(
+                        (candidate for candidate in matched_by_password if candidate.organization.slug == preferred_org_slug),
+                        None,
+                    )
+                if preferred_match:
+                    user = preferred_match
+                else:
+                    matched_by_password.sort(
+                        key=lambda candidate: (
+                            1 if candidate.last_login else 0,
+                            candidate.last_login.timestamp() if candidate.last_login else 0,
+                            candidate.id,
+                        ),
+                        reverse=True,
+                    )
+                    user = matched_by_password[0]
             elif matches.count() == 1:
                 user = authenticate(username=matches.first().username, password=password)
     

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext();
+const LAST_WORKSPACE_SLUG_KEY = 'last_workspace_slug';
 
 function LoadingScreen() {
   return (
@@ -61,7 +62,12 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     try {
-      const response = await api.post('/api/auth/login/', credentials);
+      const preferredOrgSlug = localStorage.getItem(LAST_WORKSPACE_SLUG_KEY);
+      const payload = {
+        ...credentials,
+        ...(preferredOrgSlug ? { preferred_org_slug: preferredOrgSlug } : {}),
+      };
+      const response = await api.post('/api/auth/login/', payload);
       const responseData = response.data.data || response.data;
       const { access_token, user: userData } = responseData;
       
@@ -72,6 +78,9 @@ export function AuthProvider({ children }) {
       localStorage.setItem('access_token', access_token);
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
+      if (userData?.organization_slug) {
+        localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
+      }
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
       setUser(userData);
@@ -129,6 +138,9 @@ export function AuthProvider({ children }) {
       localStorage.setItem('access_token', access_token);
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
+      if (userData?.organization_slug) {
+        localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
+      }
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       setUser(userData);
       return { success: true, user: userData };

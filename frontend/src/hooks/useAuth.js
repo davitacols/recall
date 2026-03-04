@@ -96,6 +96,19 @@ export function AuthProvider({ children }) {
       const response = await api.get('/api/auth/workspaces/');
       return { success: true, data: response.data };
     } catch (error) {
+      const status = error.response?.status;
+      if (status === 404) {
+        return {
+          success: false,
+          error: 'Workspace switch is not available on this backend yet. Deploy the latest backend update.',
+        };
+      }
+      if (status === 401) {
+        return {
+          success: false,
+          error: 'Session expired. Please sign in again.',
+        };
+      }
       return {
         success: false,
         error: error.response?.data?.error || 'Failed to load workspaces',
@@ -120,6 +133,19 @@ export function AuthProvider({ children }) {
       setUser(userData);
       return { success: true, user: userData };
     } catch (error) {
+      const status = error.response?.status;
+      if (status === 404) {
+        return {
+          success: false,
+          error: 'Workspace switch endpoint is unavailable. Deploy latest backend update first.',
+        };
+      }
+      if (status === 401) {
+        return {
+          success: false,
+          error: error.response?.data?.error || 'Invalid password.',
+        };
+      }
       return {
         success: false,
         error: error.response?.data?.error || 'Workspace switch failed',

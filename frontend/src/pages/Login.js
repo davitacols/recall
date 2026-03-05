@@ -114,6 +114,24 @@ function Login() {
     if (!isLogin || inviteToken || !googleClientId) return;
     let canceled = false;
     const scriptId = "google-gsi-script";
+    let resizeTimer = null;
+    let resizeHandler = null;
+
+    const renderGoogleButton = () => {
+      const btn = document.getElementById("google-signin-button");
+      if (!btn || !window.google?.accounts?.id) return;
+      const frameWidth = Math.max(230, Math.min(380, (btn.parentElement?.clientWidth || 320) - 4));
+      btn.innerHTML = "";
+      window.google.accounts.id.renderButton(btn, {
+        theme: "filled_black",
+        size: "large",
+        shape: "rectangular",
+        width: frameWidth,
+        text: "continue_with",
+        logo_alignment: "left",
+      });
+      setGoogleReady(true);
+    };
 
     const initializeGoogle = () => {
       if (canceled || !window.google?.accounts?.id) return;
@@ -137,18 +155,13 @@ function Login() {
           }
         },
       });
-      const btn = document.getElementById("google-signin-button");
-      if (btn) {
-        btn.innerHTML = "";
-        window.google.accounts.id.renderButton(btn, {
-          theme: "outline",
-          size: "large",
-          shape: "pill",
-          width: 320,
-          text: "continue_with",
-        });
-      }
-      setGoogleReady(true);
+      renderGoogleButton();
+      const handleResize = () => {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(renderGoogleButton, 120);
+      };
+      resizeHandler = handleResize;
+      window.addEventListener("resize", resizeHandler);
     };
 
     const existing = document.getElementById(scriptId);
@@ -156,6 +169,10 @@ function Login() {
       initializeGoogle();
       return () => {
         canceled = true;
+        if (resizeTimer) clearTimeout(resizeTimer);
+        if (resizeHandler) {
+          window.removeEventListener("resize", resizeHandler);
+        }
       };
     }
 
@@ -169,6 +186,10 @@ function Login() {
 
     return () => {
       canceled = true;
+      if (resizeTimer) clearTimeout(resizeTimer);
+      if (resizeHandler) {
+        window.removeEventListener("resize", resizeHandler);
+      }
     };
   }, [isLogin, inviteToken, googleClientId, googleLogin, addToast]);
 
@@ -263,11 +284,22 @@ function Login() {
               {error && <div style={errorBox}>{error}</div>}
 
               {isLogin && !inviteToken && googleClientId ? (
-                <div style={{ display: "grid", gap: 8, justifyItems: "center" }}>
-                  <div id="google-signin-button" />
+                <section style={googlePanel}>
+                  <div style={googlePanelTop}>
+                    <div style={googleIconWrap} aria-hidden="true">
+                      <span style={googleIconGlyph}>G</span>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={googleTitle}>Continue with Google</p>
+                      <p style={googleSub}>Use your verified Google account to sign in quickly.</p>
+                    </div>
+                  </div>
+                  <div style={googleButtonFrame}>
+                    <div id="google-signin-button" style={googleButtonHost} />
+                  </div>
                   {!googleReady ? <p style={smallHint}>Loading Google sign-in...</p> : null}
                   {googleLoading ? <p style={smallHint}>Signing in with Google...</p> : null}
-                </div>
+                </section>
               ) : null}
 
               {isLogin && !inviteToken && googleClientId ? (
@@ -821,6 +853,74 @@ const smallHint = {
   margin: 0,
   color: "rgba(247,239,227,0.62)",
   fontSize: 12,
+};
+
+const googlePanel = {
+  border: "1px solid rgba(255,240,222,0.16)",
+  borderRadius: 14,
+  padding: "12px 12px 10px",
+  background:
+    "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02) 55%, rgba(255,174,104,0.08))",
+  display: "grid",
+  gap: 10,
+};
+
+const googlePanelTop = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+};
+
+const googleIconWrap = {
+  width: 30,
+  height: 30,
+  borderRadius: 8,
+  background: "rgba(255,255,255,0.9)",
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
+  boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
+};
+
+const googleIconGlyph = {
+  fontWeight: 800,
+  fontSize: 17,
+  lineHeight: 1,
+  background: "linear-gradient(90deg, #4285F4 0 25%, #34A853 25% 50%, #FBBC05 50% 75%, #EA4335 75% 100%)",
+  WebkitBackgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+};
+
+const googleTitle = {
+  margin: 0,
+  fontSize: 14,
+  fontWeight: 700,
+  color: "#f7efe3",
+};
+
+const googleSub = {
+  margin: "2px 0 0",
+  fontSize: 12,
+  color: "rgba(247,239,227,0.7)",
+};
+
+const googleButtonFrame = {
+  borderRadius: 10,
+  border: "1px solid rgba(255,240,222,0.12)",
+  background: "rgba(7,6,6,0.35)",
+  padding: 6,
+  minHeight: 50,
+  display: "grid",
+  alignItems: "center",
+  justifyItems: "center",
+};
+
+const googleButtonHost = {
+  width: "100%",
+  minHeight: 44,
+  display: "grid",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const dividerRow = {

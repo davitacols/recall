@@ -705,7 +705,7 @@ const layoutHeader = {
 };
 
 const layoutHeaderMobile = {
-  top: 62,
+  top: 0,
   borderRadius: 10,
   padding: "10px 10px 9px",
   marginBottom: 10,

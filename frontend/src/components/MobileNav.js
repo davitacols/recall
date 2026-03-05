@@ -130,30 +130,6 @@ export const MobileNav = ({ onSearchOpen }) => {
 
   return (
     <>
-      <header
-        style={{
-          ...mobileTopBar,
-          background: palette.surface,
-          borderBottom: `1px solid ${palette.border}`,
-        }}
-      >
-        <div style={mobileTopInner}>
-          <Link to="/" style={{ ...mobileBrand, color: palette.text }}>
-            <span style={mobileBrandMark}>K</span>
-            Knoledgr
-          </Link>
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen((prev) => !prev)}
-            aria-label={menuOpen ? "Close mobile menu" : "Open mobile menu"}
-            style={{ ...iconButton, color: palette.text, border: `1px solid ${palette.border}` }}
-          >
-            {menuOpen ? <XMarkIcon style={icon20} /> : <Bars3Icon style={icon20} />}
-          </button>
-        </div>
-      </header>
-
       <nav
         style={{
           ...mobileBottomNav,
@@ -188,6 +164,16 @@ export const MobileNav = ({ onSearchOpen }) => {
           >
             <MagnifyingGlassIcon style={icon20} />
             <span>Search</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMenuOpen((prev) => !prev)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            style={{ ...mobileNavItem, color: palette.muted, background: "transparent", border: "none" }}
+          >
+            {menuOpen ? <XMarkIcon style={icon20} /> : <Bars3Icon style={icon20} />}
+            <span>Menu</span>
           </button>
         </div>
       </nav>
@@ -302,8 +288,6 @@ export const MobileNav = ({ onSearchOpen }) => {
           </aside>
         </div>
       ) : null}
-
-      <div style={mobileTopSpacer} />
       <div style={mobileBottomSpacer} />
     </>
   );
@@ -311,44 +295,6 @@ export const MobileNav = ({ onSearchOpen }) => {
 
 export const MobileOptimized = ({ children }) => {
   return <div style={mobileContentWrap}>{children}</div>;
-};
-
-const mobileTopBar = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  zIndex: 65,
-  backdropFilter: "blur(10px)",
-};
-
-const mobileTopInner = {
-  height: 58,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "0 10px",
-};
-
-const mobileBrand = {
-  textDecoration: "none",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  fontWeight: 800,
-  letterSpacing: "-0.01em",
-  fontSize: 18,
-};
-
-const mobileBrandMark = {
-  width: 24,
-  height: 24,
-  display: "grid",
-  placeItems: "center",
-  background: "linear-gradient(135deg, #ffd49f, #ff9e61)",
-  color: "#25160f",
-  fontSize: 12,
-  fontWeight: 900,
 };
 
 const iconButton = {
@@ -374,7 +320,7 @@ const mobileBottomNav = {
 const mobileBottomInner = {
   minHeight: 64,
   display: "grid",
-  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
   gap: 4,
   padding: "6px 6px 7px",
 };
@@ -522,7 +468,6 @@ const primaryButton = {
   cursor: "pointer",
 };
 
-const mobileTopSpacer = { height: 58 };
 const mobileBottomSpacer = { height: "calc(68px + env(safe-area-inset-bottom, 0px))" };
 const mobileContentWrap = { minHeight: "100vh", paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" };
 

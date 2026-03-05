@@ -14,6 +14,7 @@ from apps.users.auth_utils import (
     validate_password,
     validate_username,
     generate_unique_org_username,
+    get_client_fingerprint,
 )
 from apps.users.bot_protection import verify_turnstile_token
 
@@ -29,6 +30,16 @@ def _rate_limit_config(name, default_limit, default_window):
     )
 
 
+def _log_rate_limit_block(request, endpoint, subject=None, details=None):
+    logger.warning(
+        "rate_limit_blocked endpoint=%s subject=%s fingerprint=%s details=%s",
+        endpoint,
+        subject or "unknown",
+        get_client_fingerprint(request),
+        details or {},
+    )
+
+
 def _normalize_invite_role(role):
     if role == 'member':
         return 'contributor'
@@ -40,6 +51,7 @@ def _normalize_invite_role(role):
 def invite_user(request):
     invite_limit, invite_window = _rate_limit_config('invite_send', 20, 3600)
     if not check_rate_limit(request.user.id, action="invite_user", limit=invite_limit, window=invite_window):
+        _log_rate_limit_block(request, 'invite_send', subject=str(request.user.id))
         return Response({"error": "Too many invite attempts. Try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
     if request.user.role != 'admin':
@@ -106,8 +118,9 @@ def invite_user(request):
 @api_view(['GET'])
 @permission_classes([])
 def verify_invitation(request, token):
-    client_id = request.META.get('REMOTE_ADDR', 'unknown')
+    client_id = get_client_fingerprint(request)
     if not check_rate_limit(client_id, action='verify_invitation', limit=80, window=3600):
+        _log_rate_limit_block(request, 'verify_invitation', subject=str(token))
         return Response({'error': 'Too many verification attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     try:
         invitation = Invitation.objects.get(token=token)
@@ -132,8 +145,9 @@ def verify_invitation(request, token):
 @api_view(['POST'])
 @permission_classes([])
 def accept_invitation(request, token):
-    client_id = request.META.get('REMOTE_ADDR', 'unknown')
+    client_id = get_client_fingerprint(request)
     if not check_rate_limit(client_id, action='accept_invitation', limit=20, window=3600):
+        _log_rate_limit_block(request, 'accept_invitation', subject=str(token))
         return Response({'error': 'Too many acceptance attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     ok, captcha_error = verify_turnstile_token(request, request.data.get('turnstile_token'))
     if not ok:
@@ -262,6 +276,7 @@ def resend_invitation(request, invitation_id):
 
     resend_limit, resend_window = _rate_limit_config('invite_resend', 60, 3600)
     if not check_rate_limit(request.user.id, action="resend_invitation", limit=resend_limit, window=resend_window):
+        _log_rate_limit_block(request, 'invite_resend', subject=str(request.user.id), details={'invitation_id': invitation_id})
         return Response({"error": "Too many resend attempts. Try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
     try:
@@ -293,8 +308,9 @@ def resend_invitation(request, invitation_id):
 @api_view(['POST'])
 @permission_classes([])
 def create_organization(request):
-    client_id = request.META.get('REMOTE_ADDR', 'unknown')
+    client_id = get_client_fingerprint(request)
     if not check_rate_limit(client_id, action='create_organization', limit=8, window=3600):
+        _log_rate_limit_block(request, 'create_organization')
         return Response({'error': 'Too many organization creation attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     ok, captcha_error = verify_turnstile_token(request, request.data.get('turnstile_token'))
     if not ok:

@@ -1,4 +1,5 @@
 import re
+import hashlib
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
@@ -70,3 +71,16 @@ def generate_unique_org_username(seed_value, org_slug, max_length=150):
         suffix += 1
 
     return candidate
+
+
+def get_client_fingerprint(request):
+    """
+    Build a coarse client fingerprint for abuse throttling.
+    Uses forwarded IP when available and user-agent hash.
+    """
+    forwarded_for = (request.META.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
+    remote_addr = (request.META.get('REMOTE_ADDR') or '').strip()
+    ip = forwarded_for or remote_addr or 'unknown'
+    user_agent = (request.META.get('HTTP_USER_AGENT') or '').strip().lower()
+    digest = hashlib.sha256(f"{ip}|{user_agent}".encode()).hexdigest()[:16]
+    return f"{ip}:{digest}"

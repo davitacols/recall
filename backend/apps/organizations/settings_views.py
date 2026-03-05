@@ -9,10 +9,14 @@ from django.db.models import Count
 from django.db.models.functions import Lower
 from django.utils import timezone
 from datetime import timedelta
+import logging
 from .models import Organization, User
 from apps.conversations.models import UserPreferences, Badge
 from apps.notifications.models import Notification
 from apps.users.auth_utils import check_rate_limit
+
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_role(role):
@@ -390,6 +394,11 @@ def invite_member(request):
         limit=invite_limit,
         window=invite_window,
     ):
+        logger.warning(
+            "rate_limit_blocked endpoint=settings_invite_member subject=%s org=%s",
+            request.user.id,
+            request.user.organization_id,
+        )
         return Response({'error': 'Too many invite attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     
     email = (request.data.get('email') or '').strip().lower()

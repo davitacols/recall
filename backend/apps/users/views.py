@@ -22,6 +22,7 @@ from .auth_utils import (
     validate_password,
     validate_username,
     generate_unique_org_username,
+    get_client_fingerprint,
 )
 from .bot_protection import verify_turnstile_token
 from apps.notifications.email_service import (
@@ -73,6 +74,16 @@ def _log_auth_audit_throttled(organization, user, resource_type, details, reques
         return
     cache.set(cache_key, 1, timeout=ttl_seconds)
     _log_auth_audit(organization, user, resource_type, details, request, action=action)
+
+
+def _log_rate_limit_block(request, endpoint, subject=None, details=None):
+    logger.warning(
+        "rate_limit_blocked endpoint=%s subject=%s fingerprint=%s details=%s",
+        endpoint,
+        subject or "unknown",
+        get_client_fingerprint(request),
+        details or {},
+    )
 
 
 def _normalize_user_role(role):
@@ -182,9 +193,23 @@ def login(request):
                        status=status.HTTP_400_BAD_REQUEST)
     
     # Rate limiting
+    client_fingerprint = get_client_fingerprint(request)
+    if not check_rate_limit(
+        f"login_ip:{client_fingerprint}",
+        action='login_ip',
+        limit=60,
+        window=3600,
+    ):
+        _log_rate_limit_block(request, 'login_ip', subject=username)
+        return Response(
+            {'error': 'Too many login attempts. Try again later.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
     login_limit, login_window = _rate_limit_config('login', 5, 3600)
     if not check_rate_limit(username, action='login', limit=login_limit, window=login_window):
         logger.warning(f"Rate limit exceeded for login attempt: {username}")
+        _log_rate_limit_block(request, 'login_subject', subject=username)
         if '@' in username:
             matched_orgs = User.objects.filter(email__iexact=username, is_active=True).values_list('organization_id', flat=True).distinct()
             for org_id in matched_orgs:
@@ -330,6 +355,19 @@ def google_login(request):
     if not settings.GOOGLE_OAUTH_ENABLED or not settings.GOOGLE_CLIENT_ID:
         return Response({'error': 'Google Sign-In is not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+    client_fingerprint = get_client_fingerprint(request)
+    if not check_rate_limit(
+        f"google_login_ip:{client_fingerprint}",
+        action='google_login_ip',
+        limit=80,
+        window=3600,
+    ):
+        _log_rate_limit_block(request, 'google_login_ip')
+        return Response(
+            {'error': 'Too many Google sign-in attempts. Try again later.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
     google_limit, google_window = _rate_limit_config('google_login', 10, 3600)
     client_id = request.META.get('REMOTE_ADDR', 'unknown')
     if not check_rate_limit(
@@ -338,6 +376,7 @@ def google_login(request):
         limit=google_limit,
         window=google_window,
     ):
+        _log_rate_limit_block(request, 'google_login_subject', subject=client_id)
         return Response(
             {'error': 'Too many Google sign-in attempts. Try again later.'},
             status=status.HTTP_429_TOO_MANY_REQUESTS
@@ -431,6 +470,7 @@ def request_workspace_switch_code(request):
         limit=switch_code_limit,
         window=switch_code_window,
     ):
+        _log_rate_limit_block(request, 'workspace_switch_code', subject=str(request.user.id), details={'org_slug': org_slug})
         _log_auth_audit_throttled(
             organization=request.user.organization,
             user=request.user,
@@ -516,6 +556,7 @@ def switch_workspace(request):
         limit=switch_limit,
         window=switch_window,
     ):
+        _log_rate_limit_block(request, 'workspace_switch', subject=str(request.user.id), details={'org_slug': org_slug})
         _log_auth_audit_throttled(
             organization=request.user.organization,
             user=request.user,
@@ -694,6 +735,19 @@ def register(request):
     full_name = (request.data.get('full_name') or '').strip()
     
     # Rate limiting
+    client_fingerprint = get_client_fingerprint(request)
+    if not check_rate_limit(
+        f"register_ip:{client_fingerprint}",
+        action='register_ip',
+        limit=30,
+        window=3600,
+    ):
+        _log_rate_limit_block(request, 'register_ip', subject=email)
+        return Response(
+            {'error': 'Too many registration attempts. Try again later.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
     register_limit, register_window = _rate_limit_config('register', 5, 3600)
     if not check_rate_limit(
         f'register:{email}',
@@ -702,6 +756,7 @@ def register(request):
         window=register_window,
     ):
         logger.warning(f"Rate limit exceeded for registration: {email}")
+        _log_rate_limit_block(request, 'register_subject', subject=email)
         return Response(
             {'error': 'Too many registration attempts. Try again later.'},
             status=status.HTTP_429_TOO_MANY_REQUESTS
@@ -851,6 +906,15 @@ def forgot_password(request):
     turnstile_token = request.data.get('turnstile_token')
     if not email:
         return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+    client_fingerprint = get_client_fingerprint(request)
+    if not check_rate_limit(
+        f"forgot_password_ip:{client_fingerprint}",
+        action='forgot_password_ip',
+        limit=40,
+        window=3600,
+    ):
+        _log_rate_limit_block(request, 'forgot_password_ip', subject=email)
+        return Response({'error': 'Too many attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     forgot_limit, forgot_window = _rate_limit_config('forgot_password', 10, 3600)
     if not check_rate_limit(
         f'forgot_password:{email}',
@@ -858,6 +922,7 @@ def forgot_password(request):
         limit=forgot_limit,
         window=forgot_window,
     ):
+        _log_rate_limit_block(request, 'forgot_password_subject', subject=email)
         return Response({'error': 'Too many attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     ok, captcha_error = verify_turnstile_token(request, turnstile_token)
     if not ok:

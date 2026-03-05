@@ -4,6 +4,13 @@ from decouple import config
 import dj_database_url
 from corsheaders.defaults import default_headers
 
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+except Exception:  # pragma: no cover - optional dependency in local envs
+    sentry_sdk = None
+    DjangoIntegration = None
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -31,6 +38,19 @@ if not DEBUG:
     ])
 if _env_bool('ALLOW_ALL_HOSTS', default=False):
     ALLOWED_HOSTS.append('*')
+
+SENTRY_DSN = config('SENTRY_DSN', default='').strip()
+SENTRY_ENVIRONMENT = config('SENTRY_ENVIRONMENT', default='development').strip()
+SENTRY_TRACES_SAMPLE_RATE = config('SENTRY_TRACES_SAMPLE_RATE', default=0.0, cast=float)
+
+if sentry_sdk and SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()] if DjangoIntegration else [],
+        environment=SENTRY_ENVIRONMENT,
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+        send_default_pii=False,
+    )
 
 # Security Settings
 SECURE_BROWSER_XSS_FILTER = True

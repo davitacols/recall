@@ -150,6 +150,11 @@ class Command(BaseCommand):
         if not csp_enabled:
             warnings.append("SECURITY_ENABLE_CSP is disabled.")
 
+        # Sentry monitoring checks
+        sentry_dsn = str(getattr(settings, "SENTRY_DSN", "") or "").strip()
+        if not sentry_dsn:
+            warnings.append("SENTRY_DSN is not configured.")
+
         # Unapplied migrations check
         if not options.get("allow_pending_migrations", False):
             connection = connections["default"]

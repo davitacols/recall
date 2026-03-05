@@ -1,17 +1,36 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import TurnstileWidget from "../components/TurnstileWidget";
 import { useToast } from "../components/Toast";
 import { useAuth } from "../hooks/useAuth";
-import TurnstileWidget from "../components/TurnstileWidget";
+import "./Login.css";
+
+function Field({ label, children }) {
+  return (
+    <label className="auth-field">
+      <span className="auth-field-label">{label}</span>
+      {children}
+    </label>
+  );
+}
 
 function Login() {
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get("token");
   const inviteEmail = searchParams.get("email");
+  const navigate = useNavigate();
+  const { addToast } = useToast();
+  const { login, register, googleLogin } = useAuth();
 
   const [isLogin, setIsLogin] = useState(!inviteToken);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [googleReady, setGoogleReady] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [credentials, setCredentials] = useState({
     username: inviteEmail || "",
     password: "",
@@ -20,35 +39,39 @@ function Login() {
     token: inviteToken || "",
     organization: "",
   });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const [googleReady, setGoogleReady] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+
   const turnstileEnabled = Boolean(process.env.REACT_APP_TURNSTILE_SITE_KEY);
   const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
-  const { login, googleLogin, register } = useAuth();
-  const { addToast } = useToast();
-  const navigate = useNavigate();
+  const passwordChecks = useMemo(
+    () => [
+      { key: "len", label: "At least 8 characters", valid: credentials.password.length >= 8 },
+      { key: "upper", label: "One uppercase letter", valid: /[A-Z]/.test(credentials.password) },
+      { key: "lower", label: "One lowercase letter", valid: /[a-z]/.test(credentials.password) },
+      { key: "digit", label: "One number", valid: /\d/.test(credentials.password) },
+    ],
+    [credentials.password]
+  );
 
-  const passwordChecks = [
-    { key: "len", label: "At least 8 characters", valid: credentials.password.length >= 8 },
-    { key: "upper", label: "One uppercase letter", valid: /[A-Z]/.test(credentials.password) },
-    { key: "lower", label: "One lowercase letter", valid: /[a-z]/.test(credentials.password) },
-    { key: "digit", label: "One number", valid: /\d/.test(credentials.password) },
-  ];
+  const setField = (name, value) => setCredentials((prev) => ({ ...prev, [name]: value }));
+
+  const switchMode = (loginMode) => {
+    setIsLogin(loginMode);
+    setError("");
+  };
 
   const validateSignup = () => {
     if (!credentials.username.trim()) return "Email is required";
     if (!inviteToken && !credentials.organization.trim()) return "Organization name is required";
     if (!credentials.full_name.trim()) return "Full name is required";
     if (credentials.password !== credentials.confirmPassword) return "Passwords do not match";
-    if (passwordChecks.some((check) => !check.valid)) {
-      return "Password does not meet the required strength";
-    }
+    if (passwordChecks.some((check) => !check.valid)) return "Password does not meet the required strength";
     return null;
+  };
+
+  const finalizeAuth = () => {
+    addToast("Welcome back!", "success");
+    window.location.href = "/";
   };
 
   const handleSubmit = async (event) => {
@@ -56,77 +79,74 @@ function Login() {
     setLoading(true);
     setError("");
 
+    if (turnstileEnabled && !turnstileToken) {
+      setError("Please complete bot verification.");
+      setLoading(false);
+      return;
+    }
+
     if (isLogin) {
-      if (turnstileEnabled && !turnstileToken) {
-        setError("Please complete bot verification.");
-        setLoading(false);
-        return;
-      }
       const result = await login({ ...credentials, turnstile_token: turnstileToken });
       if (result.success) {
-        addToast("Welcome back!", "success");
-        window.location.href = "/";
+        finalizeAuth();
       } else {
         setError(result.error);
         addToast(result.error, "error");
       }
-    } else {
-      const signupError = validateSignup();
-      if (signupError) {
-        setError(signupError);
-        addToast(signupError, "error");
-        setLoading(false);
-        return;
-      }
+      setLoading(false);
+      return;
+    }
 
-      if (turnstileEnabled && !turnstileToken) {
-        setError("Please complete bot verification.");
-        setLoading(false);
-        return;
-      }
-      const result = await register({ ...credentials, turnstile_token: turnstileToken });
-      if (result.success) {
-        setIsLogin(true);
-        setCredentials({
-          username: inviteEmail || "",
-          password: "",
-          confirmPassword: "",
-          full_name: "",
-          token: "",
-          organization: "",
-        });
-        addToast(
-          inviteToken
-            ? "Account created! Please sign in."
-            : "Organization created! Please sign in.",
-          "success"
-        );
-      } else {
-        setError(result.error);
-        addToast(result.error, "error");
-      }
+    const signupError = validateSignup();
+    if (signupError) {
+      setError(signupError);
+      addToast(signupError, "error");
+      setLoading(false);
+      return;
+    }
+
+    const result = await register({ ...credentials, turnstile_token: turnstileToken });
+    if (result.success) {
+      setIsLogin(true);
+      setCredentials({
+        username: inviteEmail || "",
+        password: "",
+        confirmPassword: "",
+        full_name: "",
+        token: "",
+        organization: "",
+      });
+      addToast(
+        inviteToken ? "Account created! Please sign in." : "Organization created! Please sign in.",
+        "success"
+      );
+    } else {
+      setError(result.error);
+      addToast(result.error, "error");
     }
 
     setLoading(false);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isLogin || inviteToken || !googleClientId) return;
+
     let canceled = false;
-    const scriptId = "google-gsi-script";
     let resizeTimer = null;
     let resizeHandler = null;
+    const scriptId = "google-gsi-script";
 
     const renderGoogleButton = () => {
-      const btn = document.getElementById("google-signin-button");
-      if (!btn || !window.google?.accounts?.id) return;
-      const frameWidth = Math.max(230, Math.min(380, (btn.parentElement?.clientWidth || 320) - 4));
-      btn.innerHTML = "";
-      window.google.accounts.id.renderButton(btn, {
+      const mountPoint = document.getElementById("google-signin-button");
+      if (!mountPoint || !window.google?.accounts?.id) return;
+
+      const width = Math.max(250, Math.min(390, (mountPoint.parentElement?.clientWidth || 340) - 8));
+      mountPoint.innerHTML = "";
+      window.google.accounts.id.renderButton(mountPoint, {
         theme: "filled_black",
         size: "large",
         shape: "rectangular",
-        width: frameWidth,
+        width,
         text: "continue_with",
         logo_alignment: "left",
       });
@@ -135,6 +155,7 @@ function Login() {
 
     const initializeGoogle = () => {
       if (canceled || !window.google?.accounts?.id) return;
+
       window.google.accounts.id.initialize({
         client_id: googleClientId,
         callback: async (response) => {
@@ -147,272 +168,236 @@ function Login() {
           const result = await googleLogin({ credential });
           setGoogleLoading(false);
           if (result.success) {
-            addToast("Welcome back!", "success");
-            window.location.href = "/";
+            finalizeAuth();
           } else {
             setError(result.error);
             addToast(result.error, "error");
           }
         },
       });
+
       renderGoogleButton();
-      const handleResize = () => {
+      resizeHandler = () => {
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeTimer = setTimeout(renderGoogleButton, 120);
       };
-      resizeHandler = handleResize;
       window.addEventListener("resize", resizeHandler);
     };
 
-    const existing = document.getElementById(scriptId);
-    if (existing) {
+    const script = document.getElementById(scriptId);
+    if (script) {
       initializeGoogle();
-      return () => {
-        canceled = true;
-        if (resizeTimer) clearTimeout(resizeTimer);
-        if (resizeHandler) {
-          window.removeEventListener("resize", resizeHandler);
-        }
-      };
+    } else {
+      const nextScript = document.createElement("script");
+      nextScript.id = scriptId;
+      nextScript.src = "https://accounts.google.com/gsi/client";
+      nextScript.async = true;
+      nextScript.defer = true;
+      nextScript.onload = initializeGoogle;
+      document.body.appendChild(nextScript);
     }
-
-    const script = document.createElement("script");
-    script.id = scriptId;
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = initializeGoogle;
-    document.body.appendChild(script);
 
     return () => {
       canceled = true;
       if (resizeTimer) clearTimeout(resizeTimer);
-      if (resizeHandler) {
-        window.removeEventListener("resize", resizeHandler);
-      }
+      if (resizeHandler) window.removeEventListener("resize", resizeHandler);
     };
-  }, [isLogin, inviteToken, googleClientId, googleLogin, addToast]);
+  }, [addToast, googleClientId, googleLogin, inviteToken, isLogin]);
 
   return (
-    <div style={page} className="login-page">
-      <style>{responsiveStyles}</style>
-      <div style={ambientGlowTop} />
-      <div style={ambientGlowBottom} />
+    <div className="auth-shell">
+      <div className="auth-glow auth-glow-top" />
+      <div className="auth-glow auth-glow-bottom" />
 
-      <div style={layout} className="login-layout">
+      <div className="auth-grid">
         <motion.aside
-          className="login-side-panel"
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55 }}
-          style={isLogin ? sidePanel : sidePanelCompact}
+          className="auth-showcase"
         >
-          <button onClick={() => navigate("/")} style={brandButton}>
-            <span style={brandMark}>K</span>
-            <span style={brandText}>Knoledgr</span>
+          <button type="button" onClick={() => navigate("/")} className="auth-brand">
+            <span className="auth-brand-mark">K</span>
+            <span>Knoledgr</span>
           </button>
 
-          <div style={isLogin ? heroCopyWrap : heroCopyWrapCompact}>
-            <p style={eyebrow}>KNOWLEDGE OPERATING SYSTEM</p>
-            <h1 style={headline}>Team memory that compounds every sprint.</h1>
-            <p style={supportingCopy}>
-              Turn scattered decisions into a durable source of truth. Knoledgr
-              keeps context discoverable when stakes are high.
+          <div>
+            <p className="auth-kicker">Knowledge Operating System</p>
+            <h1 className="auth-headline">A sharper login for a sharper workspace.</h1>
+            <p className="auth-copy">
+              Keep company memory centralized across every team, sprint, and decision lane.
             </p>
           </div>
 
-          <div style={isLogin ? signalList : signalListCompact}>
-            {[
-              "Decision history with source links",
-              "Meeting and doc context in one timeline",
-              "Clear ownership and auditability",
-            ].map((item) => (
-              <div key={item} style={signalItem}>
-                <span style={signalDot} />
-                <span>{item}</span>
-              </div>
-            ))}
+          <div className="auth-stats">
+            <div className="auth-stat-card">
+              <strong>Org-aware access</strong>
+              <span>One identity, many organizations, zero data collisions.</span>
+            </div>
+            <div className="auth-stat-card">
+              <strong>Verified sessions</strong>
+              <span>Google, password, and Turnstile flow under one secure gateway.</span>
+            </div>
           </div>
         </motion.aside>
 
         <motion.main
-          className="login-form-section"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12, duration: 0.55 }}
-          style={formSection}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="auth-main"
         >
-          <div style={formCard} className="login-form-card">
-            <div style={formHeader}>
-              <p style={formEyebrow}>{isLogin ? "WELCOME BACK" : "GET STARTED"}</p>
-              <h2 style={formTitle} className="login-form-title">
-                {isLogin ? "Sign in to Knoledgr" : inviteToken ? "Join your workspace" : "Create your workspace"}
-              </h2>
-              <p style={formSubtitle}>
+          <section className="auth-card">
+            <header className="auth-card-header">
+              <p className="auth-form-kicker">{isLogin ? "Welcome Back" : "Get Started"}</p>
+              <h2>
                 {isLogin
-                  ? "Continue where your team left off."
-                  : "Set up your account and start organizing team knowledge."}
+                  ? "Sign in to Knoledgr"
+                  : inviteToken
+                    ? "Join your workspace"
+                    : "Create your workspace"}
+              </h2>
+              <p>
+                {isLogin
+                  ? "Access your workspace and continue where your team stopped."
+                  : "Set up your account and unlock your team's knowledge graph."}
               </p>
-            </div>
+            </header>
 
-            {!inviteToken && (
-              <div style={modeToggleWrap}>
+            {!inviteToken ? (
+              <div className="auth-mode-toggle" role="tablist" aria-label="Authentication mode">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsLogin(true);
-                    setError("");
-                  }}
-                  style={isLogin ? activeToggleButton : inactiveToggleButton}
+                  onClick={() => switchMode(true)}
+                  className={`auth-mode-btn ${isLogin ? "active" : ""}`}
                 >
                   Log in
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsLogin(false);
-                    setError("");
-                  }}
-                  style={!isLogin ? activeToggleButton : inactiveToggleButton}
+                  onClick={() => switchMode(false)}
+                  className={`auth-mode-btn ${!isLogin ? "active" : ""}`}
                 >
                   Sign up
                 </button>
               </div>
-            )}
+            ) : null}
 
-            <form onSubmit={handleSubmit} style={formStack}>
-              {error && <div style={errorBox}>{error}</div>}
-
-              {isLogin && !inviteToken && googleClientId ? (
-                <section style={googlePanel}>
-                  <div style={googlePanelTop}>
-                    <div style={googleIconWrap} aria-hidden="true">
-                      <span style={googleIconGlyph}>G</span>
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={googleTitle}>Continue with Google</p>
-                      <p style={googleSub}>Use your verified Google account to sign in quickly.</p>
-                    </div>
-                  </div>
-                  <div style={googleButtonFrame}>
-                    <div id="google-signin-button" style={googleButtonHost} />
-                  </div>
-                  {!googleReady ? <p style={smallHint}>Loading Google sign-in...</p> : null}
-                  {googleLoading ? <p style={smallHint}>Signing in with Google...</p> : null}
-                </section>
-              ) : null}
+            <form className="auth-form" onSubmit={handleSubmit}>
+              {error ? <div className="auth-alert">{error}</div> : null}
 
               {isLogin && !inviteToken && googleClientId ? (
-                <div style={dividerRow}>
-                  <span style={dividerLine} />
-                  <span style={dividerText}>or</span>
-                  <span style={dividerLine} />
-                </div>
+                <>
+                  <section className="auth-google-panel">
+                    <div className="auth-google-head">
+                      <span className="auth-google-badge" aria-hidden="true">
+                        G
+                      </span>
+                      <div>
+                        <h3>Continue with Google</h3>
+                        <p>Fast sign-in with your verified Google account.</p>
+                      </div>
+                    </div>
+                    <div className="auth-google-button-frame">
+                      <div id="google-signin-button" className="auth-google-button-host" />
+                    </div>
+                    {!googleReady ? <small>Loading Google sign-in...</small> : null}
+                    {googleLoading ? <small>Signing in with Google...</small> : null}
+                  </section>
+
+                  <div className="auth-divider" aria-hidden="true">
+                    <span />
+                    <small>or use email</small>
+                    <span />
+                  </div>
+                </>
               ) : null}
 
-              {!isLogin && !inviteToken && (
+              {!isLogin && !inviteToken ? (
                 <Field label="Organization name">
                   <input
                     type="text"
                     required
-                    style={input}
-                    placeholder="Acme Inc"
                     value={credentials.organization}
-                    onChange={(event) =>
-                      setCredentials({
-                        ...credentials,
-                        organization: event.target.value,
-                      })
-                    }
+                    onChange={(event) => setField("organization", event.target.value)}
+                    placeholder="Acme Inc"
                   />
                 </Field>
-              )}
+              ) : null}
 
-              {!isLogin && (
+              {!isLogin ? (
                 <Field label="Full name">
                   <input
                     type="text"
                     required
-                    style={input}
-                    placeholder="Jane Doe"
                     value={credentials.full_name}
-                    onChange={(event) =>
-                      setCredentials({
-                        ...credentials,
-                        full_name: event.target.value,
-                      })
-                    }
+                    onChange={(event) => setField("full_name", event.target.value)}
+                    placeholder="Jane Doe"
                   />
                 </Field>
-              )}
+              ) : null}
 
               <Field label="Email address">
                 <input
                   type="email"
                   required
-                  disabled={!!inviteToken}
-                  style={{ ...input, ...(inviteToken ? disabledInput : {}) }}
-                  placeholder="you@company.com"
+                  disabled={Boolean(inviteToken)}
+                  className={inviteToken ? "is-disabled" : ""}
                   value={credentials.username}
-                  onChange={(event) =>
-                    setCredentials({ ...credentials, username: event.target.value })
-                  }
+                  onChange={(event) => setField("username", event.target.value)}
+                  placeholder="you@company.com"
                 />
               </Field>
 
               <Field label="Password">
-                <div style={passwordWrap}>
+                <div className="auth-password-wrap">
                   <input
                     type={showPassword ? "text" : "password"}
                     required
-                    style={{ ...input, paddingRight: 44 }}
-                    placeholder="********"
                     value={credentials.password}
-                    onChange={(event) =>
-                      setCredentials({ ...credentials, password: event.target.value })
-                    }
+                    onChange={(event) => setField("password", event.target.value)}
+                    placeholder="********"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={passwordToggle}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="auth-password-toggle"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
-                      <EyeSlashIcon style={eyeIcon} />
+                      <EyeSlashIcon className="auth-eye-icon" />
                     ) : (
-                      <EyeIcon style={eyeIcon} />
+                      <EyeIcon className="auth-eye-icon" />
                     )}
                   </button>
                 </div>
               </Field>
 
-              {!isLogin && (
+              {!isLogin ? (
                 <>
                   <Field label="Confirm password">
                     <input
                       type={showPassword ? "text" : "password"}
                       required
-                      style={input}
-                      placeholder="********"
                       value={credentials.confirmPassword}
-                      onChange={(event) =>
-                        setCredentials({ ...credentials, confirmPassword: event.target.value })
-                      }
+                      onChange={(event) => setField("confirmPassword", event.target.value)}
+                      placeholder="********"
                     />
                   </Field>
-                  <div style={passwordGuide}>
+
+                  <div className="auth-password-guide">
                     {passwordChecks.map((check) => (
-                      <div key={check.key} style={{ ...passwordRule, color: check.valid ? "#87e7b4" : "rgba(247,239,227,0.7)" }}>
-                        <span style={{ ...ruleDot, background: check.valid ? "#22c55e" : "rgba(247,239,227,0.35)" }} />
+                      <div key={check.key} className={`auth-rule ${check.valid ? "valid" : ""}`}>
+                        <span />
                         {check.label}
                       </div>
                     ))}
                   </div>
                 </>
-              )}
-              {turnstileEnabled && (
-                <div style={{ display: "grid", justifyContent: "start" }}>
+              ) : null}
+
+              {turnstileEnabled ? (
+                <div className="auth-turnstile-wrap">
                   <TurnstileWidget
                     theme="dark"
                     onVerify={(token) => setTurnstileToken(token)}
@@ -420,549 +405,40 @@ function Login() {
                     onError={() => setTurnstileToken("")}
                   />
                 </div>
-              )}
+              ) : null}
 
-              <button type="submit" disabled={loading} style={submitButton(loading)}>
+              <button type="submit" disabled={loading} className="auth-submit">
                 {loading ? "Please wait..." : isLogin ? "Sign in" : "Create account"}
               </button>
             </form>
 
-            <div style={footerActions}>
-              {isLogin && !inviteToken && (
-                <div style={loginLinks}>
-                  <p style={smallText}>
+            <footer className="auth-card-footer">
+              {isLogin && !inviteToken ? (
+                <>
+                  <p>
                     No account?{" "}
-                    <button
-                      onClick={() => setIsLogin(false)}
-                      style={inlineLinkButton}
-                      type="button"
-                    >
+                    <button type="button" onClick={() => switchMode(false)} className="auth-link-btn">
                       Sign up
                     </button>
                   </p>
                   <button
                     type="button"
                     onClick={() => navigate("/forgot-password")}
-                    style={inlineLinkButton}
+                    className="auth-link-btn"
                   >
                     Forgot password?
                   </button>
-                </div>
-              )}
-              <button
-                onClick={() => navigate("/")}
-                type="button"
-                className="login-back-btn"
-                style={backButton}
-              >
-                {'<'} Back to home
+                </>
+              ) : null}
+              <button type="button" onClick={() => navigate("/")} className="auth-back-btn">
+                {"<"} Back to home
               </button>
-            </div>
-          </div>
+            </footer>
+          </section>
         </motion.main>
       </div>
     </div>
   );
 }
-
-function Field({ label, children }) {
-  return (
-    <label style={fieldLabelWrap}>
-      <span style={fieldLabel}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-const responsiveStyles = `
-  * { box-sizing: border-box; }
-  .login-side-panel { display: flex; }
-  .login-layout {
-    display: grid;
-    grid-template-columns: 1fr min(500px, 100%);
-  }
-  @media (max-width: 960px) {
-    .login-side-panel { display: none !important; }
-    .login-page { padding: 12px !important; }
-    .login-layout {
-      grid-template-columns: 1fr !important;
-      min-height: calc(100vh - 24px) !important;
-      border-radius: 18px !important;
-    }
-    .login-form-section { padding: 22px 14px !important; }
-    .login-form-card {
-      width: 100% !important;
-      max-width: 480px !important;
-      border-radius: 16px !important;
-      padding: 22px 16px 18px !important;
-    }
-  }
-  @media (max-width: 520px) {
-    .login-form-section { padding: 14px 8px !important; }
-    .login-form-card { padding: 18px 12px 14px !important; }
-    .login-form-title { font-size: 1.35rem !important; }
-    .login-back-btn { font-size: 12px !important; }
-  }
-`;
-
-const page = {
-  minHeight: "100vh",
-  padding: 20,
-  position: "relative",
-  overflow: "hidden",
-  background:
-    "radial-gradient(1200px 500px at 0% 0%, rgba(255,170,80,0.22), transparent 60%), radial-gradient(900px 500px at 100% 100%, rgba(75,190,170,0.16), transparent 60%), #140f11",
-  color: "#f7efe3",
-  fontFamily: "'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-};
-
-const ambientGlowTop = {
-  position: "absolute",
-  width: 520,
-  height: 520,
-  top: -180,
-  left: -160,
-  borderRadius: "50%",
-  background: "rgba(255, 160, 95, 0.16)",
-  filter: "blur(60px)",
-  pointerEvents: "none",
-};
-
-const ambientGlowBottom = {
-  position: "absolute",
-  width: 520,
-  height: 520,
-  right: -180,
-  bottom: -220,
-  borderRadius: "50%",
-  background: "rgba(96, 221, 198, 0.14)",
-  filter: "blur(60px)",
-  pointerEvents: "none",
-};
-
-const layout = {
-  position: "relative",
-  zIndex: 1,
-  minHeight: "calc(100vh - 40px)",
-  width: "min(1160px, 100%)",
-  margin: "0 auto",
-  display: "grid",
-  gridTemplateColumns: "1fr min(500px, 100%)",
-  border: "1px solid rgba(255,240,222,0.12)",
-  borderRadius: 24,
-  overflow: "hidden",
-  background: "rgba(14, 10, 12, 0.62)",
-  backdropFilter: "blur(8px)",
-};
-
-const sidePanel = {
-  padding: "44px 44px 40px",
-  flexDirection: "column",
-  justifyContent: "space-between",
-  borderRight: "1px solid rgba(255,240,222,0.08)",
-  background:
-    "linear-gradient(165deg, rgba(255,157,86,0.12), rgba(255,255,255,0.02) 45%, rgba(93,210,193,0.08))",
-};
-
-const sidePanelCompact = {
-  ...sidePanel,
-  padding: "34px 34px 30px",
-  justifyContent: "flex-start",
-  gap: 18,
-};
-
-const brandButton = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 10,
-  background: "transparent",
-  border: "none",
-  padding: 0,
-  cursor: "pointer",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const brandMark = {
-  width: 30,
-  height: 30,
-  borderRadius: 8,
-  display: "grid",
-  placeItems: "center",
-  background: "linear-gradient(135deg, #ffd698, #ff965f)",
-  color: "#1f1512",
-  fontWeight: 800,
-  fontSize: 14,
-};
-
-const brandText = {
-  fontSize: 22,
-  fontWeight: 700,
-  letterSpacing: "-0.01em",
-};
-
-const eyebrow = {
-  margin: "24px 0 10px",
-  fontSize: 12,
-  letterSpacing: "0.2em",
-  color: "rgba(247,239,227,0.72)",
-};
-
-const headline = {
-  margin: 0,
-  fontSize: "clamp(2rem, 4.8vw, 3.2rem)",
-  lineHeight: 1.05,
-  letterSpacing: "-0.03em",
-};
-
-const supportingCopy = {
-  marginTop: 14,
-  marginBottom: 0,
-  maxWidth: 520,
-  color: "rgba(247,239,227,0.8)",
-  lineHeight: 1.55,
-};
-
-const heroCopyWrap = {};
-
-const heroCopyWrapCompact = {
-  marginTop: 8,
-};
-
-const signalList = {
-  display: "grid",
-  gap: 12,
-  marginTop: 32,
-};
-
-const signalListCompact = {
-  ...signalList,
-  marginTop: 12,
-};
-
-const signalItem = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  color: "rgba(247,239,227,0.84)",
-  fontSize: 15,
-};
-
-const signalDot = {
-  width: 8,
-  height: 8,
-  borderRadius: "50%",
-  background: "#ffb375",
-  boxShadow: "0 0 0 5px rgba(255,179,117,0.15)",
-};
-
-const formSection = {
-  padding: "30px 22px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const formCard = {
-  width: "min(430px, 100%)",
-  borderRadius: 20,
-  border: "1px solid rgba(255,240,222,0.12)",
-  background: "rgba(18, 13, 15, 0.82)",
-  padding: "26px 22px 24px",
-};
-
-const formHeader = {
-  marginBottom: 18,
-};
-
-const formEyebrow = {
-  margin: 0,
-  fontSize: 11,
-  letterSpacing: "0.17em",
-  color: "rgba(247,239,227,0.66)",
-};
-
-const formTitle = {
-  margin: "10px 0 8px",
-  fontSize: "clamp(1.6rem, 3vw, 2.1rem)",
-  lineHeight: 1.1,
-  letterSpacing: "-0.02em",
-};
-
-const formSubtitle = {
-  margin: 0,
-  color: "rgba(247,239,227,0.74)",
-  lineHeight: 1.5,
-};
-
-const modeToggleWrap = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 8,
-  padding: 6,
-  borderRadius: 12,
-  border: "1px solid rgba(255,240,222,0.12)",
-  background: "rgba(255,255,255,0.02)",
-  marginBottom: 16,
-};
-
-const baseToggleButton = {
-  borderRadius: 8,
-  border: "none",
-  cursor: "pointer",
-  padding: "10px 8px",
-  fontSize: 14,
-  fontWeight: 700,
-  fontFamily: "inherit",
-  transition: "all 0.15s",
-};
-
-const activeToggleButton = {
-  ...baseToggleButton,
-  background: "linear-gradient(135deg, #ffd390, #ff9e62)",
-  color: "#1f1512",
-};
-
-const inactiveToggleButton = {
-  ...baseToggleButton,
-  background: "transparent",
-  color: "rgba(247,239,227,0.74)",
-};
-
-const formStack = {
-  display: "grid",
-  gap: 14,
-};
-
-const fieldLabelWrap = {
-  display: "grid",
-  gap: 7,
-};
-
-const fieldLabel = {
-  fontSize: 12,
-  letterSpacing: "0.04em",
-  textTransform: "uppercase",
-  color: "rgba(247,239,227,0.76)",
-  fontWeight: 600,
-};
-
-const input = {
-  width: "100%",
-  borderRadius: 10,
-  border: "1px solid rgba(255,240,222,0.14)",
-  background: "rgba(255,255,255,0.03)",
-  color: "#f7efe3",
-  padding: "12px 12px",
-  fontSize: 15,
-  fontFamily: "inherit",
-  outline: "none",
-};
-
-const disabledInput = {
-  opacity: 0.6,
-  cursor: "not-allowed",
-};
-
-const passwordWrap = {
-  position: "relative",
-};
-
-const passwordToggle = {
-  position: "absolute",
-  right: 10,
-  top: "50%",
-  transform: "translateY(-50%)",
-  border: "none",
-  background: "transparent",
-  color: "rgba(247,239,227,0.72)",
-  display: "grid",
-  placeItems: "center",
-  cursor: "pointer",
-};
-
-const eyeIcon = {
-  width: 18,
-  height: 18,
-};
-
-const errorBox = {
-  borderRadius: 10,
-  border: "1px solid rgba(255,111,97,0.6)",
-  background: "rgba(255,111,97,0.12)",
-  color: "#ffd3ce",
-  padding: "11px 12px",
-  fontSize: 14,
-};
-
-const submitButton = (loading) => ({
-  marginTop: 2,
-  width: "100%",
-  border: "none",
-  borderRadius: 10,
-  padding: "12px 14px",
-  cursor: loading ? "not-allowed" : "pointer",
-  background: "linear-gradient(135deg, #ffd390, #ff9f62)",
-  color: "#1f1512",
-  fontWeight: 700,
-  fontSize: 15,
-  fontFamily: "inherit",
-  opacity: loading ? 0.65 : 1,
-});
-
-const footerActions = {
-  marginTop: 18,
-  display: "grid",
-  gap: 8,
-  justifyItems: "center",
-};
-
-const loginLinks = {
-  display: "grid",
-  gap: 6,
-  justifyItems: "center",
-};
-
-const smallText = {
-  margin: 0,
-  color: "rgba(247,239,227,0.72)",
-  fontSize: 14,
-};
-
-const inlineLinkButton = {
-  background: "transparent",
-  border: "none",
-  color: "#ffd390",
-  fontWeight: 700,
-  cursor: "pointer",
-  padding: 0,
-  fontFamily: "inherit",
-  fontSize: 14,
-};
-
-const backButton = {
-  background: "transparent",
-  border: "none",
-  color: "rgba(247,239,227,0.62)",
-  cursor: "pointer",
-  fontFamily: "inherit",
-  fontSize: 13,
-};
-
-const smallHint = {
-  margin: 0,
-  color: "rgba(247,239,227,0.62)",
-  fontSize: 12,
-};
-
-const googlePanel = {
-  border: "1px solid rgba(255,240,222,0.16)",
-  borderRadius: 14,
-  padding: "12px 12px 10px",
-  background:
-    "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02) 55%, rgba(255,174,104,0.08))",
-  display: "grid",
-  gap: 10,
-};
-
-const googlePanelTop = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-};
-
-const googleIconWrap = {
-  width: 30,
-  height: 30,
-  borderRadius: 8,
-  background: "rgba(255,255,255,0.9)",
-  display: "grid",
-  placeItems: "center",
-  flexShrink: 0,
-  boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
-};
-
-const googleIconGlyph = {
-  fontWeight: 800,
-  fontSize: 17,
-  lineHeight: 1,
-  background: "linear-gradient(90deg, #4285F4 0 25%, #34A853 25% 50%, #FBBC05 50% 75%, #EA4335 75% 100%)",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-};
-
-const googleTitle = {
-  margin: 0,
-  fontSize: 14,
-  fontWeight: 700,
-  color: "#f7efe3",
-};
-
-const googleSub = {
-  margin: "2px 0 0",
-  fontSize: 12,
-  color: "rgba(247,239,227,0.7)",
-};
-
-const googleButtonFrame = {
-  borderRadius: 10,
-  border: "1px solid rgba(255,240,222,0.12)",
-  background: "rgba(7,6,6,0.35)",
-  padding: 6,
-  minHeight: 50,
-  display: "grid",
-  alignItems: "center",
-  justifyItems: "center",
-};
-
-const googleButtonHost = {
-  width: "100%",
-  minHeight: 44,
-  display: "grid",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const dividerRow = {
-  display: "grid",
-  gridTemplateColumns: "1fr auto 1fr",
-  gap: 10,
-  alignItems: "center",
-};
-
-const dividerLine = {
-  height: 1,
-  background: "rgba(255,240,222,0.16)",
-};
-
-const dividerText = {
-  fontSize: 12,
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-  color: "rgba(247,239,227,0.56)",
-};
-
-const passwordGuide = {
-  border: "1px solid rgba(255,240,222,0.12)",
-  borderRadius: 10,
-  padding: "8px 10px",
-  display: "grid",
-  gap: 5,
-  background: "rgba(255,255,255,0.02)",
-};
-
-const passwordRule = {
-  fontSize: 12,
-  display: "inline-flex",
-  gap: 7,
-  alignItems: "center",
-};
-
-const ruleDot = {
-  width: 7,
-  height: 7,
-  borderRadius: "50%",
-  flexShrink: 0,
-};
 
 export default Login;

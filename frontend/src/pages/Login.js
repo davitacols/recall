@@ -284,7 +284,11 @@ function Login() {
             ) : null}
 
             <form className="auth-form" onSubmit={handleSubmit}>
-              {error ? <div className="auth-alert">{error}</div> : null}
+              {error ? (
+                <div className="auth-alert" role="alert" aria-live="polite">
+                  {error}
+                </div>
+              ) : null}
 
               {isLogin && !inviteToken && googleClientId ? (
                 <>
@@ -337,13 +341,14 @@ function Login() {
                 </Field>
               ) : null}
 
-              <Field label="Email address">
-                <input
-                  type="email"
-                  required
-                  disabled={Boolean(inviteToken)}
-                  className={inviteToken ? "is-disabled" : ""}
-                  value={credentials.username}
+                <Field label="Email address">
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    disabled={Boolean(inviteToken)}
+                    className={inviteToken ? "is-disabled" : ""}
+                    value={credentials.username}
                   onChange={(event) => setField("username", event.target.value)}
                   placeholder="you@company.com"
                 />
@@ -354,6 +359,7 @@ function Login() {
                   <input
                     type={showPassword ? "text" : "password"}
                     required
+                    autoComplete={isLogin ? "current-password" : "new-password"}
                     value={credentials.password}
                     onChange={(event) => setField("password", event.target.value)}
                     placeholder="********"
@@ -379,6 +385,7 @@ function Login() {
                     <input
                       type={showPassword ? "text" : "password"}
                       required
+                      autoComplete="new-password"
                       value={credentials.confirmPassword}
                       onChange={(event) => setField("confirmPassword", event.target.value)}
                       placeholder="********"

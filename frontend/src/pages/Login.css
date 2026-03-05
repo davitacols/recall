@@ -423,6 +423,168 @@
   font-size: 13px;
 }
 
+.auth-mode-btn:focus-visible,
+.auth-submit:focus-visible,
+.auth-link-btn:focus-visible,
+.auth-back-btn:focus-visible,
+.auth-password-toggle:focus-visible,
+.auth-brand:focus-visible,
+.auth-field input:focus-visible {
+  outline: 2px solid #ffc287;
+  outline-offset: 2px;
+}
+
+[data-theme="light"] .auth-shell {
+  --auth-bg: #f4f8ff;
+  --auth-bg-soft: #ffffff;
+  --auth-border: rgba(20, 40, 76, 0.16);
+  --auth-text: #122033;
+  --auth-muted: rgba(18, 32, 51, 0.72);
+  --auth-accent: #e58a2e;
+  background:
+    radial-gradient(900px 460px at -5% 0%, rgba(255, 173, 104, 0.26), transparent 64%),
+    radial-gradient(860px 520px at 100% 100%, rgba(109, 181, 255, 0.22), transparent 60%),
+    #f4f8ff;
+}
+
+[data-theme="light"] .auth-glow-top {
+  background: rgba(255, 178, 115, 0.26);
+}
+
+[data-theme="light"] .auth-glow-bottom {
+  background: rgba(94, 150, 255, 0.2);
+}
+
+[data-theme="light"] .auth-grid {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.52));
+}
+
+[data-theme="light"] .auth-showcase {
+  border-right-color: rgba(20, 40, 76, 0.12);
+  background:
+    linear-gradient(160deg, rgba(255, 180, 110, 0.24), rgba(255, 255, 255, 0.65) 52%, rgba(128, 186, 255, 0.22));
+}
+
+[data-theme="light"] .auth-brand {
+  border-color: rgba(20, 40, 76, 0.2);
+  background: rgba(255, 255, 255, 0.7);
+  color: #102038;
+}
+
+[data-theme="light"] .auth-kicker {
+  color: rgba(16, 32, 56, 0.72);
+}
+
+[data-theme="light"] .auth-copy {
+  color: rgba(16, 32, 56, 0.8);
+}
+
+[data-theme="light"] .auth-stat-card {
+  border-color: rgba(20, 40, 76, 0.14);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+[data-theme="light"] .auth-card {
+  border-color: rgba(20, 40, 76, 0.18);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.94), rgba(246, 250, 255, 0.9));
+}
+
+[data-theme="light"] .auth-form-kicker {
+  color: rgba(16, 32, 56, 0.62);
+}
+
+[data-theme="light"] .auth-mode-toggle {
+  border-color: rgba(20, 40, 76, 0.16);
+  background: rgba(16, 32, 56, 0.03);
+}
+
+[data-theme="light"] .auth-mode-btn {
+  color: rgba(16, 32, 56, 0.7);
+}
+
+[data-theme="light"] .auth-mode-btn.active {
+  border-color: rgba(229, 138, 46, 0.5);
+}
+
+[data-theme="light"] .auth-alert {
+  border-color: rgba(223, 77, 70, 0.4);
+  background: rgba(223, 77, 70, 0.1);
+  color: #7f1d1d;
+}
+
+[data-theme="light"] .auth-google-panel {
+  border-color: rgba(20, 40, 76, 0.16);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 187, 128, 0.16));
+}
+
+[data-theme="light"] .auth-google-head p,
+[data-theme="light"] .auth-google-panel small,
+[data-theme="light"] .auth-divider small {
+  color: rgba(16, 32, 56, 0.62);
+}
+
+[data-theme="light"] .auth-divider span {
+  background: rgba(20, 40, 76, 0.14);
+}
+
+[data-theme="light"] .auth-google-button-frame {
+  border-color: rgba(20, 40, 76, 0.14);
+  background: rgba(16, 32, 56, 0.04);
+}
+
+[data-theme="light"] .auth-field-label {
+  color: rgba(16, 32, 56, 0.7);
+}
+
+[data-theme="light"] .auth-field input {
+  border-color: rgba(20, 40, 76, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+  color: #102038;
+}
+
+[data-theme="light"] .auth-password-toggle {
+  color: rgba(16, 32, 56, 0.64);
+}
+
+[data-theme="light"] .auth-password-guide {
+  border-color: rgba(20, 40, 76, 0.14);
+  background: rgba(16, 32, 56, 0.03);
+}
+
+[data-theme="light"] .auth-rule {
+  color: rgba(16, 32, 56, 0.62);
+}
+
+[data-theme="light"] .auth-rule span {
+  background: rgba(16, 32, 56, 0.28);
+}
+
+[data-theme="light"] .auth-submit {
+  border-color: rgba(229, 138, 46, 0.45);
+}
+
+[data-theme="light"] .auth-card-footer p {
+  color: rgba(16, 32, 56, 0.66);
+}
+
+[data-theme="light"] .auth-link-btn {
+  color: #af5b14;
+}
+
+[data-theme="light"] .auth-back-btn {
+  color: rgba(16, 32, 56, 0.6);
+}
+
+[data-theme="light"] .auth-mode-btn:focus-visible,
+[data-theme="light"] .auth-submit:focus-visible,
+[data-theme="light"] .auth-link-btn:focus-visible,
+[data-theme="light"] .auth-back-btn:focus-visible,
+[data-theme="light"] .auth-password-toggle:focus-visible,
+[data-theme="light"] .auth-brand:focus-visible,
+[data-theme="light"] .auth-field input:focus-visible {
+  outline-color: #d97706;
+}
+
 @media (max-width: 1024px) {
   .auth-shell {
     padding: 12px;

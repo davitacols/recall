@@ -145,6 +145,7 @@ REST_FRAMEWORK = {
 COGNITO_USER_POOL_ID = config('COGNITO_USER_POOL_ID', default='')
 COGNITO_CLIENT_ID = config('COGNITO_CLIENT_ID', default='')
 COGNITO_REGION = config('AWS_REGION', default='us-east-1')
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 
 # Celery Configuration
 redis_url = config('REDIS_URL', default='redis://localhost:6379/0')

@@ -24,9 +24,12 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [googleReady, setGoogleReady] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const turnstileEnabled = Boolean(process.env.REACT_APP_TURNSTILE_SITE_KEY);
+  const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
-  const { login, register } = useAuth();
+  const { login, googleLogin, register } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
@@ -106,6 +109,68 @@ function Login() {
 
     setLoading(false);
   };
+
+  React.useEffect(() => {
+    if (!isLogin || inviteToken || !googleClientId) return;
+    let canceled = false;
+    const scriptId = "google-gsi-script";
+
+    const initializeGoogle = () => {
+      if (canceled || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          const credential = response?.credential;
+          if (!credential) {
+            setError("Google sign-in failed");
+            return;
+          }
+          setGoogleLoading(true);
+          const result = await googleLogin({ credential });
+          setGoogleLoading(false);
+          if (result.success) {
+            addToast("Welcome back!", "success");
+            window.location.href = "/";
+          } else {
+            setError(result.error);
+            addToast(result.error, "error");
+          }
+        },
+      });
+      const btn = document.getElementById("google-signin-button");
+      if (btn) {
+        btn.innerHTML = "";
+        window.google.accounts.id.renderButton(btn, {
+          theme: "outline",
+          size: "large",
+          shape: "pill",
+          width: 320,
+          text: "continue_with",
+        });
+      }
+      setGoogleReady(true);
+    };
+
+    const existing = document.getElementById(scriptId);
+    if (existing) {
+      initializeGoogle();
+      return () => {
+        canceled = true;
+      };
+    }
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGoogle;
+    document.body.appendChild(script);
+
+    return () => {
+      canceled = true;
+    };
+  }, [isLogin, inviteToken, googleClientId, googleLogin, addToast]);
 
   return (
     <div style={page} className="login-page">
@@ -196,6 +261,22 @@ function Login() {
 
             <form onSubmit={handleSubmit} style={formStack}>
               {error && <div style={errorBox}>{error}</div>}
+
+              {isLogin && !inviteToken && googleClientId ? (
+                <div style={{ display: "grid", gap: 8, justifyItems: "center" }}>
+                  <div id="google-signin-button" />
+                  {!googleReady ? <p style={smallHint}>Loading Google sign-in...</p> : null}
+                  {googleLoading ? <p style={smallHint}>Signing in with Google...</p> : null}
+                </div>
+              ) : null}
+
+              {isLogin && !inviteToken && googleClientId ? (
+                <div style={dividerRow}>
+                  <span style={dividerLine} />
+                  <span style={dividerText}>or</span>
+                  <span style={dividerLine} />
+                </div>
+              ) : null}
 
               {!isLogin && !inviteToken && (
                 <Field label="Organization name">
@@ -734,6 +815,31 @@ const backButton = {
   cursor: "pointer",
   fontFamily: "inherit",
   fontSize: 13,
+};
+
+const smallHint = {
+  margin: 0,
+  color: "rgba(247,239,227,0.62)",
+  fontSize: 12,
+};
+
+const dividerRow = {
+  display: "grid",
+  gridTemplateColumns: "1fr auto 1fr",
+  gap: 10,
+  alignItems: "center",
+};
+
+const dividerLine = {
+  height: 1,
+  background: "rgba(255,240,222,0.16)",
+};
+
+const dividerText = {
+  fontSize: 12,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "rgba(247,239,227,0.56)",
 };
 
 const passwordGuide = {

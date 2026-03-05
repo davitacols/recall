@@ -114,6 +114,42 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const googleLogin = async ({ credential }) => {
+    try {
+      const preferredOrgSlug = localStorage.getItem(LAST_WORKSPACE_SLUG_KEY);
+      const payload = {
+        credential,
+        ...(preferredOrgSlug ? { preferred_org_slug: preferredOrgSlug } : {}),
+      };
+      const response = await api.post('/api/auth/google/', payload);
+      const responseData = response.data.data || response.data;
+      const { access_token, refresh_token, user: userData } = responseData;
+
+      if (!access_token || !userData) {
+        throw new Error('Invalid response format');
+      }
+
+      localStorage.setItem('access_token', access_token);
+      if (refresh_token) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
+      }
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      if (userData?.organization_slug) {
+        localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
+      }
+      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+
+      setUser(userData);
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Google sign-in failed',
+      };
+    }
+  };
+
   const listWorkspaces = async () => {
     try {
       const response = await api.get('/api/auth/workspaces/');
@@ -230,6 +266,7 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     login,
+    googleLogin,
     register,
     logout,
     listWorkspaces,

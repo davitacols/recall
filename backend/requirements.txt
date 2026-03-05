@@ -21,3 +21,4 @@ boto3==1.35.0
 Pillow==11.1.0
 requests==2.31.0
 reportlab==4.0.7
+google-auth==2.37.0

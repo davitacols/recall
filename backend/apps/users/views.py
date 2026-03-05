@@ -14,6 +14,8 @@ import boto3
 import secrets
 import hashlib
 from django.conf import settings
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 from .auth_utils import (
     check_rate_limit,
     validate_email,
@@ -91,6 +93,70 @@ def _build_auth_payload(user):
             'organization_slug': user.organization.slug,
         }
     }
+
+
+def _resolve_google_user(email, preferred_org_slug=None):
+    users_qs = User.objects.filter(email__iexact=email, is_active=True).select_related('organization')
+    users = list(users_qs)
+
+    if not users:
+        from apps.organizations.models import Invitation
+
+        invitation = (
+            Invitation.objects
+            .filter(email__iexact=email, is_accepted=False, expires_at__gt=timezone.now())
+            .select_related('organization')
+            .order_by('-created_at')
+            .first()
+        )
+        if not invitation:
+            return None
+
+        existing_user = User.objects.filter(email__iexact=email, organization=invitation.organization).first()
+        display_name = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
+        if existing_user:
+            user = existing_user
+            user.is_active = True
+            user.role = _normalize_user_role(invitation.role or 'contributor')
+            if not user.full_name:
+                user.full_name = display_name
+            if not user.first_name:
+                user.first_name = display_name.split()[0] if display_name else email.split('@')[0]
+            user.set_unusable_password()
+            user.save(update_fields=['is_active', 'role', 'full_name', 'first_name', 'password'])
+        else:
+            username = generate_unique_org_username(email, invitation.organization.slug)
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=None,
+                organization=invitation.organization,
+                full_name=display_name,
+                first_name=display_name.split()[0] if display_name else email.split('@')[0],
+                role=_normalize_user_role(invitation.role or 'contributor'),
+            )
+            user.set_unusable_password()
+            user.save(update_fields=['password'])
+
+        invitation.is_accepted = True
+        invitation.accepted_at = timezone.now()
+        invitation.save(update_fields=['is_accepted', 'accepted_at'])
+        return user
+
+    if preferred_org_slug:
+        match = next((u for u in users if u.organization.slug == preferred_org_slug), None)
+        if match:
+            return match
+
+    users.sort(
+        key=lambda candidate: (
+            1 if candidate.last_login else 0,
+            candidate.last_login.timestamp() if candidate.last_login else 0,
+            candidate.id,
+        ),
+        reverse=True,
+    )
+    return users[0]
 
 
 @api_view(['POST'])
@@ -241,6 +307,56 @@ def login(request):
             )
     return Response({'error': 'Invalid credentials'}, 
                    status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def google_login(request):
+    credential = (request.data.get('credential') or '').strip()
+    preferred_org_slug = (request.data.get('preferred_org_slug') or '').strip().lower()
+
+    if not credential:
+        return Response({'error': 'Google credential is required'}, status=status.HTTP_400_BAD_REQUEST)
+    if not settings.GOOGLE_CLIENT_ID:
+        return Response({'error': 'Google Sign-In is not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    try:
+        id_info = google_id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+    except Exception:
+        return Response({'error': 'Invalid Google credential'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    if id_info.get('iss') not in ['accounts.google.com', 'https://accounts.google.com']:
+        return Response({'error': 'Invalid Google issuer'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    email = (id_info.get('email') or '').strip().lower()
+    email_verified = bool(id_info.get('email_verified'))
+    if not email or not email_verified:
+        return Response({'error': 'Google account email is not verified'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    user = _resolve_google_user(email=email, preferred_org_slug=preferred_org_slug)
+    if not user:
+        return Response(
+            {'error': 'No workspace account found for this Google email. Ask an admin to invite you first.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    _log_auth_audit(
+        organization=user.organization,
+        user=user,
+        resource_type='auth_login_google',
+        details={
+            'method': 'google',
+            'org_slug': user.organization.slug,
+            'google_sub': id_info.get('sub'),
+        },
+        request=request,
+    )
+    return Response(_build_auth_payload(user))
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

@@ -288,7 +288,6 @@ export const MobileNav = ({ onSearchOpen }) => {
           </aside>
         </div>
       ) : null}
-      <div style={mobileBottomSpacer} />
     </>
   );
 };
@@ -468,7 +467,6 @@ const primaryButton = {
   cursor: "pointer",
 };
 
-const mobileBottomSpacer = { height: "calc(68px + env(safe-area-inset-bottom, 0px))" };
 const mobileContentWrap = { minHeight: "100vh", paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" };
 
 const icon20 = { width: 20, height: 20 };

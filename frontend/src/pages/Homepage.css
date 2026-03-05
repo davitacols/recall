@@ -96,3 +96,29 @@
 .feature-card {
   background-color: #92400e !important;
 }
+
+@media (max-width: 768px) {
+  .orb {
+    filter: blur(56px);
+    opacity: 0.42;
+  }
+
+  .orb-1 {
+    width: 260px;
+    height: 260px;
+    top: -12%;
+    left: -18%;
+  }
+
+  .orb-2 {
+    width: 220px;
+    height: 220px;
+    bottom: -12%;
+    right: -16%;
+  }
+
+  .orb-3 {
+    width: 180px;
+    height: 180px;
+  }
+}

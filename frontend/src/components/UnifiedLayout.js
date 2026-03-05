@@ -20,8 +20,12 @@ const ASK_FAB_HEIGHT = 44;
 const ASK_FAB_PAD = 14;
 
 function clampFabPosition(x, y) {
+  const mobileOffset = window.innerWidth < 768 ? 88 : 0;
   const maxX = Math.max(ASK_FAB_PAD, window.innerWidth - ASK_FAB_WIDTH - ASK_FAB_PAD);
-  const maxY = Math.max(ASK_FAB_PAD, window.innerHeight - ASK_FAB_HEIGHT - ASK_FAB_PAD);
+  const maxY = Math.max(
+    ASK_FAB_PAD,
+    window.innerHeight - ASK_FAB_HEIGHT - ASK_FAB_PAD - mobileOffset
+  );
   return {
     x: Math.min(Math.max(ASK_FAB_PAD, x), maxX),
     y: Math.min(Math.max(ASK_FAB_PAD, y), maxY),
@@ -261,11 +265,19 @@ export default function UnifiedLayout({ children }) {
       />
       <NLCommandBar darkMode={darkMode} />
 
-      <main style={{ ...main, paddingTop: 0, paddingLeft: isMobile ? 0 : activeSidebarWidth }}>
-        <div style={contentContainer}>
+      <main
+        style={{
+          ...main,
+          paddingTop: 0,
+          paddingLeft: isMobile ? 0 : activeSidebarWidth,
+          paddingBottom: isMobile ? 0 : undefined,
+        }}
+      >
+        <div style={{ ...contentContainer, ...(isMobile ? contentContainerMobile : null) }}>
           <header
             style={{
               ...layoutHeader,
+              ...(isMobile ? layoutHeaderMobile : null),
               background: palette.panelBg,
               border: `1px solid ${palette.border}`,
             }}
@@ -273,9 +285,11 @@ export default function UnifiedLayout({ children }) {
             <div style={headerTop}>
               <div>
                 <p style={{ ...headerEyebrow, color: palette.muted }}>Workspace</p>
-                <h1 style={{ ...headerTitle, color: palette.text }}>{pageTitle}</h1>
+                <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
+                  {pageTitle}
+                </h1>
               </div>
-              <div style={headerActions}>
+              <div style={{ ...headerActions, ...(isMobile ? headerActionsMobile : null) }}>
                 <NotificationBell />
                 <button
                   onClick={toggleDarkMode}
@@ -307,6 +321,7 @@ export default function UnifiedLayout({ children }) {
                     <div
                       style={{
                         ...profileMenu,
+                        ...(isMobile ? profileMenuMobile : null),
                         background: palette.panelBgAlt,
                         border: `1px solid ${palette.border}`,
                       }}
@@ -382,7 +397,7 @@ export default function UnifiedLayout({ children }) {
                                   <div style={{ minWidth: 0 }}>
                                     <p style={{ ...workspaceName, color: palette.text }}>{workspace.org_name}</p>
                                     <p style={{ ...workspaceMeta, color: palette.muted }}>
-                                      {workspace.org_slug} | {workspace.role}
+                                      {workspace.org_slug} - {workspace.role}
                                     </p>
                                   </div>
                                   {isCurrent ? (
@@ -434,7 +449,7 @@ export default function UnifiedLayout({ children }) {
                 </div>
               </div>
             </div>
-            <div style={headerBreadcrumbs}>
+            <div style={{ ...headerBreadcrumbs, ...(isMobile ? { display: "none" } : null) }}>
               <Breadcrumbs darkMode={darkMode} />
             </div>
           </header>
@@ -551,6 +566,18 @@ const profileMenu = {
   zIndex: 120,
 };
 
+const profileMenuMobile = {
+  position: "fixed",
+  top: 70,
+  left: 10,
+  right: 10,
+  minWidth: 0,
+  maxWidth: "none",
+  maxHeight: "calc(100vh - 92px)",
+  overflowY: "auto",
+  borderRadius: 12,
+};
+
 const profileHead = {
   padding: "14px 16px",
 };
@@ -663,6 +690,10 @@ const contentContainer = {
   padding: "0 clamp(14px, 2vw, 24px) 24px",
 };
 
+const contentContainerMobile = {
+  padding: "0 10px calc(90px + env(safe-area-inset-bottom, 0px))",
+};
+
 const layoutHeader = {
   position: "sticky",
   top: 0,
@@ -671,6 +702,13 @@ const layoutHeader = {
   padding: "12px 14px 10px",
   marginBottom: 12,
   backdropFilter: "blur(6px)",
+};
+
+const layoutHeaderMobile = {
+  top: 62,
+  borderRadius: 10,
+  padding: "10px 10px 9px",
+  marginBottom: 10,
 };
 
 const headerEyebrow = {
@@ -687,6 +725,11 @@ const headerTitle = {
   letterSpacing: "-0.01em",
 };
 
+const headerTitleMobile = {
+  marginBottom: 2,
+  fontSize: "1.05rem",
+};
+
 const headerTop = {
   display: "flex",
   alignItems: "flex-start",
@@ -699,6 +742,10 @@ const headerActions = {
   display: "flex",
   alignItems: "center",
   gap: 8,
+};
+
+const headerActionsMobile = {
+  gap: 6,
 };
 
 const headerBreadcrumbs = {

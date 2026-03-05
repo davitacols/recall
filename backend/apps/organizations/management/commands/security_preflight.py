@@ -138,6 +138,18 @@ class Command(BaseCommand):
             if window <= 0:
                 failures.append(f"AUTH_RATE_LIMITS.{key}.window must be > 0.")
 
+        # Response security headers checks
+        permissions_policy = str(getattr(settings, "SECURITY_PERMISSIONS_POLICY", "") or "").strip()
+        if not permissions_policy:
+            failures.append("SECURITY_PERMISSIONS_POLICY is empty.")
+
+        csp_enabled = bool(getattr(settings, "SECURITY_ENABLE_CSP", False))
+        csp_policy = str(getattr(settings, "SECURITY_CSP_POLICY", "") or "").strip()
+        if csp_enabled and not csp_policy:
+            failures.append("SECURITY_ENABLE_CSP=True but SECURITY_CSP_POLICY is empty.")
+        if not csp_enabled:
+            warnings.append("SECURITY_ENABLE_CSP is disabled.")
+
         # Unapplied migrations check
         if not options.get("allow_pending_migrations", False):
             connection = connections["default"]

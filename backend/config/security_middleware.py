@@ -35,4 +35,22 @@ class RequestSecurityMiddleware:
 
         response = self.get_response(request)
         response["X-Request-ID"] = request_id
+        response.setdefault(
+            "Permissions-Policy",
+            getattr(
+                settings,
+                "SECURITY_PERMISSIONS_POLICY",
+                "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+            ),
+        )
+        if bool(getattr(settings, "SECURITY_ENABLE_CSP", False)):
+            csp_header = (
+                "Content-Security-Policy-Report-Only"
+                if bool(getattr(settings, "SECURITY_CSP_REPORT_ONLY", True))
+                else "Content-Security-Policy"
+            )
+            response.setdefault(
+                csp_header,
+                getattr(settings, "SECURITY_CSP_POLICY", "default-src 'self'"),
+            )
         return response

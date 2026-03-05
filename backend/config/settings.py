@@ -278,6 +278,29 @@ SECURITY_PREFLIGHT_REQUIRED_ORIGINS = _parse_csv(
     )
 )
 
+# Additional response header policies.
+SECURITY_ENABLE_CSP = _env_bool('SECURITY_ENABLE_CSP', default=False)
+SECURITY_CSP_REPORT_ONLY = _env_bool('SECURITY_CSP_REPORT_ONLY', default=True)
+SECURITY_CSP_POLICY = config(
+    'SECURITY_CSP_POLICY',
+    default=(
+        "default-src 'self'; "
+        "base-uri 'self'; "
+        "frame-ancestors 'none'; "
+        "object-src 'none'; "
+        "img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline' https:; "
+        "font-src 'self' data: https:; "
+        "connect-src 'self' https: wss:; "
+        "script-src 'self' https://accounts.google.com https://apis.google.com https://www.gstatic.com; "
+        "frame-src https://accounts.google.com https://challenges.cloudflare.com;"
+    )
+)
+SECURITY_PERMISSIONS_POLICY = config(
+    'SECURITY_PERMISSIONS_POLICY',
+    default='camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()'
+)
+
 CORS_ALLOW_ALL_ORIGINS = _env_bool('CORS_ALLOW_ALL_ORIGINS', default=DEBUG)
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [

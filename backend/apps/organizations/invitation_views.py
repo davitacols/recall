@@ -18,6 +18,15 @@ from apps.users.auth_utils import (
 from apps.users.bot_protection import verify_turnstile_token
 
 logger = logging.getLogger(__name__)
+RATE_LIMITS = getattr(settings, 'AUTH_RATE_LIMITS', {})
+
+
+def _rate_limit_config(name, default_limit, default_window):
+    configured = RATE_LIMITS.get(name, {}) if isinstance(RATE_LIMITS, dict) else {}
+    return (
+        int(configured.get('limit', default_limit)),
+        int(configured.get('window', default_window)),
+    )
 
 
 def _normalize_invite_role(role):
@@ -29,7 +38,8 @@ def _normalize_invite_role(role):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def invite_user(request):
-    if not check_rate_limit(request.user.id, action="invite_user", limit=20, window=3600):
+    invite_limit, invite_window = _rate_limit_config('invite_send', 20, 3600)
+    if not check_rate_limit(request.user.id, action="invite_user", limit=invite_limit, window=invite_window):
         return Response({"error": "Too many invite attempts. Try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
     if request.user.role != 'admin':
@@ -250,7 +260,8 @@ def resend_invitation(request, invitation_id):
     if request.user.role != 'admin':
         return Response({'error': 'Only admins can resend invitations'}, status=status.HTTP_403_FORBIDDEN)
 
-    if not check_rate_limit(request.user.id, action="resend_invitation", limit=60, window=3600):
+    resend_limit, resend_window = _rate_limit_config('invite_resend', 60, 3600)
+    if not check_rate_limit(request.user.id, action="resend_invitation", limit=resend_limit, window=resend_window):
         return Response({"error": "Too many resend attempts. Try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
     try:

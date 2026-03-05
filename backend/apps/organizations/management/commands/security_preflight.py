@@ -108,6 +108,36 @@ class Command(BaseCommand):
         if "anon" not in throttle_rates or "user" not in throttle_rates:
             failures.append("REST_FRAMEWORK.DEFAULT_THROTTLE_RATES must include anon and user.")
 
+        # Google OAuth checks
+        google_oauth_enabled = bool(getattr(settings, "GOOGLE_OAUTH_ENABLED", False))
+        google_client_id = str(getattr(settings, "GOOGLE_CLIENT_ID", "") or "").strip()
+        if google_oauth_enabled and not google_client_id:
+            failures.append("GOOGLE_OAUTH_ENABLED=True but GOOGLE_CLIENT_ID is missing.")
+
+        # Auth endpoint rate-limit checks
+        auth_limits = getattr(settings, "AUTH_RATE_LIMITS", {}) or {}
+        required_auth_limits = [
+            "login",
+            "google_login",
+            "register",
+            "forgot_password",
+            "workspace_switch_code",
+            "workspace_switch",
+            "invite_send",
+            "invite_resend",
+        ]
+        for key in required_auth_limits:
+            cfg = auth_limits.get(key)
+            if not isinstance(cfg, dict):
+                failures.append(f"AUTH_RATE_LIMITS.{key} is missing.")
+                continue
+            limit = int(cfg.get("limit", 0))
+            window = int(cfg.get("window", 0))
+            if limit <= 0:
+                failures.append(f"AUTH_RATE_LIMITS.{key}.limit must be > 0.")
+            if window <= 0:
+                failures.append(f"AUTH_RATE_LIMITS.{key}.window must be > 0.")
+
         # Unapplied migrations check
         if not options.get("allow_pending_migrations", False):
             connection = connections["default"]

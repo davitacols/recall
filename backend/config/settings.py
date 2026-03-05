@@ -146,6 +146,42 @@ COGNITO_USER_POOL_ID = config('COGNITO_USER_POOL_ID', default='')
 COGNITO_CLIENT_ID = config('COGNITO_CLIENT_ID', default='')
 COGNITO_REGION = config('AWS_REGION', default='us-east-1')
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_OAUTH_ENABLED = _env_bool('GOOGLE_OAUTH_ENABLED', default=bool(GOOGLE_CLIENT_ID))
+
+AUTH_RATE_LIMITS = {
+    'login': {
+        'limit': config('AUTH_LOGIN_RATE_LIMIT', default=5, cast=int),
+        'window': config('AUTH_LOGIN_RATE_WINDOW', default=3600, cast=int),
+    },
+    'google_login': {
+        'limit': config('AUTH_GOOGLE_LOGIN_RATE_LIMIT', default=10, cast=int),
+        'window': config('AUTH_GOOGLE_LOGIN_RATE_WINDOW', default=3600, cast=int),
+    },
+    'register': {
+        'limit': config('AUTH_REGISTER_RATE_LIMIT', default=5, cast=int),
+        'window': config('AUTH_REGISTER_RATE_WINDOW', default=3600, cast=int),
+    },
+    'forgot_password': {
+        'limit': config('AUTH_FORGOT_PASSWORD_RATE_LIMIT', default=10, cast=int),
+        'window': config('AUTH_FORGOT_PASSWORD_RATE_WINDOW', default=3600, cast=int),
+    },
+    'workspace_switch_code': {
+        'limit': config('AUTH_WORKSPACE_SWITCH_CODE_RATE_LIMIT', default=20, cast=int),
+        'window': config('AUTH_WORKSPACE_SWITCH_CODE_RATE_WINDOW', default=3600, cast=int),
+    },
+    'workspace_switch': {
+        'limit': config('AUTH_WORKSPACE_SWITCH_RATE_LIMIT', default=30, cast=int),
+        'window': config('AUTH_WORKSPACE_SWITCH_RATE_WINDOW', default=3600, cast=int),
+    },
+    'invite_send': {
+        'limit': config('AUTH_INVITE_SEND_RATE_LIMIT', default=20, cast=int),
+        'window': config('AUTH_INVITE_SEND_RATE_WINDOW', default=3600, cast=int),
+    },
+    'invite_resend': {
+        'limit': config('AUTH_INVITE_RESEND_RATE_LIMIT', default=60, cast=int),
+        'window': config('AUTH_INVITE_RESEND_RATE_WINDOW', default=3600, cast=int),
+    },
+}
 
 # Celery Configuration
 redis_url = config('REDIS_URL', default='redis://localhost:6379/0')

@@ -35,6 +35,15 @@ from apps.organizations.auditlog_models import AuditLog
 User = get_user_model()
 logger = logging.getLogger(__name__)
 WORKSPACE_SWITCH_CODE_TTL_SECONDS = 600
+RATE_LIMITS = getattr(settings, 'AUTH_RATE_LIMITS', {})
+
+
+def _rate_limit_config(name, default_limit, default_window):
+    configured = RATE_LIMITS.get(name, {}) if isinstance(RATE_LIMITS, dict) else {}
+    return (
+        int(configured.get('limit', default_limit)),
+        int(configured.get('window', default_window)),
+    )
 
 
 def _workspace_switch_code_cache_key(user_id, org_slug):
@@ -173,7 +182,8 @@ def login(request):
                        status=status.HTTP_400_BAD_REQUEST)
     
     # Rate limiting
-    if not check_rate_limit(username):
+    login_limit, login_window = _rate_limit_config('login', 5, 3600)
+    if not check_rate_limit(username, action='login', limit=login_limit, window=login_window):
         logger.warning(f"Rate limit exceeded for login attempt: {username}")
         if '@' in username:
             matched_orgs = User.objects.filter(email__iexact=username, is_active=True).values_list('organization_id', flat=True).distinct()
@@ -317,8 +327,21 @@ def google_login(request):
 
     if not credential:
         return Response({'error': 'Google credential is required'}, status=status.HTTP_400_BAD_REQUEST)
-    if not settings.GOOGLE_CLIENT_ID:
+    if not settings.GOOGLE_OAUTH_ENABLED or not settings.GOOGLE_CLIENT_ID:
         return Response({'error': 'Google Sign-In is not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    google_limit, google_window = _rate_limit_config('google_login', 10, 3600)
+    client_id = request.META.get('REMOTE_ADDR', 'unknown')
+    if not check_rate_limit(
+        f"google_login:{client_id}",
+        action='google_login',
+        limit=google_limit,
+        window=google_window,
+    ):
+        return Response(
+            {'error': 'Too many Google sign-in attempts. Try again later.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
 
     try:
         id_info = google_id_token.verify_oauth2_token(
@@ -401,11 +424,12 @@ def request_workspace_switch_code(request):
     if not org_slug:
         return Response({'error': 'org_slug is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+    switch_code_limit, switch_code_window = _rate_limit_config('workspace_switch_code', 20, 3600)
     if not check_rate_limit(
         f"switch_workspace_code:{request.user.id}",
         action='switch_workspace_code',
-        limit=20,
-        window=3600,
+        limit=switch_code_limit,
+        window=switch_code_window,
     ):
         _log_auth_audit_throttled(
             organization=request.user.organization,
@@ -485,7 +509,13 @@ def switch_workspace(request):
     if not password and not otp_code:
         return Response({'error': 'Provide password or otp_code'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if not check_rate_limit(f"switch_workspace:{request.user.id}", action='switch_workspace', limit=30, window=3600):
+    switch_limit, switch_window = _rate_limit_config('workspace_switch', 30, 3600)
+    if not check_rate_limit(
+        f"switch_workspace:{request.user.id}",
+        action='switch_workspace',
+        limit=switch_limit,
+        window=switch_window,
+    ):
         _log_auth_audit_throttled(
             organization=request.user.organization,
             user=request.user,
@@ -664,7 +694,13 @@ def register(request):
     full_name = (request.data.get('full_name') or '').strip()
     
     # Rate limiting
-    if not check_rate_limit(f'register:{email}'):
+    register_limit, register_window = _rate_limit_config('register', 5, 3600)
+    if not check_rate_limit(
+        f'register:{email}',
+        action='register',
+        limit=register_limit,
+        window=register_window,
+    ):
         logger.warning(f"Rate limit exceeded for registration: {email}")
         return Response(
             {'error': 'Too many registration attempts. Try again later.'},
@@ -815,7 +851,13 @@ def forgot_password(request):
     turnstile_token = request.data.get('turnstile_token')
     if not email:
         return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
-    if not check_rate_limit(f'forgot_password:{email}', limit=10, window=3600):
+    forgot_limit, forgot_window = _rate_limit_config('forgot_password', 10, 3600)
+    if not check_rate_limit(
+        f'forgot_password:{email}',
+        action='forgot_password',
+        limit=forgot_limit,
+        window=forgot_window,
+    ):
         return Response({'error': 'Too many attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     ok, captcha_error = verify_turnstile_token(request, turnstile_token)
     if not ok:

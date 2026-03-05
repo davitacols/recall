@@ -12,6 +12,7 @@ from datetime import timedelta
 from .models import Organization, User
 from apps.conversations.models import UserPreferences, Badge
 from apps.notifications.models import Notification
+from apps.users.auth_utils import check_rate_limit
 
 
 def _normalize_role(role):
@@ -378,6 +379,18 @@ def invite_member(request):
     """Invite new member (admin only)"""
     if request.user.role != 'admin':
         return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    auth_limits = getattr(settings, 'AUTH_RATE_LIMITS', {}) or {}
+    invite_cfg = auth_limits.get('invite_send', {}) if isinstance(auth_limits, dict) else {}
+    invite_limit = int(invite_cfg.get('limit', 20))
+    invite_window = int(invite_cfg.get('window', 3600))
+    if not check_rate_limit(
+        f"settings_invite_member:{request.user.id}",
+        action='settings_invite_member',
+        limit=invite_limit,
+        window=invite_window,
+    ):
+        return Response({'error': 'Too many invite attempts. Try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     
     email = (request.data.get('email') or '').strip().lower()
     role = _normalize_role(request.data.get('role', 'contributor'))

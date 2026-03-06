@@ -304,10 +304,10 @@ export default function UnifiedDashboard() {
             good: "#49bf8f",
             warn: "#d6aa57",
             bg: "#0b1014",
-            heroA: "rgba(85, 177, 235, 0.18)",
-            heroB: "rgba(53, 122, 168, 0.16)",
-            heroC: "rgba(97, 186, 176, 0.14)",
-            shadow: "0 12px 28px rgba(2, 9, 14, 0.34)",
+            heroA: "rgba(85, 177, 235, 0.08)",
+            heroB: "rgba(53, 122, 168, 0.08)",
+            heroC: "rgba(97, 186, 176, 0.06)",
+            shadow: "none",
           }
         : {
             panel: "rgba(255, 255, 255, 0.82)",
@@ -321,10 +321,10 @@ export default function UnifiedDashboard() {
             good: "#2a8c67",
             warn: "#9b6c2f",
             bg: "#e9f1f7",
-            heroA: "rgba(79, 164, 219, 0.18)",
-            heroB: "rgba(157, 198, 226, 0.2)",
-            heroC: "rgba(109, 183, 174, 0.16)",
-            shadow: "0 10px 22px rgba(77, 112, 139, 0.16)",
+            heroA: "rgba(79, 164, 219, 0.06)",
+            heroB: "rgba(157, 198, 226, 0.07)",
+            heroC: "rgba(109, 183, 174, 0.06)",
+            shadow: "none",
           },
     [darkMode]
   );
@@ -473,9 +473,9 @@ export default function UnifiedDashboard() {
         className="ui-enter"
         style={{
           ...hero,
-          border: `1px solid ${palette.border}`,
+          border: "none",
           "--ui-delay": "70ms",
-          background: `linear-gradient(140deg, ${palette.heroA} 0%, ${palette.heroB} 56%, ${palette.heroC} 100%)`,
+          background: "transparent",
           boxShadow: palette.shadow,
         }}
       >
@@ -1058,7 +1058,7 @@ function CollapsibleCard({
   return (
     <article
       className="ui-card-lift ui-smooth"
-      style={{ ...panel, order, background: palette.panel, border: `1px solid ${palette.border}` }}
+      style={{ ...panel, order }}
     >
       <div style={{ ...collapseHeaderRow, borderBottom: expanded ? `1px solid ${palette.border}` : "none" }}>
         <button
@@ -1117,7 +1117,7 @@ const ambientLayer = {
 const controlStrip = {
   position: "relative",
   zIndex: 1,
-  borderRadius: 12,
+  borderRadius: 10,
   padding: "8px",
   display: "flex",
   alignItems: "center",
@@ -1138,8 +1138,8 @@ const controlPill = {
 const hero = {
   position: "relative",
   zIndex: 1,
-  borderRadius: 16,
-  padding: "clamp(16px, 2.4vw, 24px)",
+  borderRadius: 0,
+  padding: "2px 0 2px",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-end",
@@ -1237,7 +1237,7 @@ const leftCol = { display: "grid", gap: 12, alignContent: "start", alignItems: "
 const rightCol = { display: "grid", gap: 12, alignContent: "start" };
 
 const panel = {
-  borderRadius: 14,
+  borderRadius: 0,
   overflow: "hidden",
   boxShadow: "none",
 };

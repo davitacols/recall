@@ -592,31 +592,13 @@ export default function UnifiedDashboard() {
         }}
       >
         <div style={leftCol}>
-          <CollapsibleCard
-            title="Mission Control"
-            palette={palette}
-            defaultExpanded
-            cardId="mission-control"
-            column="left"
-            order={getCardOrder("left", "mission-control")}
-            onMoveUp={() => moveCard("left", "mission-control", -1)}
-            onMoveDown={() => moveCard("left", "mission-control", 1)}
-          >
+          <div style={{ order: getCardOrder("left", "mission-control"), width: "100%" }}>
             <MissionControlPanel darkMode={darkMode} />
-          </CollapsibleCard>
+          </div>
 
-          <CollapsibleCard
-            title="Chief Of Staff"
-            palette={palette}
-            defaultExpanded
-            cardId="chief-of-staff"
-            column="left"
-            order={getCardOrder("left", "chief-of-staff")}
-            onMoveUp={() => moveCard("left", "chief-of-staff", -1)}
-            onMoveDown={() => moveCard("left", "chief-of-staff", 1)}
-          >
+          <div style={{ order: getCardOrder("left", "chief-of-staff"), width: "100%" }}>
             <ChiefOfStaffPanel darkMode={darkMode} />
-          </CollapsibleCard>
+          </div>
 
           <CollapsibleCard
             title="Health Snapshot"
@@ -635,21 +617,22 @@ export default function UnifiedDashboard() {
             </div>
           </CollapsibleCard>
 
-          <CollapsibleCard
-            title="Trends And Metrics"
-            palette={palette}
-            defaultExpanded
-            cardId="trends-metrics"
-            column="left"
-            order={getCardOrder("left", "trends-metrics")}
-            onMoveUp={() => moveCard("left", "trends-metrics", -1)}
-            onMoveDown={() => moveCard("left", "trends-metrics", 1)}
+          <section
+            style={{
+              order: getCardOrder("left", "trends-metrics"),
+              width: "100%",
+              border: `1px solid ${palette.border}`,
+              borderRadius: 14,
+              background: palette.panel,
+              padding: 12,
+            }}
           >
+            <h3 style={{ margin: "0 0 10px", fontSize: 14, color: palette.text }}>Trends And Metrics</h3>
             <div style={analyticsRow}>
               <TrendAnalysis />
               <MetricsTracker />
             </div>
-          </CollapsibleCard>
+          </section>
 
           <CollapsibleCard
             title="Copilot Feedback"
@@ -719,31 +702,33 @@ export default function UnifiedDashboard() {
             </div>
           </CollapsibleCard>
 
-          <CollapsibleCard
-            title="Team Expertise"
-            palette={palette}
-            defaultExpanded
-            cardId="team-expertise"
-            column="left"
-            order={getCardOrder("left", "team-expertise")}
-            onMoveUp={() => moveCard("left", "team-expertise", -1)}
-            onMoveDown={() => moveCard("left", "team-expertise", 1)}
+          <section
+            style={{
+              order: getCardOrder("left", "team-expertise"),
+              width: "100%",
+              border: `1px solid ${palette.border}`,
+              borderRadius: 14,
+              background: palette.panel,
+              padding: 12,
+            }}
           >
+            <h3 style={{ margin: "0 0 10px", fontSize: 14, color: palette.text }}>Team Expertise</h3>
             <TeamExpertiseMap />
-          </CollapsibleCard>
+          </section>
 
-          <CollapsibleCard
-            title="Daily Digest"
-            palette={palette}
-            defaultExpanded
-            cardId="daily-digest"
-            column="left"
-            order={getCardOrder("left", "daily-digest")}
-            onMoveUp={() => moveCard("left", "daily-digest", -1)}
-            onMoveDown={() => moveCard("left", "daily-digest", 1)}
+          <section
+            style={{
+              order: getCardOrder("left", "daily-digest"),
+              width: "100%",
+              border: `1px solid ${palette.border}`,
+              borderRadius: 14,
+              background: palette.panel,
+              padding: 12,
+            }}
           >
+            <h3 style={{ margin: "0 0 10px", fontSize: 14, color: palette.text }}>Daily Digest</h3>
             <DashboardWidgets />
-          </CollapsibleCard>
+          </section>
         </div>
 
         <aside style={rightCol}>
@@ -1026,30 +1011,12 @@ export default function UnifiedDashboard() {
             </div>
           </CollapsibleCard>
 
-          <CollapsibleCard
-            title="Advanced AI Insights"
-            palette={palette}
-            defaultExpanded
-            cardId="advanced-insights"
-            column="right"
-            order={getCardOrder("right", "advanced-insights")}
-            onMoveUp={() => moveCard("right", "advanced-insights", -1)}
-            onMoveDown={() => moveCard("right", "advanced-insights", 1)}
-          >
+          <div style={{ order: getCardOrder("right", "advanced-insights"), width: "100%" }}>
             <AdvancedAIInsights />
-          </CollapsibleCard>
-          <CollapsibleCard
-            title="AI Recommendations"
-            palette={palette}
-            defaultExpanded
-            cardId="ai-recommendations"
-            column="right"
-            order={getCardOrder("right", "ai-recommendations")}
-            onMoveUp={() => moveCard("right", "ai-recommendations", -1)}
-            onMoveDown={() => moveCard("right", "ai-recommendations", 1)}
-          >
+          </div>
+          <div style={{ order: getCardOrder("right", "ai-recommendations"), width: "100%" }}>
             <AIRecommendations darkMode={darkMode} />
-          </CollapsibleCard>
+          </div>
         </aside>
       </section>
     </div>

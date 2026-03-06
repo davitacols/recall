@@ -3,7 +3,7 @@ import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
-const PROVIDERS = ["manual", "google", "outlook"];
+const PROVIDERS = ["manual", "google"];
 
 function addDaysISO(days) {
   const dt = new Date();

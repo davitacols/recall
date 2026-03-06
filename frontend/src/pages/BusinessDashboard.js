@@ -335,6 +335,36 @@ export default function BusinessDashboard() {
                   inputBg={inputBg}
                 />
                 <ActionLink
+                  to="/business/journeys"
+                  label="Edit Journey Maps"
+                  helper="Capture messy discovery and user flow assumptions"
+                  icon={DocumentTextIcon}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  borderColor={borderColor}
+                  inputBg={inputBg}
+                />
+                <ActionLink
+                  to="/business/calendar"
+                  label="Run Calendar Planner"
+                  helper="Auto-suggest task slots from availability windows"
+                  icon={CalendarDaysIcon}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  borderColor={borderColor}
+                  inputBg={inputBg}
+                />
+                <ActionLink
+                  to="/business/team-health"
+                  label="Check Burnout Risk"
+                  helper="Review team overload signals before sprint drift"
+                  icon={ChartBarIcon}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  borderColor={borderColor}
+                  inputBg={inputBg}
+                />
+                <ActionLink
                   to="/business/analytics"
                   label="Open Analytics"
                   helper="Track trends and outcomes"

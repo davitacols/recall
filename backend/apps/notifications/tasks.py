@@ -1,9 +1,15 @@
 from celery import shared_task
-from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from html import escape
 from .models import Notification
-from .email_service import send_notification_email as send_notification_email_via_resend, send_email
+from .email_service import (
+    send_notification_email as send_notification_email_via_resend,
+    send_email,
+    build_frontend_url,
+    render_email_template,
+    build_text_email,
+)
 from apps.organizations.models import User
 
 
@@ -85,24 +91,73 @@ def send_notification_digest(user_id, frequency='daily'):
     if not filtered:
         return
 
-    preview = filtered[:12]
-    subject = f"Knoledgr {frequency.capitalize()} digest ({len(filtered)} updates)"
-    body_lines = []
-    for item in preview:
-        body_lines.append(
-            f"<li><strong>{item.title}</strong><br/>{item.message}</li>"
-        )
+    try:
+        from apps.organizations.automation_engine import SmartNotificationEngine
+        batched_items = SmartNotificationEngine.batch_notifications(user, filtered, batch_size=5)
+    except Exception:
+        batched_items = filtered
 
-    html = (
-        "<h2>Knoledgr digest</h2>"
+    preview = batched_items[:12]
+    subject = f"Knoledgr {frequency.capitalize()} digest ({len(filtered)} updates)"
+    body_items = []
+    text_lines = [
+        f"You have {len(filtered)} new updates in the last {frequency} window.",
+        "",
+    ]
+    for item in preview:
+        if isinstance(item, dict) and item.get('type') == 'batch':
+            batch_count = int(item.get('count') or 0)
+            summary = item.get('summary') or f'You have {batch_count} new updates'
+            batch_children = item.get('items') or []
+            body_items.append(
+                "<li style=\"margin:0 0 12px 0;\">"
+                f"<div style=\"font-weight:700;\">{escape(summary)}</div>"
+                f"<div style=\"font-size:13px;color:#6c5a49;\">Grouped to reduce notification noise.</div>"
+                "</li>"
+            )
+            text_lines.append(f"- {summary}")
+            for child in batch_children[:3]:
+                child_link = build_frontend_url(getattr(child, 'link', '') or '/notifications')
+                text_lines.append(f"  - {child.title}: {child.message}")
+                text_lines.append(f"    Open: {child_link}")
+            continue
+
+        item_link = build_frontend_url(item.link or '/notifications')
+        body_items.append(
+            "<li style=\"margin:0 0 10px 0;\">"
+            f"<div style=\"font-weight:700;\">{escape(item.title)}</div>"
+            f"<div style=\"margin:4px 0 6px 0;\">{escape(item.message)}</div>"
+            f"<a href=\"{escape(item_link)}\" style=\"font-size:13px;\">Open update</a>"
+            "</li>"
+        )
+        text_lines.append(f"- {item.title}: {item.message}")
+        text_lines.append(f"  Open: {item_link}")
+
+    digest_url = build_frontend_url('/notifications')
+    html_body = (
         f"<p>You have {len(filtered)} new updates in the last {frequency} window.</p>"
-        "<ul>"
-        + "".join(body_lines)
+        "<ul style=\"padding-left:18px;\">"
+        + "".join(body_items)
         + "</ul>"
-        f"<p><a href=\"{(getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')).rstrip('/')}/notifications\">Open notifications</a></p>"
     )
 
-    send_email(user.email, subject, html)
+    html = render_email_template(
+        preheader=f"{len(filtered)} updates in your {frequency} digest",
+        title=f"Your {frequency.capitalize()} digest",
+        body_html=html_body,
+        cta_label='Open notifications',
+        cta_url=digest_url,
+        reason_text='You received this email because digest notifications are enabled in your Knoledgr account.',
+    )
+    text = build_text_email(
+        title=f"{frequency.capitalize()} digest",
+        body_lines=text_lines,
+        cta_label='Open notifications',
+        cta_url=digest_url,
+        reason_text='You received this email because digest notifications are enabled in your Knoledgr account.',
+    )
+
+    send_email(user.email, subject, html, text_content=text)
 
 
 @shared_task

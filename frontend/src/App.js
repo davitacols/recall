@@ -91,6 +91,9 @@ import TasksBoard from './pages/TasksBoard';
 import Templates from './pages/Templates';
 import Documents from './pages/Documents';
 import DocumentDetail from './pages/DocumentDetail';
+import JourneyMaps from './pages/JourneyMaps';
+import CalendarPlanner from './pages/CalendarPlanner';
+import BurnoutRisk from './pages/BurnoutRisk';
 import KnowledgeGraph from './pages/KnowledgeGraph';
 import KnowledgeAnalytics from './pages/KnowledgeAnalytics';
 import Documentation from './pages/Documentation';
@@ -698,6 +701,27 @@ function AppContent() {
           <ProtectedRoute>
             <UnifiedLayout>
               <DocumentDetail />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/journeys" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <JourneyMaps />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/calendar" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <CalendarPlanner />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/business/team-health" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <BurnoutRisk />
             </UnifiedLayout>
           </ProtectedRoute>
         } />

@@ -78,3 +78,42 @@ class Task(models.Model):
     class Meta:
         db_table = 'business_tasks'
         ordering = ['-created_at']
+
+
+class JourneyMap(models.Model):
+    """Visual journey-mapping canvas data for early-stage project discovery."""
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='journey_maps')
+    title = models.CharField(max_length=255)
+    objective = models.TextField(blank=True)
+    map_data = models.JSONField(default=dict, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_journey_maps')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'business_journey_maps'
+        ordering = ['-updated_at']
+
+
+class CalendarConnection(models.Model):
+    """Store calendar provider linkage metadata for scheduling features."""
+    PROVIDER_CHOICES = [
+        ('google', 'Google'),
+        ('outlook', 'Outlook'),
+        ('manual', 'Manual'),
+    ]
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='calendar_connections')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='calendar_connections')
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    is_connected = models.BooleanField(default=False)
+    external_calendar_id = models.CharField(max_length=255, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'business_calendar_connections'
+        ordering = ['-updated_at']
+        unique_together = ['organization', 'user', 'provider']

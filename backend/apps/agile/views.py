@@ -63,47 +63,103 @@ def _resolve_issue_by_ref(organization, issue_ref):
 def _apply_delay_shift(org, issue, decision, delay_days):
     """
     Apply a delay impact to issue due dates and record history for traceability.
-    Returns number of issues shifted (issue + subtasks).
+    Propagates across related dependencies (parent/subtasks, blocker-linked issues,
+    and issues linked by the same blocking/delaying decision).
+    Returns number of issues shifted.
     """
     if delay_days <= 0:
         return 0
 
+    today = timezone.now().date()
+    visited_ids = set()
+    queue = [(issue, 'Direct decision delay impact')]
     shifted_count = 0
 
-    base_due_date = issue.due_date or (issue.sprint.end_date if issue.sprint else timezone.now().date())
-    new_due_date = base_due_date + timedelta(days=delay_days)
-    old_due_date = issue.due_date
-    issue.due_date = new_due_date
-    issue.save()
-    shifted_count += 1
+    while queue:
+        current_issue, reason = queue.pop(0)
+        if current_issue.id in visited_ids:
+            continue
+        visited_ids.add(current_issue.id)
 
-    IssueDecisionHistory.objects.create(
-        organization=org,
-        issue=issue,
-        decision=decision,
-        change_type='status_changed',
-        old_value=old_due_date.isoformat() if old_due_date else '',
-        new_value=new_due_date.isoformat(),
-        reason=f'Decision impact delay applied (+{delay_days}d)',
-    )
+        if current_issue.status != 'done':
+            old_due_date = current_issue.due_date
+            base_due_date = old_due_date or (current_issue.sprint.end_date if current_issue.sprint else today)
+            new_due_date = base_due_date + timedelta(days=delay_days)
 
-    for subtask in issue.subtasks.exclude(status='done'):
-        subtask_base_due = subtask.due_date or base_due_date
-        subtask_old_due = subtask.due_date
-        subtask_new_due = subtask_base_due + timedelta(days=delay_days)
-        subtask.due_date = subtask_new_due
-        subtask.save()
-        shifted_count += 1
+            current_issue.due_date = new_due_date
+            current_issue.save(update_fields=['due_date'])
+            shifted_count += 1
 
-        IssueDecisionHistory.objects.create(
-            organization=org,
-            issue=subtask,
-            decision=decision,
-            change_type='status_changed',
-            old_value=subtask_old_due.isoformat() if subtask_old_due else '',
-            new_value=subtask_new_due.isoformat(),
-            reason=f'Inherited parent delay impact from issue {issue.key} (+{delay_days}d)',
+            IssueDecisionHistory.objects.create(
+                organization=org,
+                issue=current_issue,
+                decision=decision,
+                change_type='status_changed',
+                old_value=old_due_date.isoformat() if old_due_date else '',
+                new_value=new_due_date.isoformat(),
+                reason=f'{reason} (+{delay_days}d)',
+            )
+
+        neighbor_reasons = {}
+
+        if current_issue.parent_issue_id:
+            neighbor_reasons.setdefault(
+                current_issue.parent_issue_id,
+                f'Propagated from child dependency {current_issue.key}',
+            )
+
+        for subtask_id in current_issue.subtasks.exclude(status='done').values_list('id', flat=True):
+            neighbor_reasons.setdefault(
+                subtask_id,
+                f'Inherited parent delay impact from issue {current_issue.key}',
+            )
+
+        blocker_ids = list(
+            BlockerIssueLink.objects.filter(issue=current_issue).values_list('blocker_id', flat=True)
         )
+        if blocker_ids:
+            linked_issue_ids = BlockerIssueLink.objects.filter(
+                blocker_id__in=blocker_ids,
+                issue__organization=org,
+            ).exclude(issue_id=current_issue.id).exclude(issue__status='done').values_list('issue_id', flat=True)
+            for linked_issue_id in linked_issue_ids:
+                neighbor_reasons.setdefault(
+                    linked_issue_id,
+                    f'Propagated through shared blocker from issue {current_issue.key}',
+                )
+
+        if decision:
+            impacted_issue_ids = DecisionImpact.objects.filter(
+                organization=org,
+                decision=decision,
+                impact_type__in=['blocks', 'delays'],
+            ).exclude(issue_id=current_issue.id).exclude(issue__status='done').values_list('issue_id', flat=True)
+            for impacted_issue_id in impacted_issue_ids:
+                neighbor_reasons.setdefault(
+                    impacted_issue_id,
+                    f'Propagated through decision impact from issue {current_issue.key}',
+                )
+
+            linked_decision_issue_ids = DecisionIssueLink.objects.filter(
+                decision=decision,
+                impact_type='blocks',
+                issue__organization=org,
+            ).exclude(issue_id=current_issue.id).exclude(issue__status='done').values_list('issue_id', flat=True)
+            for linked_decision_issue_id in linked_decision_issue_ids:
+                neighbor_reasons.setdefault(
+                    linked_decision_issue_id,
+                    f'Propagated through decision link from issue {current_issue.key}',
+                )
+
+        if not neighbor_reasons:
+            continue
+
+        for related_issue in Issue.objects.filter(
+            organization=org,
+            id__in=list(neighbor_reasons.keys()),
+        ).exclude(status='done').select_related('sprint'):
+            if related_issue.id not in visited_ids:
+                queue.append((related_issue, neighbor_reasons[related_issue.id]))
 
     return shifted_count
 

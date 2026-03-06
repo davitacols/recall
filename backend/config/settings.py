@@ -168,6 +168,10 @@ COGNITO_CLIENT_ID = config('COGNITO_CLIENT_ID', default='')
 COGNITO_REGION = config('AWS_REGION', default='us-east-1')
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 GOOGLE_OAUTH_ENABLED = _env_bool('GOOGLE_OAUTH_ENABLED', default=bool(GOOGLE_CLIENT_ID))
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
+MICROSOFT_CLIENT_ID = config('MICROSOFT_CLIENT_ID', default='')
+MICROSOFT_CLIENT_SECRET = config('MICROSOFT_CLIENT_SECRET', default='')
+MICROSOFT_TENANT_ID = config('MICROSOFT_TENANT_ID', default='common')
 
 AUTH_RATE_LIMITS = {
     'login': {

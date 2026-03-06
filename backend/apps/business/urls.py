@@ -11,6 +11,14 @@ from .advanced_views import (
     reminders_list
 )
 from .document_views import documents_list, document_detail, document_search, document_file, document_comments, extract_pdf_text
+from .missing_elements_views import (
+    journey_maps,
+    journey_map_detail,
+    calendar_connections,
+    calendar_free_busy,
+    slot_task,
+    burnout_risk,
+)
 
 urlpatterns = [
     path('goals/', goals_list, name='goals_list'),
@@ -35,4 +43,10 @@ urlpatterns = [
     path('documents/<int:pk>/extract-text/', extract_pdf_text, name='extract_pdf_text'),
     path('documents/<int:pk>/comments/', document_comments, name='document_comments'),
     path('documents/search/', document_search, name='document_search'),
+    path('journeys/', journey_maps, name='journey_maps'),
+    path('journeys/<int:map_id>/', journey_map_detail, name='journey_map_detail'),
+    path('calendar/connections/', calendar_connections, name='calendar_connections'),
+    path('calendar/free-busy/', calendar_free_busy, name='calendar_free_busy'),
+    path('calendar/slot-task/', slot_task, name='calendar_slot_task'),
+    path('team/burnout-risk/', burnout_risk, name='team_burnout_risk'),
 ]

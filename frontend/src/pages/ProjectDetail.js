@@ -242,6 +242,11 @@ function ProjectDetail() {
           <section style={{ ...emptyBlock, border: `1px solid ${palette.border}`, background: palette.card }}>
             <h3 style={{ margin: 0, color: palette.text }}>Roadmap</h3>
             <p style={{ ...sub, marginTop: 8, color: palette.muted }}>Use milestones and releases pages to manage roadmap planning.</p>
+            <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+              <Link to={`/projects/${projectId}/releases`} style={quickButton}>Open Releases</Link>
+              <Link to="/agile/templates" style={quickButton}>Issue Templates</Link>
+              <Link to="/agile/filters" style={quickButton}>Saved Filters</Link>
+            </div>
           </section>
         )}
 

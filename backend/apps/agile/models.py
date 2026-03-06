@@ -2,6 +2,9 @@ from django.db import models
 from django.utils import timezone
 from apps.organizations.models import User, Organization
 from apps.conversations.models import Conversation
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Project(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
@@ -62,8 +65,10 @@ class Sprint(models.Model):
                     super().save(*args, **kwargs)
                     trigger_automation(self, 'sprint_ended', None)
                     return
+        except ImportError as exc:
+            logger.debug("Sprint automation hooks unavailable: %s", exc)
         except Exception:
-            pass
+            logger.exception("Sprint automation trigger failed", extra={"sprint_id": self.pk, "status": self.status})
         
         super().save(*args, **kwargs)
 
@@ -189,7 +194,7 @@ class Issue(models.Model):
                 old_issue = Issue.objects.get(pk=self.pk)
                 old_status = old_issue.status
             except Issue.DoesNotExist:
-                pass
+                logger.warning("Issue missing during update status lookup", extra={"issue_id": self.pk})
         
         if self.sprint and self.in_backlog:
             self.in_backlog = False
@@ -215,8 +220,10 @@ class Issue(models.Model):
                 if old_status and old_status != self.status:
                     trigger_automation(self, 'issue_status_changed', self.reporter, {'old_status': old_status, 'new_status': self.status})
                 trigger_automation(self, 'issue_updated', self.reporter)
+        except ImportError as exc:
+            logger.debug("Issue automation hooks unavailable: %s", exc)
         except Exception:
-            pass
+            logger.exception("Issue automation or analytics failed", extra={"issue_id": self.pk, "is_new": is_new})
 
 class IssueComment(models.Model):
     issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='comments')

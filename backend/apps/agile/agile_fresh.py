@@ -7,6 +7,7 @@ from django.db import IntegrityError
 from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
 import re
+import logging
 from apps.agile.models import Project, Sprint, Issue, Board, Column, IssueComment, IssueLabel, Blocker, Retrospective, SprintUpdate, DecisionImpact, WorkflowTransition
 from apps.decisions.models import Decision
 from apps.organizations.models import User
@@ -16,6 +17,8 @@ from apps.organizations.auditlog_models import AuditLog
 from apps.conversations.models import Conversation
 from apps.knowledge.unified_models import UnifiedActivity
 from apps.notifications.utils import create_notification
+
+logger = logging.getLogger(__name__)
 
 
 def _track_view_activity(request, obj, title, description=""):
@@ -41,7 +44,7 @@ def _track_view_activity(request, obj, title, description=""):
                 description=description[:200] if description else '',
             )
     except Exception:
-        pass
+        logger.exception("Failed to track view activity", extra={"user_id": getattr(request.user, "id", None)})
 
 
 def _resolve_issue_by_ref(organization, issue_ref):
@@ -641,7 +644,7 @@ def issue_detail(request, issue_id):
                     column = issue.board.columns.get(name=column_name)
                     issue.column = column
                 except Column.DoesNotExist:
-                    pass
+                    logger.info("Mapped board column does not exist", extra={"board_id": issue.board_id, "column_name": column_name})
         if 'priority' in request.data:
             issue.priority = request.data['priority']
         if 'assignee_id' in request.data:

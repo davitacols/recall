@@ -22,6 +22,9 @@ from apps.agile.permissions import (
 from apps.agile.ai_service import generate_sprint_update_summary
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
+import logging
+
+logger = logging.getLogger(__name__)
 
 def _check_org(request):
     if not hasattr(request.user, 'organization') or not request.user.organization:
@@ -175,7 +178,7 @@ def delete_project(request, project_id):
                 try:
                     cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [project_id])
                 except ProgrammingError:
-                    pass  # Table doesn't exist, skip
+                    logger.info("Skipping cleanup for missing table", extra={"table": table})
         
         # Delete DecisionImpacts
         DecisionImpact.objects.filter(issue__project=project).delete()
@@ -493,7 +496,10 @@ def add_comment(request, issue_id):
                     link=f'/issues/{issue.id}',
                 )
         except Exception:
-            pass
+            logger.exception(
+                "Failed to send issue comment notifications",
+                extra={"issue_id": issue.id, "actor_id": request.user.id},
+            )
 
         return Response(IssueCommentSerializer(comment).data, status=201)
     except Issue.DoesNotExist:

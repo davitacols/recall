@@ -18,6 +18,9 @@ from .serializers import (
 )
 from apps.organizations.permissions import has_project_permission, Permission
 from apps.notifications.models import Notification
+import logging
+
+logger = logging.getLogger(__name__)
 from django.utils import timezone
 
 
@@ -90,7 +93,10 @@ def upload_attachment(request, issue_id):
                 )
         except Exception:
             # Attachment upload should succeed even if notifications cannot be sent.
-            pass
+            logger.exception(
+                "Failed to send attachment notifications",
+                extra={"issue_id": issue.id, "actor_id": request.user.id},
+            )
         
         return Response(IssueAttachmentSerializer(attachment).data, status=201)
     except Exception as e:

@@ -74,6 +74,10 @@ import KnowledgeBase from './pages/KnowledgeBase';
 import Messages from './pages/Messages';
 import IssueDetail from './pages/IssueDetail';
 import Backlog from './pages/Backlog';
+import IssueTemplates from './pages/IssueTemplates';
+import SavedFilters from './pages/SavedFilters';
+import Releases from './pages/Releases';
+import RetrospectiveDetail from './pages/RetrospectiveDetail';
 import Homepage from './pages/Homepage';
 import PrivacyEnterprise from './pages/PrivacyEnterprise';
 import TermsEnterprise from './pages/TermsEnterprise';
@@ -497,6 +501,34 @@ function AppContent() {
           <ProtectedRoute>
             <UnifiedLayout>
               <Backlog />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/projects/:projectId/releases" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <Releases />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/agile/templates" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <IssueTemplates />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/agile/filters" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <SavedFilters />
+            </UnifiedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/sprints/:sprintId/retrospective" element={
+          <ProtectedRoute>
+            <UnifiedLayout>
+              <RetrospectiveDetail />
             </UnifiedLayout>
           </ProtectedRoute>
         } />

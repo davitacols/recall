@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { DocumentTextIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import { DocumentTextIcon } from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 function IssueTemplates() {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    issue_type: 'task',
-    title_template: '',
-    description_template: '',
-    default_priority: 'medium'
+    name: "",
+    issue_type: "task",
+    title_template: "",
+    description_template: "",
+    default_priority: "medium",
   });
 
   useEffect(() => {
@@ -20,10 +25,10 @@ function IssueTemplates() {
 
   const fetchTemplates = async () => {
     try {
-      const response = await api.get('/api/agile/templates/');
+      const response = await api.get("/api/agile/templates/");
       setTemplates(response.data);
     } catch (error) {
-      console.error('Failed to fetch templates:', error);
+      console.error("Failed to fetch templates:", error);
     } finally {
       setLoading(false);
     }
@@ -32,58 +37,63 @@ function IssueTemplates() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/agile/templates/', formData);
+      await api.post("/api/agile/templates/", formData);
       setShowForm(false);
       setFormData({
-        name: '',
-        issue_type: 'task',
-        title_template: '',
-        description_template: '',
-        default_priority: 'medium'
+        name: "",
+        issue_type: "task",
+        title_template: "",
+        description_template: "",
+        default_priority: "medium",
       });
       fetchTemplates();
     } catch (error) {
-      console.error('Failed to create template:', error);
+      console.error("Failed to create template:", error);
     }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-96">
-      <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent animate-spin"></div>
-    </div>;
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <div style={spinner} />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto px-4 md:px-8 py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-black text-gray-900">Issue Templates</h1>
+    <div style={{ minHeight: "100vh" }}>
+      <div style={ui.container}>
+        <div style={header}>
+          <div>
+            <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", color: palette.muted, fontWeight: 700 }}>AGILE</p>
+            <h1 style={{ margin: "6px 0 0", fontSize: "clamp(1.6rem,3vw,2.25rem)", color: palette.text }}>Issue Templates</h1>
+          </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm"
+            style={ui.primaryButton}
           >
-            <DocumentTextIcon className="w-4 h-4" />
+            <DocumentTextIcon style={icon14} />
             New Template
           </button>
         </div>
 
         {showForm && (
-          <div className="mb-8 p-6 border border-gray-200">
-            <h2 className="text-xl font-bold mb-4">Create Template</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <div style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.card, marginBottom: 10 }}>
+            <h2 style={{ margin: 0, fontSize: 18, color: palette.text }}>Create Template</h2>
+            <form onSubmit={handleSubmit} style={{ marginTop: 10, display: "grid", gap: 8 }}>
               <input
                 type="text"
                 placeholder="Template Name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:border-gray-900"
+                style={ui.input}
                 required
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div style={ui.twoCol}>
                 <select
                   value={formData.issue_type}
                   onChange={(e) => setFormData({ ...formData, issue_type: e.target.value })}
-                  className="px-4 py-2 border border-gray-300 focus:outline-none focus:border-gray-900"
+                  style={ui.input}
                 >
                   <option value="epic">Epic</option>
                   <option value="story">Story</option>
@@ -93,7 +103,7 @@ function IssueTemplates() {
                 <select
                   value={formData.default_priority}
                   onChange={(e) => setFormData({ ...formData, default_priority: e.target.value })}
-                  className="px-4 py-2 border border-gray-300 focus:outline-none focus:border-gray-900"
+                  style={ui.input}
                 >
                   <option value="lowest">Lowest</option>
                   <option value="low">Low</option>
@@ -107,21 +117,21 @@ function IssueTemplates() {
                 placeholder="Title Template (e.g., [BUG] )"
                 value={formData.title_template}
                 onChange={(e) => setFormData({ ...formData, title_template: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:border-gray-900"
+                style={ui.input}
                 required
               />
               <textarea
                 placeholder="Description Template"
                 value={formData.description_template}
                 onChange={(e) => setFormData({ ...formData, description_template: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 min-h-32"
+                style={{ ...ui.input, minHeight: 120 }}
                 required
               />
-              <div className="flex gap-3">
-                <button type="submit" className="px-6 py-2 bg-gray-900 text-white hover:bg-black font-bold text-sm">
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+                <button type="submit" style={ui.primaryButton}>
                   Create
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold text-sm">
+                <button type="button" onClick={() => setShowForm(false)} style={ui.secondaryButton}>
                   Cancel
                 </button>
               </div>
@@ -129,22 +139,22 @@ function IssueTemplates() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 8 }}>
           {templates.map(template => (
-            <div key={template.id} className="p-6 border border-gray-200 hover:border-gray-900 transition-all">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-bold text-gray-900">{template.name}</h3>
-                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 font-semibold rounded">
+            <div key={template.id} style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start", marginBottom: 6 }}>
+                <h3 style={{ margin: 0, fontWeight: 700, color: palette.text }}>{template.name}</h3>
+                <span style={{ fontSize: 10, padding: "3px 7px", border: `1px solid ${palette.border}`, color: palette.muted, textTransform: "uppercase", fontWeight: 700 }}>
                   {template.issue_type}
                 </span>
               </div>
-              <p className="text-sm text-gray-600 mb-2">{template.title_template}</p>
-              <p className="text-xs text-gray-500 line-clamp-2">{template.description_template}</p>
-              <p className="text-xs text-gray-600 mt-3">Priority: {template.default_priority}</p>
+              <p style={{ margin: "0 0 4px", fontSize: 13, color: palette.text }}>{template.title_template}</p>
+              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>{template.description_template}</p>
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: palette.muted }}>Priority: {template.default_priority}</p>
             </div>
           ))}
           {templates.length === 0 && (
-            <div className="col-span-2 text-center text-gray-600 py-12">
+            <div style={{ ...empty, border: `1px dashed ${palette.border}`, color: palette.muted }}>
               No templates yet. Create one to speed up issue creation.
             </div>
           )}
@@ -155,3 +165,9 @@ function IssueTemplates() {
 }
 
 export default IssueTemplates;
+
+const header = { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 12 };
+const panel = { borderRadius: 0, padding: 12 };
+const empty = { borderRadius: 0, textAlign: "center", padding: "18px 12px", gridColumn: "1 / -1" };
+const spinner = { width: 28, height: 28, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const icon14 = { width: 14, height: 14 };

@@ -125,12 +125,12 @@ export default function MissionControlPanel() {
 
   if (!data) {
     return (
-      <article style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.panel, padding: 12 }}>
+      <section style={{ padding: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 8 }}>
           <h3 style={{ margin: 0, fontSize: 14, color: palette.text }}>Mission Control</h3>
           <button
             onClick={fetchData}
-            style={{ border: `1px solid ${palette.border}`, borderRadius: 8, background: "transparent", color: palette.text, fontSize: 11, padding: "5px 8px", cursor: "pointer" }}
+            style={{ border: `1px solid ${palette.border}`, background: "transparent", color: palette.text, fontSize: 11, padding: "5px 8px", cursor: "pointer" }}
           >
             Retry
           </button>
@@ -138,7 +138,7 @@ export default function MissionControlPanel() {
         <p style={{ margin: 0, fontSize: 12, color: palette.bad }}>
           {error || "No Mission Control data available."}
         </p>
-      </article>
+      </section>
     );
   }
 
@@ -146,18 +146,18 @@ export default function MissionControlPanel() {
   const statusColor = status === "stable" ? palette.good : status === "watch" ? palette.warn : palette.bad;
 
   return (
-    <article style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.panel, padding: 12 }}>
+    <section style={{ padding: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 8 }}>
         <h3 style={{ margin: 0, fontSize: 14, color: palette.text }}>Mission Control</h3>
         <button
           onClick={fetchData}
-          style={{ border: `1px solid ${palette.border}`, borderRadius: 8, background: "transparent", color: palette.text, fontSize: 11, padding: "5px 8px", cursor: "pointer" }}
+          style={{ border: `1px solid ${palette.border}`, background: "transparent", color: palette.text, fontSize: 11, padding: "5px 8px", cursor: "pointer" }}
         >
           Refresh
         </button>
       </div>
 
-      <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10, marginBottom: 8 }}>
+      <div style={{ borderTop: `1px solid ${palette.border}`, borderBottom: `1px solid ${palette.border}`, padding: "10px 0", marginBottom: 8 }}>
         <p style={{ margin: 0, fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Critical Path Score</p>
         <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 800, color: palette.text }}>{data.north_star?.critical_path_score ?? "--"}</p>
         <p style={{ margin: "2px 0 0", fontSize: 12, color: statusColor, fontWeight: 700 }}>
@@ -166,7 +166,7 @@ export default function MissionControlPanel() {
         <p style={{ margin: "6px 0 0", fontSize: 12, color: palette.muted }}>{data.north_star?.summary}</p>
       </div>
 
-      <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10, marginBottom: 8 }}>
+      <div style={{ borderBottom: `1px solid ${palette.border}`, padding: "0 0 10px", marginBottom: 8 }}>
         <p style={{ margin: "0 0 6px", fontSize: 12, color: palette.text, fontWeight: 700 }}>Top Autonomous Actions</p>
         {(data.autonomous_actions || []).slice(0, 3).map((action, idx) => (
           <div key={idx} style={{ marginBottom: 6, paddingBottom: 6, borderBottom: idx < 2 ? `1px solid ${palette.border}` : "none" }}>
@@ -181,7 +181,7 @@ export default function MissionControlPanel() {
         ))}
       </div>
 
-      <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
+      <div style={{ padding: "0 0 2px" }}>
         <p style={{ margin: 0, fontSize: 12, color: palette.text, fontWeight: 700 }}>24h Simulation</p>
         <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted }}>
           Projected score: <span style={{ color: palette.text, fontWeight: 700 }}>{data.simulation_24h?.projected_critical_path_score ?? "--"}</span>
@@ -190,6 +190,6 @@ export default function MissionControlPanel() {
           On-track probability: <span style={{ color: palette.text, fontWeight: 700 }}>{data.simulation_24h?.probability_on_track_pct ?? "--"}%</span>
         </p>
       </div>
-    </article>
+    </section>
   );
 }

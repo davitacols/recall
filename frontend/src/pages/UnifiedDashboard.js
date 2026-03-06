@@ -599,10 +599,7 @@ export default function UnifiedDashboard() {
             style={{
               order: getCardOrder("left", "trends-metrics"),
               width: "100%",
-              border: `1px solid ${palette.border}`,
-              borderRadius: 14,
-              background: palette.panel,
-              padding: 12,
+              padding: 0,
             }}
           >
             <h3 style={{ margin: "0 0 10px", fontSize: 14, color: palette.text }}>Trends And Metrics</h3>
@@ -684,10 +681,7 @@ export default function UnifiedDashboard() {
             style={{
               order: getCardOrder("left", "team-expertise"),
               width: "100%",
-              border: `1px solid ${palette.border}`,
-              borderRadius: 14,
-              background: palette.panel,
-              padding: 12,
+              padding: 0,
             }}
           >
             <h3 style={{ margin: "0 0 10px", fontSize: 14, color: palette.text }}>Team Expertise</h3>
@@ -698,10 +692,7 @@ export default function UnifiedDashboard() {
             style={{
               order: getCardOrder("left", "daily-digest"),
               width: "100%",
-              border: `1px solid ${palette.border}`,
-              borderRadius: 14,
-              background: palette.panel,
-              padding: 12,
+              padding: 0,
             }}
           >
             <h3 style={{ margin: "0 0 10px", fontSize: 14, color: palette.text }}>Daily Digest</h3>

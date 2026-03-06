@@ -17,7 +17,10 @@ def board_view(request, board_id):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     try:
-        board = Board.objects.select_related('project').prefetch_related('columns__issues__assignee').get(id=board_id)
+        board = Board.objects.select_related('project').prefetch_related('columns__issues__assignee').get(
+            id=board_id,
+            organization=org,
+        )
         
         column_data = []
         for col in board.columns.all().order_by('order'):
@@ -99,11 +102,11 @@ def assign_issue_to_sprint(request, issue_id):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     try:
-        issue = Issue.objects.get(id=issue_id)
+        issue = Issue.objects.get(id=issue_id, organization=org)
         sprint_id = request.data.get('sprint_id')
         
         if sprint_id:
-            sprint = Sprint.objects.get(id=sprint_id, project=issue.project)
+            sprint = Sprint.objects.get(id=sprint_id, project=issue.project, organization=org)
             issue.sprint = sprint
         else:
             issue.sprint = None

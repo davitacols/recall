@@ -14,8 +14,12 @@ import boto3
 import secrets
 import hashlib
 from django.conf import settings
-from google.oauth2 import id_token as google_id_token
-from google.auth.transport import requests as google_requests
+try:
+    from google.oauth2 import id_token as google_id_token
+    from google.auth.transport import requests as google_requests
+except Exception:  # Optional in some local/test environments
+    google_id_token = None
+    google_requests = None
 from .auth_utils import (
     check_rate_limit,
     validate_email,
@@ -354,6 +358,8 @@ def google_login(request):
         return Response({'error': 'Google credential is required'}, status=status.HTTP_400_BAD_REQUEST)
     if not settings.GOOGLE_OAUTH_ENABLED or not settings.GOOGLE_CLIENT_ID:
         return Response({'error': 'Google Sign-In is not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    if google_id_token is None or google_requests is None:
+        return Response({'error': 'Google OAuth dependency is not installed'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     client_fingerprint = get_client_fingerprint(request)
     if not check_rate_limit(

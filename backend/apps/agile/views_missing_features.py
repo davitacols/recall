@@ -11,6 +11,7 @@ from .models import (
     Issue, IssueAttachment, SavedFilter, IssueTemplate,
     Release, Component, ProjectCategory, Column, IssueLabel, Project, Board, ServiceDeskAITriage
 )
+from apps.organizations.models import User
 from .serializers import (
     IssueAttachmentSerializer, SavedFilterSerializer, IssueTemplateSerializer,
     ReleaseSerializer, ComponentSerializer, ProjectCategorySerializer
@@ -23,6 +24,22 @@ from django.utils import timezone
 def _resolve_issue_for_user_org(user, issue_id):
     org_filter = Q(organization=user.organization) | Q(project__organization=user.organization)
     return Issue.objects.filter(org_filter, id=issue_id).first()
+
+
+def _resolve_project_for_user_org(user, project_id):
+    return Project.objects.filter(organization=user.organization, id=project_id).first()
+
+
+def _has_project_read_access(user, project_id):
+    # Contributors can read agile data through issue-level permissions.
+    return (
+        has_project_permission(user, Permission.EDIT_ISSUE.value, project_id)
+        or has_project_permission(user, Permission.EDIT_PROJECT.value, project_id)
+    )
+
+
+def _has_project_manage_access(user, project_id):
+    return has_project_permission(user, Permission.EDIT_PROJECT.value, project_id)
 
 
 # Attachments
@@ -213,13 +230,21 @@ def issue_templates(request):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def releases(request, project_id):
+    project = _resolve_project_for_user_org(request.user, project_id)
+    if not project:
+        return Response({'error': 'Project not found'}, status=404)
+
     if request.method == 'GET':
-        releases = Release.objects.filter(project_id=project_id)
+        if not _has_project_read_access(request.user, project.id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
+        releases = Release.objects.filter(project=project)
         return Response(ReleaseSerializer(releases, many=True).data)
     
     elif request.method == 'POST':
+        if not _has_project_manage_access(request.user, project.id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
         release = Release.objects.create(
-            project_id=project_id,
+            project=project,
             name=request.data['name'],
             version=request.data['version'],
             release_date=request.data.get('release_date'),
@@ -232,9 +257,17 @@ def releases(request, project_id):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def update_release(request, release_id):
-    release = get_object_or_404(Release, id=release_id)
+    release = get_object_or_404(
+        Release.objects.select_related('project').filter(project__organization=request.user.organization),
+        id=release_id,
+    )
+    if not _has_project_manage_access(request.user, release.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
+
+    allowed_fields = {'name', 'version', 'release_date', 'status', 'description'}
     for key, value in request.data.items():
-        setattr(release, key, value)
+        if key in allowed_fields:
+            setattr(release, key, value)
     release.save()
     return Response(ReleaseSerializer(release).data)
 
@@ -243,16 +276,32 @@ def update_release(request, release_id):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def components(request, project_id):
+    project = _resolve_project_for_user_org(request.user, project_id)
+    if not project:
+        return Response({'error': 'Project not found'}, status=404)
+
     if request.method == 'GET':
-        components = Component.objects.filter(project_id=project_id)
+        if not _has_project_read_access(request.user, project.id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
+        components = Component.objects.filter(project=project)
         return Response(ComponentSerializer(components, many=True).data)
     
     elif request.method == 'POST':
+        if not _has_project_manage_access(request.user, project.id):
+            return Response({'error': 'Permission denied for this project'}, status=403)
+
+        lead_id = request.data.get('lead_id')
+        lead = None
+        if lead_id:
+            lead = User.objects.filter(id=lead_id, organization=request.user.organization).first()
+            if not lead:
+                return Response({'error': 'Lead user not found in your organization'}, status=400)
+
         component = Component.objects.create(
-            project_id=project_id,
+            project=project,
             name=request.data['name'],
             description=request.data.get('description', ''),
-            lead_id=request.data.get('lead_id')
+            lead=lead
         )
         return Response(ComponentSerializer(component).data, status=201)
 
@@ -279,7 +328,12 @@ def project_categories(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def check_wip_limit(request, column_id):
-    column = get_object_or_404(Column, id=column_id)
+    column = get_object_or_404(
+        Column.objects.select_related('board__project').filter(board__organization=request.user.organization),
+        id=column_id,
+    )
+    if not _has_project_read_access(request.user, column.board.project_id):
+        return Response({'error': 'Permission denied for this project'}, status=403)
     return Response({
         'wip_limit': column.wip_limit,
         'current_count': column.issues.filter(status__in=['in_progress', 'in_review']).count(),

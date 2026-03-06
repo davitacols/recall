@@ -181,7 +181,9 @@ class ReleaseSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
     
     def get_issue_count(self, obj):
-        return obj.issues.count()
+        # Release has no direct Issue FK in current schema; keep API stable.
+        related_issues = getattr(obj, 'issues', None)
+        return related_issues.count() if related_issues is not None else 0
 
 
 class ComponentSerializer(serializers.ModelSerializer):

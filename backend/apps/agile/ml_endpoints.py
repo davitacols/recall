@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from apps.agile.ml_service import MLService
-from apps.agile.models import Issue, Sprint
+from apps.agile.models import Issue, Sprint, Project
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -15,8 +15,12 @@ def suggest_assignee(request):
     
     if not title or not project_id:
         return Response({'error': 'Title and project_id required'}, status=400)
+
+    project = Project.objects.filter(id=project_id, organization=request.user.organization).first()
+    if not project:
+        return Response({'error': 'Project not found'}, status=404)
     
-    suggestion = MLService.suggest_assignee(title, description, project_id)
+    suggestion = MLService.suggest_assignee(title, description, project.id)
     
     if suggestion:
         return Response(suggestion)
@@ -26,6 +30,9 @@ def suggest_assignee(request):
 @permission_classes([IsAuthenticated])
 def predict_sprint(request, sprint_id):
     """Predict sprint completion"""
+    sprint = Sprint.objects.filter(id=sprint_id, organization=request.user.organization).first()
+    if not sprint:
+        return Response({'error': 'Sprint not found'}, status=404)
     prediction = MLService.predict_sprint_completion(sprint_id)
     return Response(prediction)
 
@@ -64,7 +71,10 @@ def analyze_issue(request):
     }
     
     if project_id:
-        assignee = MLService.suggest_assignee(title, description, project_id)
+        project = Project.objects.filter(id=project_id, organization=request.user.organization).first()
+        if not project:
+            return Response({'error': 'Project not found'}, status=404)
+        assignee = MLService.suggest_assignee(title, description, project.id)
         if assignee:
             analysis['suggested_assignee'] = assignee
     
@@ -75,7 +85,7 @@ def analyze_issue(request):
 def sprint_insights(request, sprint_id):
     """Get AI insights for sprint"""
     try:
-        sprint = Sprint.objects.get(id=sprint_id)
+        sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
         issues = sprint.issues.all()
         
         prediction = MLService.predict_sprint_completion(sprint_id)

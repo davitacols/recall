@@ -290,43 +290,20 @@ export default function UnifiedDashboard() {
   };
 
   const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            panel: "rgba(16, 24, 31, 0.82)",
-            panelAlt: "#111b23",
-            border: "rgba(174, 210, 234, 0.2)",
-            text: "#e8f0f6",
-            muted: "#9fb2c3",
-            dim: "#7f9db4",
-            accent: "#5aaee7",
-            info: "#6fd2c4",
-            good: "#49bf8f",
-            warn: "#d6aa57",
-            bg: "#0b1014",
-            heroA: "rgba(85, 177, 235, 0.08)",
-            heroB: "rgba(53, 122, 168, 0.08)",
-            heroC: "rgba(97, 186, 176, 0.06)",
-            shadow: "none",
-          }
-        : {
-            panel: "rgba(255, 255, 255, 0.82)",
-            panelAlt: "#f8fcff",
-            border: "rgba(83, 126, 157, 0.24)",
-            text: "#0e2434",
-            muted: "#4a6578",
-            dim: "#67859d",
-            accent: "#2f80b8",
-            info: "#1ea091",
-            good: "#2a8c67",
-            warn: "#9b6c2f",
-            bg: "#e9f1f7",
-            heroA: "rgba(79, 164, 219, 0.06)",
-            heroB: "rgba(157, 198, 226, 0.07)",
-            heroC: "rgba(109, 183, 174, 0.06)",
-            shadow: "none",
-          },
-    [darkMode]
+    () => ({
+      panel: "var(--ui-panel)",
+      panelAlt: "var(--ui-panel-alt)",
+      border: "var(--ui-border)",
+      text: "var(--ui-text)",
+      muted: "var(--ui-muted)",
+      dim: "var(--ui-muted)",
+      accent: "var(--ui-accent)",
+      info: "var(--ui-info)",
+      good: "var(--ui-good)",
+      warn: "var(--ui-warn)",
+      shadow: "none",
+    }),
+    []
   );
 
   const getActivityUrl = (activity) => {
@@ -460,8 +437,7 @@ export default function UnifiedDashboard() {
   }
 
   return (
-    <div style={{ ...pageStyle, background: palette.bg, fontFamily: "'Space Grotesk', 'Sora', 'Segoe UI', sans-serif" }}>
-      <div style={{ ...ambientLayer, background: `radial-gradient(circle at 8% 2%, ${palette.heroA}, transparent 34%), radial-gradient(circle at 92% 6%, ${palette.heroC}, transparent 28%)` }} />
+    <div style={pageStyle}>
       <section className="ui-enter" style={{ ...controlStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
         <Link to="/projects" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Projects</Link>
         <Link to="/sprint" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Sprint Board</Link>
@@ -593,11 +569,11 @@ export default function UnifiedDashboard() {
       >
         <div style={leftCol}>
           <div style={{ order: getCardOrder("left", "mission-control"), width: "100%" }}>
-            <MissionControlPanel darkMode={darkMode} />
+            <MissionControlPanel />
           </div>
 
           <div style={{ order: getCardOrder("left", "chief-of-staff"), width: "100%" }}>
-            <ChiefOfStaffPanel darkMode={darkMode} />
+            <ChiefOfStaffPanel />
           </div>
 
           <CollapsibleCard
@@ -1105,13 +1081,6 @@ const pageStyle = {
   padding: "clamp(14px, 2.4vw, 24px)",
   display: "grid",
   gap: 12,
-};
-
-const ambientLayer = {
-  position: "fixed",
-  inset: 0,
-  pointerEvents: "none",
-  zIndex: 0,
 };
 
 const controlStrip = {

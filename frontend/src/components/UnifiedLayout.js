@@ -259,7 +259,22 @@ export default function UnifiedLayout({ children }) {
   };
 
   return (
-    <div style={{ ...page, background: palette.pageBg }}>
+    <div
+      style={{
+        ...page,
+        background: palette.pageBg,
+        "--ui-bg": palette.pageBg,
+        "--ui-panel": palette.panelBg,
+        "--ui-panel-alt": palette.panelBgAlt,
+        "--ui-border": palette.border,
+        "--ui-text": palette.text,
+        "--ui-muted": palette.muted,
+        "--ui-accent": darkMode ? "#5aaee7" : "#2f80b8",
+        "--ui-info": darkMode ? "#6fd2c4" : "#1ea091",
+        "--ui-good": darkMode ? "#49bf8f" : "#2a8c67",
+        "--ui-warn": darkMode ? "#d6aa57" : "#9b6c2f",
+      }}
+    >
       <div style={{ ...ambientGlowOne, background: palette.glowOne }} />
       <div style={{ ...ambientGlowTwo, background: palette.glowTwo }} />
 

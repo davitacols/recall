@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { buildApiUrl } from "../utils/apiBase";
 
-export default function ChiefOfStaffPanel({ darkMode }) {
+export default function ChiefOfStaffPanel() {
   const [plan, setPlan] = useState(null);
   const [selected, setSelected] = useState({});
   const [loading, setLoading] = useState(true);
@@ -11,29 +11,17 @@ export default function ChiefOfStaffPanel({ darkMode }) {
   const [error, setError] = useState("");
 
   const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            panel: "rgba(16, 24, 31, 0.82)",
-            border: "rgba(174, 210, 234, 0.2)",
-            text: "#e8f0f6",
-            muted: "#9fb2c3",
-            accent: "#5aaee7",
-            good: "#49bf8f",
-            warn: "#d6aa57",
-            bad: "#ef4444",
-          }
-        : {
-            panel: "rgba(255, 255, 255, 0.82)",
-            border: "rgba(83, 126, 157, 0.24)",
-            text: "#0e2434",
-            muted: "#4a6578",
-            accent: "#2f80b8",
-            good: "#2a8c67",
-            warn: "#9b6c2f",
-            bad: "#b91c1c",
-          },
-    [darkMode]
+    () => ({
+      panel: "var(--ui-panel)",
+      border: "var(--ui-border)",
+      text: "var(--ui-text)",
+      muted: "var(--ui-muted)",
+      accent: "var(--ui-accent)",
+      good: "var(--ui-good)",
+      warn: "var(--ui-warn)",
+      bad: "#dc2626",
+    }),
+    []
   );
 
   useEffect(() => {

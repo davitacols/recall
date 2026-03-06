@@ -1,28 +1,14 @@
-export function getAIPalette(darkMode) {
-  if (darkMode) {
-    return {
-      bg: "#0b1014",
-      card: "rgba(16, 24, 31, 0.82)",
-      cardAlt: "#111b23",
-      border: "rgba(174, 210, 234, 0.2)",
-      text: "#e8f0f6",
-      muted: "#9fb2c3",
-      accent: "#5aaee7",
-      warm: "#d6aa57",
-      danger: "#f99aa2",
-    };
-  }
-
+export function getAIPalette(_darkMode) {
   return {
-    bg: "#e9f1f7",
-    card: "rgba(255, 255, 255, 0.82)",
-    cardAlt: "#f8fcff",
-    border: "rgba(83, 126, 157, 0.24)",
-    text: "#0e2434",
-    muted: "#4a6578",
-    accent: "#2f80b8",
-    warm: "#9b6c2f",
-    danger: "#c4434a",
+    bg: "var(--ui-bg)",
+    card: "var(--ui-panel)",
+    cardAlt: "var(--ui-panel-alt)",
+    border: "var(--ui-border)",
+    text: "var(--ui-text)",
+    muted: "var(--ui-muted)",
+    accent: "var(--ui-accent)",
+    warm: "var(--ui-warn)",
+    danger: "#dc2626",
   };
 }
 

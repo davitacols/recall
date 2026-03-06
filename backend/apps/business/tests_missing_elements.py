@@ -1,13 +1,19 @@
 from datetime import timedelta
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from apps.organizations.models import Organization, User
-from .missing_elements_views import burnout_risk, calendar_free_busy, journey_maps, slot_task
+from .missing_elements_views import (
+    burnout_risk,
+    calendar_free_busy,
+    calendar_oauth_start,
+    journey_maps,
+    slot_task,
+)
 from .models import CalendarConnection, Goal, Meeting, Task
 
 
@@ -152,3 +158,12 @@ class MissingElementsViewTests(TestCase):
         member_row = next((row for row in response.data['results'] if row['user_id'] == self.member.id), None)
         self.assertIsNotNone(member_row)
         self.assertIn(member_row['risk_level'], {'medium', 'high'})
+
+    @override_settings(GOOGLE_CLIENT_ID='test-google-client-id')
+    def test_calendar_oauth_start_returns_authorize_url(self):
+        request = self.factory.get('/api/business/calendar/oauth/start/?provider=google')
+        force_authenticate(request, user=self.user)
+        response = calendar_oauth_start(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['provider'], 'google')
+        self.assertIn('accounts.google.com', response.data['authorize_url'])

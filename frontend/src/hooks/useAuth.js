@@ -30,6 +30,9 @@ export function AuthProvider({ children }) {
         .then((response) => {
           const profileData = response.data.data || response.data;
           setUser(profileData);
+          if (profileData?.experience_mode) {
+            localStorage.setItem('ui_experience_mode', profileData.experience_mode);
+          }
         })
         .catch(() => {
           localStorage.removeItem('access_token');
@@ -86,6 +89,9 @@ export function AuthProvider({ children }) {
       if (userData?.organization_slug) {
         localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
       }
+      if (userData?.experience_mode) {
+        localStorage.setItem('ui_experience_mode', userData.experience_mode);
+      }
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
       setUser(userData);
@@ -137,6 +143,9 @@ export function AuthProvider({ children }) {
       localStorage.setItem('user', JSON.stringify(userData));
       if (userData?.organization_slug) {
         localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
+      }
+      if (userData?.experience_mode) {
+        localStorage.setItem('ui_experience_mode', userData.experience_mode);
       }
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
@@ -223,6 +232,9 @@ export function AuthProvider({ children }) {
       localStorage.setItem('user', JSON.stringify(userData));
       if (userData?.organization_slug) {
         localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
+      }
+      if (userData?.experience_mode) {
+        localStorage.setItem('ui_experience_mode', userData.experience_mode);
       }
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       setUser(userData);

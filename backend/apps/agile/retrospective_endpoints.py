@@ -201,3 +201,95 @@ def sprint_trends(request):
         'avg_completion_rate': round(sum([t['completion_rate'] for t in trends]) / len(trends), 1) if trends else 0,
         'avg_velocity': round(sum([t['velocity'] for t in trends]) / len(trends), 1) if trends else 0
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def rca_recurring_analysis(request):
+    """Analyze recurring blockers/retrospective causes over a time window."""
+    days = int(request.GET.get('days', 90) or 90)
+    cutoff = timezone.now() - timezone.timedelta(days=max(7, min(365, days)))
+
+    retrospectives = Retrospective.objects.filter(
+        organization=request.user.organization,
+        created_at__gte=cutoff,
+    ).order_by('-created_at')[:100]
+    blockers = Blocker.objects.filter(
+        organization=request.user.organization,
+        created_at__gte=cutoff,
+    )
+
+    cause_map = {}
+    for retro in retrospectives:
+        sprint_name = getattr(retro.sprint, 'name', '') if retro.sprint_id else ''
+        for raw in (retro.recurring_issues or []):
+            if isinstance(raw, dict):
+                keyword = str(raw.get('keyword') or raw.get('title') or '').strip()
+                count = int(raw.get('count') or 1)
+                severity = int(raw.get('severity') or 1)
+            else:
+                keyword = str(raw).strip()
+                count = 1
+                severity = 1
+            if not keyword:
+                continue
+            key = keyword.lower()
+            bucket = cause_map.setdefault(key, {
+                'keyword': keyword,
+                'mentions': 0,
+                'severity_weight': 0,
+                'sprints': set(),
+                'latest_seen': retro.created_at,
+            })
+            bucket['mentions'] += max(1, count)
+            bucket['severity_weight'] += max(1, severity)
+            if sprint_name:
+                bucket['sprints'].add(sprint_name)
+            if retro.created_at > bucket['latest_seen']:
+                bucket['latest_seen'] = retro.created_at
+
+    blocker_type_rows = list(
+        blockers.values('blocker_type')
+        .annotate(total=Count('id'), avg_days=Avg('days_open'))
+        .order_by('-total')[:10]
+    )
+
+    causes = []
+    for _, row in cause_map.items():
+        recurrence_rate = round(row['mentions'] / max(1, retrospectives.count()), 2)
+        risk_score = round((row['mentions'] * 2) + row['severity_weight'] + (len(row['sprints']) * 1.5), 1)
+        causes.append({
+            'keyword': row['keyword'],
+            'mentions': row['mentions'],
+            'affected_sprints': len(row['sprints']),
+            'recurrence_rate': recurrence_rate,
+            'risk_score': risk_score,
+            'latest_seen': row['latest_seen'].isoformat(),
+        })
+    causes.sort(key=lambda item: (item['risk_score'], item['mentions']), reverse=True)
+
+    blocker_patterns = [
+        {
+            'blocker_type': item['blocker_type'],
+            'count': item['total'],
+            'avg_days_open': round(float(item['avg_days'] or 0), 1),
+        }
+        for item in blocker_type_rows
+    ]
+
+    recommendations = []
+    for cause in causes[:3]:
+        recommendations.append(f"Run a focused remediation on '{cause['keyword']}' across upcoming sprint planning.")
+    if blocker_patterns:
+        recommendations.append(
+            f"Add playbook coverage for '{blocker_patterns[0]['blocker_type']}' blockers (top recurring blocker class)."
+        )
+
+    return Response({
+        'window_days': max(7, min(365, days)),
+        'retrospectives_analyzed': retrospectives.count(),
+        'blockers_analyzed': blockers.count(),
+        'top_causes': causes[:10],
+        'blocker_patterns': blocker_patterns,
+        'recommendations': recommendations[:5],
+    })

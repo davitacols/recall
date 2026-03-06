@@ -36,6 +36,11 @@ class User(AbstractUser):
         ('manager', 'Manager'), 
         ('contributor', 'Contributor')
     ]
+    EXPERIENCE_MODE_CHOICES = [
+        ('simple', 'Simple'),
+        ('standard', 'Standard'),
+        ('advanced', 'Advanced'),
+    ]
     
     organization = models.ForeignKey(
         Organization, 
@@ -79,6 +84,7 @@ class User(AbstractUser):
         ],
         default='daily'
     )
+    experience_mode = models.CharField(max_length=20, choices=EXPERIENCE_MODE_CHOICES, default='standard')
     
     # Onboarding progress
     onboarding_completed = models.BooleanField(default=False)

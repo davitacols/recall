@@ -38,6 +38,7 @@ function Settings() {
     decision_notifications: true,
     digest_frequency: "daily",
   });
+  const [experienceMode, setExperienceMode] = useState("standard");
   const [organization, setOrganization] = useState(null);
   const [members, setMembers] = useState([]);
   const [pendingInvitations, setPendingInvitations] = useState([]);
@@ -123,8 +124,25 @@ function Settings() {
         decision_notifications: response.data.decision_notifications ?? true,
         digest_frequency: response.data.digest_frequency || "daily",
       });
+      setExperienceMode(response.data.experience_mode || "standard");
     } catch (error) {
       addToast("Failed to fetch settings", "error");
+    }
+  };
+
+  const saveExperienceMode = async (mode) => {
+    setExperienceMode(mode);
+    localStorage.setItem("ui_experience_mode", mode);
+    window.dispatchEvent(new Event("experience-mode-changed"));
+    try {
+      await requestWithFallback([
+        () => api.put("/api/organizations/settings/experience/", { experience_mode: mode }),
+        () => api.put("/api/organizations/settings/profile/", { experience_mode: mode }),
+      ]);
+      addToast("Experience mode updated", "success");
+    } catch (error) {
+      addToast("Failed to update experience mode", "error");
+      fetchSettings();
     }
   };
 
@@ -418,6 +436,36 @@ function Settings() {
                 <MoonIcon style={{ width: 18, height: 18 }} />
                 <span>Dark Mode</span>
               </button>
+            </div>
+            <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 15, color: palette.text }}>Workflow complexity</h3>
+              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                Simple mode trims navigation to core planning and execution pages.
+              </p>
+              <div style={{ display: "grid", gap: 7 }}>
+                {[
+                  { key: "simple", label: "Simple", desc: "Core pages only" },
+                  { key: "standard", label: "Standard", desc: "Balanced default" },
+                  { key: "advanced", label: "Advanced", desc: "Full surface area" },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => saveExperienceMode(item.key)}
+                    style={{
+                      borderRadius: 10,
+                      border: `1px solid ${palette.border}`,
+                      padding: "10px 11px",
+                      textAlign: "left",
+                      background: experienceMode === item.key ? palette.panelAlt : "transparent",
+                      color: experienceMode === item.key ? palette.text : palette.muted,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700 }}>{item.label}</div>
+                    <div style={{ fontSize: 12, opacity: 0.85 }}>{item.desc}</div>
+                  </button>
+                ))}
+              </div>
             </div>
           </article>
         )}

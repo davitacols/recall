@@ -28,8 +28,22 @@ export default function CalendarPlanner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingConnection, setSavingConnection] = useState(false);
+  const [oauthMessage, setOauthMessage] = useState("");
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthStatus = params.get("calendar_oauth");
+    const oauthProvider = params.get("provider");
+    if (oauthStatus) {
+      if (oauthStatus === "success") {
+        setOauthMessage(`Connected ${oauthProvider || "calendar"} successfully.`);
+      } else {
+        const reason = params.get("reason") || "unknown_error";
+        setOauthMessage(`Calendar OAuth failed (${reason}).`);
+      }
+      const cleanUrl = `${window.location.pathname}`;
+      window.history.replaceState({}, "", cleanUrl);
+    }
     loadData();
   }, []);
 
@@ -74,6 +88,29 @@ export default function CalendarPlanner() {
       setError(saveError?.response?.data?.error || "Failed to save calendar connection.");
     } finally {
       setSavingConnection(false);
+    }
+  };
+
+  const startOauth = async () => {
+    if (!["google", "outlook"].includes(provider)) {
+      return;
+    }
+    setError("");
+    try {
+      const response = await api.get("/api/business/calendar/oauth/start/", {
+        params: {
+          provider,
+          next: "/business/calendar",
+        },
+      });
+      const authorizeUrl = response.data?.authorize_url;
+      if (!authorizeUrl) {
+        setError("Failed to generate OAuth URL.");
+        return;
+      }
+      window.location.href = authorizeUrl;
+    } catch (oauthError) {
+      setError(oauthError?.response?.data?.error || "Failed to start calendar OAuth.");
     }
   };
 
@@ -133,6 +170,12 @@ export default function CalendarPlanner() {
           </div>
         ) : null}
 
+        {oauthMessage ? (
+          <div style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 10, color: palette.text, marginBottom: 10, fontSize: 12 }}>
+            {oauthMessage}
+          </div>
+        ) : null}
+
         {loading ? (
           <div style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, color: palette.muted }}>
             Loading planner...
@@ -152,6 +195,11 @@ export default function CalendarPlanner() {
                 <button type="button" onClick={saveConnection} disabled={savingConnection} style={ui.primaryButton}>
                   {savingConnection ? "Saving..." : "Save Connection"}
                 </button>
+                {["google", "outlook"].includes(provider) ? (
+                  <button type="button" onClick={startOauth} style={ui.secondaryButton || ui.primaryButton}>
+                    Connect {provider} OAuth
+                  </button>
+                ) : null}
                 <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
                   Connected providers: {connections.filter((item) => item.is_connected).map((item) => item.provider).join(", ") || "none"}
                 </p>

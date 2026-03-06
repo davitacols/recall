@@ -18,7 +18,7 @@ from .models import (
     Project,
     Sprint,
 )
-from .retrospective_endpoints import auto_generate_retrospective
+from .retrospective_endpoints import auto_generate_retrospective, rca_recurring_analysis
 from .views import link_decision_to_issue
 
 
@@ -195,3 +195,27 @@ class AgilePhase2BehaviorTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['summary']['story_points_completed'], 8)
         self.assertEqual(response.data['summary']['completed'], 2)
+
+    def test_rca_recurring_analysis_returns_ranked_causes(self):
+        Blocker.objects.create(
+            organization=self.org,
+            conversation=self.conversation,
+            sprint=self.sprint,
+            title='Dependency blocker',
+            description='Dependency issue persisted',
+            blocker_type='dependency',
+            blocked_by=self.user,
+            status='active',
+            days_open=4,
+        )
+        auto_request = self.factory.post(f'/api/agile/sprints/{self.sprint.id}/auto-retrospective/')
+        force_authenticate(auto_request, user=self.user)
+        auto_generate_retrospective(auto_request, self.sprint.id)
+
+        rca_request = self.factory.get('/api/agile/rca/recurring/?days=90')
+        force_authenticate(rca_request, user=self.user)
+        response = rca_recurring_analysis(rca_request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('top_causes', response.data)
+        self.assertIn('blocker_patterns', response.data)

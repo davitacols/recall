@@ -1,10 +1,14 @@
 from datetime import datetime, timedelta, time as dt_time
 
-from django.shortcuts import get_object_or_404
+import requests
+from urllib.parse import urlencode
+from django.conf import settings
+from django.core import signing
+from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -78,6 +82,74 @@ def _find_slot(user, duration_minutes, start_dt, end_dt):
             return cursor, cursor + duration
 
     return None, None
+
+
+def _normalize_next_path(raw_value):
+    raw = str(raw_value or '').strip()
+    if not raw.startswith('/'):
+        return '/business/calendar'
+    if raw.startswith('//'):
+        return '/business/calendar'
+    return raw
+
+
+def _calendar_oauth_state(user_id, provider, next_path):
+    payload = {'user_id': user_id, 'provider': provider, 'next': _normalize_next_path(next_path)}
+    return signing.dumps(payload, salt='business-calendar-oauth-v1')
+
+
+def _calendar_callback_url(request):
+    return request.build_absolute_uri('/api/business/calendar/oauth/callback/')
+
+
+def _calendar_frontend_redirect(next_path, **params):
+    query = urlencode(params)
+    target = f"{settings.FRONTEND_URL.rstrip('/')}{_normalize_next_path(next_path)}"
+    if query:
+        return f"{target}?{query}"
+    return target
+
+
+def _exchange_google_code(code, redirect_uri):
+    response = requests.post(
+        'https://oauth2.googleapis.com/token',
+        data={
+            'code': code,
+            'client_id': getattr(settings, 'GOOGLE_CLIENT_ID', ''),
+            'client_secret': getattr(settings, 'GOOGLE_CLIENT_SECRET', ''),
+            'redirect_uri': redirect_uri,
+            'grant_type': 'authorization_code',
+        },
+        timeout=20,
+    )
+    if not response.ok:
+        return None
+    payload = response.json()
+    if not payload.get('access_token'):
+        return None
+    return payload
+
+
+def _exchange_outlook_code(code, redirect_uri):
+    tenant = getattr(settings, 'MICROSOFT_TENANT_ID', 'common')
+    response = requests.post(
+        f'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token',
+        data={
+            'client_id': getattr(settings, 'MICROSOFT_CLIENT_ID', ''),
+            'client_secret': getattr(settings, 'MICROSOFT_CLIENT_SECRET', ''),
+            'code': code,
+            'redirect_uri': redirect_uri,
+            'grant_type': 'authorization_code',
+            'scope': 'offline_access Calendars.Read User.Read',
+        },
+        timeout=20,
+    )
+    if not response.ok:
+        return None
+    payload = response.json()
+    if not payload.get('access_token'):
+        return None
+    return payload
 
 
 @api_view(['GET', 'POST'])
@@ -165,6 +237,10 @@ def calendar_connections(request):
     if provider not in {'google', 'outlook', 'manual'}:
         return Response({'error': 'provider must be one of google, outlook, manual'}, status=400)
 
+    existing = CalendarConnection.objects.filter(organization=org, user=user, provider=provider).first()
+    metadata = request.data.get('metadata')
+    if metadata is None:
+        metadata = existing.metadata if existing else {}
     item, _ = CalendarConnection.objects.update_or_create(
         organization=org,
         user=user,
@@ -172,11 +248,121 @@ def calendar_connections(request):
         defaults={
             'is_connected': bool(request.data.get('is_connected', True)),
             'external_calendar_id': request.data.get('external_calendar_id', ''),
-            'metadata': request.data.get('metadata', {}) or {},
+            'metadata': metadata or {},
             'last_synced_at': timezone.now(),
         },
     )
     return Response({'id': item.id, 'message': 'Calendar connection saved'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def calendar_oauth_start(request):
+    provider = (request.GET.get('provider') or '').strip().lower()
+    if provider not in {'google', 'outlook'}:
+        return Response({'error': 'provider must be google or outlook'}, status=400)
+
+    callback_url = _calendar_callback_url(request)
+    state = _calendar_oauth_state(
+        user_id=request.user.id,
+        provider=provider,
+        next_path=request.GET.get('next') or '/business/calendar',
+    )
+
+    if provider == 'google':
+        if not getattr(settings, 'GOOGLE_CLIENT_ID', ''):
+            return Response({'error': 'GOOGLE_CLIENT_ID is not configured'}, status=503)
+        authorize_params = {
+            'client_id': getattr(settings, 'GOOGLE_CLIENT_ID', ''),
+            'redirect_uri': callback_url,
+            'response_type': 'code',
+            'access_type': 'offline',
+            'prompt': 'consent',
+            'scope': 'https://www.googleapis.com/auth/calendar.readonly openid email profile',
+            'state': state,
+        }
+        authorize_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(authorize_params)}"
+    else:
+        tenant = getattr(settings, 'MICROSOFT_TENANT_ID', 'common')
+        if not getattr(settings, 'MICROSOFT_CLIENT_ID', ''):
+            return Response({'error': 'MICROSOFT_CLIENT_ID is not configured'}, status=503)
+        authorize_params = {
+            'client_id': getattr(settings, 'MICROSOFT_CLIENT_ID', ''),
+            'response_type': 'code',
+            'redirect_uri': callback_url,
+            'response_mode': 'query',
+            'scope': 'offline_access Calendars.Read User.Read',
+            'state': state,
+        }
+        authorize_url = f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?{urlencode(authorize_params)}"
+
+    return Response({'provider': provider, 'authorize_url': authorize_url})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def calendar_oauth_callback(request):
+    state = request.GET.get('state')
+    code = request.GET.get('code')
+    oauth_error = request.GET.get('error')
+    if not state:
+        return Response({'error': 'Missing state'}, status=400)
+    try:
+        state_payload = signing.loads(state, salt='business-calendar-oauth-v1', max_age=15 * 60)
+    except Exception:
+        return Response({'error': 'Invalid or expired OAuth state'}, status=400)
+
+    next_path = _normalize_next_path(state_payload.get('next') or '/business/calendar')
+    provider = str(state_payload.get('provider') or '').strip().lower()
+    user = User.objects.filter(id=state_payload.get('user_id'), is_active=True).select_related('organization').first()
+    if not user:
+        return Response({'error': 'User not found for OAuth flow'}, status=400)
+
+    if oauth_error:
+        return redirect(_calendar_frontend_redirect(next_path, calendar_oauth='error', provider=provider, reason=oauth_error))
+    if not code:
+        return redirect(_calendar_frontend_redirect(next_path, calendar_oauth='error', provider=provider, reason='missing_code'))
+
+    callback_url = _calendar_callback_url(request)
+    if provider == 'google':
+        token_payload = _exchange_google_code(code, callback_url)
+    elif provider == 'outlook':
+        token_payload = _exchange_outlook_code(code, callback_url)
+    else:
+        token_payload = None
+    if not token_payload:
+        return redirect(_calendar_frontend_redirect(next_path, calendar_oauth='error', provider=provider, reason='token_exchange_failed'))
+
+    expires_in = int(token_payload.get('expires_in') or 0)
+    metadata = {
+        'access_token': token_payload.get('access_token'),
+        'refresh_token': token_payload.get('refresh_token'),
+        'token_type': token_payload.get('token_type', 'Bearer'),
+        'scope': token_payload.get('scope', ''),
+    }
+    if expires_in > 0:
+        metadata['expires_at'] = (timezone.now() + timedelta(seconds=expires_in)).isoformat()
+    if provider == 'google':
+        metadata['client_id'] = getattr(settings, 'GOOGLE_CLIENT_ID', '')
+        metadata['client_secret'] = getattr(settings, 'GOOGLE_CLIENT_SECRET', '')
+    if provider == 'outlook':
+        metadata['client_id'] = getattr(settings, 'MICROSOFT_CLIENT_ID', '')
+        metadata['client_secret'] = getattr(settings, 'MICROSOFT_CLIENT_SECRET', '')
+        metadata['tenant_id'] = getattr(settings, 'MICROSOFT_TENANT_ID', 'common')
+
+    connection, _ = CalendarConnection.objects.update_or_create(
+        organization=user.organization,
+        user=user,
+        provider=provider,
+        defaults={
+            'is_connected': True,
+            'metadata': metadata,
+            'last_synced_at': timezone.now(),
+        },
+    )
+    connection.last_synced_at = timezone.now()
+    connection.save(update_fields=['last_synced_at', 'updated_at'])
+    return redirect(_calendar_frontend_redirect(next_path, calendar_oauth='success', provider=provider))
 
 
 @api_view(['GET'])

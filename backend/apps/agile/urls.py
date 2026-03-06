@@ -1,5 +1,5 @@
 from django.urls import path, re_path
-from . import views, kanban_views, views_missing_features, ml_endpoints, time_tracking_endpoints, custom_fields_endpoints, ai_endpoints, sprint_views, blocker_views, retrospective_views
+from . import views, kanban_views, views_missing_features, ml_endpoints, time_tracking_endpoints, custom_fields_endpoints, ai_endpoints, sprint_views, blocker_views, retrospective_views, retrospective_endpoints
 
 urlpatterns = [
     # Projects
@@ -93,6 +93,7 @@ urlpatterns = [
     path('retrospectives/', retrospective_views.retrospectives_list, name='retrospectives_list'),
     path('retrospectives/<int:pk>/', retrospective_views.retrospective_detail, name='retrospective_detail'),
     path('retrospectives/<int:pk>/items/', retrospective_views.retrospective_add_item, name='retrospective_add_item'),
+    path('rca/recurring/', retrospective_endpoints.rca_recurring_analysis, name='rca_recurring_analysis'),
     
     # Time Tracking
     path('issues/<int:issue_id>/log-work/', time_tracking_endpoints.log_work, name='log_work'),

@@ -7,7 +7,7 @@ from .settings_views import (
     organization_settings, update_organization, organization_members,
     update_member_role, remove_member, invite_member, api_keys,
     generate_api_key, export_data, delete_account, activity_log, security_log, get_invitation_link,
-    get_invitation_links, email_duplicate_risk_report
+    get_invitation_links, email_duplicate_risk_report, experience_settings
 )
 from .team_views import (
     get_team_members, get_user_role_info, change_user_role, remove_user,
@@ -58,6 +58,7 @@ urlpatterns = [
     path('settings/password/', change_password, name='change-password'),
     path('settings/stats/', user_stats, name='user-stats'),
     path('settings/notifications/', notification_settings, name='notification-settings'),
+    path('settings/experience/', experience_settings, name='experience-settings'),
     path('settings/organization/', organization_settings, name='organization-settings'),
     path('settings/organization/update/', update_organization, name='update-organization'),
     path('settings/members/', organization_members, name='organization-members'),

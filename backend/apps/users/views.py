@@ -115,6 +115,7 @@ def _build_auth_payload(user):
             'role': user.role,
             'organization_name': user.organization.name,
             'organization_slug': user.organization.slug,
+            'experience_mode': getattr(user, 'experience_mode', 'standard'),
         }
     }
 
@@ -724,6 +725,7 @@ def profile(request):
         'organization_slug': user.organization.slug,
         'organization_logo': org_logo_url,
         'organization_color': user.organization.primary_color,
+        'experience_mode': getattr(user, 'experience_mode', 'standard'),
         'onboarding_completed': user.onboarding_completed,
         'first_conversation_created': user.first_conversation_created,
         'first_teammate_invited': user.first_teammate_invited,

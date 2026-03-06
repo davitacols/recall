@@ -116,6 +116,7 @@ urlpatterns = [
     path('sprints/<int:sprint_id>/auto-retrospective/', retrospective_endpoints.auto_generate_retrospective, name='auto-retrospective'),
     path('sprints/<int:sprint_id>/analytics/', retrospective_endpoints.sprint_analytics, name='sprint-analytics'),
     path('sprints/trends/', retrospective_endpoints.sprint_trends, name='sprint-trends'),
+    path('rca/recurring/', retrospective_endpoints.rca_recurring_analysis, name='rca-recurring-analysis'),
     path('decisions/impact-report/', views.decision_impact_report, name='decision_impact_report'),
 
     # Time Tracking (legacy charts)

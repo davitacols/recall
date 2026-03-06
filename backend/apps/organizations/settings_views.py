@@ -39,6 +39,7 @@ def user_profile(request):
             'full_name': user.full_name,
             'role': user.role,
             'bio': user.bio or '',
+            'experience_mode': getattr(user, 'experience_mode', 'standard'),
             'avatar_url': user.avatar.url if user.avatar else None,
             'joined_at': user.date_joined,
             'last_login': user.last_login,
@@ -61,6 +62,11 @@ def user_profile(request):
             if User.objects.filter(email=request.data['email']).exclude(id=user.id).exists():
                 return Response({'error': 'Email already in use'}, status=status.HTTP_400_BAD_REQUEST)
             user.email = request.data['email']
+        if 'experience_mode' in request.data:
+            requested_mode = str(request.data['experience_mode']).strip().lower()
+            if requested_mode not in {'simple', 'standard', 'advanced'}:
+                return Response({'error': 'experience_mode must be simple, standard, or advanced'}, status=status.HTTP_400_BAD_REQUEST)
+            user.experience_mode = requested_mode
         
         user.save()
         
@@ -69,9 +75,33 @@ def user_profile(request):
             'user': {
                 'full_name': user.full_name,
                 'email': user.email,
-                'bio': user.bio
+                'bio': user.bio,
+                'experience_mode': getattr(user, 'experience_mode', 'standard'),
             }
         })
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def experience_settings(request):
+    """Get or update user experience mode for simple/standard/advanced UI progression."""
+    user = request.user
+    if request.method == 'GET':
+        return Response({
+            'experience_mode': getattr(user, 'experience_mode', 'standard'),
+            'recommended_home': '/business/tasks' if getattr(user, 'experience_mode', 'standard') == 'simple' else '/dashboard',
+        })
+
+    requested_mode = str(request.data.get('experience_mode', '')).strip().lower()
+    if requested_mode not in {'simple', 'standard', 'advanced'}:
+        return Response({'error': 'experience_mode must be simple, standard, or advanced'}, status=status.HTTP_400_BAD_REQUEST)
+    user.experience_mode = requested_mode
+    user.save(update_fields=['experience_mode'])
+    return Response({
+        'message': 'Experience mode updated',
+        'experience_mode': requested_mode,
+        'recommended_home': '/business/tasks' if requested_mode == 'simple' else '/dashboard',
+    })
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -149,7 +179,8 @@ def notification_settings(request):
             'task_notifications': getattr(user, 'task_notifications', True),
             'goal_notifications': getattr(user, 'goal_notifications', True),
             'meeting_notifications': getattr(user, 'meeting_notifications', True),
-            'digest_frequency': getattr(user, 'digest_frequency', 'daily')
+            'digest_frequency': getattr(user, 'digest_frequency', 'daily'),
+            'experience_mode': getattr(user, 'experience_mode', 'standard'),
         })
     
     elif request.method == 'PUT':
@@ -169,6 +200,11 @@ def notification_settings(request):
             user.meeting_notifications = request.data['meeting_notifications']
         if 'digest_frequency' in request.data:
             user.digest_frequency = request.data['digest_frequency']
+        if 'experience_mode' in request.data:
+            requested_mode = str(request.data['experience_mode']).strip().lower()
+            if requested_mode not in {'simple', 'standard', 'advanced'}:
+                return Response({'error': 'experience_mode must be simple, standard, or advanced'}, status=status.HTTP_400_BAD_REQUEST)
+            user.experience_mode = requested_mode
         
         user.save()
         

@@ -58,6 +58,7 @@ export default function UnifiedNav({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
   const [installedApps, setInstalledApps] = useState([]);
+  const [experienceMode, setExperienceMode] = useState(localStorage.getItem("ui_experience_mode") || "standard");
   const isResizingRef = useRef(false);
 
   useEffect(() => {
@@ -147,6 +148,20 @@ export default function UnifiedNav({
 
     return () => clearTimeout(timer);
   }, [query]);
+
+  useEffect(() => {
+    const syncExperienceMode = () => {
+      setExperienceMode(localStorage.getItem("ui_experience_mode") || "standard");
+    };
+    window.addEventListener("storage", syncExperienceMode);
+    window.addEventListener("focus", syncExperienceMode);
+    window.addEventListener("experience-mode-changed", syncExperienceMode);
+    return () => {
+      window.removeEventListener("storage", syncExperienceMode);
+      window.removeEventListener("focus", syncExperienceMode);
+      window.removeEventListener("experience-mode-changed", syncExperienceMode);
+    };
+  }, []);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -245,7 +260,7 @@ export default function UnifiedNav({
     [darkMode]
   );
 
-  const navItems = [
+  const navItemsBase = [
     { name: "Home", href: "/", icon: HomeIcon },
     {
       name: "Knowledge",
@@ -289,6 +304,32 @@ export default function UnifiedNav({
       ],
     },
   ];
+
+  const navItems = useMemo(() => {
+    if (experienceMode !== "simple") {
+      return navItemsBase;
+    }
+    return navItemsBase
+      .map((group) => {
+        if (!group.items) return group;
+        if (group.name === "Knowledge") {
+          return { ...group, items: group.items.filter((item) => ["/knowledge"].includes(item.href)) };
+        }
+        if (group.name === "Execute") {
+          return {
+            ...group,
+            items: group.items.filter((item) =>
+              ["/business/goals", "/business/tasks", "/business/calendar"].includes(item.href)
+            ),
+          };
+        }
+        if (group.name === "Resources") {
+          return { ...group, items: group.items.filter((item) => ["/docs"].includes(item.href)) };
+        }
+        return group;
+      })
+      .filter((group) => !group.items || group.items.length > 0);
+  }, [experienceMode, navItemsBase]);
 
   const isTopLevelActive = (item) => {
     if (item.href) {

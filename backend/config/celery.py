@@ -13,4 +13,16 @@ app.conf.beat_schedule = {
         'task': 'apps.decisions.tasks.check_decision_reminders',
         'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
     },
+    'send-hourly-notification-digests': {
+        'task': 'apps.notifications.tasks.send_hourly_digests',
+        'schedule': crontab(minute=0),  # Top of every hour
+    },
+    'send-daily-notification-digests': {
+        'task': 'apps.notifications.tasks.send_daily_digests',
+        'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
+    },
+    'send-weekly-notification-digests': {
+        'task': 'apps.notifications.tasks.send_weekly_digests',
+        'schedule': crontab(hour=9, minute=0, day_of_week='mon'),  # Mondays at 9 AM
+    },
 }

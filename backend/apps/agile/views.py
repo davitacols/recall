@@ -59,6 +59,54 @@ def _resolve_issue_by_ref(organization, issue_ref):
 
     return None
 
+
+def _apply_delay_shift(org, issue, decision, delay_days):
+    """
+    Apply a delay impact to issue due dates and record history for traceability.
+    Returns number of issues shifted (issue + subtasks).
+    """
+    if delay_days <= 0:
+        return 0
+
+    shifted_count = 0
+
+    base_due_date = issue.due_date or (issue.sprint.end_date if issue.sprint else timezone.now().date())
+    new_due_date = base_due_date + timedelta(days=delay_days)
+    old_due_date = issue.due_date
+    issue.due_date = new_due_date
+    issue.save()
+    shifted_count += 1
+
+    IssueDecisionHistory.objects.create(
+        organization=org,
+        issue=issue,
+        decision=decision,
+        change_type='status_changed',
+        old_value=old_due_date.isoformat() if old_due_date else '',
+        new_value=new_due_date.isoformat(),
+        reason=f'Decision impact delay applied (+{delay_days}d)',
+    )
+
+    for subtask in issue.subtasks.exclude(status='done'):
+        subtask_base_due = subtask.due_date or base_due_date
+        subtask_old_due = subtask.due_date
+        subtask_new_due = subtask_base_due + timedelta(days=delay_days)
+        subtask.due_date = subtask_new_due
+        subtask.save()
+        shifted_count += 1
+
+        IssueDecisionHistory.objects.create(
+            organization=org,
+            issue=subtask,
+            decision=decision,
+            change_type='status_changed',
+            old_value=subtask_old_due.isoformat() if subtask_old_due else '',
+            new_value=subtask_new_due.isoformat(),
+            reason=f'Inherited parent delay impact from issue {issue.key} (+{delay_days}d)',
+        )
+
+    return shifted_count
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated, IsOrgMember])
 def projects(request):
@@ -840,8 +888,15 @@ def link_decision_to_issue(request, issue_id):
     decision_id = request.data.get('decision_id')
     impact_type = request.data.get('impact_type')
     description = request.data.get('description', '')
-    effort_change = request.data.get('estimated_effort_change', 0)
-    delay_days = request.data.get('estimated_delay_days', 0)
+    try:
+        effort_change = int(request.data.get('estimated_effort_change', 0) or 0)
+    except (TypeError, ValueError):
+        return Response({'error': 'estimated_effort_change must be an integer'}, status=400)
+
+    try:
+        delay_days = int(request.data.get('estimated_delay_days', 0) or 0)
+    except (TypeError, ValueError):
+        return Response({'error': 'estimated_delay_days must be an integer'}, status=400)
     
     if not decision_id or not impact_type:
         return Response({'error': 'decision_id and impact_type required'}, status=400)
@@ -850,6 +905,9 @@ def link_decision_to_issue(request, issue_id):
         from apps.decisions.models import Decision
         decision = Decision.objects.get(id=decision_id, organization=org)
         
+        existing_impact = DecisionImpact.objects.filter(decision=decision, issue=issue).first()
+        previous_delay_days = existing_impact.estimated_delay_days if existing_impact else 0
+
         impact, created = DecisionImpact.objects.update_or_create(
             decision=decision,
             issue=issue,
@@ -879,8 +937,24 @@ def link_decision_to_issue(request, issue_id):
                 new_value=str(issue.story_points),
                 reason=f'Decision impact: {impact_type}'
             )
+
+        timeline_adjustments = {'issues_shifted': 0, 'delay_days_applied': 0}
+        incremental_delay = max(0, delay_days - previous_delay_days)
+        if impact_type in {'blocks', 'delays'} and incremental_delay > 0:
+            shifted = _apply_delay_shift(
+                org=org,
+                issue=issue,
+                decision=decision,
+                delay_days=incremental_delay,
+            )
+            timeline_adjustments = {
+                'issues_shifted': shifted,
+                'delay_days_applied': incremental_delay,
+            }
         
-        return Response(DecisionImpactSerializer(impact).data, status=201 if created else 200)
+        response_data = DecisionImpactSerializer(impact).data
+        response_data['timeline_adjustments'] = timeline_adjustments
+        return Response(response_data, status=201 if created else 200)
     except Exception as e:
         return Response({'error': str(e)}, status=400)
 

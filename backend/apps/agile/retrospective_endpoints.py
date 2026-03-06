@@ -27,7 +27,7 @@ def auto_generate_retrospective(request, sprint_id):
     in_progress = issues.filter(status='in_progress').count()
     
     # Calculate velocity
-    completed_points = sum([i.story_points or 0 for i in completed_issues])
+    completed_points = sum((i.story_points or 0) for i in issues.filter(status='done'))
     total_points = sum([i.story_points or 0 for i in issues])
     
     # Get blockers

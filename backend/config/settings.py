@@ -401,9 +401,9 @@ else:
 
         redis_host = {
             'address': redis_url,
-            'ssl': {
-                'ssl_cert_reqs': ssl_cert_reqs,
-            },
+            # channels_redis expects SSL kwargs at the host dict top-level.
+            # Nesting under "ssl" passes an unsupported "ssl" kwarg to redis.asyncio.
+            'ssl_cert_reqs': ssl_cert_reqs,
         }
 
     CHANNEL_LAYERS = {

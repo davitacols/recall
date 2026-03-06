@@ -1,5 +1,6 @@
 import os
 import ssl
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from decouple import config
 import dj_database_url
 from corsheaders.defaults import default_headers
@@ -391,6 +392,12 @@ if DEBUG and redis_url == 'redis://localhost:6379/0':
     }
 else:
     redis_host = redis_url
+    parsed_redis = urlparse(redis_url)
+    redis_query = dict(parse_qsl(parsed_redis.query, keep_blank_values=True))
+    redis_query.pop('ssl', None)
+    redis_query.pop('ssl_cert_reqs', None)
+    normalized_redis_url = urlunparse(parsed_redis._replace(query=urlencode(redis_query)))
+
     if redis_url.startswith('rediss://'):
         ssl_mode = config('REDIS_SSL_CERT_REQS', default='none').strip().lower()
         ssl_cert_reqs = ssl.CERT_NONE
@@ -400,11 +407,13 @@ else:
             ssl_cert_reqs = ssl.CERT_OPTIONAL
 
         redis_host = {
-            'address': redis_url,
+            'address': normalized_redis_url,
             # channels_redis expects SSL kwargs at the host dict top-level.
             # Nesting under "ssl" passes an unsupported "ssl" kwarg to redis.asyncio.
             'ssl_cert_reqs': ssl_cert_reqs,
         }
+    else:
+        redis_host = normalized_redis_url
 
     CHANNEL_LAYERS = {
         'default': {

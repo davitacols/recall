@@ -33,7 +33,7 @@ ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='local
 if not DEBUG:
     ALLOWED_HOSTS.extend([
         host.strip()
-        for host in config('EXTRA_ALLOWED_HOSTS', default='.onrender.com,.vercel.app').split(',')
+        for host in config('EXTRA_ALLOWED_HOSTS', default='.onrender.com').split(',')
         if host.strip()
     ])
 if _env_bool('ALLOW_ALL_HOSTS', default=False):
@@ -276,15 +276,11 @@ if not DEBUG:
     CORS_ALLOWED_ORIGINS.extend([
         'https://knoledgr.com',
         'https://www.knoledgr.com',
-        'https://recall-three-plum.vercel.app',
         'https://recall-frontend.onrender.com',
         'https://recall.dev',
         FRONTEND_URL.strip(),
     ])
-    # Allow Vercel preview URLs when needed (for example: branch-name-project.vercel.app)
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r"^https:\/\/.*\.vercel\.app$",
-    ]
+    CORS_ALLOWED_ORIGIN_REGEXES = []
 else:
     CORS_ALLOWED_ORIGIN_REGEXES = []
 
@@ -294,7 +290,7 @@ CORS_ALLOWED_ORIGINS = list(dict.fromkeys(CORS_ALLOWED_ORIGINS))
 SECURITY_PREFLIGHT_REQUIRED_ORIGINS = _parse_csv(
     config(
         'SECURITY_PREFLIGHT_REQUIRED_ORIGINS',
-        default='https://knoledgr.com,https://www.knoledgr.com,https://recall-three-plum.vercel.app'
+        default='https://knoledgr.com,https://www.knoledgr.com'
     )
 )
 
@@ -338,7 +334,6 @@ if not DEBUG:
     CSRF_TRUSTED_ORIGINS.extend([
         'https://knoledgr.com',
         'https://www.knoledgr.com',
-        'https://recall-three-plum.vercel.app',
         'https://recall-frontend.onrender.com',
         'https://recall.dev',
         FRONTEND_URL.strip(),

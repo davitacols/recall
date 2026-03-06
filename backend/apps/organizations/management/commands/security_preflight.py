@@ -68,7 +68,7 @@ class Command(BaseCommand):
             for host in required_hosts:
                 if host in allowed_hosts:
                     continue
-                # support wildcard suffix hosts like .vercel.app
+                # support wildcard suffix hosts like .example.com
                 if any(
                     item.startswith(".") and host.endswith(item)
                     for item in allowed_hosts

@@ -19,6 +19,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
+import BrandLogo from "./BrandLogo";
 
 function getAppLaunchTarget(app) {
   const launchPath = (app?.launch_path || "").trim();
@@ -406,8 +407,7 @@ export default function UnifiedNav({
           {collapsed ? <ChevronRightIcon style={icon14} /> : <ChevronLeftIcon style={icon14} />}
         </button>
         <Link to="/" style={{ ...brand, color: palette.text, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <span style={brandMark} />
-          {!collapsed && "Knoledgr"}
+          <BrandLogo tone={darkMode ? "dark" : "light"} size="sm" showText={!collapsed} />
         </Link>
       </div>
 
@@ -769,15 +769,6 @@ const sidebarTextureB = {
   left: -90,
   pointerEvents: "none",
   zIndex: 0,
-};
-
-const brandMark = {
-  width: 18,
-  height: 18,
-  borderRadius: 6,
-  background: "conic-gradient(from 210deg at 55% 55%, #ff8d4f, #ffd08d 45%, #0e9a8f 72%, #ff8d4f)",
-  boxShadow: "0 6px 14px rgba(0,0,0,0.2)",
-  flexShrink: 0,
 };
 
 const brand = {

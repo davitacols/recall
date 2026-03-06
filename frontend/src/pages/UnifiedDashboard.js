@@ -293,30 +293,38 @@ export default function UnifiedDashboard() {
     () =>
       darkMode
         ? {
-            panel: "#171215",
-            panelAlt: "#1e171b",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#baa892",
-            dim: "#8b7b69",
-            accent: "#ffb476",
-            info: "#86c8ff",
-            good: "#66d5ab",
-            warn: "#f59e0b",
-            bg: "#0f0b0d",
+            panel: "linear-gradient(165deg, rgba(13,22,30,0.94), rgba(11,17,24,0.9))",
+            panelAlt: "rgba(16, 29, 39, 0.8)",
+            border: "rgba(141, 188, 219, 0.22)",
+            text: "#e6f1f8",
+            muted: "#9eb4c5",
+            dim: "#84a0b6",
+            accent: "#73c6ff",
+            info: "#8ce2d8",
+            good: "#5fd8a8",
+            warn: "#ffc266",
+            bg: "#090f14",
+            heroA: "rgba(74, 155, 216, 0.3)",
+            heroB: "rgba(40, 88, 124, 0.26)",
+            heroC: "rgba(72, 196, 175, 0.22)",
+            shadow: "0 20px 46px rgba(2, 10, 16, 0.45)",
           }
         : {
-            panel: "#fffaf3",
-            panelAlt: "#ffffff",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7d6d5a",
-            dim: "#9e8d7b",
-            accent: "#d9692e",
-            info: "#2563eb",
-            good: "#1f8f66",
-            warn: "#a16207",
-            bg: "#f5eee3",
+            panel: "linear-gradient(165deg, rgba(255,255,255,0.95), rgba(244,251,255,0.9))",
+            panelAlt: "rgba(250, 254, 255, 0.92)",
+            border: "rgba(78, 127, 162, 0.24)",
+            text: "#102536",
+            muted: "#4f687a",
+            dim: "#67839a",
+            accent: "#2974ad",
+            info: "#0c9c8d",
+            good: "#1e9266",
+            warn: "#9a6a1f",
+            bg: "#e7f1f8",
+            heroA: "rgba(99, 164, 211, 0.28)",
+            heroB: "rgba(173, 213, 237, 0.34)",
+            heroC: "rgba(134, 214, 197, 0.3)",
+            shadow: "0 16px 32px rgba(73, 118, 148, 0.2)",
           },
     [darkMode]
   );
@@ -452,8 +460,8 @@ export default function UnifiedDashboard() {
   }
 
   return (
-    <div style={{ ...pageStyle, background: palette.bg, fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
-      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 2%, rgba(249,115,22,0.2), transparent 34%), radial-gradient(circle at 92% 6%, rgba(34,197,94,0.14), transparent 28%)" : "radial-gradient(circle at 8% 2%, rgba(249,115,22,0.14), transparent 34%), radial-gradient(circle at 92% 6%, rgba(34,197,94,0.1), transparent 28%)" }} />
+    <div style={{ ...pageStyle, background: palette.bg, fontFamily: "'Space Grotesk', 'Sora', 'Segoe UI', sans-serif" }}>
+      <div style={{ ...ambientLayer, background: `radial-gradient(circle at 8% 2%, ${palette.heroA}, transparent 34%), radial-gradient(circle at 92% 6%, ${palette.heroC}, transparent 28%)` }} />
       <section className="ui-enter" style={{ ...controlStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
         <Link to="/projects" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Projects</Link>
         <Link to="/sprint" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Sprint Board</Link>
@@ -467,11 +475,8 @@ export default function UnifiedDashboard() {
           ...hero,
           border: `1px solid ${palette.border}`,
           "--ui-delay": "70ms",
-          background: `linear-gradient(135deg, ${
-            darkMode ? "rgba(59,130,246,0.16)" : "rgba(191,219,254,0.52)"
-          } 0%, ${darkMode ? "rgba(249,115,22,0.15)" : "rgba(255,220,182,0.58)"} 52%, ${
-            darkMode ? "rgba(34,197,94,0.12)" : "rgba(187,247,208,0.44)"
-          } 100%)`,
+          background: `linear-gradient(140deg, ${palette.heroA} 0%, ${palette.heroB} 56%, ${palette.heroC} 100%)`,
+          boxShadow: palette.shadow,
         }}
       >
         <div>
@@ -1130,9 +1135,12 @@ function CollapsibleCard({
 
 const pageStyle = {
   position: "relative",
-  padding: "clamp(14px, 2.6vw, 24px)",
+  padding: "clamp(16px, 2.8vw, 30px)",
   display: "grid",
-  gap: 12,
+  gap: 14,
+  backgroundImage:
+    "linear-gradient(180deg, rgba(255,255,255,0.03), transparent 34%), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px)",
+  backgroundSize: "100% 100%, 28px 28px, 28px 28px",
 };
 
 const ambientLayer = {
@@ -1145,44 +1153,48 @@ const ambientLayer = {
 const controlStrip = {
   position: "relative",
   zIndex: 1,
-  borderRadius: 14,
-  padding: "8px",
+  borderRadius: 16,
+  padding: "10px",
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  gap: 9,
   flexWrap: "wrap",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
 };
 
 const controlPill = {
   textDecoration: "none",
-  borderRadius: 999,
-  padding: "7px 12px",
+  borderRadius: 12,
+  padding: "9px 14px",
   fontSize: 12,
-  fontWeight: 700,
+  fontWeight: 800,
+  letterSpacing: "0.02em",
+  background: "rgba(255,255,255,0.04)",
 };
 
 const hero = {
   position: "relative",
   zIndex: 1,
-  borderRadius: 18,
-  padding: "clamp(18px, 3vw, 30px)",
+  borderRadius: 24,
+  padding: "clamp(20px, 3.2vw, 34px)",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-end",
-  gap: 12,
+  gap: 14,
   flexWrap: "wrap",
+  overflow: "hidden",
 };
 
-const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.15em" };
+const eyebrow = { margin: 0, fontSize: 10, letterSpacing: "0.22em", fontWeight: 800 };
 
 const title = {
-  margin: "8px 0 7px",
-  fontSize: "clamp(1.45rem, 3.4vw, 2.35rem)",
-  lineHeight: 1.08,
-  letterSpacing: "-0.02em",
+  margin: "10px 0 8px",
+  fontSize: "clamp(1.6rem, 3.8vw, 2.7rem)",
+  lineHeight: 1.02,
+  letterSpacing: "-0.03em",
 };
 
-const subtitle = { margin: 0, fontSize: 14, lineHeight: 1.5, maxWidth: 720 };
+const subtitle = { margin: 0, fontSize: 14, lineHeight: 1.58, maxWidth: 760 };
 
 const heroBadges = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
 
@@ -1190,18 +1202,19 @@ const heroBadge = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  borderRadius: 999,
-  padding: "6px 10px",
+  borderRadius: 12,
+  padding: "8px 12px",
   fontSize: 12,
-  fontWeight: 700,
+  fontWeight: 800,
+  background: "rgba(255,255,255,0.08)",
 };
 
 const kpiGrid = {
   position: "relative",
   zIndex: 1,
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-  gap: 10,
+  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+  gap: 12,
 };
 
 const focusSection = {
@@ -1214,24 +1227,25 @@ const focusSection = {
 const sectionHeader = { display: "grid", gap: 4 };
 const sectionEyebrow = {
   margin: 0,
-  fontSize: 11,
-  fontWeight: 700,
+  fontSize: 10,
+  fontWeight: 800,
   textTransform: "uppercase",
-  letterSpacing: "0.12em",
+  letterSpacing: "0.2em",
 };
 const sectionHelper = { margin: 0, fontSize: 13 };
 
 const focusGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-  gap: 10,
+  gap: 12,
 };
 
 const focusCard = {
-  borderRadius: 13,
-  padding: "12px 12px 11px",
+  borderRadius: 16,
+  padding: "13px 13px 12px",
   display: "grid",
-  gap: 6,
+  gap: 7,
+  boxShadow: "0 12px 24px rgba(2, 8, 14, 0.12)",
 };
 
 const focusLabel = { margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" };
@@ -1240,23 +1254,32 @@ const focusHelper = { margin: 0, fontSize: 12 };
 const focusLink = {
   marginTop: 4,
   textDecoration: "none",
-  borderRadius: 10,
-  padding: "7px 10px",
+  borderRadius: 12,
+  padding: "8px 10px",
   fontSize: 12,
-  fontWeight: 700,
+  fontWeight: 800,
   textAlign: "center",
 };
 
-const statCard = { borderRadius: 13, padding: "12px 12px 11px" };
+const statCard = {
+  borderRadius: 16,
+  padding: "13px 13px 12px",
+  boxShadow: "0 12px 24px rgba(2, 8, 14, 0.12)",
+};
 const statHead = { display: "flex", justifyContent: "space-between", alignItems: "center" };
-const statLabel = { margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
-const statValue = { margin: "9px 0 0", fontSize: 30, lineHeight: 1, fontWeight: 800 };
+const statLabel = { margin: 0, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 800 };
+const statValue = { margin: "10px 0 0", fontSize: 32, lineHeight: 1, fontWeight: 800 };
 
-const mainGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12, alignItems: "start" };
-const leftCol = { display: "grid", gap: 12, alignContent: "start", alignItems: "start", gridAutoRows: "max-content" };
-const rightCol = { display: "grid", gap: 12, alignContent: "start" };
+const mainGrid = { position: "relative", zIndex: 1, display: "grid", gap: 14, alignItems: "start" };
+const leftCol = { display: "grid", gap: 14, alignContent: "start", alignItems: "start", gridAutoRows: "max-content" };
+const rightCol = { display: "grid", gap: 14, alignContent: "start" };
 
-const panel = { borderRadius: 14, overflow: "hidden" };
+const panel = {
+  borderRadius: 18,
+  overflow: "hidden",
+  boxShadow: "0 14px 26px rgba(2, 8, 14, 0.12)",
+  backdropFilter: "blur(10px)",
+};
 const panelTitle = { margin: 0, fontSize: 16 };
 const collapseHeaderRow = {
   display: "flex",
@@ -1272,7 +1295,7 @@ const collapseHeaderMain = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: 8,
-  padding: "12px 14px",
+  padding: "13px 15px",
   textAlign: "left",
   cursor: "pointer",
 };
@@ -1283,10 +1306,10 @@ const moveControls = {
   paddingRight: 8,
 };
 const moveButton = {
-  width: 24,
-  height: 24,
+  width: 26,
+  height: 26,
   border: "none",
-  borderRadius: 6,
+  borderRadius: 8,
   background: "transparent",
   display: "grid",
   placeItems: "center",
@@ -1299,7 +1322,7 @@ const activityRow = {
   alignItems: "center",
   gap: 10,
   justifyContent: "space-between",
-  padding: "12px 14px",
+  padding: "13px 14px",
   textDecoration: "none",
 };
 
@@ -1315,7 +1338,7 @@ const activityTitle = {
 const activityDate = { margin: "4px 0 0", fontSize: 12 };
 
 const loadMoreWrap = { padding: 12, textAlign: "center" };
-const loadMoreButton = { borderRadius: 10, padding: "8px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const loadMoreButton = { borderRadius: 12, padding: "9px 13px", fontSize: 13, fontWeight: 800, cursor: "pointer" };
 
 const analyticsRow = {
   display: "grid",
@@ -1325,7 +1348,7 @@ const analyticsRow = {
 };
 
 const railTitle = { margin: 0, padding: "14px 14px 4px", fontSize: 14, fontWeight: 700 };
-const healthList = { padding: "8px 14px 14px", display: "grid", gap: 8 };
+const healthList = { padding: "10px 14px 14px", display: "grid", gap: 9 };
 const healthRow = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 };
 const healthLabel = { margin: 0, fontSize: 12, color: "#9a8a78" };
 const healthValue = { margin: 0, fontSize: 12, fontWeight: 700 };

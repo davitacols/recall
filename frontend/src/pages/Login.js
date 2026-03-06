@@ -3,6 +3,7 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import TurnstileWidget from "../components/TurnstileWidget";
+import BrandLogo from "../components/BrandLogo";
 import { useToast } from "../components/Toast";
 import { useAuth } from "../hooks/useAuth";
 import "./Login.css";
@@ -217,8 +218,7 @@ function Login() {
           className="auth-showcase"
         >
           <button type="button" onClick={() => navigate("/")} className="auth-brand">
-            <span className="auth-brand-mark">K</span>
-            <span>Knoledgr</span>
+            <BrandLogo tone="dark" size="lg" />
           </button>
 
           <div>

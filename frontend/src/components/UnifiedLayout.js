@@ -4,6 +4,7 @@ import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import Breadcrumbs from "./Breadcrumbs";
+import BrandLogo from "./BrandLogo";
 import NLCommandBar from "./NLCommandBar";
 import NotificationBell from "./NotificationBell";
 import UnifiedNav from "./UnifiedNav";
@@ -129,22 +130,30 @@ export default function UnifiedLayout({ children }) {
     () =>
       darkMode
         ? {
-            pageBg: "#0f0b0d",
-            panelBg: "#171215",
-            panelBgAlt: "#1d171b",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#baa892",
-            hover: "rgba(255,255,255,0.06)",
+            pageBg: "#0b1014",
+            panelBg: "rgba(16, 24, 31, 0.82)",
+            panelBgAlt: "#111b23",
+            panelGlass: "linear-gradient(140deg, rgba(19,30,40,0.92), rgba(13,20,27,0.88))",
+            border: "rgba(174, 210, 234, 0.2)",
+            text: "#e8f0f6",
+            muted: "#9fb2c3",
+            hover: "rgba(138, 188, 224, 0.12)",
+            glowOne: "rgba(85, 177, 235, 0.2)",
+            glowTwo: "rgba(53, 122, 168, 0.18)",
+            buttonBg: "rgba(18, 31, 42, 0.9)",
           }
         : {
-            pageBg: "#f6f8fb",
-            panelBg: "#ffffff",
-            panelBgAlt: "#ffffff",
-            border: "#dbe4ef",
-            text: "#0f172a",
-            muted: "#475569",
-            hover: "rgba(15,23,42,0.05)",
+            pageBg: "#e9f1f7",
+            panelBg: "rgba(255, 255, 255, 0.82)",
+            panelBgAlt: "#f8fcff",
+            panelGlass: "linear-gradient(145deg, rgba(255,255,255,0.94), rgba(243,250,255,0.88))",
+            border: "rgba(83, 126, 157, 0.24)",
+            text: "#0e2434",
+            muted: "#4a6578",
+            hover: "rgba(37, 99, 153, 0.08)",
+            glowOne: "rgba(79, 164, 219, 0.2)",
+            glowTwo: "rgba(157, 198, 226, 0.26)",
+            buttonBg: "rgba(255, 255, 255, 0.9)",
           },
     [darkMode]
   );
@@ -251,8 +260,8 @@ export default function UnifiedLayout({ children }) {
 
   return (
     <div style={{ ...page, background: palette.pageBg }}>
-      <div style={ambientGlowOne} />
-      <div style={ambientGlowTwo} />
+      <div style={{ ...ambientGlowOne, background: palette.glowOne }} />
+      <div style={{ ...ambientGlowTwo, background: palette.glowTwo }} />
 
       <UnifiedNav
         darkMode={darkMode}
@@ -278,16 +287,20 @@ export default function UnifiedLayout({ children }) {
             style={{
               ...layoutHeader,
               ...(isMobile ? layoutHeaderMobile : null),
-              background: palette.panelBg,
+              background: palette.panelGlass,
               border: `1px solid ${palette.border}`,
+              boxShadow: darkMode ? "0 16px 38px rgba(3, 8, 14, 0.45)" : "0 14px 30px rgba(65, 117, 155, 0.18)",
             }}
           >
             <div style={headerTop}>
-              <div>
-                <p style={{ ...headerEyebrow, color: palette.muted }}>Workspace</p>
+              <div style={headerIdentity}>
+                <BrandLogo tone={darkMode ? "dark" : "light"} size={isMobile ? "sm" : "md"} showText={!isMobile} />
+                <div>
+                <p style={{ ...headerEyebrow, color: palette.muted }}>Operations Layer</p>
                 <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
                   {pageTitle}
                 </h1>
+                </div>
               </div>
               <div style={{ ...headerActions, ...(isMobile ? headerActionsMobile : null) }}>
                 <NotificationBell />
@@ -296,7 +309,7 @@ export default function UnifiedLayout({ children }) {
                   style={{
                     ...iconButton,
                     color: palette.text,
-                    background: palette.hover,
+                    background: palette.buttonBg,
                     border: `1px solid ${palette.border}`,
                   }}
                   aria-label="Toggle theme"
@@ -322,7 +335,7 @@ export default function UnifiedLayout({ children }) {
                       style={{
                         ...profileMenu,
                         ...(isMobile ? profileMenuMobile : null),
-                        background: palette.panelBgAlt,
+                        background: palette.panelGlass,
                         border: `1px solid ${palette.border}`,
                       }}
                     >
@@ -367,7 +380,7 @@ export default function UnifiedLayout({ children }) {
                           className="ui-focus-ring"
                           style={{
                             ...workspacePasswordInput,
-                            background: palette.panelBg,
+                            background: palette.buttonBg,
                             color: palette.text,
                             border: `1px solid ${palette.border}`,
                           }}
@@ -391,7 +404,7 @@ export default function UnifiedLayout({ children }) {
                                   style={{
                                     ...workspaceItem,
                                     border: `1px solid ${palette.border}`,
-                                    background: palette.panelBg,
+                                    background: palette.panelBgAlt,
                                   }}
                                 >
                                   <div style={{ minWidth: 0 }}>
@@ -412,7 +425,7 @@ export default function UnifiedLayout({ children }) {
                                         className="ui-btn-polish ui-focus-ring"
                                         style={{
                                           ...workspaceSwitchButton,
-                                          background: palette.panelBg,
+                                          background: palette.buttonBg,
                                           color: palette.text,
                                           border: `1px solid ${palette.border}`,
                                           opacity: requestingCodeOrgSlug === workspace.org_slug ? 0.65 : 1,
@@ -427,9 +440,9 @@ export default function UnifiedLayout({ children }) {
                                         className="ui-btn-polish ui-focus-ring"
                                         style={{
                                           ...workspaceSwitchButton,
-                                          background: darkMode ? "#ffb476" : "#d9692e",
-                                          color: darkMode ? "#20120d" : "#fff7ee",
-                                          border: `1px solid ${darkMode ? "rgba(255,180,118,0.5)" : "#b95322"}`,
+                                          background: darkMode ? "#8bd0ff" : "#2e7db3",
+                                          color: darkMode ? "#0a1118" : "#eef7ff",
+                                          border: `1px solid ${darkMode ? "rgba(120,191,233,0.5)" : "#24688f"}`,
                                           opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
                                           cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
                                         }}
@@ -472,13 +485,13 @@ export default function UnifiedLayout({ children }) {
             ...askFabButton,
             left: askFabPos.x,
             top: askFabPos.y,
-            color: "#231713",
+            color: darkMode ? "#062032" : "#eef8ff",
             border: darkMode
-              ? "1px solid rgba(255,225,193,0.35)"
-              : "1px solid rgba(217,105,46,0.28)",
+              ? "1px solid rgba(139,208,255,0.45)"
+              : "1px solid rgba(46,125,179,0.35)",
             background: darkMode
-              ? "linear-gradient(135deg, #ffd190, #ff9f62)"
-              : "linear-gradient(135deg, #ffe0b0, #ffb475)",
+              ? "linear-gradient(135deg, #9bd9ff, #6ab8ec)"
+              : "linear-gradient(135deg, #2f80b8, #65aede)",
           }}
           className="ui-btn-polish ui-focus-ring"
           aria-label="Open Ask Recall"
@@ -495,6 +508,8 @@ const page = {
   minHeight: "100vh",
   position: "relative",
   overflowX: "hidden",
+  backgroundImage:
+    "radial-gradient(1100px 560px at -6% -10%, rgba(122,181,224,0.16), transparent 62%), radial-gradient(1100px 680px at 108% -8%, rgba(72,129,172,0.14), transparent 58%)",
 };
 
 const ambientGlowOne = {
@@ -505,8 +520,7 @@ const ambientGlowOne = {
   left: -170,
   borderRadius: "50%",
   pointerEvents: "none",
-  background: "rgba(255,170,80,0.14)",
-  filter: "blur(60px)",
+  filter: "blur(72px)",
 };
 
 const ambientGlowTwo = {
@@ -517,23 +531,22 @@ const ambientGlowTwo = {
   bottom: -260,
   borderRadius: "50%",
   pointerEvents: "none",
-  background: "rgba(88,210,189,0.12)",
-  filter: "blur(60px)",
+  filter: "blur(80px)",
 };
 
 const iconButton = {
-  width: 32,
-  height: 32,
-  borderRadius: 9,
+  width: 36,
+  height: 36,
+  borderRadius: 12,
   display: "grid",
   placeItems: "center",
   cursor: "pointer",
 };
 
 const avatarButton = {
-  width: 38,
-  height: 38,
-  borderRadius: "50%",
+  width: 40,
+  height: 40,
+  borderRadius: 14,
   overflow: "hidden",
   display: "grid",
   placeItems: "center",
@@ -557,10 +570,10 @@ const avatarInitial = {
 const profileMenu = {
   position: "absolute",
   right: 0,
-  top: 46,
+  top: 48,
   minWidth: 340,
   maxWidth: 420,
-  borderRadius: 16,
+  borderRadius: 18,
   overflow: "hidden",
   boxShadow: "0 20px 40px rgba(0,0,0,0.28)",
   zIndex: 120,
@@ -682,12 +695,13 @@ const main = {
   zIndex: 1,
   minHeight: "100vh",
   transition: "padding-left 0.2s ease",
+  paddingBottom: 20,
 };
 
 const contentContainer = {
-  maxWidth: 1400,
+  maxWidth: 1520,
   margin: "0 auto",
-  padding: "0 clamp(14px, 2vw, 24px) 24px",
+  padding: "10px clamp(14px, 2.4vw, 30px) 28px",
 };
 
 const contentContainerMobile = {
@@ -696,33 +710,33 @@ const contentContainerMobile = {
 
 const layoutHeader = {
   position: "sticky",
-  top: 0,
+  top: 10,
   zIndex: 80,
-  borderRadius: 12,
-  padding: "12px 14px 10px",
-  marginBottom: 12,
-  backdropFilter: "blur(6px)",
+  borderRadius: 18,
+  padding: "14px 16px 12px",
+  marginBottom: 14,
+  backdropFilter: "blur(16px) saturate(130%)",
 };
 
 const layoutHeaderMobile = {
-  top: 0,
-  borderRadius: 10,
-  padding: "10px 10px 9px",
+  top: 8,
+  borderRadius: 14,
+  padding: "10px 10px 10px",
   marginBottom: 10,
 };
 
 const headerEyebrow = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.08em",
+  letterSpacing: "0.16em",
   textTransform: "uppercase",
 };
 
 const headerTitle = {
-  margin: "4px 0 8px",
-  fontSize: "clamp(1.05rem, 2vw, 1.35rem)",
-  letterSpacing: "-0.01em",
+  margin: "6px 0 0",
+  fontSize: "clamp(1.08rem, 2.2vw, 1.55rem)",
+  letterSpacing: "-0.02em",
 };
 
 const headerTitleMobile = {
@@ -732,16 +746,22 @@ const headerTitleMobile = {
 
 const headerTop = {
   display: "flex",
-  alignItems: "flex-start",
+  alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
   flexWrap: "wrap",
 };
 
+const headerIdentity = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+};
+
 const headerActions = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  gap: 9,
 };
 
 const headerActionsMobile = {
@@ -787,7 +807,7 @@ const askFabButton = {
   zIndex: 150,
   width: ASK_FAB_WIDTH,
   height: ASK_FAB_HEIGHT,
-  borderRadius: 0,
+  borderRadius: 14,
   display: "grid",
   placeItems: "center",
   fontSize: 13,

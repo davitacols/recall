@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import '../pages/Homepage.css';
 import TurnstileWidget from '../components/TurnstileWidget';
+import BrandLogo from '../components/BrandLogo';
 
 function Signup() {
   const navigate = useNavigate();
@@ -51,8 +52,7 @@ function Signup() {
       <div style={{ flex: 1, backgroundColor: '#0052CC', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#ffffff' }}>
         <div style={{ maxWidth: '480px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
-            <img src="/recalljpg.jpg" alt="Knoledgr" style={{ height: '40px' }} />
-            <span style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em' }}>RECALL</span>
+            <BrandLogo tone="dark" size="lg" label="Knoledgr" />
           </div>
           <h1 style={{ fontSize: '40px', fontWeight: 700, lineHeight: '1.2', marginBottom: '24px', letterSpacing: '-0.02em' }}>
             Create your organization

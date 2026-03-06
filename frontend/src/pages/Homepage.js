@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import BrandLogo from "../components/BrandLogo";
 
 const features = [
   {
@@ -100,8 +101,7 @@ export default function Homepage() {
         <div style={container}>
           <div style={headerContent}>
             <div style={brandRow}>
-              <div style={brandMark} />
-              <span style={brandText}>Knoledgr</span>
+              <BrandLogo tone="dark" size="lg" />
             </div>
             <div style={headerActions}>
               <button onClick={() => navigate("/login")} style={ghostButton}>
@@ -400,8 +400,7 @@ export default function Homepage() {
           <div style={footerGrid}>
             <div>
               <div style={brandRow}>
-                <div style={brandMark} />
-                <span style={brandText}>Knoledgr</span>
+                <BrandLogo tone="dark" size="lg" />
               </div>
               <p style={footerCopy}>
                 Keep decisions, context, and execution connected across your team.
@@ -487,20 +486,6 @@ const brandRow = {
   display: "flex",
   alignItems: "center",
   gap: 10,
-};
-
-const brandMark = {
-  width: 28,
-  height: 28,
-  borderRadius: 8,
-  background:
-    "conic-gradient(from 220deg at 55% 55%, #ff8d4f, #ffd08d 40%, #0e9a8f 70%, #ff8d4f)",
-};
-
-const brandText = {
-  fontWeight: 700,
-  fontSize: 20,
-  letterSpacing: "-0.01em",
 };
 
 const headerActions = {

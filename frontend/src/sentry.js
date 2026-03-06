@@ -1,5 +1,4 @@
 import * as Sentry from "@sentry/react";
-import { BrowserTracing } from "@sentry/tracing";
 
 const dsn = (process.env.REACT_APP_SENTRY_DSN || "").trim();
 const environment = (process.env.REACT_APP_SENTRY_ENVIRONMENT || "development").trim();
@@ -9,8 +8,7 @@ if (dsn) {
   Sentry.init({
     dsn,
     environment,
-    integrations: [new BrowserTracing()],
+    integrations: [Sentry.browserTracingIntegration()],
     tracesSampleRate: Number.isFinite(tracesSampleRate) ? tracesSampleRate : 0,
   });
 }
-

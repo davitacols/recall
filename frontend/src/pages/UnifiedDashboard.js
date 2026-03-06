@@ -437,7 +437,15 @@ export default function UnifiedDashboard() {
   }
 
   return (
-    <div style={pageStyle}>
+    <div
+      style={{
+        ...pageStyle,
+        background:
+          "linear-gradient(165deg, color-mix(in srgb, var(--ui-panel-alt) 70%, transparent), transparent 52%), radial-gradient(circle at 88% -8%, color-mix(in srgb, var(--ui-accent) 18%, transparent), transparent 48%)",
+        border: "1px solid var(--ui-border)",
+        borderRadius: 18,
+      }}
+    >
       <section className="ui-enter" style={{ ...controlStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
         <Link to="/projects" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Projects</Link>
         <Link to="/sprint" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Sprint Board</Link>
@@ -449,14 +457,16 @@ export default function UnifiedDashboard() {
         className="ui-enter"
         style={{
           ...hero,
-          border: "none",
+          border: `1px solid ${palette.border}`,
           "--ui-delay": "70ms",
-          background: "transparent",
+          background: `linear-gradient(135deg, ${palette.panel}, ${palette.panelAlt})`,
           boxShadow: palette.shadow,
+          borderRadius: 14,
+          padding: "16px 16px 14px",
         }}
       >
         <div>
-          <p style={{ ...eyebrow, color: palette.muted }}>UNIFIED DASHBOARD</p>
+          <p style={{ ...eyebrow, color: palette.accent }}>UNIFIED DASHBOARD</p>
           <h1 style={{ ...title, color: palette.text }}>Unified Operations Command Center</h1>
           <p style={{ ...subtitle, color: palette.muted }}>
             Understand what needs attention now, what is healthy, and where to act next across decisions, outcomes, and sprint execution.
@@ -464,6 +474,9 @@ export default function UnifiedDashboard() {
         </div>
 
         <div style={heroBadges}>
+          <div style={{ ...heroBadge, border: `1px solid ${palette.accent}`, color: palette.accent }}>
+            Live surface v2
+          </div>
           <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
             <SparklesIcon style={icon16} /> AI rate {stats.rate}%
           </div>

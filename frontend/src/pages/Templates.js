@@ -65,7 +65,7 @@ export default function Templates() {
   return (
     <div style={{ minHeight: "100vh", background: palette.bg }}>
       <div style={ui.container}>
-        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+        <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>REUSABLE TEMPLATES</p>
             <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Templates</h1>
@@ -74,7 +74,7 @@ export default function Templates() {
           <button onClick={() => setShowModal(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Template</button>
         </section>
 
-        <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 10, marginBottom: 12 }}>
+        <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, marginBottom: 12 }}>
           <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted, marginBottom: 6 }}>
             Filter
           </label>

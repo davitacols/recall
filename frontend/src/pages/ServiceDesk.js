@@ -301,8 +301,8 @@ export default function ServiceDesk() {
   };
 
   return (
-    <div style={{ display: "grid", gap: 14, background: palette.page, borderRadius: 14, padding: 10 }}>
-      <section style={{ ...hero, border: `1px solid ${palette.border}`, background: palette.panel }}>
+    <div style={{ display: "grid", gap: 14 }}>
+      <section style={hero}>
         <div>
           <h1 style={{ margin: 0, fontSize: 23, color: palette.text }}>Service Desk</h1>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>
@@ -327,14 +327,14 @@ export default function ServiceDesk() {
 
       <section style={statsGrid}>
         {cards.map((card) => (
-          <article key={card.label} style={{ ...cardStyle, border: `1px solid ${palette.border}`, background: palette.panel }}>
+          <article key={card.label} style={cardStyle}>
             <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>{card.label}</p>
             <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 20, color: palette.text }}>{card.value || 0}</p>
           </article>
         ))}
       </section>
 
-      <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panel }}>
+      <section style={panel}>
         <h2 style={{ margin: "0 0 8px", fontSize: 16, color: palette.text }}>How Service Desk Works</h2>
         <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))" }}>
           {SERVICE_FLOW.map((step, idx) => (
@@ -349,7 +349,7 @@ export default function ServiceDesk() {
         </div>
       </section>
 
-      <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panel }}>
+      <section style={panel}>
         <h2 style={{ margin: "0 0 6px", fontSize: 16, color: palette.text }}>Recall Helpdesk AI</h2>
         <p style={{ margin: "0 0 10px", color: palette.muted, fontSize: 12 }}>
           Chat with the assistant for triage guidance, then apply the response directly to the request form.
@@ -429,7 +429,7 @@ export default function ServiceDesk() {
         </div>
       </section>
 
-      <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panel }}>
+      <section style={panel}>
         <h2 style={{ margin: "0 0 8px", fontSize: 16, color: palette.text }}>Create Request</h2>
         <form onSubmit={submitRequest} style={{ display: "grid", gap: 8 }}>
           <input
@@ -489,7 +489,7 @@ export default function ServiceDesk() {
       </section>
 
       {(aiGuide || aiError) && (
-        <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+        <section style={panel}>
           <h2 style={{ margin: "0 0 8px", fontSize: 16, color: palette.text }}>AI Support Guide</h2>
           {aiError ? (
             <p style={{ ...muted, color: palette.bad }}>{aiError}</p>
@@ -516,7 +516,7 @@ export default function ServiceDesk() {
         </section>
       )}
 
-      <section style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.panel }}>
+      <section style={panel}>
         <h2 style={{ margin: "0 0 8px", fontSize: 16, color: palette.text }}>Queue</h2>
         {loading ? (
           <p style={{ ...muted, color: palette.muted }}>Loading queue...</p>
@@ -554,10 +554,10 @@ export default function ServiceDesk() {
 }
 
 const hero = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
-  background: "#ffffff",
-  padding: 14,
+  border: "none",
+  borderRadius: 0,
+  background: "transparent",
+  padding: 0,
   display: "flex",
   alignItems: "flex-start",
   justifyContent: "space-between",
@@ -566,10 +566,10 @@ const hero = {
 };
 
 const panel = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 12,
-  background: "#ffffff",
-  padding: 14,
+  border: "none",
+  borderRadius: 0,
+  background: "transparent",
+  padding: 0,
 };
 
 const statsGrid = {
@@ -579,9 +579,9 @@ const statsGrid = {
 };
 
 const cardStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 10,
-  background: "#ffffff",
+  border: "none",
+  borderRadius: 0,
+  background: "transparent",
   padding: 12,
 };
 

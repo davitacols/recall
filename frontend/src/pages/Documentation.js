@@ -353,8 +353,8 @@ export default function Documentation() {
   })).filter((group) => group.pages.length > 0);
 
   return (
-    <div style={{ padding: "clamp(12px,2.2vw,24px)", background: palette.page }}>
-      <div style={{ borderRadius: 16, minHeight: "calc(100vh - 110px)", border: `1px solid ${palette.border}`, background: palette.panel, display: "grid", gridTemplateColumns: isMobile ? "1fr" : isTablet ? "280px minmax(0,1fr)" : "300px minmax(0,1fr) 230px", overflow: "hidden" }}>
+    <div style={{ padding: "clamp(12px,2.2vw,24px)", background: "transparent" }}>
+      <div style={{ borderRadius: 0, minHeight: "calc(100vh - 110px)", border: "none", background: "transparent", display: "grid", gridTemplateColumns: isMobile ? "1fr" : isTablet ? "280px minmax(0,1fr)" : "300px minmax(0,1fr) 230px", overflow: "hidden" }}>
         <aside style={{ borderRight: `1px solid ${palette.border}`, display: "grid", gridTemplateRows: "auto 1fr" }}>
           <div style={{ padding: 14, borderBottom: `1px solid ${palette.border}` }}>
             <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.1em", color: palette.muted }}>KNOLEDGR MANUAL</p>

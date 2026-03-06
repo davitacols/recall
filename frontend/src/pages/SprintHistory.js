@@ -52,14 +52,14 @@ function SprintHistory() {
   return (
     <div style={{ minHeight: "100vh", background: palette.bg }}>
       <div style={ui.container}>
-        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 12 }}>
+        <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, marginBottom: 12 }}>
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>SPRINT HISTORY</p>
           <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Sprint History</h1>
           <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Institutional memory of outcomes, blockers, and delivery trend.</p>
         </section>
 
         {projects.length > 0 && (
-          <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, marginBottom: 12 }}>
+          <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, marginBottom: 12 }}>
             <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted, marginBottom: 6 }}>
               Filter by project
             </label>

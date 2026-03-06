@@ -184,10 +184,10 @@ export default function Documents() {
         <section
           className="ui-enter"
           style={{
-            borderRadius: 18,
-            border: `1px solid ${palette.border}`,
-            background: `linear-gradient(140deg, ${palette.card} 8%, ${darkMode ? "#2a1d23" : "#ffefd8"} 100%)`,
-            padding: 16,
+            borderRadius: 0,
+            border: "none",
+            background: "transparent",
+            padding: 0,
             marginBottom: 12,
           }}
         >
@@ -213,10 +213,10 @@ export default function Documents() {
         <section
           className="ui-enter"
           style={{
-            borderRadius: 14,
-            border: `1px solid ${palette.border}`,
-            background: palette.card,
-            padding: 10,
+            borderRadius: 0,
+            border: "none",
+            background: "transparent",
+            padding: 0,
             marginBottom: 12,
             display: "grid",
             gridTemplateColumns: "1fr auto",

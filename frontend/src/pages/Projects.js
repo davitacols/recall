@@ -82,10 +82,8 @@ export default function Projects() {
         <section
           style={{
             ...hero,
-            border: `1px solid ${palette.border}`,
-            background: darkMode
-              ? "linear-gradient(145deg, rgba(255,167,97,0.16), rgba(87,205,184,0.13))"
-              : "linear-gradient(145deg, rgba(255,196,146,0.42), rgba(152,243,223,0.36))",
+            border: "none",
+            background: "transparent",
           }}
         >
           <div>

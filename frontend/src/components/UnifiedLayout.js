@@ -302,9 +302,9 @@ export default function UnifiedLayout({ children }) {
             style={{
               ...layoutHeader,
               ...(isMobile ? layoutHeaderMobile : null),
-              background: palette.panelGlass,
-              border: `1px solid ${palette.border}`,
-              boxShadow: darkMode ? "0 16px 38px rgba(3, 8, 14, 0.45)" : "0 14px 30px rgba(65, 117, 155, 0.18)",
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
             }}
           >
             <div style={headerTop}>
@@ -727,16 +727,16 @@ const layoutHeader = {
   position: "sticky",
   top: 10,
   zIndex: 80,
-  borderRadius: 18,
-  padding: "14px 16px 12px",
+  borderRadius: 0,
+  padding: "10px 0 8px",
   marginBottom: 14,
-  backdropFilter: "blur(16px) saturate(130%)",
+  backdropFilter: "none",
 };
 
 const layoutHeaderMobile = {
   top: 8,
-  borderRadius: 14,
-  padding: "10px 10px 10px",
+  borderRadius: 0,
+  padding: "8px 0 8px",
   marginBottom: 10,
 };
 

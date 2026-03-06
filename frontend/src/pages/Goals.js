@@ -72,7 +72,7 @@ export default function Goals() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10 }}>
             {[1, 2, 3, 4].map((item) => (
@@ -85,7 +85,7 @@ export default function Goals() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>

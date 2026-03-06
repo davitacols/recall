@@ -166,7 +166,7 @@ export default function Documents() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 10 }}>
             {[1, 2, 3, 4].map((i) => (
@@ -179,7 +179,7 @@ export default function Documents() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section
           className="ui-enter"

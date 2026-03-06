@@ -37,7 +37,7 @@ function SprintHistory() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 10 }}>
             {[1, 2, 3].map((item) => (
@@ -50,7 +50,7 @@ function SprintHistory() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, marginBottom: 12 }}>
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>SPRINT HISTORY</p>

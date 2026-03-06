@@ -63,7 +63,7 @@ export default function Templates() {
   const filteredTemplates = filterType === "all" ? templates : templates.filter((template) => template.template_type === filterType);
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>

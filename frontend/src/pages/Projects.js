@@ -64,7 +64,7 @@ export default function Projects() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <div style={skeletonGrid}>
             {[1, 2, 3].map((item) => (
@@ -77,7 +77,7 @@ export default function Projects() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section
           style={{

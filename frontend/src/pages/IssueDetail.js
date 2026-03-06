@@ -183,7 +183,7 @@ function IssueDetail() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={spinner} />
       </div>
     );
@@ -191,7 +191,7 @@ function IssueDetail() {
 
   if (!issue) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <button onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
             <ArrowLeftIcon style={icon14} /> Back
@@ -209,7 +209,7 @@ function IssueDetail() {
   const watcherCount = Number(issue.watchers_count || 0);
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg, fontFamily: "'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight: "100vh", fontFamily: "'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <div style={{ ...ambientGlow, background: darkMode ? "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.18),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.16),transparent 36%)" : "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.1),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.08),transparent 36%)" }} />
       <div style={{ ...ui.container, width: "min(1420px,100%)", position: "relative", zIndex: 1 }}>
         <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
@@ -470,3 +470,4 @@ const icon14 = { width: 14, height: 14 };
 const icon16 = { width: 16, height: 16 };
 
 export default IssueDetail;
+

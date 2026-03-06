@@ -33,24 +33,24 @@ function ProjectRoadmap() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={spinner} />
       </div>
     );
   }
 
   if (!project) {
-    return <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center", color: palette.muted }}>Project not found</div>;
+    return <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: palette.muted }}>Project not found</div>;
   }
 
   const sprints = project.sprints || [];
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <button onClick={() => navigate(-1)} style={backButton}><ArrowLeftIcon style={icon14} /> Back</button>
 
-        <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+        <section style={{ ...hero, background: "transparent", border: "none" }}>
           <p style={{ ...eyebrow, color: palette.muted }}>ROADMAP</p>
           <h1 style={{ ...title, color: palette.text }}>{project.name}</h1>
           <p style={{ ...subtitle, color: palette.muted }}>Sprint timeline and delivery progression</p>

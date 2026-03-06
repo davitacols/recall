@@ -29,7 +29,7 @@ export default function Analytics() {
 
   if (!analytics) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <div style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 14, color: palette.muted, fontSize: 13 }}>Loading analytics...</div>
         </div>
@@ -38,7 +38,7 @@ export default function Analytics() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 12 }}>
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>BUSINESS ANALYTICS</p>
@@ -117,3 +117,4 @@ const priorityColorMap = {
   high: "#f59e0b",
   critical: "#ef4444",
 };
+

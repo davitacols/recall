@@ -54,7 +54,7 @@ function CurrentSprint() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={spinner} />
       </div>
     );
@@ -62,9 +62,9 @@ function CurrentSprint() {
 
   if (!sprint) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
-          <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+          <section style={{ ...hero, background: "transparent", border: "none" }}>
             <p style={{ ...eyebrow, color: palette.muted }}>SPRINT CENTER</p>
             <h1 style={{ ...title, color: palette.text }}>No active sprint</h1>
             <p style={{ ...subtitle, color: palette.muted }}>
@@ -80,9 +80,9 @@ function CurrentSprint() {
   const completion = sprint.issue_count > 0 ? Math.round(((sprint.completed || 0) / sprint.issue_count) * 100) : 0;
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
-        <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+        <section style={{ ...hero, background: "transparent", border: "none" }}>
           <div>
             <p style={{ ...eyebrow, color: palette.muted }}>ACTIVE SPRINT</p>
             <h1 style={{ ...title, color: palette.text }}>{sprint.name}</h1>
@@ -235,4 +235,5 @@ const icon16 = { width: 16, height: 16 };
 const icon14 = { width: 14, height: 14 };
 
 export default CurrentSprint;
+
 

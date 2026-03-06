@@ -141,22 +141,20 @@ export default function SprintManagement() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={spinner} />
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section
           style={{
             ...hero,
-            border: `1px solid ${palette.border}`,
-            background: darkMode
-              ? "linear-gradient(140deg, rgba(255,167,97,0.14), rgba(87,205,184,0.13))"
-              : "linear-gradient(140deg, rgba(255,196,146,0.42), rgba(152,243,223,0.36))",
+            border: "none",
+            background: "transparent",
           }}
         >
           <div>
@@ -283,5 +281,6 @@ const formStack = { marginTop: 12, display: "grid", gap: 8 };
 const buttonRow = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
 const icon18 = { width: 18, height: 18 };
 const icon14 = { width: 14, height: 14 };
+
 
 

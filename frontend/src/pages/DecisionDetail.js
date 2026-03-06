@@ -247,7 +247,7 @@ function DecisionDetail() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={{ width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
       </div>
     );
@@ -255,7 +255,7 @@ function DecisionDetail() {
 
   if (!decision) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center", color: palette.muted }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: palette.muted }}>
         Decision not found
       </div>
     );
@@ -267,7 +267,7 @@ function DecisionDetail() {
   const confidenceScore = decision.confidence?.score || 0;
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
       <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.16), transparent 30%)" : "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.1), transparent 30%)" }} />
       <div style={ui.container}>
         <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "10ms" }}>
@@ -749,3 +749,4 @@ const metricValue = { margin: "4px 0 0", fontSize: 18, fontWeight: 800 };
 const mainGrid = { position: "relative", zIndex: 1, display: "grid" };
 
 export default DecisionDetail;
+

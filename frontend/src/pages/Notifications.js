@@ -198,7 +198,7 @@ function Notifications() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={container}>
         <header style={{ ...hero, background: palette.panel, border: `1px solid ${palette.border}` }}>
           <div style={{ minWidth: 0 }}>
@@ -386,3 +386,4 @@ const emptyCard = {
 };
 
 export default Notifications;
+

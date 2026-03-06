@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
@@ -127,7 +127,7 @@ function IssueCreate() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <button onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
           <ArrowLeftIcon style={icon14} /> Back
@@ -225,4 +225,5 @@ const buttonRow = { marginTop: 6, display: "flex", justifyContent: "flex-end", g
 const icon14 = { width: 14, height: 14 };
 
 export default IssueCreate;
+
 

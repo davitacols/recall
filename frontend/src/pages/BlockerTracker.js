@@ -147,7 +147,7 @@ function Blockers() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
             {[1, 2, 3, 4].map((i) => (
@@ -160,7 +160,7 @@ function Blockers() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section
           className="ui-enter"
@@ -447,3 +447,4 @@ function MetricCard({ label, value, palette, compact = false }) {
 }
 
 export default Blockers;
+

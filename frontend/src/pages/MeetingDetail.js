@@ -74,7 +74,7 @@ export default function MeetingDetail() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center", color: palette.text }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: palette.text }}>
         Loading...
       </div>
     );
@@ -82,14 +82,14 @@ export default function MeetingDetail() {
 
   if (!meeting) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center", color: palette.muted }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: palette.muted }}>
         Meeting not found
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <button onClick={() => navigate("/business/meetings")} style={{ ...ui.secondaryButton, marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 6 }}>
           <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back
@@ -178,3 +178,4 @@ export default function MeetingDetail() {
     </div>
   );
 }
+

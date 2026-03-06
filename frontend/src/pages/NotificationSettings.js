@@ -144,14 +144,14 @@ export default function NotificationSettings() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, padding: "20px" }}>
+      <div style={{ minHeight: "100vh", padding: "20px" }}>
         <div style={{ color: palette.text }}>Loading notification settings...</div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={container}>
         <header style={{ ...hero, background: palette.panel, border: `1px solid ${palette.border}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -334,3 +334,4 @@ const diagButton = {
   fontWeight: 700,
   cursor: "pointer",
 };
+

@@ -122,7 +122,7 @@ function ProjectDetail() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={spinner} />
       </div>
     );
@@ -130,7 +130,7 @@ function ProjectDetail() {
 
   if (!project) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <h2 style={{ color: palette.muted }}>Project not found</h2>
       </div>
     );
@@ -139,9 +139,9 @@ function ProjectDetail() {
   const tabs = ["sprints", "issues", "roadmap"];
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
-        <section style={{ ...hero, border: `1px solid ${palette.border}`, background: palette.card }}>
+        <section style={{ ...hero, border: "none", background: "transparent" }}>
           <div style={heroTop}>
             <div style={projectBadge}>{project.key?.charAt(0) || "P"}</div>
             <div style={{ minWidth: 0 }}>
@@ -168,7 +168,7 @@ function ProjectDetail() {
           <Stat icon={RocketLaunchIcon} label="Sprints" value={sprints.length} />
         </section>
 
-        <section style={{ ...tabWrap, border: `1px solid ${palette.border}`, background: palette.card }}>
+        <section style={{ ...tabWrap, border: "none", background: "transparent" }}>
           {tabs.map((tab) => (
             <button
               key={tab}

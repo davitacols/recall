@@ -113,7 +113,7 @@ function Decisions() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10 }}>
             {[1, 2, 3, 4].map((item) => (
@@ -126,7 +126,7 @@ function Decisions() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
       <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.19), transparent 34%), radial-gradient(circle at 90% 8%, rgba(168,85,247,0.15), transparent 30%)" : "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.13), transparent 34%), radial-gradient(circle at 90% 8%, rgba(168,85,247,0.1), transparent 30%)" }} />
       <div style={ui.container}>
         <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "10ms" }}>
@@ -370,3 +370,4 @@ function formatDate(rawDate) {
 }
 
 export default Decisions;
+

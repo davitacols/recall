@@ -250,7 +250,6 @@ const centerWrap = (palette) => ({
   display: "grid",
   placeItems: "center",
   padding: 16,
-  background: palette.bg,
 });
 
 const panel = (palette) => ({
@@ -342,3 +341,4 @@ const spinner = (palette) => ({
 });
 
 export default AcceptInvite;
+

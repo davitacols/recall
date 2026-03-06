@@ -265,7 +265,7 @@ function SprintDetail() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={spinner} />
       </div>
     );
@@ -273,7 +273,7 @@ function SprintDetail() {
 
   if (!sprint) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <h2 style={{ color: palette.muted }}>Sprint not found</h2>
       </div>
     );
@@ -291,13 +291,13 @@ function SprintDetail() {
       ];
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={container}>
         <button onClick={() => navigate(-1)} style={backButton}>
           <ArrowLeftIcon style={icon14} /> Back
         </button>
 
-        <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+        <section style={{ ...hero, background: "transparent", border: "none" }}>
           <div>
             <p style={{ ...eyebrow, color: palette.muted }}>SPRINT DETAIL</p>
             <h1 style={{ ...title, color: palette.text }}>{sprint.name}</h1>
@@ -652,4 +652,5 @@ function buildPolicyAdjustmentHints(violations, policy) {
 }
 
 export default SprintDetail;
+
 

@@ -88,20 +88,20 @@ function Backlog() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={spinner} />
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <button onClick={() => navigate(-1)} style={backButton}>
           <ArrowLeftIcon style={icon14} /> Back
         </button>
 
-        <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+        <section style={{ ...hero, background: "transparent", border: "none" }}>
           <div>
             <p style={{ ...eyebrow, color: palette.muted }}>PROJECT BACKLOG</p>
             <h1 style={{ ...titleStyle, color: palette.text }}>Prioritized Backlog</h1>
@@ -235,4 +235,5 @@ const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marg
 const icon14 = { width: 14, height: 14 };
 
 export default Backlog;
+
 

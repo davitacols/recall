@@ -63,7 +63,7 @@ export default function Meetings() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <div style={{ display: "grid", gap: 8 }}>
             {[1, 2, 3].map((item) => (
@@ -76,7 +76,7 @@ export default function Meetings() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>
@@ -150,3 +150,4 @@ function Metric({ label, value, color = "#f4ece0" }) {
     </article>
   );
 }
+

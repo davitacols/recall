@@ -132,14 +132,14 @@ function ProjectManagement() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={spinner} />
       </div>
     );
   }
 
   if (!project) {
-    return <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center", color: palette.muted }}>Project not found</div>;
+    return <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: palette.muted }}>Project not found</div>;
   }
 
   const activeSprint = sprints.find((sprint) => sprint.status === "active");
@@ -147,11 +147,11 @@ function ProjectManagement() {
   const inProgress = issues.filter((issue) => issue.status === "in_progress").length;
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <button onClick={() => navigate("/projects")} style={styles.backButton}><ArrowLeftIcon style={icon14} /> Back to Projects</button>
 
-        <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+        <section style={{ ...hero, background: "transparent", border: "none" }}>
           <div>
             <p style={{ ...eyebrow, color: palette.muted }}>PROJECT MANAGEMENT</p>
             <h1 style={{ ...title, color: palette.text }}>{project.name}</h1>

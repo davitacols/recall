@@ -186,7 +186,7 @@ export default function Knowledge() {
   }, [results, typeFilter, sortMode]);
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section
           className="ui-enter"
@@ -315,3 +315,4 @@ export default function Knowledge() {
     </div>
   );
 }
+

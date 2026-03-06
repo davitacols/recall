@@ -71,7 +71,7 @@ function KanbanBoard() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <div style={spinner} />
       </div>
     );
@@ -80,9 +80,9 @@ function KanbanBoard() {
   const lanes = getLanes();
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={container}>
-        <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
+        <section style={{ ...hero, background: "transparent", border: "none" }}>
           <div>
             <p style={{ ...eyebrow, color: palette.muted }}>KANBAN VIEW</p>
             <h1 style={{ ...title, color: palette.text }}>Sprint Board</h1>

@@ -55,7 +55,7 @@ export default function KnowledgeAnalytics() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: palette.bg }}>
+      <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8 }}>
             {[1, 2, 3, 4].map((i) => <div key={i} style={{ borderRadius: 12, height: 120, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />)}
@@ -66,7 +66,7 @@ export default function KnowledgeAnalytics() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.bg }}>
+    <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
         <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 12 }}>
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>KNOWLEDGE ANALYTICS</p>
@@ -129,3 +129,4 @@ function Breakdown({ rows, total, color }) {
     </div>
   );
 }
+

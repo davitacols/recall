@@ -982,11 +982,13 @@ def mission_control_briefing(request):
         active_blockers = []
 
     try:
-        open_tasks = Task.objects.filter(
+        open_tasks_qs = Task.objects.filter(
             organization=org,
             status__in=['todo', 'in_progress']
-        ).order_by('-created_at')[:80]
+        ).order_by('-created_at')
+        open_tasks = open_tasks_qs[:80]
     except Exception:
+        open_tasks_qs = None
         open_tasks = []
 
     try:
@@ -1001,8 +1003,8 @@ def mission_control_briefing(request):
     unresolved_count = unresolved_decisions.count() if hasattr(unresolved_decisions, 'count') else len(unresolved_decisions)
     blockers_count = active_blockers.count() if hasattr(active_blockers, 'count') else len(active_blockers)
     high_priority_count = (
-        open_tasks.filter(priority='high').count()
-        if hasattr(open_tasks, 'filter')
+        open_tasks_qs.filter(priority='high').count()
+        if open_tasks_qs is not None
         else len([t for t in open_tasks if getattr(t, 'priority', '') == 'high'])
     )
 
@@ -1052,8 +1054,8 @@ def mission_control_briefing(request):
         citations.append({'kind': 'blocker', 'id': getattr(blocker, 'id', None), 'title': title, 'url': "/blockers"})
 
     high_priority_tasks = (
-        list(open_tasks.filter(priority='high')[:2])
-        if hasattr(open_tasks, 'filter')
+        list(open_tasks_qs.filter(priority='high')[:2])
+        if open_tasks_qs is not None
         else [t for t in list(open_tasks)[:20] if getattr(t, 'priority', '') == 'high'][:2]
     )
     for task in high_priority_tasks:

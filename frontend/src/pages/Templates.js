@@ -98,7 +98,17 @@ export default function Templates() {
                   <span style={{ fontSize: 11, color: palette.muted, border: `1px solid ${palette.border}`, borderRadius: 999, padding: "3px 8px", textTransform: "capitalize", fontWeight: 700 }}>
                     {template.template_type}
                   </span>
-                  <button onClick={() => deleteTemplate(template.id)} style={{ border: "1px solid rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.08)", color: "#ef4444", borderRadius: 8, padding: "6px", cursor: "pointer" }}>
+                  <button
+                    onClick={() => deleteTemplate(template.id)}
+                    style={{
+                      border: `1px solid ${palette.danger}`,
+                      background: `${palette.danger}20`,
+                      color: palette.danger,
+                      borderRadius: 8,
+                      padding: "6px",
+                      cursor: "pointer",
+                    }}
+                  >
                     <TrashIcon style={{ width: 13, height: 13 }} />
                   </button>
                 </div>
@@ -136,7 +146,7 @@ export default function Templates() {
                   }}
                   style={{ ...ui.input, fontFamily: "monospace", fontSize: 12 }}
                 />
-                {contentError && <p style={{ margin: 0, fontSize: 12, color: "#ef4444" }}>{contentError}</p>}
+                {contentError && <p style={{ margin: 0, fontSize: 12, color: palette.danger }}>{contentError}</p>}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
                   <button type="button" onClick={() => setShowModal(false)} style={ui.secondaryButton}>Cancel</button>
                   <button type="submit" disabled={Boolean(contentError)} style={{ ...ui.primaryButton, opacity: contentError ? 0.6 : 1 }}>Create</button>

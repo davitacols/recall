@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette } from "../utils/projectUi";
 
 const REQUEST_TYPES = [
   { key: "access", name: "Access Request" },
@@ -74,37 +75,18 @@ export default function ServiceDesk() {
   const [chatError, setChatError] = useState("");
   const chatEndRef = useRef(null);
 
-  const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            page: "#0f0b0d",
-            panel: "#171215",
-            panelAlt: "#1e171b",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#baa892",
-            accent: "#ffb476",
-            accentSoft: "rgba(255,180,118,0.22)",
-            good: "#66d5ab",
-            warn: "#f59e0b",
-            bad: "#ef4444",
-          }
-        : {
-            page: "#f5eee3",
-            panel: "#fffaf3",
-            panelAlt: "#ffffff",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7d6d5a",
-            accent: "#d9692e",
-            accentSoft: "rgba(217,105,46,0.2)",
-            good: "#1f8f66",
-            warn: "#a16207",
-            bad: "#b91c1c",
-          },
-    [darkMode]
-  );
+  const palette = useMemo(() => {
+    const base = getProjectPalette(darkMode);
+    return {
+      ...base,
+      page: base.bg,
+      panel: base.card,
+      panelAlt: base.cardAlt,
+      accent: base.accent,
+      accentSoft: base.accentSoft,
+      bad: base.danger,
+    };
+  }, [darkMode]);
 
   const cards = useMemo(
     () => [
@@ -586,7 +568,7 @@ const cardStyle = {
 };
 
 const queueRow = {
-  border: "1px solid #e5e7eb",
+  border: "1px solid transparent",
   borderRadius: 10,
   padding: 10,
   display: "flex",
@@ -598,7 +580,7 @@ const queueRow = {
 
 const input = {
   width: "100%",
-  border: "1px solid #d1d5db",
+  border: "1px solid transparent",
   borderRadius: 8,
   padding: "10px 12px",
   fontSize: 14,
@@ -613,7 +595,7 @@ const twoCol = {
 
 const muted = {
   margin: 0,
-  color: "#6b7280",
+  color: "inherit",
   fontSize: 13,
 };
 
@@ -627,7 +609,7 @@ const themedBtnPrimary = (palette) => ({
   border: `1px solid ${palette.accent}`,
   borderRadius: 8,
   background: palette.accent,
-  color: "#ffffff",
+  color: palette.buttonText,
   padding: "9px 14px",
   fontWeight: 700,
   fontSize: 13,

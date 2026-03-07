@@ -15,7 +15,7 @@ cloudinary==1.44.1
 django-cloudinary-storage==0.3.0
 gunicorn==21.2.0
 celery==5.3.4
-redis==5.0.1
+redis==4.6.0
 python-decouple==3.8
 boto3==1.35.0
 Pillow==11.1.0

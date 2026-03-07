@@ -99,9 +99,9 @@ function SprintHistory() {
                   </div>
 
                   <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 }}>
-                    <Metric label="Completed" value={sprint.completed || 0} color="#10b981" />
-                    <Metric label="Blocked" value={sprint.blocked || 0} color="#ef4444" />
-                    <Metric label="Decisions" value={sprint.decisions || 0} color="#60a5fa" />
+                    <Metric label="Completed" value={sprint.completed || 0} color={palette.success} palette={palette} />
+                    <Metric label="Blocked" value={sprint.blocked || 0} color={palette.danger} palette={palette} />
+                    <Metric label="Decisions" value={sprint.decisions || 0} color={palette.info} palette={palette} />
                   </div>
 
                   <div style={{ marginTop: 10 }}>
@@ -109,8 +109,8 @@ function SprintHistory() {
                       <span style={{ fontSize: 11, color: palette.muted }}>Completion</span>
                       <span style={{ fontSize: 11, color: palette.text, fontWeight: 700 }}>{completion}%</span>
                     </div>
-                    <div style={{ width: "100%", height: 8, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" }}>
-                      <div style={{ width: `${completion}%`, height: "100%", background: "linear-gradient(90deg,#10b981,#34d399)" }} />
+                    <div style={{ width: "100%", height: 8, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
+                      <div style={{ width: `${completion}%`, height: "100%", background: `linear-gradient(90deg,${palette.success},${palette.info})` }} />
                     </div>
                   </div>
                 </article>
@@ -127,11 +127,11 @@ function SprintHistory() {
   );
 }
 
-function Metric({ label, value, color }) {
+function Metric({ label, value, color, palette }) {
   return (
-    <article style={{ borderRadius: 10, border: "1px solid rgba(120,120,120,0.3)", background: "#1f181c", padding: 10 }}>
+    <article style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10 }}>
       <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color }}>{value}</p>
-      <p style={{ margin: "4px 0 0", fontSize: 11, color: "#baa892" }}>{label}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>{label}</p>
     </article>
   );
 }

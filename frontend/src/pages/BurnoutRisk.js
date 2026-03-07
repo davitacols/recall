@@ -5,10 +5,10 @@ import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 const DAY_OPTIONS = [7, 14, 30];
 
-function riskColor(level) {
-  if (level === "high") return "#ef4444";
-  if (level === "medium") return "#f59e0b";
-  return "#22c55e";
+function riskColor(level, palette) {
+  if (level === "high") return palette.danger;
+  if (level === "medium") return palette.warn;
+  return palette.success;
 }
 
 export default function BurnoutRisk() {
@@ -55,8 +55,8 @@ export default function BurnoutRisk() {
         </section>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
-          <MetricCard label="Users Evaluated" value={data.users_evaluated || 0} />
-          <MetricCard label="High Risk" value={data.high_risk_count || 0} color="#ef4444" />
+          <MetricCard label="Users Evaluated" value={data.users_evaluated || 0} palette={palette} />
+          <MetricCard label="High Risk" value={data.high_risk_count || 0} color={palette.danger} palette={palette} />
           <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
             <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>Window</p>
             <select value={days} onChange={(event) => setDays(Number(event.target.value))} style={{ ...ui.input, marginTop: 8 }}>
@@ -108,7 +108,7 @@ export default function BurnoutRisk() {
                         {row.name || `User ${row.user_id}`}
                       </td>
                       <td style={{ padding: "9px 6px", borderBottom: `1px solid ${palette.border}`, fontSize: 12 }}>
-                        <span style={{ color: riskColor(row.risk_level), fontWeight: 700 }}>
+                        <span style={{ color: riskColor(row.risk_level, palette), fontWeight: 700 }}>
                           {row.risk_level} ({row.risk_score})
                         </span>
                       </td>
@@ -138,11 +138,11 @@ export default function BurnoutRisk() {
   );
 }
 
-function MetricCard({ label, value, color }) {
+function MetricCard({ label, value, color, palette }) {
   return (
-    <article style={{ borderRadius: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c", padding: 12 }}>
-      <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: color || "#f4ece0" }}>{value}</p>
-      <p style={{ margin: "4px 0 0", fontSize: 11, color: "#baa892" }}>{label}</p>
+    <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 12 }}>
+      <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: color || palette.text }}>{value}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>{label}</p>
     </article>
   );
 }

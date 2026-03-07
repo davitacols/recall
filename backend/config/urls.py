@@ -8,7 +8,12 @@ from apps.organizations.health import health_check, realtime_health_check, email
 def websocket_unavailable(request):
     return HttpResponse(status=404)
 
+
+def root_ok(request):
+    return HttpResponse("Recall API OK", status=200)
+
 urlpatterns = [
+    path('', root_ok, name='root_ok'),
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health_check'),
     path('api/health/realtime/', realtime_health_check, name='realtime_health_check'),

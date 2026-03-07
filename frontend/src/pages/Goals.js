@@ -97,10 +97,10 @@ export default function Goals() {
         </section>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8, marginBottom: 12 }}>
-          <Metric label="Total" value={goals.length} />
-          <Metric label="In Progress" value={inProgressCount} />
-          <Metric label="Completed" value={doneCount} />
-          <Metric label="Avg Progress" value={`${avgProgress}%`} />
+          <Metric label="Total" value={goals.length} palette={palette} />
+          <Metric label="In Progress" value={inProgressCount} palette={palette} />
+          <Metric label="Completed" value={doneCount} palette={palette} />
+          <Metric label="Avg Progress" value={`${avgProgress}%`} palette={palette} />
         </section>
 
         {goals.length === 0 ? (
@@ -112,15 +112,15 @@ export default function Goals() {
             {goals.map((goal) => (
               <article key={goal.id} onClick={() => navigate(`/business/goals/${goal.id}`)} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, cursor: "pointer" }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <FlagIcon style={{ width: 16, height: 16, color: statusColor(goal.status) }} />
+                  <FlagIcon style={{ width: 16, height: 16, color: statusColor(goal.status, palette) }} />
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{goal.title}</p>
                     <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{goal.description || "No description"}</p>
                   </div>
                 </div>
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ width: "100%", height: 7, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" }}>
-                    <div style={{ width: `${goal.progress || 0}%`, height: "100%", background: "linear-gradient(90deg,#10b981,#34d399)" }} />
+                  <div style={{ width: "100%", height: 7, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
+                    <div style={{ width: `${goal.progress || 0}%`, height: "100%", background: `linear-gradient(90deg,${palette.success},${palette.info})` }} />
                   </div>
                 </div>
                 <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
@@ -161,18 +161,18 @@ export default function Goals() {
   );
 }
 
-function Metric({ label, value }) {
+function Metric({ label, value, palette }) {
   return (
-    <article style={{ borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" }}>
-      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#f4ece0" }}>{value}</p>
-      <p style={{ margin: "4px 0 0", fontSize: 12, color: "#baa892" }}>{label}</p>
+    <article style={{ borderRadius: 12, padding: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: palette.text }}>{value}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{label}</p>
     </article>
   );
 }
 
-function statusColor(status) {
-  if (status === "completed") return "#10b981";
-  if (status === "in_progress") return "#3b82f6";
-  if (status === "on_hold") return "#f59e0b";
-  return "#9ca3af";
+function statusColor(status, palette) {
+  if (status === "completed") return palette.success;
+  if (status === "in_progress") return palette.info;
+  if (status === "on_hold") return palette.warn;
+  return palette.muted;
 }

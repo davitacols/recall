@@ -20,6 +20,7 @@ import {
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import BrandLogo from "./BrandLogo";
+import { getUnifiedNavPalette } from "../utils/projectUi";
 
 function getAppLaunchTarget(app) {
   const launchPath = (app?.launch_path || "").trim();
@@ -230,37 +231,7 @@ export default function UnifiedNav({
     };
   }, []);
 
-  const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            navBg: "rgba(11,18,24,0.92)",
-            border: "rgba(148, 198, 233, 0.2)",
-            text: "#e7f0f7",
-            muted: "#9bb0c0",
-            hover: "rgba(137, 191, 228, 0.1)",
-            active: "rgba(100, 177, 225, 0.2)",
-            searchBg: "rgba(16, 27, 36, 0.8)",
-            panelAlt: "rgba(255,255,255,0.04)",
-            accentA: "#64b1e1",
-            accentB: "#4fc4b6",
-            heroBg: "linear-gradient(140deg, rgba(73, 146, 196, 0.22), rgba(36, 96, 140, 0.14))",
-          }
-        : {
-            navBg: "rgba(244, 250, 255, 0.95)",
-            border: "rgba(83, 126, 157, 0.26)",
-            text: "#0f2535",
-            muted: "#4f6a7d",
-            hover: "rgba(46,125,179,0.08)",
-            active: "rgba(79, 154, 207, 0.16)",
-            searchBg: "rgba(255,255,255,0.92)",
-            panelAlt: "rgba(16, 68, 108, 0.05)",
-            accentA: "#3f93c9",
-            accentB: "#1ca394",
-            heroBg: "linear-gradient(142deg, rgba(95, 166, 214, 0.22), rgba(36, 125, 179, 0.1))",
-          },
-    [darkMode]
-  );
+  const palette = useMemo(() => getUnifiedNavPalette(darkMode), [darkMode]);
 
   const navItemsBase = [
     { name: "Home", href: "/", icon: HomeIcon },
@@ -424,6 +395,7 @@ export default function UnifiedNav({
         width: sidebarWidth,
         background: palette.navBg,
         borderRight: `1px solid ${palette.border}`,
+        boxShadow: palette.shadow,
         padding: collapsed ? "10px 6px" : sidebar.padding,
         gridTemplateRows: collapsed ? "auto minmax(0,1fr)" : sidebar.gridTemplateRows,
         transition: "width 0.2s ease, padding 0.2s ease",
@@ -458,30 +430,12 @@ export default function UnifiedNav({
       </div>
 
       {!collapsed && (
-        <div style={{ ...navHero, border: `1px solid ${palette.border}`, background: palette.heroBg }}>
-          <p style={{ ...navHeroEyebrow, color: palette.muted }}>UNIFIED COMMAND</p>
-          <p style={{ ...navHeroTitle, color: palette.text }}>Operate from one control surface</p>
-          <div style={quickPills}>
-            <Link to="/dashboard" style={{ ...quickPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.searchBg }}>
-              Dashboard
-            </Link>
-            <Link to="/ask" style={{ ...quickPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.searchBg }}>
-              Ask Recall
-            </Link>
-            <Link to="/decisions" style={{ ...quickPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.searchBg }}>
-              Decisions
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {!collapsed && (
         <div style={searchWrap} ref={searchRef}>
           <div
             style={{
               ...searchShell,
               background: palette.searchBg,
-              border: `1px solid ${searchOpen ? "#ffab69" : palette.border}`,
+              border: `1px solid ${searchOpen ? palette.searchFocusBorder : palette.border}`,
             }}
           >
             <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
@@ -503,12 +457,12 @@ export default function UnifiedNav({
                 <XMarkIcon style={icon14} />
               </button>
             ) : (
-              <kbd style={{ ...kbd, border: `1px solid ${palette.border}` }}>Ctrl+K</kbd>
+              <kbd style={{ ...kbd, border: `1px solid ${palette.border}`, background: palette.kbdBg }}>Ctrl+K</kbd>
             )}
           </div>
 
           {searchOpen && (query.trim() || suggestions.length > 0 || results.length > 0) && (
-            <div style={{ ...resultsDropdown, background: palette.navBg, border: `1px solid ${palette.border}` }}>
+            <div style={{ ...resultsDropdown, background: palette.navBg, border: `1px solid ${palette.border}`, boxShadow: palette.dropdownShadow }}>
               {loading && <div style={{ ...searchStateRow, color: palette.muted }}>Searching...</div>}
               {!loading && optionItems.length === 0 && (
                 <div style={{ ...searchStateRow, color: palette.muted }}>No results found</div>
@@ -579,7 +533,7 @@ export default function UnifiedNav({
                     ...topButton,
                     color: active ? palette.text : palette.muted,
                     background: active ? palette.active : "transparent",
-                    border: `1px solid ${active ? palette.border : "transparent"}`,
+                    border: `1px solid ${active ? palette.activeBorder : "transparent"}`,
                     justifyContent: collapsed ? "center" : "flex-start",
                     padding: collapsed ? "8px" : topButton.padding,
                   }}
@@ -623,7 +577,7 @@ export default function UnifiedNav({
                             ...dropdownItem,
                             color: subActive ? palette.text : palette.muted,
                             background: subActive ? palette.active : "transparent",
-                            borderLeft: `3px solid ${subActive ? "#ffab69" : "transparent"}`,
+                            borderLeft: `3px solid ${subActive ? palette.accentA : "transparent"}`,
                           }}
                         >
                           <SubIcon style={icon16} />
@@ -645,7 +599,7 @@ export default function UnifiedNav({
                 ...topButton,
                 color: active ? palette.text : palette.muted,
                 background: active ? palette.active : "transparent",
-                border: `1px solid ${active ? palette.border : "transparent"}`,
+                border: `1px solid ${active ? palette.activeBorder : "transparent"}`,
                 justifyContent: collapsed ? "center" : "flex-start",
                 padding: collapsed ? "8px" : topButton.padding,
               }}
@@ -672,7 +626,7 @@ export default function UnifiedNav({
               ...topButton,
               color: installedApps.length ? palette.text : palette.muted,
               background: openDropdown === "Apps" ? palette.active : "transparent",
-              border: `1px solid ${openDropdown === "Apps" ? palette.border : "transparent"}`,
+              border: `1px solid ${openDropdown === "Apps" ? palette.activeBorder : "transparent"}`,
               justifyContent: collapsed ? "center" : "flex-start",
               padding: collapsed ? "8px" : topButton.padding,
             }}
@@ -772,7 +726,7 @@ export default function UnifiedNav({
         <div style={{ ...insightCard, background: palette.panelAlt, border: `1px solid ${palette.border}` }}>
           <p style={{ ...insightLabel, color: palette.muted }}>Memory Health</p>
           <p style={{ ...insightValue, color: palette.text }}>91%</p>
-          <div style={insightTrack}>
+          <div style={{ ...insightTrack, background: palette.track }}>
             <div style={{ ...insightFill, background: `linear-gradient(90deg, ${palette.accentA}, ${palette.accentB})` }} />
           </div>
         </div>
@@ -922,46 +876,6 @@ const searchWrap = {
   padding: "0 2px",
 };
 
-const navHero = {
-  borderRadius: 14,
-  padding: "10px 11px",
-  display: "grid",
-  gap: 8,
-  position: "relative",
-  zIndex: 1,
-};
-
-const navHeroEyebrow = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-};
-
-const navHeroTitle = {
-  margin: 0,
-  fontSize: 13,
-  fontWeight: 700,
-  lineHeight: 1.35,
-};
-
-const quickPills = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  flexWrap: "wrap",
-};
-
-const quickPill = {
-  textDecoration: "none",
-  borderRadius: 999,
-  padding: "5px 8px",
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.02em",
-};
-
 const searchShell = {
   display: "inline-flex",
   alignItems: "center",
@@ -1010,7 +924,7 @@ const insightTrack = {
   width: "100%",
   height: 6,
   borderRadius: 999,
-  background: "rgba(148,163,184,0.22)",
+  background: "transparent",
   overflow: "hidden",
 };
 
@@ -1054,7 +968,7 @@ const kbd = {
   padding: "1px 5px",
   fontSize: 10,
   fontFamily: "monospace",
-  background: "rgba(255,255,255,0.03)",
+  background: "transparent",
   letterSpacing: "-0.01em",
   whiteSpace: "nowrap",
 };
@@ -1067,7 +981,7 @@ const resultsDropdown = {
   maxHeight: 360,
   overflowY: "auto",
   borderRadius: 12,
-  boxShadow: "0 18px 40px rgba(0,0,0,0.22)",
+  boxShadow: "none",
   zIndex: 90,
 };
 

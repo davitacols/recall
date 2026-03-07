@@ -299,7 +299,7 @@ export default function Documents() {
                   <button onClick={(event) => { event.stopPropagation(); navigate(`/business/documents/${doc.id}`); }} className="ui-btn-polish" style={{ ...ui.secondaryButton, padding: "7px 10px", fontSize: 12 }}>
                     Edit
                   </button>
-                  <span style={{ fontSize: 12, color: darkMode ? "#93c5fd" : "#1d4ed8", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontSize: 12, color: palette.link, display: "inline-flex", alignItems: "center", gap: 4 }}>
                     Open
                     <ArrowTopRightOnSquareIcon style={{ width: 12, height: 12 }} />
                   </span>
@@ -313,11 +313,11 @@ export default function Documents() {
           <div style={{ position: "fixed", inset: 0, zIndex: 140, background: "rgba(0,0,0,0.9)", display: "grid", placeItems: "center" }} onClick={() => setShowViewer(false)}>
             <div style={{ width: "100%", height: "100%", padding: 12 }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
-                <button onClick={() => setShowViewer(false)} style={{ ...ui.secondaryButton, borderColor: "rgba(255,255,255,0.5)", color: "#fff" }}>
+                <button onClick={() => setShowViewer(false)} style={{ ...ui.secondaryButton, borderColor: palette.border, color: palette.text, background: palette.card }}>
                   Close
                 </button>
               </div>
-              <iframe src={viewerUrl} title="Document preview" style={{ width: "100%", height: "calc(100vh - 72px)", border: "none", borderRadius: 8, background: "#fff" }} />
+              <iframe src={viewerUrl} title="Document preview" style={{ width: "100%", height: "calc(100vh - 72px)", border: "none", borderRadius: 8, background: palette.cardAlt }} />
             </div>
           </div>
         )}

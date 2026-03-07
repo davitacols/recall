@@ -99,6 +99,9 @@ def _calendar_oauth_state(user_id, provider, next_path):
 
 
 def _calendar_callback_url(request):
+    configured = str(getattr(settings, 'CALENDAR_OAUTH_REDIRECT_URI', '') or '').strip()
+    if configured:
+        return configured
     return request.build_absolute_uri('/api/business/calendar/oauth/callback/')
 
 

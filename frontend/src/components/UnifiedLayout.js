@@ -162,6 +162,15 @@ export default function UnifiedLayout({ children }) {
   const initial = user?.full_name?.charAt(0)?.toUpperCase() || "U";
   const activeSidebarWidth = sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidth;
   const pageTitle = getPageTitle(location.pathname);
+  const todayLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }).format(new Date()),
+    []
+  );
   const showAskFab =
     location.pathname === "/" || location.pathname === "/dashboard" || location.pathname === "/business";
 
@@ -302,19 +311,19 @@ export default function UnifiedLayout({ children }) {
             style={{
               ...layoutHeader,
               ...(isMobile ? layoutHeaderMobile : null),
-              background: "transparent",
-              border: "none",
-              boxShadow: "none",
+              background: palette.panelGlass,
+              border: `1px solid ${palette.border}`,
+              boxShadow: darkMode ? "0 18px 44px rgba(2,8,16,0.36)" : "0 18px 42px rgba(29,55,78,0.12)",
             }}
           >
             <div style={headerTop}>
               <div style={headerIdentity}>
                 <BrandLogo tone={darkMode ? "dark" : "light"} size={isMobile ? "sm" : "md"} showText={!isMobile} />
                 <div>
-                <p style={{ ...headerEyebrow, color: palette.muted }}>Operations Layer</p>
-                <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
-                  {pageTitle}
-                </h1>
+                  <p style={{ ...headerEyebrow, color: palette.muted }}>Operations Layer</p>
+                  <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
+                    {pageTitle}
+                  </h1>
                 </div>
               </div>
               <div style={{ ...headerActions, ...(isMobile ? headerActionsMobile : null) }}>
@@ -477,8 +486,42 @@ export default function UnifiedLayout({ children }) {
                 </div>
               </div>
             </div>
-            <div style={{ ...headerBreadcrumbs, ...(isMobile ? { display: "none" } : null) }}>
-              <Breadcrumbs darkMode={darkMode} />
+            <div style={{ ...headerMetaRow, ...(isMobile ? { gap: 8 } : null) }}>
+              <div style={{ ...headerBreadcrumbs, ...(isMobile ? { display: "none" } : null) }}>
+                <Breadcrumbs darkMode={darkMode} />
+              </div>
+              <div style={headerMetaPills}>
+                <span
+                  style={{
+                    ...headerPill,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.buttonBg,
+                    color: palette.text,
+                  }}
+                >
+                  {user?.organization_slug || "workspace"}
+                </span>
+                <span
+                  style={{
+                    ...headerPill,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.buttonBg,
+                    color: palette.muted,
+                  }}
+                >
+                  {String(user?.experience_mode || "standard").toUpperCase()}
+                </span>
+                <span
+                  style={{
+                    ...headerPill,
+                    border: `1px solid ${palette.border}`,
+                    background: darkMode ? "rgba(139,208,255,0.12)" : "rgba(46,125,179,0.08)",
+                    color: palette.text,
+                  }}
+                >
+                  {todayLabel}
+                </span>
+              </div>
             </div>
           </header>
           {children}
@@ -524,7 +567,7 @@ const page = {
   position: "relative",
   overflowX: "hidden",
   backgroundImage:
-    "radial-gradient(1100px 560px at -6% -10%, rgba(122,181,224,0.16), transparent 62%), radial-gradient(1100px 680px at 108% -8%, rgba(72,129,172,0.14), transparent 58%)",
+    "radial-gradient(920px 520px at -4% -8%, rgba(122,181,224,0.2), transparent 62%), radial-gradient(860px 620px at 108% -10%, rgba(72,129,172,0.16), transparent 58%), radial-gradient(900px 500px at 50% 120%, rgba(73,139,181,0.1), transparent 66%)",
 };
 
 const ambientGlowOne = {
@@ -709,34 +752,34 @@ const main = {
   position: "relative",
   zIndex: 1,
   minHeight: "100vh",
-  transition: "padding-left 0.2s ease",
-  paddingBottom: 20,
+  transition: "padding-left 0.22s ease",
+  paddingBottom: 24,
 };
 
 const contentContainer = {
   maxWidth: 1520,
   margin: "0 auto",
-  padding: "10px clamp(14px, 2.4vw, 30px) 28px",
+  padding: "12px clamp(14px, 2.4vw, 30px) 30px",
 };
 
 const contentContainerMobile = {
-  padding: "0 10px calc(90px + env(safe-area-inset-bottom, 0px))",
+  padding: "4px 10px calc(90px + env(safe-area-inset-bottom, 0px))",
 };
 
 const layoutHeader = {
   position: "sticky",
-  top: 10,
+  top: 12,
   zIndex: 80,
-  borderRadius: 0,
-  padding: "10px 0 8px",
-  marginBottom: 14,
-  backdropFilter: "none",
+  borderRadius: 18,
+  padding: "12px 14px 10px",
+  marginBottom: 16,
+  backdropFilter: "blur(10px)",
 };
 
 const layoutHeaderMobile = {
   top: 8,
-  borderRadius: 0,
-  padding: "8px 0 8px",
+  borderRadius: 14,
+  padding: "10px 10px 8px",
   marginBottom: 10,
 };
 
@@ -749,9 +792,10 @@ const headerEyebrow = {
 };
 
 const headerTitle = {
-  margin: "6px 0 0",
-  fontSize: "clamp(1.08rem, 2.2vw, 1.55rem)",
+  margin: "5px 0 0",
+  fontSize: "clamp(1.12rem, 2.25vw, 1.62rem)",
   letterSpacing: "-0.02em",
+  fontWeight: 800,
 };
 
 const headerTitleMobile = {
@@ -763,7 +807,7 @@ const headerTop = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: 12,
+  gap: 14,
   flexWrap: "wrap",
 };
 
@@ -776,7 +820,7 @@ const headerIdentity = {
 const headerActions = {
   display: "flex",
   alignItems: "center",
-  gap: 9,
+  gap: 10,
 };
 
 const headerActionsMobile = {
@@ -784,7 +828,31 @@ const headerActionsMobile = {
 };
 
 const headerBreadcrumbs = {
-  marginTop: 4,
+  minWidth: 0,
+};
+
+const headerMetaRow = {
+  marginTop: 10,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+};
+
+const headerMetaPills = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+  flexWrap: "wrap",
+};
+
+const headerPill = {
+  borderRadius: 999,
+  padding: "6px 10px",
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
 };
 
 function getPageTitle(pathname) {

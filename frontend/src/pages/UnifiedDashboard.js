@@ -5,6 +5,7 @@ import AdvancedAIInsights from "../components/AdvancedAIInsights";
 import DashboardWidgets from "../components/DashboardWidgets";
 import MissionControlPanel from "../components/MissionControlPanel";
 import ChiefOfStaffPanel from "../components/ChiefOfStaffPanel";
+import BrandedDashboardIllustration from "../components/BrandedDashboardIllustration";
 import {
   MetricsTracker,
   TeamExpertiseMap,
@@ -457,22 +458,28 @@ export default function UnifiedDashboard() {
           padding: "16px 16px 14px",
         }}
       >
-        <div>
+        <div style={heroMainWrap}>
           <p style={{ ...eyebrow, color: palette.muted }}>UNIFIED DASHBOARD</p>
           <h1 style={{ ...title, color: palette.text }}>Unified Operations Command Center</h1>
           <p style={{ ...subtitle, color: palette.muted }}>
             Understand what needs attention now, what is healthy, and where to act next across decisions, outcomes, and sprint execution.
           </p>
+
+          <div style={heroBadges}>
+            <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
+              <SparklesIcon style={icon16} /> AI rate {stats.rate}%
+            </div>
+            <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
+              {stats.activity} signals this week
+            </div>
+          </div>
         </div>
 
-        <div style={heroBadges}>
-          <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
-            <SparklesIcon style={icon16} /> AI rate {stats.rate}%
+        {!isNarrow && (
+          <div style={heroArtWrap}>
+            <BrandedDashboardIllustration darkMode={darkMode} />
           </div>
-          <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
-            {stats.activity} signals this week
-          </div>
-        </div>
+        )}
       </section>
 
       <section className="ui-enter" style={{ ...kpiGrid, "--ui-delay": "130ms" }}>
@@ -1119,8 +1126,10 @@ const title = {
 };
 
 const subtitle = { margin: 0, fontSize: 14, lineHeight: 1.48, maxWidth: 700 };
+const heroMainWrap = { minWidth: 0, flex: 1 };
 
 const heroBadges = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
+const heroArtWrap = { width: "min(360px, 100%)", display: "grid", placeItems: "stretch" };
 
 const heroBadge = {
   display: "inline-flex",

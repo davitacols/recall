@@ -10,11 +10,10 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { CardSkeleton } from "../components/Skeleton";
+import BrandedDashboardIllustration from "../components/BrandedDashboardIllustration";
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
-
-const dashboardIllustration = "/illustrations/5252473.jpg";
 
 function Dashboard() {
   const { user } = useAuth();
@@ -168,15 +167,7 @@ function Dashboard() {
         </div>
         {!isNarrow && (
           <div style={{ ...heroMediaFrame, border: `1px solid ${palette.border}` }}>
-            <img
-              src={dashboardIllustration}
-              alt="Illustration of collaborative work and planning"
-              style={heroMediaImage}
-            />
-            <div style={heroMediaOverlay}>
-              <p style={heroMediaTitle}>Atlassian-style workflow clarity</p>
-              <p style={heroMediaText}>Projects, updates, and decisions aligned in one snapshot.</p>
-            </div>
+            <BrandedDashboardIllustration darkMode={darkMode} compact />
           </div>
         )}
       </section>
@@ -407,42 +398,11 @@ const heroActions = {
 };
 
 const heroMediaFrame = {
-  borderRadius: 14,
-  overflow: "hidden",
-  background: "var(--app-info-soft)",
-  minHeight: 170,
+  background: "transparent",
+  minHeight: 184,
   display: "grid",
-  alignContent: "end",
+  placeItems: "stretch",
   position: "relative",
-};
-
-const heroMediaImage = {
-  position: "absolute",
-  inset: 0,
-  width: "100%",
-  height: "100%",
-  objectFit: "cover",
-};
-
-const heroMediaOverlay = {
-  position: "relative",
-  zIndex: 1,
-  padding: "12px 12px 14px",
-  background: "linear-gradient(180deg, rgba(12,8,6,0), rgba(12,8,6,0.76))",
-};
-
-const heroMediaTitle = {
-  margin: 0,
-  color: "#f8f0e4",
-  fontWeight: 700,
-  fontSize: 13,
-};
-
-const heroMediaText = {
-  margin: "6px 0 0",
-  color: "rgba(248,240,228,0.86)",
-  fontSize: 12,
-  lineHeight: 1.4,
 };
 
 const sharedAction = {

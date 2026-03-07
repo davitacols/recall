@@ -2,6 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://recall-backend-4hok.onrender.com/api';
+const TURNSTILE_BYPASS_TOKEN = process.env.EXPO_PUBLIC_TURNSTILE_BYPASS_TOKEN || '';
 
 console.log('API_URL configured as:', API_URL);
 
@@ -55,11 +56,13 @@ api.interceptors.response.use(
 );
 
 export const authService = {
-  login: (email: string, password: string) => {
+  login: (email: string, password: string, orgSlug?: string) => {
     console.log('Attempting login with:', email);
-    return api.post('/auth/login/', { 
-      username: email, 
-      password 
+    return api.post('/auth/login/', {
+      username: email,
+      password,
+      org_slug: orgSlug || undefined,
+      turnstile_token: TURNSTILE_BYPASS_TOKEN || undefined,
     });
   },
   
@@ -67,6 +70,16 @@ export const authService = {
     api.post('/auth/register/', { email, password, organization }),
   
   profile: () => api.get('/auth/profile/'),
+};
+
+export const normalizeList = <T = any>(payload: any): T[] => {
+  if (Array.isArray(payload)) return payload as T[];
+  if (Array.isArray(payload?.results)) return payload.results as T[];
+  if (Array.isArray(payload?.items)) return payload.items as T[];
+  if (Array.isArray(payload?.conversations)) return payload.conversations as T[];
+  if (Array.isArray(payload?.decisions)) return payload.decisions as T[];
+  if (Array.isArray(payload?.sprints)) return payload.sprints as T[];
+  return [];
 };
 
 export const conversationService = {
@@ -103,6 +116,12 @@ export const issueService = {
   get: (id: number) => api.get(`/agile/issues/${id}/`),
   
   update: (id: number, data: any) => api.put(`/agile/issues/${id}/`, data),
+};
+
+export const notificationService = {
+  list: () => api.get('/notifications/'),
+  markRead: (id: number) => api.post(`/notifications/${id}/read/`),
+  markAllRead: () => api.post('/notifications/read-all/'),
 };
 
 export default api;

@@ -1,128 +1,88 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator, StatusBar } from 'react-native';
+import { ActivityIndicator, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../stores/authStore';
+
 import { EyeIcon, EyeSlashIcon } from '../components/Icons';
-import ConnectionTest from '../components/ConnectionTest';
+import { useAuthStore } from '../stores/authStore';
 
 export default function LoginScreen() {
+  const router = useRouter();
+  const { login, loading, error } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [orgSlug, setOrgSlug] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showTest, setShowTest] = useState(false);
-  const { login, loading, error } = useAuthStore();
-  const router = useRouter();
 
-  const handleLogin = async () => {
+  const onLogin = async () => {
     try {
-      await login(email, password);
-      router.replace('/(tabs)/conversations');
-    } catch (err) {
-      console.error('Login error:', err);
+      await login(email.trim(), password, orgSlug.trim() || undefined);
+      router.replace('/(tabs)');
+    } catch {
+      // handled in store
     }
   };
 
-  if (showTest) {
-    return (
-      <View style={styles.container}>
-        <ConnectionTest />
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => setShowTest(false)}
-        >
-          <Text style={styles.backButtonText}>Back to Login</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      
-      {/* Logo Section */}
-      <View style={styles.logoSection}>
-        <View style={styles.logoContainer}>
-          <View style={styles.logoIcon}>
-            <Text style={styles.logoText}>R</Text>
-          </View>
-          <Text style={styles.brandName}>Recall</Text>
-        </View>
-        
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Sign in to your account</Text>
+    <View style={styles.screen}>
+      <StatusBar barStyle="light-content" backgroundColor="#0b1119" />
+      <View style={styles.hero}>
+        <View style={styles.brandDot} />
+        <Text style={styles.brand}>Knoledgr</Text>
+        <Text style={styles.tag}>Decisions. Context. Execution.</Text>
       </View>
 
-      {/* Form Section */}
-      <View style={styles.formSection}>
-        {error && (
-          <View style={styles.errorContainer}>
+      <View style={styles.card}>
+        <Text style={styles.title}>Sign in</Text>
+        <Text style={styles.sub}>Use your workspace credentials.</Text>
+
+        {error ? (
+          <View style={styles.errorWrap}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
-        )}
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email address</Text>
+        ) : null}
+
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Email"
+          placeholderTextColor="#8ba0b8"
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+
+        <TextInput
+          style={styles.input}
+          value={orgSlug}
+          onChangeText={setOrgSlug}
+          placeholder="Organization slug (optional)"
+          placeholderTextColor="#8ba0b8"
+          autoCapitalize="none"
+        />
+
+        <View style={styles.passwordWrap}>
           <TextInput
-            style={styles.input}
-            placeholder="you@company.com"
-            placeholderTextColor="#6b7280"
-            value={email}
-            onChangeText={setEmail}
-            editable={!loading}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
+            style={styles.password}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+            placeholderTextColor="#8ba0b8"
+            secureTextEntry={!showPassword}
           />
+          <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
+            {showPassword ? <EyeSlashIcon color="#9cb1ca" /> : <EyeIcon color="#9cb1ca" />}
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="••••••••"
-              placeholderTextColor="#6b7280"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              editable={!loading}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity
-              style={styles.eyeButton}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? (
-                <EyeSlashIcon size={18} color="#9ca3af" />
-              ) : (
-                <EyeIcon size={18} color="#9ca3af" />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
+        <TouchableOpacity style={styles.loginBtn} onPress={onLogin} disabled={loading}>
           {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#ffffff" size="small" />
-              <Text style={styles.loadingText}>Signing in...</Text>
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color="#111827" size="small" />
+              <Text style={styles.loginText}>Signing in...</Text>
             </View>
           ) : (
-            <Text style={styles.loginButtonText}>Sign in</Text>
+            <Text style={styles.loginText}>Continue</Text>
           )}
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={styles.testButton}
-          onPress={() => setShowTest(true)}
-        >
-          <Text style={styles.testButtonText}>Test Connection</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -130,157 +90,104 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#000000',
-    paddingHorizontal: 24,
-  },
-  logoSection: {
-    flex: 1,
+    backgroundColor: '#0b1119',
+    paddingHorizontal: 22,
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 48,
   },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  hero: {
     marginBottom: 24,
   },
-  logoIcon: {
+  brandDot: {
     width: 40,
-    height: 40,
-    backgroundColor: '#374151',
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+    height: 6,
+    borderRadius: 8,
+    backgroundColor: '#f0b36d',
+    marginBottom: 14,
   },
-  logoText: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
+  brand: {
+    color: '#f8fafc',
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
-  brandName: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: 'bold',
+  tag: {
+    color: '#9db0c8',
+    fontSize: 14,
+    marginTop: 6,
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: '#1f2a3a',
+    borderRadius: 18,
+    padding: 18,
+    backgroundColor: '#121a27',
   },
   title: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginBottom: 8,
-    textAlign: 'center',
+    color: '#f8fafc',
+    fontSize: 22,
+    fontWeight: '700',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#d1d5db',
-    textAlign: 'center',
-  },
-  formSection: {
-    paddingBottom: 48,
-  },
-  errorContainer: {
-    backgroundColor: '#7f1d1d',
-    borderWidth: 1,
-    borderColor: '#dc2626',
-    borderRadius: 4,
-    padding: 12,
+  sub: {
+    color: '#9db0c8',
+    marginTop: 4,
     marginBottom: 16,
+  },
+  errorWrap: {
+    backgroundColor: '#4c1d1d',
+    borderColor: '#7f1d1d',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
   },
   errorText: {
-    color: '#fca5a5',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
+    color: '#fecaca',
     fontSize: 13,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 8,
   },
   input: {
-    backgroundColor: '#1a1a1a',
     borderWidth: 1,
-    borderColor: '#374151',
-    borderRadius: 4,
+    borderColor: '#273449',
+    backgroundColor: '#0e1622',
+    borderRadius: 11,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#ffffff',
-  },
-  passwordContainer: {
-    position: 'relative',
-  },
-  passwordInput: {
-    backgroundColor: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#374151',
-    borderRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    paddingRight: 40,
-    fontSize: 14,
-    color: '#ffffff',
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: 12,
-    top: '50%',
-    transform: [{ translateY: -9 }],
-    padding: 4,
-  },
-  loginButton: {
-    backgroundColor: '#374151',
-    borderRadius: 4,
     paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 24,
+    marginBottom: 10,
+    color: '#f8fafc',
   },
-  loginButtonDisabled: {
-    backgroundColor: '#4b5563',
-    opacity: 0.6,
-  },
-  loginButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  loadingContainer: {
+  passwordWrap: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#273449',
+    backgroundColor: '#0e1622',
+    borderRadius: 11,
+    marginBottom: 14,
   },
-  loadingText: {
-    color: '#ffffff',
-    fontSize: 14,
+  password: {
+    flex: 1,
+    color: '#f8fafc',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  eyeBtn: {
+    paddingHorizontal: 12,
+  },
+  loginBtn: {
+    borderRadius: 12,
+    backgroundColor: '#f0b36d',
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  loginText: {
+    color: '#111827',
     fontWeight: '700',
-    marginLeft: 8,
-  },
-  testButton: {
-    backgroundColor: '#059669',
-    borderRadius: 4,
-    paddingVertical: 10,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  testButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  backButton: {
-    backgroundColor: '#6b7280',
-    borderRadius: 4,
-    paddingVertical: 10,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  backButtonText: {
-    color: '#ffffff',
     fontSize: 14,
-    fontWeight: '600',
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
 });

@@ -13,26 +13,28 @@ interface AuthStore {
   user: User | null;
   token: string | null;
   loading: boolean;
+  initialized: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, orgSlug?: string) => Promise<void>;
   logout: () => Promise<void>;
-  restoreToken: () => Promise<void>;
+  bootstrap: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   token: null,
   loading: false,
+  initialized: false,
   error: null,
 
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string, orgSlug?: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await authService.login(email, password);
+      const response = await authService.login(email, password, orgSlug);
       const { access_token, user } = response.data;
       
       await AsyncStorage.setItem('access_token', access_token);
-      set({ user, token: access_token, loading: false });
+      set({ user, token: access_token, loading: false, initialized: true });
     } catch (error: any) {
       set({ error: error.response?.data?.error || 'Login failed', loading: false });
       throw error;
@@ -44,14 +46,19 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ user: null, token: null });
   },
 
-  restoreToken: async () => {
+  bootstrap: async () => {
     try {
       const token = await AsyncStorage.getItem('access_token');
       if (token) {
         set({ token });
+        const profile = await authService.profile();
+        set({ user: profile.data, initialized: true });
+        return;
       }
     } catch (error) {
       console.error('Failed to restore token:', error);
+      await AsyncStorage.removeItem('access_token');
     }
+    set({ token: null, user: null, initialized: true });
   },
 }));

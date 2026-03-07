@@ -238,6 +238,8 @@ TURNSTILE_VERIFY_URL = config(
     'TURNSTILE_VERIFY_URL',
     default='https://challenges.cloudflare.com/turnstile/v0/siteverify'
 )
+TURNSTILE_ALLOW_MOBILE_BYPASS = _env_bool('TURNSTILE_ALLOW_MOBILE_BYPASS', default=False)
+TURNSTILE_MOBILE_BYPASS_TOKEN = config('TURNSTILE_MOBILE_BYPASS_TOKEN', default='').strip()
 
 # Email Configuration (Resend)
 RESEND_API_KEY = config('RESEND_API_KEY', default='')

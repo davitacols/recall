@@ -1,28 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  RefreshControl,
   ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { decisionService } from '../../services/api';
+import { useRouter } from 'expo-router';
+
 import { DecisionIcon, PlusIcon } from '../../components/Icons';
+import { decisionService, normalizeList } from '../../services/api';
 
 interface Decision {
   id: number;
   title: string;
-  description: string;
-  status: string;
-  impact_level: string;
-  decision_maker_name: string;
+  description?: string;
+  status?: string;
+  impact_level?: string;
+  decision_maker_name?: string;
   created_at: string;
-  confidence_level: number;
+  confidence_level?: number;
 }
 
 export default function DecisionsScreen() {
+  const router = useRouter();
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,7 +33,7 @@ export default function DecisionsScreen() {
   const fetchDecisions = async () => {
     try {
       const response = await decisionService.list();
-      setDecisions(response.data.results || []);
+      setDecisions(normalizeList<Decision>(response.data));
     } catch (error) {
       console.error('Error fetching decisions:', error);
     } finally {
@@ -43,234 +46,117 @@ export default function DecisionsScreen() {
     fetchDecisions();
   }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchDecisions();
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'approved': return '#059669';
-      case 'implemented': return '#0891b2';
-      case 'rejected': return '#dc2626';
-      case 'under_review': return '#ca8a04';
-      default: return '#6b7280';
+  const statusColor = (status?: string) => {
+    switch ((status || '').toLowerCase()) {
+      case 'approved':
+      case 'accepted':
+        return '#0ea56b';
+      case 'rejected':
+        return '#dc2626';
+      case 'proposed':
+        return '#f59e0b';
+      default:
+        return '#64748b';
     }
   };
 
-  const getImpactColor = (impact: string) => {
-    switch (impact?.toLowerCase()) {
-      case 'high': return '#dc2626';
-      case 'medium': return '#ea580c';
-      case 'low': return '#059669';
-      default: return '#6b7280';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
-  const renderDecision = ({ item }: { item: Decision }) => (
-    <TouchableOpacity style={styles.decisionCard}>
-      <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
-          <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(item.status) }]} />
-          <View>
-            <Text style={styles.decisionMaker}>{item.decision_maker_name}</Text>
-            <Text style={styles.timestamp}>{formatDate(item.created_at)}</Text>
-          </View>
-        </View>
-        <View style={[styles.impactBadge, { backgroundColor: getImpactColor(item.impact_level) }]}>
-          <Text style={styles.impactText}>{item.impact_level?.toUpperCase()}</Text>
-        </View>
+  const renderItem = ({ item }: { item: Decision }) => (
+    <TouchableOpacity style={styles.card} activeOpacity={0.85}>
+      <View style={styles.row}>
+        <Text style={[styles.badge, { color: statusColor(item.status) }]}>
+          {(item.status || 'unknown').toUpperCase()}
+        </Text>
+        <Text style={styles.time}>{new Date(item.created_at).toLocaleDateString()}</Text>
       </View>
-      
       <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-      <Text style={styles.description} numberOfLines={3}>{item.description}</Text>
-      
-      <View style={styles.cardFooter}>
-        <View style={styles.statusContainer}>
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status?.replace('_', ' ').toUpperCase()}
-          </Text>
-        </View>
-        {item.confidence_level && (
-          <View style={styles.confidenceContainer}>
-            <Text style={styles.confidenceText}>
-              {Math.round(item.confidence_level)}% confidence
-            </Text>
-          </View>
-        )}
+      <Text style={styles.description} numberOfLines={2}>{item.description || 'No summary yet.'}</Text>
+      <View style={styles.row}>
+        <Text style={styles.meta}>{item.decision_maker_name || 'Unknown owner'}</Text>
+        <Text style={styles.meta}>
+          {Math.round(item.confidence_level || 0)}% confidence
+        </Text>
       </View>
     </TouchableOpacity>
   );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ffffff" />
-        <Text style={styles.loadingText}>Loading decisions...</Text>
+      <View style={styles.loaderWrap}>
+        <ActivityIndicator size="large" color="#f0b36d" />
+        <Text style={styles.loaderText}>Loading decisions...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <DecisionIcon size={24} color="#ffffff" />
+        <View style={styles.headerLeft}>
+          <DecisionIcon color="#f6c287" />
           <Text style={styles.headerTitle}>Decisions</Text>
         </View>
-        <TouchableOpacity style={styles.addButton}>
-          <PlusIcon size={20} color="#ffffff" />
+        <TouchableOpacity style={styles.plusBtn} onPress={() => router.push('/decisions/new')}>
+          <PlusIcon color="#0f141d" />
         </TouchableOpacity>
       </View>
 
       <FlatList
         data={decisions}
-        renderItem={renderDecision}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContainer}
+        renderItem={renderItem}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#ffffff"
-            colors={['#ffffff']}
+            onRefresh={() => {
+              setRefreshing(true);
+              fetchDecisions();
+            }}
+            tintColor="#f0b36d"
           />
         }
-        showsVerticalScrollIndicator={false}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
+  screen: { flex: 1, backgroundColor: '#0f141d' },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
-  },
-  headerContent: {
+    borderBottomColor: '#1e293b',
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginLeft: 12,
-  },
-  addButton: {
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerTitle: { color: '#f8fafc', fontSize: 20, fontWeight: '700' },
+  plusBtn: {
     width: 36,
     height: 36,
-    backgroundColor: '#374151',
-    borderRadius: 4,
+    borderRadius: 10,
+    backgroundColor: '#f0b36d',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#000000',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: '#ffffff',
-    marginTop: 12,
-    fontSize: 14,
-  },
-  listContainer: {
-    padding: 16,
-  },
-  decisionCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 4,
-    padding: 16,
-    marginBottom: 12,
+  list: { padding: 16 },
+  card: {
+    backgroundColor: '#121a27',
+    borderColor: '#263246',
     borderWidth: 1,
-    borderColor: '#374151',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 12,
+    gap: 6,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  decisionMaker: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  impactBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  impactText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 8,
-    lineHeight: 22,
-  },
-  description: {
-    fontSize: 14,
-    color: '#d1d5db',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statusContainer: {
-    flex: 1,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  confidenceContainer: {
-    backgroundColor: '#374151',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  confidenceText: {
-    fontSize: 11,
-    color: '#ffffff',
-    fontWeight: '600',
-  },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  badge: { fontSize: 11, fontWeight: '700' },
+  time: { color: '#90a0b5', fontSize: 11 },
+  title: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
+  description: { color: '#c6d2e3', fontSize: 13, lineHeight: 18 },
+  meta: { color: '#90a0b5', fontSize: 12 },
+  loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f141d' },
+  loaderText: { color: '#dbe5f3', marginTop: 10 },
 });

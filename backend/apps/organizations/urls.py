@@ -182,6 +182,8 @@ urlpatterns = [
     
     # Import/Export
     path('import/', import_export_views.import_data),
+    path('import/platform/preview/', import_export_views.preview_platform_import),
+    path('import/platform/', import_export_views.import_platform_data),
     path('data-export/', import_export_views.export_data),
     
     # Global Search

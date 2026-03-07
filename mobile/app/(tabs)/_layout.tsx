@@ -7,11 +7,11 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#ffffff',
-        tabBarInactiveTintColor: '#6b7280',
+        tabBarActiveTintColor: '#f6c287',
+        tabBarInactiveTintColor: '#8b97aa',
         tabBarStyle: {
-          backgroundColor: '#000000',
-          borderTopColor: '#1a1a1a',
+          backgroundColor: '#0f141d',
+          borderTopColor: '#1e293b',
           borderTopWidth: 1,
           height: Platform.OS === 'ios' ? 88 : 64,
           paddingBottom: Platform.OS === 'ios' ? 24 : 8,
@@ -23,14 +23,14 @@ export default function TabLayout() {
           marginTop: 4,
         },
         headerStyle: {
-          backgroundColor: '#000000',
-          borderBottomColor: '#1a1a1a',
+          backgroundColor: '#0f141d',
+          borderBottomColor: '#1e293b',
           borderBottomWidth: 1,
         },
-        headerTintColor: '#ffffff',
+        headerTintColor: '#eef2ff',
         headerTitleStyle: {
-          fontWeight: '900',
-          fontSize: 20,
+          fontWeight: '700',
+          fontSize: 18,
         },
       }}
     >
@@ -41,7 +41,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <HomeIcon size={24} color={color} />
           ),
-          headerTitle: 'Dashboard',
+          headerTitle: 'Knoledgr',
         }}
       />
       <Tabs.Screen

@@ -8,6 +8,15 @@ import csv
 import json
 import io
 
+from apps.organizations.platform_import_service import (
+    SUPPORTED_PLATFORMS,
+    build_preview_hash,
+    import_platform_payload,
+    preview_platform_payload,
+    parse_uploaded_file,
+    normalize_platform_payload,
+)
+
 User = get_user_model()
 
 @api_view(['POST'])
@@ -40,6 +49,112 @@ def import_data(request):
         return Response({'message': f'Imported {imported} records', 'count': imported})
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def import_platform_data(request):
+    """Import project workflow and context from supported external platforms."""
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    upload = request.FILES.get('file')
+    platform = (request.data.get('platform') or '').strip().lower()
+    project_name = (request.data.get('project_name') or '').strip()
+    include_context = str(request.data.get('include_context', 'true')).lower() != 'false'
+    preview_hash = (request.data.get('preview_hash') or '').strip().lower()
+    strict_preview = str(request.data.get('strict_preview', 'false')).lower() == 'true'
+
+    if not upload:
+        return Response({'error': 'File is required'}, status=status.HTTP_400_BAD_REQUEST)
+    if not platform:
+        return Response({'error': 'Platform is required'}, status=status.HTTP_400_BAD_REQUEST)
+    if platform not in SUPPORTED_PLATFORMS:
+        return Response(
+            {'error': f'Unsupported platform. Choose from: {", ".join(SUPPORTED_PLATFORMS)}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        payload = parse_uploaded_file(upload)
+        if strict_preview:
+            if not preview_hash:
+                return Response({'error': 'preview_hash is required when strict_preview=true'}, status=status.HTTP_400_BAD_REQUEST)
+            normalized = normalize_platform_payload(
+                platform=platform,
+                payload=payload,
+                project_name=project_name,
+            )
+            computed_hash = build_preview_hash(
+                platform=platform,
+                normalized=normalized,
+                include_context=include_context,
+            )
+            if computed_hash != preview_hash:
+                return Response(
+                    {
+                        'error': 'Preview no longer matches this file/options. Run preview again before importing.',
+                        'expected_preview_hash': computed_hash,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+        result = import_platform_payload(
+            organization=request.user.organization,
+            user=request.user,
+            platform=platform,
+            payload=payload,
+            project_name=project_name,
+            include_context=include_context,
+        )
+        return Response(
+            {
+                'message': f'Successfully imported workflow from {platform}',
+                'result': result,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as exc:
+        return Response({'error': f'Import failed: {exc}'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def preview_platform_import(request):
+    """Preview platform import mapping and inferred workflow without writing data."""
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    upload = request.FILES.get('file')
+    platform = (request.data.get('platform') or '').strip().lower()
+    project_name = (request.data.get('project_name') or '').strip()
+    include_context = str(request.data.get('include_context', 'true')).lower() != 'false'
+
+    if not upload:
+        return Response({'error': 'File is required'}, status=status.HTTP_400_BAD_REQUEST)
+    if not platform:
+        return Response({'error': 'Platform is required'}, status=status.HTTP_400_BAD_REQUEST)
+    if platform not in SUPPORTED_PLATFORMS:
+        return Response(
+            {'error': f'Unsupported platform. Choose from: {", ".join(SUPPORTED_PLATFORMS)}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        payload = parse_uploaded_file(upload)
+        preview = preview_platform_payload(
+            platform=platform,
+            payload=payload,
+            project_name=project_name,
+            include_context=include_context,
+        )
+        return Response({'message': 'Preview generated', 'preview': preview}, status=status.HTTP_200_OK)
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as exc:
+        return Response({'error': f'Preview failed: {exc}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])

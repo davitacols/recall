@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+
 import { conversationService } from '../../services/api';
 
 interface Conversation {
   id: number;
   title: string;
   content: string;
-  post_type: string;
-  priority: string;
-  author: { full_name: string };
+  post_type?: string;
+  priority?: string;
+  author?: { full_name?: string };
+  author_name?: string;
   created_at: string;
-  reply_count: number;
-  view_count: number;
+  reply_count?: number;
+  view_count?: number;
 }
 
 export default function ConversationDetailScreen() {
@@ -21,24 +23,23 @@ export default function ConversationDetailScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadConversation();
+    const load = async () => {
+      try {
+        const response = await conversationService.get(Number(id));
+        setConversation(response.data);
+      } catch (error) {
+        console.error('Failed to load conversation:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [id]);
-
-  const loadConversation = async () => {
-    try {
-      const response = await conversationService.get(Number(id));
-      setConversation(response.data);
-    } catch (error) {
-      console.error('Failed to load conversation:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#f0b36d" />
       </View>
     );
   }
@@ -46,154 +47,37 @@ export default function ConversationDetailScreen() {
   if (!conversation) {
     return (
       <View style={styles.center}>
-        <Text>Conversation not found</Text>
+        <Text style={styles.notFound}>Conversation not found</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{conversation.title}</Text>
-        <View style={styles.meta}>
-          <Text style={[styles.badge, styles[`badge_${conversation.post_type}`]]}>
-            {conversation.post_type}
-          </Text>
-          <Text style={[styles.priority, styles[`priority_${conversation.priority}`]]}>
-            {conversation.priority}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.info}>
-        <Text style={styles.author}>By {conversation.author.full_name}</Text>
-        <Text style={styles.date}>
-          {new Date(conversation.created_at).toLocaleDateString()}
-        </Text>
-      </View>
-
-      <View style={styles.content}>
-        <Text style={styles.contentText}>{conversation.content}</Text>
-      </View>
-
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Text style={styles.type}>{(conversation.post_type || 'discussion').toUpperCase()}</Text>
+      <Text style={styles.title}>{conversation.title}</Text>
+      <Text style={styles.meta}>
+        {(conversation.author?.full_name || conversation.author_name || 'Unknown author')} •{' '}
+        {new Date(conversation.created_at).toLocaleString()}
+      </Text>
+      <Text style={styles.body}>{conversation.content}</Text>
       <View style={styles.stats}>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>Views</Text>
-          <Text style={styles.statValue}>{conversation.view_count}</Text>
-        </View>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>Replies</Text>
-          <Text style={styles.statValue}>{conversation.reply_count}</Text>
-        </View>
+        <Text style={styles.stat}>{conversation.reply_count || 0} replies</Text>
+        <Text style={styles.stat}>{conversation.view_count || 0} views</Text>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#000',
-  },
-  meta: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#fff',
-  },
-  badge_decision: {
-    backgroundColor: '#FF9500',
-  },
-  badge_question: {
-    backgroundColor: '#5AC8FA',
-  },
-  badge_proposal: {
-    backgroundColor: '#34C759',
-  },
-  badge_update: {
-    backgroundColor: '#A2845E',
-  },
-  priority: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#fff',
-  },
-  priority_high: {
-    backgroundColor: '#FF3B30',
-  },
-  priority_medium: {
-    backgroundColor: '#FF9500',
-  },
-  priority_low: {
-    backgroundColor: '#34C759',
-  },
-  info: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  author: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-  },
-  date: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4,
-  },
-  content: {
-    padding: 16,
-  },
-  contentText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#333',
-  },
-  stats: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#999',
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
-    marginTop: 4,
-  },
+  screen: { flex: 1, backgroundColor: '#0f141d' },
+  content: { padding: 18, gap: 10 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f141d' },
+  notFound: { color: '#f8fafc' },
+  type: { color: '#f6c287', fontSize: 12, fontWeight: '700' },
+  title: { color: '#f8fafc', fontSize: 24, fontWeight: '800' },
+  meta: { color: '#90a0b5', fontSize: 12 },
+  body: { color: '#d4deec', fontSize: 15, lineHeight: 23, marginTop: 8 },
+  stats: { flexDirection: 'row', gap: 16, marginTop: 8 },
+  stat: { color: '#90a0b5', fontSize: 12 },
 });

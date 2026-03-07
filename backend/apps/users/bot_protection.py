@@ -28,6 +28,14 @@ def verify_turnstile_token(request, token):
 
     if not enabled:
         return True, None
+
+    # Optional controlled bypass for native mobile clients.
+    # Keep disabled in production unless intentionally configured.
+    allow_mobile_bypass = bool(getattr(settings, "TURNSTILE_ALLOW_MOBILE_BYPASS", False))
+    mobile_bypass_token = (getattr(settings, "TURNSTILE_MOBILE_BYPASS_TOKEN", "") or "").strip()
+    if allow_mobile_bypass and mobile_bypass_token and token == mobile_bypass_token:
+        return True, None
+
     if not secret_key:
         logger.warning("TURNSTILE_ENABLED is true but TURNSTILE_SECRET_KEY is not configured")
         return False, "Bot protection is temporarily unavailable."

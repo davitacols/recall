@@ -21,6 +21,7 @@ import {
 import api from "../services/api";
 import BrandLogo from "./BrandLogo";
 import { getUnifiedNavPalette } from "../utils/projectUi";
+import { useAuth } from "../hooks/useAuth";
 
 function getAppLaunchTarget(app) {
   const launchPath = (app?.launch_path || "").trim();
@@ -45,6 +46,7 @@ export default function UnifiedNav({
   minWidth = 220,
   maxWidth = 420,
 }) {
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
@@ -274,6 +276,9 @@ export default function UnifiedNav({
         { name: "Docs", href: "/docs", icon: DocumentTextIcon },
         { name: "Documents", href: "/business/documents", icon: DocumentTextIcon },
         { name: "Templates", href: "/business/templates", icon: DocumentTextIcon },
+        ...(user?.role === "admin"
+          ? [{ name: "Import/Export", href: "/import-export", icon: DocumentTextIcon }]
+          : []),
       ],
     },
   ];

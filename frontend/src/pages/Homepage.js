@@ -461,7 +461,7 @@ const backgroundLayer = {
 };
 
 const container = {
-  width: "min(1120px, 92vw)",
+  width: "min(1280px, 94vw)",
   margin: "0 auto",
 };
 
@@ -517,7 +517,7 @@ const primaryButton = {
 };
 
 const heroSection = {
-  padding: "78px 0 72px",
+  padding: "110px 0 100px",
 };
 
 const heroGrid = {
@@ -664,7 +664,7 @@ const timelineText = {
 };
 
 const statsGrid = {
-  marginTop: 22,
+  marginTop: 52,
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
   gap: 14,
@@ -673,14 +673,14 @@ const statsGrid = {
 const statCard = {
   border: "1px solid rgba(255,231,198,0.12)",
   borderRadius: 14,
-  padding: "16px 18px",
+  padding: "28px 32px",
   background: "var(--app-info-soft)",
 };
 
 const statValue = {
   margin: 0,
   fontWeight: 700,
-  fontSize: 28,
+  fontSize: 38,
   color: "#ffd390",
 };
 
@@ -691,7 +691,7 @@ const statLabel = {
 };
 
 const section = {
-  padding: "52px 0 68px",
+  padding: "96px 0 112px",
 };
 
 const illustrationGrid = {
@@ -709,13 +709,13 @@ const illustrationCard = {
 
 const illustrationImage = {
   width: "100%",
-  height: 180,
+  height: 220,
   objectFit: "cover",
   display: "block",
 };
 
 const illustrationBody = {
-  padding: "14px 16px 16px",
+  padding: "22px 24px 28px",
 };
 
 const illustrationTitle = {
@@ -732,7 +732,7 @@ const illustrationDescription = {
 };
 
 const demoSection = {
-  padding: "20px 0 62px",
+  padding: "60px 0 96px",
 };
 
 const videoShell = {
@@ -749,7 +749,7 @@ const videoGlowA = {
   top: -30,
   right: -20,
   width: 180,
-  height: 180,
+  height: 220,
   borderRadius: "50%",
   background: "radial-gradient(circle, rgba(114,217,200,0.34), rgba(114,217,200,0))",
   pointerEvents: "none",
@@ -917,7 +917,7 @@ const graphCaption = {
 
 const sectionHeading = {
   textAlign: "center",
-  marginBottom: 34,
+  marginBottom: 60,
 };
 
 const sectionTitle = {
@@ -960,7 +960,7 @@ const featureDescription = {
 };
 
 const timelineSection = {
-  padding: "68px 0",
+  padding: "100px 0",
   background:
     "linear-gradient(180deg, var(--app-info-soft), rgba(255,255,255,0.01))",
   borderTop: "1px solid rgba(255,231,198,0.08)",
@@ -999,12 +999,12 @@ const stepText = {
 };
 
 const ctaSection = {
-  padding: "74px 0 90px",
+  padding: "110px 0 130px",
 };
 
 const ctaPanel = {
   borderRadius: 24,
-  padding: "clamp(24px, 5vw, 42px)",
+  padding: "clamp(48px, 7vw, 80px)",
   background:
     "linear-gradient(140deg, rgba(255,165,96,0.94), rgba(255,211,144,0.94) 46%, rgba(128,240,215,0.9))",
   color: "#221612",
@@ -1049,7 +1049,7 @@ const footer = {
 };
 
 const footerGrid = {
-  padding: "26px 0 18px",
+  padding: "52px 0 36px",
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
   gap: 16,
@@ -1098,6 +1098,12 @@ const footerLegal = {
   display: "flex",
   gap: 8,
   flexWrap: "wrap",
+};
+
+const footerMutedLink = {
+  color: "rgba(244,239,230,0.58)",
+  fontSize: 12,
+  textDecoration: "none",
 };
 
 const footerMutedLink = {

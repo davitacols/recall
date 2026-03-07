@@ -127,7 +127,7 @@ function SavedFilters() {
               </div>
               <button
                 onClick={() => handleDelete(filter.id)}
-                style={{ border: `1px solid ${palette.border}`, background: "transparent", color: "#dc2626", width: 34, height: 34, display: "grid", placeItems: "center", cursor: "pointer" }}
+                style={{ border: `1px solid ${palette.border}`, background: "transparent", color: "var(--app-danger)", width: 34, height: 34, display: "grid", placeItems: "center", cursor: "pointer" }}
               >
                 <TrashIcon style={icon16} />
               </button>
@@ -145,7 +145,7 @@ function SavedFilters() {
 const header = { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 12 };
 const panel = { borderRadius: 0, padding: 12 };
 const empty = { borderRadius: 0, textAlign: "center", padding: "18px 12px" };
-const spinner = { width: 28, height: 28, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 28, height: 28, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const icon14 = { width: 14, height: 14 };
 const icon16 = { width: 16, height: 16 };
 

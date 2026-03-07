@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { ArrowUpTrayIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 
@@ -14,10 +14,10 @@ export default function ImportExport() {
   const [exportType, setExportType] = useState('conversations');
   const [exportFormat, setExportFormat] = useState('json');
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   const dataTypes = [
     { value: 'conversations', label: 'Conversations' },
@@ -137,7 +137,7 @@ export default function ImportExport() {
             <button
               onClick={handleImport}
               disabled={importing || !selectedFile}
-              style={{ width: '100%', padding: '10px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: importing || !selectedFile ? 'not-allowed' : 'pointer', opacity: importing || !selectedFile ? 0.5 : 1 }}
+              style={{ width: '100%', padding: '10px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: importing || !selectedFile ? 'not-allowed' : 'pointer', opacity: importing || !selectedFile ? 0.5 : 1 }}
             >
               {importing ? 'Importing...' : 'Import Data'}
             </button>
@@ -183,7 +183,7 @@ export default function ImportExport() {
             <button
               onClick={handleExport}
               disabled={exporting}
-              style={{ width: '100%', padding: '10px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.5 : 1 }}
+              style={{ width: '100%', padding: '10px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.5 : 1 }}
             >
               {exporting ? 'Exporting...' : 'Export Data'}
             </button>

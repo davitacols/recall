@@ -47,24 +47,24 @@ export default function NotificationSettings() {
       darkMode
         ? {
             bg: "#0f0b0d",
-            panel: "#171215",
+            panel: "var(--app-surface)",
             panelSoft: "#1d171b",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#baa892",
-            accent: "#ffb476",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            accent: "var(--app-accent)",
             accentText: "#20120d",
             chipActive: "rgba(255,180,118,0.16)",
           }
         : {
-            bg: "#f6f1ea",
-            panel: "#fffaf3",
-            panelSoft: "#ffffff",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7d6d5a",
-            accent: "#d9692e",
-            accentText: "#fff7ee",
+            bg: "var(--app-bg)",
+            panel: "var(--app-surface)",
+            panelSoft: "var(--app-surface-alt)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            accent: "var(--app-accent)",
+            accentText: "var(--app-surface-alt)7ee",
             chipActive: "rgba(217,105,46,0.11)",
           },
     [darkMode]
@@ -317,7 +317,7 @@ const toggleKnob = {
   width: 18,
   height: 18,
   borderRadius: "50%",
-  background: "#fff",
+  background: "var(--app-surface-alt)",
   transition: "transform 0.15s ease",
 };
 

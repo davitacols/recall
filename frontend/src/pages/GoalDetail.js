@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { ArrowLeftIcon, TrashIcon, FlagIcon } from '@heroicons/react/24/outline';
@@ -13,10 +13,10 @@ export default function GoalDetail() {
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
   const cardBg = darkMode ? '#292524' : '#f9fafb';
-  const textColor = darkMode ? '#fafaf9' : '#1f2937';
-  const borderColor = darkMode ? '#44403c' : '#e5e7eb';
+  const textColor = darkMode ? 'var(--app-text)' : '#1f2937';
+  const borderColor = darkMode ? '#44403c' : 'var(--app-border)';
 
   useEffect(() => {
     fetchGoal();
@@ -189,8 +189,8 @@ export default function GoalDetail() {
                   style={{
                     padding: '0.75rem 1.5rem',
                     backgroundColor: 'transparent',
-                    border: '2px solid #3b82f6',
-                    color: '#3b82f6',
+                    border: '2px solid var(--app-info)',
+                    color: 'var(--app-info)',
                     borderRadius: '0.5rem',
                     cursor: 'pointer'
                   }}
@@ -209,8 +209,8 @@ export default function GoalDetail() {
                     style={{
                       padding: '0.5rem 1rem',
                       backgroundColor: 'transparent',
-                      border: `2px solid #10b981`,
-                      color: '#10b981',
+                      border: `2px solid var(--app-success)`,
+                      color: 'var(--app-success)',
                       borderRadius: '0.5rem',
                       cursor: 'pointer',
                       display: 'flex',
@@ -226,8 +226,8 @@ export default function GoalDetail() {
                     style={{
                       padding: '0.5rem 1rem',
                       backgroundColor: 'transparent',
-                      border: `2px solid #3b82f6`,
-                      color: '#3b82f6',
+                      border: `2px solid var(--app-info)`,
+                      color: 'var(--app-info)',
                       borderRadius: '0.5rem',
                       cursor: 'pointer'
                     }}
@@ -239,8 +239,8 @@ export default function GoalDetail() {
                     style={{
                       padding: '0.5rem 1rem',
                       backgroundColor: 'transparent',
-                      border: `2px solid #ef4444`,
-                      color: '#ef4444',
+                      border: `2px solid var(--app-danger)`,
+                      color: 'var(--app-danger)',
                       borderRadius: '0.5rem',
                       cursor: 'pointer'
                     }}
@@ -249,19 +249,19 @@ export default function GoalDetail() {
                   </button>
                 </div>
               </div>
-              <p style={{ color: darkMode ? '#a8a29e' : '#6b7280', marginBottom: '1.5rem' }}>{goal.description}</p>
+              <p style={{ color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)', marginBottom: '1.5rem' }}>{goal.description}</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div>
-                  <span style={{ fontSize: '0.875rem', color: darkMode ? '#a8a29e' : '#6b7280' }}>Status</span>
+                  <span style={{ fontSize: '0.875rem', color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)' }}>Status</span>
                   <p style={{ fontWeight: '600', marginTop: '0.25rem' }}>{goal.status.replace('_', ' ')}</p>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.875rem', color: darkMode ? '#a8a29e' : '#6b7280' }}>Progress</span>
+                  <span style={{ fontSize: '0.875rem', color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)' }}>Progress</span>
                   <p style={{ fontWeight: '600', marginTop: '0.25rem' }}>{goal.progress}%</p>
                 </div>
                 {goal.target_date && (
                   <div>
-                    <span style={{ fontSize: '0.875rem', color: darkMode ? '#a8a29e' : '#6b7280' }}>Target Date</span>
+                    <span style={{ fontSize: '0.875rem', color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)' }}>Target Date</span>
                     <p style={{ fontWeight: '600', marginTop: '0.25rem' }}>{new Date(goal.target_date).toLocaleDateString()}</p>
                   </div>
                 )}
@@ -273,7 +273,7 @@ export default function GoalDetail() {
                     {goal.tasks.map(task => (
                       <div key={task.id} style={{ padding: '0.75rem', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '0.5rem' }}>
                         <span>{task.title}</span>
-                        <span style={{ marginLeft: '1rem', fontSize: '0.875rem', color: darkMode ? '#a8a29e' : '#6b7280' }}>({task.status})</span>
+                        <span style={{ marginLeft: '1rem', fontSize: '0.875rem', color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)' }}>({task.status})</span>
                       </div>
                     ))}
                   </div>

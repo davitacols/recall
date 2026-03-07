@@ -15,10 +15,10 @@ export default function Milestones() {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ title: '', description: '', due_date: '' });
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   useEffect(() => {
     loadGoal();
@@ -76,7 +76,7 @@ export default function Milestones() {
     <div style={{ maxWidth: '60rem', margin: '0 auto' }}>
       <button
         onClick={() => navigate('/business/goals')}
-        style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '20px', color: '#3b82f6', fontSize: '14px', cursor: 'pointer', background: 'none', border: 'none' }}
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '20px', color: 'var(--app-info)', fontSize: '14px', cursor: 'pointer', background: 'none', border: 'none' }}
       >
         <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
         Back to Goals
@@ -93,9 +93,9 @@ export default function Milestones() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '5px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s' }}
-          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid var(--app-info)', color: 'var(--app-info)', borderRadius: '5px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s' }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--app-info)'; e.currentTarget.style.color = 'var(--app-surface-alt)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--app-info)'; }}
         >
           <PlusIcon style={{ width: '16px', height: '16px' }} />
           Add Milestone
@@ -103,8 +103,8 @@ export default function Milestones() {
       </div>
 
       <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', marginBottom: '20px' }}>
-        <div style={{ height: '8px', backgroundColor: darkMode ? '#292524' : '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${progress}%`, backgroundColor: '#10b981', transition: 'width 0.3s' }} />
+        <div style={{ height: '8px', backgroundColor: darkMode ? '#292524' : 'var(--app-border)', borderRadius: '4px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progress}%`, backgroundColor: 'var(--app-success)', transition: 'width 0.3s' }} />
         </div>
       </div>
 
@@ -117,9 +117,9 @@ export default function Milestones() {
             <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
               <button
                 onClick={() => toggleComplete(milestone)}
-                style={{ flexShrink: 0, width: '24px', height: '24px', borderRadius: '50%', border: `2px solid ${milestone.completed ? '#10b981' : borderColor}`, backgroundColor: milestone.completed ? '#10b981' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                style={{ flexShrink: 0, width: '24px', height: '24px', borderRadius: '50%', border: `2px solid ${milestone.completed ? 'var(--app-success)' : borderColor}`, backgroundColor: milestone.completed ? 'var(--app-success)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
               >
-                {milestone.completed && <CheckCircleIcon style={{ width: '16px', height: '16px', color: '#ffffff' }} />}
+                {milestone.completed && <CheckCircleIcon style={{ width: '16px', height: '16px', color: 'var(--app-surface-alt)' }} />}
               </button>
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 600, color: textColor, marginBottom: '4px', textDecoration: milestone.completed ? 'line-through' : 'none' }}>
@@ -140,7 +140,7 @@ export default function Milestones() {
       </div>
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={() => setShowModal(false)}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--app-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={() => setShowModal(false)}>
           <div style={{ backgroundColor: bgColor, borderRadius: '8px', padding: '24px', width: '90%', maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ fontSize: '20px', fontWeight: 600, color: textColor, marginBottom: '20px' }}>Add Milestone</h2>
             <form onSubmit={createMilestone}>
@@ -182,7 +182,7 @@ export default function Milestones() {
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '8px 16px', backgroundColor: '#3b82f6', border: 'none', color: '#ffffff', borderRadius: '5px', fontSize: '13px', cursor: 'pointer' }}
+                  style={{ padding: '8px 16px', backgroundColor: 'var(--app-info)', border: 'none', color: 'var(--app-surface-alt)', borderRadius: '5px', fontSize: '13px', cursor: 'pointer' }}
                 >
                   Create
                 </button>

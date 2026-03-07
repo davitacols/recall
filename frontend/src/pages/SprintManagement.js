@@ -188,7 +188,7 @@ export default function SprintManagement() {
         {blockers.length > 0 && (
           <section style={{ marginBottom: 12 }}>
             <h2 style={{ ...h2, color: palette.text, marginBottom: 8 }}>
-              <ExclamationTriangleIcon style={{ ...icon18, color: "#ef4444" }} /> Blockers ({blockers.length})
+              <ExclamationTriangleIcon style={{ ...icon18, color: "var(--app-danger)" }} /> Blockers ({blockers.length})
             </h2>
             <div style={list}>
               {blockers.map((blocker) => (
@@ -256,7 +256,7 @@ function Metric({ value, label }) {
   );
 }
 
-const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const hero = { borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 12 };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.14em", fontWeight: 700 };
 const title = { margin: "7px 0 6px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
@@ -265,17 +265,17 @@ const h2 = { margin: 0, fontSize: 19, display: "flex", alignItems: "center", gap
 const muted = { margin: 0, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 };
 const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };
 const activeCard = { borderRadius: 14, padding: 14, marginBottom: 12 };
-const activePill = { border: "1px solid rgba(16,185,129,0.5)", background: "rgba(16,185,129,0.12)", color: "#10b981", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 700 };
+const activePill = { border: "1px solid var(--app-success-border)", background: "var(--app-success-soft)", color: "var(--app-success)", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 700 };
 const miniStats = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8 };
-const metricCard = { borderRadius: 10, padding: 10, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" };
-const metricValue = { margin: 0, fontSize: 24, fontWeight: 800, color: "#f4ece0" };
-const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "#baa892" };
+const metricCard = { borderRadius: 10, padding: 10, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)" };
+const metricValue = { margin: 0, fontSize: 24, fontWeight: 800, color: "var(--app-text)" };
+const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "var(--app-muted)" };
 const list = { display: "grid", gap: 8 };
-const blockerCard = { borderRadius: 12, padding: 12, borderLeft: "3px solid #ef4444" };
+const blockerCard = { borderRadius: 12, padding: 12, borderLeft: "3px solid var(--app-danger)" };
 const rowCard = { borderRadius: 12, padding: 12, cursor: "pointer", display: "flex", justifyContent: "space-between", gap: 10 };
 const itemTitle = { margin: 0, fontSize: 15, fontWeight: 700 };
-const statusPill = { border: "1px solid rgba(120,120,120,0.45)", borderRadius: 999, padding: "4px 8px", height: "fit-content", fontSize: 11, textTransform: "capitalize", color: "#9e8d7b", fontWeight: 700 };
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 110, padding: 16 };
+const statusPill = { border: "1px solid var(--app-border-strong)", borderRadius: 999, padding: "4px 8px", height: "fit-content", fontSize: 11, textTransform: "capitalize", color: "var(--app-muted)", fontWeight: 700 };
+const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 110, padding: 16 };
 const modalCard = { width: "min(560px,100%)", borderRadius: 14, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };
 const buttonRow = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };

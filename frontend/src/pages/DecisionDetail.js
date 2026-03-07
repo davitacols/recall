@@ -248,7 +248,7 @@ function DecisionDetail() {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-        <div style={{ width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+        <div style={{ width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
       </div>
     );
   }
@@ -268,7 +268,7 @@ function DecisionDetail() {
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
-      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.16), transparent 30%)" : "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.1), transparent 30%)" }} />
+      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.2), transparent 34%), radial-gradient(circle at 90% 8%, var(--app-info-soft), transparent 30%)" : "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.1), transparent 30%)" }} />
       <div style={ui.container}>
         <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "10ms" }}>
           <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>All Decisions</button>
@@ -282,7 +282,7 @@ function DecisionDetail() {
           <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
         </button>
 
-        <section className="ui-enter ui-card-lift ui-smooth" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(135deg,#1a1418,#161115)" : "linear-gradient(135deg,#fffdf9,#fff6ec)", padding: 16, marginBottom: 10, "--ui-delay": "120ms" }}>
+        <section className="ui-enter ui-card-lift ui-smooth" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(135deg,#1a1418,#161115)" : "linear-gradient(135deg,var(--app-surface-alt)df9,var(--app-surface-alt)6ec)", padding: 16, marginBottom: 10, "--ui-delay": "120ms" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
@@ -336,7 +336,7 @@ function DecisionDetail() {
                     textTransform: "capitalize",
                     background: activeTab === tab ? "rgba(59,130,246,0.2)" : "transparent",
                     border: activeTab === tab ? "1px solid rgba(59,130,246,0.45)" : ui.secondaryButton.border,
-                    color: activeTab === tab ? "#93c5fd" : ui.secondaryButton.color,
+                    color: activeTab === tab ? "var(--app-link)" : ui.secondaryButton.color,
                   }}
                 >
                   {tab}
@@ -388,12 +388,12 @@ function DecisionDetail() {
                 {decision.context_reason && <TextBlock title="Context" text={decision.context_reason} palette={palette} />}
 
                 {decision.if_this_fails && (
-                  <div style={{ borderRadius: 10, border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.1)", padding: 10 }}>
+                  <div style={{ borderRadius: 10, border: "1px solid var(--app-danger-border)", background: "rgba(239,68,68,0.1)", padding: 10 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 8 }}>
-                      <ExclamationTriangleIcon style={{ width: 16, height: 16, color: "#fca5a5", marginTop: 1 }} />
+                      <ExclamationTriangleIcon style={{ width: 16, height: 16, color: "var(--app-danger)", marginTop: 1 }} />
                       <div>
-                        <p style={{ margin: 0, fontSize: 13, color: "#fca5a5", fontWeight: 700 }}>If This Fails</p>
-                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#fca5a5" }}>{decision.if_this_fails}</p>
+                        <p style={{ margin: 0, fontSize: 13, color: "var(--app-danger)", fontWeight: 700 }}>If This Fails</p>
+                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--app-danger)" }}>{decision.if_this_fails}</p>
                       </div>
                     </div>
                   </div>
@@ -429,8 +429,8 @@ function DecisionDetail() {
                   </p>
                 </div>
                 {driftAlert && (
-                  <div style={{ borderRadius: 10, border: "1px solid rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.08)", padding: 10 }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 13, color: "#fca5a5", fontWeight: 700 }}>
+                  <div style={{ borderRadius: 10, border: "1px solid rgba(239,68,68,0.35)", background: "var(--app-danger-soft)", padding: 10 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 13, color: "var(--app-danger)", fontWeight: 700 }}>
                       Drift alert: {driftAlert.severity} ({driftAlert.drift_score})
                     </p>
                     <ul style={{ margin: 0, paddingLeft: 16, color: "#fecaca", fontSize: 12 }}>
@@ -502,7 +502,7 @@ function DecisionDetail() {
                     <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>{outcomeError}</p>
                   )}
                   {outcomeMessage && (
-                    <p style={{ margin: 0, fontSize: 12, color: "#34d399" }}>{outcomeMessage}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--app-success)" }}>{outcomeMessage}</p>
                   )}
 
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
@@ -623,7 +623,7 @@ function DecisionDetail() {
                 </div>
 
                 {replayError && <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>{replayError}</p>}
-                {replayTaskMessage && <p style={{ margin: 0, fontSize: 12, color: "#34d399" }}>{replayTaskMessage}</p>}
+                {replayTaskMessage && <p style={{ margin: 0, fontSize: 12, color: "var(--app-success)" }}>{replayTaskMessage}</p>}
 
                 {replayResult && (
                   <div style={{ display: "grid", gap: 8 }}>
@@ -673,9 +673,9 @@ function DecisionDetail() {
             {decision.confidence && (
               <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
                 <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Confidence</h3>
-                <p style={{ margin: 0, fontSize: 30, fontWeight: 800, color: "#f4ece0" }}>{decision.confidence.score || 0}%</p>
-                <div style={{ width: "100%", height: 8, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden", marginTop: 6 }}>
-                  <div style={{ height: "100%", width: `${decision.confidence.score || 0}%`, background: "linear-gradient(90deg,#10b981,#34d399)" }} />
+                <p style={{ margin: 0, fontSize: 30, fontWeight: 800, color: "var(--app-text)" }}>{decision.confidence.score || 0}%</p>
+                <div style={{ width: "100%", height: 8, borderRadius: 999, background: "var(--app-track)", overflow: "hidden", marginTop: 6 }}>
+                  <div style={{ height: "100%", width: `${decision.confidence.score || 0}%`, background: "linear-gradient(90deg,var(--app-success),var(--app-success))" }} />
                 </div>
                 {decision.confidence.factors?.length > 0 && (
                   <ul style={{ margin: "8px 0 0", paddingLeft: 16, color: palette.muted, fontSize: 11 }}>
@@ -711,15 +711,15 @@ function DecisionDetail() {
 
 function Pill({ text, tone = "blue" }) {
   const style = tone === "amber"
-    ? { border: "1px solid rgba(245,158,11,0.45)", color: "#fcd34d", background: "rgba(245,158,11,0.12)" }
-    : { border: "1px solid rgba(59,130,246,0.45)", color: "#93c5fd", background: "rgba(59,130,246,0.12)" };
+    ? { border: "1px solid rgba(245,158,11,0.45)", color: "var(--app-warning)", background: "var(--app-warning-soft)" }
+    : { border: "1px solid rgba(59,130,246,0.45)", color: "var(--app-link)", background: "rgba(59,130,246,0.12)" };
   return <span style={{ ...style, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 8px", textTransform: "capitalize" }}>{text}</span>;
 }
 
 function TextBlock({ title, text, palette }) {
   return (
     <div>
-      <h3 style={{ margin: "0 0 8px", fontSize: 16, color: palette?.text || "#f4ece0" }}>{title}</h3>
+      <h3 style={{ margin: "0 0 8px", fontSize: 16, color: palette?.text || "var(--app-text)" }}>{title}</h3>
       <div style={{ color: palette?.muted || "#d9cdbf", fontSize: 13, lineHeight: 1.6 }}>
         {(text || "").split("\n\n").map((paragraph, index) => (
           <p key={index} style={{ margin: "0 0 10px" }}>{paragraph}</p>
@@ -732,13 +732,13 @@ function TextBlock({ title, text, palette }) {
 function InfoRow({ label, value, palette }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, marginBottom: 6 }}>
-      <span style={{ color: palette?.muted || "#baa892" }}>{label}</span>
-      <span style={{ color: palette?.text || "#f4ece0", fontWeight: 700 }}>{value}</span>
+      <span style={{ color: palette?.muted || "var(--app-muted)" }}>{label}</span>
+      <span style={{ color: palette?.text || "var(--app-text)", fontWeight: 700 }}>{value}</span>
     </div>
   );
 }
 
-const fieldLabel = { margin: 0, fontSize: 12, color: "#baa892", fontWeight: 700 };
+const fieldLabel = { margin: 0, fontSize: 12, color: "var(--app-muted)", fontWeight: 700 };
 const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
 const commandStrip = { position: "relative", zIndex: 1, marginBottom: 10, borderRadius: 12, padding: 8, display: "flex", gap: 8, flexWrap: "wrap" };
 const commandPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "7px 11px", background: "transparent", fontSize: 12, fontWeight: 700, cursor: "pointer" };

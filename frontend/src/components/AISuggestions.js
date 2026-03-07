@@ -111,8 +111,8 @@ export const SprintPrediction = ({ sprintId }) => {
         <div style={metric}><p style={metricValue}>{prediction.probability}%</p><p style={metricLabel}>Completion</p></div>
         <div style={metric}><p style={metricValue}>{prediction.completed}/{prediction.total}</p><p style={metricLabel}>Done</p></div>
       </div>
-      <div style={{ marginTop: 8, width: "100%", height: 8, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${prediction.probability}%`, background: prediction.at_risk ? "#ef4444" : "#10b981" }} />
+      <div style={{ marginTop: 8, width: "100%", height: 8, borderRadius: 999, background: "var(--app-track)", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${prediction.probability}%`, background: prediction.at_risk ? "var(--app-danger)" : "var(--app-success)" }} />
       </div>
     </section>
   );
@@ -120,9 +120,9 @@ export const SprintPrediction = ({ sprintId }) => {
 
 function Block({ icon: Icon, title, children }) {
   return (
-    <div style={{ borderRadius: 9, border: "1px solid rgba(120,120,120,0.3)", background: "#1f181c", padding: 8 }}>
-      <p style={{ margin: "0 0 6px", fontSize: 12, color: "#f4ece0", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
-        <Icon style={{ width: 13, height: 13, color: "#baa892" }} /> {title}
+    <div style={{ borderRadius: 9, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)", padding: 8 }}>
+      <p style={{ margin: "0 0 6px", fontSize: 12, color: "var(--app-text)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Icon style={{ width: 13, height: 13, color: "var(--app-muted)" }} /> {title}
       </p>
       {children}
     </div>
@@ -130,7 +130,7 @@ function Block({ icon: Icon, title, children }) {
 }
 
 const p = { margin: "0 0 4px", fontSize: 12, color: "#d9cdbf" };
-const sub = { margin: "0 0 6px", fontSize: 11, color: "#baa892" };
-const metric = { borderRadius: 8, border: "1px solid rgba(120,120,120,0.3)", background: "#1f181c", padding: 8 };
-const metricValue = { margin: 0, fontSize: 18, fontWeight: 800, color: "#f4ece0" };
-const metricLabel = { margin: "2px 0 0", fontSize: 11, color: "#baa892" };
+const sub = { margin: "0 0 6px", fontSize: 11, color: "var(--app-muted)" };
+const metric = { borderRadius: 8, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)", padding: 8 };
+const metricValue = { margin: 0, fontSize: 18, fontWeight: 800, color: "var(--app-text)" };
+const metricLabel = { margin: "2px 0 0", fontSize: 11, color: "var(--app-muted)" };

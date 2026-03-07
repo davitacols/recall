@@ -127,7 +127,7 @@ function CurrentSprint() {
               {blockers.map((blocker) => (
                 <article key={blocker.id} style={blockerCard}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <ExclamationTriangleIcon style={{ ...icon16, color: "#ef4444" }} />
+                    <ExclamationTriangleIcon style={{ ...icon16, color: "var(--app-danger)" }} />
                     <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{blocker.title}</p>
                   </div>
                   <p style={{ margin: "6px 0 0", fontSize: 12, color: palette.muted }}>{blocker.description || "No description"}</p>
@@ -206,7 +206,7 @@ function Metric({ label, value }) {
   );
 }
 
-const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
@@ -214,20 +214,20 @@ const subtitle = { margin: 0, fontSize: 13 };
 const ctaRow = { display: "flex", gap: 8, flexWrap: "wrap" };
 const h2 = { fontSize: 19 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
-const metricCard = { borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" };
-const metricValue = { margin: 0, fontSize: 26, fontWeight: 800, color: "#f4ece0" };
-const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "#baa892" };
+const metricCard = { borderRadius: 12, padding: 12, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)" };
+const metricValue = { margin: 0, fontSize: 26, fontWeight: 800, color: "var(--app-text)" };
+const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "var(--app-muted)" };
 const progressCard = { borderRadius: 12, padding: 12, marginBottom: 12 };
-const progressTrack = { width: "100%", height: 10, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" };
-const progressFill = { height: "100%", background: "linear-gradient(90deg,#10b981,#34d399)" };
+const progressTrack = { width: "100%", height: 10, borderRadius: 999, background: "var(--app-track)", overflow: "hidden" };
+const progressFill = { height: "100%", background: "linear-gradient(90deg,var(--app-success),var(--app-success))" };
 const listCard = { borderRadius: 12, padding: 12 };
 const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 };
 const list = { display: "grid", gap: 8 };
-const blockerCard = { borderRadius: 10, border: "1px solid rgba(239,68,68,0.28)", background: "rgba(239,68,68,0.08)", padding: 10 };
-const emptyRow = { borderRadius: 10, border: "1px dashed rgba(120,120,120,0.35)", padding: "14px 10px", fontSize: 13, color: "#9e8d7b" };
-const primaryButton = { border: "none", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#20140f", background: "linear-gradient(135deg,#ffd390,#ff9f62)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 };
-const primaryButtonAlt = { ...primaryButton, background: "linear-gradient(135deg,#ffb58a,#ff8e6f)", color: "#31170f" };
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
+const blockerCard = { borderRadius: 10, border: "1px solid rgba(239,68,68,0.28)", background: "var(--app-danger-soft)", padding: 10 };
+const emptyRow = { borderRadius: 10, border: "1px dashed var(--app-border-strong)", padding: "14px 10px", fontSize: 13, color: "var(--app-muted)" };
+const primaryButton = { border: "none", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "var(--app-button-text)", background: "var(--app-gradient-primary)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 };
+const primaryButtonAlt = { ...primaryButton, background: "var(--app-gradient-accent)", color: "#31170f" };
+const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
 const modalCard = { width: "min(560px,100%)", borderRadius: 14, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };

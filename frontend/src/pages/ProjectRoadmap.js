@@ -81,8 +81,8 @@ function ProjectRoadmap() {
   );
 }
 
-const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
+const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--app-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
 const hero = { borderRadius: 16, padding: 16, marginBottom: 10 };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
@@ -90,11 +90,11 @@ const subtitle = { margin: 0, fontSize: 13 };
 const timeline = { display: "grid", gap: 8 };
 const timelineCard = { borderRadius: 12, padding: 12 };
 const head = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 };
-const pill = { borderRadius: 999, border: "1px solid rgba(120,120,120,0.4)", padding: "3px 8px", fontSize: 10, color: "#baa892", textTransform: "capitalize", fontWeight: 700 };
-const meta = { margin: "6px 0 0", fontSize: 12, color: "#9e8d7b" };
-const goal = { margin: "6px 0 0", fontSize: 13, color: "#f4ece0" };
-const stats = { marginTop: 8, display: "flex", gap: 12, fontSize: 12, color: "#baa892" };
-const empty = { borderRadius: 10, border: "1px dashed rgba(120,120,120,0.35)", padding: "14px 10px", fontSize: 12, color: "#9e8d7b", textAlign: "center", background: "#171215" };
+const pill = { borderRadius: 999, border: "1px solid var(--app-border-strong)", padding: "3px 8px", fontSize: 10, color: "var(--app-muted)", textTransform: "capitalize", fontWeight: 700 };
+const meta = { margin: "6px 0 0", fontSize: 12, color: "var(--app-muted)" };
+const goal = { margin: "6px 0 0", fontSize: 13, color: "var(--app-text)" };
+const stats = { marginTop: 8, display: "flex", gap: 12, fontSize: 12, color: "var(--app-muted)" };
+const empty = { borderRadius: 10, border: "1px dashed var(--app-border-strong)", padding: "14px 10px", fontSize: 12, color: "var(--app-muted)", textAlign: "center", background: "var(--app-surface)" };
 const icon14 = { width: 14, height: 14 };
 
 export default ProjectRoadmap;

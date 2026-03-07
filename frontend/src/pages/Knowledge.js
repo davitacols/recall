@@ -66,8 +66,8 @@ function FeatureLink({ to, icon: Icon, label }) {
       className="ui-btn-polish"
       style={{
         borderRadius: 10,
-        border: "1px solid rgba(120,120,120,0.45)",
-        color: "#baa892",
+        border: "1px solid var(--app-border-strong)",
+        color: "var(--app-muted)",
         textDecoration: "none",
         padding: "8px 10px",
         fontSize: 12,
@@ -190,7 +190,7 @@ export default function Knowledge() {
       <div style={ui.container}>
         <section
           className="ui-enter"
-          style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: `linear-gradient(150deg, ${palette.card} 10%, ${darkMode ? "#261b21" : "#fff1dd"} 100%)`, padding: 16, marginBottom: 12 }}
+          style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: `linear-gradient(150deg, ${palette.card} 10%, ${darkMode ? "#261b21" : "var(--app-surface-alt)1dd"} 100%)`, padding: 16, marginBottom: 12 }}
         >
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: palette.muted }}>KNOWLEDGE COMMAND</p>
           <h1 style={{ margin: "8px 0 4px", color: palette.text, fontSize: "clamp(1.45rem,2.5vw,2.1rem)" }}>Unified knowledge retrieval</h1>
@@ -230,9 +230,9 @@ export default function Knowledge() {
 
         {!searched && (
           <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 8, marginBottom: 12 }}>
-            <StatCard label="Searchable Items" value={stats.total_items} tone="#60a5fa" palette={palette} />
-            <StatCard label="Indexed This Week" value={stats.this_week} tone="#34d399" palette={palette} />
-            <StatCard label="Total Searches" value={stats.total_searches} tone="#f59e0b" palette={palette} />
+            <StatCard label="Searchable Items" value={stats.total_items} tone="var(--app-info)" palette={palette} />
+            <StatCard label="Indexed This Week" value={stats.this_week} tone="var(--app-success)" palette={palette} />
+            <StatCard label="Total Searches" value={stats.total_searches} tone="var(--app-warning)" palette={palette} />
           </section>
         )}
 
@@ -244,7 +244,7 @@ export default function Knowledge() {
                 const label = topic.topic || topic.title || "Untitled";
                 const count = topic.count || 0;
                 return (
-                  <button key={`${label}_${i}`} type="button" onClick={() => { setQuery(label); runSearch(label); }} className="ui-btn-polish ui-focus-ring" style={{ border: "none", borderRadius: 999, padding: "7px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", background: darkMode ? "rgba(96,165,250,0.18)" : "#dbeafe", color: darkMode ? "#93c5fd" : "#1d4ed8" }}>
+                  <button key={`${label}_${i}`} type="button" onClick={() => { setQuery(label); runSearch(label); }} className="ui-btn-polish ui-focus-ring" style={{ border: "none", borderRadius: 999, padding: "7px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", background: darkMode ? "rgba(96,165,250,0.18)" : "#dbeafe", color: darkMode ? "var(--app-link)" : "var(--app-link)" }}>
                     {label} {count ? `(${count})` : ""}
                   </button>
                 );
@@ -258,7 +258,7 @@ export default function Knowledge() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18, color: palette.text }}>{viewResults.length} result{viewResults.length === 1 ? "" : "s"} for "{query}"</h2>
-                {error && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#ef4444" }}>{error}</p>}
+                {error && <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--app-danger)" }}>{error}</p>}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ ...ui.input, width: "auto", minWidth: 120, padding: "8px 10px" }}>
@@ -299,7 +299,7 @@ export default function Knowledge() {
                         {item.content_preview || item.summary || item.content || "No preview available."}
                       </p>
                       {route && (
-                        <Link to={route} onClick={(e) => e.stopPropagation()} style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none", fontSize: 12, color: darkMode ? "#93c5fd" : "#1d4ed8" }}>
+                        <Link to={route} onClick={(e) => e.stopPropagation()} style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none", fontSize: 12, color: darkMode ? "var(--app-link)" : "var(--app-link)" }}>
                           Open item
                           <ArrowTopRightOnSquareIcon style={{ width: 12, height: 12 }} />
                         </Link>

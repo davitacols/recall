@@ -1130,7 +1130,7 @@ const heroBadge = {
   padding: "6px 10px",
   fontSize: 12,
   fontWeight: 700,
-  background: "rgba(255,255,255,0.05)",
+  background: "var(--app-info-soft)",
 };
 
 const kpiGrid = {

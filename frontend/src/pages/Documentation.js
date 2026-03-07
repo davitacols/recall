@@ -340,8 +340,8 @@ export default function Documentation() {
   const palette = useMemo(
     () =>
       darkMode
-        ? { page: "#0f0b0d", panel: "#171215", panelAlt: "#1f181c", border: "rgba(255,225,193,0.14)", text: "#f4ece0", muted: "#baa892", link: "#8dc6ff" }
-        : { page: "#f6f1ea", panel: "#fffaf3", panelAlt: "#ffffff", border: "#eadfce", text: "#231814", muted: "#7d6d5a", link: "#2563eb" },
+        ? { page: "#0f0b0d", panel: "var(--app-surface)", panelAlt: "var(--app-surface-alt)", border: "var(--app-border)", text: "var(--app-text)", muted: "var(--app-muted)", link: "#8dc6ff" }
+        : { page: "var(--app-bg)", panel: "var(--app-surface)", panelAlt: "var(--app-surface-alt)", border: "var(--app-border)", text: "var(--app-text)", muted: "var(--app-muted)", link: "var(--app-info)" },
     [darkMode]
   );
 

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
@@ -11,11 +11,11 @@ export default function NLCommandBar({ darkMode }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
   const hoverBg = darkMode ? '#292524' : '#f3f4f6';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -131,7 +131,7 @@ export default function NLCommandBar({ darkMode }) {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'var(--app-overlay)',
         zIndex: 100,
         display: 'flex',
         alignItems: 'start',
@@ -150,7 +150,7 @@ export default function NLCommandBar({ darkMode }) {
           backgroundColor: bgColor,
           border: `1px solid ${borderColor}`,
           borderRadius: '12px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          boxShadow: '0 20px 60px var(--app-overlay)',
           overflow: 'hidden'
         }}
       >
@@ -164,7 +164,7 @@ export default function NLCommandBar({ darkMode }) {
               transform: 'translateY(-50%)',
               width: '18px',
               height: '18px',
-              color: '#f59e0b'
+              color: 'var(--app-warning)'
             }} />
             <input
               type="text"
@@ -212,13 +212,13 @@ export default function NLCommandBar({ darkMode }) {
                   width: '32px',
                   height: '32px',
                   borderRadius: '6px',
-                  backgroundColor: result.type === 'action' ? '#3b82f6' : hoverBg,
+                  backgroundColor: result.type === 'action' ? 'var(--app-info)' : hoverBg,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '16px'
                 }}>
-                  {result.type === 'action' ? 'âš¡' : 'ðŸ“„'}
+                  {result.type === 'action' ? '⚡' : '📄'}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '14px', fontWeight: 500, color: textColor }}>

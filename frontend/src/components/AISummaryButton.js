@@ -37,7 +37,7 @@ export default function AISummaryButton({ content, darkMode }) {
       </button>
 
       {show && summary && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }} onClick={() => setShow(false)}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }} onClick={() => setShow(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ ...aiCard(palette), width: "min(640px,100%)", maxHeight: "80vh", overflow: "auto", padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <h3 style={{ margin: 0, fontSize: 16, color: palette.text, display: "inline-flex", alignItems: "center", gap: 6 }}><SparklesIcon style={{ width: 16, height: 16, color: palette.warm }} /> AI Summary</h3>
@@ -64,8 +64,8 @@ export default function AISummaryButton({ content, darkMode }) {
 
 function Block({ title, children }) {
   return (
-    <section style={{ borderRadius: 9, border: "1px solid rgba(120,120,120,0.3)", background: "#1f181c", padding: 8, marginBottom: 8 }}>
-      <p style={{ margin: "0 0 6px", fontSize: 11, color: "#baa892", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</p>
+    <section style={{ borderRadius: 9, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)", padding: 8, marginBottom: 8 }}>
+      <p style={{ margin: "0 0 6px", fontSize: 11, color: "var(--app-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</p>
       {children}
     </section>
   );

@@ -219,21 +219,21 @@ function Layout({ children }) {
     ? {
         appBg: "#0f0b0d",
         headerBg: "rgba(22,16,19,0.86)",
-        panelBg: "#171215",
+        panelBg: "var(--app-surface)",
         panelBgAlt: "#1d171b",
-        border: "rgba(255,225,193,0.14)",
-        text: "#f4ece0",
+        border: "var(--app-border)",
+        text: "var(--app-text)",
         textMuted: "#b9ab97",
         active: "rgba(255,170,99,0.18)",
         accent: "#ffb477",
       }
     : {
-        appBg: "#f6f1ea",
+        appBg: "var(--app-bg)",
         headerBg: "rgba(255,250,243,0.92)",
-        panelBg: "#fffaf3",
-        panelBgAlt: "#ffffff",
-        border: "#eadfce",
-        text: "#231814",
+        panelBg: "var(--app-surface)",
+        panelBgAlt: "var(--app-surface-alt)",
+        border: "var(--app-border)",
+        text: "var(--app-text)",
         textMuted: "#796a58",
         active: "rgba(255,150,82,0.18)",
         accent: "#db6b2e",
@@ -669,7 +669,7 @@ const upgradeBannerTitle = {
   margin: 0,
   fontSize: 12,
   fontWeight: 800,
-  color: "#f59e0b",
+  color: "var(--app-warning)",
 };
 
 const upgradeBannerText = {
@@ -680,7 +680,7 @@ const upgradeBannerText = {
 
 const upgradeBannerButton = {
   border: "1px solid rgba(245, 158, 11, 0.55)",
-  color: "#fbbf24",
+  color: "var(--app-warning)",
   background: "rgba(251, 191, 36, 0.08)",
   textDecoration: "none",
   borderRadius: 10,
@@ -698,7 +698,7 @@ const avatarFallback = {
 };
 
 const avatarInitial = {
-  color: "#20140f",
+  color: "var(--app-button-text)",
   fontWeight: 800,
   fontSize: 13,
 };

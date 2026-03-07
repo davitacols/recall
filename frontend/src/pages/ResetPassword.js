@@ -84,7 +84,7 @@ export default function ResetPassword() {
           <div style={checkWrap}>
             {checks.map((check) => (
               <div key={check.label} style={{ ...checkRow, color: check.valid ? "#87e7b4" : "rgba(247,239,227,0.7)" }}>
-                <span style={{ ...dot, background: check.valid ? "#22c55e" : "rgba(247,239,227,0.35)" }} />
+                <span style={{ ...dot, background: check.valid ? "var(--app-success)" : "rgba(247,239,227,0.35)" }} />
                 {check.label}
               </div>
             ))}
@@ -124,7 +124,7 @@ const form = { display: "grid", gap: 10 };
 const input = {
   borderRadius: 10,
   border: "1px solid rgba(255,240,222,0.14)",
-  background: "rgba(255,255,255,0.04)",
+  background: "var(--app-info-soft)",
   color: "#f7efe3",
   padding: "12px 12px",
   fontSize: 15,
@@ -133,7 +133,7 @@ const input = {
 const checkWrap = {
   border: "1px solid rgba(255,240,222,0.12)",
   borderRadius: 10,
-  background: "rgba(255,255,255,0.02)",
+  background: "var(--app-info-soft)",
   padding: "8px 10px",
   display: "grid",
   gap: 5,
@@ -161,8 +161,8 @@ const button = (loading) => ({
   borderRadius: 10,
   padding: "11px 12px",
   cursor: loading ? "not-allowed" : "pointer",
-  background: "linear-gradient(135deg, #ffd390, #ff9f62)",
-  color: "#1f1512",
+  background: "var(--app-gradient-primary)",
+  color: "var(--app-button-text)",
   fontWeight: 700,
   fontSize: 14,
   opacity: loading ? 0.65 : 1,

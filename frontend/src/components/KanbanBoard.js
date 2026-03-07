@@ -120,7 +120,7 @@ function KanbanBoard() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #E5E7EB', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <div style={{ width: '24px', height: '24px', border: '2px solid var(--app-border)', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
@@ -136,7 +136,7 @@ function KanbanBoard() {
   return (
     <div>
       {moveError && (
-        <div style={{ marginBottom: spacing.md, padding: `${spacing.sm} ${spacing.md}`, borderRadius: radius.md, border: '1px solid rgba(239,68,68,0.45)', backgroundColor: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '12px' }}>
+        <div style={{ marginBottom: spacing.md, padding: `${spacing.sm} ${spacing.md}`, borderRadius: radius.md, border: '1px solid var(--app-danger-border)', backgroundColor: 'var(--app-danger-soft)', color: 'var(--app-danger)', fontSize: '12px' }}>
           {moveError}
         </div>
       )}

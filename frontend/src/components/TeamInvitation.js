@@ -14,11 +14,11 @@ export default function TeamInvitation() {
   const [generatedLink, setGeneratedLink] = useState(null);
   const [resendingId, setResendingId] = useState(null);
 
-  const bgColor = darkMode ? '#000000' : '#ffffff';
-  const textColor = darkMode ? '#f3f4f6' : '#111827';
-  const borderColor = darkMode ? '#1a1a1a' : '#e5e7eb';
+  const bgColor = darkMode ? '#000000' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? '#f3f4f6' : 'var(--app-text)';
+  const borderColor = darkMode ? '#1a1a1a' : 'var(--app-border)';
   const hoverBg = darkMode ? '#1a1a1a' : '#f3f4f6';
-  const secondaryText = darkMode ? '#d1d5db' : '#6b7280';
+  const secondaryText = darkMode ? '#d1d5db' : 'var(--app-muted)';
 
   useEffect(() => {
     fetchInvitations();
@@ -129,14 +129,14 @@ export default function TeamInvitation() {
           <button
             type="submit"
             disabled={loading}
-            style={{ paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', backgroundColor: loading ? '#6b7280' : '#374151', color: '#ffffff', border: 'none', fontWeight: 700, fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', opacity: loading ? 0.6 : 1 }}
+            style={{ paddingLeft: '24px', paddingRight: '24px', paddingTop: '12px', paddingBottom: '12px', backgroundColor: loading ? 'var(--app-muted)' : '#374151', color: 'var(--app-surface-alt)', border: 'none', fontWeight: 700, fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', opacity: loading ? 0.6 : 1 }}
             onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4b5563')}
             onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#374151')}
           >
             {loading ? 'Creating...' : 'Generate Invitation'}
           </button>
         </form>
-        {error && <p style={{ marginTop: '16px', color: '#ef4444', fontSize: '14px' }}>{error}</p>}
+        {error && <p style={{ marginTop: '16px', color: 'var(--app-danger)', fontSize: '14px' }}>{error}</p>}
       </div>
 
       {/* Generated Link Display */}
@@ -154,7 +154,7 @@ export default function TeamInvitation() {
               />
               <button
                 onClick={() => copyToClipboard(generatedLink, 'generated')}
-                style={{ paddingLeft: '16px', paddingRight: '16px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: '#374151', color: '#ffffff', border: 'none', fontWeight: 600, fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ paddingLeft: '16px', paddingRight: '16px', paddingTop: '10px', paddingBottom: '10px', backgroundColor: '#374151', color: 'var(--app-surface-alt)', border: 'none', fontWeight: 600, fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px' }}
                 onMouseEnter={(e) => e.target.style.backgroundColor = '#4b5563'}
                 onMouseLeave={(e) => e.target.style.backgroundColor = '#374151'}
               >
@@ -226,8 +226,8 @@ export default function TeamInvitation() {
                       paddingRight: '12px',
                       paddingTop: '8px',
                       paddingBottom: '8px',
-                      backgroundColor: '#2563eb',
-                      color: '#ffffff',
+                      backgroundColor: 'var(--app-info)',
+                      color: 'var(--app-surface-alt)',
                       border: 'none',
                       fontWeight: 600,
                       fontSize: '12px',
@@ -235,16 +235,16 @@ export default function TeamInvitation() {
                       transition: 'all 0.2s',
                       opacity: resendingId === inv.id ? 0.6 : 1,
                     }}
-                    onMouseEnter={(e) => resendingId !== inv.id && (e.target.style.backgroundColor = '#1d4ed8')}
-                    onMouseLeave={(e) => resendingId !== inv.id && (e.target.style.backgroundColor = '#2563eb')}
+                    onMouseEnter={(e) => resendingId !== inv.id && (e.target.style.backgroundColor = 'var(--app-link)')}
+                    onMouseLeave={(e) => resendingId !== inv.id && (e.target.style.backgroundColor = 'var(--app-info)')}
                   >
                     {resendingId === inv.id ? 'Resending...' : 'Resend'}
                   </button>
                   <button
                     onClick={() => handleRevoke(inv.id)}
-                    style={{ paddingLeft: '12px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', fontWeight: 600, fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
+                    style={{ paddingLeft: '12px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: 'var(--app-danger)', color: 'var(--app-surface-alt)', border: 'none', fontWeight: 600, fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--app-danger)'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--app-danger)'}
                   >
                     Cancel
                   </button>

@@ -41,7 +41,7 @@ function Input({
           ...style
         }}
         onFocus={(e) => {
-          e.target.style.borderColor = '#4F46E5';
+          e.target.style.borderColor = 'var(--app-info)';
           e.target.style.boxShadow = shadows.focus;
         }}
         onBlur={(e) => {

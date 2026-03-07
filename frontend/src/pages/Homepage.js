@@ -457,7 +457,7 @@ const backgroundLayer = {
   inset: 0,
   pointerEvents: "none",
   background:
-    "linear-gradient(135deg, rgba(255,255,255,0.03), transparent 28%, transparent 72%, rgba(255,255,255,0.02))",
+    "linear-gradient(135deg, rgba(255,255,255,0.03), transparent 28%, transparent 72%, var(--app-info-soft))",
 };
 
 const container = {
@@ -506,14 +506,14 @@ const ghostButton = {
   ...baseButton,
   color: "#f4efe6",
   border: "1px solid rgba(255,235,205,0.2)",
-  background: "rgba(255,255,255,0.02)",
+  background: "var(--app-info-soft)",
 };
 
 const primaryButton = {
   ...baseButton,
   color: "#161012",
   border: "none",
-  background: "linear-gradient(135deg, #ffd390, #ff9f62)",
+  background: "var(--app-gradient-primary)",
 };
 
 const heroSection = {
@@ -628,7 +628,7 @@ const timelineItem = {
   gap: 10,
   alignItems: "center",
   padding: "10px 0",
-  borderTop: "1px solid rgba(255,255,255,0.08)",
+  borderTop: "1px solid var(--app-info-soft)",
 };
 
 const basePill = {
@@ -674,7 +674,7 @@ const statCard = {
   border: "1px solid rgba(255,231,198,0.12)",
   borderRadius: 14,
   padding: "16px 18px",
-  background: "rgba(255,255,255,0.02)",
+  background: "var(--app-info-soft)",
 };
 
 const statValue = {
@@ -782,7 +782,7 @@ const videoTopBar = {
   gap: 8,
   padding: "0 16px",
   borderBottom: "1px solid rgba(255,231,198,0.12)",
-  background: "rgba(255,255,255,0.02)",
+  background: "var(--app-info-soft)",
 };
 
 const baseDot = {
@@ -836,7 +836,7 @@ const reelColumn = {
   border: "1px solid rgba(255,231,198,0.12)",
   borderRadius: 14,
   padding: 14,
-  background: "rgba(255,255,255,0.02)",
+  background: "var(--app-info-soft)",
 };
 
 const reelKicker = {
@@ -905,7 +905,7 @@ const confidenceBar = {
   height: 12,
   borderRadius: 999,
   background: "linear-gradient(90deg,#72d9c8,#ffd390,#ff9f62)",
-  boxShadow: "0 8px 20px rgba(0,0,0,0.3)",
+  boxShadow: "0 8px 20px var(--app-overlay)",
 };
 
 const graphCaption = {
@@ -962,7 +962,7 @@ const featureDescription = {
 const timelineSection = {
   padding: "68px 0",
   background:
-    "linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))",
+    "linear-gradient(180deg, var(--app-info-soft), rgba(255,255,255,0.01))",
   borderTop: "1px solid rgba(255,231,198,0.08)",
   borderBottom: "1px solid rgba(255,231,198,0.08)",
 };
@@ -1008,7 +1008,7 @@ const ctaPanel = {
   background:
     "linear-gradient(140deg, rgba(255,165,96,0.94), rgba(255,211,144,0.94) 46%, rgba(128,240,215,0.9))",
   color: "#221612",
-  boxShadow: "0 18px 60px rgba(0,0,0,0.3)",
+  boxShadow: "0 18px 60px var(--app-overlay)",
 };
 
 const ctaTitle = {
@@ -1028,7 +1028,7 @@ const ctaSubtitle = {
 
 const darkButton = {
   ...baseButton,
-  background: "#231713",
+  background: "var(--app-button-text)",
   color: "#ffe7cf",
   border: "1px solid rgba(255,231,198,0.3)",
   padding: "13px 20px",
@@ -1037,7 +1037,7 @@ const darkButton = {
 const lightOutlineButton = {
   ...baseButton,
   background: "transparent",
-  color: "#231713",
+  color: "var(--app-button-text)",
   border: "1px solid rgba(35,23,19,0.38)",
   padding: "13px 20px",
 };
@@ -1073,7 +1073,7 @@ const footerLinks = {
 
 const footerLinkButton = {
   border: "1px solid rgba(255,231,198,0.14)",
-  background: "rgba(255,255,255,0.02)",
+  background: "var(--app-info-soft)",
   color: "#f4efe6",
   borderRadius: 0,
   padding: "8px 12px",

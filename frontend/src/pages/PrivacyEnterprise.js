@@ -89,8 +89,8 @@ function Section({ title, children }) {
 
 const page = {
   minHeight: "100vh",
-  background: "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
-  color: "#e5e7eb",
+  background: "linear-gradient(180deg, var(--app-text) 0%, var(--app-text) 100%)",
+  color: "var(--app-border)",
   fontFamily: "'Segoe UI', Tahoma, sans-serif",
   padding: "28px 16px 40px",
 };
@@ -117,7 +117,7 @@ const title = {
 
 const meta = {
   margin: "0 0 4px",
-  color: "#93c5fd",
+  color: "var(--app-link)",
   fontSize: 14,
 };
 

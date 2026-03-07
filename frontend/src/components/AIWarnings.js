@@ -50,7 +50,7 @@ export default function AIWarnings({ type, title, description, keywords, darkMod
                 {warning.items?.length > 0 && (
                   <div style={{ marginTop: 6, display: "grid", gap: 5 }}>
                     {warning.items.map((item, i) => (
-                      <div key={i} style={{ borderRadius: 8, border: "1px solid rgba(120,120,120,0.35)", padding: 7, fontSize: 11, color: severityText(warning.severity) }}>
+                      <div key={i} style={{ borderRadius: 8, border: "1px solid var(--app-border-strong)", padding: 7, fontSize: 11, color: severityText(warning.severity) }}>
                         <p style={{ margin: 0, fontWeight: 700 }}>{item.title}</p>
                         <p style={{ margin: "2px 0 0" }}>Status: {item.status} • {item.date}</p>
                         {item.reason && <p style={{ margin: "2px 0 0" }}>Reason: {item.reason}</p>}
@@ -85,17 +85,17 @@ function warningTitle(type) {
 }
 
 function severityBg(level) {
-  if (level === "high") return "rgba(239,68,68,0.08)";
+  if (level === "high") return "var(--app-danger-soft)";
   if (level === "medium") return "rgba(245,158,11,0.08)";
   return "rgba(59,130,246,0.08)";
 }
 function severityBorder(level) {
-  if (level === "high") return "rgba(239,68,68,0.45)";
+  if (level === "high") return "var(--app-danger-border)";
   if (level === "medium") return "rgba(245,158,11,0.45)";
   return "rgba(59,130,246,0.45)";
 }
 function severityText(level) {
-  if (level === "high") return "#fca5a5";
-  if (level === "medium") return "#fcd34d";
-  return "#93c5fd";
+  if (level === "high") return "var(--app-danger)";
+  if (level === "medium") return "var(--app-warning)";
+  return "var(--app-link)";
 }

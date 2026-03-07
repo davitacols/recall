@@ -31,26 +31,26 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
       darkMode
         ? {
             panel: "#1d171b",
-            border: "rgba(255,225,193,0.14)",
+            border: "var(--app-border)",
             borderStrong: "rgba(255,225,193,0.24)",
-            text: "#f4ece0",
-            muted: "#baa892",
-            rowHover: "rgba(255,255,255,0.08)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            rowHover: "var(--app-info-soft)",
             unreadDot: "#ff8a4c",
-            accent: "#ffb476",
+            accent: "var(--app-accent)",
             accentText: "#20120d",
             badgeBg: "rgba(255,180,118,0.18)",
           }
         : {
-            panel: "#fffaf3",
-            border: "#eadfce",
+            panel: "var(--app-surface)",
+            border: "var(--app-border)",
             borderStrong: "#d8cab6",
-            text: "#231814",
-            muted: "#7d6d5a",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
             rowHover: "rgba(35,24,20,0.045)",
             unreadDot: "#e85d04",
-            accent: "#d9692e",
-            accentText: "#fff7ee",
+            accent: "var(--app-accent)",
+            accentText: "var(--app-surface-alt)7ee",
             badgeBg: "rgba(217,105,46,0.14)",
           },
     [darkMode]
@@ -236,7 +236,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
           <button
             onClick={() => onDelete(item)}
             className="ui-btn-polish ui-focus-ring"
-            style={{ ...actionButton, borderColor: "rgba(239,68,68,0.4)", color: "#ef4444" }}
+            style={{ ...actionButton, borderColor: "var(--app-danger-border)", color: "var(--app-danger)" }}
           >
             Delete
           </button>
@@ -372,8 +372,8 @@ const badge = {
   minWidth: 17,
   height: 17,
   borderRadius: 999,
-  background: "#ef4444",
-  color: "#fff",
+  background: "var(--app-danger)",
+  color: "var(--app-surface-alt)",
   fontSize: 10,
   fontWeight: 700,
   display: "grid",

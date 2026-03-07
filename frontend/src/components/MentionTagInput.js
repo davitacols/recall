@@ -150,9 +150,9 @@ const MentionTagInput = ({ value, onChange, placeholder, rows = 4, darkMode = fa
         style={{
           width: '100%',
           padding: '12px',
-          backgroundColor: darkMode ? '#292524' : '#ffffff',
-          color: darkMode ? '#e7e5e4' : '#111827',
-          border: `2px solid ${darkMode ? '#44403c' : '#111827'}`,
+          backgroundColor: darkMode ? '#292524' : 'var(--app-surface-alt)',
+          color: darkMode ? 'var(--app-text)' : 'var(--app-text)',
+          border: `2px solid ${darkMode ? '#44403c' : 'var(--app-text)'}`,
           borderRadius: '4px',
           fontSize: '14px',
           outline: 'none',
@@ -165,9 +165,9 @@ const MentionTagInput = ({ value, onChange, placeholder, rows = 4, darkMode = fa
         <div style={{
           position: 'absolute',
           zIndex: 50,
-          backgroundColor: darkMode ? '#292524' : '#ffffff',
-          border: `2px solid ${darkMode ? '#44403c' : '#111827'}`,
-          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          backgroundColor: darkMode ? '#292524' : 'var(--app-surface-alt)',
+          border: `2px solid ${darkMode ? '#44403c' : 'var(--app-text)'}`,
+          boxShadow: '0 10px 40px var(--app-overlay)',
           marginTop: '4px',
           maxHeight: '192px',
           overflowY: 'auto',
@@ -183,8 +183,8 @@ const MentionTagInput = ({ value, onChange, placeholder, rows = 4, darkMode = fa
                 padding: '12px 16px',
                 fontSize: '14px',
                 transition: 'all 0.2s',
-                backgroundColor: index === selectedIndex ? (darkMode ? '#44403c' : '#111827') : 'transparent',
-                color: index === selectedIndex ? '#ffffff' : (darkMode ? '#e7e5e4' : '#111827'),
+                backgroundColor: index === selectedIndex ? (darkMode ? '#44403c' : 'var(--app-text)') : 'transparent',
+                color: index === selectedIndex ? 'var(--app-surface-alt)' : (darkMode ? 'var(--app-text)' : 'var(--app-text)'),
                 border: 'none',
                 cursor: 'pointer'
               }}
@@ -194,12 +194,12 @@ const MentionTagInput = ({ value, onChange, placeholder, rows = 4, darkMode = fa
                 {suggestionType === 'mention' ? (suggestion.full_name || suggestion.username) : suggestion.name}
               </span>
               {suggestionType === 'mention' && suggestion.username && (
-                <span style={{ marginLeft: '8px', fontSize: '12px', color: darkMode ? '#a8a29e' : '#6b7280' }}>
+                <span style={{ marginLeft: '8px', fontSize: '12px', color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)' }}>
                   @{suggestion.username.split('@')[0]}
                 </span>
               )}
               {suggestionType === 'tag' && (
-                <span style={{ marginLeft: '8px', fontSize: '12px', color: darkMode ? '#a8a29e' : '#6b7280' }}>
+                <span style={{ marginLeft: '8px', fontSize: '12px', color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)' }}>
                   {suggestion.usage_count} uses
                 </span>
               )}
@@ -208,7 +208,7 @@ const MentionTagInput = ({ value, onChange, placeholder, rows = 4, darkMode = fa
         </div>
       )}
 
-      <div style={{ marginTop: '8px', fontSize: '12px', color: darkMode ? '#a8a29e' : '#6b7280', fontWeight: 700, letterSpacing: '0.05em' }}>
+      <div style={{ marginTop: '8px', fontSize: '12px', color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
         TYPE @ TO MENTION USERS • TYPE # TO ADD TAGS
       </div>
     </div>

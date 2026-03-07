@@ -36,8 +36,8 @@ function AISummaryPanel({ conversation, onExplainSimply, loadingExplanation, sim
           {conversation.confidence_level && (
             <Block title="Confidence">
               <div style={{ display: "grid", gap: 5 }}>
-                <div style={{ width: "100%", height: 8, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${conversation.confidence_level}%`, background: "linear-gradient(90deg,#10b981,#34d399)" }} />
+                <div style={{ width: "100%", height: 8, borderRadius: 999, background: "var(--app-track)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${conversation.confidence_level}%`, background: "linear-gradient(90deg,var(--app-success),var(--app-success))" }} />
                 </div>
                 <span style={{ fontSize: 11, color: palette.muted }}>{conversation.confidence_level}%</span>
               </div>
@@ -63,7 +63,7 @@ function AISummaryPanel({ conversation, onExplainSimply, loadingExplanation, sim
 function Block({ title, children }) {
   return (
     <section style={{ marginBottom: 8 }}>
-      <p style={{ margin: "0 0 5px", fontSize: 11, color: "#baa892", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</p>
+      <p style={{ margin: "0 0 5px", fontSize: 11, color: "var(--app-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</p>
       {children}
     </section>
   );

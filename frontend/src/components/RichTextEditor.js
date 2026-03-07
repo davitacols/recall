@@ -19,9 +19,9 @@ export default function RichTextEditor({ value, onChange, placeholder, darkMode 
     'list', 'bullet', 'blockquote', 'code-block', 'link'
   ];
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
   const toolbarBg = darkMode ? '#292524' : '#f9fafb';
 
   return (
@@ -47,7 +47,7 @@ export default function RichTextEditor({ value, onChange, placeholder, darkMode 
           color: ${textColor} !important;
         }
         .quill-wrapper .ql-editor.ql-blank::before {
-          color: ${darkMode ? '#a8a29e' : '#6b7280'} !important;
+          color: ${darkMode ? 'var(--app-muted)' : 'var(--app-muted)'} !important;
         }
         .quill-wrapper .ql-stroke {
           stroke: ${textColor};

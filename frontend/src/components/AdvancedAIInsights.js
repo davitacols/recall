@@ -113,12 +113,12 @@ function Metric({ value, label, palette }) {
 }
 
 function Notice({ text, level, palette }) {
-  const tone = level === "high" ? "rgba(239,68,68,0.12)" : level === "medium" ? "rgba(245,158,11,0.12)" : "rgba(59,130,246,0.12)";
-  const border = level === "high" ? "1px solid rgba(239,68,68,0.4)" : level === "medium" ? "1px solid rgba(245,158,11,0.4)" : "1px solid rgba(59,130,246,0.4)";
+  const tone = level === "high" ? "var(--app-danger-soft)" : level === "medium" ? "var(--app-warning-soft)" : "rgba(59,130,246,0.12)";
+  const border = level === "high" ? "1px solid var(--app-danger-border)" : level === "medium" ? "1px solid var(--app-warning-border)" : "1px solid var(--app-info-border)";
   return <div style={{ ...box, background: tone, border, padding: 10 }}><p style={{ ...pText, color: palette.text }}>{text}</p></div>;
 }
 
 const h3 = { margin: "0 0 10px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 };
-const icon = { width: 14, height: 14, color: "#baa892" };
-const box = { borderRadius: 9, border: "1px solid rgba(120,120,120,0.3)", background: "#1f181c", padding: 8 };
+const icon = { width: 14, height: 14, color: "var(--app-muted)" };
+const box = { borderRadius: 9, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)", padding: 8 };
 const pText = { margin: 0, fontSize: 12, color: "#d9cdbf", lineHeight: 1.45 };

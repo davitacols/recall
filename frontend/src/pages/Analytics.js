@@ -67,13 +67,13 @@ export default function Analytics() {
 
 function SummaryCard({ icon: Icon, label, value, sub }) {
   return (
-    <article style={{ borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" }}>
+    <article style={{ borderRadius: 12, padding: 12, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <Icon style={{ width: 18, height: 18, color: "#93c5fd" }} />
-        <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#f4ece0" }}>{value}</p>
+        <Icon style={{ width: 18, height: 18, color: "var(--app-link)" }} />
+        <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "var(--app-text)" }}>{value}</p>
       </div>
-      <p style={{ margin: 0, fontSize: 12, color: "#baa892", fontWeight: 700 }}>{label}</p>
-      <p style={{ margin: "4px 0 0", fontSize: 11, color: "#baa892" }}>{sub}</p>
+      <p style={{ margin: 0, fontSize: 12, color: "var(--app-muted)", fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--app-muted)" }}>{sub}</p>
     </article>
   );
 }
@@ -82,18 +82,18 @@ function BreakdownCard({ title, rows, colorMap, cols = 4 }) {
   const entries = Object.entries(rows || {});
 
   return (
-    <article style={{ borderRadius: 12, border: "1px solid rgba(255,225,193,0.14)", background: "#171215", padding: 12 }}>
-      <h2 style={{ margin: "0 0 10px", fontSize: 16, color: "#f4ece0" }}>{title}</h2>
+    <article style={{ borderRadius: 12, border: "1px solid var(--app-border)", background: "var(--app-surface)", padding: 12 }}>
+      <h2 style={{ margin: "0 0 10px", fontSize: 16, color: "var(--app-text)" }}>{title}</h2>
       {entries.length === 0 ? (
-        <p style={{ margin: 0, fontSize: 12, color: "#baa892" }}>No data</p>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--app-muted)" }}>No data</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(90px,1fr))`, gap: 8 }}>
           {entries.map(([key, count]) => (
-            <div key={key} style={{ borderRadius: 10, border: "1px solid rgba(120,120,120,0.35)", background: "#1f181c", padding: 10, textAlign: "center" }}>
-              <div style={{ width: 44, height: 44, borderRadius: 999, background: colorMap[key] || "#6b7280", margin: "0 auto 6px", display: "grid", placeItems: "center", color: "#fff", fontWeight: 800, fontSize: 16 }}>
+            <div key={key} style={{ borderRadius: 10, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)", padding: 10, textAlign: "center" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 999, background: colorMap[key] || "var(--app-muted)", margin: "0 auto 6px", display: "grid", placeItems: "center", color: "var(--app-surface-alt)", fontWeight: 800, fontSize: 16 }}>
                 {count}
               </div>
-              <p style={{ margin: 0, fontSize: 11, color: "#baa892", textTransform: "capitalize" }}>{key.replace("_", " ")}</p>
+              <p style={{ margin: 0, fontSize: 11, color: "var(--app-muted)", textTransform: "capitalize" }}>{key.replace("_", " ")}</p>
             </div>
           ))}
         </div>
@@ -103,18 +103,18 @@ function BreakdownCard({ title, rows, colorMap, cols = 4 }) {
 }
 
 const statusColorMap = {
-  not_started: "#6b7280",
-  in_progress: "#3b82f6",
-  completed: "#10b981",
-  on_hold: "#f59e0b",
-  todo: "#6b7280",
-  done: "#10b981",
+  not_started: "var(--app-muted)",
+  in_progress: "var(--app-info)",
+  completed: "var(--app-success)",
+  on_hold: "var(--app-warning)",
+  todo: "var(--app-muted)",
+  done: "var(--app-success)",
 };
 
 const priorityColorMap = {
-  low: "#6b7280",
-  medium: "#3b82f6",
-  high: "#f59e0b",
-  critical: "#ef4444",
+  low: "var(--app-muted)",
+  medium: "var(--app-info)",
+  high: "var(--app-warning)",
+  critical: "var(--app-danger)",
 };
 

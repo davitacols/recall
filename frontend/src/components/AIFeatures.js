@@ -45,14 +45,14 @@ export const AIAssistant = () => {
 
   return (
     <>
-      <button onClick={() => setIsOpen((v) => !v)} style={{ position: "fixed", bottom: 20, right: 20, width: 52, height: 52, borderRadius: 999, border: "none", background: "linear-gradient(135deg,#ffd390,#ff9f62)", color: "#20140f", display: "grid", placeItems: "center", cursor: "pointer", zIndex: 9999 }}>
+      <button onClick={() => setIsOpen((v) => !v)} style={{ position: "fixed", bottom: 20, right: 20, width: 52, height: 52, borderRadius: 999, border: "none", background: "var(--app-gradient-primary)", color: "var(--app-button-text)", display: "grid", placeItems: "center", cursor: "pointer", zIndex: 9999 }}>
         {isOpen ? <XMarkIcon style={{ width: 20, height: 20 }} /> : <SparklesIcon style={{ width: 20, height: 20 }} />}
       </button>
 
       {isOpen && (
         <div style={{ ...aiCard(palette), position: "fixed", right: 20, bottom: 82, width: 360, height: 500, display: "grid", gridTemplateRows: "auto 1fr auto", zIndex: 9999 }}>
           <header style={{ padding: 10, borderBottom: `1px solid ${palette.border}`, display: "flex", gap: 8, alignItems: "center" }}>
-            <div style={{ width: 28, height: 28, borderRadius: 999, background: "linear-gradient(135deg,#ffd390,#ff9f62)", display: "grid", placeItems: "center" }}><SparklesIcon style={{ width: 14, height: 14, color: "#20140f" }} /></div>
+            <div style={{ width: 28, height: 28, borderRadius: 999, background: "var(--app-gradient-primary)", display: "grid", placeItems: "center" }}><SparklesIcon style={{ width: 14, height: 14, color: "var(--app-button-text)" }} /></div>
             <div>
               <p style={{ margin: 0, fontSize: 13, color: palette.text, fontWeight: 700 }}>AI Assistant</p>
               <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>Chat and quick actions</p>
@@ -74,7 +74,7 @@ export const AIAssistant = () => {
 
             {messages.map((msg, i) => (
               <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
-                <div style={{ maxWidth: "84%", borderRadius: 12, padding: "8px 10px", background: msg.role === "user" ? "linear-gradient(135deg,#ffd390,#ff9f62)" : palette.cardAlt, color: msg.role === "user" ? "#20140f" : palette.text, fontSize: 12 }}>
+                <div style={{ maxWidth: "84%", borderRadius: 12, padding: "8px 10px", background: msg.role === "user" ? "var(--app-gradient-primary)" : palette.cardAlt, color: msg.role === "user" ? "var(--app-button-text)" : palette.text, fontSize: 12 }}>
                   <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{msg.content}</p>
                   {msg.actions?.length > 0 && (
                     <div style={{ display: "grid", gap: 5, marginTop: 6 }}>
@@ -180,4 +180,4 @@ export const AutoCategorize = ({ text, onCategorize }) => {
   );
 };
 
-const pill = { border: "1px solid rgba(120,120,120,0.35)", borderRadius: 999, padding: "2px 7px", color: "#d9cdbf" };
+const pill = { border: "1px solid var(--app-border-strong)", borderRadius: 999, padding: "2px 7px", color: "#d9cdbf" };

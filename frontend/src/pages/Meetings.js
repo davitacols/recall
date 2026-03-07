@@ -89,7 +89,7 @@ export default function Meetings() {
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
           <Metric label="Total Meetings" value={meetings.length} />
-          <Metric label="Upcoming" value={upcomingCount} color="#3b82f6" />
+          <Metric label="Upcoming" value={upcomingCount} color="var(--app-info)" />
         </section>
 
         {meetings.length === 0 ? (
@@ -118,7 +118,7 @@ export default function Meetings() {
         )}
 
         {showModal && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
+          <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
             <div style={{ width: "min(560px,100%)", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
               <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>Schedule Meeting</h2>
               <form onSubmit={handleSubmit} style={{ marginTop: 12, display: "grid", gap: 8 }}>
@@ -142,11 +142,11 @@ export default function Meetings() {
   );
 }
 
-function Metric({ label, value, color = "#f4ece0" }) {
+function Metric({ label, value, color = "var(--app-text)" }) {
   return (
-    <article style={{ borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" }}>
+    <article style={{ borderRadius: 12, padding: 12, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)" }}>
       <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color }}>{value}</p>
-      <p style={{ margin: "4px 0 0", fontSize: 11, color: "#baa892" }}>{label}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--app-muted)" }}>{label}</p>
     </article>
   );
 }

@@ -8,7 +8,7 @@ export function getAIPalette(_darkMode) {
     muted: "var(--ui-muted)",
     accent: "var(--ui-accent)",
     warm: "var(--ui-warn)",
-    danger: "#dc2626",
+    danger: "var(--app-danger)",
   };
 }
 

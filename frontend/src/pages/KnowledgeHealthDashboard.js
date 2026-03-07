@@ -5,10 +5,10 @@ import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
 
 function scoreTone(score) {
-  if (score >= 80) return "#22c55e";
-  if (score >= 60) return "#3b82f6";
-  if (score >= 40) return "#f59e0b";
-  return "#ef4444";
+  if (score >= 80) return "var(--app-success)";
+  if (score >= 60) return "var(--app-info)";
+  if (score >= 40) return "var(--app-warning)";
+  return "var(--app-danger)";
 }
 
 function qualityLabel(score) {
@@ -26,7 +26,7 @@ function MetricBar({ label, value, palette }) {
         <span style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>{value}%</span>
       </div>
       <div style={{ width: "100%", height: 8, borderRadius: 999, background: "rgba(120,120,120,0.22)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${value}%`, background: value >= 60 ? "#3b82f6" : "#f59e0b" }} />
+        <div style={{ height: "100%", width: `${value}%`, background: value >= 60 ? "var(--app-info)" : "var(--app-warning)" }} />
       </div>
     </div>
   );
@@ -39,7 +39,7 @@ function IssueCard({ title, value, hint, link, palette, tone }) {
       <h3 style={{ margin: "6px 0", fontSize: 14, color: palette.text }}>{title}</h3>
       <p style={{ margin: "0 0 8px", fontSize: 12, color: palette.muted }}>{hint}</p>
       {value > 0 && (
-        <Link to={link} style={{ fontSize: 12, color: "#60a5fa", textDecoration: "none", fontWeight: 700 }}>
+        <Link to={link} style={{ fontSize: 12, color: "var(--app-info)", textDecoration: "none", fontWeight: 700 }}>
           Review now ->
         </Link>
       )}
@@ -125,7 +125,7 @@ export default function KnowledgeHealthDashboard() {
             hint="Decisions missing accountable owners."
             link="/decisions?filter=no_owner"
             palette={palette}
-            tone="#ef4444"
+            tone="var(--app-danger)"
           />
           <IssueCard
             title="Old Unresolved Questions"
@@ -133,7 +133,7 @@ export default function KnowledgeHealthDashboard() {
             hint="Questions older than 30 days still open."
             link="/conversations?type=question&status=unanswered"
             palette={palette}
-            tone="#f59e0b"
+            tone="var(--app-warning)"
           />
           <IssueCard
             title="Repeated Topics"
@@ -141,7 +141,7 @@ export default function KnowledgeHealthDashboard() {
             hint="Same discussions repeated across threads."
             link="/insights/repeated"
             palette={palette}
-            tone="#3b82f6"
+            tone="var(--app-info)"
           />
           <IssueCard
             title="Orphaned Conversations"

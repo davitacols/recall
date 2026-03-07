@@ -234,7 +234,7 @@ function Metric({ label, value, styles }) {
   );
 }
 
-const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
@@ -242,8 +242,8 @@ const subtitle = { margin: 0, fontSize: 13 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
 const card = { borderRadius: 12, padding: 12, marginBottom: 10 };
 const list = { marginTop: 8, display: "grid", gap: 7 };
-const avatar = { width: 30, height: 30, borderRadius: 999, background: "linear-gradient(135deg,#ffd390,#ff9f62)", color: "#20140f", fontWeight: 800, display: "grid", placeItems: "center", fontSize: 12 };
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
+const avatar = { width: 30, height: 30, borderRadius: 999, background: "var(--app-gradient-primary)", color: "var(--app-button-text)", fontWeight: 800, display: "grid", placeItems: "center", fontSize: 12 };
+const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
 const modalCard = { width: "min(560px,100%)", borderRadius: 14, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };
 const buttons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };

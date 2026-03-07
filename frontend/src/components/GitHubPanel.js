@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 
 
@@ -10,10 +10,10 @@ export default function GitHubPanel({ decisionId }) {
   const [prUrl, setPrUrl] = useState('');
   const [linking, setLinking] = useState(false);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   useEffect(() => {
     fetchPRs();
@@ -64,9 +64,9 @@ export default function GitHubPanel({ decisionId }) {
   };
 
   const getStatusColor = (status) => {
-    if (status === 'merged') return '#10b981';
-    if (status === 'closed') return '#ef4444';
-    return '#3b82f6';
+    if (status === 'merged') return 'var(--app-success)';
+    if (status === 'closed') return 'var(--app-danger)';
+    return 'var(--app-info)';
   };
 
   if (loading) return null;
@@ -96,7 +96,7 @@ export default function GitHubPanel({ decisionId }) {
           <button
             type="submit"
             disabled={linking}
-            style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: linking ? 'not-allowed' : 'pointer', opacity: linking ? 0.5 : 1 }}
+            style={{ padding: '8px 16px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: linking ? 'not-allowed' : 'pointer', opacity: linking ? 0.5 : 1 }}
           >
             {linking ? 'Linking...' : 'Link'}
           </button>
@@ -115,7 +115,7 @@ export default function GitHubPanel({ decisionId }) {
                     href={pr.pr_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ fontSize: '14px', fontWeight: 500, color: '#3b82f6', textDecoration: 'none' }}
+                    style={{ fontSize: '14px', fontWeight: 500, color: 'var(--app-info)', textDecoration: 'none' }}
                   >
                     #{pr.pr_number}: {pr.title}
                   </a>

@@ -15,8 +15,8 @@ export default function TasksBoard() {
 
   const columns = [
     { key: "todo", title: "To Do", accent: "#94a3b8" },
-    { key: "in_progress", title: "In Progress", accent: "#3b82f6" },
-    { key: "done", title: "Done", accent: "#10b981" },
+    { key: "in_progress", title: "In Progress", accent: "var(--app-info)" },
+    { key: "done", title: "Done", accent: "var(--app-success)" },
   ];
 
   useEffect(() => {
@@ -143,7 +143,7 @@ export default function TasksBoard() {
         </section>
 
         {showModal && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
+          <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
             <div style={{ width: "min(560px,100%)", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
               <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>Create Task</h2>
               <form onSubmit={handleSubmit} style={{ marginTop: 12, display: "grid", gap: 8 }}>
@@ -175,7 +175,7 @@ export default function TasksBoard() {
 }
 
 function priorityColor(priority) {
-  if (priority === "high") return "#ef4444";
-  if (priority === "medium") return "#f59e0b";
-  return "#60a5fa";
+  if (priority === "high") return "var(--app-danger)";
+  if (priority === "medium") return "var(--app-warning)";
+  return "var(--app-info)";
 }

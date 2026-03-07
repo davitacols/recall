@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { LinkIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 
@@ -12,11 +12,11 @@ export default function QuickLink({ sourceType, sourceId }) {
   const [linkType, setLinkType] = useState('relates_to');
   const [loading, setLoading] = useState(false);
 
-  const bgSecondary = darkMode ? '#1c1917' : '#ffffff';
+  const bgSecondary = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
   const borderColor = darkMode ? '#292524' : '#d1d5db';
-  const textPrimary = darkMode ? '#e7e5e4' : '#111827';
-  const textSecondary = darkMode ? '#a8a29e' : '#374151';
-  const inputBg = darkMode ? '#292524' : '#ffffff';
+  const textPrimary = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const textSecondary = darkMode ? 'var(--app-muted)' : '#374151';
+  const inputBg = darkMode ? '#292524' : 'var(--app-surface-alt)';
 
   const createLink = async () => {
     if (!targetId) return;
@@ -57,8 +57,8 @@ export default function QuickLink({ sourceType, sourceId }) {
           gap: '6px',
           padding: '7px 12px',
           backgroundColor: 'transparent',
-          border: '2px solid #3b82f6',
-          color: '#3b82f6',
+          border: '2px solid var(--app-info)',
+          color: 'var(--app-info)',
           borderRadius: '4px',
           fontSize: '12px',
           fontWeight: 500,
@@ -66,12 +66,12 @@ export default function QuickLink({ sourceType, sourceId }) {
           transition: 'all 0.15s'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = '#3b82f6';
-          e.currentTarget.style.color = '#ffffff';
+          e.currentTarget.style.backgroundColor = 'var(--app-info)';
+          e.currentTarget.style.color = 'var(--app-surface-alt)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.backgroundColor = 'transparent';
-          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.color = 'var(--app-info)';
         }}
       >
         <LinkIcon style={{ width: '14px', height: '14px' }} />
@@ -95,7 +95,7 @@ export default function QuickLink({ sourceType, sourceId }) {
             padding: '24px',
             maxWidth: '400px',
             width: '100%',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
+            boxShadow: '0 20px 25px -5px var(--app-overlay)'
           }}>
             <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: textPrimary }}>
               Link to Content
@@ -179,8 +179,8 @@ export default function QuickLink({ sourceType, sourceId }) {
                 style={{
                   flex: 1,
                   padding: '10px 16px',
-                  backgroundColor: '#3b82f6',
-                  color: '#ffffff',
+                  backgroundColor: 'var(--app-info)',
+                  color: 'var(--app-surface-alt)',
                   border: 'none',
                   borderRadius: '6px',
                   fontSize: '14px',

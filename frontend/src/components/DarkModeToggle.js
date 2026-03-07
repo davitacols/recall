@@ -11,7 +11,7 @@ export default function DarkModeToggle() {
       style={{
         padding: '8px',
         backgroundColor: 'transparent',
-        border: `1px solid ${darkMode ? '#292524' : '#e5e7eb'}`,
+        border: `1px solid ${darkMode ? '#292524' : 'var(--app-border)'}`,
         borderRadius: '5px',
         cursor: 'pointer',
         display: 'flex',
@@ -23,9 +23,9 @@ export default function DarkModeToggle() {
       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
     >
       {darkMode ? (
-        <SunIcon style={{ width: '18px', height: '18px', color: '#e7e5e4' }} />
+        <SunIcon style={{ width: '18px', height: '18px', color: 'var(--app-text)' }} />
       ) : (
-        <MoonIcon style={{ width: '18px', height: '18px', color: '#111827' }} />
+        <MoonIcon style={{ width: '18px', height: '18px', color: 'var(--app-text)' }} />
       )}
     </button>
   );

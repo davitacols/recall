@@ -217,10 +217,10 @@ function Field({ label, children }) {
 const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
 const card = { borderRadius: 16, padding: 16 };
 const title = { margin: 0, fontSize: "clamp(1.5rem,3vw,2rem)", letterSpacing: "-0.02em" };
-const errorBox = { marginTop: 10, border: "1px solid rgba(239,68,68,0.5)", background: "rgba(239,68,68,0.1)", color: "#ef4444", borderRadius: 10, padding: "10px 12px", fontSize: 13 };
+const errorBox = { marginTop: 10, border: "1px solid rgba(239,68,68,0.5)", background: "rgba(239,68,68,0.1)", color: "var(--app-danger)", borderRadius: 10, padding: "10px 12px", fontSize: 13 };
 const formStack = { marginTop: 14, display: "grid", gap: 10 };
 const field = { display: "grid", gap: 6 };
-const fieldLabel = { fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 700, color: "#9e8d7b" };
+const fieldLabel = { fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 700, color: "var(--app-muted)" };
 const buttonRow = { marginTop: 6, display: "flex", justifyContent: "flex-end", gap: 8 };
 const icon14 = { width: 14, height: 14 };
 

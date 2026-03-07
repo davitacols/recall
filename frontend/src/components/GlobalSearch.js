@@ -18,17 +18,17 @@ export const GlobalSearch = ({ isOpen, onClose }) => {
       darkMode
         ? {
             panel: "#1d171b",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#baa892",
-            hover: "rgba(255,255,255,0.06)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            hover: "var(--app-info-soft)",
             active: "rgba(255,173,105,0.18)",
           }
         : {
-            panel: "#fffaf3",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7d6d5a",
+            panel: "var(--app-surface)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
             hover: "rgba(35,24,20,0.06)",
             active: "rgba(255,158,87,0.2)",
           },
@@ -145,12 +145,12 @@ export const GlobalSearch = ({ isOpen, onClose }) => {
   );
 };
 
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120, zIndex: 120 };
+const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120, zIndex: 120 };
 const panel = { width: "min(820px, 94vw)", borderRadius: 12, overflow: "hidden", boxShadow: "0 18px 40px rgba(0,0,0,0.28)" };
 const searchWrap = { display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" };
 const input = { width: "100%", border: "none", outline: "none", background: "transparent", fontSize: 15, fontFamily: "inherit" };
 const list = { maxHeight: 420, overflowY: "auto" };
 const row = { width: "100%", border: "none", textAlign: "left", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontFamily: "inherit" };
-const typePill = { borderRadius: 999, padding: "2px 8px", fontSize: 10, textTransform: "uppercase", border: "1px solid rgba(120,120,120,0.35)", fontWeight: 700, flexShrink: 0 };
+const typePill = { borderRadius: 999, padding: "2px 8px", fontSize: 10, textTransform: "uppercase", border: "1px solid var(--app-border-strong)", fontWeight: 700, flexShrink: 0 };
 const title = { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const state = { textAlign: "center", padding: "18px 12px", fontSize: 13 };

@@ -120,7 +120,7 @@ export default function Templates() {
         )}
 
         {showModal && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
+          <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
             <div style={{ width: "min(620px,100%)", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
               <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>New Template</h2>
               <form onSubmit={createTemplate} style={{ marginTop: 12, display: "grid", gap: 8 }}>

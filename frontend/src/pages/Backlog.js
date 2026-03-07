@@ -166,12 +166,12 @@ function Backlog() {
                   onDrop={() => handleDropToSprint(sprint.id)}
                   style={{
                     ...sprintDrop,
-                    border: dropTarget === sprint.id ? "1px solid #10b981" : "1px solid rgba(120,120,120,0.35)",
-                    background: dropTarget === sprint.id ? "rgba(16,185,129,0.08)" : "transparent",
+                    border: dropTarget === sprint.id ? "1px solid var(--app-success)" : "1px solid var(--app-border-strong)",
+                    background: dropTarget === sprint.id ? "var(--app-success-soft)" : "transparent",
                   }}
                 >
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{sprint.name}</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 11, color: "#9e8d7b" }}>{sprint.start_date} - {sprint.end_date}</p>
+                  <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--app-muted)" }}>{sprint.start_date} - {sprint.end_date}</p>
                 </button>
               ))}
             </div>
@@ -212,23 +212,23 @@ function Backlog() {
   );
 }
 
-const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
+const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--app-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
 const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const titleStyle = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
 const subtitle = { margin: 0, fontSize: 13 };
 const leftCard = { borderRadius: 12, padding: 10 };
 const rightCard = { borderRadius: 12, padding: 10, height: "fit-content" };
-const tableHeader = { minWidth: 620, display: "grid", gridTemplateColumns: "1fr 100px 90px 140px", gap: 8, padding: "8px 10px", fontSize: 11, color: "#9e8d7b", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
-const row = { minWidth: 620, display: "grid", gridTemplateColumns: "1fr 100px 90px 140px", gap: 8, alignItems: "center", border: "1px solid rgba(120,120,120,0.32)", borderRadius: 10, padding: "10px", cursor: "pointer", background: "#1f181c" };
-const rowKey = { margin: 0, fontSize: 11, color: "#9e8d7b", fontWeight: 700 };
-const rowTitle = { margin: "3px 0 0", fontSize: 13, color: "#f4ece0", fontWeight: 600 };
-const mutedTag = { margin: 0, fontSize: 11, color: "#baa892", textTransform: "capitalize", fontWeight: 700 };
-const mutedText = { margin: 0, fontSize: 12, color: "#baa892" };
-const sprintDrop = { borderRadius: 10, padding: 10, textAlign: "left", cursor: "pointer", color: "#f4ece0" };
-const empty = { borderRadius: 10, border: "1px dashed rgba(120,120,120,0.35)", padding: "14px 10px", fontSize: 12, color: "#9e8d7b", textAlign: "center" };
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
+const tableHeader = { minWidth: 620, display: "grid", gridTemplateColumns: "1fr 100px 90px 140px", gap: 8, padding: "8px 10px", fontSize: 11, color: "var(--app-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
+const row = { minWidth: 620, display: "grid", gridTemplateColumns: "1fr 100px 90px 140px", gap: 8, alignItems: "center", border: "1px solid rgba(120,120,120,0.32)", borderRadius: 10, padding: "10px", cursor: "pointer", background: "var(--app-surface-alt)" };
+const rowKey = { margin: 0, fontSize: 11, color: "var(--app-muted)", fontWeight: 700 };
+const rowTitle = { margin: "3px 0 0", fontSize: 13, color: "var(--app-text)", fontWeight: 600 };
+const mutedTag = { margin: 0, fontSize: 11, color: "var(--app-muted)", textTransform: "capitalize", fontWeight: 700 };
+const mutedText = { margin: 0, fontSize: 12, color: "var(--app-muted)" };
+const sprintDrop = { borderRadius: 10, padding: 10, textAlign: "left", cursor: "pointer", color: "var(--app-text)" };
+const empty = { borderRadius: 10, border: "1px dashed var(--app-border-strong)", padding: "14px 10px", fontSize: 12, color: "var(--app-muted)", textAlign: "center" };
+const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
 const modalCard = { width: "min(520px,100%)", borderRadius: 14, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };

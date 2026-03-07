@@ -39,18 +39,18 @@ const formatDateOnly = (value) => (value ? new Date(value).toLocaleDateString() 
 const getSemanticChipStyle = (value, type, darkMode) => {
   const statusStyles = {
     backlog: { border: "rgba(148,163,184,0.55)", text: "#94a3b8", bgDark: "rgba(148,163,184,0.14)", bgLight: "rgba(148,163,184,0.16)" },
-    todo: { border: "rgba(59,130,246,0.55)", text: "#60a5fa", bgDark: "rgba(59,130,246,0.14)", bgLight: "rgba(59,130,246,0.14)" },
-    in_progress: { border: "rgba(245,158,11,0.55)", text: "#f59e0b", bgDark: "rgba(245,158,11,0.16)", bgLight: "rgba(245,158,11,0.16)" },
+    todo: { border: "rgba(59,130,246,0.55)", text: "var(--app-info)", bgDark: "rgba(59,130,246,0.14)", bgLight: "rgba(59,130,246,0.14)" },
+    in_progress: { border: "rgba(245,158,11,0.55)", text: "var(--app-warning)", bgDark: "rgba(245,158,11,0.16)", bgLight: "rgba(245,158,11,0.16)" },
     in_review: { border: "rgba(168,85,247,0.55)", text: "#a78bfa", bgDark: "rgba(168,85,247,0.16)", bgLight: "rgba(168,85,247,0.14)" },
     testing: { border: "rgba(236,72,153,0.55)", text: "#f472b6", bgDark: "rgba(236,72,153,0.16)", bgLight: "rgba(236,72,153,0.14)" },
-    done: { border: "rgba(34,197,94,0.55)", text: "#22c55e", bgDark: "rgba(34,197,94,0.16)", bgLight: "rgba(34,197,94,0.14)" },
+    done: { border: "rgba(34,197,94,0.55)", text: "var(--app-success)", bgDark: "rgba(34,197,94,0.16)", bgLight: "rgba(34,197,94,0.14)" },
   };
   const priorityStyles = {
-    lowest: { border: "rgba(34,197,94,0.55)", text: "#22c55e", bgDark: "rgba(34,197,94,0.16)", bgLight: "rgba(34,197,94,0.14)" },
+    lowest: { border: "rgba(34,197,94,0.55)", text: "var(--app-success)", bgDark: "rgba(34,197,94,0.16)", bgLight: "rgba(34,197,94,0.14)" },
     low: { border: "rgba(132,204,22,0.55)", text: "#84cc16", bgDark: "rgba(132,204,22,0.16)", bgLight: "rgba(132,204,22,0.14)" },
-    medium: { border: "rgba(245,158,11,0.55)", text: "#f59e0b", bgDark: "rgba(245,158,11,0.16)", bgLight: "rgba(245,158,11,0.14)" },
+    medium: { border: "rgba(245,158,11,0.55)", text: "var(--app-warning)", bgDark: "rgba(245,158,11,0.16)", bgLight: "rgba(245,158,11,0.14)" },
     high: { border: "rgba(249,115,22,0.55)", text: "#f97316", bgDark: "rgba(249,115,22,0.16)", bgLight: "rgba(249,115,22,0.14)" },
-    highest: { border: "rgba(239,68,68,0.55)", text: "#ef4444", bgDark: "rgba(239,68,68,0.16)", bgLight: "rgba(239,68,68,0.14)" },
+    highest: { border: "rgba(239,68,68,0.55)", text: "var(--app-danger)", bgDark: "rgba(239,68,68,0.16)", bgLight: "rgba(239,68,68,0.14)" },
   };
   const token = (type === "status" ? statusStyles : priorityStyles)[value];
   if (!token) return {};
@@ -210,7 +210,7 @@ function IssueDetail() {
 
   return (
     <div style={{ minHeight: "100vh", fontFamily: "'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-      <div style={{ ...ambientGlow, background: darkMode ? "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.18),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.16),transparent 36%)" : "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.1),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.08),transparent 36%)" }} />
+      <div style={{ ...ambientGlow, background: darkMode ? "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.18),transparent 42%), radial-gradient(circle at 85% 18%,var(--app-info-soft),transparent 36%)" : "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.1),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.08),transparent 36%)" }} />
       <div style={{ ...ui.container, width: "min(1420px,100%)", position: "relative", zIndex: 1 }}>
         <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
           <ArrowLeftIcon style={icon14} /> Back To Board
@@ -218,7 +218,7 @@ function IssueDetail() {
 
         {error && <div style={errorBanner}>{error}</div>}
 
-        <section className="ui-enter ui-card-lift ui-smooth" style={{ ...hero, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(140deg,#1b1417 0%,#140f11 100%)" : "linear-gradient(140deg,#fffdf9 0%,#fff7ea 100%)", boxShadow: darkMode ? "0 26px 60px rgba(0,0,0,0.35)" : "0 26px 60px rgba(20,12,4,0.08)", "--ui-delay": "30ms" }}>
+        <section className="ui-enter ui-card-lift ui-smooth" style={{ ...hero, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(140deg,#1b1417 0%,#140f11 100%)" : "linear-gradient(140deg,var(--app-surface-alt)df9 0%,var(--app-surface-alt)7ea 100%)", boxShadow: darkMode ? "0 26px 60px rgba(0,0,0,0.35)" : "0 26px 60px rgba(20,12,4,0.08)", "--ui-delay": "30ms" }}>
           <div style={{ minWidth: 0 }}>
             <p style={{ ...issueKey, color: palette.muted }}>{issue.key || `ISS-${issue.id}`}</p>
             {!editing ? (
@@ -431,10 +431,10 @@ function Metric({ icon: Icon, label, value, palette, className = "" }) {
   );
 }
 
-const spinner = { width: 34, height: 34, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#f59e0b", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 34, height: 34, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-warning)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const ambientGlow = { position: "fixed", inset: 0, pointerEvents: "none" };
 const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 12 };
-const errorBanner = { borderRadius: 12, border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#ef4444", padding: "10px 12px", marginBottom: 10, fontSize: 13 };
+const errorBanner = { borderRadius: 12, border: "1px solid var(--app-danger-border)", background: "var(--app-danger-soft)", color: "var(--app-danger)", padding: "10px 12px", marginBottom: 10, fontSize: 13 };
 const cardBase = { borderRadius: 18, padding: "clamp(12px,2vw,18px)" };
 const hero = { borderRadius: 20, padding: "clamp(14px,2.2vw,22px)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" };
 const issueKey = { margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" };
@@ -442,7 +442,7 @@ const issueTitle = { margin: "8px 0 10px", fontSize: "clamp(1.4rem,3vw,2.15rem)"
 const tagRow = { display: "flex", gap: 8, flexWrap: "wrap" };
 const chip = { borderRadius: 999, padding: "5px 10px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
 const heroActions = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
-const dangerButton = { border: "1px solid rgba(239,68,68,0.45)", borderRadius: 10, padding: 9, color: "#ef4444", background: "rgba(239,68,68,0.1)", cursor: "pointer", display: "grid", placeItems: "center" };
+const dangerButton = { border: "1px solid var(--app-danger-border)", borderRadius: 10, padding: 9, color: "var(--app-danger)", background: "rgba(239,68,68,0.1)", cursor: "pointer", display: "grid", placeItems: "center" };
 const signalRail = { marginTop: 10, borderRadius: 14, padding: "10px 12px", display: "grid", gap: 8 };
 const signalTitle = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 };
 const signalPills = { display: "flex", gap: 8, flexWrap: "wrap" };

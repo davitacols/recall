@@ -14,10 +14,10 @@ export default function NotificationCenter() {
   const [showDropdown, setShowDropdown] = useState(false);
   const wsRef = useRef(null);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   useEffect(() => {
     if (user) {
@@ -126,8 +126,8 @@ export default function NotificationCenter() {
             right: '4px',
             width: '18px',
             height: '18px',
-            backgroundColor: '#ef4444',
-            color: '#ffffff',
+            backgroundColor: 'var(--app-danger)',
+            color: 'var(--app-surface-alt)',
             borderRadius: '50%',
             fontSize: '11px',
             fontWeight: 600,
@@ -152,7 +152,7 @@ export default function NotificationCenter() {
           backgroundColor: bgColor,
           border: `1px solid ${borderColor}`,
           borderRadius: '12px',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          boxShadow: '0 10px 40px var(--app-overlay)',
           zIndex: 1000,
           overflow: 'hidden'
         }}>
@@ -166,7 +166,7 @@ export default function NotificationCenter() {
                   padding: '6px 12px',
                   fontSize: '12px',
                   fontWeight: 600,
-                  color: '#3b82f6',
+                  color: 'var(--app-info)',
                   backgroundColor: 'transparent',
                   border: 'none',
                   cursor: 'pointer'
@@ -200,7 +200,7 @@ export default function NotificationCenter() {
                 >
                   <div style={{ display: 'flex', gap: '12px' }}>
                     {!notification.is_read && (
-                      <div style={{ width: '8px', height: '8px', backgroundColor: '#3b82f6', borderRadius: '50%', marginTop: '6px', flexShrink: 0 }} />
+                      <div style={{ width: '8px', height: '8px', backgroundColor: 'var(--app-info)', borderRadius: '50%', marginTop: '6px', flexShrink: 0 }} />
                     )}
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '14px', color: textColor, marginBottom: '4px', fontWeight: notification.is_read ? 400 : 600 }}>
@@ -226,7 +226,7 @@ export default function NotificationCenter() {
               style={{
                 fontSize: '13px',
                 fontWeight: 600,
-                color: '#3b82f6',
+                color: 'var(--app-info)',
                 backgroundColor: 'transparent',
                 border: 'none',
                 cursor: 'pointer'

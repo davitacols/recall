@@ -77,23 +77,23 @@ function Settings() {
       darkMode
         ? {
             pageBg: "#0f0b0d",
-            panelBg: "#171215",
+            panelBg: "var(--app-surface)",
             panelAlt: "#1f171c",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
             muted: "#b8a994",
-            accent: "#ffb476",
+            accent: "var(--app-accent)",
             softAccent: "rgba(255,180,118,0.13)",
-            danger: "#ff8e8e",
+            danger: "var(--app-danger)",
           }
         : {
-            pageBg: "#f6f1ea",
-            panelBg: "#fffaf3",
-            panelAlt: "#ffffff",
-            border: "#eadfce",
-            text: "#231814",
+            pageBg: "var(--app-bg)",
+            panelBg: "var(--app-surface)",
+            panelAlt: "var(--app-surface-alt)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
             muted: "#7c6d5a",
-            accent: "#d9692e",
+            accent: "var(--app-accent)",
             softAccent: "rgba(217,105,46,0.11)",
             danger: "#d14343",
           },
@@ -492,7 +492,7 @@ function Settings() {
                   borderRadius: 10,
                   border: `1px solid ${palette.border}`,
                   background: palette.accent,
-                  color: "#1d130f",
+                  color: "var(--app-button-text)",
                   padding: "10px 14px",
                   fontWeight: 700,
                   cursor: loading ? "not-allowed" : "pointer",
@@ -531,7 +531,7 @@ function Settings() {
                     borderRadius: 10,
                     border: `1px solid ${palette.border}`,
                     background: palette.accent,
-                    color: "#1d130f",
+                    color: "var(--app-button-text)",
                     padding: "0 14px",
                     fontWeight: 700,
                     cursor: loading ? "not-allowed" : "pointer",
@@ -576,8 +576,8 @@ function Settings() {
                           disabled={resendingInvitationId === invitation.id}
                           style={{
                             ...copyButton(palette),
-                            background: "#2563eb",
-                            color: "#ffffff",
+                            background: "var(--app-info)",
+                            color: "var(--app-surface-alt)",
                             cursor: resendingInvitationId === invitation.id ? "not-allowed" : "pointer",
                             opacity: resendingInvitationId === invitation.id ? 0.6 : 1,
                           }}
@@ -710,7 +710,7 @@ function Settings() {
       </section>
 
       {confirmDelete && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.52)", display: "grid", placeItems: "center", zIndex: 90, padding: 16 }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 90, padding: 16 }}>
           <div style={{ width: "min(460px,100%)", borderRadius: 16, background: palette.panelBg, border: `1px solid ${palette.border}`, padding: 16 }}>
             <h3 style={{ margin: 0, color: palette.text, fontSize: 20 }}>
               {confirmDelete.type === "invitation" ? "Cancel Invitation?" : "Remove Member?"}
@@ -807,7 +807,7 @@ function toggleKnob(active) {
     width: 18,
     height: 18,
     borderRadius: "50%",
-    background: active ? "#1d130f" : "#ffffff",
+    background: active ? "var(--app-button-text)" : "var(--app-surface-alt)",
     boxShadow: "0 1px 2px rgba(0,0,0,0.22)",
   };
 }
@@ -885,7 +885,7 @@ function copyButton(palette) {
     borderRadius: 9,
     border: `1px solid ${palette.border}`,
     background: palette.accent,
-    color: "#1d130f",
+    color: "var(--app-button-text)",
     padding: "8px 11px",
     fontWeight: 700,
   };

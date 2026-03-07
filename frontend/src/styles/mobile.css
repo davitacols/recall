@@ -6,7 +6,7 @@
     left: 0;
     right: 0;
     background: white;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--app-border);
     display: flex;
     justify-content: space-around;
     padding: 0.75rem 0;
@@ -18,14 +18,14 @@
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
-    color: #6b7280;
+    color: var(--app-muted);
     font-size: 0.75rem;
     font-weight: 500;
     text-decoration: none;
   }
 
   .mobile-bottom-nav-item.active {
-    color: #111827;
+    color: var(--app-text);
   }
 
   .mobile-bottom-nav-item svg {
@@ -43,7 +43,7 @@
     right: 1rem;
     width: 3.5rem;
     height: 3.5rem;
-    background: #111827;
+    background: var(--app-text);
     color: white;
     border-radius: 0;
     display: flex;

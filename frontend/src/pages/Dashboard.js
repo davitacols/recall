@@ -87,26 +87,26 @@ function Dashboard() {
     () =>
       darkMode
         ? {
-            cardBg: "#171215",
+            cardBg: "var(--app-surface)",
             cardBgAlt: "#1d171b",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#baa892",
-            accent: "#ffb476",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            accent: "var(--app-accent)",
             good: "#61d4a4",
             warn: "#ffca7d",
             info: "#86c8ff",
           }
         : {
-            cardBg: "#fffaf3",
-            cardBgAlt: "#ffffff",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7d6d5a",
-            accent: "#d9692e",
-            good: "#1f8f66",
+            cardBg: "var(--app-surface)",
+            cardBgAlt: "var(--app-surface-alt)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            accent: "var(--app-accent)",
+            good: "var(--app-success)",
             warn: "#a15a1b",
-            info: "#2563eb",
+            info: "var(--app-info)",
           },
     [darkMode]
   );
@@ -409,7 +409,7 @@ const heroActions = {
 const heroMediaFrame = {
   borderRadius: 14,
   overflow: "hidden",
-  background: "rgba(255,255,255,0.06)",
+  background: "var(--app-info-soft)",
   minHeight: 170,
   display: "grid",
   alignContent: "end",
@@ -455,7 +455,7 @@ const sharedAction = {
 
 const primaryAction = {
   ...sharedAction,
-  background: "linear-gradient(135deg, #ffd190, #ff9f62)",
+  background: "var(--app-gradient-primary)",
   color: "#22150f",
 };
 
@@ -651,7 +651,7 @@ const loadingTitle = {
   height: 28,
   width: "min(380px, 70vw)",
   borderRadius: 8,
-  background: "rgba(120,120,120,0.25)",
+  background: "var(--app-track)",
 };
 
 const loadingSub = {

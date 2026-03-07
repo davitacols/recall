@@ -77,29 +77,29 @@ function Reports() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--app-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: '32px', height: '32px', border: '2px solid #d97706', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#111827' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--app-text)' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px' }}>
         {/* Header */}
         <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '36px', fontWeight: 900, color: '#ffffff', marginBottom: '8px', letterSpacing: '-0.02em' }}>Reports & Analytics</h1>
-          <p style={{ fontSize: '14px', color: '#9ca3af' }}>Track team performance and sprint progress</p>
+          <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'var(--app-surface-alt)', marginBottom: '8px', letterSpacing: '-0.02em' }}>Reports & Analytics</h1>
+          <p style={{ fontSize: '14px', color: 'var(--app-muted)' }}>Track team performance and sprint progress</p>
         </div>
 
         {/* Sprint Selector */}
         {sprints.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#9ca3af', marginBottom: '8px', textTransform: 'uppercase' }}>Select Sprint</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Select Sprint</label>
             <select
               value={selectedSprint || ''}
               onChange={(e) => setSelectedSprint(parseInt(e.target.value))}
-              style={{ padding: '10px 16px', backgroundColor: '#1c1917', color: '#ffffff', border: '1px solid #374151', fontSize: '14px', fontWeight: 600, cursor: 'pointer', minWidth: '250px' }}
+              style={{ padding: '10px 16px', backgroundColor: 'var(--app-surface)', color: 'var(--app-surface-alt)', border: '1px solid #374151', fontSize: '14px', fontWeight: 600, cursor: 'pointer', minWidth: '250px' }}
             >
               {sprints.map(sprint => (
                 <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
@@ -111,37 +111,37 @@ function Reports() {
         {/* Metrics Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
           <MetricCard label="Avg Velocity" value={velocity?.average || 0} unit="pts" color="#d97706" />
-          <MetricCard label="Current Sprint" value={burndown?.data?.[burndown.data.length - 1]?.actual.toFixed(0) || 0} unit="pts left" color="#3b82f6" />
-          <MetricCard label="Completion Rate" value={velocity ? Math.round((velocity.sprints[velocity.sprints.length - 1]?.completed / velocity.sprints[velocity.sprints.length - 1]?.committed) * 100) : 0} unit="%" color="#10b981" />
-          <MetricCard label="Total Sprints" value={velocity?.sprints?.length || 0} unit="" color="#8b5cf6" />
+          <MetricCard label="Current Sprint" value={burndown?.data?.[burndown.data.length - 1]?.actual.toFixed(0) || 0} unit="pts left" color="var(--app-info)" />
+          <MetricCard label="Completion Rate" value={velocity ? Math.round((velocity.sprints[velocity.sprints.length - 1]?.completed / velocity.sprints[velocity.sprints.length - 1]?.committed) * 100) : 0} unit="%" color="var(--app-success)" />
+          <MetricCard label="Total Sprints" value={velocity?.sprints?.length || 0} unit="" color="var(--app-info)" />
         </div>
 
         {/* Charts Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
           {/* Burndown Chart */}
-          <div style={{ backgroundColor: '#1c1917', border: '1px solid #374151', padding: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', marginBottom: '16px' }}>Sprint Burndown</h2>
+          <div style={{ backgroundColor: 'var(--app-surface)', border: '1px solid #374151', padding: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--app-surface-alt)', marginBottom: '16px' }}>Sprint Burndown</h2>
             {burndown && <BurndownChart data={burndown.data} />}
           </div>
 
           {/* Velocity Chart */}
-          <div style={{ backgroundColor: '#1c1917', border: '1px solid #374151', padding: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', marginBottom: '16px' }}>Team Velocity</h2>
+          <div style={{ backgroundColor: 'var(--app-surface)', border: '1px solid #374151', padding: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--app-surface-alt)', marginBottom: '16px' }}>Team Velocity</h2>
             {velocity && <VelocityChart data={velocity.sprints} average={velocity.average} />}
           </div>
         </div>
 
         {/* Velocity Table */}
         {velocity && (
-          <div style={{ backgroundColor: '#1c1917', border: '1px solid #374151', padding: '24px', marginTop: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', marginBottom: '16px' }}>Sprint History</h2>
+          <div style={{ backgroundColor: 'var(--app-surface)', border: '1px solid #374151', padding: '24px', marginTop: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--app-surface-alt)', marginBottom: '16px' }}>Sprint History</h2>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #374151' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Sprint</th>
-                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Committed</th>
-                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Completed</th>
-                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Rate</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase' }}>Sprint</th>
+                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase' }}>Committed</th>
+                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase' }}>Completed</th>
+                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase' }}>Rate</th>
                 </tr>
               </thead>
               <tbody>
@@ -149,10 +149,10 @@ function Reports() {
                   const rate = Math.round((sprint.completed / sprint.committed) * 100);
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid #374151' }}>
-                      <td style={{ padding: '12px', fontSize: '14px', color: '#ffffff', fontWeight: 600 }}>{sprint.name}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '14px', color: '#9ca3af' }}>{sprint.committed}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '14px', color: '#ffffff', fontWeight: 600 }}>{sprint.completed}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '14px', color: rate >= 90 ? '#10b981' : rate >= 70 ? '#eab308' : '#ef4444', fontWeight: 700 }}>{rate}%</td>
+                      <td style={{ padding: '12px', fontSize: '14px', color: 'var(--app-surface-alt)', fontWeight: 600 }}>{sprint.name}</td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '14px', color: 'var(--app-muted)' }}>{sprint.committed}</td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '14px', color: 'var(--app-surface-alt)', fontWeight: 600 }}>{sprint.completed}</td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '14px', color: rate >= 90 ? 'var(--app-success)' : rate >= 70 ? '#eab308' : 'var(--app-danger)', fontWeight: 700 }}>{rate}%</td>
                     </tr>
                   );
                 })}
@@ -167,11 +167,11 @@ function Reports() {
 
 function MetricCard({ label, value, unit, color }) {
   return (
-    <div style={{ backgroundColor: '#1c1917', border: '1px solid #374151', padding: '20px' }}>
-      <div style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: '8px' }}>{label}</div>
+    <div style={{ backgroundColor: 'var(--app-surface)', border: '1px solid #374151', padding: '20px' }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>{label}</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
         <span style={{ fontSize: '32px', fontWeight: 900, color }}>{value}</span>
-        <span style={{ fontSize: '14px', fontWeight: 600, color: '#6b7280' }}>{unit}</span>
+        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--app-muted)' }}>{unit}</span>
       </div>
     </div>
   );
@@ -201,7 +201,7 @@ function BurndownChart({ data }) {
       ))}
       
       {/* Ideal line */}
-      <path d={idealPath} fill="none" stroke="#6b7280" strokeWidth="2" strokeDasharray="5,5" />
+      <path d={idealPath} fill="none" stroke="var(--app-muted)" strokeWidth="2" strokeDasharray="5,5" />
       
       {/* Actual line */}
       <path d={actualPath} fill="none" stroke="#d97706" strokeWidth="3" />
@@ -212,18 +212,18 @@ function BurndownChart({ data }) {
       ))}
       
       {/* Axes */}
-      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#9ca3af" strokeWidth="2" />
-      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#9ca3af" strokeWidth="2" />
+      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="var(--app-muted)" strokeWidth="2" />
+      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="var(--app-muted)" strokeWidth="2" />
       
       {/* Labels */}
-      <text x={width / 2} y={height - 10} fill="#9ca3af" fontSize="12" textAnchor="middle">Days</text>
-      <text x={15} y={height / 2} fill="#9ca3af" fontSize="12" textAnchor="middle" transform={`rotate(-90, 15, ${height / 2})`}>Story Points</text>
+      <text x={width / 2} y={height - 10} fill="var(--app-muted)" fontSize="12" textAnchor="middle">Days</text>
+      <text x={15} y={height / 2} fill="var(--app-muted)" fontSize="12" textAnchor="middle" transform={`rotate(-90, 15, ${height / 2})`}>Story Points</text>
       
       {/* Legend */}
-      <line x1={width - 150} y1={20} x2={width - 120} y2={20} stroke="#6b7280" strokeWidth="2" strokeDasharray="5,5" />
-      <text x={width - 115} y={24} fill="#9ca3af" fontSize="12">Ideal</text>
+      <line x1={width - 150} y1={20} x2={width - 120} y2={20} stroke="var(--app-muted)" strokeWidth="2" strokeDasharray="5,5" />
+      <text x={width - 115} y={24} fill="var(--app-muted)" fontSize="12">Ideal</text>
       <line x1={width - 150} y1={40} x2={width - 120} y2={40} stroke="#d97706" strokeWidth="2" />
-      <text x={width - 115} y={44} fill="#9ca3af" fontSize="12">Actual</text>
+      <text x={width - 115} y={44} fill="var(--app-muted)" fontSize="12">Actual</text>
     </svg>
   );
 }
@@ -250,7 +250,7 @@ function VelocityChart({ data, average }) {
       ))}
       
       {/* Average line */}
-      <line x1={padding} y1={getY(average)} x2={width - padding} y2={getY(average)} stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
+      <line x1={padding} y1={getY(average)} x2={width - padding} y2={getY(average)} stroke="var(--app-success)" strokeWidth="2" strokeDasharray="5,5" />
       
       {/* Bars */}
       {data.map((d, i) => {
@@ -258,30 +258,30 @@ function VelocityChart({ data, average }) {
         return (
           <g key={i}>
             {/* Committed bar */}
-            <rect x={x - barWidth - 2} y={getY(d.committed)} width={barWidth} height={getHeight(d.committed)} fill="#3b82f6" />
+            <rect x={x - barWidth - 2} y={getY(d.committed)} width={barWidth} height={getHeight(d.committed)} fill="var(--app-info)" />
             {/* Completed bar */}
             <rect x={x + 2} y={getY(d.completed)} width={barWidth} height={getHeight(d.completed)} fill="#d97706" />
             {/* Label */}
-            <text x={x} y={height - padding + 20} fill="#9ca3af" fontSize="10" textAnchor="middle">{d.name.replace('Sprint ', 'S')}</text>
+            <text x={x} y={height - padding + 20} fill="var(--app-muted)" fontSize="10" textAnchor="middle">{d.name.replace('Sprint ', 'S')}</text>
           </g>
         );
       })}
       
       {/* Axes */}
-      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#9ca3af" strokeWidth="2" />
-      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#9ca3af" strokeWidth="2" />
+      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="var(--app-muted)" strokeWidth="2" />
+      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="var(--app-muted)" strokeWidth="2" />
       
       {/* Labels */}
-      <text x={width / 2} y={height - 10} fill="#9ca3af" fontSize="12" textAnchor="middle">Sprints</text>
-      <text x={15} y={height / 2} fill="#9ca3af" fontSize="12" textAnchor="middle" transform={`rotate(-90, 15, ${height / 2})`}>Story Points</text>
+      <text x={width / 2} y={height - 10} fill="var(--app-muted)" fontSize="12" textAnchor="middle">Sprints</text>
+      <text x={15} y={height / 2} fill="var(--app-muted)" fontSize="12" textAnchor="middle" transform={`rotate(-90, 15, ${height / 2})`}>Story Points</text>
       
       {/* Legend */}
-      <rect x={width - 150} y={15} width={15} height={15} fill="#3b82f6" />
-      <text x={width - 130} y={26} fill="#9ca3af" fontSize="12">Committed</text>
+      <rect x={width - 150} y={15} width={15} height={15} fill="var(--app-info)" />
+      <text x={width - 130} y={26} fill="var(--app-muted)" fontSize="12">Committed</text>
       <rect x={width - 150} y={35} width={15} height={15} fill="#d97706" />
-      <text x={width - 130} y={46} fill="#9ca3af" fontSize="12">Completed</text>
-      <line x1={width - 150} y1={60} x2={width - 135} y2={60} stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" />
-      <text x={width - 130} y={64} fill="#9ca3af" fontSize="12">Average</text>
+      <text x={width - 130} y={46} fill="var(--app-muted)" fontSize="12">Completed</text>
+      <line x1={width - 150} y1={60} x2={width - 135} y2={60} stroke="var(--app-success)" strokeWidth="2" strokeDasharray="5,5" />
+      <text x={width - 130} y={64} fill="var(--app-muted)" fontSize="12">Average</text>
     </svg>
   );
 }

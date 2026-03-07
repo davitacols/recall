@@ -14,11 +14,11 @@ export default function QuickActions({ darkMode }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
   const hoverBg = darkMode ? '#292524' : '#f3f4f6';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   const actions = [
     { name: 'Conversation', icon: ChatBubbleLeftIcon, href: '/conversations/new' },
@@ -47,9 +47,9 @@ export default function QuickActions({ darkMode }) {
           transition: 'all 0.15s'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = darkMode ? '#3b82f6' : '#3b82f6';
-          e.currentTarget.style.color = '#ffffff';
-          e.currentTarget.style.borderColor = '#3b82f6';
+          e.currentTarget.style.backgroundColor = darkMode ? 'var(--app-info)' : 'var(--app-info)';
+          e.currentTarget.style.color = 'var(--app-surface-alt)';
+          e.currentTarget.style.borderColor = 'var(--app-info)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.backgroundColor = darkMode ? '#292524' : '#f3f4f6';

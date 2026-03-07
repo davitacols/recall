@@ -2,11 +2,11 @@ import React from 'react';
 import 'react-quill/dist/quill.snow.css';
 
 export default function RichTextRenderer({ content, darkMode }) {
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const linkColor = '#3b82f6';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const linkColor = 'var(--app-info)';
   const codeBg = darkMode ? '#292524' : '#f3f4f6';
   const quoteBorder = darkMode ? '#44403c' : '#d1d5db';
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
 
   return (
     <div>

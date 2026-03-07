@@ -61,20 +61,20 @@ export const MobileNav = ({ onSearchOpen }) => {
             panel: "#1a1417",
             panelAlt: "#20181c",
             border: "rgba(255, 225, 193, 0.16)",
-            text: "#f4ece0",
+            text: "var(--app-text)",
             muted: "#b6a492",
-            active: "#ffb476",
+            active: "var(--app-accent)",
             overlay: "rgba(0,0,0,0.58)",
-            navPill: "rgba(255,255,255,0.05)",
+            navPill: "var(--app-info-soft)",
           }
         : {
             surface: "rgba(255,250,243,0.98)",
-            panel: "#ffffff",
-            panelAlt: "#fff7ef",
-            border: "#eadfce",
-            text: "#231814",
+            panel: "var(--app-surface-alt)",
+            panelAlt: "var(--app-surface-alt)7ef",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
             muted: "#7b6a58",
-            active: "#d9692e",
+            active: "var(--app-accent)",
             overlay: "rgba(20, 24, 28, 0.34)",
             navPill: "rgba(35,24,20,0.04)",
           },
@@ -220,7 +220,7 @@ export const MobileNav = ({ onSearchOpen }) => {
                 />
 
                 {workspaceError ? (
-                  <p style={{ ...workspaceMeta, color: workspaceError.includes("sent") ? palette.muted : "#ef4444" }}>
+                  <p style={{ ...workspaceMeta, color: workspaceError.includes("sent") ? palette.muted : "var(--app-danger)" }}>
                     {workspaceError}
                   </p>
                 ) : null}

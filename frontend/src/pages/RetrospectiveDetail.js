@@ -107,8 +107,8 @@ function Retrospectives() {
         </section>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8, marginBottom: 12 }}>
-          <Metric color="#16a34a" label="Completed" value={sprint.completed} palette={palette} />
-          <Metric color="#ca8a04" label="In Progress" value={sprint.in_progress} palette={palette} />
+          <Metric color="var(--app-success)" label="Completed" value={sprint.completed} palette={palette} />
+          <Metric color="var(--app-warning)" label="In Progress" value={sprint.in_progress} palette={palette} />
           <Metric color={palette.muted} label="To Do" value={sprint.todo} palette={palette} />
         </section>
 
@@ -117,7 +117,7 @@ function Retrospectives() {
             title="What Went Well"
             icon={CheckCircleIcon}
             section="what_went_well"
-            color="#16a34a"
+            color="var(--app-success)"
             items={formData.what_went_well}
             draft={drafts.what_went_well}
             editing={editing}
@@ -132,7 +132,7 @@ function Retrospectives() {
             title="What Needs Improvement"
             icon={ExclamationTriangleIcon}
             section="what_needs_improvement"
-            color="#ca8a04"
+            color="var(--app-warning)"
             items={formData.what_needs_improvement}
             draft={drafts.what_needs_improvement}
             editing={editing}
@@ -213,7 +213,7 @@ function RetrospectiveSection({ title, icon: Icon, color, items, draft, editing,
               {editing && (
                 <button
                   onClick={() => onRemove(index)}
-                  style={{ border: `1px solid ${palette.border}`, background: "transparent", color: "#dc2626", width: 28, height: 28, cursor: "pointer" }}
+                  style={{ border: `1px solid ${palette.border}`, background: "transparent", color: "var(--app-danger)", width: 28, height: 28, cursor: "pointer" }}
                 >
                   x
                 </button>
@@ -235,6 +235,6 @@ function Metric({ label, value, color, palette }) {
   );
 }
 
-const spinner = { width: 28, height: 28, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 28, height: 28, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 
 export default Retrospectives;

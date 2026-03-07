@@ -36,26 +36,26 @@ function Notifications() {
       darkMode
         ? {
             bg: "#0f0b0d",
-            panel: "#171215",
+            panel: "var(--app-surface)",
             panelSoft: "#1d171b",
-            border: "rgba(255,225,193,0.14)",
+            border: "var(--app-border)",
             borderStrong: "rgba(255,225,193,0.24)",
-            text: "#f4ece0",
-            muted: "#baa892",
-            accent: "#ffb476",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            accent: "var(--app-accent)",
             accentText: "#20120d",
             unreadBg: "rgba(255,180,118,0.14)",
           }
         : {
-            bg: "#f6f1ea",
-            panel: "#fffaf3",
-            panelSoft: "#ffffff",
-            border: "#eadfce",
+            bg: "var(--app-bg)",
+            panel: "var(--app-surface)",
+            panelSoft: "var(--app-surface-alt)",
+            border: "var(--app-border)",
             borderStrong: "#d8cab6",
-            text: "#231814",
-            muted: "#7d6d5a",
-            accent: "#d9692e",
-            accentText: "#fff7ee",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            accent: "var(--app-accent)",
+            accentText: "var(--app-surface-alt)7ee",
             unreadBg: "rgba(217,105,46,0.1)",
           },
     [darkMode]
@@ -186,8 +186,8 @@ function Notifications() {
           className="ui-btn-polish ui-focus-ring"
           style={{
             ...actionPill,
-            border: "1px solid rgba(239,68,68,0.45)",
-            color: "#ef4444",
+            border: "1px solid var(--app-danger-border)",
+            color: "var(--app-danger)",
             background: "transparent",
           }}
         >

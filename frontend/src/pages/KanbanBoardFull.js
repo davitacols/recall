@@ -156,7 +156,7 @@ function KanbanBoard() {
           </button>
         </section>
         {moveError && (
-          <div style={{ marginBottom: 10, borderRadius: 10, border: "1px solid rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.08)", color: "#ef4444", padding: "8px 10px", fontSize: 12 }}>
+          <div style={{ marginBottom: 10, borderRadius: 10, border: "1px solid var(--app-danger-border)", background: "var(--app-danger-soft)", color: "var(--app-danger)", padding: "8px 10px", fontSize: 12 }}>
             {moveError}
           </div>
         )}
@@ -235,24 +235,24 @@ function KanbanBoard() {
   );
 }
 
-const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
-const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 8 };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--app-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 8 };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
 const subtitle = { margin: 0, fontSize: 13 };
 const boardLane = { display: "grid", gridAutoFlow: "column", gridAutoColumns: "minmax(280px, 340px)", gap: 8, overflowX: "auto", overflowY: "hidden", paddingBottom: 4, alignItems: "start" };
 const columnCard = { borderRadius: 12, padding: 10, minHeight: 520, display: "flex", flexDirection: "column", minWidth: 280 };
 const columnHead = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
-const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid rgba(120,120,120,0.4)", color: "#9e8d7b", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
+const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid var(--app-border-strong)", color: "var(--app-muted)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
 const issuesWrap = { display: "grid", gap: 8, alignContent: "start", flex: 1 };
-const empty = { borderRadius: 10, border: "1px dashed rgba(120,120,120,0.35)", padding: "14px 10px", fontSize: 12, color: "#9e8d7b", textAlign: "center" };
-const issueCard = { borderRadius: 10, border: "1px solid rgba(120,120,120,0.35)", background: "#251d22", padding: 10, cursor: "pointer" };
-const issueKey = { margin: 0, fontSize: 11, color: "#9e8d7b", fontWeight: 700 };
-const issueTitle = { margin: "5px 0", fontSize: 13, color: "#f4ece0", fontWeight: 600, lineHeight: 1.35 };
-const issueMeta = { margin: 0, fontSize: 11, color: "#baa892" };
-const deleteButton = { border: "none", background: "transparent", color: "#ef4444", cursor: "pointer", padding: 2 };
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
+const empty = { borderRadius: 10, border: "1px dashed var(--app-border-strong)", padding: "14px 10px", fontSize: 12, color: "var(--app-muted)", textAlign: "center" };
+const issueCard = { borderRadius: 10, border: "1px solid var(--app-border-strong)", background: "#251d22", padding: 10, cursor: "pointer" };
+const issueKey = { margin: 0, fontSize: 11, color: "var(--app-muted)", fontWeight: 700 };
+const issueTitle = { margin: "5px 0", fontSize: 13, color: "var(--app-text)", fontWeight: 600, lineHeight: 1.35 };
+const issueMeta = { margin: 0, fontSize: 11, color: "var(--app-muted)" };
+const deleteButton = { border: "none", background: "transparent", color: "var(--app-danger)", cursor: "pointer", padding: 2 };
+const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
 const modalCard = { width: "min(520px,100%)", borderRadius: 14, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };

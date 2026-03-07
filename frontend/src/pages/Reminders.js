@@ -11,10 +11,10 @@ export default function Reminders() {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ title: '', message: '', remind_at: '' });
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   useEffect(() => {
     loadReminders();
@@ -51,9 +51,9 @@ export default function Reminders() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '5px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s' }}
-          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#3b82f6'; }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: 'transparent', border: '2px solid var(--app-info)', color: 'var(--app-info)', borderRadius: '5px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', transition: 'all 0.15s' }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--app-info)'; e.currentTarget.style.color = 'var(--app-surface-alt)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--app-info)'; }}
         >
           <PlusIcon style={{ width: '16px', height: '16px' }} />
           New Reminder
@@ -67,13 +67,13 @@ export default function Reminders() {
             style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px' }}
           >
             <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-              <div style={{ flexShrink: 0, width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <BellIcon style={{ width: '20px', height: '20px', color: '#ffffff' }} />
+              <div style={{ flexShrink: 0, width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'var(--app-info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BellIcon style={{ width: '20px', height: '20px', color: 'var(--app-surface-alt)' }} />
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 600, color: textColor, marginBottom: '4px' }}>{reminder.title}</h3>
                 <p style={{ fontSize: '13px', color: secondaryText, marginBottom: '8px' }}>{reminder.message}</p>
-                <p style={{ fontSize: '12px', color: '#3b82f6', fontWeight: 500 }}>
+                <p style={{ fontSize: '12px', color: 'var(--app-info)', fontWeight: 500 }}>
                   {new Date(reminder.remind_at).toLocaleString()}
                 </p>
               </div>
@@ -90,7 +90,7 @@ export default function Reminders() {
       )}
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={() => setShowModal(false)}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--app-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={() => setShowModal(false)}>
           <div style={{ backgroundColor: bgColor, borderRadius: '8px', padding: '24px', width: '90%', maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ fontSize: '20px', fontWeight: 600, color: textColor, marginBottom: '20px' }}>New Reminder</h2>
             <form onSubmit={createReminder}>
@@ -134,7 +134,7 @@ export default function Reminders() {
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '8px 16px', backgroundColor: '#3b82f6', border: 'none', color: '#ffffff', borderRadius: '5px', fontSize: '13px', cursor: 'pointer' }}
+                  style={{ padding: '8px 16px', backgroundColor: 'var(--app-info)', border: 'none', color: 'var(--app-surface-alt)', borderRadius: '5px', fontSize: '13px', cursor: 'pointer' }}
                 >
                   Create
                 </button>

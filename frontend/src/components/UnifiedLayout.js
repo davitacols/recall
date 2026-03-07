@@ -390,7 +390,7 @@ export default function UnifiedLayout({ children }) {
                         Settings
                       </button>
 
-                      <button onClick={logout} className="ui-btn-polish ui-focus-ring" style={{ ...menuButton, color: "#ef4444" }}>
+                      <button onClick={logout} className="ui-btn-polish ui-focus-ring" style={{ ...menuButton, color: "var(--app-danger)" }}>
                         Sign out
                       </button>
 
@@ -410,7 +410,7 @@ export default function UnifiedLayout({ children }) {
                           }}
                         />
                         {workspaceError ? (
-                          <p style={{ ...workspaceMeta, color: workspaceError.includes("sent") ? palette.muted : "#ef4444" }}>{workspaceError}</p>
+                          <p style={{ ...workspaceMeta, color: workspaceError.includes("sent") ? palette.muted : "var(--app-danger)" }}>{workspaceError}</p>
                         ) : null}
                         {workspacesLoading ? (
                           <p style={{ ...workspaceMeta, color: palette.muted }}>Loading workspaces...</p>

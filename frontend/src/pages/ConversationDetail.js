@@ -45,7 +45,7 @@ const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette,
                   style={avatarImage}
                   onError={(event) => {
                     event.target.style.display = "none";
-                    event.target.parentElement.innerHTML = `<span style="color:#20140f;font-size:12px;font-weight:700;">${authorName
+                    event.target.parentElement.innerHTML = `<span style="color:var(--app-button-text);font-size:12px;font-weight:700;">${authorName
                       .charAt(0)
                       .toUpperCase()}</span>`;
                   }}
@@ -160,20 +160,20 @@ function ConversationDetail() {
     () =>
       darkMode
         ? {
-            panel: "#171215",
-            panelAlt: "#1f181c",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#baa892",
+            panel: "var(--app-surface)",
+            panelAlt: "var(--app-surface-alt)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
             accent: "#ffaf72",
           }
         : {
-            panel: "#fffaf3",
-            panelAlt: "#ffffff",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7d6d5a",
-            accent: "#d9692e",
+            panel: "var(--app-surface)",
+            panelAlt: "var(--app-surface-alt)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            accent: "var(--app-accent)",
           },
     [darkMode]
   );
@@ -460,7 +460,7 @@ function ConversationDetail() {
 
   return (
     <div style={{ ...page, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
-      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.16), transparent 30%)" : "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.1), transparent 30%)" }} />
+      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.16), transparent 30%)" : "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 90% 8%, var(--app-success-soft), transparent 30%)" }} />
       <section className="ui-enter ui-card-lift ui-smooth" style={{ ...masthead, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
         <div style={mastheadTopRow}>
           <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...backPill, border: `1px solid ${palette.border}`, color: palette.text }}>
@@ -484,7 +484,7 @@ function ConversationDetail() {
 
       <div className="ui-enter" style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", "--ui-delay": "110ms" }}>
         <div>
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: darkMode ? "linear-gradient(135deg,#1a1418,#161115)" : "linear-gradient(135deg,#fffdf9,#fff7ec)", border: `1px solid ${palette.border}`, "--ui-delay": "140ms" }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: darkMode ? "linear-gradient(135deg,#1a1418,#161115)" : "linear-gradient(135deg,var(--app-surface-alt)df9,var(--app-surface-alt)7ec)", border: `1px solid ${palette.border}`, "--ui-delay": "140ms" }}>
             {isEditingPost ? (
               <input
                 value={editTitle}
@@ -590,8 +590,8 @@ function ConversationDetail() {
                   onClick={() => handleReaction(type)}
                   style={{
                     ...reactionButton,
-                    background: reactions.user_reaction === type ? "#3b82f6" : palette.panelAlt,
-                    color: reactions.user_reaction === type ? "#fff" : palette.text,
+                    background: reactions.user_reaction === type ? "var(--app-info)" : palette.panelAlt,
+                    color: reactions.user_reaction === type ? "var(--app-surface-alt)" : palette.text,
                     border: `1px solid ${palette.border}`,
                   }}
                 >
@@ -698,8 +698,8 @@ const loadingWrap = { minHeight: 320, display: "grid", placeItems: "center" };
 const spinner = {
   width: 28,
   height: 28,
-  border: "2px solid rgba(120,120,120,0.35)",
-  borderTopColor: "#3b82f6",
+  border: "2px solid var(--app-border-strong)",
+  borderTopColor: "var(--app-info)",
   borderRadius: "50%",
   animation: "spin 1s linear infinite",
 };
@@ -729,8 +729,8 @@ const primaryButton = {
   marginTop: 10,
   border: "none",
   borderRadius: 10,
-  background: "linear-gradient(135deg, #ffd390, #ff9f62)",
-  color: "#20140f",
+  background: "var(--app-gradient-primary)",
+  color: "var(--app-button-text)",
   padding: "10px 14px",
   fontSize: 13,
   fontWeight: 700,
@@ -739,8 +739,8 @@ const primaryButton = {
 const secondaryButton = {
   ...primaryButton,
   background: "transparent",
-  color: "#7d6d5a",
-  border: "1px solid rgba(120,120,120,0.45)",
+  color: "var(--app-muted)",
+  border: "1px solid var(--app-border-strong)",
 };
 const titleMain = { margin: "0 0 10px", fontSize: "clamp(1.3rem,2.8vw,1.8rem)" };
 const heroSignals = { display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 8 };
@@ -750,14 +750,14 @@ const authorRow = { display: "flex", alignItems: "center", gap: 8 };
 const avatarWrap = { width: 34, height: 34, borderRadius: 10, overflow: "hidden", background: "linear-gradient(135deg,#ffcb8b,#ff935d)", display: "grid", placeItems: "center" };
 const avatarSmall = { width: 28, height: 28, borderRadius: 8, overflow: "hidden", background: "linear-gradient(135deg,#ffcb8b,#ff935d)", display: "grid", placeItems: "center" };
 const avatarImage = { width: "100%", height: "100%", objectFit: "cover" };
-const avatarInitial = { color: "#20140f", fontSize: 13, fontWeight: 700 };
-const avatarSmallInitial = { color: "#20140f", fontSize: 12, fontWeight: 700 };
+const avatarInitial = { color: "var(--app-button-text)", fontSize: 13, fontWeight: 700 };
+const avatarSmallInitial = { color: "var(--app-button-text)", fontSize: 12, fontWeight: 700 };
 const authorNameStyle = { margin: 0, fontSize: 13, fontWeight: 700 };
 const metaText = { margin: "2px 0 0", fontSize: 11 };
 const actionRow = { display: "flex", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" };
-const ghostSuccessButton = { border: "1px solid rgba(16,185,129,0.45)", borderRadius: 8, background: "rgba(16,185,129,0.08)", color: "#10b981", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
-const smallOutlineButton = { border: "1px solid rgba(120,120,120,0.45)", borderRadius: 8, background: "transparent", color: "#94a3b8", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
-const smallDangerButton = { border: "1px solid rgba(239,68,68,0.5)", borderRadius: 8, background: "rgba(239,68,68,0.1)", color: "#ef4444", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
+const ghostSuccessButton = { border: "1px solid var(--app-success-border)", borderRadius: 8, background: "var(--app-success-soft)", color: "var(--app-success)", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
+const smallOutlineButton = { border: "1px solid var(--app-border-strong)", borderRadius: 8, background: "transparent", color: "#94a3b8", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
+const smallDangerButton = { border: "1px solid rgba(239,68,68,0.5)", borderRadius: 8, background: "rgba(239,68,68,0.1)", color: "var(--app-danger)", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
 const sectionLabelRow = { marginBottom: 8 };
 const sectionLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" };
 const reactionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
@@ -777,7 +777,7 @@ const replyHeader = { display: "flex", alignItems: "flex-start", justifyContent:
 const replyAuthorWrap = { display: "flex", alignItems: "center", gap: 8 };
 const replyActionRow = { display: "flex", gap: 6 };
 const inlineAction = { border: "none", background: "transparent", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "pointer" };
-const inlineActionDanger = { ...inlineAction, color: "#ef4444" };
+const inlineActionDanger = { ...inlineAction, color: "var(--app-danger)" };
 const icon18 = { width: 18, height: 18 };
 const icon14 = { width: 14, height: 14 };
 

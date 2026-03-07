@@ -62,9 +62,9 @@ function AISuggestionsPanel({ decisionId, conversationId }) {
             </h4>
             <div style={{ display: "grid", gap: 6 }}>
               {suggestions.conflicts.map((conflict) => (
-                <Link key={conflict.id} to={`/decisions/${conflict.id}`} style={{ textDecoration: "none", borderRadius: 9, border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.08)", padding: 9 }}>
-                  <p style={{ margin: 0, fontSize: 12, color: "#fca5a5", fontWeight: 700 }}>{conflict.title}</p>
-                  <p style={{ margin: "3px 0 0", fontSize: 11, color: "#fca5a5" }}>{conflict.conflict_reason}</p>
+                <Link key={conflict.id} to={`/decisions/${conflict.id}`} style={{ textDecoration: "none", borderRadius: 9, border: "1px solid var(--app-danger-border)", background: "var(--app-danger-soft)", padding: 9 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--app-danger)", fontWeight: 700 }}>{conflict.title}</p>
+                  <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--app-danger)" }}>{conflict.conflict_reason}</p>
                 </Link>
               ))}
             </div>

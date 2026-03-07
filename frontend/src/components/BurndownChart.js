@@ -95,7 +95,7 @@ export const BurndownChart = ({ sprintId }) => {
                   y1={y}
                   x2={chartWidth - padding}
                   y2={y}
-                  stroke="#e5e7eb"
+                  stroke="var(--app-border)"
                   strokeWidth="1"
                 />
                 <text
@@ -103,7 +103,7 @@ export const BurndownChart = ({ sprintId }) => {
                   y={y + 5}
                   textAnchor="end"
                   fontSize="12"
-                  fill="#6b7280"
+                  fill="var(--app-muted)"
                 >
                   {Math.round(maxPoints * (1 - ratio))}
                 </text>
@@ -115,7 +115,7 @@ export const BurndownChart = ({ sprintId }) => {
           <path
             d={idealPath}
             fill="none"
-            stroke="#9ca3af"
+            stroke="var(--app-muted)"
             strokeWidth="2"
             strokeDasharray="5,5"
           />
@@ -149,7 +149,7 @@ export const BurndownChart = ({ sprintId }) => {
                   y={chartHeight - padding + 20}
                   textAnchor="middle"
                   fontSize="10"
-                  fill="#6b7280"
+                  fill="var(--app-muted)"
                 >
                   {new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </text>

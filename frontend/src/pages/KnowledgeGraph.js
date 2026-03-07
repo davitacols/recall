@@ -33,10 +33,10 @@ export default function KnowledgeGraph() {
 
   const getNodeColor = (type) => {
     const colors = {
-      conversation: "#60a5fa",
+      conversation: "var(--app-info)",
       decision: "#a78bfa",
-      task: "#34d399",
-      meeting: "#fbbf24",
+      task: "var(--app-success)",
+      meeting: "var(--app-warning)",
       document: "#94a3b8",
     };
     return colors[type] || "#94a3b8";
@@ -140,10 +140,10 @@ export default function KnowledgeGraph() {
                   {positionedNodes.map((node) => (
                     <g key={node.id} onClick={() => handleNodeClick(node)} style={{ cursor: "pointer" }}>
                       <circle cx={node.x} cy={node.y} r="30" fill={getNodeColor(node.type)} opacity="0.92" />
-                      <text x={node.x} y={node.y} textAnchor="middle" dominantBaseline="middle" fill="#fff" style={{ fontSize: 12, fontWeight: 700 }}>
+                      <text x={node.x} y={node.y} textAnchor="middle" dominantBaseline="middle" fill="var(--app-surface-alt)" style={{ fontSize: 12, fontWeight: 700 }}>
                         {(node.type || "?")[0]?.toUpperCase()}
                       </text>
-                      <text x={node.x} y={node.y + 46} textAnchor="middle" fill={darkMode ? "#a8a29e" : "#6b7280"} style={{ fontSize: 11 }}>
+                      <text x={node.x} y={node.y + 46} textAnchor="middle" fill={darkMode ? "var(--app-muted)" : "var(--app-muted)"} style={{ fontSize: 11 }}>
                         {(node.label || "").length > 22 ? `${node.label.slice(0, 22)}...` : node.label}
                       </text>
                     </g>

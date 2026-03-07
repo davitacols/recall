@@ -118,4 +118,4 @@ function Section({ title, children, palette, noBorder = false }) {
 const p = { margin: 0, fontSize: 13, color: "#d9cdbf", lineHeight: 1.5 };
 const list = { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 6 };
 const li = { display: "grid", gridTemplateColumns: "10px 1fr", gap: 6, fontSize: 12, color: "#d9cdbf" };
-const dot = { color: "#baa892" };
+const dot = { color: "var(--app-muted)" };

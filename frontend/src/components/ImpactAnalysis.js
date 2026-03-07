@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowsRightLeftIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
@@ -8,11 +8,11 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
   const [loading, setLoading] = useState(true);
   const [show, setShow] = useState(false);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
   const hoverBg = darkMode ? '#292524' : '#f3f4f6';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   useEffect(() => {
     if (show) {
@@ -57,8 +57,8 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
           gap: '6px',
           padding: '7px 12px',
           backgroundColor: 'transparent',
-          border: '2px solid #8b5cf6',
-          color: '#8b5cf6',
+          border: '2px solid var(--app-info)',
+          color: 'var(--app-info)',
           borderRadius: '4px',
           fontSize: '12px',
           fontWeight: 500,
@@ -66,12 +66,12 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
           transition: 'all 0.15s'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = '#8b5cf6';
-          e.currentTarget.style.color = '#ffffff';
+          e.currentTarget.style.backgroundColor = 'var(--app-info)';
+          e.currentTarget.style.color = 'var(--app-surface-alt)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.backgroundColor = 'transparent';
-          e.currentTarget.style.color = '#8b5cf6';
+          e.currentTarget.style.color = 'var(--app-info)';
         }}
       >
         <ArrowsRightLeftIcon style={{ width: '14px', height: '14px' }} />
@@ -86,7 +86,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: 'var(--app-overlay)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -109,7 +109,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-              <ArrowsRightLeftIcon style={{ width: '20px', height: '20px', color: '#8b5cf6' }} />
+              <ArrowsRightLeftIcon style={{ width: '20px', height: '20px', color: 'var(--app-info)' }} />
               <h3 style={{ fontSize: '18px', fontWeight: 600, color: textColor, margin: 0 }}>
                 Impact Analysis
               </h3>
@@ -158,8 +158,8 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
                     <div style={{
                       fontSize: '24px',
                       fontWeight: 700,
-                      color: impact.risk_level === 'high' ? '#ef4444' :
-                             impact.risk_level === 'medium' ? '#f59e0b' : '#10b981'
+                      color: impact.risk_level === 'high' ? 'var(--app-danger)' :
+                             impact.risk_level === 'medium' ? 'var(--app-warning)' : 'var(--app-success)'
                     }}>
                       {impact.risk_level.toUpperCase()}
                     </div>
@@ -173,7 +173,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
                 {impact.risks.length > 0 && (
                   <div style={{ marginBottom: '20px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>
-                      âš ï¸ Potential Risks
+                      ⚠️ Potential Risks
                     </div>
                     {impact.risks.map((risk, idx) => (
                       <div
@@ -184,7 +184,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
                           border: `1px solid ${darkMode ? '#991b1b' : '#fecaca'}`,
                           borderRadius: '6px',
                           fontSize: '12px',
-                          color: darkMode ? '#fca5a5' : '#dc2626',
+                          color: darkMode ? 'var(--app-danger)' : 'var(--app-danger)',
                           marginBottom: '8px'
                         }}
                       >
@@ -198,7 +198,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
                 {impact.related.length > 0 && (
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: textColor, marginBottom: '12px' }}>
-                      ðŸ”— Downstream Impact
+                      🔗 Downstream Impact
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {impact.related.slice(0, 5).map((item, idx) => (
@@ -220,7 +220,7 @@ export default function ImpactAnalysis({ contentType, objectId, darkMode }) {
                             {item.title}
                           </div>
                           <div style={{ fontSize: '11px', color: secondaryText, textTransform: 'capitalize' }}>
-                            {item.type} â€¢ {item.relationship}
+                            {item.type} • {item.relationship}
                           </div>
                         </Link>
                       ))}

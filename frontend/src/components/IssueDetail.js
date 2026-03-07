@@ -167,7 +167,7 @@ function IssueDetail({ issueId, onClose, onUpdate }) {
           justifyContent: 'center',
           zIndex: 40
         }}>
-          <div style={{ width: '24px', height: '24px', border: '2px solid #E5E7EB', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <div style={{ width: '24px', height: '24px', border: '2px solid var(--app-border)', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
         </div>
       </>
     );

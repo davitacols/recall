@@ -295,7 +295,7 @@ function ProjectDetail() {
 
         {showDeleteConfirm && (
           <Modal title="Delete Project" onClose={() => setShowDeleteConfirm(false)}>
-            <p style={{ fontSize: 14, color: "#9e8d7b", marginBottom: 12 }}>This action cannot be undone.</p>
+            <p style={{ fontSize: 14, color: "var(--app-muted)", marginBottom: 12 }}>This action cannot be undone.</p>
             <div style={modalButtons}>
               <button onClick={() => setShowDeleteConfirm(false)} style={ui.secondaryButton}>Cancel</button>
               <button onClick={handleDeleteProject} style={dangerButton}>{isDeleting ? "Deleting..." : "Delete"}</button>
@@ -322,7 +322,7 @@ function Modal({ title, onClose, children }) {
 }
 
 function Empty({ text }) {
-  return <div style={emptyBlock}><p style={{ margin: 0, color: "#9e8d7b" }}>{text}</p></div>;
+  return <div style={emptyBlock}><p style={{ margin: 0, color: "var(--app-muted)" }}>{text}</p></div>;
 }
 
 function Stat({ icon: Icon, label, value }) {
@@ -337,33 +337,33 @@ function Stat({ icon: Icon, label, value }) {
   );
 }
 
-const spinner = { width: 28, height: 28, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 28, height: 28, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const hero = { borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12 };
 const heroTop = { display: "grid", gridTemplateColumns: "56px 1fr", gap: 10, alignItems: "start" };
-const projectBadge = { width: 56, height: 56, borderRadius: 14, display: "grid", placeItems: "center", background: "linear-gradient(135deg,#ffcc8b,#ff935d)", color: "#20140f", fontWeight: 800, fontSize: 18 };
+const projectBadge = { width: 56, height: 56, borderRadius: 14, display: "grid", placeItems: "center", background: "var(--app-gradient-accent)", color: "var(--app-button-text)", fontWeight: 800, fontSize: 18 };
 const title = { margin: "0 0 2px", fontSize: "clamp(1.5rem,3vw,2.1rem)", letterSpacing: "-0.02em" };
 const sub = { margin: 0, fontSize: 13 };
-const dangerIconButton = { border: "1px solid rgba(239,68,68,0.45)", borderRadius: 10, width: 36, height: 36, color: "#ef4444", background: "rgba(239,68,68,0.08)", display: "grid", placeItems: "center", cursor: "pointer" };
+const dangerIconButton = { border: "1px solid var(--app-danger-border)", borderRadius: 10, width: 36, height: 36, color: "var(--app-danger)", background: "var(--app-danger-soft)", display: "grid", placeItems: "center", cursor: "pointer" };
 const quickLinkRow = { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 };
-const quickButton = { padding: "9px 12px", borderRadius: 10, border: "1px solid rgba(120,120,120,0.4)", textDecoration: "none", fontSize: 13, fontWeight: 700, color: "#7d6d5a", background: "transparent" };
+const quickButton = { padding: "9px 12px", borderRadius: 10, border: "1px solid var(--app-border-strong)", textDecoration: "none", fontSize: 13, fontWeight: 700, color: "var(--app-muted)", background: "transparent" };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 };
-const statCard = { borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#171215", color: "#f4ece0" };
-const statLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "#baa892", fontWeight: 700 };
+const statCard = { borderRadius: 12, padding: 12, border: "1px solid var(--app-border-strong)", background: "var(--app-surface)", color: "var(--app-text)" };
+const statLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--app-muted)", fontWeight: 700 };
 const statValue = { margin: "7px 0 0", fontSize: 30, fontWeight: 800 };
 const tabWrap = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, borderRadius: 12, padding: 6, marginBottom: 12 };
 const tabButton = { borderRadius: 9, padding: "9px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
 const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 };
 const h2 = { margin: 0, fontSize: 20 };
-const dangerButton = { border: "1px solid rgba(239,68,68,0.45)", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#ef4444", background: "rgba(239,68,68,0.08)" };
+const dangerButton = { border: "1px solid var(--app-danger-border)", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "var(--app-danger)", background: "var(--app-danger-soft)" };
 const list = { display: "grid", gap: 8 };
 const itemCard = { borderRadius: 12, padding: 12, textDecoration: "none" };
 const itemTitle = { margin: 0, fontSize: 15, fontWeight: 700 };
 const itemMeta = { margin: "3px 0 0", fontSize: 12 };
-const statusPill = { border: "1px solid rgba(120,120,120,0.45)", borderRadius: 999, padding: "4px 8px", fontSize: 11, textTransform: "capitalize", fontWeight: 700, color: "#9e8d7b" };
+const statusPill = { border: "1px solid var(--app-border-strong)", borderRadius: 999, padding: "4px 8px", fontSize: 11, textTransform: "capitalize", fontWeight: 700, color: "var(--app-muted)" };
 const emptyBlock = { borderRadius: 12, padding: "24px 14px", textAlign: "center" };
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
-const modalCard = { width: "min(560px,100%)", background: "#fffaf3", borderRadius: 14, padding: 16 };
-const closeBtn = { border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, cursor: "pointer" };
+const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
+const modalCard = { width: "min(560px,100%)", background: "var(--app-surface)", borderRadius: 14, padding: 16 };
+const closeBtn = { border: "none", background: "transparent", color: "var(--app-muted)", fontWeight: 700, cursor: "pointer" };
 const formStack = { display: "grid", gap: 8 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
 const icon18 = { width: 18, height: 18 };

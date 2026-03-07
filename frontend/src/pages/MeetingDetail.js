@@ -123,7 +123,7 @@ export default function MeetingDetail() {
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={() => setEditing(true)} style={ui.secondaryButton}>Edit</button>
-                    <button onClick={handleDelete} style={{ border: "1px solid rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.08)", color: "#ef4444", borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}><TrashIcon style={{ width: 14, height: 14 }} /></button>
+                    <button onClick={handleDelete} style={{ border: "1px solid var(--app-danger-border)", background: "var(--app-danger-soft)", color: "var(--app-danger)", borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}><TrashIcon style={{ width: 14, height: 14 }} /></button>
                   </div>
                 </div>
 

@@ -55,20 +55,20 @@ function Decisions() {
       proposed: {
         label: "Proposed",
         tone: darkMode
-          ? { bg: "rgba(245,158,11,0.15)", border: "rgba(245,158,11,0.45)", text: "#fcd34d" }
-          : { bg: "rgba(245,158,11,0.12)", border: "rgba(180,83,9,0.35)", text: "#92400e" },
+          ? { bg: "rgba(245,158,11,0.15)", border: "rgba(245,158,11,0.45)", text: "var(--app-warning)" }
+          : { bg: "var(--app-warning-soft)", border: "rgba(180,83,9,0.35)", text: "#92400e" },
       },
       under_review: {
         label: "Under Review",
         tone: darkMode
-          ? { bg: "rgba(59,130,246,0.18)", border: "rgba(59,130,246,0.45)", text: "#93c5fd" }
-          : { bg: "rgba(59,130,246,0.12)", border: "rgba(37,99,235,0.35)", text: "#1d4ed8" },
+          ? { bg: "rgba(59,130,246,0.18)", border: "rgba(59,130,246,0.45)", text: "var(--app-link)" }
+          : { bg: "rgba(59,130,246,0.12)", border: "var(--app-info-border)", text: "var(--app-link)" },
       },
       approved: {
         label: "Approved",
         tone: darkMode
-          ? { bg: "rgba(16,185,129,0.18)", border: "rgba(16,185,129,0.45)", text: "#6ee7b7" }
-          : { bg: "rgba(16,185,129,0.12)", border: "rgba(5,150,105,0.35)", text: "#047857" },
+          ? { bg: "rgba(16,185,129,0.18)", border: "var(--app-success-border)", text: "#6ee7b7" }
+          : { bg: "var(--app-success-soft)", border: "rgba(5,150,105,0.35)", text: "#047857" },
       },
       implemented: {
         label: "Implemented",
@@ -79,8 +79,8 @@ function Decisions() {
       default: {
         label: "Proposed",
         tone: darkMode
-          ? { bg: "rgba(245,158,11,0.15)", border: "rgba(245,158,11,0.45)", text: "#fcd34d" }
-          : { bg: "rgba(245,158,11,0.12)", border: "rgba(180,83,9,0.35)", text: "#92400e" },
+          ? { bg: "rgba(245,158,11,0.15)", border: "rgba(245,158,11,0.45)", text: "var(--app-warning)" }
+          : { bg: "var(--app-warning-soft)", border: "rgba(180,83,9,0.35)", text: "#92400e" },
       },
     }),
     [darkMode]
@@ -137,7 +137,7 @@ function Decisions() {
           </button>
         </section>
 
-        <section className="ui-enter" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(138deg,rgba(59,130,246,0.16),rgba(249,115,22,0.12),rgba(168,85,247,0.16))" : "linear-gradient(138deg,rgba(147,197,253,0.5),rgba(254,215,170,0.58),rgba(221,214,254,0.5))", padding: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12, position: "relative", zIndex: 1, "--ui-delay": "70ms" }}>
+        <section className="ui-enter" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(138deg,var(--app-info-soft),rgba(249,115,22,0.12),rgba(168,85,247,0.16))" : "linear-gradient(138deg,rgba(147,197,253,0.5),rgba(254,215,170,0.58),rgba(221,214,254,0.5))", padding: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12, position: "relative", zIndex: 1, "--ui-delay": "70ms" }}>
           <div>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>DECISION CENTER</p>
             <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.6rem,3.2vw,2.35rem)", color: palette.text, letterSpacing: "-0.02em" }}>Decision Operating System</h1>
@@ -188,7 +188,7 @@ function Decisions() {
                   gap: 6,
                   background: filter === status ? (darkMode ? "rgba(59,130,246,0.2)" : "rgba(59,130,246,0.12)") : "transparent",
                   border: filter === status ? (darkMode ? "1px solid rgba(59,130,246,0.45)" : "1px solid rgba(37,99,235,0.32)") : ui.secondaryButton.border,
-                  color: filter === status ? (darkMode ? "#93c5fd" : "#1d4ed8") : ui.secondaryButton.color,
+                  color: filter === status ? (darkMode ? "var(--app-link)" : "var(--app-link)") : ui.secondaryButton.color,
                 }}
               >
                 <FunnelIcon style={{ width: 12, height: 12 }} />
@@ -251,7 +251,7 @@ function Decisions() {
                 style={{
                   borderRadius: 14,
                   border: `1px solid ${palette.border}`,
-                  background: darkMode ? "linear-gradient(160deg,#171215,#120f12)" : "linear-gradient(160deg,#fffaf3,#fffdf9)",
+                  background: darkMode ? "linear-gradient(160deg,var(--app-surface),#120f12)" : "linear-gradient(160deg,var(--app-surface),var(--app-surface-alt)df9)",
                   padding: 14,
                   cursor: "pointer",
                   transition: "transform 0.18s ease",
@@ -263,7 +263,7 @@ function Decisions() {
                     text={(decision.impact_level || "medium").toUpperCase()}
                     tone={
                       darkMode
-                        ? { bg: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.42)", text: "#fcd34d" }
+                        ? { bg: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.42)", text: "var(--app-warning)" }
                         : { bg: "rgba(245,158,11,0.1)", border: "rgba(180,83,9,0.3)", text: "#92400e" }
                     }
                   />
@@ -304,7 +304,7 @@ function Decisions() {
                       text={(decision.impact_level || "medium").toUpperCase()}
                       tone={
                         darkMode
-                          ? { bg: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.42)", text: "#fcd34d" }
+                          ? { bg: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.42)", text: "var(--app-warning)" }
                           : { bg: "rgba(245,158,11,0.1)", border: "rgba(180,83,9,0.3)", text: "#92400e" }
                       }
                     />

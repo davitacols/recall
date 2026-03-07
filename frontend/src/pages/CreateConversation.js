@@ -42,9 +42,9 @@ function CreateConversation() {
             cool: "#3ab8a0",
           }
         : {
-            page: "#fff8ef",
-            card: "#fffdf9",
-            cardAlt: "#fff4e8",
+            page: "var(--app-surface-alt)8ef",
+            card: "var(--app-surface-alt)df9",
+            cardAlt: "var(--app-surface-alt)4e8",
             border: "#efd8bf",
             text: "#2b1e15",
             muted: "#7e644f",
@@ -328,7 +328,7 @@ const secondaryBtn = {
 const primaryBtn = {
   border: "none",
   borderRadius: 10,
-  color: "#fff",
+  color: "var(--app-surface-alt)",
   padding: "10px 13px",
   fontSize: 13,
   fontWeight: 800,

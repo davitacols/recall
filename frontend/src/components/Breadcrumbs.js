@@ -4,9 +4,9 @@ import { ChevronRightIcon, HomeIcon } from '@heroicons/react/24/outline';
 
 export default function Breadcrumbs({ darkMode, items }) {
   const location = useLocation();
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
-  const hoverColor = darkMode ? '#d6d3d1' : '#374151';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
+  const hoverColor = darkMode ? 'var(--app-muted)' : '#374151';
 
   // Auto-generate breadcrumbs from path if items not provided
   const breadcrumbs = items || location.pathname

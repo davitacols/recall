@@ -436,7 +436,7 @@
 
 [data-theme="light"] .auth-shell {
   --auth-bg: #f4f8ff;
-  --auth-bg-soft: #ffffff;
+  --auth-bg-soft: var(--app-surface-alt);
   --auth-border: rgba(20, 40, 76, 0.16);
   --auth-text: #122033;
   --auth-muted: rgba(18, 32, 51, 0.72);

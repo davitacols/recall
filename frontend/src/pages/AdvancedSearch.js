@@ -14,10 +14,10 @@ export default function AdvancedSearch() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   const search = async () => {
     if (!query.trim()) return;
@@ -59,7 +59,7 @@ export default function AdvancedSearch() {
               style={{ width: '100%', paddingLeft: '38px', padding: '10px 12px', backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', color: textColor, fontSize: '14px', outline: 'none' }}
             />
           </div>
-          <button onClick={search} disabled={loading} style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '5px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
+          <button onClick={search} disabled={loading} style={{ padding: '10px 20px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '5px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
             {loading ? 'Searching...' : 'Search'}
           </button>
         </div>
@@ -80,9 +80,9 @@ export default function AdvancedSearch() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {results.map((item, i) => (
-          <div key={i} onClick={() => navigate_to(item)} style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', cursor: 'pointer', transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = '#3b82f6'} onMouseLeave={(e) => e.currentTarget.style.borderColor = borderColor}>
+          <div key={i} onClick={() => navigate_to(item)} style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '16px', cursor: 'pointer', transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--app-info)'} onMouseLeave={(e) => e.currentTarget.style.borderColor = borderColor}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, backgroundColor: '#3b82f6', color: '#ffffff', borderRadius: '3px', textTransform: 'capitalize' }}>{item._type}</span>
+              <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', borderRadius: '3px', textTransform: 'capitalize' }}>{item._type}</span>
               <h3 style={{ fontSize: '15px', fontWeight: 600, color: textColor }}>{item.title || item.question || 'Untitled'}</h3>
             </div>
             <p style={{ fontSize: '13px', color: secondaryText }}>{(item.content || item.description || '').substring(0, 150)}...</p>

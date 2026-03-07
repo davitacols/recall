@@ -5,20 +5,74 @@
 :root {
   --font-primary: "League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --bg-primary: #0c0a09;
-  --bg-secondary: #1c1917;
+  --bg-secondary: var(--app-surface);
   --bg-tertiary: #292524;
-  --text-primary: #e7e5e4;
-  --text-secondary: #a8a29e;
+  --text-primary: var(--app-text);
+  --text-secondary: var(--app-muted);
   --border-color: #292524;
+  --app-bg: #0f0b0d;
+  --app-surface: var(--app-surface);
+  --app-surface-alt: var(--app-surface-alt);
+  --app-text: var(--app-text);
+  --app-muted: var(--app-muted);
+  --app-border: rgba(255, 225, 193, 0.14);
+  --app-border-strong: rgba(255, 225, 193, 0.2);
+  --app-track: rgba(120, 120, 120, 0.25);
+  --app-overlay: rgba(0, 0, 0, 0.65);
+  --app-accent: var(--app-accent);
+  --app-accent-soft: rgba(217, 105, 46, 0.2);
+  --app-button-text: var(--app-button-text);
+  --app-gradient-primary: var(--app-gradient-primary);
+  --app-gradient-accent: var(--app-gradient-accent);
+  --app-success: var(--app-success);
+  --app-warning: var(--app-warning);
+  --app-danger: var(--app-danger);
+  --app-info: var(--app-info);
+  --app-link: var(--app-link);
+  --app-danger-soft: rgba(239, 68, 68, 0.08);
+  --app-danger-border: rgba(239, 68, 68, 0.45);
+  --app-info-soft: rgba(59, 130, 246, 0.16);
+  --app-info-border: rgba(59, 130, 246, 0.4);
+  --app-success-soft: rgba(34, 197, 94, 0.12);
+  --app-success-border: rgba(34, 197, 94, 0.45);
+  --app-warning-soft: rgba(245, 158, 11, 0.12);
+  --app-warning-border: rgba(245, 158, 11, 0.4);
 }
 
 [data-theme="light"] {
-  --bg-primary: #f6f8fb;
-  --bg-secondary: #ffffff;
+  --bg-primary: var(--app-bg);
+  --bg-secondary: var(--app-surface-alt);
   --bg-tertiary: #eef2f7;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --border-color: #dbe4ef;
+  --text-primary: var(--app-text);
+  --text-secondary: var(--app-muted);
+  --border-color: var(--app-border);
+  --app-bg: var(--app-bg);
+  --app-surface: var(--app-surface);
+  --app-surface-alt: var(--app-surface-alt);
+  --app-text: var(--app-text);
+  --app-muted: var(--app-muted);
+  --app-border: var(--app-border);
+  --app-border-strong: rgba(125, 109, 90, 0.26);
+  --app-track: rgba(120, 120, 120, 0.2);
+  --app-overlay: rgba(0, 0, 0, 0.5);
+  --app-accent: var(--app-accent);
+  --app-accent-soft: rgba(217, 105, 46, 0.2);
+  --app-button-text: var(--app-button-text);
+  --app-gradient-primary: var(--app-gradient-primary);
+  --app-gradient-accent: var(--app-gradient-accent);
+  --app-success: var(--app-success);
+  --app-warning: var(--app-warning);
+  --app-danger: var(--app-danger);
+  --app-info: var(--app-info);
+  --app-link: var(--app-link);
+  --app-danger-soft: rgba(185, 28, 28, 0.08);
+  --app-danger-border: rgba(185, 28, 28, 0.45);
+  --app-info-soft: rgba(37, 99, 235, 0.14);
+  --app-info-border: rgba(37, 99, 235, 0.4);
+  --app-success-soft: rgba(31, 143, 102, 0.12);
+  --app-success-border: rgba(31, 143, 102, 0.45);
+  --app-warning-soft: rgba(161, 98, 7, 0.12);
+  --app-warning-border: rgba(161, 98, 7, 0.4);
 }
 
 body {
@@ -82,12 +136,12 @@ body {
 }
 
 .ui-focus-ring:focus-visible {
-  outline: 2px solid #60a5fa;
+  outline: 2px solid var(--app-info);
   outline-offset: 2px;
 }
 
 [data-theme="light"] .ui-focus-ring:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--app-info);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 

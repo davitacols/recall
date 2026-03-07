@@ -13,11 +13,11 @@ export default function TeamManagement() {
   const [inviteRole, setInviteRole] = useState('member');
   const [loading, setLoading] = useState(true);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const cardBg = darkMode ? '#0c0a09' : '#ffffff';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
+  const cardBg = darkMode ? '#0c0a09' : 'var(--app-surface-alt)';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   useEffect(() => {
     fetchMembers();
@@ -61,9 +61,9 @@ export default function TeamManagement() {
   };
 
   const roleConfig = {
-    admin: { bg: darkMode ? '#7f1d1d' : '#fee2e2', text: darkMode ? '#fca5a5' : '#991b1b', label: 'Admin' },
-    manager: { bg: darkMode ? '#1e3a8a' : '#dbeafe', text: darkMode ? '#93c5fd' : '#1e40af', label: 'Manager' },
-    member: { bg: darkMode ? '#374151' : '#f3f4f6', text: darkMode ? '#9ca3af' : '#4b5563', label: 'Member' }
+    admin: { bg: darkMode ? '#7f1d1d' : '#fee2e2', text: darkMode ? 'var(--app-danger)' : '#991b1b', label: 'Admin' },
+    manager: { bg: darkMode ? '#1e3a8a' : '#dbeafe', text: darkMode ? 'var(--app-link)' : '#1e40af', label: 'Manager' },
+    member: { bg: darkMode ? '#374151' : '#f3f4f6', text: darkMode ? 'var(--app-muted)' : '#4b5563', label: 'Member' }
   };
 
   if (loading) {
@@ -85,8 +85,8 @@ export default function TeamManagement() {
             alignItems: 'center',
             gap: '8px',
             padding: '12px 20px',
-            backgroundColor: '#3b82f6',
-            color: '#ffffff',
+            backgroundColor: 'var(--app-info)',
+            color: 'var(--app-surface-alt)',
             border: 'none',
             borderRadius: '8px',
             fontSize: '14px',
@@ -106,15 +106,15 @@ export default function TeamManagement() {
           <div style={{ fontSize: '13px', color: secondaryText, marginTop: '4px' }}>Total Members</div>
         </div>
         <div style={{ padding: '20px', backgroundColor: cardBg, border: `1px solid ${borderColor}`, borderRadius: '12px' }}>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: '#ef4444' }}>{members.filter(m => m.role === 'admin').length}</div>
+          <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--app-danger)' }}>{members.filter(m => m.role === 'admin').length}</div>
           <div style={{ fontSize: '13px', color: secondaryText, marginTop: '4px' }}>Admins</div>
         </div>
         <div style={{ padding: '20px', backgroundColor: cardBg, border: `1px solid ${borderColor}`, borderRadius: '12px' }}>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: '#3b82f6' }}>{members.filter(m => m.role === 'manager').length}</div>
+          <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--app-info)' }}>{members.filter(m => m.role === 'manager').length}</div>
           <div style={{ fontSize: '13px', color: secondaryText, marginTop: '4px' }}>Managers</div>
         </div>
         <div style={{ padding: '20px', backgroundColor: cardBg, border: `1px solid ${borderColor}`, borderRadius: '12px' }}>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: '#6b7280' }}>{members.filter(m => m.role === 'member').length}</div>
+          <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--app-muted)' }}>{members.filter(m => m.role === 'member').length}</div>
           <div style={{ fontSize: '13px', color: secondaryText, marginTop: '4px' }}>Members</div>
         </div>
       </div>
@@ -132,7 +132,7 @@ export default function TeamManagement() {
           return (
             <div key={member.id} style={{ padding: '20px 24px', borderBottom: `1px solid ${borderColor}`, display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '16px', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '16px', fontWeight: 600 }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--app-info)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--app-surface-alt)', fontSize: '16px', fontWeight: 600 }}>
                   {member.full_name?.charAt(0) || member.email.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -174,7 +174,7 @@ export default function TeamManagement() {
 
       {/* Invite Modal */}
       {showInvite && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--app-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
           <div style={{ backgroundColor: bgColor, borderRadius: '12px', padding: '32px', width: '100%', maxWidth: '500px' }}>
             <h2 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '24px' }}>Invite Team Member</h2>
             <form onSubmit={handleInvite} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -211,7 +211,7 @@ export default function TeamManagement() {
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '12px 20px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '12px 20px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Send Invitation
                 </button>

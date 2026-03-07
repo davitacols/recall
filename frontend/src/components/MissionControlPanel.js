@@ -16,7 +16,7 @@ export default function MissionControlPanel() {
       accent: "var(--ui-accent)",
       good: "var(--ui-good)",
       warn: "var(--ui-warn)",
-      bad: "#dc2626",
+      bad: "var(--app-danger)",
     }),
     []
   );

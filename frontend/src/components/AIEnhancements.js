@@ -122,7 +122,7 @@ export function AIResultsPanel({ results, onClose }) {
   if (!results) return null;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
+    <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
       <div style={{ ...aiCard(palette), width: "min(780px,100%)", maxHeight: "80vh", overflow: "hidden", transform: `translate(${position.x}px, ${position.y}px)` }}>
         <div onMouseDown={handleMouseDown} style={{ padding: 14, borderBottom: `1px solid ${palette.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: isDragging ? "grabbing" : "grab" }}>
           <h2 style={{ margin: 0, fontSize: 18, color: palette.text, display: "inline-flex", alignItems: "center", gap: 8 }}><SparklesIcon style={{ width: 18, height: 18 }} /> AI Insights</h2>
@@ -147,8 +147,8 @@ export function AIResultsPanel({ results, onClose }) {
 
 function Block({ title, body }) {
   return (
-    <section style={{ borderRadius: 10, border: "1px solid rgba(120,120,120,0.3)", background: "#1f181c", padding: 10 }}>
-      <h3 style={{ margin: "0 0 6px", fontSize: 13, color: "#f4ece0" }}>{title}</h3>
+    <section style={{ borderRadius: 10, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)", padding: 10 }}>
+      <h3 style={{ margin: "0 0 6px", fontSize: 13, color: "var(--app-text)" }}>{title}</h3>
       {body}
     </section>
   );
@@ -174,7 +174,7 @@ function List({ items, checked = false }) {
     <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 6 }}>
       {items.map((item, i) => (
         <li key={i} style={{ display: "grid", gridTemplateColumns: "12px 1fr", gap: 6, fontSize: 12, color: "#d9cdbf" }}>
-          <span style={{ color: checked ? "#6ee7b7" : "#fcd34d" }}>{checked ? "?" : "•"}</span>
+          <span style={{ color: checked ? "#6ee7b7" : "var(--app-warning)" }}>{checked ? "?" : "•"}</span>
           <span>{item}</span>
         </li>
       ))}

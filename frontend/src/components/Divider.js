@@ -5,7 +5,7 @@ function Divider({ style = {} }) {
   return (
     <div style={{
       height: '1px',
-      backgroundColor: '#E5E7EB',
+      backgroundColor: 'var(--app-border)',
       margin: `${spacing.lg} 0`,
       ...style
     }} />

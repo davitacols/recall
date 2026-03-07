@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 
 export function MentionInput({ value, onChange, placeholder, rows = 3, darkMode = false }) {
@@ -8,11 +8,11 @@ export function MentionInput({ value, onChange, placeholder, rows = 3, darkMode 
   const [mentionQuery, setMentionQuery] = useState('');
   const textareaRef = useRef(null);
 
-  const bgColor = darkMode ? '#292524' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
+  const bgColor = darkMode ? '#292524' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
   const borderColor = darkMode ? '#44403c' : '#d1d5db';
   const hoverBg = darkMode ? '#44403c' : '#f3f4f6';
-  const selectedBg = darkMode ? '#57534e' : '#e5e7eb';
+  const selectedBg = darkMode ? '#57534e' : 'var(--app-border)';
 
   useEffect(() => {
     if (mentionQuery) {
@@ -120,7 +120,7 @@ export function MentionInput({ value, onChange, placeholder, rows = 3, darkMode 
           backgroundColor: bgColor,
           border: `1px solid ${borderColor}`,
           borderRadius: '8px',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          boxShadow: '0 10px 40px var(--app-overlay)',
           maxHeight: '192px',
           overflowY: 'auto',
           zIndex: 10,
@@ -143,13 +143,13 @@ export function MentionInput({ value, onChange, placeholder, rows = 3, darkMode 
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index === selectedIndex ? selectedBg : 'transparent'}
             >
               <div style={{ fontWeight: 500, color: textColor }}>@{user.username}</div>
-              <div style={{ fontSize: '13px', color: darkMode ? '#a8a29e' : '#6b7280' }}>{user.full_name}</div>
+              <div style={{ fontSize: '13px', color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)' }}>{user.full_name}</div>
             </button>
           ))}
         </div>
       )}
       
-      <div style={{ marginTop: '4px', fontSize: '12px', color: darkMode ? '#a8a29e' : '#6b7280' }}>
+      <div style={{ marginTop: '4px', fontSize: '12px', color: darkMode ? 'var(--app-muted)' : 'var(--app-muted)' }}>
         Type @ to mention someone
       </div>
     </div>

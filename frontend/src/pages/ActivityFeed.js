@@ -9,10 +9,10 @@ export default function ActivityFeed() {
   const { darkMode } = useTheme();
   const [activities, setActivities] = useState([]);
 
-  const bgColor = darkMode ? '#1c1917' : '#ffffff';
-  const textColor = darkMode ? '#e7e5e4' : '#111827';
-  const borderColor = darkMode ? '#292524' : '#e5e7eb';
-  const secondaryText = darkMode ? '#a8a29e' : '#6b7280';
+  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
+  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
+  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
 
   useEffect(() => {
     loadActivities();
@@ -41,8 +41,8 @@ export default function ActivityFeed() {
   };
 
   const getIcon = (type) => {
-    const colors = { conversation: '#3b82f6', decision: '#10b981', goal: '#f59e0b' };
-    return <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: colors[type] || '#6b7280' }} />;
+    const colors = { conversation: 'var(--app-info)', decision: 'var(--app-success)', goal: 'var(--app-warning)' };
+    return <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: colors[type] || 'var(--app-muted)' }} />;
   };
 
   return (

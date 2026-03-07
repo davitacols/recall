@@ -37,19 +37,19 @@ function SprintDetail() {
       darkMode
         ? {
             bg: "#0f0b0d",
-            card: "#171215",
-            cardAlt: "#1f181c",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#baa892",
+            card: "var(--app-surface)",
+            cardAlt: "var(--app-surface-alt)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
           }
         : {
-            bg: "#f6f1ea",
-            card: "#fffaf3",
-            cardAlt: "#ffffff",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7d6d5a",
+            bg: "var(--app-bg)",
+            card: "var(--app-surface)",
+            cardAlt: "var(--app-surface-alt)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
           },
     [darkMode]
   );
@@ -345,7 +345,7 @@ function SprintDetail() {
             </div>
           </div>
           {autopilotMessage && (
-            <p style={{ margin: 0, fontSize: 12, color: autopilotMessage.startsWith("Failed") ? "#ef4444" : "#10b981" }}>
+            <p style={{ margin: 0, fontSize: 12, color: autopilotMessage.startsWith("Failed") ? "var(--app-danger)" : "var(--app-success)" }}>
               {autopilotMessage}
             </p>
           )}
@@ -500,7 +500,7 @@ function SprintDetail() {
                     </p>
                   )}
                   {scenario.policy_result && (
-                    <p style={{ margin: "0 0 6px", fontSize: 11, color: (scenario.policy_result?.auto_apply_eligible ? "#10b981" : "#ef4444") }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 11, color: (scenario.policy_result?.auto_apply_eligible ? "var(--app-success)" : "var(--app-danger)") }}>
                       Policy: {scenario.policy_result?.auto_apply_eligible ? "auto-apply eligible" : "blocked"}
                     </p>
                   )}
@@ -509,21 +509,21 @@ function SprintDetail() {
           </div>
 
           {decisionTwinError && (
-            <p style={{ margin: 0, fontSize: 12, color: "#f59e0b" }}>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--app-warning)" }}>
               {decisionTwinError}
             </p>
           )}
           {decisionTwinUpgrade && (
-            <p style={{ margin: 0, fontSize: 12, color: "#f59e0b" }}>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--app-warning)" }}>
               Current plan: {decisionTwinUpgrade.current_plan}. Required: {decisionTwinUpgrade.required_plan}.{" "}
-              <Link to="/subscription" style={{ color: "#fbbf24", fontWeight: 700 }}>
+              <Link to="/subscription" style={{ color: "var(--app-warning)", fontWeight: 700 }}>
                 Upgrade plan
               </Link>
             </p>
           )}
 
           {decisionTwinMessage && (
-            <p style={{ margin: 0, fontSize: 12, color: (decisionTwinMessage.startsWith("Failed") || decisionTwinMessage.toLowerCase().includes("violates")) ? "#ef4444" : "#10b981" }}>
+            <p style={{ margin: 0, fontSize: 12, color: (decisionTwinMessage.startsWith("Failed") || decisionTwinMessage.toLowerCase().includes("violates")) ? "var(--app-danger)" : "var(--app-success)" }}>
               {decisionTwinMessage}
             </p>
           )}
@@ -597,31 +597,31 @@ function Metric({ label, value }) {
 }
 
 const container = { maxWidth: 1320, margin: "0 auto", padding: 20 };
-const spinner = { width: 30, height: 30, border: "2px solid rgba(120,120,120,0.35)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "#7d6d5a", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
+const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--app-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
 const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
 const sub = { margin: 0, fontSize: 13 };
 const topRight = { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" };
-const statusPill = { borderRadius: 999, border: "1px solid rgba(16,185,129,0.5)", background: "rgba(16,185,129,0.1)", color: "#10b981", fontSize: 11, fontWeight: 700, padding: "5px 10px" };
-const secondaryButton = { border: "1px solid rgba(120,120,120,0.45)", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, color: "#7d6d5a", background: "transparent", textDecoration: "none" };
+const statusPill = { borderRadius: 999, border: "1px solid var(--app-success-border)", background: "var(--app-success-soft)", color: "var(--app-success)", fontSize: 11, fontWeight: 700, padding: "5px 10px" };
+const secondaryButton = { border: "1px solid var(--app-border-strong)", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, color: "var(--app-muted)", background: "transparent", textDecoration: "none" };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
-const metricCard = { borderRadius: 12, padding: 12, border: "1px solid rgba(255,225,193,0.2)", background: "#1f181c" };
-const metricValue = { margin: 0, fontSize: 26, fontWeight: 800, color: "#f4ece0" };
-const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "#baa892" };
+const metricCard = { borderRadius: 12, padding: 12, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)" };
+const metricValue = { margin: 0, fontSize: 26, fontWeight: 800, color: "var(--app-text)" };
+const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "var(--app-muted)" };
 const progressCard = { borderRadius: 12, padding: 12, marginBottom: 12 };
-const progressTrack = { width: "100%", height: 10, borderRadius: 999, background: "rgba(120,120,120,0.25)", overflow: "hidden" };
-const progressFill = { height: "100%", background: "linear-gradient(90deg,#10b981,#34d399)" };
+const progressTrack = { width: "100%", height: 10, borderRadius: 999, background: "var(--app-track)", overflow: "hidden" };
+const progressFill = { height: "100%", background: "linear-gradient(90deg,var(--app-success),var(--app-success))" };
 const board = { display: "grid", gridTemplateColumns: "repeat(6,minmax(190px,1fr))", gap: 8, overflowX: "auto", paddingBottom: 4 };
 const column = { borderRadius: 12, padding: 10, minHeight: 420 };
 const columnHead = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
-const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid rgba(120,120,120,0.4)", color: "#9e8d7b", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
+const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid var(--app-border-strong)", color: "var(--app-muted)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
 const dropZone = { display: "grid", gap: 8 };
-const issueCard = { borderRadius: 10, border: "1px solid rgba(120,120,120,0.35)", background: "#251d22", padding: 10, cursor: "pointer" };
-const issueKey = { margin: 0, fontSize: 11, color: "#9e8d7b", fontWeight: 700 };
-const issueTitle = { margin: "5px 0", fontSize: 13, color: "#f4ece0", fontWeight: 600, lineHeight: 1.35 };
-const issueMeta = { margin: 0, fontSize: 11, color: "#baa892" };
+const issueCard = { borderRadius: 10, border: "1px solid var(--app-border-strong)", background: "#251d22", padding: 10, cursor: "pointer" };
+const issueKey = { margin: 0, fontSize: 11, color: "var(--app-muted)", fontWeight: 700 };
+const issueTitle = { margin: "5px 0", fontSize: 13, color: "var(--app-text)", fontWeight: 600, lineHeight: 1.35 };
+const issueMeta = { margin: 0, fontSize: 11, color: "var(--app-muted)" };
 const icon14 = { width: 14, height: 14 };
 
 function buildPolicyAdjustmentHints(violations, policy) {

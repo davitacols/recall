@@ -39,20 +39,20 @@ function Conversations() {
     () =>
       darkMode
         ? {
-            panel: "#171215",
-            panelAlt: "#1f181c",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#baa892",
+            panel: "var(--app-surface)",
+            panelAlt: "var(--app-surface-alt)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
             accent: "#ffaf72",
           }
         : {
-            panel: "#fffaf3",
-            panelAlt: "#ffffff",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7d6d5a",
-            accent: "#d9692e",
+            panel: "var(--app-surface)",
+            panelAlt: "var(--app-surface-alt)",
+            border: "var(--app-border)",
+            text: "var(--app-text)",
+            muted: "var(--app-muted)",
+            accent: "var(--app-accent)",
           },
     [darkMode]
   );
@@ -134,7 +134,7 @@ function Conversations() {
 
   return (
     <div style={{ ...page, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
-      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 3%, rgba(16,185,129,0.18), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.16), transparent 30%)" : "radial-gradient(circle at 8% 3%, rgba(16,185,129,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.1), transparent 30%)" }} />
+      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 3%, rgba(16,185,129,0.18), transparent 34%), radial-gradient(circle at 90% 8%, var(--app-info-soft), transparent 30%)" : "radial-gradient(circle at 8% 3%, var(--app-success-soft), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.1), transparent 30%)" }} />
 
       <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
         <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Decisions</button>
@@ -152,7 +152,7 @@ function Conversations() {
           "--ui-delay": "70ms",
           background: `linear-gradient(138deg, ${
             darkMode ? "rgba(16,185,129,0.16)" : "rgba(187,247,208,0.58)"
-          }, ${darkMode ? "rgba(59,130,246,0.16)" : "rgba(191,219,254,0.58)"}, ${darkMode ? "rgba(249,115,22,0.13)" : "rgba(255,220,182,0.52)"})`,
+          }, ${darkMode ? "var(--app-info-soft)" : "rgba(191,219,254,0.58)"}, ${darkMode ? "rgba(249,115,22,0.13)" : "rgba(255,220,182,0.52)"})`,
         }}
       >
         <div>
@@ -229,7 +229,7 @@ function Conversations() {
                 className="ui-card-lift ui-smooth"
                 key={conversation.id}
                 onClick={() => navigate(`/conversations/${conversation.id}`)}
-                style={{ ...listCard, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : listCard.gridTemplateColumns, background: darkMode ? "linear-gradient(160deg,#1a1418,#171215)" : "linear-gradient(160deg,#ffffff,#fffaf3)", border: `1px solid ${palette.border}` }}
+                style={{ ...listCard, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : listCard.gridTemplateColumns, background: darkMode ? "linear-gradient(160deg,#1a1418,var(--app-surface))" : "linear-gradient(160deg,var(--app-surface-alt),var(--app-surface))", border: `1px solid ${palette.border}` }}
               >
                 <div style={cardMain}>
                   <div style={tagRow}>
@@ -284,7 +284,7 @@ function Conversations() {
                         style={authorAvatarImage}
                         onError={(event) => {
                           event.target.style.display = "none";
-                          event.target.parentElement.innerHTML = `<span style="color:#20140f;font-size:13px;font-weight:700;">${initial}</span>`;
+                          event.target.parentElement.innerHTML = `<span style="color:var(--app-button-text);font-size:13px;font-weight:700;">${initial}</span>`;
                         }}
                       />
                     ) : (
@@ -393,8 +393,8 @@ const newConversationButton = {
   alignItems: "center",
   gap: 7,
   border: "none",
-  background: "linear-gradient(135deg, #ffd390, #ff9f62)",
-  color: "#20140f",
+  background: "var(--app-gradient-primary)",
+  color: "var(--app-button-text)",
   borderRadius: 10,
   padding: "10px 14px",
   fontSize: 13,
@@ -539,7 +539,7 @@ const authorAvatarWrap = {
   height: 36,
   borderRadius: 10,
   overflow: "hidden",
-  background: "linear-gradient(135deg, #ffcc8b, #ff955e)",
+  background: "var(--app-gradient-accent)",
   display: "grid",
   placeItems: "center",
 };
@@ -551,7 +551,7 @@ const authorAvatarImage = {
 };
 
 const avatarInitial = {
-  color: "#20140f",
+  color: "var(--app-button-text)",
   fontSize: 13,
   fontWeight: 700,
 };
@@ -570,9 +570,9 @@ const deleteButton = {
   width: 28,
   height: 28,
   borderRadius: 8,
-  border: "1px solid rgba(239,68,68,0.45)",
+  border: "1px solid var(--app-danger-border)",
   background: "transparent",
-  color: "#ef4444",
+  color: "var(--app-danger)",
   display: "grid",
   placeItems: "center",
   cursor: "pointer",

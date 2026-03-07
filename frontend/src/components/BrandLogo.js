@@ -11,7 +11,7 @@ const tones = {
     markBg: "linear-gradient(170deg, #ecd3b8, #ddb994)",
     markStroke: "rgba(18, 12, 9, 0.28)",
     glyph: "#1a130e",
-    text: "#f4ece0",
+    text: "var(--app-text)",
   },
   light: {
     markBg: "linear-gradient(170deg, #f2ddc7, #e5c4a5)",

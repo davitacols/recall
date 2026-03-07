@@ -49,7 +49,7 @@ function Signup() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: '"League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       {/* Left Panel - Branding */}
-      <div style={{ flex: 1, backgroundColor: '#0052CC', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#ffffff' }}>
+      <div style={{ flex: 1, backgroundColor: 'var(--app-info)', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: 'var(--app-surface-alt)' }}>
         <div style={{ maxWidth: '480px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
             <BrandLogo tone="dark" size="lg" label="Knoledgr" />
@@ -62,7 +62,7 @@ function Signup() {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--app-info-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
                 <span style={{ fontSize: '14px' }}>✓</span>
               </div>
               <div>
@@ -71,7 +71,7 @@ function Signup() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--app-info-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
                 <span style={{ fontSize: '14px' }}>✓</span>
               </div>
               <div>
@@ -80,7 +80,7 @@ function Signup() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--app-info-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
                 <span style={{ fontSize: '14px' }}>✓</span>
               </div>
               <div>
@@ -93,98 +93,98 @@ function Signup() {
       </div>
 
       {/* Right Panel - Form */}
-      <div style={{ flex: 1, backgroundColor: '#F4F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', overflowY: 'auto' }}>
+      <div style={{ flex: 1, backgroundColor: 'var(--app-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', overflowY: 'auto' }}>
         <div style={{ width: '100%', maxWidth: '440px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', padding: '48px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#172B4D', marginBottom: '8px', letterSpacing: '-0.01em' }}>Get started</h2>
-            <p style={{ fontSize: '14px', color: '#6B778C', marginBottom: '32px' }}>Create your organization account</p>
+          <div style={{ backgroundColor: 'var(--app-surface-alt)', borderRadius: '8px', padding: '48px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--app-text)', marginBottom: '8px', letterSpacing: '-0.01em' }}>Get started</h2>
+            <p style={{ fontSize: '14px', color: 'var(--app-muted)', marginBottom: '32px' }}>Create your organization account</p>
 
             {error && (
-              <div style={{ marginBottom: '24px', padding: '12px 16px', backgroundColor: '#FFEBE6', border: '1px solid #FF5630', borderRadius: '6px', color: '#BF2600', fontSize: '14px' }}>
+              <div style={{ marginBottom: '24px', padding: '12px 16px', backgroundColor: '#FFEBE6', border: '1px solid var(--app-danger)', borderRadius: '6px', color: 'var(--app-danger)', fontSize: '14px' }}>
                 {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Organization Name</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Organization Name</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
-                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
                   placeholder="Acme Inc."
                   required
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Organization Slug</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Organization Slug</label>
                 <input
                   type="text"
                   value={formData.slug}
                   onChange={(e) => setFormData({...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
-                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
                   placeholder="your-company"
                   required
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Your Full Name</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Your Full Name</label>
                 <input
                   type="text"
                   value={formData.full_name}
                   onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
-                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
                   placeholder="John Doe"
                   required
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Email</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Email</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
-                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
                   placeholder="you@company.com"
                   required
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Username</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Username</label>
                 <input
                   type="text"
                   value={formData.username}
                   onChange={(e) => setFormData({...formData, username: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
-                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
                   placeholder="johndoe"
                   required
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#172B4D', marginBottom: '6px' }}>Password</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Password</label>
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid #DFE1E6', borderRadius: '6px', fontSize: '14px', color: '#172B4D', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = '#0052CC'}
-                  onBlur={(e) => e.target.style.borderColor = '#DFE1E6'}
+                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
                   placeholder="••••••••"
                   required
                 />
@@ -193,13 +193,13 @@ function Signup() {
               <button
                 type="submit"
                 disabled={loading}
-                style={{ width: '100%', marginTop: '8px', padding: '12px', backgroundColor: '#0052CC', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, boxShadow: '0 1px 2px rgba(0,0,0,0.08)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1' }}
-                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#0747A6')}
-                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#0052CC')}
+                style={{ width: '100%', marginTop: '8px', padding: '12px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, boxShadow: '0 1px 2px rgba(0,0,0,0.08)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1' }}
+                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = 'var(--app-info)')}
+                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = 'var(--app-info)')}
               >
                 {loading ? (
                   <>
-                    <div style={{ width: '16px', height: '16px', border: '2px solid #ffffff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite', marginRight: '8px' }}></div>
+                    <div style={{ width: '16px', height: '16px', border: '2px solid var(--app-surface-alt)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite', marginRight: '8px' }}></div>
                     Creating...
                   </>
                 ) : (
@@ -218,9 +218,9 @@ function Signup() {
               )}
             </form>
 
-            <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: '#6B778C' }}>
+            <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: 'var(--app-muted)' }}>
               Already have an account?{' '}
-              <Link to="/login" style={{ color: '#0052CC', fontWeight: 600, textDecoration: 'none' }}>
+              <Link to="/login" style={{ color: 'var(--app-info)', fontWeight: 600, textDecoration: 'none' }}>
                 Sign in
               </Link>
             </div>
@@ -228,9 +228,9 @@ function Signup() {
             <div style={{ marginTop: '16px', textAlign: 'center' }}>
               <button
                 onClick={() => navigate('/')}
-                style={{ fontSize: '14px', color: '#6B778C', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#172B4D'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#6B778C'}
+                style={{ fontSize: '14px', color: 'var(--app-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--app-text)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--app-muted)'}
               >
                 ← Back to homepage
               </button>

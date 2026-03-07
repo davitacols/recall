@@ -25,4 +25,8 @@ app.conf.beat_schedule = {
         'task': 'apps.notifications.tasks.send_weekly_digests',
         'schedule': crontab(hour=9, minute=0, day_of_week='mon'),  # Mondays at 9 AM
     },
+    'send-scheduled-marketing-campaigns': {
+        'task': 'apps.notifications.tasks.send_scheduled_marketing_campaigns',
+        'schedule': crontab(minute='*/10'),  # Every 10 minutes
+    },
 }

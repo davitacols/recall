@@ -1,8 +1,8 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
 from apps.agile.ml_service import MLService
+from apps.agile.ml_models import AgileMLTrainer, AgileMLModelStore
 from apps.agile.models import Issue, Sprint, Project
 
 @api_view(['POST'])
@@ -20,7 +20,12 @@ def suggest_assignee(request):
     if not project:
         return Response({'error': 'Project not found'}, status=404)
     
-    suggestion = MLService.suggest_assignee(title, description, project.id)
+    suggestion = MLService.suggest_assignee(
+        title,
+        description,
+        project.id,
+        organization_id=request.user.organization_id,
+    )
     
     if suggestion:
         return Response(suggestion)
@@ -33,7 +38,7 @@ def predict_sprint(request, sprint_id):
     sprint = Sprint.objects.filter(id=sprint_id, organization=request.user.organization).first()
     if not sprint:
         return Response({'error': 'Sprint not found'}, status=404)
-    prediction = MLService.predict_sprint_completion(sprint_id)
+    prediction = MLService.predict_sprint_completion(sprint_id, organization_id=request.user.organization_id)
     return Response(prediction)
 
 @api_view(['POST'])
@@ -45,7 +50,7 @@ def auto_tag(request):
     
     tags = MLService.auto_tag_issue(title, description)
     sentiment = MLService.analyze_sentiment(f"{title} {description}")
-    story_points = MLService.estimate_story_points(title, description)
+    story_points = MLService.estimate_story_points(title, description, organization_id=request.user.organization_id)
     
     return Response({
         'tags': tags,
@@ -67,14 +72,23 @@ def analyze_issue(request):
     analysis = {
         'tags': MLService.auto_tag_issue(title, description),
         'sentiment': MLService.analyze_sentiment(f"{title} {description}"),
-        'estimated_points': MLService.estimate_story_points(title, description),
+        'estimated_points': MLService.estimate_story_points(
+            title,
+            description,
+            organization_id=request.user.organization_id,
+        ),
     }
     
     if project_id:
         project = Project.objects.filter(id=project_id, organization=request.user.organization).first()
         if not project:
             return Response({'error': 'Project not found'}, status=404)
-        assignee = MLService.suggest_assignee(title, description, project.id)
+        assignee = MLService.suggest_assignee(
+            title,
+            description,
+            project.id,
+            organization_id=request.user.organization_id,
+        )
         if assignee:
             analysis['suggested_assignee'] = assignee
     
@@ -88,7 +102,10 @@ def sprint_insights(request, sprint_id):
         sprint = Sprint.objects.get(id=sprint_id, organization=request.user.organization)
         issues = sprint.issues.all()
         
-        prediction = MLService.predict_sprint_completion(sprint_id)
+        prediction = MLService.predict_sprint_completion(
+            sprint_id,
+            organization_id=request.user.organization_id,
+        )
         
         # Analyze issue sentiments
         sentiments = []
@@ -120,3 +137,32 @@ def sprint_insights(request, sprint_id):
         })
     except Sprint.DoesNotExist:
         return Response({'error': 'Sprint not found'}, status=404)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def train_models(request):
+    """Train baseline ML models for the caller's organization."""
+    if getattr(request.user, "role", "") != "admin":
+        return Response({"error": "Only admins can train models"}, status=403)
+
+    result = AgileMLTrainer.train_for_organization(request.user.organization_id)
+    return Response(result)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def model_status(request):
+    """Return training metadata for current org model artifact."""
+    artifact = AgileMLModelStore.load(request.user.organization_id)
+    if not artifact:
+        return Response({
+            "trained": False,
+            "message": "No model artifact found. Run /api/agile/ml/train/ as admin."
+        })
+
+    return Response({
+        "trained": True,
+        "metadata": artifact.get("metadata", {}),
+        "sprint_baseline": artifact.get("sprint_baseline", {}),
+    })

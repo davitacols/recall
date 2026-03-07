@@ -2,7 +2,7 @@ from celery import shared_task
 from django.utils import timezone
 from datetime import timedelta
 from html import escape
-from .models import Notification
+from .models import Notification, EmailCampaign, EmailCampaignRecipient
 from .email_service import (
     send_notification_email as send_notification_email_via_resend,
     send_email,
@@ -189,3 +189,124 @@ def send_weekly_digests():
         digest_frequency='weekly',
     ).values_list('id', flat=True):
         send_notification_digest(user_id, 'weekly')
+
+
+def _campaign_audience_queryset(campaign):
+    users = User.objects.filter(
+        organization=campaign.organization,
+        is_active=True,
+        email__isnull=False,
+    ).exclude(email='')
+
+    users = users.filter(marketing_opt_in=True, marketing_unsubscribed_at__isnull=True)
+
+    if campaign.segment == 'active_30d':
+        users = users.filter(last_active__gte=timezone.now() - timedelta(days=30))
+    elif campaign.segment == 'admins_managers':
+        users = users.filter(role__in=['admin', 'manager'])
+
+    return users
+
+
+def _build_campaign_email(campaign, user):
+    unsubscribe_url = build_frontend_url(f"/api/notifications/unsubscribe/{user.marketing_unsubscribe_token}/")
+    reason_text = (
+        "You are receiving this promotional email because marketing updates are enabled in your Knoledgr profile. "
+        f"Unsubscribe anytime: {unsubscribe_url}"
+    )
+    html = render_email_template(
+        preheader=campaign.preheader or campaign.subject,
+        title=campaign.subject,
+        body_html=campaign.body_html,
+        cta_label=campaign.cta_label or "Open Knoledgr",
+        cta_url=build_frontend_url(campaign.cta_url or "/"),
+        reason_text=reason_text,
+        variant="marketing",
+    )
+    text = build_text_email(
+        title=campaign.subject,
+        body_lines=["Open the link below to continue.", unsubscribe_url],
+        cta_label=campaign.cta_label or "Open Knoledgr",
+        cta_url=build_frontend_url(campaign.cta_url or "/"),
+        reason_text=reason_text,
+    )
+    return html, text
+
+
+@shared_task
+def send_marketing_campaign(campaign_id):
+    campaign = EmailCampaign.objects.filter(id=campaign_id).first()
+    if not campaign:
+        return
+    if campaign.status in {'sent', 'cancelled'}:
+        return
+
+    campaign.status = 'sending'
+    campaign.save(update_fields=['status', 'updated_at'])
+
+    audience = _campaign_audience_queryset(campaign)
+    for user in audience.iterator():
+        EmailCampaignRecipient.objects.get_or_create(
+            campaign=campaign,
+            email=user.email,
+            defaults={'user': user, 'status': 'pending'},
+        )
+
+    recipients = EmailCampaignRecipient.objects.filter(campaign=campaign, status='pending').select_related('user')
+    sent_count = 0
+    failed_count = 0
+    suppressed_count = 0
+
+    for recipient in recipients.iterator():
+        user = recipient.user
+        if not user or not user.marketing_opt_in or user.marketing_unsubscribed_at:
+            recipient.status = 'suppressed'
+            recipient.error_message = 'User not eligible for marketing at send-time'
+            recipient.save(update_fields=['status', 'error_message', 'updated_at'])
+            suppressed_count += 1
+            continue
+
+        html, text = _build_campaign_email(campaign, user)
+        ok = send_email(user.email, campaign.subject, html, text_content=text)
+        if ok:
+            recipient.status = 'sent'
+            recipient.sent_at = timezone.now()
+            recipient.error_message = ''
+            recipient.save(update_fields=['status', 'sent_at', 'error_message', 'updated_at'])
+            sent_count += 1
+        else:
+            recipient.status = 'failed'
+            recipient.error_message = 'Provider rejected request or delivery failed'
+            recipient.save(update_fields=['status', 'error_message', 'updated_at'])
+            failed_count += 1
+
+    campaign.total_recipients = campaign.recipients.count()
+    campaign.sent_count = campaign.recipients.filter(status='sent').count()
+    campaign.failed_count = campaign.recipients.filter(status='failed').count()
+    campaign.suppressed_count = campaign.recipients.filter(status='suppressed').count()
+    campaign.status = 'sent' if campaign.failed_count == 0 else 'failed'
+    campaign.sent_at = timezone.now()
+    campaign.save(update_fields=[
+        'total_recipients',
+        'sent_count',
+        'failed_count',
+        'suppressed_count',
+        'status',
+        'sent_at',
+        'updated_at',
+    ])
+
+    return {
+        'campaign_id': campaign.id,
+        'sent': sent_count,
+        'failed': failed_count,
+        'suppressed': suppressed_count,
+    }
+
+
+@shared_task
+def send_scheduled_marketing_campaigns():
+    now = timezone.now()
+    scheduled = EmailCampaign.objects.filter(status='scheduled', scheduled_for__lte=now)
+    for campaign_id in scheduled.values_list('id', flat=True):
+        send_marketing_campaign.delay(campaign_id)

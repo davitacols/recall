@@ -272,6 +272,13 @@ def render_email_template(preheader, title, body_html, cta_label, cta_url, reaso
             "cta_bg": "#153d2b",
             "cta_text": "#e6fff2",
         },
+        "marketing": {
+            "tag": "Knoledgr News",
+            "badge_bg": "linear-gradient(135deg,#ffe9b9,#ffd08f,#ffb878)",
+            "badge_text": "#6b3c18",
+            "cta_bg": "#2a1608",
+            "cta_text": "#fff0df",
+        },
     }.get(normalized_variant, {
         "tag": "Knoledgr Update",
         "badge_bg": "linear-gradient(135deg,#ffe3b7,#ffc68c,#ffa86a)",

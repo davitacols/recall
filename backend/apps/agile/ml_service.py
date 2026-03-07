@@ -1,16 +1,23 @@
 import re
 from collections import Counter
-from datetime import datetime, timedelta
-from django.db.models import Count, Avg, Q
+from datetime import datetime
 from apps.agile.models import Issue, Sprint
 from apps.organizations.models import User
+from apps.agile.ml_models import AgileMLModelStore, NaiveBayesTextClassifier
 
 class MLService:
     """Lightweight ML service for smart features"""
     
     @staticmethod
-    def suggest_assignee(issue_title, issue_description, project_id):
+    def suggest_assignee(issue_title, issue_description, project_id, organization_id=None):
         """Suggest best assignee based on past work"""
+        if organization_id and AgileMLModelStore.exists(organization_id):
+            prediction = MLService._suggest_assignee_from_trained_model(
+                issue_title, issue_description, project_id, organization_id
+            )
+            if prediction:
+                return prediction
+
         text = f"{issue_title} {issue_description}".lower()
         keywords = set(re.findall(r'\b\w+\b', text))
         
@@ -35,12 +42,55 @@ class MLService:
                 'user_id': user.id,
                 'name': user.full_name,
                 'confidence': min(user_scores[best_user_id] / 10, 1.0),
-                'reason': f'Worked on {user_scores[best_user_id]} similar issues'
+                'reason': f'Worked on {user_scores[best_user_id]} similar issues',
+                'model_source': 'heuristic',
             }
         return None
     
     @staticmethod
-    def predict_sprint_completion(sprint_id):
+    def _suggest_assignee_from_trained_model(issue_title, issue_description, project_id, organization_id):
+        artifact = AgileMLModelStore.load(organization_id)
+        if not artifact:
+            return None
+
+        model = NaiveBayesTextClassifier.from_dict(artifact.get("assignee_model", {}))
+        if not model.is_trained():
+            return None
+
+        text = f"{issue_title} {issue_description or ''}".strip()
+        probs = model.predict_proba(text)
+        if not probs:
+            return None
+
+        recent_project_assignees = set(
+            Issue.objects.filter(project_id=project_id, assignee__isnull=False)
+            .values_list("assignee_id", flat=True)
+            .distinct()
+        )
+        if recent_project_assignees:
+            probs = {
+                label: p for label, p in probs.items()
+                if str(label).isdigit() and int(label) in recent_project_assignees
+            } or probs
+
+        best_label, confidence = max(probs.items(), key=lambda x: x[1])
+        if not str(best_label).isdigit():
+            return None
+        user_id = int(best_label)
+        user = User.objects.filter(id=user_id, organization_id=organization_id).first()
+        if not user:
+            return None
+
+        return {
+            "user_id": user.id,
+            "name": user.full_name,
+            "confidence": round(float(confidence), 3),
+            "reason": "Prediction from trained assignee model",
+            "model_source": "trained",
+        }
+
+    @staticmethod
+    def predict_sprint_completion(sprint_id, organization_id=None):
         """Predict sprint completion probability"""
         try:
             sprint = Sprint.objects.get(id=sprint_id)
@@ -64,6 +114,17 @@ class MLService:
             needed_rate = (total - completed) / max(days_remaining, 1)
             
             probability = min(progress_rate / max(needed_rate, 0.1), 1.0)
+
+            model_source = 'heuristic'
+            if organization_id:
+                artifact = AgileMLModelStore.load(organization_id)
+                if artifact:
+                    baseline = artifact.get("sprint_baseline", {})
+                    avg_completion_ratio = baseline.get("avg_completion_ratio")
+                    if avg_completion_ratio is not None:
+                        completion_bias = (float(avg_completion_ratio) - 0.5) * 0.25
+                        probability = max(0.0, min(1.0, probability + completion_bias))
+                        model_source = 'trained+heuristic'
             
             return {
                 'probability': round(probability * 100),
@@ -71,7 +132,8 @@ class MLService:
                 'total': total,
                 'at_risk': probability < 0.7,
                 'confidence': 'high' if days_passed > 2 else 'medium',
-                'recommendation': 'On track' if probability > 0.8 else 'Needs attention'
+                'recommendation': 'On track' if probability > 0.8 else 'Needs attention',
+                'model_source': model_source,
             }
         except Sprint.DoesNotExist:
             return {'probability': 0, 'confidence': 'low'}
@@ -124,8 +186,13 @@ class MLService:
         return 'neutral'
     
     @staticmethod
-    def estimate_story_points(title, description):
+    def estimate_story_points(title, description, organization_id=None):
         """Estimate story points based on complexity"""
+        if organization_id and AgileMLModelStore.exists(organization_id):
+            predicted = MLService._estimate_story_points_from_trained_model(title, description, organization_id)
+            if predicted is not None:
+                return predicted
+
         text = f"{title} {description or ''}"
         
         # Simple heuristic based on length and keywords
@@ -159,3 +226,21 @@ class MLService:
             return 5
         else:
             return 8
+
+    @staticmethod
+    def _estimate_story_points_from_trained_model(title, description, organization_id):
+        artifact = AgileMLModelStore.load(organization_id)
+        if not artifact:
+            return None
+        model = NaiveBayesTextClassifier.from_dict(artifact.get("story_point_model", {}))
+        if not model.is_trained():
+            return None
+
+        probs = model.predict_proba(f"{title} {description or ''}")
+        if not probs:
+            return None
+        label, _ = max(probs.items(), key=lambda x: x[1])
+        try:
+            return int(label)
+        except (TypeError, ValueError):
+            return None

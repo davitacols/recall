@@ -180,6 +180,7 @@ def notification_settings(request):
             'goal_notifications': getattr(user, 'goal_notifications', True),
             'meeting_notifications': getattr(user, 'meeting_notifications', True),
             'digest_frequency': getattr(user, 'digest_frequency', 'daily'),
+            'marketing_opt_in': getattr(user, 'marketing_opt_in', False),
             'experience_mode': getattr(user, 'experience_mode', 'standard'),
         })
     
@@ -200,6 +201,16 @@ def notification_settings(request):
             user.meeting_notifications = request.data['meeting_notifications']
         if 'digest_frequency' in request.data:
             user.digest_frequency = request.data['digest_frequency']
+        if 'marketing_opt_in' in request.data:
+            wants_marketing = bool(request.data['marketing_opt_in'])
+            if wants_marketing:
+                user.marketing_opt_in = True
+                if not user.marketing_opt_in_at:
+                    user.marketing_opt_in_at = timezone.now()
+                user.marketing_unsubscribed_at = None
+            else:
+                user.marketing_opt_in = False
+                user.marketing_unsubscribed_at = timezone.now()
         if 'experience_mode' in request.data:
             requested_mode = str(request.data['experience_mode']).strip().lower()
             if requested_mode not in {'simple', 'standard', 'advanced'}:

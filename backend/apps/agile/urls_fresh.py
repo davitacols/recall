@@ -137,6 +137,8 @@ urlpatterns = [
     path('ml/auto-tag/', ml_endpoints.auto_tag, name='ml_auto_tag'),
     path('ml/analyze-issue/', ml_endpoints.analyze_issue, name='ml_analyze_issue'),
     path('ml/sprint-insights/<int:sprint_id>/', ml_endpoints.sprint_insights, name='ml_sprint_insights'),
+    path('ml/train/', ml_endpoints.train_models, name='ml_train_models'),
+    path('ml/model-status/', ml_endpoints.model_status, name='ml_model_status'),
     
     # AI Features
     path('ai/chat/', ai_endpoints.ai_chat, name='ai_chat'),

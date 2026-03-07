@@ -84,6 +84,10 @@ class User(AbstractUser):
         ],
         default='daily'
     )
+    marketing_opt_in = models.BooleanField(default=False, db_index=True)
+    marketing_opt_in_at = models.DateTimeField(null=True, blank=True)
+    marketing_unsubscribed_at = models.DateTimeField(null=True, blank=True)
+    marketing_unsubscribe_token = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
     experience_mode = models.CharField(max_length=20, choices=EXPERIENCE_MODE_CHOICES, default='standard')
     
     # Onboarding progress

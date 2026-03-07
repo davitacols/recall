@@ -329,7 +329,7 @@ function Settings() {
         <p style={{ margin: 0, color: palette.muted, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
           Knoledgr Controls
         </p>
-        <h1 style={{ margin: 0, color: palette.text, fontSize: "clamp(1.35rem, 2.8vw, 2rem)", lineHeight: 1.1 }}>
+        <h1 style={{ margin: 0, color: palette.text, fontSize: "clamp(1.1rem, 2vw, 1.62rem)", lineHeight: 1.1 }}>
           Settings
         </h1>
         <p style={{ margin: 0, color: palette.muted, maxWidth: 760, fontSize: 14 }}>

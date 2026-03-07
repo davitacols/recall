@@ -302,7 +302,7 @@ export default function UnifiedLayout({ children }) {
         style={{
           ...main,
           paddingTop: 0,
-          paddingLeft: isMobile ? 0 : activeSidebarWidth,
+          paddingLeft: isMobile ? 0 : Math.max(0, activeSidebarWidth - 16),
           paddingBottom: isMobile ? 0 : undefined,
         }}
       >
@@ -757,9 +757,9 @@ const main = {
 };
 
 const contentContainer = {
-  maxWidth: 1520,
+  maxWidth: 1840,
   margin: "0 auto",
-  padding: "12px clamp(14px, 2.4vw, 30px) 30px",
+  padding: "8px clamp(8px, 1.4vw, 14px) 20px",
 };
 
 const contentContainerMobile = {
@@ -793,7 +793,7 @@ const headerEyebrow = {
 
 const headerTitle = {
   margin: "5px 0 0",
-  fontSize: "clamp(1.12rem, 2.25vw, 1.62rem)",
+  fontSize: "clamp(0.95rem, 1.55vw, 1.22rem)",
   letterSpacing: "-0.02em",
   fontWeight: 800,
 };

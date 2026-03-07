@@ -157,7 +157,7 @@ export default function NotificationSettings() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <BellIcon style={{ width: 22, height: 22, color: palette.text }} />
             <div>
-              <h1 style={{ margin: 0, color: palette.text, fontSize: "clamp(1.2rem,2vw,1.6rem)" }}>Notification Settings</h1>
+              <h1 style={{ margin: 0, color: palette.text, fontSize: "clamp(1rem,1.35vw,1.25rem)" }}>Notification Settings</h1>
               <p style={{ margin: "5px 0 0", color: palette.muted, fontSize: 13 }}>
                 Manage channels, digest cadence, and diagnostics.
               </p>

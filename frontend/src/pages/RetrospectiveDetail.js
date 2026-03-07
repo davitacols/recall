@@ -100,7 +100,7 @@ function Retrospectives() {
       <div style={ui.container}>
         <section style={{ marginBottom: 12 }}>
           <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", color: palette.muted, fontWeight: 700 }}>RETROSPECTIVE</p>
-          <h1 style={{ margin: "6px 0 0", fontSize: "clamp(1.6rem,3vw,2.25rem)", color: palette.text }}>{sprint.name}</h1>
+          <h1 style={{ margin: "6px 0 0", fontSize: "clamp(1.24rem,2.25vw,1.84rem)", color: palette.text }}>{sprint.name}</h1>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>
             {sprint.start_date} to {sprint.end_date}
           </p>

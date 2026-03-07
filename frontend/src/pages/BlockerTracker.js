@@ -177,7 +177,7 @@ function Blockers() {
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>RISK BOARD</p>
-              <h1 style={{ margin: "8px 0 5px", fontSize: "clamp(1.6rem,3vw,2.35rem)", color: palette.text }}>Blocker Tracker</h1>
+              <h1 style={{ margin: "8px 0 5px", fontSize: "clamp(1.24rem,2.25vw,1.88rem)", color: palette.text }}>Blocker Tracker</h1>
               <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track active delivery risks and clear blockers before they stall the sprint.</p>
             </div>
             <button onClick={() => setShowCreateModal(true)} className="ui-btn-polish" style={ui.primaryButton}>

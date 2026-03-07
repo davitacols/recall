@@ -66,7 +66,7 @@ function IssueTemplates() {
         <div style={header}>
           <div>
             <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", color: palette.muted, fontWeight: 700 }}>AGILE</p>
-            <h1 style={{ margin: "6px 0 0", fontSize: "clamp(1.6rem,3vw,2.25rem)", color: palette.text }}>Issue Templates</h1>
+            <h1 style={{ margin: "6px 0 0", fontSize: "clamp(1.24rem,2.25vw,1.84rem)", color: palette.text }}>Issue Templates</h1>
           </div>
           <button
             onClick={() => setShowForm(true)}

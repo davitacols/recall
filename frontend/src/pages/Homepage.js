@@ -426,9 +426,9 @@ export default function Homepage() {
           <div style={footerBottom}>
             <span>(c) {new Date().getFullYear()} Knoledgr. All rights reserved.</span>
             <div style={footerLegal}>
-              <button onClick={() => navigate("/privacy")} style={footerMutedButton}>Privacy</button>
-              <button onClick={() => navigate("/terms")} style={footerMutedButton}>Terms</button>
-              <button onClick={() => navigate("/security-annex")} style={footerMutedButton}>Security</button>
+              <a href="/privacy" style={footerMutedLink}>Privacy</a>
+              <a href="/terms" style={footerMutedLink}>Terms</a>
+              <a href="/security-annex" style={footerMutedLink}>Security</a>
             </div>
           </div>
         </div>
@@ -1098,6 +1098,12 @@ const footerLegal = {
   display: "flex",
   gap: 8,
   flexWrap: "wrap",
+};
+
+const footerMutedLink = {
+  color: "rgba(244,239,230,0.58)",
+  fontSize: 12,
+  textDecoration: "none",
 };
 
 const footerMutedButton = {

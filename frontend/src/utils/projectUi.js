@@ -43,9 +43,9 @@ export function getProjectPalette(darkMode) {
 export function getProjectUi(palette) {
   return {
     container: {
-      width: "min(1320px, 100%)",
+      width: "min(1840px, 100%)",
       margin: "0 auto",
-      padding: "clamp(12px,2.6vw,24px)",
+      padding: "clamp(8px,1.4vw,14px)",
     },
     primaryButton: {
       border: "none",

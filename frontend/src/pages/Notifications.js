@@ -204,7 +204,7 @@ function Notifications() {
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <BellIcon style={{ width: 22, height: 22, color: palette.text }} />
-              <h1 style={{ margin: 0, fontSize: "clamp(1.2rem,2vw,1.6rem)", color: palette.text }}>Notifications</h1>
+              <h1 style={{ margin: 0, fontSize: "clamp(1rem,1.35vw,1.25rem)", color: palette.text }}>Notifications</h1>
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>
               {unreadCount} unread of {items.length} total

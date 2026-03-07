@@ -141,7 +141,7 @@ function Decisions() {
         <section className="ui-enter" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(138deg,var(--app-info-soft),rgba(249,115,22,0.12),rgba(168,85,247,0.16))" : "linear-gradient(138deg,rgba(147,197,253,0.5),rgba(254,215,170,0.58),rgba(221,214,254,0.5))", padding: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12, position: "relative", zIndex: 1, "--ui-delay": "70ms" }}>
           <div>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>DECISION CENTER</p>
-            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.6rem,3.2vw,2.35rem)", color: palette.text, letterSpacing: "-0.02em" }}>Decision Operating System</h1>
+            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.24rem,2.35vw,1.88rem)", color: palette.text, letterSpacing: "-0.02em" }}>Decision Operating System</h1>
             <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track choices, confidence, and execution outcomes from one launch-ready flow.</p>
           </div>
           <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={ui.primaryButton}>

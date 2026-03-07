@@ -259,7 +259,7 @@ function Metric({ value, label }) {
 const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const hero = { borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 12 };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.14em", fontWeight: 700 };
-const title = { margin: "7px 0 6px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
+const title = { margin: "7px 0 6px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", letterSpacing: "-0.02em" };
 const subtitle = { margin: 0, fontSize: 14 };
 const h2 = { margin: 0, fontSize: 19, display: "flex", alignItems: "center", gap: 7 };
 const muted = { margin: 0, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 };

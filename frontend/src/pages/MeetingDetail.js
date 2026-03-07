@@ -117,7 +117,7 @@ export default function MeetingDetail() {
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
                   <div>
-                    <h1 style={{ margin: 0, fontSize: "clamp(1.4rem,2.8vw,2rem)", color: palette.text, letterSpacing: "-0.02em" }}>{meeting.title}</h1>
+                    <h1 style={{ margin: 0, fontSize: "clamp(1.12rem,2vw,1.66rem)", color: palette.text, letterSpacing: "-0.02em" }}>{meeting.title}</h1>
                     <p style={{ margin: "6px 0 0", fontSize: 12, color: palette.muted }}>{new Date(meeting.meeting_date).toLocaleString()} | {meeting.duration_minutes} min</p>
                     {meeting.location && <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{meeting.location}</p>}
                   </div>

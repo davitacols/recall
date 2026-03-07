@@ -97,7 +97,7 @@ export default function KnowledgeHealthDashboard() {
       <div style={ui.container}>
         <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 12 }}>
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: palette.muted }}>KNOWLEDGE HEALTH</p>
-          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.45rem,2.4vw,2.1rem)", color: palette.text }}>Knowledge quality and risk</h1>
+          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.14rem,1.9vw,1.66rem)", color: palette.text }}>Knowledge quality and risk</h1>
           <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track documentation quality and unresolved memory debt.</p>
         </section>
 

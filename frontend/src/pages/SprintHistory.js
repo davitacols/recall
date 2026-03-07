@@ -54,7 +54,7 @@ function SprintHistory() {
       <div style={ui.container}>
         <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, marginBottom: 12 }}>
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>SPRINT HISTORY</p>
-          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Sprint History</h1>
+          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", color: palette.text, letterSpacing: "-0.02em" }}>Sprint History</h1>
           <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Institutional memory of outcomes, blockers, and delivery trend.</p>
         </section>
 

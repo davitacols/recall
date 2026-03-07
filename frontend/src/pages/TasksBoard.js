@@ -102,7 +102,7 @@ export default function TasksBoard() {
         <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>TASK EXECUTION</p>
-            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>Tasks Board</h1>
+            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", color: palette.text, letterSpacing: "-0.02em" }}>Tasks Board</h1>
             <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>{totals} tasks across workflow columns</p>
           </div>
           <button onClick={() => setShowModal(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Task</button>

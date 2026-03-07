@@ -194,7 +194,7 @@ export default function Documents() {
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: palette.muted }}>DOC HUB</p>
-              <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.55rem,2.8vw,2.2rem)", color: palette.text }}>Documents</h1>
+              <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.22rem,2.1vw,1.8rem)", color: palette.text }}>Documents</h1>
               <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Policies, procedures, and internal references in one workspace.</p>
             </div>
             <button onClick={() => setShowModal(true)} className="ui-btn-polish" style={ui.primaryButton}>

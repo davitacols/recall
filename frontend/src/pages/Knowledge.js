@@ -193,7 +193,7 @@ export default function Knowledge() {
           style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: `linear-gradient(150deg, ${palette.card} 10%, ${darkMode ? "#261b21" : "var(--app-surface-alt)1dd"} 100%)`, padding: 16, marginBottom: 12 }}
         >
           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: palette.muted }}>KNOWLEDGE COMMAND</p>
-          <h1 style={{ margin: "8px 0 4px", color: palette.text, fontSize: "clamp(1.45rem,2.5vw,2.1rem)" }}>Unified knowledge retrieval</h1>
+          <h1 style={{ margin: "8px 0 4px", color: palette.text, fontSize: "clamp(1.16rem,1.95vw,1.68rem)" }}>Unified knowledge retrieval</h1>
           <p style={{ margin: "0 0 12px", color: palette.muted, fontSize: 13 }}>Search conversations, decisions, meetings, and docs from one flow with relevance ranking.</p>
 
           <form onSubmit={(e) => { e.preventDefault(); runSearch(query); }} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 8, display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>

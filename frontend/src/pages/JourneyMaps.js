@@ -121,7 +121,7 @@ export default function JourneyMaps() {
       <div style={ui.container}>
         <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 12 }}>
           <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700, color: palette.muted }}>CREATIVE DISCOVERY</p>
-          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: palette.text, letterSpacing: "-0.02em" }}>
+          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", color: palette.text, letterSpacing: "-0.02em" }}>
             Journey Maps
           </h1>
           <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>

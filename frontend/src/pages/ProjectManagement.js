@@ -237,7 +237,7 @@ function Metric({ label, value, styles }) {
 const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
-const title = { margin: "8px 0 5px", fontSize: "clamp(1.5rem,3vw,2.2rem)", letterSpacing: "-0.02em" };
+const title = { margin: "8px 0 5px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", letterSpacing: "-0.02em" };
 const subtitle = { margin: 0, fontSize: 13 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
 const card = { borderRadius: 12, padding: 12, marginBottom: 10 };

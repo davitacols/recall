@@ -291,7 +291,7 @@ function DecisionDetail() {
                 <Pill text={status} tone="blue" />
                 <Pill text={impact} tone="amber" />
               </div>
-              <h1 style={{ margin: "0 0 8px", fontSize: "clamp(1.4rem,2.8vw,2rem)", color: palette.text, letterSpacing: "-0.02em" }}>{decision.title}</h1>
+              <h1 style={{ margin: "0 0 8px", fontSize: "clamp(1.12rem,2vw,1.66rem)", color: palette.text, letterSpacing: "-0.02em" }}>{decision.title}</h1>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: palette.muted }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><UserIcon style={{ width: 14, height: 14 }} /> {decision.decision_maker_name || "Unknown"}</span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><CalendarIcon style={{ width: 14, height: 14 }} /> {new Date(decision.created_at).toLocaleDateString()}</span>

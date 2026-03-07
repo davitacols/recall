@@ -11,6 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import RichTextRenderer from "../components/RichTextRenderer";
 import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
@@ -282,7 +283,7 @@ function DecisionDetail() {
           <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
         </button>
 
-        <section className="ui-enter ui-card-lift ui-smooth" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(135deg,#1a1418,#161115)" : "linear-gradient(135deg,var(--app-surface-alt)df9,var(--app-surface-alt)6ec)", padding: 16, marginBottom: 10, "--ui-delay": "120ms" }}>
+        <section className="ui-enter ui-card-lift ui-smooth" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: "linear-gradient(135deg,var(--app-surface-alt),var(--app-surface))", padding: 16, marginBottom: 10, "--ui-delay": "120ms" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
@@ -344,8 +345,8 @@ function DecisionDetail() {
               ))}
             </div>
 
-            {activeTab === "overview" && <TextBlock title="Overview" text={decision.description} palette={palette} />}
-            {activeTab === "rationale" && <TextBlock title="Rationale" text={decision.rationale || "No rationale provided"} palette={palette} />}
+            {activeTab === "overview" && <TextBlock title="Overview" text={decision.description} palette={palette} darkMode={darkMode} />}
+            {activeTab === "rationale" && <TextBlock title="Rationale" text={decision.rationale || "No rationale provided"} palette={palette} darkMode={darkMode} />}
 
             {activeTab === "code" && (
               <div>
@@ -385,7 +386,7 @@ function DecisionDetail() {
 
             {activeTab === "details" && (
               <div style={{ display: "grid", gap: 10 }}>
-                {decision.context_reason && <TextBlock title="Context" text={decision.context_reason} palette={palette} />}
+                {decision.context_reason && <TextBlock title="Context" text={decision.context_reason} palette={palette} darkMode={darkMode} />}
 
                 {decision.if_this_fails && (
                   <div style={{ borderRadius: 10, border: "1px solid var(--app-danger-border)", background: "rgba(239,68,68,0.1)", padding: 10 }}>
@@ -716,14 +717,20 @@ function Pill({ text, tone = "blue" }) {
   return <span style={{ ...style, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 8px", textTransform: "capitalize" }}>{text}</span>;
 }
 
-function TextBlock({ title, text, palette }) {
+function TextBlock({ title, text, palette, darkMode }) {
+  const content = text || "";
+  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(content);
   return (
     <div>
       <h3 style={{ margin: "0 0 8px", fontSize: 16, color: palette?.text || "var(--app-text)" }}>{title}</h3>
-      <div style={{ color: palette?.muted || "#d9cdbf", fontSize: 13, lineHeight: 1.6 }}>
-        {(text || "").split("\n\n").map((paragraph, index) => (
-          <p key={index} style={{ margin: "0 0 10px" }}>{paragraph}</p>
-        ))}
+      <div style={{ color: palette?.muted || "var(--app-muted)", fontSize: 13, lineHeight: 1.6 }}>
+        {hasHtml ? (
+          <RichTextRenderer content={content} darkMode={darkMode} />
+        ) : (
+          content.split("\n\n").map((paragraph, index) => (
+            <p key={index} style={{ margin: "0 0 10px" }}>{paragraph}</p>
+          ))
+        )}
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import {
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import RichTextRenderer from "../components/RichTextRenderer";
+import DecisionIllustration from "../components/DecisionIllustration";
 import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
@@ -297,6 +298,7 @@ function DecisionDetail() {
                 {decision.confidence?.score && <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><ChartBarIcon style={{ width: 14, height: 14 }} /> {decision.confidence.score}% confidence</span>}
               </div>
             </div>
+            <DecisionIllustration decision={decision} darkMode={darkMode} size={96} />
 
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <QuickLink sourceType="decisions.decision" sourceId={id} />

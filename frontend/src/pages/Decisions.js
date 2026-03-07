@@ -10,6 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import DecisionIllustration from "../components/DecisionIllustration";
 import api from "../services/api";
 
 function Decisions() {
@@ -251,22 +252,25 @@ function Decisions() {
                 style={{
                   borderRadius: 14,
                   border: `1px solid ${palette.border}`,
-                  background: darkMode ? "linear-gradient(160deg,var(--app-surface),#120f12)" : "linear-gradient(160deg,var(--app-surface),var(--app-surface-alt)df9)",
+                  background: "linear-gradient(160deg,var(--app-surface),var(--app-surface-alt))",
                   padding: 14,
                   cursor: "pointer",
                   transition: "transform 0.18s ease",
                 }}
               >
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-                  <Badge text={statusLabel(decision.status)} tone={statusConfig[decision.status]?.tone || statusConfig.default.tone} />
-                  <Badge
-                    text={(decision.impact_level || "medium").toUpperCase()}
-                    tone={
-                      darkMode
-                        ? { bg: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.42)", text: "var(--app-warning)" }
-                        : { bg: "rgba(245,158,11,0.1)", border: "rgba(180,83,9,0.3)", text: "#92400e" }
-                    }
-                  />
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    <Badge text={statusLabel(decision.status)} tone={statusConfig[decision.status]?.tone || statusConfig.default.tone} />
+                    <Badge
+                      text={(decision.impact_level || "medium").toUpperCase()}
+                      tone={
+                        darkMode
+                          ? { bg: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.42)", text: "var(--app-warning)" }
+                          : { bg: "rgba(245,158,11,0.1)", border: "rgba(180,83,9,0.3)", text: "#92400e" }
+                      }
+                    />
+                  </div>
+                  <DecisionIllustration decision={decision} darkMode={darkMode} size={62} />
                 </div>
                 <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: palette.text }}>{decision.title}</p>
                 {decision.description && <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{decision.description}</p>}
@@ -298,7 +302,8 @@ function Decisions() {
                 }}
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 6, flexWrap: "wrap", alignItems: "flex-start" }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <Badge text={statusLabel(decision.status)} tone={statusConfig[decision.status]?.tone || statusConfig.default.tone} />
                     <Badge
                       text={(decision.impact_level || "medium").toUpperCase()}
@@ -308,6 +313,8 @@ function Decisions() {
                           : { bg: "rgba(245,158,11,0.1)", border: "rgba(180,83,9,0.3)", text: "#92400e" }
                       }
                     />
+                    </div>
+                    <DecisionIllustration decision={decision} darkMode={darkMode} size={52} />
                   </div>
                   <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{decision.title}</p>
                   {decision.description && <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{decision.description}</p>}

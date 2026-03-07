@@ -5,6 +5,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://recall-backend-4hok.
 const TURNSTILE_BYPASS_TOKEN = process.env.EXPO_PUBLIC_TURNSTILE_BYPASS_TOKEN || '';
 
 console.log('API_URL configured as:', API_URL);
+console.log('TURNSTILE_BYPASS_TOKEN configured:', TURNSTILE_BYPASS_TOKEN ? `yes (${TURNSTILE_BYPASS_TOKEN.length} chars)` : 'no');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -23,6 +24,9 @@ api.interceptors.request.use(
       const token = await AsyncStorage.getItem('access_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+      }
+      if (TURNSTILE_BYPASS_TOKEN) {
+        config.headers['X-Mobile-Bypass-Token'] = TURNSTILE_BYPASS_TOKEN;
       }
     } catch (error) {
       console.error('Error getting token:', error);
@@ -58,6 +62,7 @@ api.interceptors.response.use(
 export const authService = {
   login: (email: string, password: string, orgSlug?: string) => {
     console.log('Attempting login with:', email);
+    console.log('Using mobile bypass token in login body:', !!TURNSTILE_BYPASS_TOKEN);
     return api.post('/auth/login/', {
       username: email,
       password,

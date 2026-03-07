@@ -33,7 +33,10 @@ def verify_turnstile_token(request, token):
     # Keep disabled in production unless intentionally configured.
     allow_mobile_bypass = bool(getattr(settings, "TURNSTILE_ALLOW_MOBILE_BYPASS", False))
     mobile_bypass_token = (getattr(settings, "TURNSTILE_MOBILE_BYPASS_TOKEN", "") or "").strip()
-    if allow_mobile_bypass and mobile_bypass_token and token == mobile_bypass_token:
+    header_bypass_token = (request.META.get("HTTP_X_MOBILE_BYPASS_TOKEN", "") or "").strip()
+    if allow_mobile_bypass and mobile_bypass_token and (
+        token == mobile_bypass_token or header_bypass_token == mobile_bypass_token
+    ):
         return True, None
 
     if not secret_key:

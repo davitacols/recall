@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette } from "../utils/projectUi";
 import RichTextEditor from "../components/RichTextEditor";
+import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
 import api from "../services/api";
 import { useToast } from "../components/Toast";
 
@@ -26,35 +28,21 @@ function CreateConversation() {
   const [loading, setLoading] = useState(false);
   const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1024);
 
-  const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            page: "#100d0f",
-            card: "#1a1417",
-            cardAlt: "#241c20",
-            border: "rgba(255,205,145,0.22)",
-            text: "#f8efe4",
-            muted: "#cbb29a",
-            line: "rgba(255,230,200,0.12)",
-            accent: "#e67c34",
-            accentSoft: "rgba(230,124,52,0.16)",
-            cool: "#3ab8a0",
-          }
-        : {
-            page: "var(--app-surface-alt)8ef",
-            card: "var(--app-surface-alt)df9",
-            cardAlt: "var(--app-surface-alt)4e8",
-            border: "#efd8bf",
-            text: "#2b1e15",
-            muted: "#7e644f",
-            line: "#f2e4d2",
-            accent: "#c95d1d",
-            accentSoft: "rgba(201,93,29,0.12)",
-            cool: "#0f8a75",
-          },
-    [darkMode]
-  );
+  const palette = useMemo(() => {
+    const base = getProjectPalette(darkMode);
+    return {
+      page: base.bg,
+      card: base.card,
+      cardAlt: base.cardAlt,
+      border: base.border,
+      text: base.text,
+      muted: base.muted,
+      line: base.border,
+      accent: base.accent,
+      accentSoft: base.accentSoft,
+      cool: base.success,
+    };
+  }, [darkMode]);
 
   useEffect(() => {
     const onResize = () => setIsNarrow(window.innerWidth < 1024);
@@ -98,18 +86,21 @@ function CreateConversation() {
           background: `linear-gradient(140deg, ${palette.accentSoft}, rgba(58,184,160,0.14))`,
         }}
       >
-        <button
-          onClick={() => navigate("/conversations")}
-          style={{ ...backButton, color: palette.muted, border: `1px solid ${palette.line}` }}
-        >
-          <ArrowLeftIcon style={{ width: 15, height: 15 }} />
-          Back to Conversations
-        </button>
-        <p style={{ ...eyebrow, color: palette.muted }}>NEW</p>
-        <h1 style={{ ...heroTitle, color: palette.text }}>Start a Conversation</h1>
-        <p style={{ ...heroSubtitle, color: palette.muted }}>
-          Share your thoughts, ask questions, or start a discussion.
-        </p>
+        <div>
+          <button
+            onClick={() => navigate("/conversations")}
+            style={{ ...backButton, color: palette.muted, border: `1px solid ${palette.line}` }}
+          >
+            <ArrowLeftIcon style={{ width: 15, height: 15 }} />
+            Back to Conversations
+          </button>
+          <p style={{ ...eyebrow, color: palette.muted }}>NEW</p>
+          <h1 style={{ ...heroTitle, color: palette.text }}>Start a Conversation</h1>
+          <p style={{ ...heroSubtitle, color: palette.muted }}>
+            Share your thoughts, ask questions, or start a discussion.
+          </p>
+        </div>
+        {!isNarrow ? <BrandedTechnicalIllustration darkMode={darkMode} compact /> : null}
       </section>
 
       <form
@@ -226,9 +217,8 @@ function CheckItem({ text, palette }) {
 }
 
 const page = {
-  maxWidth: 1240,
-  margin: "0 auto",
-  padding: "clamp(14px, 2.8vw, 26px)",
+  width: "100%",
+  padding: "clamp(8px, 1.4vw, 14px)",
   display: "grid",
   gap: 12,
 };
@@ -237,7 +227,9 @@ const hero = {
   borderRadius: 18,
   padding: "clamp(16px, 2.4vw, 24px)",
   display: "grid",
-  gap: 8,
+  gridTemplateColumns: "minmax(0,1fr) auto",
+  alignItems: "end",
+  gap: 10,
 };
 
 const backButton = {
@@ -254,7 +246,7 @@ const backButton = {
 };
 
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.14em", fontWeight: 700 };
-const heroTitle = { margin: 0, fontSize: "clamp(1.45rem, 3.4vw, 2.4rem)", lineHeight: 1.05, letterSpacing: "-0.02em" };
+const heroTitle = { margin: 0, fontSize: "clamp(1.14rem,1.95vw,1.65rem)", lineHeight: 1.1, letterSpacing: "-0.02em" };
 const heroSubtitle = { margin: 0, fontSize: 14, lineHeight: 1.5 };
 
 const layout = {

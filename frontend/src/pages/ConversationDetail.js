@@ -18,6 +18,7 @@ import { getAvatarUrl } from "../utils/avatarUtils";
 import AIAssistant from "../components/AIAssistant";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
+import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
 
 const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette, darkMode }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -463,17 +464,20 @@ function ConversationDetail() {
       <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.16), transparent 30%)" : "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 90% 8%, var(--app-success-soft), transparent 30%)" }} />
       <section className="ui-enter ui-card-lift ui-smooth" style={{ ...masthead, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
         <div style={mastheadTopRow}>
-          <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...backPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-            <ArrowLeftIcon style={icon14} /> All Conversations
-          </Link>
-          <div style={commandStrip}>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-              Decision Hub
-            </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-              Refresh
-            </button>
+          <div style={{ display: "grid", gap: 8 }}>
+            <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...backPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+              <ArrowLeftIcon style={icon14} /> All Conversations
+            </Link>
+            <div style={commandStrip}>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+                Decision Hub
+              </button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+                Refresh
+              </button>
+            </div>
           </div>
+          {!isNarrow ? <BrandedTechnicalIllustration darkMode={darkMode} compact /> : null}
         </div>
         <p style={{ ...eyebrow, color: palette.muted }}>CONVERSATION THREAD #{id}</p>
         <h1 style={{ ...mastheadTitle, color: palette.text }}>{conversation.title}</h1>
@@ -484,7 +488,7 @@ function ConversationDetail() {
 
       <div className="ui-enter" style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", "--ui-delay": "110ms" }}>
         <div>
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: darkMode ? "linear-gradient(135deg,#1a1418,#161115)" : "linear-gradient(135deg,var(--app-surface-alt)df9,var(--app-surface-alt)7ec)", border: `1px solid ${palette.border}`, "--ui-delay": "140ms" }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: "linear-gradient(135deg,var(--app-surface-alt),var(--app-surface))", border: `1px solid ${palette.border}`, "--ui-delay": "140ms" }}>
             {isEditingPost ? (
               <input
                 value={editTitle}
@@ -683,7 +687,7 @@ function ConversationDetail() {
   );
 }
 
-const page = { maxWidth: 1280, margin: "0 auto" };
+const page = { width: "100%" };
 const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
 const masthead = { position: "relative", zIndex: 1, borderRadius: 16, padding: "14px 16px", marginBottom: 12 };
 const mastheadTopRow = { display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" };
@@ -691,7 +695,7 @@ const backPill = { display: "inline-flex", alignItems: "center", gap: 6, textDec
 const commandStrip = { display: "flex", gap: 8, flexWrap: "wrap" };
 const commandPill = { borderRadius: 999, padding: "7px 11px", fontSize: 12, fontWeight: 700, background: "transparent", cursor: "pointer" };
 const eyebrow = { margin: "10px 0 0", fontSize: 11, letterSpacing: "0.13em", fontWeight: 700 };
-const mastheadTitle = { margin: "7px 0 6px", fontSize: "clamp(1.35rem, 2.8vw, 2.1rem)", lineHeight: 1.15 };
+const mastheadTitle = { margin: "7px 0 6px", fontSize: "clamp(1.16rem,2vw,1.68rem)", lineHeight: 1.15 };
 const mastheadSub = { margin: 0, fontSize: 14, lineHeight: 1.45, maxWidth: 760 };
 const grid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
 const loadingWrap = { minHeight: 320, display: "grid", placeItems: "center" };
@@ -712,7 +716,7 @@ const backLink = {
   fontWeight: 700,
   marginBottom: 10,
 };
-const h1 = { margin: "0 0 8px", fontSize: "clamp(1.7rem, 3.5vw, 2.2rem)" };
+const h1 = { margin: "0 0 8px", fontSize: "clamp(1.18rem,2.05vw,1.72rem)" };
 const h2 = { margin: "0 0 10px", fontSize: 16, display: "flex", alignItems: "center", gap: 7 };
 const sub = { margin: "0 0 12px", fontSize: 14 };
 const card = { borderRadius: 14, padding: 16, marginBottom: 12 };

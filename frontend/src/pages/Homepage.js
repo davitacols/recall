@@ -1106,6 +1106,12 @@ const footerMutedLink = {
   textDecoration: "none",
 };
 
+const footerMutedLink = {
+  color: "rgba(244,239,230,0.58)",
+  fontSize: 12,
+  textDecoration: "none",
+};
+
 const footerMutedButton = {
   border: "none",
   background: "transparent",

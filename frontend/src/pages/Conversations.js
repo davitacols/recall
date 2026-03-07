@@ -7,6 +7,7 @@ import { useToast } from "../components/Toast";
 import { getAvatarUrl } from "../utils/avatarUtils";
 import { ListSkeleton } from "../components/Skeleton";
 import { NoData, NoResults } from "../components/EmptyState";
+import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
 
 function Conversations() {
   const navigate = useNavigate();
@@ -162,14 +163,17 @@ function Conversations() {
             Capture questions, blockers, and decision context with a searchable, launch-ready communication layer.
           </p>
         </div>
-        <button
-          className="ui-btn-polish ui-focus-ring"
-          onClick={() => navigate("/conversations/new")}
-          style={newConversationButton}
-        >
-          <PlusIcon style={icon16} />
-          New Conversation
-        </button>
+        <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
+          {!isMobile ? <BrandedTechnicalIllustration darkMode={darkMode} compact /> : null}
+          <button
+            className="ui-btn-polish ui-focus-ring"
+            onClick={() => navigate("/conversations/new")}
+            style={newConversationButton}
+          >
+            <PlusIcon style={icon16} />
+            New Conversation
+          </button>
+        </div>
       </section>
 
       <section className="ui-enter" style={{ ...filterBar, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : filterBar.gridTemplateColumns, "--ui-delay": "130ms" }}>
@@ -323,8 +327,7 @@ function StatCard({ label, value, palette }) {
 }
 
 const page = {
-  maxWidth: 1280,
-  margin: "0 auto",
+  width: "100%",
   display: "grid",
   gap: 12,
 };
@@ -363,11 +366,10 @@ const hero = {
   zIndex: 1,
   borderRadius: 18,
   padding: "clamp(18px, 3vw, 28px)",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-end",
+  display: "grid",
+  gridTemplateColumns: "minmax(0,1fr) auto",
+  alignItems: "end",
   gap: 14,
-  flexWrap: "wrap",
 };
 
 const eyebrow = {
@@ -378,7 +380,7 @@ const eyebrow = {
 
 const title = {
   margin: "7px 0 6px",
-  fontSize: "clamp(1.5rem, 3vw, 2.2rem)",
+  fontSize: "clamp(1.16rem,1.95vw,1.68rem)",
   letterSpacing: "-0.02em",
 };
 

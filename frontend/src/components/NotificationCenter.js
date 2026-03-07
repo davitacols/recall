@@ -15,6 +15,7 @@ export default function NotificationCenter() {
   const wsRef = useRef(null);
 
   const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
+  const panelAlt = darkMode ? '#292524' : '#f3f4f6';
   const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
   const borderColor = darkMode ? '#292524' : 'var(--app-border)';
   const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
@@ -167,8 +168,9 @@ export default function NotificationCenter() {
                   fontSize: '12px',
                   fontWeight: 600,
                   color: 'var(--app-info)',
-                  backgroundColor: 'transparent',
+                  backgroundColor: panelAlt,
                   border: 'none',
+                  borderRadius: '8px',
                   cursor: 'pointer'
                 }}
               >
@@ -192,11 +194,11 @@ export default function NotificationCenter() {
                     padding: '16px 20px',
                     borderBottom: `1px solid ${borderColor}`,
                     cursor: 'pointer',
-                    backgroundColor: notification.is_read ? 'transparent' : (darkMode ? '#292524' : '#f9fafb'),
+                    backgroundColor: notification.is_read ? panelAlt : (darkMode ? '#292524' : '#f9fafb'),
                     transition: 'background-color 0.2s'
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#292524' : '#f3f4f6'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = notification.is_read ? 'transparent' : (darkMode ? '#292524' : '#f9fafb')}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = notification.is_read ? panelAlt : (darkMode ? '#292524' : '#f9fafb')}
                 >
                   <div style={{ display: 'flex', gap: '12px' }}>
                     {!notification.is_read && (
@@ -227,8 +229,10 @@ export default function NotificationCenter() {
                 fontSize: '13px',
                 fontWeight: 600,
                 color: 'var(--app-info)',
-                backgroundColor: 'transparent',
+                backgroundColor: panelAlt,
                 border: 'none',
+                borderRadius: '8px',
+                padding: '6px 10px',
                 cursor: 'pointer'
               }}
             >

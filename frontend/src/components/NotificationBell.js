@@ -31,6 +31,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
       darkMode
         ? {
             panel: "#1d171b",
+            panelSoft: "#251d22",
             border: "var(--app-border)",
             borderStrong: "rgba(255,225,193,0.24)",
             text: "var(--app-text)",
@@ -43,6 +44,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
           }
         : {
             panel: "var(--app-surface)",
+            panelSoft: "var(--app-surface-alt)",
             border: "var(--app-border)",
             borderStrong: "#d8cab6",
             text: "var(--app-text)",
@@ -50,7 +52,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
             rowHover: "rgba(35,24,20,0.045)",
             unreadDot: "#e85d04",
             accent: "var(--app-accent)",
-            accentText: "var(--app-surface-alt)7ee",
+            accentText: "#20120d",
             badgeBg: "rgba(217,105,46,0.14)",
           },
     [darkMode]
@@ -200,7 +202,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
       style={{
         ...row,
         border: `1px solid ${item.is_read ? palette.border : palette.borderStrong}`,
-        background: item.is_read ? "transparent" : palette.badgeBg,
+        background: item.is_read ? palette.panelSoft : palette.badgeBg,
       }}
     >
       <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
@@ -290,7 +292,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
                   style={{
                     ...filterPill,
                     border: `1px solid ${palette.border}`,
-                    background: filter === "all" ? palette.badgeBg : "transparent",
+                    background: filter === "all" ? palette.badgeBg : palette.panelSoft,
                     color: palette.text,
                   }}
                 >
@@ -302,7 +304,7 @@ function NotificationBell({ openDirection = "down", align = "right" }) {
                   style={{
                     ...filterPill,
                     border: `1px solid ${palette.border}`,
-                    background: filter === "unread" ? palette.badgeBg : "transparent",
+                    background: filter === "unread" ? palette.badgeBg : palette.panelSoft,
                     color: palette.text,
                   }}
                 >

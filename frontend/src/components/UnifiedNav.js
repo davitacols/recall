@@ -462,7 +462,7 @@ export default function UnifiedNav({
           </div>
 
           {searchOpen && (query.trim() || suggestions.length > 0 || results.length > 0) && (
-            <div style={{ ...resultsDropdown, background: palette.navBg, border: `1px solid ${palette.border}`, boxShadow: palette.dropdownShadow }}>
+            <div style={{ ...resultsDropdown, background: palette.dropdownBg, border: `1px solid ${palette.border}`, boxShadow: palette.dropdownShadow }}>
               {loading && <div style={{ ...searchStateRow, color: palette.muted }}>Searching...</div>}
               {!loading && optionItems.length === 0 && (
                 <div style={{ ...searchStateRow, color: palette.muted }}>No results found</div>
@@ -559,7 +559,7 @@ export default function UnifiedNav({
                   <div
                     style={{
                       ...inlineDropdown,
-                      background: palette.panelAlt,
+                      background: palette.dropdownBg,
                       border: `1px solid ${palette.border}`,
                     }}
                   >
@@ -654,7 +654,7 @@ export default function UnifiedNav({
             <div
               style={{
                 ...inlineDropdown,
-                background: palette.panelAlt,
+                background: palette.dropdownBg,
                 border: `1px solid ${palette.border}`,
               }}
             >

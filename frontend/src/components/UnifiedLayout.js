@@ -141,6 +141,7 @@ export default function UnifiedLayout({ children }) {
             glowOne: "rgba(85, 177, 235, 0.2)",
             glowTwo: "rgba(53, 122, 168, 0.18)",
             buttonBg: "rgba(18, 31, 42, 0.9)",
+            menuSurface: "#111b23",
           }
         : {
             pageBg: "#e9f1f7",
@@ -154,6 +155,7 @@ export default function UnifiedLayout({ children }) {
             glowOne: "rgba(79, 164, 219, 0.2)",
             glowTwo: "rgba(157, 198, 226, 0.26)",
             buttonBg: "rgba(255, 255, 255, 0.9)",
+            menuSurface: "#f8fcff",
           },
     [darkMode]
   );
@@ -359,7 +361,7 @@ export default function UnifiedLayout({ children }) {
                       style={{
                         ...profileMenu,
                         ...(isMobile ? profileMenuMobile : null),
-                        background: palette.panelGlass,
+                        background: palette.menuSurface,
                         border: `1px solid ${palette.border}`,
                       }}
                     >
@@ -374,7 +376,7 @@ export default function UnifiedLayout({ children }) {
                           setShowProfile(false);
                         }}
                         className="ui-btn-polish ui-focus-ring"
-                        style={{ ...menuButton, color: palette.text }}
+                        style={{ ...menuButton, color: palette.text, background: palette.panelBgAlt }}
                       >
                         Profile
                       </button>
@@ -385,12 +387,12 @@ export default function UnifiedLayout({ children }) {
                           setShowProfile(false);
                         }}
                         className="ui-btn-polish ui-focus-ring"
-                        style={{ ...menuButton, color: palette.text }}
+                        style={{ ...menuButton, color: palette.text, background: palette.panelBgAlt }}
                       >
                         Settings
                       </button>
 
-                      <button onClick={logout} className="ui-btn-polish ui-focus-ring" style={{ ...menuButton, color: "var(--app-danger)" }}>
+                      <button onClick={logout} className="ui-btn-polish ui-focus-ring" style={{ ...menuButton, color: "var(--app-danger)", background: palette.panelBgAlt }}>
                         Sign out
                       </button>
 

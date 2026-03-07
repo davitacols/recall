@@ -83,6 +83,7 @@ def send_notification_email(user, notification):
         cta_label=f"View in {app_name}",
         cta_url=build_frontend_url(link),
         reason_text=reason,
+        variant="default",
     )
     text = build_text_email(
         title=notification.title,
@@ -97,26 +98,39 @@ def send_notification_email(user, notification):
 def send_invitation_email(email, token, inviter):
     app_name = "Knoledgr"
     inviter_name = inviter.full_name or inviter.username
-    subject = f"{inviter_name} invited you to {app_name}"
+    inviter_email = getattr(inviter, "email", "") or ""
+    org_name = (
+        getattr(inviter, "organization_name", "")
+        or getattr(getattr(inviter, "organization", None), "name", "")
+        or "your workspace"
+    )
+    subject = f"Invitation to join {app_name} ({org_name})"
     invite_url = build_frontend_url(f"/invite/{token}")
-    reason = "You received this email because a workspace admin invited this address."
+    reason = "You received this email because a workspace admin invited this address to join their Knoledgr workspace."
     html = render_email_template(
-        preheader=f"{inviter_name} invited you to join {app_name}",
+        preheader=f"Workspace invitation from {inviter_name}",
         title=f"You've been invited to join {app_name}",
         body_html=(
-            f"<p><strong>{escape(inviter_name)}</strong> invited you to collaborate in "
-            f"{app_name}.</p><p>Accept your invite to access conversations, decisions, "
-            f"projects, and team context.</p>"
+            f"<p><strong>{escape(inviter_name)}</strong>"
+            f"{f' ({escape(inviter_email)})' if inviter_email else ''} invited you to join "
+            f"<strong>{escape(org_name)}</strong> on {app_name}.</p>"
+            "<p>If you were expecting this invitation, use the button below to continue.</p>"
+            "<p style=\"margin:0 0 8px 0;\"><strong>Invite link:</strong></p>"
+            f"<p style=\"margin:0;word-break:break-all;\"><a href=\"{escape(invite_url)}\" style=\"color:#1d4ed8;text-decoration:underline;\">{escape(invite_url)}</a></p>"
+            "<p style=\"margin-top:12px;\">If you were not expecting this, you can ignore this email safely.</p>"
         ),
         cta_label="Accept Invitation",
         cta_url=invite_url,
         reason_text=reason,
+        variant="default",
     )
     text = build_text_email(
         title=f"You've been invited to join {app_name}",
         body_lines=[
-            f"{inviter_name} invited you to collaborate in {app_name}.",
-            "Accept your invite to access conversations, decisions, projects, and team context.",
+            f"{inviter_name}{f' ({inviter_email})' if inviter_email else ''} invited you to join {org_name} on {app_name}.",
+            "If you were expecting this, use the link below to accept the invitation.",
+            f"Invite link: {invite_url}",
+            "If you were not expecting this, you can ignore this email safely.",
         ],
         cta_label="Accept Invitation",
         cta_url=invite_url,
@@ -141,6 +155,7 @@ def send_welcome_email(user):
         cta_label="Open Workspace",
         cta_url=home_url,
         reason_text=reason,
+        variant="default",
     )
     text = build_text_email(
         title=f"Welcome to {app_name}",
@@ -171,6 +186,7 @@ def send_password_reset_email(user, reset_url):
         cta_label="Reset Password",
         cta_url=reset_url,
         reason_text=reason,
+        variant="security",
     )
     text = build_text_email(
         title="Reset your password",
@@ -203,6 +219,7 @@ def send_workspace_switch_code_email(user, organization_name, code):
         cta_label="Open Knoledgr",
         cta_url=build_frontend_url("/"),
         reason_text=reason,
+        variant="security",
     )
     text = build_text_email(
         title="Verify workspace switch",
@@ -224,13 +241,44 @@ def build_frontend_url(path):
     return urljoin(base, relative)
 
 
-def render_email_template(preheader, title, body_html, cta_label, cta_url, reason_text=""):
+def render_email_template(preheader, title, body_html, cta_label, cta_url, reason_text="", variant="default"):
     app_name = "Knoledgr"
     safe_preheader = escape(preheader or app_name)
     safe_title = escape(title or app_name)
     safe_cta_label = escape(cta_label or "Open")
     safe_cta_url = escape(cta_url or settings.FRONTEND_URL)
     safe_reason = escape(reason_text or "This is a transactional email related to your Knoledgr account.")
+    normalized_variant = (variant or "default").strip().lower()
+
+    variant_config = {
+        "default": {
+            "tag": "Knoledgr Update",
+            "badge_bg": "linear-gradient(135deg,#ffe3b7,#ffc68c,#ffa86a)",
+            "badge_text": "#6a3f23",
+            "cta_bg": "#1f140d",
+            "cta_text": "#ffe8cf",
+        },
+        "security": {
+            "tag": "Security Notice",
+            "badge_bg": "linear-gradient(135deg,#d9ecff,#b8dcff,#8fc4f8)",
+            "badge_text": "#123a5c",
+            "cta_bg": "#0f2d47",
+            "cta_text": "#e8f4ff",
+        },
+        "digest": {
+            "tag": "Digest Summary",
+            "badge_bg": "linear-gradient(135deg,#e8f8ec,#c9f1d5,#9ce2b8)",
+            "badge_text": "#1e4e35",
+            "cta_bg": "#153d2b",
+            "cta_text": "#e6fff2",
+        },
+    }.get(normalized_variant, {
+        "tag": "Knoledgr Update",
+        "badge_bg": "linear-gradient(135deg,#ffe3b7,#ffc68c,#ffa86a)",
+        "badge_text": "#6a3f23",
+        "cta_bg": "#1f140d",
+        "cta_text": "#ffe8cf",
+    })
 
     return f"""
 <!doctype html>
@@ -240,39 +288,76 @@ def render_email_template(preheader, title, body_html, cta_label, cta_url, reaso
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{safe_title}</title>
   </head>
-  <body style="margin:0;background:#f6f1ea;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#231814;">
+  <body style="margin:0;padding:0;background:#f3efe8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#201611;">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
       {safe_preheader}
     </div>
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;margin:0 auto;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f3efe8;">
       <tr>
-        <td style="padding:0 0 10px 0;">
-          <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#7c6d5a;font-weight:700;">
-            Knoledgr
-          </div>
-        </td>
-      </tr>
-      <tr>
-        <td style="background:#fffaf3;border:1px solid #eadfce;border-radius:14px;padding:24px;">
-          <h1 style="margin:0 0 12px 0;font-size:24px;line-height:1.2;color:#231814;">{safe_title}</h1>
-          <div style="font-size:14px;line-height:1.6;color:#4a3b2f;">
-            {body_html}
-          </div>
-          <div style="padding-top:18px;">
-            <a href="{safe_cta_url}" style="display:inline-block;text-decoration:none;background:linear-gradient(135deg,#ffd390,#ff9f62);color:#20140f;font-weight:700;border-radius:10px;padding:11px 16px;font-size:14px;">
-              {safe_cta_label}
-            </a>
-          </div>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:12px 2px 0 2px;">
-          <div style="font-size:12px;line-height:1.5;color:#7c6d5a;">
-            {safe_reason}
-          </div>
-          <div style="margin-top:6px;font-size:12px;line-height:1.5;color:#7c6d5a;">
-            Sent by {app_name}. Need help? Reply to this email.
-          </div>
+        <td style="padding:20px 12px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:640px;margin:0 auto;">
+            <tr>
+              <td style="padding:0 0 10px 0;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                  <tr>
+                    <td style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#7b6957;font-weight:800;">
+                      {app_name}
+                    </td>
+                    <td align="right" style="font-size:11px;color:#9a8978;">
+                      Transactional
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #e4d8c9;border-radius:18px;overflow:hidden;background:#fffaf3;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                  <tr>
+                    <td style="padding:20px 22px;background:{variant_config['badge_bg']};border-bottom:1px solid #e4d8c9;">
+                      <p style="margin:0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:{variant_config['badge_text']};font-weight:700;">
+                        {escape(variant_config['tag'])}
+                      </p>
+                      <h1 style="margin:8px 0 0 0;font-size:25px;line-height:1.18;color:#21140d;">
+                        {safe_title}
+                      </h1>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:22px;">
+                      <div style="font-size:14px;line-height:1.64;color:#433328;">
+                        {body_html}
+                      </div>
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;">
+                        <tr>
+                          <td style="border-radius:12px;background:{variant_config['cta_bg']};">
+                            <a href="{safe_cta_url}" style="display:inline-block;text-decoration:none;color:{variant_config['cta_text']};font-size:14px;font-weight:700;padding:12px 18px;border-radius:12px;">
+                              {safe_cta_label}
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:14px 22px 18px;background:#fff5ea;border-top:1px solid #e8ddcf;">
+                      <p style="margin:0;font-size:12px;line-height:1.55;color:#7c6c5b;">
+                        {safe_reason}
+                      </p>
+                      <p style="margin:6px 0 0 0;font-size:12px;line-height:1.55;color:#7c6c5b;">
+                        Sent by {app_name}. Need help? Reply to this email.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 2px 0 2px;font-size:11px;line-height:1.4;color:#9a8b7d;">
+                This message was sent automatically for account and workflow activity.
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
     </table>

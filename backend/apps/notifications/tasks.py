@@ -148,6 +148,7 @@ def send_notification_digest(user_id, frequency='daily'):
         cta_label='Open notifications',
         cta_url=digest_url,
         reason_text='You received this email because digest notifications are enabled in your Knoledgr account.',
+        variant='digest',
     )
     text = build_text_email(
         title=f"{frequency.capitalize()} digest",

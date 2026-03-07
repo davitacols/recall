@@ -297,9 +297,9 @@ function Layout({ children }) {
             </button>
             {profileMenuOpen && (
               <div style={{ ...profileMenu, background: palette.panelBgAlt, border: `1px solid ${palette.border}` }}>
-                <Link to="/profile" style={{ ...menuItem, color: palette.text }}>Profile</Link>
-                <Link to="/settings" style={{ ...menuItem, color: palette.text }}>Settings</Link>
-                <button onClick={logout} style={{ ...menuItemButton, color: "#f87171" }}>
+                <Link to="/profile" style={{ ...menuItem, color: palette.text, background: palette.panelBgAlt }}>Profile</Link>
+                <Link to="/settings" style={{ ...menuItem, color: palette.text, background: palette.panelBgAlt }}>Settings</Link>
+                <button onClick={logout} style={{ ...menuItemButton, color: "#f87171", background: palette.panelBgAlt }}>
                   Sign out
                 </button>
               </div>

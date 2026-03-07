@@ -234,28 +234,30 @@ export default function UnifiedNav({
     () =>
       darkMode
         ? {
-            navBg: "rgba(23,18,21,0.94)",
-            border: "rgba(255,225,193,0.14)",
-            text: "#f4ece0",
-            muted: "#b9a997",
-            hover: "rgba(255,255,255,0.06)",
-            active: "rgba(255,173,105,0.18)",
-            searchBg: "rgba(255,255,255,0.04)",
-            panelAlt: "rgba(255,255,255,0.03)",
-            accentA: "#ffad69",
-            accentB: "#6ee7d3",
+            navBg: "rgba(11,18,24,0.92)",
+            border: "rgba(148, 198, 233, 0.2)",
+            text: "#e7f0f7",
+            muted: "#9bb0c0",
+            hover: "rgba(137, 191, 228, 0.1)",
+            active: "rgba(100, 177, 225, 0.2)",
+            searchBg: "rgba(16, 27, 36, 0.8)",
+            panelAlt: "rgba(255,255,255,0.04)",
+            accentA: "#64b1e1",
+            accentB: "#4fc4b6",
+            heroBg: "linear-gradient(140deg, rgba(73, 146, 196, 0.22), rgba(36, 96, 140, 0.14))",
           }
         : {
-            navBg: "rgba(255,250,243,0.96)",
-            border: "#eadfce",
-            text: "#231814",
-            muted: "#7b6a58",
-            hover: "rgba(35,24,20,0.06)",
-            active: "rgba(255,158,87,0.2)",
-            searchBg: "rgba(255,255,255,0.8)",
-            panelAlt: "rgba(35,24,20,0.03)",
-            accentA: "#ea7b2c",
-            accentB: "#0f9488",
+            navBg: "rgba(244, 250, 255, 0.95)",
+            border: "rgba(83, 126, 157, 0.26)",
+            text: "#0f2535",
+            muted: "#4f6a7d",
+            hover: "rgba(46,125,179,0.08)",
+            active: "rgba(79, 154, 207, 0.16)",
+            searchBg: "rgba(255,255,255,0.92)",
+            panelAlt: "rgba(16, 68, 108, 0.05)",
+            accentA: "#3f93c9",
+            accentB: "#1ca394",
+            heroBg: "linear-gradient(142deg, rgba(95, 166, 214, 0.22), rgba(36, 125, 179, 0.1))",
           },
     [darkMode]
   );
@@ -456,6 +458,24 @@ export default function UnifiedNav({
       </div>
 
       {!collapsed && (
+        <div style={{ ...navHero, border: `1px solid ${palette.border}`, background: palette.heroBg }}>
+          <p style={{ ...navHeroEyebrow, color: palette.muted }}>UNIFIED COMMAND</p>
+          <p style={{ ...navHeroTitle, color: palette.text }}>Operate from one control surface</p>
+          <div style={quickPills}>
+            <Link to="/dashboard" style={{ ...quickPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.searchBg }}>
+              Dashboard
+            </Link>
+            <Link to="/ask" style={{ ...quickPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.searchBg }}>
+              Ask Recall
+            </Link>
+            <Link to="/decisions" style={{ ...quickPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.searchBg }}>
+              Decisions
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {!collapsed && (
         <div style={searchWrap} ref={searchRef}>
           <div
             style={{
@@ -534,7 +554,7 @@ export default function UnifiedNav({
 
       {!collapsed && (
         <div style={sectionLabelWrap}>
-          <span style={{ ...sectionLabel, color: palette.muted }}>Navigation</span>
+          <span style={{ ...sectionLabel, color: palette.muted }}>Workstreams</span>
         </div>
       )}
 
@@ -778,7 +798,7 @@ const sidebar = {
   bottom: 0,
   display: "grid",
   gridTemplateRows: "auto auto auto minmax(0,1fr) auto",
-  gap: 12,
+  gap: 10,
   padding: "12px 10px",
   zIndex: 70,
   backdropFilter: "blur(12px)",
@@ -837,7 +857,7 @@ const sectionLabel = {
 
 const navList = {
   display: "grid",
-  gap: 6,
+  gap: 7,
   minWidth: 0,
   overflowY: "auto",
   overflowX: "hidden",
@@ -850,11 +870,11 @@ const topButton = {
   display: "inline-flex",
   alignItems: "center",
   gap: 8,
-  borderRadius: 10,
+  borderRadius: 12,
   fontSize: 13,
   fontWeight: 600,
   textDecoration: "none",
-  padding: "9px 10px",
+  padding: "9px 11px",
   cursor: "pointer",
   whiteSpace: "nowrap",
   width: "100%",
@@ -900,6 +920,46 @@ const appsGlyph = {
 const searchWrap = {
   position: "relative",
   padding: "0 2px",
+};
+
+const navHero = {
+  borderRadius: 14,
+  padding: "10px 11px",
+  display: "grid",
+  gap: 8,
+  position: "relative",
+  zIndex: 1,
+};
+
+const navHeroEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const navHeroTitle = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 700,
+  lineHeight: 1.35,
+};
+
+const quickPills = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  flexWrap: "wrap",
+};
+
+const quickPill = {
+  textDecoration: "none",
+  borderRadius: 999,
+  padding: "5px 8px",
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.02em",
 };
 
 const searchShell = {

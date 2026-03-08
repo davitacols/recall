@@ -321,27 +321,59 @@ export default function UnifiedLayout({ children }) {
             <div style={headerTop}>
               <div style={headerIdentity}>
                 <BrandLogo tone={darkMode ? "dark" : "light"} size={isMobile ? "sm" : "md"} showText={!isMobile} />
-                <div>
+                <div style={headerTitleBlock}>
                   <p style={{ ...headerEyebrow, color: palette.muted }}>Operations Layer</p>
                   <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
                     {pageTitle}
                   </h1>
+                  {!isMobile && (
+                    <div style={headerInlineMetaPills}>
+                      <span
+                        style={{
+                          ...headerInlinePill,
+                          border: `1px solid ${palette.border}`,
+                          background: palette.buttonBg,
+                          color: palette.text,
+                        }}
+                      >
+                        {user?.organization_slug || "workspace"}
+                      </span>
+                      <span
+                        style={{
+                          ...headerInlinePill,
+                          border: `1px solid ${palette.border}`,
+                          background: palette.buttonBg,
+                          color: palette.muted,
+                        }}
+                      >
+                        {String(user?.experience_mode || "standard").toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ ...headerActions, ...(isMobile ? headerActionsMobile : null) }}>
-                <NotificationBell />
-                <button
-                  onClick={toggleDarkMode}
+                <div
                   style={{
-                    ...iconButton,
-                    color: palette.text,
-                    background: palette.buttonBg,
+                    ...headerActionCluster,
                     border: `1px solid ${palette.border}`,
+                    background: palette.buttonBg,
                   }}
-                  aria-label="Toggle theme"
                 >
-                  {darkMode ? <SunIcon style={icon16} /> : <MoonIcon style={icon16} />}
-                </button>
+                  <NotificationBell />
+                  <button
+                    onClick={toggleDarkMode}
+                    style={{
+                      ...iconButton,
+                      color: palette.text,
+                      background: "transparent",
+                      border: `1px solid ${palette.border}`,
+                    }}
+                    aria-label="Toggle theme"
+                  >
+                    {darkMode ? <SunIcon style={icon16} /> : <MoonIcon style={icon16} />}
+                  </button>
+                </div>
 
                 <div ref={profileRef} style={{ position: "relative" }}>
                   <button
@@ -493,26 +525,30 @@ export default function UnifiedLayout({ children }) {
                 <Breadcrumbs darkMode={darkMode} />
               </div>
               <div style={headerMetaPills}>
-                <span
-                  style={{
-                    ...headerPill,
-                    border: `1px solid ${palette.border}`,
-                    background: palette.buttonBg,
-                    color: palette.text,
-                  }}
-                >
-                  {user?.organization_slug || "workspace"}
-                </span>
-                <span
-                  style={{
-                    ...headerPill,
-                    border: `1px solid ${palette.border}`,
-                    background: palette.buttonBg,
-                    color: palette.muted,
-                  }}
-                >
-                  {String(user?.experience_mode || "standard").toUpperCase()}
-                </span>
+                {isMobile && (
+                  <>
+                    <span
+                      style={{
+                        ...headerPill,
+                        border: `1px solid ${palette.border}`,
+                        background: palette.buttonBg,
+                        color: palette.text,
+                      }}
+                    >
+                      {user?.organization_slug || "workspace"}
+                    </span>
+                    <span
+                      style={{
+                        ...headerPill,
+                        border: `1px solid ${palette.border}`,
+                        background: palette.buttonBg,
+                        color: palette.muted,
+                      }}
+                    >
+                      {String(user?.experience_mode || "standard").toUpperCase()}
+                    </span>
+                  </>
+                )}
                 <span
                   style={{
                     ...headerPill,
@@ -597,8 +633,8 @@ const ambientGlowTwo = {
 };
 
 const iconButton = {
-  width: 36,
-  height: 36,
+  width: 34,
+  height: 34,
   borderRadius: 12,
   display: "grid",
   placeItems: "center",
@@ -774,16 +810,16 @@ const layoutHeader = {
   position: "sticky",
   top: 12,
   zIndex: 80,
-  borderRadius: 18,
-  padding: "12px 14px 10px",
-  marginBottom: 16,
+  borderRadius: 20,
+  padding: "12px 14px 12px",
+  marginBottom: 18,
   backdropFilter: "blur(10px)",
 };
 
 const layoutHeaderMobile = {
   top: 8,
   borderRadius: 14,
-  padding: "10px 10px 8px",
+  padding: "10px 10px 10px",
   marginBottom: 10,
 };
 
@@ -809,26 +845,39 @@ const headerTitleMobile = {
 
 const headerTop = {
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   justifyContent: "space-between",
-  gap: 14,
+  gap: 12,
   flexWrap: "wrap",
 };
 
 const headerIdentity = {
   display: "flex",
-  alignItems: "center",
-  gap: 12,
+  alignItems: "flex-start",
+  gap: 10,
+  minWidth: 0,
 };
 
 const headerActions = {
   display: "flex",
   alignItems: "center",
-  gap: 10,
+  gap: 8,
 };
 
 const headerActionsMobile = {
   gap: 6,
+};
+
+const headerActionCluster = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 12,
+  padding: "4px 5px",
+};
+
+const headerTitleBlock = {
+  minWidth: 0,
 };
 
 const headerBreadcrumbs = {
@@ -836,7 +885,7 @@ const headerBreadcrumbs = {
 };
 
 const headerMetaRow = {
-  marginTop: 10,
+  marginTop: 12,
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
@@ -857,6 +906,22 @@ const headerPill = {
   fontSize: 11,
   fontWeight: 700,
   letterSpacing: "0.04em",
+};
+
+const headerInlineMetaPills = {
+  marginTop: 8,
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  flexWrap: "wrap",
+};
+
+const headerInlinePill = {
+  borderRadius: 999,
+  padding: "4px 9px",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.06em",
 };
 
 function getPageTitle(pathname) {

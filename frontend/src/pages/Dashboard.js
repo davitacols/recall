@@ -14,11 +14,12 @@ import BrandedDashboardIllustration from "../components/BrandedDashboardIllustra
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 function Dashboard() {
   const { user } = useAuth();
   const { darkMode } = useTheme();
-  const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1040);
+  const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1100);
 
   const [activities, setActivities] = useState([]);
   const [currentSprint, setCurrentSprint] = useState(null);
@@ -35,7 +36,7 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const onResize = () => setIsNarrow(window.innerWidth < 1040);
+    const onResize = () => setIsNarrow(window.innerWidth < 1100);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -82,33 +83,8 @@ function Dashboard() {
     }
   };
 
-  const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            cardBg: "var(--app-surface)",
-            cardBgAlt: "#1d171b",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "var(--app-muted)",
-            accent: "var(--app-accent)",
-            good: "#61d4a4",
-            warn: "#ffca7d",
-            info: "#86c8ff",
-          }
-        : {
-            cardBg: "var(--app-surface)",
-            cardBgAlt: "var(--app-surface-alt)",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "var(--app-muted)",
-            accent: "var(--app-accent)",
-            good: "var(--app-success)",
-            warn: "#a15a1b",
-            info: "var(--app-info)",
-          },
-    [darkMode]
-  );
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   const sprintCompleted =
     currentSprint?.completed_count || currentSprint?.completed || 0;
@@ -119,10 +95,11 @@ function Dashboard() {
     sprintTotal - sprintCompleted - sprintInProgress - sprintBlocked,
     0
   );
+  const sprintProgress = sprintTotal > 0 ? Math.round((sprintCompleted / sprintTotal) * 100) : 0;
 
   if (loading) {
     return (
-      <div style={container}>
+      <div style={ui.container}>
         <div style={{ marginBottom: 22 }}>
           <div style={loadingTitle} />
           <div style={loadingSub} />
@@ -137,30 +114,34 @@ function Dashboard() {
   }
 
   return (
-    <div style={container}>
+    <div style={ui.container}>
       <section
         style={{
           ...hero,
-          background: `linear-gradient(135deg, ${darkMode ? "rgba(255,164,95,0.2)" : "rgba(255,184,128,0.46)"}, ${
-            darkMode ? "rgba(72,161,145,0.18)" : "rgba(144,236,217,0.42)"
-          })`,
+          background: darkMode
+            ? "radial-gradient(circle at 12% 18%, rgba(90,174,231,0.24), rgba(8,15,22,0.18) 58%), linear-gradient(132deg, rgba(111,188,236,0.2), rgba(73,191,143,0.15))"
+            : "radial-gradient(circle at 12% 18%, rgba(47,128,184,0.2), rgba(255,255,255,0.35) 58%), linear-gradient(132deg, rgba(159,214,246,0.42), rgba(173,230,214,0.32))",
           border: `1px solid ${palette.border}`,
         }}
       >
         <div style={heroMain}>
-          <p style={{ ...eyebrow, color: palette.muted }}>KNOLEDGR DASHBOARD</p>
+          <p style={{ ...eyebrow, color: palette.muted }}>EXECUTION COMMAND CENTER</p>
           <h1 style={{ ...heroTitle, color: palette.text }}>
             Welcome back, {user?.full_name?.split(" ")[0] || "there"}
           </h1>
           <p style={{ ...heroSubtitle, color: palette.muted }}>
-            Track decision velocity, sprint health, and recent organizational
-            memory updates in one place.
+            Run sprint delivery, monitor knowledge flow, and move faster with one decision surface.
           </p>
+          <div style={heroTags}>
+            <span style={{ ...heroTag, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>{stats.totalConversations} conversations</span>
+            <span style={{ ...heroTag, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>{stats.totalDecisions} decisions</span>
+            <span style={{ ...heroTag, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>{sprintProgress}% sprint done</span>
+          </div>
           <div style={heroActions}>
-            <Link to="/conversations/new" style={primaryAction}>
+            <Link to="/conversations/new" style={{ ...primaryAction, background: palette.ctaGradient, color: palette.buttonText }}>
               New Conversation
             </Link>
-            <Link to="/decisions/new" style={secondaryAction}>
+            <Link to="/decisions/new" style={{ ...secondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
               New Decision
             </Link>
           </div>
@@ -202,7 +183,7 @@ function Dashboard() {
           value="85%"
           subtitle="Capture quality"
           icon={SparklesIcon}
-          color={palette.good}
+          color={palette.success}
           palette={palette}
         />
       </section>
@@ -218,7 +199,7 @@ function Dashboard() {
         <article
           style={{
             ...panel,
-            background: palette.cardBg,
+            background: palette.card,
             border: `1px solid ${palette.border}`,
           }}
         >
@@ -241,7 +222,7 @@ function Dashboard() {
                   key={`${activity.id || index}-${activity.time}`}
                   style={{
                     ...activityCard,
-                    background: palette.cardBgAlt,
+                    background: palette.cardAlt,
                     border: `1px solid ${palette.border}`,
                   }}
                 >
@@ -265,7 +246,7 @@ function Dashboard() {
           <article
             style={{
               ...panel,
-              background: palette.cardBg,
+              background: palette.card,
               border: `1px solid ${palette.border}`,
             }}
           >
@@ -282,9 +263,12 @@ function Dashboard() {
                 <p style={{ ...sprintDate, color: palette.muted }}>
                   <CalendarDaysIcon style={icon14} /> {currentSprint.start_date} to {currentSprint.end_date}
                 </p>
+                <div style={{ ...progressTrack, background: palette.progressTrack }}>
+                  <div style={{ ...progressFill, width: `${sprintProgress}%`, background: palette.ctaGradient }} />
+                </div>
 
                 <div style={sprintGrid}>
-                  <SprintStat label="Done" value={sprintCompleted} tint={palette.good} />
+                  <SprintStat label="Done" value={sprintCompleted} tint={palette.success} />
                   <SprintStat label="In Progress" value={sprintInProgress} tint={palette.info} />
                   <SprintStat label="To Do" value={sprintTodo} tint={palette.muted} />
                   <SprintStat label="Blocked" value={sprintBlocked} tint={palette.warn} />
@@ -298,7 +282,7 @@ function Dashboard() {
           <article
             style={{
               ...panel,
-              background: palette.cardBg,
+              background: palette.card,
               border: `1px solid ${palette.border}`,
             }}
           >
@@ -306,14 +290,17 @@ function Dashboard() {
               Quick Actions
             </h2>
             <div style={actionStack}>
-              <Link to="/conversations/new" style={railPrimaryAction}>
+              <Link to="/conversations/new" style={{ ...railPrimaryAction, background: palette.ctaGradient, color: palette.buttonText }}>
                 Start Conversation
               </Link>
-              <Link to="/decisions/new" style={railSecondaryAction}>
+              <Link to="/decisions/new" style={{ ...railSecondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
                 Capture Decision
               </Link>
-              <Link to="/sprint" style={railSecondaryAction}>
+              <Link to="/sprint" style={{ ...railSecondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
                 View Sprint Board
+              </Link>
+              <Link to="/projects" style={{ ...railSecondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
+                Open Projects
               </Link>
             </div>
           </article>
@@ -328,7 +315,7 @@ function MetricCard({ title, value, subtitle, icon: Icon, color, palette }) {
     <article
       style={{
         ...metricCard,
-        background: palette.cardBg,
+        background: palette.card,
         border: `1px solid ${palette.border}`,
       }}
     >
@@ -350,11 +337,6 @@ function SprintStat({ label, value, tint }) {
     </div>
   );
 }
-
-const container = {
-  display: "grid",
-  gap: 16,
-};
 
 const hero = {
   borderRadius: 18,
@@ -397,8 +379,22 @@ const heroActions = {
   marginTop: 14,
 };
 
+const heroTags = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+  marginTop: 12,
+};
+
+const heroTag = {
+  borderRadius: 999,
+  padding: "5px 10px",
+  fontSize: 11,
+  fontWeight: 700,
+};
+
 const heroMediaFrame = {
-  background: "transparent",
+  background: "rgba(0,0,0,0.03)",
   minHeight: 184,
   display: "grid",
   placeItems: "stretch",
@@ -415,15 +411,10 @@ const sharedAction = {
 
 const primaryAction = {
   ...sharedAction,
-  background: "var(--app-gradient-primary)",
-  color: "#22150f",
 };
 
 const secondaryAction = {
   ...sharedAction,
-  background: "rgba(0,0,0,0.18)",
-  color: "#f5ece0",
-  border: "1px solid rgba(255,230,196,0.25)",
 };
 
 const metricGrid = {
@@ -573,6 +564,18 @@ const sprintGrid = {
   gap: 8,
 };
 
+const progressTrack = {
+  marginTop: 10,
+  width: "100%",
+  height: 8,
+  borderRadius: 999,
+  overflow: "hidden",
+};
+
+const progressFill = {
+  height: "100%",
+};
+
 const sprintStat = {
   borderRadius: 10,
   borderWidth: 1,
@@ -611,7 +614,7 @@ const loadingTitle = {
   height: 28,
   width: "min(380px, 70vw)",
   borderRadius: 8,
-  background: "var(--app-track)",
+  background: "var(--ui-border)",
 };
 
 const loadingSub = {
@@ -619,7 +622,7 @@ const loadingSub = {
   height: 16,
   width: "min(220px, 50vw)",
   borderRadius: 8,
-  background: "rgba(120,120,120,0.18)",
+  background: "rgba(148,163,184,0.28)",
 };
 
 const icon16 = { width: 16, height: 16 };

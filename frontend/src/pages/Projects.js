@@ -91,7 +91,10 @@ export default function Projects() {
             <h1 style={{ ...title, color: palette.text }}>Projects</h1>
             <p style={{ ...subtitle, color: palette.muted }}>Organize teams, boards, and delivery tracks in one place.</p>
           </div>
-          <button onClick={() => setShowCreate(true)} style={{ ...ui.primaryButton, ...newButton }}>
+          <button
+            onClick={() => setShowCreate(true)}
+            style={{ ...ui.primaryButton, ...newButton, color: palette.buttonText, background: palette.ctaGradient }}
+          >
             <PlusIcon style={icon16} /> New Project
           </button>
         </section>
@@ -141,15 +144,17 @@ export default function Projects() {
                 style={{ ...card, background: palette.card, border: `1px solid ${palette.border}` }}
               >
                 <div style={cardTop}>
-                  <div style={keyBadge}>{project.key || "PRJ"}</div>
+                  <div style={{ ...keyBadge, background: palette.ctaGradient, color: palette.buttonText }}>
+                    {project.key || "PRJ"}
+                  </div>
                   <div style={{ minWidth: 0 }}>
                     <h3 style={{ ...cardTitle, color: palette.text }}>{project.name}</h3>
                     <p style={{ ...cardDesc, color: palette.muted }}>{project.description || "No description"}</p>
                   </div>
                 </div>
                 <div style={{ ...cardMeta, borderTop: `1px solid ${palette.border}` }}>
-                  <span style={metaItem}><UserGroupIcon style={icon14} /> {project.lead_name || "No lead"}</span>
-                  <span style={metaItem}><ChartBarIcon style={icon14} /> Active</span>
+                  <span style={{ ...metaItem, color: palette.muted }}><UserGroupIcon style={icon14} /> {project.lead_name || "No lead"}</span>
+                  <span style={{ ...metaItem, color: palette.muted }}><ChartBarIcon style={icon14} /> Active</span>
                 </div>
               </article>
             ))}
@@ -164,15 +169,15 @@ const hero = { borderRadius: 18, padding: "22px", display: "flex", justifyConten
 const eyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.15em" };
 const title = { margin: "7px 0 6px", fontSize: "clamp(1.6rem,3vw,2.3rem)", letterSpacing: "-0.02em" };
 const subtitle = { margin: 0, fontSize: 14 };
-const newButton = { display: "inline-flex", alignItems: "center", gap: 7, border: "none", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "var(--app-button-text)", background: "var(--app-gradient-primary)" };
+const newButton = { display: "inline-flex", alignItems: "center", gap: 7, border: "none", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
 const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(270px,1fr))", gap: 10 };
 const card = { borderRadius: 14, padding: 14, cursor: "pointer" };
 const cardTop = { display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "start" };
-const keyBadge = { width: 50, height: 50, borderRadius: 12, display: "grid", placeItems: "center", background: "var(--app-gradient-accent)", color: "var(--app-button-text)", fontWeight: 800, fontSize: 12 };
+const keyBadge = { width: 50, height: 50, borderRadius: 12, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 12 };
 const cardTitle = { margin: 0, fontSize: 17, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const cardDesc = { margin: "4px 0 0", fontSize: 13, lineHeight: 1.45, minHeight: 36 };
 const cardMeta = { marginTop: 12, paddingTop: 10, display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 };
-const metaItem = { display: "inline-flex", alignItems: "center", gap: 5, color: "var(--app-muted)" };
+const metaItem = { display: "inline-flex", alignItems: "center", gap: 5 };
 const emptyCard = { borderRadius: 14, padding: "34px 14px", textAlign: "center" };
 const modalOverlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 100, padding: 16 };
 const modalCard = { width: "min(520px,100%)", borderRadius: 16, padding: 18 };

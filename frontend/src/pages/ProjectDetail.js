@@ -156,16 +156,16 @@ function ProjectDetail() {
         </section>
 
         <div style={quickLinkRow}>
-          <Link to={`/projects/${projectId}/backlog`} style={quickButton}>View Backlog</Link>
-          {boards.length > 0 && <Link to={`/boards/${boards[0].id}`} style={quickButton}>View Kanban Board</Link>}
-          <Link to="/sprint" style={quickButton}>Sprint Center</Link>
+          <Link to={`/projects/${projectId}/backlog`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>View Backlog</Link>
+          {boards.length > 0 && <Link to={`/boards/${boards[0].id}`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>View Kanban Board</Link>}
+          <Link to="/sprint" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Sprint Center</Link>
         </div>
 
         <section style={statsGrid}>
-          <Stat icon={ChartBarIcon} label="Total Issues" value={project.issue_count || 0} />
-          <Stat icon={CheckCircleIcon} label="Completed" value={project.completed_issues || 0} />
-          <Stat icon={ClockIcon} label="Active" value={project.active_issues || 0} />
-          <Stat icon={RocketLaunchIcon} label="Sprints" value={sprints.length} />
+          <Stat icon={ChartBarIcon} label="Total Issues" value={project.issue_count || 0} palette={palette} />
+          <Stat icon={CheckCircleIcon} label="Completed" value={project.completed_issues || 0} palette={palette} />
+          <Stat icon={ClockIcon} label="Active" value={project.active_issues || 0} palette={palette} />
+          <Stat icon={RocketLaunchIcon} label="Sprints" value={sprints.length} palette={palette} />
         </section>
 
         <section style={{ ...tabWrap, border: "none", background: "transparent" }}>
@@ -192,7 +192,7 @@ function ProjectDetail() {
               <button onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Sprint</button>
             </div>
             {sprints.length === 0 ? (
-              <Empty text="No sprints yet" />
+              <Empty text="No sprints yet" palette={palette} />
             ) : (
               <div style={list}>
                 {sprints.map((sprint) => (
@@ -203,7 +203,7 @@ function ProjectDetail() {
                         <p style={{ ...itemMeta, color: palette.muted }}>{sprint.start_date} to {sprint.end_date}</p>
                         {sprint.goal && <p style={{ ...itemMeta, marginTop: 5, color: palette.muted }}>{sprint.goal}</p>}
                       </div>
-                      <span style={statusPill}>{sprint.status}</span>
+                      <span style={{ ...statusPill, border: `1px solid ${palette.border}`, color: palette.muted }}>{sprint.status}</span>
                     </div>
                   </Link>
                 ))}
@@ -219,7 +219,7 @@ function ProjectDetail() {
               <button onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Issue</button>
             </div>
             {issues.length === 0 ? (
-              <Empty text="No issues yet" />
+              <Empty text="No issues yet" palette={palette} />
             ) : (
               <div style={list}>
                 {issues.slice(0, 20).map((issue) => (
@@ -229,7 +229,7 @@ function ProjectDetail() {
                         <p style={{ ...itemTitle, color: palette.text }}>{issue.title}</p>
                         <p style={{ ...itemMeta, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} • {issue.priority || "medium"}</p>
                       </div>
-                      <span style={statusPill}>{issue.status || "todo"}</span>
+                      <span style={{ ...statusPill, border: `1px solid ${palette.border}`, color: palette.muted }}>{issue.status || "todo"}</span>
                     </div>
                   </Link>
                 ))}
@@ -243,9 +243,9 @@ function ProjectDetail() {
             <h3 style={{ margin: 0, color: palette.text }}>Roadmap</h3>
             <p style={{ ...sub, marginTop: 8, color: palette.muted }}>Use milestones and releases pages to manage roadmap planning.</p>
             <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-              <Link to={`/projects/${projectId}/releases`} style={quickButton}>Open Releases</Link>
-              <Link to="/agile/templates" style={quickButton}>Issue Templates</Link>
-              <Link to="/agile/filters" style={quickButton}>Saved Filters</Link>
+              <Link to={`/projects/${projectId}/releases`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Open Releases</Link>
+              <Link to="/agile/templates" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Issue Templates</Link>
+              <Link to="/agile/filters" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Saved Filters</Link>
             </div>
           </section>
         )}
@@ -295,10 +295,10 @@ function ProjectDetail() {
 
         {showDeleteConfirm && (
           <Modal title="Delete Project" onClose={() => setShowDeleteConfirm(false)}>
-            <p style={{ fontSize: 14, color: "var(--app-muted)", marginBottom: 12 }}>This action cannot be undone.</p>
+            <p style={{ fontSize: 14, color: palette.muted, marginBottom: 12 }}>This action cannot be undone.</p>
             <div style={modalButtons}>
               <button onClick={() => setShowDeleteConfirm(false)} style={ui.secondaryButton}>Cancel</button>
-              <button onClick={handleDeleteProject} style={dangerButton}>{isDeleting ? "Deleting..." : "Delete"}</button>
+              <button onClick={handleDeleteProject} style={{ ...dangerButton, border: `1px solid ${palette.danger}`, color: palette.danger, background: palette.accentSoft }}>{isDeleting ? "Deleting..." : "Delete"}</button>
             </div>
           </Modal>
         )}
@@ -321,15 +321,15 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-function Empty({ text }) {
-  return <div style={emptyBlock}><p style={{ margin: 0, color: "var(--app-muted)" }}>{text}</p></div>;
+function Empty({ text, palette }) {
+  return <div style={emptyBlock}><p style={{ margin: 0, color: palette.muted }}>{text}</p></div>;
 }
 
-function Stat({ icon: Icon, label, value }) {
+function Stat({ icon: Icon, label, value, palette }) {
   return (
-    <article style={statCard}>
+    <article style={{ ...statCard, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={statLabel}>{label}</p>
+        <p style={{ ...statLabel, color: palette.muted }}>{label}</p>
         <Icon style={icon16} />
       </div>
       <p style={statValue}>{value}</p>
@@ -345,21 +345,21 @@ const title = { margin: "0 0 2px", fontSize: "clamp(1.18rem,2.05vw,1.72rem)", le
 const sub = { margin: 0, fontSize: 13 };
 const dangerIconButton = { border: "1px solid var(--app-danger-border)", borderRadius: 10, width: 36, height: 36, color: "var(--app-danger)", background: "var(--app-danger-soft)", display: "grid", placeItems: "center", cursor: "pointer" };
 const quickLinkRow = { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 };
-const quickButton = { padding: "9px 12px", borderRadius: 10, border: "1px solid var(--app-border-strong)", textDecoration: "none", fontSize: 13, fontWeight: 700, color: "var(--app-muted)", background: "transparent" };
+const quickButton = { padding: "9px 12px", borderRadius: 10, textDecoration: "none", fontSize: 13, fontWeight: 700 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 };
-const statCard = { borderRadius: 12, padding: 12, border: "1px solid var(--app-border-strong)", background: "var(--app-surface)", color: "var(--app-text)" };
-const statLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--app-muted)", fontWeight: 700 };
+const statCard = { borderRadius: 12, padding: 12 };
+const statLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 };
 const statValue = { margin: "7px 0 0", fontSize: 30, fontWeight: 800 };
 const tabWrap = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, borderRadius: 12, padding: 6, marginBottom: 12 };
 const tabButton = { borderRadius: 9, padding: "9px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
 const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 };
 const h2 = { margin: 0, fontSize: 20 };
-const dangerButton = { border: "1px solid var(--app-danger-border)", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "var(--app-danger)", background: "var(--app-danger-soft)" };
+const dangerButton = { borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
 const list = { display: "grid", gap: 8 };
 const itemCard = { borderRadius: 12, padding: 12, textDecoration: "none" };
 const itemTitle = { margin: 0, fontSize: 15, fontWeight: 700 };
 const itemMeta = { margin: "3px 0 0", fontSize: 12 };
-const statusPill = { border: "1px solid var(--app-border-strong)", borderRadius: 999, padding: "4px 8px", fontSize: 11, textTransform: "capitalize", fontWeight: 700, color: "var(--app-muted)" };
+const statusPill = { borderRadius: 999, padding: "4px 8px", fontSize: 11, textTransform: "capitalize", fontWeight: 700 };
 const emptyBlock = { borderRadius: 12, padding: "24px 14px", textAlign: "center" };
 const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
 const modalCard = { width: "min(560px,100%)", background: "var(--app-surface)", borderRadius: 14, padding: 16 };

@@ -7,10 +7,8 @@ import {
   ClockIcon,
   DocumentTextIcon,
   ExclamationTriangleIcon,
-  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { CardSkeleton } from "../components/Skeleton";
-import BrandedDashboardIllustration from "../components/BrandedDashboardIllustration";
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
@@ -115,27 +113,19 @@ function Dashboard() {
 
   return (
     <div style={ui.container}>
-      <section
-        style={{
-          ...hero,
-          background: darkMode
-            ? "radial-gradient(circle at 12% 18%, rgba(90,174,231,0.24), rgba(8,15,22,0.18) 58%), linear-gradient(132deg, rgba(111,188,236,0.2), rgba(73,191,143,0.15))"
-            : "radial-gradient(circle at 12% 18%, rgba(47,128,184,0.2), rgba(255,255,255,0.35) 58%), linear-gradient(132deg, rgba(159,214,246,0.42), rgba(173,230,214,0.32))",
-          border: `1px solid ${palette.border}`,
-        }}
-      >
+      <section style={{ ...hero, background: palette.card, border: `1px solid ${palette.border}` }}>
         <div style={heroMain}>
-          <p style={{ ...eyebrow, color: palette.muted }}>EXECUTION COMMAND CENTER</p>
+          <p style={{ ...eyebrow, color: palette.muted }}>EXECUTION OVERVIEW</p>
           <h1 style={{ ...heroTitle, color: palette.text }}>
             Welcome back, {user?.full_name?.split(" ")[0] || "there"}
           </h1>
           <p style={{ ...heroSubtitle, color: palette.muted }}>
-            Run sprint delivery, monitor knowledge flow, and move faster with one decision surface.
+            Focused view of activity, sprint delivery, and next actions.
           </p>
           <div style={heroTags}>
-            <span style={{ ...heroTag, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>{stats.totalConversations} conversations</span>
-            <span style={{ ...heroTag, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>{stats.totalDecisions} decisions</span>
-            <span style={{ ...heroTag, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>{sprintProgress}% sprint done</span>
+            <span style={{ ...heroTag, border: `1px solid ${palette.border}`, background: "transparent", color: palette.text }}>{stats.totalConversations} conversations</span>
+            <span style={{ ...heroTag, border: `1px solid ${palette.border}`, background: "transparent", color: palette.text }}>{stats.totalDecisions} decisions</span>
+            <span style={{ ...heroTag, border: `1px solid ${palette.border}`, background: "transparent", color: palette.text }}>{sprintProgress}% sprint done</span>
           </div>
           <div style={heroActions}>
             <Link to="/conversations/new" style={{ ...primaryAction, background: palette.ctaGradient, color: palette.buttonText }}>
@@ -146,44 +136,28 @@ function Dashboard() {
             </Link>
           </div>
         </div>
-        {!isNarrow && (
-          <div style={{ ...heroMediaFrame, border: `1px solid ${palette.border}` }}>
-            <BrandedDashboardIllustration darkMode={darkMode} compact />
-          </div>
-        )}
       </section>
 
       <section style={metricGrid}>
-        <MetricCard
-          title="Conversations"
+        <MetricPill
+          label="Conversations"
           value={stats.totalConversations}
-          subtitle="Knowledge threads"
           icon={ChatBubbleLeftIcon}
           color={palette.accent}
           palette={palette}
         />
-        <MetricCard
-          title="Decisions"
+        <MetricPill
+          label="Decisions"
           value={stats.totalDecisions}
-          subtitle="Documented choices"
           icon={DocumentTextIcon}
           color={palette.info}
           palette={palette}
         />
-        <MetricCard
-          title="Active Issues"
+        <MetricPill
+          label="Issues"
           value={stats.activeIssues}
-          subtitle="Current sprint"
           icon={ExclamationTriangleIcon}
           color={palette.warn}
-          palette={palette}
-        />
-        <MetricCard
-          title="Memory Health"
-          value="85%"
-          subtitle="Capture quality"
-          icon={SparklesIcon}
-          color={palette.success}
           palette={palette}
         />
       </section>
@@ -243,13 +217,7 @@ function Dashboard() {
         </article>
 
         <div style={rightRail}>
-          <article
-            style={{
-              ...panel,
-              background: palette.card,
-              border: `1px solid ${palette.border}`,
-            }}
-          >
+          <article style={{ ...panel, background: palette.card, border: `1px solid ${palette.border}` }}>
             <div style={panelHeader}>
               <h2 style={{ ...panelTitle, color: palette.text }}>Current Sprint</h2>
               <Link to="/sprint" style={{ ...panelLink, color: palette.accent }}>
@@ -273,36 +241,32 @@ function Dashboard() {
                   <SprintStat label="To Do" value={sprintTodo} tint={palette.muted} />
                   <SprintStat label="Blocked" value={sprintBlocked} tint={palette.warn} />
                 </div>
+
+                <div style={{ ...actionStack, marginTop: 12 }}>
+                  <Link to="/conversations/new" style={{ ...railPrimaryAction, background: palette.ctaGradient, color: palette.buttonText }}>
+                    Start Conversation
+                  </Link>
+                  <Link to="/decisions/new" style={{ ...railSecondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: "transparent" }}>
+                    Capture Decision
+                  </Link>
+                  <Link to="/projects" style={{ ...railSecondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: "transparent" }}>
+                    Open Projects
+                  </Link>
+                </div>
               </>
             ) : (
-              <p style={{ color: palette.muted, margin: 0 }}>No active sprint right now.</p>
+              <>
+                <p style={{ color: palette.muted, margin: 0 }}>No active sprint right now.</p>
+                <div style={{ ...actionStack, marginTop: 12 }}>
+                  <Link to="/conversations/new" style={{ ...railPrimaryAction, background: palette.ctaGradient, color: palette.buttonText }}>
+                    Start Conversation
+                  </Link>
+                  <Link to="/decisions/new" style={{ ...railSecondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: "transparent" }}>
+                    Capture Decision
+                  </Link>
+                </div>
+              </>
             )}
-          </article>
-
-          <article
-            style={{
-              ...panel,
-              background: palette.card,
-              border: `1px solid ${palette.border}`,
-            }}
-          >
-            <h2 style={{ ...panelTitle, color: palette.text, marginBottom: 12 }}>
-              Quick Actions
-            </h2>
-            <div style={actionStack}>
-              <Link to="/conversations/new" style={{ ...railPrimaryAction, background: palette.ctaGradient, color: palette.buttonText }}>
-                Start Conversation
-              </Link>
-              <Link to="/decisions/new" style={{ ...railSecondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                Capture Decision
-              </Link>
-              <Link to="/sprint" style={{ ...railSecondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                View Sprint Board
-              </Link>
-              <Link to="/projects" style={{ ...railSecondaryAction, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                Open Projects
-              </Link>
-            </div>
           </article>
         </div>
       </section>
@@ -310,22 +274,21 @@ function Dashboard() {
   );
 }
 
-function MetricCard({ title, value, subtitle, icon: Icon, color, palette }) {
+function MetricPill({ label, value, icon: Icon, color, palette }) {
   return (
-    <article
+    <div
       style={{
-        ...metricCard,
-        background: palette.card,
+        ...metricPill,
+        background: "transparent",
         border: `1px solid ${palette.border}`,
       }}
     >
-      <div style={metricHeader}>
-        <p style={{ ...metricTitle, color: palette.muted }}>{title}</p>
+      <div style={metricPillLeft}>
         <Icon style={{ ...icon16, color }} />
+        <p style={{ ...metricLabel, color: palette.muted }}>{label}</p>
       </div>
-      <p style={{ ...metricValue, color: palette.text }}>{value}</p>
-      <p style={{ ...metricSubtitle, color: palette.muted }}>{subtitle}</p>
-    </article>
+      <p style={{ ...metricPillValue, color: palette.text }}>{value}</p>
+    </div>
   );
 }
 
@@ -339,12 +302,8 @@ function SprintStat({ label, value, tint }) {
 }
 
 const hero = {
-  borderRadius: 18,
-  padding: "clamp(18px, 3vw, 28px)",
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 320px)",
-  alignItems: "center",
-  flexWrap: "wrap",
+  borderRadius: 14,
+  padding: "clamp(14px, 2vw, 20px)",
   gap: 16,
 };
 
@@ -367,9 +326,9 @@ const heroTitle = {
 
 const heroSubtitle = {
   margin: 0,
-  maxWidth: 680,
+  maxWidth: 640,
   lineHeight: 1.5,
-  fontSize: 14,
+  fontSize: 13,
 };
 
 const heroActions = {
@@ -388,24 +347,16 @@ const heroTags = {
 
 const heroTag = {
   borderRadius: 999,
-  padding: "5px 10px",
-  fontSize: 11,
+  padding: "4px 9px",
+  fontSize: 10,
   fontWeight: 700,
 };
 
-const heroMediaFrame = {
-  background: "rgba(0,0,0,0.03)",
-  minHeight: 184,
-  display: "grid",
-  placeItems: "stretch",
-  position: "relative",
-};
-
 const sharedAction = {
-  borderRadius: 10,
-  padding: "10px 14px",
+  borderRadius: 9,
+  padding: "8px 12px",
   textDecoration: "none",
-  fontSize: 13,
+  fontSize: 12,
   fontWeight: 700,
 };
 
@@ -418,40 +369,38 @@ const secondaryAction = {
 };
 
 const metricGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 12,
-};
-
-const metricCard = {
-  borderRadius: 14,
-  padding: 14,
-};
-
-const metricHeader = {
   display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+};
+
+const metricPill = {
+  borderRadius: 999,
+  padding: "6px 10px",
+  display: "inline-flex",
   alignItems: "center",
   justifyContent: "space-between",
+  gap: 8,
+  minWidth: 144,
 };
 
-const metricTitle = {
+const metricPillLeft = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+};
+
+const metricLabel = {
   margin: 0,
-  textTransform: "uppercase",
-  letterSpacing: "0.07em",
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 700,
 };
 
-const metricValue = {
-  margin: "10px 0 0",
-  fontSize: 30,
+const metricPillValue = {
+  margin: 0,
+  fontSize: 14,
   lineHeight: 1,
-  fontWeight: 800,
-};
-
-const metricSubtitle = {
-  margin: "5px 0 0",
-  fontSize: 12,
+  fontWeight: 700,
 };
 
 const contentGrid = {
@@ -461,8 +410,8 @@ const contentGrid = {
 };
 
 const panel = {
-  borderRadius: 14,
-  padding: 14,
+  borderRadius: 12,
+  padding: 12,
 };
 
 const panelHeader = {
@@ -539,7 +488,7 @@ const activityTime = {
 
 const rightRail = {
   display: "grid",
-  gap: 12,
+  gap: 10,
   alignContent: "start",
 };
 
@@ -577,10 +526,10 @@ const progressFill = {
 };
 
 const sprintStat = {
-  borderRadius: 10,
+  borderRadius: 9,
   borderWidth: 1,
   borderStyle: "solid",
-  padding: "8px 10px",
+  padding: "7px 9px",
 };
 
 const sprintValue = {
@@ -597,7 +546,7 @@ const sprintLabel = {
 
 const actionStack = {
   display: "grid",
-  gap: 8,
+  gap: 7,
 };
 
 const railPrimaryAction = {

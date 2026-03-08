@@ -46,6 +46,28 @@ function titleCase(value) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+function getContextualHowTo(query) {
+  const q = String(query || '').toLowerCase().trim();
+  if (!q) return null;
+
+  const projectCreateIntent =
+    (q.includes('project') && (q.includes('create') || q.includes('new') || q.includes('set up') || q.includes('setup'))) ||
+    q.includes('how can i create a project') ||
+    q.includes('how do i create a project');
+
+  if (projectCreateIntent) {
+    return {
+      answer:
+        'To create a project: 1) open Projects, 2) click New Project, 3) enter project name/details, 4) save, then 5) open the project to add issues and sprints.',
+      links: [
+        { id: 'projects', label: 'Projects', href: '/projects', reason: 'Open the project list and use New Project.' },
+      ],
+    };
+  }
+
+  return null;
+}
+
 export default function AskRecall() {
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
@@ -79,6 +101,7 @@ export default function AskRecall() {
   ];
 
   const mapResponseToViewModel = (payload) => {
+    const howTo = getContextualHowTo(payload?.query);
     const decisions = payload?.sources?.decisions || [];
     const linkedDecisions = decisions.slice(0, 3).map((item) => ({
       id: item.id,
@@ -108,21 +131,29 @@ export default function AskRecall() {
     return {
       question: payload.query,
       analysisId: payload.analysis_id || '',
-      answer: payload.answer,
+      answer:
+        howTo && (payload?.response_mode === 'navigation' || Number(payload?.evidence_count || 0) === 0)
+          ? `${howTo.answer}\n\n${payload?.answer || ''}`.trim()
+          : payload.answer,
       confidence: payload.confidence || 0,
-      confidenceBand: payload.confidence_band || getConfidenceLabel(payload.confidence || 0).toLowerCase(),
-      responseMode: payload.response_mode || 'diagnosis',
+      confidenceBand:
+        payload.confidence_band || getConfidenceLabel(payload.confidence || 0).toLowerCase(),
+      responseMode:
+        howTo && payload?.response_mode === 'navigation' ? 'guidance' : (payload.response_mode || 'diagnosis'),
       evidenceCount: payload.evidence_count ?? 0,
       sourceTypes: payload.source_types || [],
       freshnessDays: payload.freshness_days ?? null,
       coverageScore: payload.coverage_score ?? 0,
       missingEvidence: payload.missing_evidence || [],
-      toolLinks: (payload.tool_links || []).map((item) => ({
-        id: item.id,
-        label: item.label,
-        href: item.url,
-        reason: item.reason,
-      })),
+      toolLinks: [
+        ...((payload.tool_links || []).map((item) => ({
+          id: item.id,
+          label: item.label,
+          href: item.url,
+          reason: item.reason,
+        })) || []),
+        ...((howTo?.links || []).filter((item) => !(payload.tool_links || []).some((link) => link?.id === item.id))),
+      ],
       riskStatus: payload.risk_status || 'unknown',
       readinessScore: payload.readiness_score,
       learningModel: payload.learning_model || {},
@@ -195,10 +226,12 @@ export default function AskRecall() {
 
   const queryCopilot = async ({ execute = false } = {}) => {
     try {
+      const contextualHowTo = getContextualHowTo(query);
       const response = await api.post('/api/knowledge/ai/copilot/', {
         query,
         execute,
         max_actions: 3,
+        disable_navigation: !!contextualHowTo,
       });
       return mapResponseToViewModel(response.data);
     } catch (error) {

@@ -4,7 +4,6 @@ import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import Breadcrumbs from "./Breadcrumbs";
-import BrandLogo from "./BrandLogo";
 import NLCommandBar from "./NLCommandBar";
 import NotificationBell from "./NotificationBell";
 import UnifiedNav from "./UnifiedNav";
@@ -320,7 +319,6 @@ export default function UnifiedLayout({ children }) {
           >
             <div style={headerPrimaryRow}>
               <div style={headerIdentity}>
-                <BrandLogo tone={darkMode ? "dark" : "light"} size={isMobile ? "sm" : "md"} showText={!isMobile} />
                 <div style={headerTitleBlock}>
                   <p style={{ ...headerEyebrow, color: palette.muted }}>Operations Layer</p>
                   <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
@@ -780,17 +778,17 @@ const contentContainerMobile = {
 
 const layoutHeader = {
   position: "sticky",
-  top: 12,
+  top: 0,
   zIndex: 80,
-  borderRadius: 20,
+  borderRadius: 16,
   padding: "12px 14px 10px",
   marginBottom: 18,
   backdropFilter: "blur(10px)",
 };
 
 const layoutHeaderMobile = {
-  top: 8,
-  borderRadius: 14,
+  top: 0,
+  borderRadius: 12,
   padding: "10px 10px 8px",
   marginBottom: 10,
 };

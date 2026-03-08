@@ -1,6 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { ShieldCheckIcon, UserGroupIcon, AcademicCapIcon, ServerIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../utils/ThemeAndAccessibility';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  AcademicCapIcon,
+  BoltIcon,
+  BuildingOffice2Icon,
+  ChartBarSquareIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  ServerIcon,
+  ShieldCheckIcon,
+  UserGroupIcon,
+} from '@heroicons/react/24/outline';
+import './Enterprise.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -16,8 +26,55 @@ function getAppLaunchTarget(app) {
   return { type: 'internal', href: '/enterprise' };
 }
 
+function formatDateTime(value) {
+  if (!value) return 'N/A';
+  return new Date(value).toLocaleString();
+}
+
+function statusTone(status) {
+  const tones = {
+    scheduled: 'neutral',
+    in_progress: 'warn',
+    completed: 'ok',
+    cancelled: 'danger',
+    requested: 'neutral',
+    deployed: 'ok',
+    maintenance: 'warn',
+    open: 'danger',
+    resolved: 'ok',
+  };
+  return tones[status] || 'neutral';
+}
+
+function MetricCard({ label, value, hint }) {
+  return (
+    <article className="enterprise-metric">
+      <p className="enterprise-metric-value">{value}</p>
+      <p className="enterprise-metric-label">{label}</p>
+      {hint ? <p className="enterprise-metric-hint">{hint}</p> : null}
+    </article>
+  );
+}
+
+function SectionCard({ icon: Icon, title, subtitle, actions, children }) {
+  return (
+    <section className="enterprise-section-card">
+      <header className="enterprise-section-header">
+        <div className="enterprise-section-title-wrap">
+          {Icon ? <Icon className="enterprise-section-icon" /> : null}
+          <div>
+            <h2>{title}</h2>
+            {subtitle ? <p>{subtitle}</p> : null}
+          </div>
+        </div>
+        {actions ? <div className="enterprise-section-actions">{actions}</div> : null}
+      </header>
+      {children}
+    </section>
+  );
+}
+
 export default function Enterprise() {
-  const { darkMode } = useTheme();
   const [ssoConfig, setSsoConfig] = useState(null);
   const [accountManager, setAccountManager] = useState(null);
   const [trainings, setTrainings] = useState([]);
@@ -44,7 +101,7 @@ export default function Enterprise() {
     sso_url: '',
     x509_cert: '',
     auto_provision_users: true,
-    default_role: 'member'
+    default_role: 'member',
   });
 
   const [complianceForm, setComplianceForm] = useState({
@@ -57,12 +114,14 @@ export default function Enterprise() {
     ip_allowlist: '',
     allowed_integrations: 'github,jira,slack',
   });
+
   const [scopeForm, setScopeForm] = useState({
     project_id: '',
     role: 'manager',
     allowed_permissions: 'create_issue,edit_issue,assign_issue',
     denied_permissions: '',
   });
+
   const [slaForm, setSlaForm] = useState({
     name: 'Uptime Alert',
     metric: 'uptime',
@@ -71,6 +130,7 @@ export default function Enterprise() {
     severity: 'high',
     enabled: true,
   });
+
   const [escalationForm, setEscalationForm] = useState({
     name: 'Critical Incident Escalation',
     incident_type: '',
@@ -95,7 +155,21 @@ export default function Enterprise() {
   const fetchEnterpriseData = async () => {
     try {
       const headers = authHeaders();
-      const [sso, manager, training, sla, premise, complianceResp, appsResp, portfolioResp, incidentsResp, projectsResp, scopesResp, slaRulesResp, escalationRulesResp] = await Promise.all([
+      const [
+        sso,
+        manager,
+        training,
+        sla,
+        premise,
+        complianceResp,
+        appsResp,
+        portfolioResp,
+        incidentsResp,
+        projectsResp,
+        scopesResp,
+        slaRulesResp,
+        escalationRulesResp,
+      ] = await Promise.all([
         fetch(`${API_BASE}/api/organizations/enterprise/sso/`, { headers }).then((r) => r.json()),
         fetch(`${API_BASE}/api/organizations/enterprise/account-manager/`, { headers }).then((r) => r.json()),
         fetch(`${API_BASE}/api/organizations/enterprise/training/`, { headers }).then((r) => r.json()),
@@ -112,7 +186,9 @@ export default function Enterprise() {
       ]);
 
       setSsoConfig(sso);
-      if (sso?.id) setSsoForm({ ...ssoForm, ...sso });
+      if (sso?.id) {
+        setSsoForm((prev) => ({ ...prev, ...sso }));
+      }
       setAccountManager(manager);
       setTrainings(Array.isArray(training) ? training : []);
       setSlaData(Array.isArray(sla) ? sla : []);
@@ -135,7 +211,9 @@ export default function Enterprise() {
           third_party_app_approval_required: Boolean(complianceResp.third_party_app_approval_required),
           retention_days: complianceResp.retention_days || 365,
           ip_allowlist: Array.isArray(complianceResp.ip_allowlist) ? complianceResp.ip_allowlist.join(',') : '',
-          allowed_integrations: Array.isArray(complianceResp.allowed_integrations) ? complianceResp.allowed_integrations.join(',') : '',
+          allowed_integrations: Array.isArray(complianceResp.allowed_integrations)
+            ? complianceResp.allowed_integrations.join(',')
+            : '',
         });
       }
     } catch (error) {
@@ -168,9 +246,16 @@ export default function Enterprise() {
       const payload = {
         ...complianceForm,
         retention_days: Number(complianceForm.retention_days) || 365,
-        ip_allowlist: complianceForm.ip_allowlist.split(',').map((v) => v.trim()).filter(Boolean),
-        allowed_integrations: complianceForm.allowed_integrations.split(',').map((v) => v.trim()).filter(Boolean),
+        ip_allowlist: complianceForm.ip_allowlist
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean),
+        allowed_integrations: complianceForm.allowed_integrations
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean),
       };
+
       const response = await fetch(`${API_BASE}/api/organizations/enterprise/compliance/`, {
         method: 'PUT',
         headers: {
@@ -244,8 +329,14 @@ export default function Enterprise() {
       const payload = {
         project_id: Number(scopeForm.project_id),
         role: scopeForm.role,
-        allowed_permissions: scopeForm.allowed_permissions.split(',').map((v) => v.trim()).filter(Boolean),
-        denied_permissions: scopeForm.denied_permissions.split(',').map((v) => v.trim()).filter(Boolean),
+        allowed_permissions: scopeForm.allowed_permissions
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean),
+        denied_permissions: scopeForm.denied_permissions
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean),
       };
       const response = await fetch(`${API_BASE}/api/organizations/enterprise/permissions/project-scopes/`, {
         method: 'POST',
@@ -300,465 +391,465 @@ export default function Enterprise() {
     }
   };
 
-  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
-  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
-  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
-  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
-
-  const getStatusColor = (status) => {
-    const colors = {
-      scheduled: 'bg-blue-100 text-blue-800',
-      in_progress: 'bg-yellow-100 text-yellow-800',
-      completed: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
-      requested: 'bg-purple-100 text-purple-800',
-      deployed: 'bg-green-100 text-green-800',
-      maintenance: 'bg-orange-100 text-orange-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
+  const summaryMetrics = useMemo(() => {
+    const totals = portfolio?.totals || {};
+    return [
+      { label: 'Policy Controls', value: `${Object.values(complianceForm).filter(Boolean).length}` },
+      { label: 'Marketplace Apps', value: marketplaceApps.length, hint: `${marketplaceApps.filter((a) => a.installed).length} installed` },
+      { label: 'Open Incidents', value: incidents.filter((item) => item.status !== 'resolved').length },
+      { label: 'Project Coverage', value: totals.projects || 0, hint: `${projectScopes.length} scoped roles` },
+    ];
+  }, [portfolio, complianceForm, marketplaceApps, incidents, projectScopes]);
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '24px' }}>Enterprise Features</h1>
-
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px', marginBottom: '16px' }}>
-        <div className="flex items-center gap-3 mb-4">
-          <ShieldCheckIcon className="w-8 h-8 text-emerald-600" />
-          <div>
-            <h2 className="text-xl font-semibold">Governance and Compliance Policy</h2>
-            <p className="text-sm text-gray-600">Data residency, retention, security requirements, and app governance</p>
-          </div>
-        </div>
-        <form onSubmit={handleComplianceSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Data Residency Region</label>
-            <select
-              value={complianceForm.data_residency_region}
-              onChange={(e) => setComplianceForm({ ...complianceForm, data_residency_region: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              <option value="us">United States</option>
-              <option value="eu">European Union</option>
-              <option value="uk">United Kingdom</option>
-              <option value="ca">Canada</option>
-              <option value="apac">Asia Pacific</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Data Retention (days)</label>
-            <input
-              type="number"
-              min="30"
-              value={complianceForm.retention_days}
-              onChange={(e) => setComplianceForm({ ...complianceForm, retention_days: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">IP Allowlist (comma-separated)</label>
-            <input
-              type="text"
-              value={complianceForm.ip_allowlist}
-              onChange={(e) => setComplianceForm({ ...complianceForm, ip_allowlist: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Allowed Integrations (comma-separated)</label>
-            <input
-              type="text"
-              value={complianceForm.allowed_integrations}
-              onChange={(e) => setComplianceForm({ ...complianceForm, allowed_integrations: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={complianceForm.require_sso} onChange={(e) => setComplianceForm({ ...complianceForm, require_sso: e.target.checked })} />
-            <span className="text-sm">Require SSO</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={complianceForm.require_mfa} onChange={(e) => setComplianceForm({ ...complianceForm, require_mfa: e.target.checked })} />
-            <span className="text-sm">Require MFA</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={complianceForm.audit_export_enabled} onChange={(e) => setComplianceForm({ ...complianceForm, audit_export_enabled: e.target.checked })} />
-            <span className="text-sm">Enable Audit Exports</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={complianceForm.third_party_app_approval_required} onChange={(e) => setComplianceForm({ ...complianceForm, third_party_app_approval_required: e.target.checked })} />
-            <span className="text-sm">Require Third-Party App Approval</span>
-          </label>
-          <div className="md:col-span-2">
-            <button type="submit" disabled={savingCompliance} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
-              {savingCompliance ? 'Saving...' : 'Save Compliance Policy'}
-            </button>
-          </div>
-        </form>
-        {compliance?.updated_at && (
-          <p style={{ color: secondaryText, marginTop: '10px', fontSize: '12px' }}>
-            Last updated: {new Date(compliance.updated_at).toLocaleString()}
+    <div className="enterprise-page">
+      <header className="enterprise-hero">
+        <div>
+          <p className="enterprise-eyebrow">Enterprise Console</p>
+          <h1>Governance, reliability, and operations in one surface</h1>
+          <p className="enterprise-hero-copy">
+            Manage SSO, compliance, app governance, SLA automation, and portfolio risk with an operations-first enterprise workspace.
           </p>
-        )}
-      </div>
+        </div>
+        <div className="enterprise-hero-actions">
+          <button type="button" className="enterprise-btn enterprise-btn-primary" onClick={() => setShowSSOForm((v) => !v)}>
+            {showSSOForm ? 'Close SSO Editor' : 'Configure SSO'}
+          </button>
+          <button
+            type="button"
+            className="enterprise-btn enterprise-btn-secondary"
+            disabled={runningAutomation}
+            onClick={runIncidentAutomation}
+          >
+            {runningAutomation ? 'Running automation...' : 'Run Incident Automation'}
+          </button>
+        </div>
+      </header>
 
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px', marginBottom: '16px' }}>
-        <h2 className="text-xl font-semibold mb-2">Project Permission Scopes</h2>
-        <p className="text-sm text-gray-600 mb-4">Granular role permissions per project</p>
-        <form onSubmit={saveProjectScope} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-          <select value={scopeForm.project_id} onChange={(e) => setScopeForm({ ...scopeForm, project_id: e.target.value })} className="border rounded-lg px-3 py-2" required>
-            <option value="">Select project</option>
-            {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-          </select>
-          <select value={scopeForm.role} onChange={(e) => setScopeForm({ ...scopeForm, role: e.target.value })} className="border rounded-lg px-3 py-2">
-            <option value="admin">admin</option>
-            <option value="manager">manager</option>
-            <option value="contributor">contributor</option>
-          </select>
-          <input type="text" value={scopeForm.allowed_permissions} onChange={(e) => setScopeForm({ ...scopeForm, allowed_permissions: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="allowed perms csv" />
-          <input type="text" value={scopeForm.denied_permissions} onChange={(e) => setScopeForm({ ...scopeForm, denied_permissions: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="denied perms csv" />
-          <div className="md:col-span-4">
-            <button disabled={savingRules} className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50">Save Scope</button>
-          </div>
-        </form>
-        <div className="space-y-2">
-          {projectScopes.slice(0, 8).map((scope) => (
-            <div key={scope.id} className="border rounded-lg p-3">
-              <p className="font-semibold">{scope.project_name} | {scope.role}</p>
-              <p className="text-xs text-gray-500">Allow: {(scope.allowed_permissions || []).join(', ') || '-'}</p>
-              <p className="text-xs text-gray-500">Deny: {(scope.denied_permissions || []).join(', ') || '-'}</p>
+      <section className="enterprise-metric-grid">
+        {summaryMetrics.map((metric) => (
+          <MetricCard key={metric.label} label={metric.label} value={metric.value} hint={metric.hint} />
+        ))}
+      </section>
+
+      <div className="enterprise-grid">
+        <SectionCard
+          icon={ShieldCheckIcon}
+          title="Governance Policy"
+          subtitle="Data region, retention, MFA/SSO requirements, and integration controls"
+        >
+          <form onSubmit={handleComplianceSubmit} className="enterprise-form-grid">
+            <label>
+              <span>Data Residency Region</span>
+              <select
+                value={complianceForm.data_residency_region}
+                onChange={(e) => setComplianceForm({ ...complianceForm, data_residency_region: e.target.value })}
+              >
+                <option value="us">United States</option>
+                <option value="eu">European Union</option>
+                <option value="uk">United Kingdom</option>
+                <option value="ca">Canada</option>
+                <option value="apac">Asia Pacific</option>
+              </select>
+            </label>
+            <label>
+              <span>Retention Days</span>
+              <input
+                type="number"
+                min="30"
+                value={complianceForm.retention_days}
+                onChange={(e) => setComplianceForm({ ...complianceForm, retention_days: e.target.value })}
+              />
+            </label>
+            <label className="enterprise-col-span">
+              <span>IP Allowlist (comma-separated)</span>
+              <input
+                type="text"
+                value={complianceForm.ip_allowlist}
+                onChange={(e) => setComplianceForm({ ...complianceForm, ip_allowlist: e.target.value })}
+              />
+            </label>
+            <label className="enterprise-col-span">
+              <span>Allowed Integrations (comma-separated)</span>
+              <input
+                type="text"
+                value={complianceForm.allowed_integrations}
+                onChange={(e) => setComplianceForm({ ...complianceForm, allowed_integrations: e.target.value })}
+              />
+            </label>
+            <label className="enterprise-check"><input type="checkbox" checked={complianceForm.require_sso} onChange={(e) => setComplianceForm({ ...complianceForm, require_sso: e.target.checked })} /><span>Require SSO</span></label>
+            <label className="enterprise-check"><input type="checkbox" checked={complianceForm.require_mfa} onChange={(e) => setComplianceForm({ ...complianceForm, require_mfa: e.target.checked })} /><span>Require MFA</span></label>
+            <label className="enterprise-check"><input type="checkbox" checked={complianceForm.audit_export_enabled} onChange={(e) => setComplianceForm({ ...complianceForm, audit_export_enabled: e.target.checked })} /><span>Enable audit exports</span></label>
+            <label className="enterprise-check"><input type="checkbox" checked={complianceForm.third_party_app_approval_required} onChange={(e) => setComplianceForm({ ...complianceForm, third_party_app_approval_required: e.target.checked })} /><span>Require app approval</span></label>
+            <div className="enterprise-col-span enterprise-inline-actions">
+              <button type="submit" className="enterprise-btn enterprise-btn-primary" disabled={savingCompliance}>
+                {savingCompliance ? 'Saving...' : 'Save Governance Policy'}
+              </button>
+              <p className="enterprise-meta">Last update: {formatDateTime(compliance?.updated_at)}</p>
             </div>
-          ))}
-        </div>
-      </div>
+          </form>
+        </SectionCard>
 
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px', marginBottom: '16px' }}>
-        <div className="flex items-center gap-3 mb-4">
-          <ServerIcon className="w-8 h-8 text-cyan-600" />
-          <div>
-            <h2 className="text-xl font-semibold">App Marketplace</h2>
-            <p className="text-sm text-gray-600">Install apps and integrations for your workspace</p>
+        <SectionCard
+          icon={UserGroupIcon}
+          title="Identity and Access"
+          subtitle="Single sign-on and role scoping per project"
+        >
+          {ssoConfig?.enabled && !showSSOForm ? (
+            <div className="enterprise-callout">
+              <p>SSO enabled with {ssoConfig.provider?.toUpperCase()}.</p>
+              <p>Entity ID: {ssoConfig.entity_id || 'Not set'}</p>
+            </div>
+          ) : null}
+
+          {showSSOForm ? (
+            <form onSubmit={handleSSOSubmit} className="enterprise-stack">
+              <label>
+                <span>Provider</span>
+                <select value={ssoForm.provider} onChange={(e) => setSsoForm({ ...ssoForm, provider: e.target.value })}>
+                  <option value="saml">SAML 2.0</option>
+                  <option value="okta">Okta</option>
+                  <option value="azure">Azure AD</option>
+                  <option value="google">Google Workspace</option>
+                </select>
+              </label>
+              <label>
+                <span>Entity ID</span>
+                <input type="text" value={ssoForm.entity_id} onChange={(e) => setSsoForm({ ...ssoForm, entity_id: e.target.value })} />
+              </label>
+              <label>
+                <span>SSO URL</span>
+                <input type="url" value={ssoForm.sso_url} onChange={(e) => setSsoForm({ ...ssoForm, sso_url: e.target.value })} />
+              </label>
+              <label>
+                <span>X.509 Certificate</span>
+                <textarea rows="4" value={ssoForm.x509_cert} onChange={(e) => setSsoForm({ ...ssoForm, x509_cert: e.target.value })} />
+              </label>
+              <label className="enterprise-check">
+                <input type="checkbox" checked={ssoForm.enabled} onChange={(e) => setSsoForm({ ...ssoForm, enabled: e.target.checked })} />
+                <span>Enable SSO</span>
+              </label>
+              <button type="submit" className="enterprise-btn enterprise-btn-primary">Save SSO Configuration</button>
+            </form>
+          ) : null}
+
+          <form onSubmit={saveProjectScope} className="enterprise-form-grid enterprise-top-gap">
+            <label>
+              <span>Project</span>
+              <select value={scopeForm.project_id} onChange={(e) => setScopeForm({ ...scopeForm, project_id: e.target.value })} required>
+                <option value="">Select project</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Role</span>
+              <select value={scopeForm.role} onChange={(e) => setScopeForm({ ...scopeForm, role: e.target.value })}>
+                <option value="admin">admin</option>
+                <option value="manager">manager</option>
+                <option value="contributor">contributor</option>
+              </select>
+            </label>
+            <label className="enterprise-col-span">
+              <span>Allowed Permissions (CSV)</span>
+              <input type="text" value={scopeForm.allowed_permissions} onChange={(e) => setScopeForm({ ...scopeForm, allowed_permissions: e.target.value })} />
+            </label>
+            <label className="enterprise-col-span">
+              <span>Denied Permissions (CSV)</span>
+              <input type="text" value={scopeForm.denied_permissions} onChange={(e) => setScopeForm({ ...scopeForm, denied_permissions: e.target.value })} />
+            </label>
+            <div className="enterprise-col-span">
+              <button className="enterprise-btn enterprise-btn-secondary" disabled={savingRules}>Save Project Scope</button>
+            </div>
+          </form>
+
+          <div className="enterprise-list">
+            {projectScopes.slice(0, 6).map((scope) => (
+              <article key={scope.id} className="enterprise-list-item">
+                <p className="enterprise-list-title">{scope.project_name} - {scope.role}</p>
+                <p>Allow: {(scope.allowed_permissions || []).join(', ') || '-'}</p>
+                <p>Deny: {(scope.denied_permissions || []).join(', ') || '-'}</p>
+              </article>
+            ))}
           </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {marketplaceApps.map((app) => (
-            <div key={app.id} className="border rounded-lg p-4">
-              <div className="flex justify-between gap-4">
-                <div>
-                  <p className="font-semibold">{app.name}</p>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">{app.category} | {app.vendor} | {app.pricing}</p>
-                  <p className="text-sm text-gray-600 mt-2">{app.description}</p>
-                </div>
-                <div className="flex flex-col gap-2 items-end">
-                  {app.installed && (() => {
-                    const target = getAppLaunchTarget(app);
-                    if (target.type === 'external') {
-                      return (
-                        <a
-                          href={target.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                        >
-                          Open
-                        </a>
-                      );
-                    }
-                    return (
+        </SectionCard>
+
+        <SectionCard
+          icon={BuildingOffice2Icon}
+          title="Marketplace and Enablement"
+          subtitle="Control app installs and enterprise support programs"
+        >
+          <div className="enterprise-list">
+            {marketplaceApps.map((app) => {
+              const target = getAppLaunchTarget(app);
+              return (
+                <article key={app.id} className="enterprise-list-item enterprise-app-item">
+                  <div>
+                    <p className="enterprise-list-title">{app.name}</p>
+                    <p>{app.category} | {app.vendor} | {app.pricing}</p>
+                    <p>{app.description}</p>
+                  </div>
+                  <div className="enterprise-inline-actions">
+                    {app.installed ? (
                       <a
                         href={target.href}
-                        className="px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                        target={target.type === 'external' ? '_blank' : undefined}
+                        rel={target.type === 'external' ? 'noreferrer' : undefined}
+                        className="enterprise-btn enterprise-btn-secondary"
                       >
                         Open
                       </a>
-                    );
-                  })()}
-                  <button
-                    onClick={() => toggleMarketplaceApp(app)}
-                    disabled={busyAppId === app.id}
-                    className={`px-3 py-2 rounded-lg text-sm font-semibold ${app.installed ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-cyan-600 text-white hover:bg-cyan-700'} disabled:opacity-50`}
-                  >
-                    {busyAppId === app.id ? 'Please wait...' : app.installed ? 'Uninstall' : 'Install'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px', marginBottom: '16px' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold">Portfolio Reporting</h2>
-            <p className="text-sm text-gray-600">Cross-project delivery and risk metrics</p>
-          </div>
-        </div>
-        {portfolio ? (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
-              <Metric label="Projects" value={portfolio.totals.projects} />
-              <Metric label="Issues" value={portfolio.totals.issues} />
-              <Metric label="Completed" value={portfolio.totals.done} />
-              <Metric label="Completion" value={`${portfolio.totals.completion_percent}%`} />
-              <Metric label="Overdue" value={portfolio.totals.overdue_issues} />
-              <Metric label="Blockers" value={portfolio.totals.active_blockers} />
-            </div>
-            <div className="space-y-2">
-              {(portfolio.projects || []).slice(0, 6).map((project) => (
-                <div key={project.project_id} className="border rounded-lg p-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">{project.project_name}</p>
-                    <p className="text-xs text-gray-500">
-                      {project.done_count}/{project.issue_count} done | overdue {project.overdue_issues} | blockers {project.active_blockers}
-                    </p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => toggleMarketplaceApp(app)}
+                      className="enterprise-btn enterprise-btn-primary"
+                      disabled={busyAppId === app.id}
+                    >
+                      {busyAppId === app.id ? 'Please wait...' : app.installed ? 'Uninstall' : 'Install'}
+                    </button>
                   </div>
-                  <span className="text-sm font-semibold">Risk {project.risk_score}</span>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <p className="text-gray-500">No portfolio data available.</p>
-        )}
-      </div>
-
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px', marginBottom: '16px' }}>
-        <h2 className="text-xl font-semibold mb-2">SLA Rule Builder</h2>
-        <p className="text-sm text-gray-600 mb-4">Define threshold-driven SLA incident rules</p>
-        <form onSubmit={createSlaRule} className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
-          <input value={slaForm.name} onChange={(e) => setSlaForm({ ...slaForm, name: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="Rule name" required />
-          <select value={slaForm.metric} onChange={(e) => setSlaForm({ ...slaForm, metric: e.target.value })} className="border rounded-lg px-3 py-2">
-            <option value="uptime">uptime</option>
-            <option value="response_time">response_time</option>
-            <option value="resolution_time">resolution_time</option>
-            <option value="support_response">support_response</option>
-          </select>
-          <input type="number" step="0.01" value={slaForm.threshold_percent} onChange={(e) => setSlaForm({ ...slaForm, threshold_percent: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="threshold %" />
-          <input type="number" value={slaForm.lookback_days} onChange={(e) => setSlaForm({ ...slaForm, lookback_days: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="lookback days" />
-          <select value={slaForm.severity} onChange={(e) => setSlaForm({ ...slaForm, severity: e.target.value })} className="border rounded-lg px-3 py-2">
-            <option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="critical">critical</option>
-          </select>
-          <button disabled={savingRules} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">Create Rule</button>
-        </form>
-        <div className="space-y-2">
-          {slaRules.map((rule) => (
-            <div key={rule.id} className="border rounded-lg p-3 flex items-center justify-between">
-              <p className="font-semibold">{rule.name} ({rule.metric})</p>
-              <p className="text-xs text-gray-500">threshold {rule.threshold_percent}% | {rule.lookback_days}d | {rule.severity}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px', marginBottom: '16px' }}>
-        <h2 className="text-xl font-semibold mb-2">Escalation Workflow Rules</h2>
-        <p className="text-sm text-gray-600 mb-4">Auto-create tasks/blockers and notify admins from incidents</p>
-        <form onSubmit={createEscalationRule} className="grid grid-cols-1 md:grid-cols-7 gap-3 mb-4">
-          <input value={escalationForm.name} onChange={(e) => setEscalationForm({ ...escalationForm, name: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="Rule name" required />
-          <select value={escalationForm.incident_type} onChange={(e) => setEscalationForm({ ...escalationForm, incident_type: e.target.value })} className="border rounded-lg px-3 py-2">
-            <option value="">all</option><option value="sla_risk">sla_risk</option><option value="blocker_spike">blocker_spike</option><option value="delivery_risk">delivery_risk</option>
-          </select>
-          <select value={escalationForm.min_severity} onChange={(e) => setEscalationForm({ ...escalationForm, min_severity: e.target.value })} className="border rounded-lg px-3 py-2">
-            <option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="critical">critical</option>
-          </select>
-          <input type="number" value={escalationForm.escalation_delay_minutes} onChange={(e) => setEscalationForm({ ...escalationForm, escalation_delay_minutes: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="delay min" />
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={escalationForm.create_task} onChange={(e) => setEscalationForm({ ...escalationForm, create_task: e.target.checked })} />task</label>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={escalationForm.create_blocker} onChange={(e) => setEscalationForm({ ...escalationForm, create_blocker: e.target.checked })} />blocker</label>
-          <button disabled={savingRules} className="px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 disabled:opacity-50">Create Rule</button>
-        </form>
-        <div className="space-y-2">
-          {escalationRules.map((rule) => (
-            <div key={rule.id} className="border rounded-lg p-3">
-              <p className="font-semibold">{rule.name}</p>
-              <p className="text-xs text-gray-500">{rule.incident_type || 'all'} | min {rule.min_severity} | {rule.escalation_delay_minutes}m | task:{String(rule.create_task)} blocker:{String(rule.create_blocker)}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px', marginBottom: '16px' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold">Incident and SLA Automation</h2>
-            <p className="text-sm text-gray-600">Detect blocker and SLA risks and notify admins</p>
+                </article>
+              );
+            })}
           </div>
-          <button
-            onClick={runIncidentAutomation}
-            disabled={runningAutomation}
-            className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50"
-          >
-            {runningAutomation ? 'Running...' : 'Run Automation'}
-          </button>
-        </div>
-        {(incidents || []).length > 0 ? (
-          <div className="space-y-2">
-            {incidents.slice(0, 8).map((incident) => (
-              <div key={incident.id} className="border rounded-lg p-3 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold">{incident.title}</p>
-                  <p className="text-xs text-gray-500">{incident.incident_type} | {incident.severity} | {incident.status}</p>
-                </div>
-                <span className="text-xs text-gray-500">{new Date(incident.created_at).toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No incidents detected.</p>
-        )}
-      </div>
 
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '20px', marginBottom: '16px' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <ShieldCheckIcon className="w-8 h-8 text-blue-600" />
-            <div>
-              <h2 className="text-xl font-semibold">SSO and SAML Authentication</h2>
-              <p className="text-sm text-gray-600">Single sign-on configuration</p>
-            </div>
-          </div>
-          <button onClick={() => setShowSSOForm(!showSSOForm)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            {showSSOForm ? 'Cancel' : 'Configure SSO'}
-          </button>
-        </div>
+          {accountManager?.name ? (
+            <article className="enterprise-callout enterprise-top-gap">
+              <p className="enterprise-list-title">Account Manager: {accountManager.name}</p>
+              <p>{accountManager.email} {accountManager.phone ? `| ${accountManager.phone}` : ''}</p>
+              <p>{accountManager.timezone} {accountManager.availability ? `| ${accountManager.availability}` : ''}</p>
+            </article>
+          ) : null}
 
-        {ssoConfig?.enabled && !showSSOForm && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-green-800 font-medium">SSO Enabled</p>
-            <p className="text-sm text-gray-600 mt-1">Provider: {ssoConfig.provider?.toUpperCase()}</p>
-            <p className="text-sm text-gray-600">Entity ID: {ssoConfig.entity_id}</p>
-          </div>
-        )}
-
-        {showSSOForm && (
-          <form onSubmit={handleSSOSubmit} className="mt-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Provider</label>
-              <select value={ssoForm.provider} onChange={(e) => setSsoForm({ ...ssoForm, provider: e.target.value })} className="w-full border rounded-lg px-3 py-2">
-                <option value="saml">SAML 2.0</option>
-                <option value="okta">Okta</option>
-                <option value="azure">Azure AD</option>
-                <option value="google">Google Workspace</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Entity ID</label>
-              <input type="text" value={ssoForm.entity_id} onChange={(e) => setSsoForm({ ...ssoForm, entity_id: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">SSO URL</label>
-              <input type="url" value={ssoForm.sso_url} onChange={(e) => setSsoForm({ ...ssoForm, sso_url: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">X.509 Certificate</label>
-              <textarea value={ssoForm.x509_cert} onChange={(e) => setSsoForm({ ...ssoForm, x509_cert: e.target.value })} className="w-full border rounded-lg px-3 py-2" rows="4" />
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" checked={ssoForm.enabled} onChange={(e) => setSsoForm({ ...ssoForm, enabled: e.target.checked })} className="rounded" />
-              <label className="text-sm">Enable SSO</label>
-            </div>
-            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Configuration</button>
-          </form>
-        )}
-      </div>
-
-      {accountManager?.name && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <UserGroupIcon className="w-8 h-8 text-purple-600" />
-            <div>
-              <h2 className="text-xl font-semibold">Dedicated Account Manager</h2>
-              <p className="text-sm text-gray-600">Your personal support contact</p>
-            </div>
-          </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <p className="font-medium text-lg">{accountManager.name}</p>
-            <p className="text-gray-600 mt-1">{accountManager.email}</p>
-            {accountManager.phone && <p className="text-gray-600">{accountManager.phone}</p>}
-            <p className="text-sm text-gray-500 mt-2">Timezone: {accountManager.timezone}</p>
-            {accountManager.availability && <p className="text-sm text-gray-600 mt-1">{accountManager.availability}</p>}
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <AcademicCapIcon className="w-8 h-8 text-green-600" />
-          <div>
-            <h2 className="text-xl font-semibold">Custom Training Programs</h2>
-            <p className="text-sm text-gray-600">Scheduled training sessions</p>
-          </div>
-        </div>
-        {trainings.length > 0 ? (
-          <div className="space-y-3">
-            {trainings.map((training) => (
-              <div key={training.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium">{training.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{training.description}</p>
+          <div className="enterprise-list enterprise-top-gap">
+            {trainings.length ? (
+              trainings.map((training) => (
+                <article key={training.id} className="enterprise-list-item">
+                  <div className="enterprise-inline-actions">
+                    <p className="enterprise-list-title">{training.title}</p>
+                    <span className={`enterprise-badge enterprise-badge-${statusTone(training.status)}`}>
+                      {training.status.replace('_', ' ')}
+                    </span>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(training.status)}`}>
-                    {training.status.replace('_', ' ')}
-                  </span>
-                </div>
-              </div>
-            ))}
+                  <p>{training.description}</p>
+                </article>
+              ))
+            ) : (
+              <p className="enterprise-empty">No training programs scheduled.</p>
+            )}
           </div>
-        ) : (
-          <p className="text-gray-500">No training programs scheduled</p>
-        )}
-      </div>
+        </SectionCard>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <ClockIcon className="w-8 h-8 text-orange-600" />
-          <div>
-            <h2 className="text-xl font-semibold">SLA Guarantees</h2>
-            <p className="text-sm text-gray-600">Service level performance tracking</p>
-          </div>
-        </div>
-        {slaData.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {slaData.map((sla) => (
-              <div key={sla.id} className="border rounded-lg p-4">
-                <h3 className="font-medium capitalize">{sla.metric.replace('_', ' ')}</h3>
-                <div className="text-sm text-gray-600 mt-2">
+        <SectionCard
+          icon={ChartBarSquareIcon}
+          title="Portfolio and SLA"
+          subtitle="Cross-project delivery health and contractual performance"
+        >
+          {portfolio ? (
+            <>
+              <div className="enterprise-mini-metrics">
+                <MetricCard label="Projects" value={portfolio.totals.projects} />
+                <MetricCard label="Issues" value={portfolio.totals.issues} />
+                <MetricCard label="Completion" value={`${portfolio.totals.completion_percent}%`} />
+                <MetricCard label="Blockers" value={portfolio.totals.active_blockers} />
+              </div>
+              <div className="enterprise-list enterprise-top-gap">
+                {(portfolio.projects || []).slice(0, 6).map((project) => (
+                  <article key={project.project_id} className="enterprise-list-item">
+                    <p className="enterprise-list-title">{project.project_name}</p>
+                    <p>{project.done_count}/{project.issue_count} done | overdue {project.overdue_issues} | blockers {project.active_blockers}</p>
+                    <p>Risk score: {project.risk_score}</p>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="enterprise-empty">No portfolio data available.</p>
+          )}
+
+          <div className="enterprise-list enterprise-top-gap">
+            {slaData.length ? (
+              slaData.map((sla) => (
+                <article key={sla.id} className="enterprise-list-item">
+                  <p className="enterprise-list-title">{sla.metric.replace('_', ' ')}</p>
                   <p>Guaranteed: {sla.guaranteed_value}%</p>
-                  {sla.actual_value && <p>Actual: {sla.actual_value}%</p>}
-                </div>
-              </div>
+                  <p>Actual: {sla.actual_value || 'N/A'}%</p>
+                </article>
+              ))
+            ) : (
+              <p className="enterprise-empty">No SLA data available.</p>
+            )}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          icon={BoltIcon}
+          title="Automation Rules"
+          subtitle="Build SLA detection and escalation workflows"
+          actions={(
+            <button
+              type="button"
+              className="enterprise-btn enterprise-btn-secondary"
+              onClick={runIncidentAutomation}
+              disabled={runningAutomation}
+            >
+              {runningAutomation ? 'Running...' : 'Run Now'}
+            </button>
+          )}
+        >
+          <form onSubmit={createSlaRule} className="enterprise-form-grid">
+            <label>
+              <span>SLA Rule Name</span>
+              <input value={slaForm.name} onChange={(e) => setSlaForm({ ...slaForm, name: e.target.value })} required />
+            </label>
+            <label>
+              <span>Metric</span>
+              <select value={slaForm.metric} onChange={(e) => setSlaForm({ ...slaForm, metric: e.target.value })}>
+                <option value="uptime">uptime</option>
+                <option value="response_time">response_time</option>
+                <option value="resolution_time">resolution_time</option>
+                <option value="support_response">support_response</option>
+              </select>
+            </label>
+            <label>
+              <span>Threshold %</span>
+              <input type="number" step="0.01" value={slaForm.threshold_percent} onChange={(e) => setSlaForm({ ...slaForm, threshold_percent: e.target.value })} />
+            </label>
+            <label>
+              <span>Lookback Days</span>
+              <input type="number" value={slaForm.lookback_days} onChange={(e) => setSlaForm({ ...slaForm, lookback_days: e.target.value })} />
+            </label>
+            <label>
+              <span>Severity</span>
+              <select value={slaForm.severity} onChange={(e) => setSlaForm({ ...slaForm, severity: e.target.value })}>
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+                <option value="critical">critical</option>
+              </select>
+            </label>
+            <div>
+              <button className="enterprise-btn enterprise-btn-primary" disabled={savingRules}>Create SLA Rule</button>
+            </div>
+          </form>
+
+          <form onSubmit={createEscalationRule} className="enterprise-form-grid enterprise-top-gap">
+            <label>
+              <span>Escalation Name</span>
+              <input value={escalationForm.name} onChange={(e) => setEscalationForm({ ...escalationForm, name: e.target.value })} required />
+            </label>
+            <label>
+              <span>Incident Type</span>
+              <select value={escalationForm.incident_type} onChange={(e) => setEscalationForm({ ...escalationForm, incident_type: e.target.value })}>
+                <option value="">all</option>
+                <option value="sla_risk">sla_risk</option>
+                <option value="blocker_spike">blocker_spike</option>
+                <option value="delivery_risk">delivery_risk</option>
+              </select>
+            </label>
+            <label>
+              <span>Min Severity</span>
+              <select value={escalationForm.min_severity} onChange={(e) => setEscalationForm({ ...escalationForm, min_severity: e.target.value })}>
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+                <option value="critical">critical</option>
+              </select>
+            </label>
+            <label>
+              <span>Delay (minutes)</span>
+              <input type="number" value={escalationForm.escalation_delay_minutes} onChange={(e) => setEscalationForm({ ...escalationForm, escalation_delay_minutes: e.target.value })} />
+            </label>
+            <label className="enterprise-check"><input type="checkbox" checked={escalationForm.create_task} onChange={(e) => setEscalationForm({ ...escalationForm, create_task: e.target.checked })} /><span>Create task</span></label>
+            <label className="enterprise-check"><input type="checkbox" checked={escalationForm.create_blocker} onChange={(e) => setEscalationForm({ ...escalationForm, create_blocker: e.target.checked })} /><span>Create blocker</span></label>
+            <div className="enterprise-col-span">
+              <button className="enterprise-btn enterprise-btn-primary" disabled={savingRules}>Create Escalation Rule</button>
+            </div>
+          </form>
+
+          <div className="enterprise-list enterprise-top-gap">
+            {slaRules.map((rule) => (
+              <article key={rule.id} className="enterprise-list-item">
+                <p className="enterprise-list-title">{rule.name}</p>
+                <p>{rule.metric} | threshold {rule.threshold_percent}% | {rule.lookback_days}d | {rule.severity}</p>
+              </article>
+            ))}
+            {escalationRules.map((rule) => (
+              <article key={rule.id} className="enterprise-list-item">
+                <p className="enterprise-list-title">{rule.name}</p>
+                <p>{rule.incident_type || 'all'} | min {rule.min_severity} | {rule.escalation_delay_minutes}m</p>
+              </article>
             ))}
           </div>
-        ) : (
-          <p className="text-gray-500">No SLA data available</p>
-        )}
+        </SectionCard>
+
+        <SectionCard
+          icon={ExclamationTriangleIcon}
+          title="Incident Feed"
+          subtitle="Recent automation and operational risk events"
+        >
+          <div className="enterprise-list">
+            {incidents.length ? (
+              incidents.slice(0, 8).map((incident) => (
+                <article key={incident.id} className="enterprise-list-item">
+                  <div className="enterprise-inline-actions">
+                    <p className="enterprise-list-title">{incident.title}</p>
+                    <span className={`enterprise-badge enterprise-badge-${statusTone(incident.status)}`}>
+                      {incident.status}
+                    </span>
+                  </div>
+                  <p>{incident.incident_type} | severity: {incident.severity}</p>
+                  <p>{formatDateTime(incident.created_at)}</p>
+                </article>
+              ))
+            ) : (
+              <p className="enterprise-empty">No incidents detected.</p>
+            )}
+          </div>
+        </SectionCard>
+
+        {onPremise?.id ? (
+          <SectionCard icon={ServerIcon} title="On-Premise Deployment" subtitle="Self-hosted enterprise installation status">
+            <article className="enterprise-callout">
+              <p className="enterprise-list-title">Status: {onPremise.status}</p>
+              <p>Location: {onPremise.server_location}</p>
+            </article>
+          </SectionCard>
+        ) : null}
+
+        <SectionCard icon={ClockIcon} title="Support and Learning" subtitle="Training and enablement lifecycle">
+          <div className="enterprise-list">
+            {trainings.length ? (
+              trainings.map((training) => (
+                <article key={`timeline-${training.id}`} className="enterprise-list-item">
+                  <div className="enterprise-inline-actions">
+                    <p className="enterprise-list-title">{training.title}</p>
+                    <span className={`enterprise-badge enterprise-badge-${statusTone(training.status)}`}>
+                      {training.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p>{training.description}</p>
+                </article>
+              ))
+            ) : (
+              <p className="enterprise-empty">No active training timeline.</p>
+            )}
+          </div>
+        </SectionCard>
+
+        <SectionCard icon={AcademicCapIcon} title="Training Catalog" subtitle="Knowledge transfer sessions for enterprise teams">
+          <div className="enterprise-mini-metrics">
+            <MetricCard label="Programs" value={trainings.length} />
+            <MetricCard label="Completed" value={trainings.filter((t) => t.status === 'completed').length} />
+            <MetricCard label="In Progress" value={trainings.filter((t) => t.status === 'in_progress').length} />
+            <MetricCard label="Scheduled" value={trainings.filter((t) => t.status === 'scheduled').length} />
+          </div>
+        </SectionCard>
       </div>
-
-      {onPremise?.id && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <ServerIcon className="w-8 h-8 text-indigo-600" />
-            <div>
-              <h2 className="text-xl font-semibold">On-Premise Deployment</h2>
-              <p className="text-sm text-gray-600">Self-hosted installation</p>
-            </div>
-          </div>
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-            <p className="font-medium">Status: {onPremise.status}</p>
-            <p className="text-sm text-gray-600">Location: {onPremise.server_location}</p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Metric({ label, value }) {
-  return (
-    <div className="border rounded-lg p-3">
-      <p className="text-xl font-semibold">{value}</p>
-      <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

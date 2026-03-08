@@ -10,7 +10,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import DecisionIllustration from "../components/DecisionIllustration";
 import api from "../services/api";
 
 function Decisions() {
@@ -23,7 +22,7 @@ function Decisions() {
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState("list");
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("recent");
 
@@ -128,44 +127,64 @@ function Decisions() {
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
-      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.19), transparent 34%), radial-gradient(circle at 90% 8%, rgba(168,85,247,0.15), transparent 30%)" : "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.13), transparent 34%), radial-gradient(circle at 90% 8%, rgba(168,85,247,0.1), transparent 30%)" }} />
+      <div
+        style={{
+          ...ambientLayer,
+          background: darkMode
+            ? "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.14), transparent 34%)"
+            : "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.09), transparent 34%)",
+        }}
+      />
       <div style={ui.container}>
-        <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "10ms" }}>
-          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Conversations</button>
-          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/sprint")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Current Sprint</button>
+        <section
+          className="ui-enter"
+          style={{
+            ...commandStrip,
+            position: "sticky",
+            top: 72,
+            border: `1px solid ${palette.border}`,
+            background: darkMode ? "rgba(17,24,39,0.88)" : "rgba(255,255,255,0.86)",
+            backdropFilter: "blur(8px)",
+            "--ui-delay": "10ms",
+          }}
+        >
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+            Conversations
+          </button>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/sprint")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+            Current Sprint
+          </button>
           <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecisions} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
             <ArrowPathIcon style={{ width: 13, height: 13 }} /> Refresh
           </button>
-        </section>
-
-        <section className="ui-enter" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(138deg,var(--app-info-soft),rgba(249,115,22,0.12),rgba(168,85,247,0.16))" : "linear-gradient(138deg,rgba(147,197,253,0.5),rgba(254,215,170,0.58),rgba(221,214,254,0.5))", padding: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12, position: "relative", zIndex: 1, "--ui-delay": "70ms" }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>DECISION CENTER</p>
-            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.24rem,2.35vw,1.88rem)", color: palette.text, letterSpacing: "-0.02em" }}>Decision Operating System</h1>
-            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track choices, confidence, and execution outcomes from one launch-ready flow.</p>
-          </div>
-          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={ui.primaryButton}>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={{ ...ui.primaryButton, marginLeft: "auto" }}>
             <PlusIcon style={{ width: 14, height: 14 }} /> New Decision
           </button>
         </section>
 
-        <section className="ui-enter" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8, marginBottom: 12, "--ui-delay": "130ms" }}>
+        <section className="ui-enter" style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 10, position: "relative", zIndex: 1, "--ui-delay": "70ms" }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>DECISION CENTER</p>
+            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.2rem,2.3vw,1.75rem)", color: palette.text, letterSpacing: "-0.02em" }}>Decisions</h1>
+            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track proposals, approvals, and implementation progress.</p>
+          </div>
+        </section>
+
+        <section className="ui-enter" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8, marginBottom: 10, "--ui-delay": "130ms" }}>
           <Metric label="Total" value={decisions.length} palette={palette} />
           <Metric label="Approved" value={statusCounts.approved || 0} palette={palette} tone={statusConfig.approved.tone} />
-          <Metric label="Under Review" value={statusCounts.under_review || 0} palette={palette} tone={statusConfig.under_review.tone} />
           <Metric label="Implemented" value={statusCounts.implemented || 0} palette={palette} tone={statusConfig.implemented.tone} />
-          <Metric label="Approval Rate" value={`${approvalRate}%`} palette={palette} />
-          <Metric label="Implementation Rate" value={`${implementedRate}%`} palette={palette} />
+          <Metric label="Approval" value={`${approvalRate}%`} palette={palette} />
         </section>
 
         <section
           className="ui-enter"
           style={{
-            borderRadius: 12,
+            borderRadius: 10,
             border: `1px solid ${palette.border}`,
             background: palette.card,
-            padding: 10,
-            marginBottom: 12,
+            padding: 8,
+            marginBottom: 10,
             display: "flex",
             justifyContent: "space-between",
             gap: 10,
@@ -173,7 +192,7 @@ function Decisions() {
             "--ui-delay": "170ms",
           }}
         >
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
             {["all", "proposed", "under_review", "approved", "implemented"].map((status) => (
               <button
                 className="ui-btn-polish ui-focus-ring"
@@ -181,8 +200,8 @@ function Decisions() {
                 onClick={() => setFilter(status)}
                 style={{
                   ...ui.secondaryButton,
-                  fontSize: 11,
-                  padding: "7px 10px",
+                  fontSize: 10,
+                  padding: "6px 9px",
                   textTransform: "capitalize",
                   display: "inline-flex",
                   alignItems: "center",
@@ -192,19 +211,19 @@ function Decisions() {
                   color: filter === status ? (darkMode ? "var(--app-link)" : "var(--app-link)") : ui.secondaryButton.color,
                 }}
               >
-                <FunnelIcon style={{ width: 12, height: 12 }} />
+                <FunnelIcon style={{ width: 11, height: 11 }} />
                 {status === "all" ? "All" : status.replace("_", " ")}
               </button>
             ))}
           </div>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
-            <div style={{ position: "relative", minWidth: isMobile ? 0 : 220, width: isMobile ? "100%" : "auto", flex: 1 }}>
+            <div style={{ position: "relative", minWidth: isMobile ? 0 : 210, width: isMobile ? "100%" : "auto", flex: 1 }}>
               <MagnifyingGlassIcon style={{ width: 14, height: 14, position: "absolute", left: 10, top: 10, color: palette.muted }} />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search title, description, owner..."
+                placeholder="Search decisions..."
                 style={{ ...ui.input, paddingLeft: 30 }}
               />
             </div>
@@ -250,16 +269,16 @@ function Decisions() {
                 key={decision.id}
                 onClick={() => navigate(`/decisions/${decision.id}`)}
                 style={{
-                  borderRadius: 14,
+                  borderRadius: 10,
                   border: `1px solid ${palette.border}`,
-                  background: "linear-gradient(160deg,var(--app-surface),var(--app-surface-alt))",
-                  padding: 14,
+                  background: palette.card,
+                  padding: 12,
                   cursor: "pointer",
                   transition: "transform 0.18s ease",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>
                     <Badge text={statusLabel(decision.status)} tone={statusConfig[decision.status]?.tone || statusConfig.default.tone} />
                     <Badge
                       text={(decision.impact_level || "medium").toUpperCase()}
@@ -270,13 +289,13 @@ function Decisions() {
                       }
                     />
                   </div>
-                  <DecisionIllustration decision={decision} darkMode={darkMode} size={62} />
+                  <span style={{ fontSize: 11, color: palette.muted }}>{formatDate(decision.created_at)}</span>
                 </div>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: palette.text }}>{decision.title}</p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{decision.title}</p>
                 {decision.description && <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{decision.description}</p>}
-                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 11, color: palette.muted }}>
+                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 11, color: palette.muted, paddingTop: 8, borderTop: `1px solid ${palette.border}` }}>
+                  <span>Owner</span>
                   <span>{decision.decision_maker_name || "Unknown"}</span>
-                  <span>{formatDate(decision.created_at)}</span>
                 </div>
               </article>
             ))}
@@ -289,10 +308,10 @@ function Decisions() {
                 key={decision.id}
                 onClick={() => navigate(`/decisions/${decision.id}`)}
                 style={{
-                  borderRadius: 12,
+                  borderRadius: 10,
                   border: `1px solid ${palette.border}`,
                   background: palette.card,
-                  padding: 12,
+                  padding: 10,
                   cursor: "pointer",
                   display: "flex",
                   justifyContent: "space-between",
@@ -314,14 +333,14 @@ function Decisions() {
                       }
                     />
                     </div>
-                    <DecisionIllustration decision={decision} darkMode={darkMode} size={52} />
+                    <span style={{ fontSize: 11, color: palette.muted }}>{formatDate(decision.created_at)}</span>
                   </div>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{decision.title}</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: palette.text }}>{decision.title}</p>
                   {decision.description && <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{decision.description}</p>}
                 </div>
                 <div style={{ fontSize: 11, color: palette.muted, textAlign: "right" }}>
-                  <p style={{ margin: 0 }}>{decision.decision_maker_name || "Unknown"}</p>
-                  <p style={{ margin: "4px 0 0" }}>{formatDate(decision.created_at)}</p>
+                  <p style={{ margin: 0 }}>Owner</p>
+                  <p style={{ margin: "4px 0 0", color: palette.text }}>{decision.decision_maker_name || "Unknown"}</p>
                 </div>
               </article>
             ))}
@@ -334,17 +353,21 @@ function Decisions() {
 
 function Metric({ label, value, palette, tone }) {
   return (
-    <article
+    <div
       style={{
-        borderRadius: 12,
-        padding: 12,
+        borderRadius: 999,
+        padding: "8px 12px",
         border: `1px solid ${tone?.border || palette.border}`,
-        background: tone?.bg || palette.cardAlt,
+        background: tone?.bg || "transparent",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 8,
       }}
     >
-      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: tone?.text || palette.text }}>{value}</p>
-      <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>{label}</p>
-    </article>
+      <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>{label}</p>
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: tone?.text || palette.text }}>{value}</p>
+    </div>
   );
 }
 
@@ -368,8 +391,8 @@ function Badge({ text, tone }) {
 }
 
 const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
-const commandStrip = { position: "relative", zIndex: 1, marginBottom: 10, borderRadius: 12, padding: 8, display: "flex", flexWrap: "wrap", gap: 8 };
-const commandPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "7px 11px", background: "transparent", fontSize: 12, fontWeight: 700, cursor: "pointer" };
+const commandStrip = { position: "relative", zIndex: 10, marginBottom: 10, borderRadius: 12, padding: 8, display: "flex", flexWrap: "wrap", gap: 8 };
+const commandPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "6px 10px", background: "transparent", fontSize: 11, fontWeight: 700, cursor: "pointer" };
 
 function formatDate(rawDate) {
   if (!rawDate) return "Unknown date";

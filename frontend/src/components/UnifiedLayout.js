@@ -318,7 +318,7 @@ export default function UnifiedLayout({ children }) {
               boxShadow: darkMode ? "0 18px 44px rgba(2,8,16,0.36)" : "0 18px 42px rgba(29,55,78,0.12)",
             }}
           >
-            <div style={headerTop}>
+            <div style={headerPrimaryRow}>
               <div style={headerIdentity}>
                 <BrandLogo tone={darkMode ? "dark" : "light"} size={isMobile ? "sm" : "md"} showText={!isMobile} />
                 <div style={headerTitleBlock}>
@@ -326,30 +326,6 @@ export default function UnifiedLayout({ children }) {
                   <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
                     {pageTitle}
                   </h1>
-                  {!isMobile && (
-                    <div style={headerInlineMetaPills}>
-                      <span
-                        style={{
-                          ...headerInlinePill,
-                          border: `1px solid ${palette.border}`,
-                          background: palette.buttonBg,
-                          color: palette.text,
-                        }}
-                      >
-                        {user?.organization_slug || "workspace"}
-                      </span>
-                      <span
-                        style={{
-                          ...headerInlinePill,
-                          border: `1px solid ${palette.border}`,
-                          background: palette.buttonBg,
-                          color: palette.muted,
-                        }}
-                      >
-                        {String(user?.experience_mode || "standard").toUpperCase()}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
               <div style={{ ...headerActions, ...(isMobile ? headerActionsMobile : null) }}>
@@ -520,35 +496,31 @@ export default function UnifiedLayout({ children }) {
                 </div>
               </div>
             </div>
-            <div style={{ ...headerMetaRow, ...(isMobile ? { gap: 8 } : null) }}>
+            <div style={{ ...headerSecondaryRow, borderTop: `1px solid ${palette.border}` }}>
               <div style={{ ...headerBreadcrumbs, ...(isMobile ? { display: "none" } : null) }}>
                 <Breadcrumbs darkMode={darkMode} />
               </div>
               <div style={headerMetaPills}>
-                {isMobile && (
-                  <>
-                    <span
-                      style={{
-                        ...headerPill,
-                        border: `1px solid ${palette.border}`,
-                        background: palette.buttonBg,
-                        color: palette.text,
-                      }}
-                    >
-                      {user?.organization_slug || "workspace"}
-                    </span>
-                    <span
-                      style={{
-                        ...headerPill,
-                        border: `1px solid ${palette.border}`,
-                        background: palette.buttonBg,
-                        color: palette.muted,
-                      }}
-                    >
-                      {String(user?.experience_mode || "standard").toUpperCase()}
-                    </span>
-                  </>
-                )}
+                <span
+                  style={{
+                    ...headerPill,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.buttonBg,
+                    color: palette.text,
+                  }}
+                >
+                  {user?.organization_slug || "workspace"}
+                </span>
+                <span
+                  style={{
+                    ...headerPill,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.buttonBg,
+                    color: palette.muted,
+                  }}
+                >
+                  {String(user?.experience_mode || "standard").toUpperCase()}
+                </span>
                 <span
                   style={{
                     ...headerPill,
@@ -811,7 +783,7 @@ const layoutHeader = {
   top: 12,
   zIndex: 80,
   borderRadius: 20,
-  padding: "12px 14px 12px",
+  padding: "12px 14px 10px",
   marginBottom: 18,
   backdropFilter: "blur(10px)",
 };
@@ -819,7 +791,7 @@ const layoutHeader = {
 const layoutHeaderMobile = {
   top: 8,
   borderRadius: 14,
-  padding: "10px 10px 10px",
+  padding: "10px 10px 8px",
   marginBottom: 10,
 };
 
@@ -843,9 +815,9 @@ const headerTitleMobile = {
   fontSize: "1.05rem",
 };
 
-const headerTop = {
+const headerPrimaryRow = {
   display: "flex",
-  alignItems: "flex-start",
+  alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
   flexWrap: "wrap",
@@ -885,12 +857,17 @@ const headerBreadcrumbs = {
 };
 
 const headerMetaRow = {
-  marginTop: 12,
+  marginTop: 10,
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
   flexWrap: "wrap",
+};
+
+const headerSecondaryRow = {
+  ...headerMetaRow,
+  paddingTop: 10,
 };
 
 const headerMetaPills = {
@@ -908,21 +885,6 @@ const headerPill = {
   letterSpacing: "0.04em",
 };
 
-const headerInlineMetaPills = {
-  marginTop: 8,
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  flexWrap: "wrap",
-};
-
-const headerInlinePill = {
-  borderRadius: 999,
-  padding: "4px 9px",
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.06em",
-};
 
 function getPageTitle(pathname) {
   const routeTitles = [

@@ -1,166 +1,129 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+import { getProjectPalette } from '../utils/projectUi';
 import { buildApiUrl } from '../utils/apiBase';
-import { 
-  ClipboardDocumentCheckIcon, 
-  DocumentCheckIcon, 
-  CalendarIcon,
-  ChatBubbleLeftIcon,
-  FlagIcon
-} from '@heroicons/react/24/outline';
+import { ClipboardDocumentCheckIcon, DocumentCheckIcon, CalendarIcon, ChatBubbleLeftIcon, FlagIcon } from '@heroicons/react/24/outline';
+
+function authHeaders() {
+  const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function unwrapPayload(payload, fallback = {}) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === 'object') {
+    if (payload.data && typeof payload.data === 'object') return payload.data;
+    return payload;
+  }
+  return fallback;
+}
+
+function panelStyle(palette) {
+  return {
+    borderRadius: 10,
+    border: `1px solid ${palette.border}`,
+    background: palette.card,
+    padding: 10,
+  };
+}
+
+function cellStyle(palette) {
+  return {
+    borderRadius: 8,
+    border: `1px solid ${palette.border}`,
+    background: palette.cardAlt,
+    padding: 8,
+  };
+}
 
 export default function DashboardWidgets() {
   const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const navigate = useNavigate();
   const [digest, setDigest] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-500' : 'text-gray-600';
-  const hoverBg = darkMode ? 'hover:bg-stone-800' : 'hover:bg-gray-50';
-
   useEffect(() => {
+    const fetchDigest = async () => {
+      try {
+        const res = await fetch(buildApiUrl('/api/knowledge/daily-digest/'), {
+          headers: authHeaders(),
+        });
+        const raw = await res.json();
+        setDigest(unwrapPayload(raw, {}));
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchDigest();
   }, []);
 
-  const fetchDigest = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(buildApiUrl('/api/knowledge/daily-digest/'), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setDigest(data);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const quickActions = [
-    { label: 'New Task', icon: ClipboardDocumentCheckIcon, path: '/business/tasks', color: 'blue' },
-    { label: 'New Conversation', icon: ChatBubbleLeftIcon, path: '/conversations/new', color: 'green' },
-    { label: 'New Decision', icon: DocumentCheckIcon, path: '/decisions', color: 'purple' },
-    { label: 'New Goal', icon: FlagIcon, path: '/business/goals', color: 'orange' }
+    { label: 'New Task', icon: ClipboardDocumentCheckIcon, path: '/business/tasks' },
+    { label: 'New Conversation', icon: ChatBubbleLeftIcon, path: '/conversations/new' },
+    { label: 'New Decision', icon: DocumentCheckIcon, path: '/decisions' },
+    { label: 'New Goal', icon: FlagIcon, path: '/business/goals' },
   ];
 
-  const getColorClass = (color) => {
-    if (darkMode) {
-      return color === 'blue' ? 'bg-blue-900/20 text-blue-400 border-blue-800' :
-             color === 'green' ? 'bg-green-900/20 text-green-400 border-green-800' :
-             color === 'purple' ? 'bg-purple-900/20 text-purple-400 border-purple-800' :
-             'bg-orange-900/20 text-orange-400 border-orange-800';
-    }
-    return color === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-           color === 'green' ? 'bg-green-50 text-green-700 border-green-200' :
-           color === 'purple' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-           'bg-orange-50 text-orange-700 border-orange-200';
-  };
-
-  const getPriorityColor = (priority) => {
-    if (darkMode) {
-      return priority === 'high' ? 'text-red-400' :
-             priority === 'medium' ? 'text-yellow-400' : 'text-blue-400';
-    }
-    return priority === 'high' ? 'text-red-600' :
-           priority === 'medium' ? 'text-yellow-600' : 'text-blue-600';
-  };
-
   if (loading) {
-    return <div className={`${bgSecondary} border ${borderColor} rounded-lg p-6`}>Loading...</div>;
+    return <div style={panelStyle(palette)}>Loading...</div>;
   }
 
   return (
-    <div className="space-y-5">
-      {/* Quick Actions */}
-      <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
-        <h3 className={`text-sm font-semibold ${textPrimary} mb-4`}>Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-3">
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={panelStyle(palette)}>
+        <h3 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: palette.text }}>Quick Actions</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 8 }}>
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
               <button
                 key={action.label}
                 onClick={() => navigate(action.path)}
-                className={`p-3.5 border rounded-lg ${getColorClass(action.color)} ${hoverBg} transition-all text-left`}
+                style={{ ...cellStyle(palette), textAlign: 'left', cursor: 'pointer', color: palette.text }}
               >
-                <Icon className="w-5 h-5 mb-2.5" />
-                <div className="text-xs font-medium">{action.label}</div>
+                <Icon style={{ width: 16, height: 16, color: palette.info, marginBottom: 6 }} />
+                <div style={{ fontSize: 11, fontWeight: 600 }}>{action.label}</div>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Pending Tasks */}
-      {digest?.pending_tasks && digest.pending_tasks.length > 0 && (
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
-          <h3 className={`text-sm font-semibold ${textPrimary} mb-4`}>Pending Tasks</h3>
-          <div className="space-y-3">
-            {digest.pending_tasks.map((task) => (
-              <div
-                key={task.id}
-                onClick={() => navigate('/business/tasks')}
-                className={`p-3.5 border ${borderColor} rounded cursor-pointer ${hoverBg} transition-all`}
-              >
-                <div className="flex items-start justify-between mb-1">
-                  <div className={`text-sm font-medium ${textPrimary}`}>{task.title}</div>
-                  <span className={`text-xs font-semibold ${getPriorityColor(task.priority)}`}>
-                    {task.priority}
-                  </span>
-                </div>
-                {task.due_date && (
-                  <div className={`text-xs ${textSecondary}`}>
-                    Due: {new Date(task.due_date).toLocaleDateString()}
-                  </div>
-                )}
-              </div>
-            ))}
+      {digest?.activity_summary && (
+        <div style={panelStyle(palette)}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: palette.text }}>Last 24 Hours</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 8 }}>
+            <div style={cellStyle(palette)}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: palette.text }}>{digest.activity_summary.decisions}</div>
+              <div style={{ fontSize: 11, color: palette.muted }}>Decisions</div>
+            </div>
+            <div style={cellStyle(palette)}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: palette.text }}>{digest.activity_summary.conversations}</div>
+              <div style={{ fontSize: 11, color: palette.muted }}>Conversations</div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Decisions Needing Input */}
-      {digest?.decisions_needing_input && digest.decisions_needing_input.length > 0 && (
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
-          <h3 className={`text-sm font-semibold ${textPrimary} mb-4`}>Decisions Needing Input</h3>
-          <div className="space-y-3">
-            {digest.decisions_needing_input.map((decision) => (
-              <div
-                key={decision.id}
-                onClick={() => navigate(`/decisions/${decision.id}`)}
-                className={`p-3.5 border ${borderColor} rounded cursor-pointer ${hoverBg} transition-all`}
-              >
-                <div className={`text-sm font-medium ${textPrimary} mb-1`}>{decision.title}</div>
-                <div className={`text-xs ${textSecondary} capitalize`}>
-                  {decision.impact_level} impact | {decision.status}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Upcoming Meetings */}
       {digest?.upcoming_meetings && digest.upcoming_meetings.length > 0 && (
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
-          <h3 className={`text-sm font-semibold ${textPrimary} mb-4 flex items-center gap-2`}>
-            <CalendarIcon className="w-4 h-4" />
-            Today's Meetings
+        <div style={panelStyle(palette)}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: palette.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <CalendarIcon style={{ width: 14, height: 14 }} /> Today's Meetings
           </h3>
-          <div className="space-y-3">
+          <div style={{ display: 'grid', gap: 8 }}>
             {digest.upcoming_meetings.map((meeting) => (
               <div
                 key={meeting.id}
                 onClick={() => navigate(`/business/meetings/${meeting.id}`)}
-                className={`p-3.5 border ${borderColor} rounded cursor-pointer ${hoverBg} transition-all`}
+                style={{ ...cellStyle(palette), cursor: 'pointer' }}
               >
-                <div className={`text-sm font-medium ${textPrimary} mb-1`}>{meeting.title}</div>
-                <div className={`text-xs ${textSecondary}`}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>{meeting.title}</div>
+                <div style={{ fontSize: 11, color: palette.muted, marginTop: 2 }}>
                   {new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} | {meeting.duration_minutes} min
                 </div>
               </div>
@@ -168,25 +131,6 @@ export default function DashboardWidgets() {
           </div>
         </div>
       )}
-
-      {/* Activity Summary */}
-      {digest?.activity_summary && (
-        <div className={`${bgSecondary} border ${borderColor} rounded-lg p-5`}>
-          <h3 className={`text-sm font-semibold ${textPrimary} mb-4`}>Last 24 Hours</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className={`border ${borderColor} rounded-lg p-3`}>
-              <div className={`text-2xl font-bold ${textPrimary}`}>{digest.activity_summary.decisions}</div>
-              <div className={`text-xs ${textSecondary}`}>Decisions</div>
-            </div>
-            <div className={`border ${borderColor} rounded-lg p-3`}>
-              <div className={`text-2xl font-bold ${textPrimary}`}>{digest.activity_summary.conversations}</div>
-              <div className={`text-xs ${textSecondary}`}>Conversations</div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
-

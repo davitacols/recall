@@ -5,7 +5,6 @@ import {
   CalendarDaysIcon,
   CheckCircleIcon,
   ClockIcon,
-  DocumentTextIcon,
   ExclamationTriangleIcon,
   FlagIcon,
 } from "@heroicons/react/24/outline";
@@ -107,13 +106,11 @@ export default function BusinessDashboard() {
       <div style={ui.container}>
         <section
           style={{
-            borderRadius: 16,
+            borderRadius: 12,
             border: `1px solid ${palette.border}`,
-            background: darkMode
-              ? "radial-gradient(circle at 12% 16%, rgba(90,174,231,0.2), rgba(16,24,31,0.85) 58%)"
-              : "radial-gradient(circle at 12% 16%, rgba(47,128,184,0.14), rgba(255,255,255,0.82) 58%)",
-            padding: 16,
-            marginBottom: 12,
+            background: palette.card,
+            padding: 14,
+            marginBottom: 10,
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -131,17 +128,10 @@ export default function BusinessDashboard() {
           </div>
         </section>
 
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8, marginBottom: 12 }}>
-          <StatusCard title="Needs Attention" value={`${computed.stalledGoals} stalled goals`} subtitle={`${computed.todoTasks} tasks waiting`} palette={palette} tone={computed.stalledGoals > 0 ? palette.danger : palette.success} icon={ExclamationTriangleIcon} />
-          <StatusCard title="Next 24 Hours" value={`${computed.meetingsNext24h} meetings`} subtitle={`${computed.meetingsToday} today`} palette={palette} tone={computed.meetingsNext24h > 0 ? palette.warn : palette.success} icon={CalendarDaysIcon} />
-          <StatusCard title="Execution Health" value={`${computed.completionRate}% complete`} subtitle={`${computed.inProgressTasks} in progress`} palette={palette} tone={computed.completionRate >= 60 ? palette.success : palette.warn} icon={CheckCircleIcon} />
-        </section>
-
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
-          <MetricCard to="/business/goals" icon={FlagIcon} label="Goals" value={goals.length} helper={`${computed.stalledGoals} at risk`} palette={palette} />
-          <MetricCard to="/business/meetings" icon={CalendarDaysIcon} label="Meetings" value={meetings.length} helper={`${computed.meetingsToday} today`} palette={palette} />
-          <MetricCard to="/business/tasks" icon={ClockIcon} label="Tasks" value={tasks.length} helper={`${computed.todoTasks} todo`} palette={palette} />
-          <MetricCard to="/business/tasks" icon={CheckCircleIcon} label="Completed" value={computed.doneTasks} helper={`${computed.completionRate}% completion`} palette={palette} />
+        <section style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+          <SummaryPill icon={ExclamationTriangleIcon} label="Attention" value={`${computed.stalledGoals} goals`} palette={palette} tone={computed.stalledGoals > 0 ? palette.danger : palette.success} />
+          <SummaryPill icon={CalendarDaysIcon} label="Next 24h" value={`${computed.meetingsNext24h} meetings`} palette={palette} tone={computed.meetingsNext24h > 0 ? palette.warn : palette.success} />
+          <SummaryPill icon={CheckCircleIcon} label="Execution" value={`${computed.completionRate}% done`} palette={palette} tone={computed.completionRate >= 60 ? palette.success : palette.warn} />
         </section>
 
         <section style={{ ...ui.responsiveSplit, alignItems: "start" }}>
@@ -183,12 +173,12 @@ export default function BusinessDashboard() {
             </ListSection>
           </div>
 
-          <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+          <section style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.card, padding: 10 }}>
             <h2 style={{ margin: "0 0 10px", fontSize: 15, color: palette.text, letterSpacing: "0.06em", textTransform: "uppercase" }}>Quick Actions</h2>
             <div style={{ display: "grid", gap: 8 }}>
               <ActionLink to="/business/tasks" label="Open Task Board" helper="Move work from To Do to Done" icon={ClockIcon} palette={palette} />
               <ActionLink to="/business/meetings" label="Plan Meetings" helper="Check upcoming sessions and schedule new ones" icon={CalendarDaysIcon} palette={palette} />
-              <ActionLink to="/business/documents" label="Review Documents" helper="Keep decisions and references updated" icon={DocumentTextIcon} palette={palette} />
+              <ActionLink to="/business/goals" label="Review Goals" helper="Update stalled objectives and milestones" icon={FlagIcon} palette={palette} />
               <ActionLink to="/business/analytics" label="Open Analytics" helper="Track trends and outcomes" icon={FlagIcon} palette={palette} />
             </div>
           </section>
@@ -198,35 +188,19 @@ export default function BusinessDashboard() {
   );
 }
 
-function StatusCard({ title, value, subtitle, icon: Icon, palette, tone }) {
+function SummaryPill({ icon: Icon, label, value, palette, tone }) {
   return (
-    <article style={{ borderRadius: 12, border: `1px solid ${tone}`, background: palette.cardAlt, padding: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>{title}</p>
-        <Icon style={{ width: 16, height: 16, color: tone }} />
-      </div>
-      <p style={{ margin: "8px 0 0", fontSize: 17, fontWeight: 800, color: tone }}>{value}</p>
-      <p style={{ margin: "3px 0 0", fontSize: 11, color: palette.muted }}>{subtitle}</p>
-    </article>
-  );
-}
-
-function MetricCard({ to, icon: Icon, label, value, helper, palette }) {
-  return (
-    <Link to={to} style={{ borderRadius: 12, padding: 12, border: `1px solid ${palette.border}`, background: palette.card, textDecoration: "none" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>{label}</p>
-        <Icon style={{ width: 16, height: 16, color: palette.info }} />
-      </div>
-      <p style={{ margin: "7px 0 0", fontSize: 28, fontWeight: 800, color: palette.text }}>{value}</p>
-      <p style={{ margin: "2px 0 0", fontSize: 11, color: palette.muted }}>{helper}</p>
-    </Link>
+    <div style={{ borderRadius: 999, padding: "7px 10px", border: `1px solid ${tone || palette.border}`, background: "transparent", display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <Icon style={{ width: 14, height: 14, color: tone || palette.info }} />
+      <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>{label}</p>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: tone || palette.text }}>{value}</p>
+    </div>
   );
 }
 
 function ListSection({ title, linkTo, linkText, palette, children }) {
   return (
-    <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+    <section style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.card, padding: 10 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
         <h2 style={{ margin: 0, fontSize: 16, color: palette.text }}>{title}</h2>
         <Link to={linkTo} style={{ fontSize: 11, fontWeight: 700, color: palette.info, textDecoration: "none" }}>
@@ -244,7 +218,7 @@ function EmptyState({ text, palette }) {
 
 function ActionLink({ to, label, helper, icon: Icon, palette }) {
   return (
-    <Link to={to} style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10, textDecoration: "none", display: "grid", gridTemplateColumns: "16px 1fr", gap: 8, alignItems: "start" }}>
+    <Link to={to} style={{ borderRadius: 9, border: `1px solid ${palette.border}`, background: "transparent", padding: 9, textDecoration: "none", display: "grid", gridTemplateColumns: "16px 1fr", gap: 8, alignItems: "start" }}>
       <Icon style={{ width: 16, height: 16, color: palette.info }} />
       <div>
         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text }}>{label}</p>

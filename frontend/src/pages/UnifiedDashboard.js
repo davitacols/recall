@@ -5,7 +5,6 @@ import AdvancedAIInsights from "../components/AdvancedAIInsights";
 import DashboardWidgets from "../components/DashboardWidgets";
 import MissionControlPanel from "../components/MissionControlPanel";
 import ChiefOfStaffPanel from "../components/ChiefOfStaffPanel";
-import BrandedDashboardIllustration from "../components/BrandedDashboardIllustration";
 import {
   MetricsTracker,
   TeamExpertiseMap,
@@ -18,7 +17,6 @@ import {
   ChevronUpIcon,
   ClipboardDocumentListIcon,
   DocumentCheckIcon,
-  LinkIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
@@ -405,7 +403,7 @@ export default function UnifiedDashboard() {
       ctaTo: "/sprint",
       tone: sprintBlocked > 0 ? palette.warn : palette.good,
     },
-  ];
+  ].slice(0, 2);
 
   if (loading) {
     return (
@@ -453,14 +451,14 @@ export default function UnifiedDashboard() {
           border: `1px solid ${palette.border}`,
           "--ui-delay": "70ms",
           background: palette.panel,
-          boxShadow: palette.shadow,
-          borderRadius: 14,
-          padding: "16px 16px 14px",
+          boxShadow: "none",
+          borderRadius: 12,
+          padding: "14px 14px 12px",
         }}
       >
         <div style={heroMainWrap}>
           <p style={{ ...eyebrow, color: palette.muted }}>UNIFIED DASHBOARD</p>
-          <h1 style={{ ...title, color: palette.text }}>Unified Operations Command Center</h1>
+          <h1 style={{ ...title, color: palette.text }}>Unified Operations</h1>
           <p style={{ ...subtitle, color: palette.muted }}>
             Understand what needs attention now, what is healthy, and where to act next across decisions, outcomes, and sprint execution.
           </p>
@@ -474,18 +472,11 @@ export default function UnifiedDashboard() {
             </div>
           </div>
         </div>
-
-        {!isNarrow && (
-          <div style={heroArtWrap}>
-            <BrandedDashboardIllustration darkMode={darkMode} />
-          </div>
-        )}
       </section>
 
       <section className="ui-enter" style={{ ...kpiGrid, "--ui-delay": "130ms" }}>
         <StatCard label="Activities" value={stats.activity} icon={ChatBubbleLeftIcon} color={palette.accent} tone={palette} />
         <StatCard label="Decisions" value={stats.nodes} icon={DocumentCheckIcon} color={palette.info} tone={palette} />
-        <StatCard label="Links" value={stats.links} icon={LinkIcon} color={palette.dim} tone={palette} />
         <StatCard label="Success Rate" value={`${stats.rate}%`} icon={ArrowTrendingUpIcon} color={palette.good} tone={palette} />
       </section>
 
@@ -1129,7 +1120,6 @@ const subtitle = { margin: 0, fontSize: 14, lineHeight: 1.48, maxWidth: 700 };
 const heroMainWrap = { minWidth: 0, flex: 1 };
 
 const heroBadges = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
-const heroArtWrap = { width: "min(360px, 100%)", display: "grid", placeItems: "stretch" };
 
 const heroBadge = {
   display: "inline-flex",

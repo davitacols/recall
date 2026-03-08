@@ -33,6 +33,10 @@ jobs:
     - name: Run Tests
       working-directory: backend
       run: python manage.py test
+    - name: Run Knowledge/Decision Regression Tests
+      working-directory: backend
+      run: |
+        python manage.py test apps.knowledge.tests_api_contracts apps.knowledge.tests_cross_module_regression apps.decisions.tests_api_contracts apps.decisions.tests_workflow_permissions --settings=config.settings_test
     - name: Run Security Checks
       working-directory: backend
       run: |

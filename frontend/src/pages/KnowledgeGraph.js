@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import api from "../services/api";
 
 export default function KnowledgeGraph() {
   const navigate = useNavigate();
@@ -18,11 +19,8 @@ export default function KnowledgeGraph() {
 
   const fetchGraph = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/knowledge/graph/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setGraphData(await res.json());
+      const res = await api.get("/api/knowledge/graph/");
+      setGraphData(res?.data || { nodes: [], edges: [] });
     } catch (error) {
       console.error("Error:", error);
       setGraphData({ nodes: [], edges: [] });

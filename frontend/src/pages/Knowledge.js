@@ -32,7 +32,23 @@ const LABELS = {
 
 function normalizeSearchResponse(res) {
   const payload = res?.data?.data || res?.data?.results || res?.data || [];
-  return Array.isArray(payload) ? payload : [];
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === "object") {
+    const bucketToType = {
+      conversations: "conversation",
+      decisions: "decision",
+      tasks: "task",
+      meetings: "meeting",
+      documents: "document",
+    };
+    const flat = [];
+    Object.entries(bucketToType).forEach(([bucket, type]) => {
+      const items = Array.isArray(payload[bucket]) ? payload[bucket] : [];
+      items.forEach((item) => flat.push({ ...item, type: item.type || type }));
+    });
+    return flat;
+  }
+  return [];
 }
 
 function normalizeTrendingResponse(res) {

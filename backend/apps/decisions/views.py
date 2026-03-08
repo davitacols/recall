@@ -158,7 +158,17 @@ def decisions(request):
             )
         
         decisions_data = []
-        for decision in queryset[:20]:  # Limit to 20
+        limit_param = request.GET.get('limit')
+        if limit_param:
+            try:
+                limit = max(1, min(int(limit_param), 500))
+            except (TypeError, ValueError):
+                limit = None
+        else:
+            limit = None
+
+        decision_iterable = queryset.order_by('-created_at')[:limit] if limit else queryset.order_by('-created_at')
+        for decision in decision_iterable:
             confidence = calculate_confidence(decision)
             decisions_data.append({
                 'id': decision.id,

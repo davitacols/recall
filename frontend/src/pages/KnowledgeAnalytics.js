@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ArrowTrendingUpIcon, ChartBarIcon, LinkIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import api from "../services/api";
 
 export default function KnowledgeAnalytics() {
   const { darkMode } = useTheme();
@@ -17,15 +18,12 @@ export default function KnowledgeAnalytics() {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const [timeline, graph] = await Promise.all([
-        fetch(`${process.env.REACT_APP_API_URL}/api/knowledge/timeline/?days=30`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
-        fetch(`${process.env.REACT_APP_API_URL}/api/knowledge/graph/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
+      const [timelineRes, graphRes] = await Promise.all([
+        api.get("/api/knowledge/timeline/?days=30"),
+        api.get("/api/knowledge/graph/"),
       ]);
+      const timeline = timelineRes?.data?.results || timelineRes?.data || [];
+      const graph = graphRes?.data || { nodes: [], edges: [] };
 
       const activityByType = {};
       (timeline || []).forEach((item) => {

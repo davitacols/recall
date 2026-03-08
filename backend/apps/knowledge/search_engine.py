@@ -3,11 +3,25 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
+try:
+    from apps.business.models import Task, Meeting
+    from apps.business.document_models import Document
+except Exception:
+    Task = None
+    Meeting = None
+    Document = None
 
 class EnhancedSearchEngine:
     def search(self, query, organization_id, filters=None, limit=10):
         filters = filters or {}
-        results = {'conversations': [], 'decisions': [], 'total': 0}
+        results = {
+            'conversations': [],
+            'decisions': [],
+            'tasks': [],
+            'meetings': [],
+            'documents': [],
+            'total': 0,
+        }
         
         # Build base queries
         conv_q = Q(organization_id=organization_id)
@@ -51,6 +65,7 @@ class EnhancedSearchEngine:
             'id': c.id,
             'title': c.title,
             'content': c.content[:200] + '...' if len(c.content) > 200 else c.content,
+            'type': 'conversation',
             'post_type': c.post_type,
             'author': c.author.username,
             'created_at': c.created_at.isoformat(),
@@ -60,13 +75,61 @@ class EnhancedSearchEngine:
         results['decisions'] = [{
             'id': d.id,
             'title': d.title,
+            'description': d.description[:200] + '...' if len(d.description) > 200 else d.description,
+            'type': 'decision',
             'status': d.status,
             'impact_level': d.impact_level,
-            'author': d.conversation.author.username,
+            'author': d.conversation.author.username if d.conversation and d.conversation.author else '',
             'created_at': d.created_at.isoformat()
         } for d in decisions]
+
+        if Task is not None:
+            task_q = Q(organization_id=organization_id)
+            if query:
+                task_q &= (Q(title__icontains=query) | Q(description__icontains=query))
+            tasks = Task.objects.filter(task_q).order_by('-created_at')[:limit]
+            results['tasks'] = [{
+                'id': t.id,
+                'title': t.title,
+                'content': (t.description or '')[:200] + '...' if len(t.description or '') > 200 else (t.description or ''),
+                'type': 'task',
+                'status': getattr(t, 'status', ''),
+                'created_at': t.created_at.isoformat(),
+            } for t in tasks]
+
+        if Meeting is not None:
+            meeting_q = Q(organization_id=organization_id)
+            if query:
+                meeting_q &= (Q(title__icontains=query) | Q(description__icontains=query))
+            meetings = Meeting.objects.filter(meeting_q).order_by('-created_at')[:limit]
+            results['meetings'] = [{
+                'id': m.id,
+                'title': m.title,
+                'content': (m.description or '')[:200] + '...' if len(m.description or '') > 200 else (m.description or ''),
+                'type': 'meeting',
+                'created_at': m.created_at.isoformat(),
+            } for m in meetings]
+
+        if Document is not None:
+            doc_q = Q(organization_id=organization_id)
+            if query:
+                doc_q &= (Q(title__icontains=query) | Q(content__icontains=query) | Q(description__icontains=query))
+            documents = Document.objects.filter(doc_q).order_by('-created_at')[:limit]
+            results['documents'] = [{
+                'id': d.id,
+                'title': d.title,
+                'content': (d.description or d.content or '')[:200] + '...' if len((d.description or d.content or '')) > 200 else (d.description or d.content or ''),
+                'type': 'document',
+                'created_at': d.created_at.isoformat(),
+            } for d in documents]
         
-        results['total'] = len(results['conversations']) + len(results['decisions'])
+        results['total'] = (
+            len(results['conversations']) +
+            len(results['decisions']) +
+            len(results['tasks']) +
+            len(results['meetings']) +
+            len(results['documents'])
+        )
         return results
     
     def get_suggestions(self, query, organization_id, limit=5):

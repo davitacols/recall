@@ -257,10 +257,10 @@ export function DailyDigestPanel() {
   if (loading) return <div style={panelStyle(palette)}>Loading...</div>;
 
   const quickActions = [
-    { label: 'New Task', icon: ClipboardDocumentCheckIcon, path: '/business/tasks' },
-    { label: 'New Conversation', icon: ChatBubbleLeftIcon, path: '/conversations/new' },
-    { label: 'New Decision', icon: DocumentCheckIcon, path: '/decisions' },
-    { label: 'New Goal', icon: FlagIcon, path: '/business/goals' },
+    { label: 'New Task', icon: ClipboardDocumentCheckIcon, path: '/business/tasks', fill: '#2563eb' },
+    { label: 'New Conversation', icon: ChatBubbleLeftIcon, path: '/conversations/new', fill: '#0891b2' },
+    { label: 'New Decision', icon: DocumentCheckIcon, path: '/decisions', fill: '#0284c7' },
+    { label: 'New Goal', icon: FlagIcon, path: '/business/goals', fill: '#0f766e' },
   ];
 
   return (
@@ -274,9 +274,9 @@ export function DailyDigestPanel() {
               <button
                 key={action.label}
                 onClick={() => navigate(action.path)}
-                style={{ borderRadius: 8, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, padding: 8, textAlign: 'left', cursor: 'pointer' }}
+                style={{ borderRadius: 8, border: 'none', background: action.fill, color: '#ffffff', padding: 8, textAlign: 'left', cursor: 'pointer' }}
               >
-                <Icon style={{ width: 16, height: 16, color: palette.info, marginBottom: 6 }} />
+                <Icon style={{ width: 16, height: 16, color: '#ffffff', marginBottom: 6 }} />
                 <div style={{ fontSize: 11, fontWeight: 600 }}>{action.label}</div>
               </button>
             );

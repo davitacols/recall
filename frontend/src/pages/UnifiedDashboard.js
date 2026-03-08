@@ -459,10 +459,10 @@ export default function UnifiedDashboard() {
   return (
     <div style={pageStyle}>
       <section className="ui-enter" style={{ ...controlStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
-        <Link to="/projects" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Projects</Link>
-        <Link to="/sprint" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Sprint Board</Link>
-        <Link to="/decisions" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Decision Hub</Link>
-        <Link to="/ask" style={{ ...controlPill, border: `1px solid ${palette.border}`, color: palette.text }}>Ask Recall</Link>
+        <Link to="/projects" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Projects</Link>
+        <Link to="/sprint" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Sprint Board</Link>
+        <Link to="/decisions" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Decision Hub</Link>
+        <Link to="/ask" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Ask Recall</Link>
       </section>
 
       <section
@@ -520,7 +520,7 @@ export default function UnifiedDashboard() {
               <p style={{ ...focusHelper, color: palette.dim }}>{card.helper}</p>
               <Link
                 to={card.ctaTo}
-                style={{ ...focusLink, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}
+                style={{ ...focusLink, color: palette.buttonText, background: palette.ctaGradient }}
               >
                 {card.ctaLabel}
               </Link>
@@ -567,7 +567,7 @@ export default function UnifiedDashboard() {
                     <button
                       className="ui-btn-polish ui-focus-ring"
                       onClick={() => setPage((current) => current + 1)}
-                      style={{ ...loadMoreButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}
+                      style={{ ...loadMoreButton, color: palette.buttonText, background: palette.ctaGradient }}
                     >
                       Load more
                     </button>
@@ -887,12 +887,12 @@ export default function UnifiedDashboard() {
                   to="/decisions?outcome=pending"
                   style={{
                     textDecoration: "none",
-                    border: `1px solid ${palette.border}`,
                     borderRadius: 10,
                     padding: "7px 10px",
                     fontSize: 12,
                     fontWeight: 700,
-                    color: palette.text,
+                    color: palette.buttonText,
+                    background: palette.ctaGradient,
                   }}
                 >
                   Open Queue
@@ -902,13 +902,12 @@ export default function UnifiedDashboard() {
                   onClick={sendOutcomeReminders}
                   disabled={notifyingOutcomes || pendingOutcomeMeta.overdue === 0}
                   style={{
-                    border: `1px solid ${palette.border}`,
                     borderRadius: 10,
                     padding: "7px 10px",
                     fontSize: 12,
                     fontWeight: 700,
-                    background: palette.panelAlt,
-                    color: palette.text,
+                    background: palette.ctaGradient,
+                    color: palette.buttonText,
                     cursor: "pointer",
                     opacity: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? 0.6 : 1,
                   }}
@@ -920,13 +919,12 @@ export default function UnifiedDashboard() {
                   onClick={runFollowUpOrchestrator}
                   disabled={orchestratingOutcomes}
                   style={{
-                    border: `1px solid ${palette.border}`,
                     borderRadius: 10,
                     padding: "7px 10px",
                     fontSize: 12,
                     fontWeight: 700,
-                    background: palette.panelAlt,
-                    color: palette.text,
+                    background: palette.ctaGradient,
+                    color: palette.buttonText,
                     cursor: "pointer",
                     opacity: orchestratingOutcomes ? 0.6 : 1,
                   }}

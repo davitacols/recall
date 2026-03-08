@@ -63,10 +63,10 @@ export default function DashboardWidgets() {
   }, []);
 
   const quickActions = [
-    { label: 'New Task', icon: ClipboardDocumentCheckIcon, path: '/business/tasks' },
-    { label: 'New Conversation', icon: ChatBubbleLeftIcon, path: '/conversations/new' },
-    { label: 'New Decision', icon: DocumentCheckIcon, path: '/decisions' },
-    { label: 'New Goal', icon: FlagIcon, path: '/business/goals' },
+    { label: 'New Task', icon: ClipboardDocumentCheckIcon, path: '/business/tasks', fill: '#2563eb' },
+    { label: 'New Conversation', icon: ChatBubbleLeftIcon, path: '/conversations/new', fill: '#0891b2' },
+    { label: 'New Decision', icon: DocumentCheckIcon, path: '/decisions', fill: '#0284c7' },
+    { label: 'New Goal', icon: FlagIcon, path: '/business/goals', fill: '#0f766e' },
   ];
 
   if (loading) {
@@ -84,9 +84,17 @@ export default function DashboardWidgets() {
               <button
                 key={action.label}
                 onClick={() => navigate(action.path)}
-                style={{ ...cellStyle(palette), textAlign: 'left', cursor: 'pointer', color: palette.text }}
+                style={{
+                  borderRadius: 8,
+                  border: 'none',
+                  background: action.fill,
+                  padding: 8,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  color: '#ffffff',
+                }}
               >
-                <Icon style={{ width: 16, height: 16, color: palette.info, marginBottom: 6 }} />
+                <Icon style={{ width: 16, height: 16, color: '#ffffff', marginBottom: 6 }} />
                 <div style={{ fontSize: 11, fontWeight: 600 }}>{action.label}</div>
               </button>
             );

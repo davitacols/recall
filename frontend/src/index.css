@@ -175,3 +175,28 @@ body {
     -webkit-text-size-adjust: 100%;
   }
 }
+
+.app-page-shell {
+  width: min(100%, 1540px);
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.app-page-shell > * {
+  min-width: 0;
+}
+
+.app-page-shell h1,
+.app-page-shell h2,
+.app-page-shell h3 {
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 1024px) {
+  .app-page-shell {
+    width: 100%;
+    gap: 12px;
+  }
+}

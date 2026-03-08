@@ -526,7 +526,9 @@ export default function UnifiedLayout({ children }) {
               </div>
             </div>
           </header>
-          {children}
+          <section className="app-page-shell">
+            {children}
+          </section>
         </div>
       </main>
       {showAskFab && (
@@ -903,4 +905,5 @@ const askFabButton = {
   userSelect: "none",
   touchAction: "none",
 };
+
 

@@ -75,21 +75,21 @@ export default function KnowledgeAnalytics() {
         </section>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
-          <TopStat icon={ChartBarIcon} label="Total Activity" value={stats.totalActivity} />
-          <TopStat icon={UserGroupIcon} label="Knowledge Items" value={stats.totalNodes} />
-          <TopStat icon={LinkIcon} label="Connections" value={stats.totalLinks} />
-          <TopStat icon={ArrowTrendingUpIcon} label="Avg Links/Item" value={stats.avgLinksPerNode} />
+          <TopStat icon={ChartBarIcon} label="Total Activity" value={stats.totalActivity} palette={palette} />
+          <TopStat icon={UserGroupIcon} label="Knowledge Items" value={stats.totalNodes} palette={palette} />
+          <TopStat icon={LinkIcon} label="Connections" value={stats.totalLinks} palette={palette} />
+          <TopStat icon={ArrowTrendingUpIcon} label="Avg Links/Item" value={stats.avgLinksPerNode} palette={palette} />
         </section>
 
         <section style={ui.responsiveSplit}>
           <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
             <h2 style={{ margin: "0 0 10px", fontSize: 16, color: palette.text }}>Activity by Type</h2>
-            <Breakdown rows={stats.activityByType} total={stats.totalActivity || 1} color="var(--app-info)" />
+            <Breakdown rows={stats.activityByType} total={stats.totalActivity || 1} color={palette.info} palette={palette} />
           </article>
 
           <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
             <h2 style={{ margin: "0 0 10px", fontSize: 16, color: palette.text }}>Content Distribution</h2>
-            <Breakdown rows={stats.nodesByType} total={stats.totalNodes || 1} color="var(--app-info)" />
+            <Breakdown rows={stats.nodesByType} total={stats.totalNodes || 1} color={palette.info} palette={palette} />
           </article>
         </section>
       </div>
@@ -97,33 +97,33 @@ export default function KnowledgeAnalytics() {
   );
 }
 
-function TopStat({ icon: Icon, label, value }) {
+function TopStat({ icon: Icon, label, value, palette }) {
   return (
-    <article style={{ borderRadius: 12, padding: 12, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)" }}>
+    <article style={{ borderRadius: 12, padding: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Icon style={{ width: 18, height: 18, color: "var(--app-link)" }} />
-        <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "var(--app-text)" }}>{value}</p>
+        <Icon style={{ width: 18, height: 18, color: palette.info }} />
+        <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: palette.text }}>{value}</p>
       </div>
-      <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--app-muted)" }}>{label}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>{label}</p>
     </article>
   );
 }
 
-function Breakdown({ rows, total, color }) {
+function Breakdown({ rows, total, color, palette }) {
   const entries = Object.entries(rows || {});
-  if (!entries.length) return <p style={{ margin: 0, fontSize: 12, color: "var(--app-muted)" }}>No data</p>;
+  if (!entries.length) return <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>No data</p>;
 
   return (
     <div style={{ display: "grid", gap: 8 }}>
       {entries.map(([type, count]) => (
         <div key={type} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
           <div>
-            <p style={{ margin: "0 0 4px", fontSize: 12, color: "var(--app-muted)", textTransform: "capitalize" }}>{type.replace("_", " ")}</p>
-            <div style={{ width: "100%", height: 7, borderRadius: 999, background: "var(--app-track)", overflow: "hidden" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 12, color: palette.muted, textTransform: "capitalize" }}>{type.replace("_", " ")}</p>
+            <div style={{ width: "100%", height: 7, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${(count / total) * 100}%`, background: color }} />
             </div>
           </div>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "var(--app-text)", minWidth: 24, textAlign: "right" }}>{count}</p>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text, minWidth: 24, textAlign: "right" }}>{count}</p>
         </div>
       ))}
     </div>

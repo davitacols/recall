@@ -4,11 +4,11 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
 
-function scoreTone(score) {
-  if (score >= 80) return "var(--app-success)";
-  if (score >= 60) return "var(--app-info)";
-  if (score >= 40) return "var(--app-warning)";
-  return "var(--app-danger)";
+function scoreTone(score, palette) {
+  if (score >= 80) return palette.success;
+  if (score >= 60) return palette.info;
+  if (score >= 40) return palette.warn;
+  return palette.danger;
 }
 
 function qualityLabel(score) {
@@ -25,8 +25,8 @@ function MetricBar({ label, value, palette }) {
         <span style={{ fontSize: 12, color: palette.text }}>{label}</span>
         <span style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>{value}%</span>
       </div>
-      <div style={{ width: "100%", height: 8, borderRadius: 999, background: "rgba(120,120,120,0.22)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${value}%`, background: value >= 60 ? "var(--app-info)" : "var(--app-warning)" }} />
+      <div style={{ width: "100%", height: 8, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${value}%`, background: value >= 60 ? palette.info : palette.warn }} />
       </div>
     </div>
   );
@@ -39,7 +39,7 @@ function IssueCard({ title, value, hint, link, palette, tone }) {
       <h3 style={{ margin: "6px 0", fontSize: 14, color: palette.text }}>{title}</h3>
       <p style={{ margin: "0 0 8px", fontSize: 12, color: palette.muted }}>{hint}</p>
       {value > 0 && (
-        <Link to={link} style={{ fontSize: 12, color: "var(--app-info)", textDecoration: "none", fontWeight: 700 }}>
+        <Link to={link} style={{ fontSize: 12, color: palette.info, textDecoration: "none", fontWeight: 700 }}>
           Review now ->
         </Link>
       )}
@@ -105,7 +105,7 @@ export default function KnowledgeHealthDashboard() {
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
             <div>
               <p style={{ margin: 0, fontSize: 11, color: palette.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Overall Score</p>
-              <p style={{ margin: "4px 0 0", fontSize: 50, fontWeight: 800, color: scoreTone(health.overall_score || 0) }}>
+              <p style={{ margin: "4px 0 0", fontSize: 50, fontWeight: 800, color: scoreTone(health.overall_score || 0, palette) }}>
                 {health.overall_score || 0}
               </p>
             </div>
@@ -125,7 +125,7 @@ export default function KnowledgeHealthDashboard() {
             hint="Decisions missing accountable owners."
             link="/decisions?filter=no_owner"
             palette={palette}
-            tone="var(--app-danger)"
+            tone={palette.danger}
           />
           <IssueCard
             title="Old Unresolved Questions"
@@ -133,7 +133,7 @@ export default function KnowledgeHealthDashboard() {
             hint="Questions older than 30 days still open."
             link="/conversations?type=question&status=unanswered"
             palette={palette}
-            tone="var(--app-warning)"
+            tone={palette.warn}
           />
           <IssueCard
             title="Repeated Topics"
@@ -141,7 +141,7 @@ export default function KnowledgeHealthDashboard() {
             hint="Same discussions repeated across threads."
             link="/insights/repeated"
             palette={palette}
-            tone="var(--app-info)"
+            tone={palette.info}
           />
           <IssueCard
             title="Orphaned Conversations"

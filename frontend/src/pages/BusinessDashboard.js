@@ -1,41 +1,27 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useTheme } from "../utils/ThemeAndAccessibility";
 import {
   ArrowPathIcon,
-  BellAlertIcon,
   CalendarDaysIcon,
-  ChartBarIcon,
   CheckCircleIcon,
   ClockIcon,
   DocumentTextIcon,
   ExclamationTriangleIcon,
   FlagIcon,
 } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import api from "../services/api";
 
 export default function BusinessDashboard() {
   const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [goals, setGoals] = useState([]);
   const [meetings, setMeetings] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const bgPrimary = darkMode ? "bg-stone-950" : "bg-gray-50";
-  const bgSecondary = darkMode ? "bg-stone-900" : "bg-white";
-  const borderColor = darkMode ? "border-stone-800" : "border-gray-200";
-  const textPrimary = darkMode ? "text-stone-100" : "text-gray-900";
-  const textSecondary = darkMode ? "text-stone-500" : "text-gray-600";
-  const textTertiary = darkMode ? "text-stone-400" : "text-gray-500";
-  const inputBg = darkMode ? "bg-stone-800" : "bg-gray-50";
-  const dangerTone = darkMode
-    ? "border-red-500/40 bg-red-500/10 text-red-200"
-    : "border-red-300 bg-red-50 text-red-800";
-  const warnTone = darkMode
-    ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-    : "border-amber-300 bg-amber-50 text-amber-800";
-  const okTone = darkMode
-    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-    : "border-emerald-300 bg-emerald-50 text-emerald-800";
 
   useEffect(() => {
     fetchData();
@@ -43,29 +29,16 @@ export default function BusinessDashboard() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8000";
       const [goalsRes, meetingsRes, tasksRes] = await Promise.all([
-        fetch(`${apiBase}/api/business/goals/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${apiBase}/api/business/meetings/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${apiBase}/api/business/tasks/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        api.get("/api/business/goals/").catch(() => ({ data: [] })),
+        api.get("/api/business/meetings/").catch(() => ({ data: [] })),
+        api.get("/api/business/tasks/").catch(() => ({ data: [] })),
       ]);
 
-      const goalsData = (await goalsRes.json()) || [];
-      const meetingsData = (await meetingsRes.json()) || [];
-      const tasksData = (await tasksRes.json()) || [];
-
-      setGoals(Array.isArray(goalsData) ? goalsData : []);
-      setMeetings(Array.isArray(meetingsData) ? meetingsData : []);
-      setTasks(Array.isArray(tasksData) ? tasksData : []);
-    } catch (fetchError) {
-      console.error("Failed to load business dashboard:", fetchError);
+      setGoals(Array.isArray(goalsRes.data) ? goalsRes.data : []);
+      setMeetings(Array.isArray(meetingsRes.data) ? meetingsRes.data : []);
+      setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
+    } catch (error) {
       setGoals([]);
       setMeetings([]);
       setTasks([]);
@@ -117,354 +90,172 @@ export default function BusinessDashboard() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${bgPrimary}`}>
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                className={`${bgSecondary} border ${borderColor} rounded-xl p-5 animate-pulse`}
-              >
-                <div className={`h-3 ${inputBg} rounded w-1/3 mb-3`} />
-                <div className={`h-8 ${inputBg} rounded w-2/3`} />
-              </div>
+      <div style={{ minHeight: "100vh" }}>
+        <div style={ui.container}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8 }}>
+            {[1, 2, 3, 4].map((item) => (
+              <div key={item} style={{ borderRadius: 12, height: 110, border: `1px solid ${palette.border}`, background: palette.card, opacity: 0.75 }} />
             ))}
           </div>
-          <div className={`h-44 ${bgSecondary} border ${borderColor} rounded-xl animate-pulse`} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
-        <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5 md:p-6 mb-6`}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+    <div style={{ minHeight: "100vh" }}>
+      <div style={ui.container}>
+        <section
+          style={{
+            borderRadius: 16,
+            border: `1px solid ${palette.border}`,
+            background: darkMode
+              ? "radial-gradient(circle at 12% 16%, rgba(90,174,231,0.2), rgba(16,24,31,0.85) 58%)"
+              : "radial-gradient(circle at 12% 16%, rgba(47,128,184,0.14), rgba(255,255,255,0.82) 58%)",
+            padding: 16,
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
             <div>
-              <p className={`text-xs font-semibold tracking-[0.14em] ${textTertiary}`}>
-                TEAM CONTROL CENTER
-              </p>
-              <h1 className={`mt-2 text-2xl md:text-3xl font-bold ${textPrimary}`}>
-                Business Dashboard
-              </h1>
-              <p className={`mt-2 text-sm ${textSecondary}`}>
-                {tasks.length} tasks, {meetings.length} meetings, {goals.length} goals. Task
-                completion is {computed.completionRate}%.
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>BUSINESS OVERVIEW</p>
+              <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", color: palette.text }}>Operations Dashboard</h1>
+              <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>
+                {tasks.length} tasks, {meetings.length} meetings, {goals.length} goals. Completion {computed.completionRate}%.
               </p>
             </div>
-            <button
-              onClick={fetchData}
-              className={`inline-flex items-center gap-2 px-3 py-2 text-sm border ${borderColor} ${textPrimary} rounded-md ${inputBg}`}
-            >
-              <ArrowPathIcon className="w-4 h-4" />
+            <button onClick={fetchData} className="ui-btn-polish" style={ui.secondaryButton}>
+              <ArrowPathIcon style={{ width: 14, height: 14 }} />
               Refresh
             </button>
           </div>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <StatusCard
-            title="Needs Attention"
-            value={`${computed.stalledGoals} stalled goals`}
-            subtitle={`${computed.todoTasks} tasks waiting to start`}
-            icon={ExclamationTriangleIcon}
-            tone={computed.stalledGoals > 0 ? dangerTone : okTone}
-          />
-          <StatusCard
-            title="Next 24 Hours"
-            value={`${computed.meetingsNext24h} meetings`}
-            subtitle={`${computed.meetingsToday} scheduled today`}
-            icon={BellAlertIcon}
-            tone={computed.meetingsNext24h > 0 ? warnTone : okTone}
-          />
-          <StatusCard
-            title="Execution Health"
-            value={`${computed.completionRate}% complete`}
-            subtitle={`${computed.inProgressTasks} tasks in progress`}
-            icon={CheckCircleIcon}
-            tone={computed.completionRate >= 60 ? okTone : warnTone}
-          />
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8, marginBottom: 12 }}>
+          <StatusCard title="Needs Attention" value={`${computed.stalledGoals} stalled goals`} subtitle={`${computed.todoTasks} tasks waiting`} palette={palette} tone={computed.stalledGoals > 0 ? palette.danger : palette.success} icon={ExclamationTriangleIcon} />
+          <StatusCard title="Next 24 Hours" value={`${computed.meetingsNext24h} meetings`} subtitle={`${computed.meetingsToday} today`} palette={palette} tone={computed.meetingsNext24h > 0 ? palette.warn : palette.success} icon={CalendarDaysIcon} />
+          <StatusCard title="Execution Health" value={`${computed.completionRate}% complete`} subtitle={`${computed.inProgressTasks} in progress`} palette={palette} tone={computed.completionRate >= 60 ? palette.success : palette.warn} icon={CheckCircleIcon} />
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <MetricCard
-            to="/business/goals"
-            icon={FlagIcon}
-            label="Goals"
-            value={goals.length}
-            helper={`${computed.stalledGoals} at risk`}
-            bgSecondary={bgSecondary}
-            borderColor={borderColor}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-          />
-          <MetricCard
-            to="/business/meetings"
-            icon={CalendarDaysIcon}
-            label="Meetings"
-            value={meetings.length}
-            helper={`${computed.meetingsToday} today`}
-            bgSecondary={bgSecondary}
-            borderColor={borderColor}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-          />
-          <MetricCard
-            to="/business/tasks"
-            icon={ClockIcon}
-            label="Tasks"
-            value={tasks.length}
-            helper={`${computed.todoTasks} todo`}
-            bgSecondary={bgSecondary}
-            borderColor={borderColor}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-          />
-          <MetricCard
-            to="/business/tasks"
-            icon={CheckCircleIcon}
-            label="Completed"
-            value={computed.doneTasks}
-            helper={`${computed.completionRate}% completion`}
-            bgSecondary={bgSecondary}
-            borderColor={borderColor}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-          />
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
+          <MetricCard to="/business/goals" icon={FlagIcon} label="Goals" value={goals.length} helper={`${computed.stalledGoals} at risk`} palette={palette} />
+          <MetricCard to="/business/meetings" icon={CalendarDaysIcon} label="Meetings" value={meetings.length} helper={`${computed.meetingsToday} today`} palette={palette} />
+          <MetricCard to="/business/tasks" icon={ClockIcon} label="Tasks" value={tasks.length} helper={`${computed.todoTasks} todo`} palette={palette} />
+          <MetricCard to="/business/tasks" icon={CheckCircleIcon} label="Completed" value={computed.doneTasks} helper={`${computed.completionRate}% completion`} palette={palette} />
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
-          <div className="lg:col-span-8 space-y-6">
-            <ListSection
-              title="Upcoming Meetings"
-              linkTo="/business/meetings"
-              linkText="View all meetings"
-              bgSecondary={bgSecondary}
-              borderColor={borderColor}
-              textPrimary={textPrimary}
-              textSecondary={textSecondary}
-            >
+        <section style={{ ...ui.responsiveSplit, alignItems: "start" }}>
+          <div style={{ display: "grid", gap: 10 }}>
+            <ListSection title="Upcoming Meetings" linkTo="/business/meetings" linkText="View all meetings" palette={palette}>
               {computed.upcomingMeetings.length === 0 ? (
-                <EmptyState text="No upcoming meetings scheduled." textSecondary={textSecondary} />
+                <EmptyState text="No upcoming meetings scheduled." palette={palette} />
               ) : (
                 computed.upcomingMeetings.slice(0, 5).map((meeting) => (
-                  <Link key={meeting.id} to={`/business/meetings/${meeting.id}`} className="block">
-                    <div className={`p-4 ${inputBg} border ${borderColor} rounded-lg`}>
-                      <p className={`text-sm font-semibold ${textPrimary}`}>{meeting.title}</p>
-                      <div className={`mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs ${textSecondary}`}>
-                        <span>{new Date(meeting.meeting_date).toLocaleString()}</span>
-                        <span>{meeting.duration_minutes || 60} min</span>
-                        {meeting.location && <span>{meeting.location}</span>}
-                      </div>
-                    </div>
+                  <Link key={meeting.id} to={`/business/meetings/${meeting.id}`} style={{ ...rowLink, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{meeting.title}</p>
+                    <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>
+                      {new Date(meeting.meeting_date).toLocaleString()} | {meeting.duration_minutes || 60} min
+                    </p>
                   </Link>
                 ))
               )}
             </ListSection>
 
-            <ListSection
-              title="Goals Needing Attention"
-              linkTo="/business/goals"
-              linkText="Open goals"
-              bgSecondary={bgSecondary}
-              borderColor={borderColor}
-              textPrimary={textPrimary}
-              textSecondary={textSecondary}
-            >
+            <ListSection title="Goals Needing Attention" linkTo="/business/goals" linkText="Open goals" palette={palette}>
               {computed.goalsNeedingAttention.length === 0 ? (
-                <EmptyState text="No active goals need attention right now." textSecondary={textSecondary} />
+                <EmptyState text="No active goals need attention right now." palette={palette} />
               ) : (
-                computed.goalsNeedingAttention.map((goal) => (
-                  <Link key={goal.id} to={`/business/goals/${goal.id}`} className="block">
-                    <div className={`p-4 ${inputBg} border ${borderColor} rounded-lg`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <p className={`text-sm font-semibold ${textPrimary}`}>{goal.title}</p>
-                        <span className={`text-xs ${textSecondary}`}>{goal.progress || 0}%</span>
+                computed.goalsNeedingAttention.map((goal) => {
+                  const progress = Math.max(0, Math.min(100, goal.progress || 0));
+                  return (
+                    <Link key={goal.id} to={`/business/goals/${goal.id}`} style={{ ...rowLink, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{goal.title}</p>
+                        <span style={{ fontSize: 11, color: palette.muted }}>{progress}%</span>
                       </div>
-                      <div className={`mt-2 h-2 ${darkMode ? "bg-stone-700" : "bg-gray-200"} rounded-full overflow-hidden`}>
-                        <div
-                          className={`${goal.progress >= 70 ? "bg-emerald-500" : goal.progress >= 40 ? "bg-amber-500" : "bg-red-500"} h-full`}
-                          style={{ width: `${Math.max(0, Math.min(100, goal.progress || 0))}%` }}
-                        />
+                      <div style={{ marginTop: 6, width: "100%", height: 7, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${progress}%`, background: progress >= 70 ? palette.success : progress >= 40 ? palette.warn : palette.danger }} />
                       </div>
-                      <p className={`mt-2 text-xs ${textSecondary}`}>
-                        Status: {(goal.status || "unknown").replace("_", " ")}
-                      </p>
-                    </div>
-                  </Link>
-                ))
+                    </Link>
+                  );
+                })
               )}
             </ListSection>
           </div>
 
-          <aside className="lg:col-span-4 space-y-6">
-            <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5`}>
-              <h2 className={`text-sm font-semibold tracking-[0.11em] ${textTertiary} uppercase mb-4`}>
-                Quick Actions
-              </h2>
-              <div className="space-y-3">
-                <ActionLink
-                  to="/business/tasks"
-                  label="Open Task Board"
-                  helper="Move work from To Do to Done"
-                  icon={ClockIcon}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderColor={borderColor}
-                  inputBg={inputBg}
-                />
-                <ActionLink
-                  to="/business/meetings"
-                  label="Plan Meetings"
-                  helper="Check upcoming sessions and schedule new ones"
-                  icon={CalendarDaysIcon}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderColor={borderColor}
-                  inputBg={inputBg}
-                />
-                <ActionLink
-                  to="/business/documents"
-                  label="Review Documents"
-                  helper="Keep decisions and references updated"
-                  icon={DocumentTextIcon}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderColor={borderColor}
-                  inputBg={inputBg}
-                />
-                <ActionLink
-                  to="/business/journeys"
-                  label="Edit Journey Maps"
-                  helper="Capture messy discovery and user flow assumptions"
-                  icon={DocumentTextIcon}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderColor={borderColor}
-                  inputBg={inputBg}
-                />
-                <ActionLink
-                  to="/business/calendar"
-                  label="Run Calendar Planner"
-                  helper="Auto-suggest task slots from availability windows"
-                  icon={CalendarDaysIcon}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderColor={borderColor}
-                  inputBg={inputBg}
-                />
-                <ActionLink
-                  to="/business/team-health"
-                  label="Check Burnout Risk"
-                  helper="Review team overload signals before sprint drift"
-                  icon={ChartBarIcon}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderColor={borderColor}
-                  inputBg={inputBg}
-                />
-                <ActionLink
-                  to="/business/analytics"
-                  label="Open Analytics"
-                  helper="Track trends and outcomes"
-                  icon={ChartBarIcon}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderColor={borderColor}
-                  inputBg={inputBg}
-                />
-              </div>
-            </section>
-          </aside>
+          <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+            <h2 style={{ margin: "0 0 10px", fontSize: 15, color: palette.text, letterSpacing: "0.06em", textTransform: "uppercase" }}>Quick Actions</h2>
+            <div style={{ display: "grid", gap: 8 }}>
+              <ActionLink to="/business/tasks" label="Open Task Board" helper="Move work from To Do to Done" icon={ClockIcon} palette={palette} />
+              <ActionLink to="/business/meetings" label="Plan Meetings" helper="Check upcoming sessions and schedule new ones" icon={CalendarDaysIcon} palette={palette} />
+              <ActionLink to="/business/documents" label="Review Documents" helper="Keep decisions and references updated" icon={DocumentTextIcon} palette={palette} />
+              <ActionLink to="/business/analytics" label="Open Analytics" helper="Track trends and outcomes" icon={FlagIcon} palette={palette} />
+            </div>
+          </section>
         </section>
       </div>
     </div>
   );
 }
 
-function StatusCard({ title, value, subtitle, icon: Icon, tone }) {
+function StatusCard({ title, value, subtitle, icon: Icon, palette, tone }) {
   return (
-    <article className={`border rounded-xl p-4 ${tone}`}>
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold tracking-[0.09em] uppercase">{title}</p>
-        <Icon className="w-5 h-5" />
+    <article style={{ borderRadius: 12, border: `1px solid ${tone}`, background: palette.cardAlt, padding: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>{title}</p>
+        <Icon style={{ width: 16, height: 16, color: tone }} />
       </div>
-      <p className="mt-3 text-lg font-bold">{value}</p>
-      <p className="mt-1 text-xs opacity-80">{subtitle}</p>
+      <p style={{ margin: "8px 0 0", fontSize: 17, fontWeight: 800, color: tone }}>{value}</p>
+      <p style={{ margin: "3px 0 0", fontSize: 11, color: palette.muted }}>{subtitle}</p>
     </article>
   );
 }
 
-function MetricCard({
-  to,
-  icon: Icon,
-  label,
-  value,
-  helper,
-  bgSecondary,
-  borderColor,
-  textPrimary,
-  textSecondary,
-}) {
+function MetricCard({ to, icon: Icon, label, value, helper, palette }) {
   return (
-    <Link to={to} className={`p-4 ${bgSecondary} border ${borderColor} rounded-xl`}>
-      <div className="flex items-center justify-between">
-        <p className={`text-sm ${textSecondary}`}>{label}</p>
-        <Icon className={`w-5 h-5 ${textSecondary}`} />
+    <Link to={to} style={{ borderRadius: 12, padding: 12, border: `1px solid ${palette.border}`, background: palette.card, textDecoration: "none" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>{label}</p>
+        <Icon style={{ width: 16, height: 16, color: palette.info }} />
       </div>
-      <p className={`mt-2 text-3xl font-bold ${textPrimary}`}>{value}</p>
-      <p className={`mt-1 text-xs ${textSecondary}`}>{helper}</p>
+      <p style={{ margin: "7px 0 0", fontSize: 28, fontWeight: 800, color: palette.text }}>{value}</p>
+      <p style={{ margin: "2px 0 0", fontSize: 11, color: palette.muted }}>{helper}</p>
     </Link>
   );
 }
 
-function ListSection({
-  title,
-  linkTo,
-  linkText,
-  bgSecondary,
-  borderColor,
-  textPrimary,
-  textSecondary,
-  children,
-}) {
+function ListSection({ title, linkTo, linkText, palette, children }) {
   return (
-    <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5`}>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className={`text-lg font-bold ${textPrimary}`}>{title}</h2>
-        <Link to={linkTo} className={`text-xs font-medium ${textSecondary}`}>
+    <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+        <h2 style={{ margin: 0, fontSize: 16, color: palette.text }}>{title}</h2>
+        <Link to={linkTo} style={{ fontSize: 11, fontWeight: 700, color: palette.info, textDecoration: "none" }}>
           {linkText}
         </Link>
       </div>
-      <div className="space-y-3">{children}</div>
+      <div style={{ display: "grid", gap: 8 }}>{children}</div>
     </section>
   );
 }
 
-function EmptyState({ text, textSecondary }) {
-  return <p className={`text-sm ${textSecondary}`}>{text}</p>;
+function EmptyState({ text, palette }) {
+  return <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>{text}</p>;
 }
 
-function ActionLink({
-  to,
-  label,
-  helper,
-  icon: Icon,
-  textPrimary,
-  textSecondary,
-  borderColor,
-  inputBg,
-}) {
+function ActionLink({ to, label, helper, icon: Icon, palette }) {
   return (
-    <Link to={to} className={`block p-3 ${inputBg} border ${borderColor} rounded-lg`}>
-      <div className="flex items-start gap-3">
-        <Icon className={`w-5 h-5 mt-0.5 ${textSecondary}`} />
-        <div>
-          <p className={`text-sm font-semibold ${textPrimary}`}>{label}</p>
-          <p className={`text-xs mt-1 ${textSecondary}`}>{helper}</p>
-        </div>
+    <Link to={to} style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10, textDecoration: "none", display: "grid", gridTemplateColumns: "16px 1fr", gap: 8, alignItems: "start" }}>
+      <Icon style={{ width: 16, height: 16, color: palette.info }} />
+      <div>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text }}>{label}</p>
+        <p style={{ margin: "3px 0 0", fontSize: 11, color: palette.muted }}>{helper}</p>
       </div>
     </Link>
   );
 }
+
+const rowLink = {
+  borderRadius: 10,
+  textDecoration: "none",
+  padding: 10,
+};

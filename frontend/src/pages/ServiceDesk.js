@@ -111,7 +111,10 @@ export default function ServiceDesk() {
   };
 
   const mapCopilotResponse = (payload) => ({
-    answer: payload?.answer || "No AI guidance generated.",
+    answer:
+      String(payload?.answer || "").toLowerCase().includes("navigation request")
+        ? "Triage summary prepared. Prioritize impact, identify affected users/systems, and execute the top interventions below."
+        : payload?.answer || "No AI guidance generated.",
     confidence: payload?.confidence || 0,
     riskStatus: payload?.risk_status || "watch",
     nextActions: Array.isArray(payload?.recommended_interventions) ? payload.recommended_interventions.slice(0, 4) : [],
@@ -123,6 +126,7 @@ export default function ServiceDesk() {
         query: prompt,
         execute: false,
         max_actions: 4,
+        disable_navigation: true,
       });
       return mapCopilotResponse(response.data);
     } catch (err) {

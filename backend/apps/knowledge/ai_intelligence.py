@@ -1440,38 +1440,54 @@ def agi_copilot(request):
             max_actions = 3
         max_actions = max(1, min(max_actions, 5))
 
-        navigation_intent = _detect_navigation_intent(query)
+        disable_navigation = bool(request.data.get('disable_navigation', False))
+        query_lower = query.lower()
+        explicit_navigation = any(
+            phrase in query_lower
+            for phrase in [
+                'open ',
+                'go to ',
+                'navigate',
+                'take me to',
+                'where can i',
+                'which page',
+            ]
+        )
+        navigation_intent = None if (disable_navigation or not explicit_navigation) else _detect_navigation_intent(query)
         if navigation_intent:
             plan = _build_chief_of_staff_plan(org, now, user=user)
             tool_links = _build_navigation_links(query)
-            confidence = 82 if tool_links else 64
-            return Response({
-                'analysis_id': str(uuid4()),
-                'query': query,
-                'answer': 'I interpreted this as a navigation request. Use these links to open the right workspace directly.',
-                'confidence': confidence,
-                'confidence_band': _confidence_band(confidence),
-                'response_mode': 'navigation',
-                'evidence_count': 0,
-                'source_types': [],
-                'freshness_days': None,
-                'coverage_score': 0,
-                'missing_evidence': [],
-                'tool_links': tool_links,
-                'risk_status': plan.get('status'),
-                'readiness_score': plan.get('readiness_score'),
-                'learning_model': plan.get('learning_model', {}),
-                'counts': plan.get('counts', {}),
-                'sources': {'conversations': [], 'decisions': [], 'total': 0},
-                'recommended_interventions': [],
-                'requires_approval_for_execution': True,
-                'execution': {
-                    'performed': False,
-                    'dry_run': True,
-                    'result': None,
-                },
-                'generated_at': now.isoformat(),
-            })
+            if not tool_links:
+                navigation_intent = None
+            else:
+                confidence = 82 if tool_links else 64
+                return Response({
+                    'analysis_id': str(uuid4()),
+                    'query': query,
+                    'answer': 'I interpreted this as a navigation request. Use these links to open the right workspace directly.',
+                    'confidence': confidence,
+                    'confidence_band': _confidence_band(confidence),
+                    'response_mode': 'navigation',
+                    'evidence_count': 0,
+                    'source_types': [],
+                    'freshness_days': None,
+                    'coverage_score': 0,
+                    'missing_evidence': [],
+                    'tool_links': tool_links,
+                    'risk_status': plan.get('status'),
+                    'readiness_score': plan.get('readiness_score'),
+                    'learning_model': plan.get('learning_model', {}),
+                    'counts': plan.get('counts', {}),
+                    'sources': {'conversations': [], 'decisions': [], 'total': 0},
+                    'recommended_interventions': [],
+                    'requires_approval_for_execution': True,
+                    'execution': {
+                        'performed': False,
+                        'dry_run': True,
+                        'result': None,
+                    },
+                    'generated_at': now.isoformat(),
+                })
 
         search_engine = get_search_engine()
         search_data = search_engine.search(query, org.id, filters={}, limit=6)

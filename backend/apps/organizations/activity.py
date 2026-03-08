@@ -1,4 +1,6 @@
 from django.db import models
+from django.db import transaction
+from django.db.utils import OperationalError, ProgrammingError
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from apps.organizations.models import User, Organization
@@ -39,10 +41,17 @@ class Activity(models.Model):
 
 def log_activity(organization, actor, action_type, content_object=None, **metadata):
     """Helper function to log activities"""
-    return Activity.objects.create(
-        organization=organization,
-        actor=actor,
-        action_type=action_type,
-        content_object=content_object,
-        metadata=metadata
-    )
+    try:
+        return Activity.objects.create(
+            organization=organization,
+            actor=actor,
+            action_type=action_type,
+            content_object=content_object,
+            metadata=metadata
+        )
+    except (OperationalError, ProgrammingError):
+        connection = transaction.get_connection()
+        if connection.in_atomic_block and connection.needs_rollback:
+            transaction.set_rollback(False)
+        # Activity logging is optional and must not break primary workflows.
+        return None

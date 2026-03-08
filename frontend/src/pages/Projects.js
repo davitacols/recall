@@ -105,16 +105,16 @@ export default function Projects() {
               <h2 style={{ margin: 0, fontSize: 22, color: palette.text }}>Create Project</h2>
               <form onSubmit={handleCreate} style={formStack}>
                 {createError && (
-                  <div style={errorBox}>{createError}</div>
+                  <div style={{ ...errorBox, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger }}>{createError}</div>
                 )}
-                <label style={label}>Project Name</label>
+                <label style={{ ...label, color: palette.muted }}>Project Name</label>
                 <input
                   required
                   value={newProject.name}
                   onChange={(event) => setNewProject({ ...newProject, name: event.target.value })}
                   style={{ ...ui.input, ...input }}
                 />
-                <label style={label}>Description</label>
+                <label style={{ ...label, color: palette.muted }}>Description</label>
                 <textarea
                   rows={4}
                   value={newProject.description}
@@ -179,11 +179,11 @@ const cardDesc = { margin: "4px 0 0", fontSize: 13, lineHeight: 1.45, minHeight:
 const cardMeta = { marginTop: 12, paddingTop: 10, display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 };
 const metaItem = { display: "inline-flex", alignItems: "center", gap: 5 };
 const emptyCard = { borderRadius: 14, padding: "34px 14px", textAlign: "center" };
-const modalOverlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 100, padding: 16 };
+const modalOverlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", display: "grid", placeItems: "center", zIndex: 100, padding: 16 };
 const modalCard = { width: "min(520px,100%)", borderRadius: 16, padding: 18 };
 const formStack = { marginTop: 14, display: "grid", gap: 8 };
-const label = { fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--app-muted)" };
-const errorBox = { borderRadius: 10, border: "1px solid var(--app-danger-border)", background: "var(--app-danger-soft)", color: "var(--app-danger)", padding: "8px 10px", fontSize: 13 };
+const label = { fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" };
+const errorBox = { borderRadius: 10, padding: "8px 10px", fontSize: 13 };
 const input = { borderRadius: 10, padding: "10px 12px", fontSize: 14, outline: "none", fontFamily: "inherit" };
 const buttonRow = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
 const skeletonGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(270px,1fr))", gap: 10 };

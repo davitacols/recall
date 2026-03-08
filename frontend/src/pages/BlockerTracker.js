@@ -17,15 +17,6 @@ import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 const TYPE_OPTIONS = ["all", "technical", "dependency", "decision", "resource", "external"];
 
-const TYPE_COLORS = {
-  technical: { bg: "var(--app-danger-soft)", text: "var(--app-danger)", border: "rgba(239,68,68,0.35)" },
-  dependency: { bg: "rgba(249,115,22,0.12)", text: "#f97316", border: "rgba(249,115,22,0.35)" },
-  decision: { bg: "var(--app-info-soft)", text: "var(--app-info)", border: "var(--app-info-border)" },
-  resource: { bg: "var(--app-warning-soft)", text: "var(--app-warning)", border: "var(--app-warning-border)" },
-  external: { bg: "rgba(168,85,247,0.12)", text: "#a855f7", border: "rgba(168,85,247,0.35)" },
-  default: { bg: "rgba(120,120,120,0.12)", text: "#8b8b8b", border: "var(--app-border-strong)" },
-};
-
 function Blockers() {
   const location = useLocation();
   const { darkMode } = useTheme();
@@ -136,6 +127,18 @@ function Blockers() {
     return { total, critical, technical, avgDays };
   }, [blockers]);
 
+  const typeColors = useMemo(
+    () => ({
+      technical: { bg: "rgba(248,113,113,0.12)", text: palette.danger, border: "rgba(248,113,113,0.35)" },
+      dependency: { bg: "rgba(214,170,87,0.16)", text: palette.warn, border: "rgba(214,170,87,0.35)" },
+      decision: { bg: palette.accentSoft, text: palette.info, border: "rgba(90,174,231,0.35)" },
+      resource: { bg: "rgba(73,191,143,0.14)", text: palette.success, border: "rgba(73,191,143,0.35)" },
+      external: { bg: "rgba(115,153,199,0.14)", text: palette.link, border: "rgba(115,153,199,0.35)" },
+      default: { bg: "rgba(120,120,120,0.12)", text: palette.muted, border: palette.border },
+    }),
+    [palette]
+  );
+
   const projectNavItems = [
     { label: "Projects", href: "/projects", icon: RectangleStackIcon },
     { label: "Current Sprint", href: "/sprint", icon: RocketLaunchIcon },
@@ -168,8 +171,8 @@ function Blockers() {
             borderRadius: 18,
             border: `1px solid ${palette.border}`,
             background: darkMode
-              ? "radial-gradient(circle at 8% 15%, rgba(239,68,68,0.24), rgba(18,18,18,0.25) 52%), linear-gradient(140deg, rgba(255,167,97,0.16), rgba(87,205,184,0.14))"
-              : "radial-gradient(circle at 8% 15%, rgba(239,68,68,0.18), var(--app-info-soft) 54%), linear-gradient(140deg, rgba(255,196,146,0.52), rgba(152,243,223,0.42))",
+              ? "radial-gradient(circle at 8% 15%, rgba(248,113,113,0.24), rgba(18,18,18,0.25) 52%), linear-gradient(140deg, rgba(90,174,231,0.2), rgba(73,191,143,0.16))"
+              : "radial-gradient(circle at 8% 15%, rgba(185,28,28,0.12), rgba(47,128,184,0.12) 54%), linear-gradient(140deg, rgba(159,214,246,0.45), rgba(173,230,214,0.35))",
             padding: 16,
             marginBottom: 12,
           }}
@@ -188,7 +191,7 @@ function Blockers() {
         </section>
 
         {errorMsg && (
-          <div style={{ marginBottom: 10, borderRadius: 10, border: "1px solid var(--app-danger-border)", background: "var(--app-danger-soft)", color: "var(--app-danger)", padding: "8px 10px", fontSize: 12 }}>
+          <div style={{ marginBottom: 10, borderRadius: 10, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger, padding: "8px 10px", fontSize: 12 }}>
             {errorMsg}
           </div>
         )}
@@ -312,7 +315,7 @@ function Blockers() {
             ) : (
               <section style={{ display: "grid", gap: 10 }}>
                 {filteredBlockers.map((blocker) => {
-                  const tone = TYPE_COLORS[blocker.type] || TYPE_COLORS.default;
+                  const tone = typeColors[blocker.type] || typeColors.default;
                   return (
                     <article
                       key={blocker.id}
@@ -351,8 +354,8 @@ function Blockers() {
                           className="ui-btn-polish"
                           style={{
                             ...ui.secondaryButton,
-                            borderColor: "var(--app-success-border)",
-                            color: "var(--app-success)",
+                            borderColor: palette.success,
+                            color: palette.success,
                             padding: "8px 10px",
                             opacity: resolvingId === blocker.id ? 0.7 : 1,
                           }}
@@ -371,7 +374,7 @@ function Blockers() {
         </section>
 
         {showCreateModal && (
-          <div style={{ position: "fixed", inset: 0, zIndex: 150, background: "var(--app-overlay)", display: "grid", placeItems: "center", padding: 14 }} onClick={() => !submitting && setShowCreateModal(false)}>
+          <div style={{ position: "fixed", inset: 0, zIndex: 150, background: darkMode ? "rgba(5,12,20,0.62)" : "rgba(15,32,45,0.36)", display: "grid", placeItems: "center", padding: 14 }} onClick={() => !submitting && setShowCreateModal(false)}>
             <div style={{ width: "min(620px,100%)", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }} onClick={(e) => e.stopPropagation()}>
               <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>Report Blocker</h2>
               <p style={{ margin: "5px 0 0", fontSize: 12, color: palette.muted }}>Capture what is blocked and where escalation is needed.</p>

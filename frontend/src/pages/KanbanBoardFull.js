@@ -156,7 +156,7 @@ function KanbanBoard() {
           </button>
         </section>
         {moveError && (
-          <div style={{ marginBottom: 10, borderRadius: 10, border: "1px solid var(--app-danger-border)", background: "var(--app-danger-soft)", color: "var(--app-danger)", padding: "8px 10px", fontSize: 12 }}>
+          <div style={{ marginBottom: 10, borderRadius: 10, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger, padding: "8px 10px", fontSize: 12 }}>
             {moveError}
           </div>
         )}
@@ -197,7 +197,7 @@ function KanbanBoard() {
                           event.stopPropagation();
                           handleDeleteIssue(issue.id);
                         }}
-                        style={deleteButton}
+                        style={{ ...deleteButton, color: palette.danger }}
                       >
                         <TrashIcon style={icon14} />
                       </button>
@@ -235,24 +235,24 @@ function KanbanBoard() {
   );
 }
 
-const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 30, height: 30, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
-const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--app-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 8 };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--ui-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 8 };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const title = { margin: "8px 0 5px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", letterSpacing: "-0.02em" };
 const subtitle = { margin: 0, fontSize: 13 };
 const boardLane = { display: "grid", gridAutoFlow: "column", gridAutoColumns: "minmax(280px, 340px)", gap: 8, overflowX: "auto", overflowY: "hidden", paddingBottom: 4, alignItems: "start" };
 const columnCard = { borderRadius: 12, padding: 10, minHeight: 520, display: "flex", flexDirection: "column", minWidth: 280 };
 const columnHead = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
-const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid var(--app-border-strong)", color: "var(--app-muted)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
+const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid var(--ui-border)", color: "var(--ui-muted)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
 const issuesWrap = { display: "grid", gap: 8, alignContent: "start", flex: 1 };
-const empty = { borderRadius: 10, border: "1px dashed var(--app-border-strong)", padding: "14px 10px", fontSize: 12, color: "var(--app-muted)", textAlign: "center" };
-const issueCard = { borderRadius: 10, border: "1px solid var(--app-border-strong)", background: "#251d22", padding: 10, cursor: "pointer" };
-const issueKey = { margin: 0, fontSize: 11, color: "var(--app-muted)", fontWeight: 700 };
-const issueTitle = { margin: "5px 0", fontSize: 13, color: "var(--app-text)", fontWeight: 600, lineHeight: 1.35 };
-const issueMeta = { margin: 0, fontSize: 11, color: "var(--app-muted)" };
-const deleteButton = { border: "none", background: "transparent", color: "var(--app-danger)", cursor: "pointer", padding: 2 };
-const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
+const empty = { borderRadius: 10, border: "1px dashed var(--ui-border)", padding: "14px 10px", fontSize: 12, color: "var(--ui-muted)", textAlign: "center" };
+const issueCard = { borderRadius: 10, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)", padding: 10, cursor: "pointer" };
+const issueKey = { margin: 0, fontSize: 11, color: "var(--ui-muted)", fontWeight: 700 };
+const issueTitle = { margin: "5px 0", fontSize: 13, color: "var(--ui-text)", fontWeight: 600, lineHeight: 1.35 };
+const issueMeta = { margin: 0, fontSize: 11, color: "var(--ui-muted)" };
+const deleteButton = { border: "none", background: "transparent", cursor: "pointer", padding: 2 };
+const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
 const modalCard = { width: "min(520px,100%)", borderRadius: 14, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };

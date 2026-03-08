@@ -143,14 +143,14 @@ function ProjectDetail() {
       <div style={ui.container}>
         <section style={{ ...hero, border: "none", background: "transparent" }}>
           <div style={heroTop}>
-            <div style={projectBadge}>{project.key?.charAt(0) || "P"}</div>
+            <div style={{ ...projectBadge, background: palette.ctaGradient, color: palette.buttonText }}>{project.key?.charAt(0) || "P"}</div>
             <div style={{ minWidth: 0 }}>
               <h1 style={{ ...title, color: palette.text }}>{project.name}</h1>
               <p style={{ ...sub, color: palette.muted }}>{project.key}</p>
               {project.description && <p style={{ ...sub, marginTop: 8, color: palette.muted }}>{project.description}</p>}
             </div>
           </div>
-          <button onClick={() => setShowDeleteConfirm(true)} style={dangerIconButton}>
+          <button onClick={() => setShowDeleteConfirm(true)} style={{ ...dangerIconButton, border: `1px solid ${palette.danger}`, color: palette.danger, background: palette.accentSoft }}>
             <TrashIcon style={icon18} />
           </button>
         </section>
@@ -251,7 +251,7 @@ function ProjectDetail() {
         )}
 
         {showCreateSprint && (
-          <Modal title="Create Sprint" onClose={() => setShowCreateSprint(false)}>
+          <Modal title="Create Sprint" onClose={() => setShowCreateSprint(false)} palette={palette}>
             <form onSubmit={handleCreateSprint} style={formStack}>
               <input required placeholder="Sprint name" value={sprintForm.name} onChange={(e) => setSprintForm({ ...sprintForm, name: e.target.value })} style={ui.input} />
               <div style={ui.twoCol}>
@@ -268,7 +268,7 @@ function ProjectDetail() {
         )}
 
         {showCreateIssue && (
-          <Modal title="Create Issue" onClose={() => setShowCreateIssue(false)}>
+          <Modal title="Create Issue" onClose={() => setShowCreateIssue(false)} palette={palette}>
             <form onSubmit={handleCreateIssue} style={formStack}>
               <input required placeholder="Issue title" value={issueForm.title} onChange={(e) => setIssueForm({ ...issueForm, title: e.target.value })} style={ui.input} />
               <textarea rows={4} placeholder="Description" value={issueForm.description} onChange={(e) => setIssueForm({ ...issueForm, description: e.target.value })} style={ui.input} />
@@ -294,7 +294,7 @@ function ProjectDetail() {
         )}
 
         {showDeleteConfirm && (
-          <Modal title="Delete Project" onClose={() => setShowDeleteConfirm(false)}>
+          <Modal title="Delete Project" onClose={() => setShowDeleteConfirm(false)} palette={palette}>
             <p style={{ fontSize: 14, color: palette.muted, marginBottom: 12 }}>This action cannot be undone.</p>
             <div style={modalButtons}>
               <button onClick={() => setShowDeleteConfirm(false)} style={ui.secondaryButton}>Cancel</button>
@@ -307,13 +307,13 @@ function ProjectDetail() {
   );
 }
 
-function Modal({ title, onClose, children }) {
+function Modal({ title, onClose, children, palette }) {
   return (
     <div style={overlay}>
-      <div style={modalCard}>
+      <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 20 }}>{title}</h3>
-          <button onClick={onClose} style={closeBtn}>Close</button>
+          <h3 style={{ margin: 0, fontSize: 20, color: palette.text }}>{title}</h3>
+          <button onClick={onClose} style={{ ...closeBtn, color: palette.muted }}>Close</button>
         </div>
         {children}
       </div>
@@ -337,13 +337,13 @@ function Stat({ icon: Icon, label, value, palette }) {
   );
 }
 
-const spinner = { width: 28, height: 28, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const spinner = { width: 28, height: 28, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const hero = { borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12 };
 const heroTop = { display: "grid", gridTemplateColumns: "56px 1fr", gap: 10, alignItems: "start" };
-const projectBadge = { width: 56, height: 56, borderRadius: 14, display: "grid", placeItems: "center", background: "var(--app-gradient-accent)", color: "var(--app-button-text)", fontWeight: 800, fontSize: 18 };
+const projectBadge = { width: 56, height: 56, borderRadius: 14, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 18 };
 const title = { margin: "0 0 2px", fontSize: "clamp(1.18rem,2.05vw,1.72rem)", letterSpacing: "-0.02em" };
 const sub = { margin: 0, fontSize: 13 };
-const dangerIconButton = { border: "1px solid var(--app-danger-border)", borderRadius: 10, width: 36, height: 36, color: "var(--app-danger)", background: "var(--app-danger-soft)", display: "grid", placeItems: "center", cursor: "pointer" };
+const dangerIconButton = { borderRadius: 10, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer" };
 const quickLinkRow = { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 };
 const quickButton = { padding: "9px 12px", borderRadius: 10, textDecoration: "none", fontSize: 13, fontWeight: 700 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 };
@@ -361,9 +361,9 @@ const itemTitle = { margin: 0, fontSize: 15, fontWeight: 700 };
 const itemMeta = { margin: "3px 0 0", fontSize: 12 };
 const statusPill = { borderRadius: 999, padding: "4px 8px", fontSize: 11, textTransform: "capitalize", fontWeight: 700 };
 const emptyBlock = { borderRadius: 12, padding: "24px 14px", textAlign: "center" };
-const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
-const modalCard = { width: "min(560px,100%)", background: "var(--app-surface)", borderRadius: 14, padding: 16 };
-const closeBtn = { border: "none", background: "transparent", color: "var(--app-muted)", fontWeight: 700, cursor: "pointer" };
+const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
+const modalCard = { width: "min(560px,100%)", borderRadius: 14, padding: 16 };
+const closeBtn = { border: "none", background: "transparent", fontWeight: 700, cursor: "pointer" };
 const formStack = { display: "grid", gap: 8 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
 const icon18 = { width: 18, height: 18 };

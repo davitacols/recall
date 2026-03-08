@@ -131,28 +131,41 @@ export default function UnifiedDashboard() {
     }
   };
 
+  const unwrapPayload = (payload, fallback = {}) => {
+    if (Array.isArray(payload)) return payload;
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      if (payload.data && typeof payload.data === "object") return payload.data;
+      return payload;
+    }
+    return fallback;
+  };
+
   const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("access_token") || localStorage.getItem("token");
+      const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
       const timelineRes = await fetch(
         buildApiUrl(`/api/knowledge/timeline/?days=7&page=${page}&per_page=10`),
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: authHeaders }
       );
-      const timelineData = await readJsonSafe(timelineRes, { results: [], pagination: { has_next: false } });
+      const timelineRaw = await readJsonSafe(timelineRes, { results: [], pagination: { has_next: false } });
+      const timelineData = unwrapPayload(timelineRaw, { results: [], pagination: { has_next: false } });
       const results = timelineData.results || timelineData;
       setTimeline((prev) => (page === 1 ? results : [...prev, ...results]));
       setHasMore(timelineData.pagination?.has_next || false);
 
       const statsRes = await fetch(buildApiUrl("/api/knowledge/ai/success-rates/"), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders,
       });
-      const statsData = await readJsonSafe(statsRes, {});
+      const statsRaw = await readJsonSafe(statsRes, {});
+      const statsData = unwrapPayload(statsRaw, {});
 
       const outcomesRes = await fetch(buildApiUrl("/api/decisions/outcomes/stats/"), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders,
       });
-      const outcomesData = await readJsonSafe(outcomesRes, {});
+      const outcomesRaw = await readJsonSafe(outcomesRes, {});
+      const outcomesData = unwrapPayload(outcomesRaw, {});
       setOutcomeStats({
         reviewed_count: outcomesData.reviewed_count || 0,
         success_count: outcomesData.success_count || 0,
@@ -162,9 +175,10 @@ export default function UnifiedDashboard() {
       });
 
       const pendingRes = await fetch(buildApiUrl("/api/decisions/outcomes/pending/?overdue_only=false"), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders,
       });
-      const pendingData = await readJsonSafe(pendingRes, { items: [] });
+      const pendingRaw = await readJsonSafe(pendingRes, { items: [] });
+      const pendingData = unwrapPayload(pendingRaw, { items: [] });
       setPendingOutcomeReviews(pendingData.items || []);
       setPendingOutcomeMeta({
         total: pendingData.total || 0,
@@ -172,9 +186,10 @@ export default function UnifiedDashboard() {
       });
 
       const driftRes = await fetch(buildApiUrl("/api/decisions/outcomes/drift-alerts/"), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders,
       });
-      const driftData = await readJsonSafe(driftRes, { items: [] });
+      const driftRaw = await readJsonSafe(driftRes, { items: [] });
+      const driftData = unwrapPayload(driftRaw, { items: [] });
       setDriftAlerts(driftData.items || []);
       setDriftMeta({
         total: driftData.total || 0,
@@ -183,24 +198,27 @@ export default function UnifiedDashboard() {
       });
 
       const calibrationRes = await fetch(buildApiUrl("/api/decisions/outcomes/calibration/?days=120"), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders,
       });
-      const calibrationData = await readJsonSafe(calibrationRes, { reviewers: [] });
+      const calibrationRaw = await readJsonSafe(calibrationRes, { reviewers: [] });
+      const calibrationData = unwrapPayload(calibrationRaw, { reviewers: [] });
       setCalibrationRows(calibrationData.reviewers || []);
 
       const sprintRes = await fetch(buildApiUrl("/api/agile/current-sprint/"), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders,
       });
-      const sprintData = await readJsonSafe(sprintRes, null);
+      const sprintRaw = await readJsonSafe(sprintRes, null);
+      const sprintData = unwrapPayload(sprintRaw, null);
       setCurrentSprint(sprintData || null);
 
       if (sprintData?.id) {
         const twinRes = await fetch(
           buildApiUrl(`/api/agile/sprints/${sprintData.id}/decision-twin/?min_confidence_band=medium&min_probability_delta=1&max_scope_changes=4&allow_backlog_adds=true&enforce_policy=true`),
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: authHeaders }
         );
         if (twinRes.ok) {
-          const twinData = await readJsonSafe(twinRes, {});
+          const twinRaw = await readJsonSafe(twinRes, {});
+          const twinData = unwrapPayload(twinRaw, {});
           const scenarios = twinData.scenarios || [];
           const recommended = scenarios.find((item) => item.id === twinData.recommended_scenario_id) || scenarios[0] || null;
           setDecisionTwinSummary({
@@ -232,10 +250,11 @@ export default function UnifiedDashboard() {
       }
 
       const debtRes = await fetch(buildApiUrl("/api/agile/decisions/debt-ledger/?days=14"), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders,
       });
       if (debtRes.ok) {
-        const debtData = await readJsonSafe(debtRes, {});
+        const debtRaw = await readJsonSafe(debtRes, {});
+        const debtData = unwrapPayload(debtRaw, {});
         setDecisionDebt(debtData);
         setDecisionDebtError("");
         setDecisionDebtUpgrade(null);
@@ -256,20 +275,22 @@ export default function UnifiedDashboard() {
 
       const [copilotFeedbackRes, copilotFeedbackTrendRes] = await Promise.all([
         fetch(buildApiUrl("/api/knowledge/ai/copilot/feedback-summary/"), {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders,
         }),
         fetch(buildApiUrl("/api/knowledge/ai/copilot/feedback-trend/?days=7"), {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders,
         }),
       ]);
       if (copilotFeedbackRes.ok) {
-        const feedbackData = await readJsonSafe(copilotFeedbackRes, null);
+        const feedbackRaw = await readJsonSafe(copilotFeedbackRes, null);
+        const feedbackData = unwrapPayload(feedbackRaw, null);
         setCopilotFeedback(feedbackData);
       } else {
         setCopilotFeedback(null);
       }
       if (copilotFeedbackTrendRes.ok) {
-        const trendData = await readJsonSafe(copilotFeedbackTrendRes, { points: [] });
+        const trendRaw = await readJsonSafe(copilotFeedbackTrendRes, { points: [] });
+        const trendData = unwrapPayload(trendRaw, { points: [] });
         setCopilotFeedbackTrend((trendData.points || []).slice(-7));
       } else {
         setCopilotFeedbackTrend([]);
@@ -320,7 +341,7 @@ export default function UnifiedDashboard() {
   const sendOutcomeReminders = async () => {
     setNotifyingOutcomes(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("access_token") || localStorage.getItem("token");
       await fetch(buildApiUrl("/api/decisions/outcomes/pending/notify/"), {
         method: "POST",
         headers: {
@@ -340,7 +361,7 @@ export default function UnifiedDashboard() {
   const runFollowUpOrchestrator = async () => {
     setOrchestratingOutcomes(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("access_token") || localStorage.getItem("token");
       await fetch(buildApiUrl("/api/decisions/outcomes/follow-up/run/"), {
         method: "POST",
         headers: {

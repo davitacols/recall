@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { Brand } from '../../constants/brand';
 import { normalizeList, sprintService } from '../../services/api';
 
 interface Issue {
@@ -23,6 +24,7 @@ interface Sprint {
 }
 
 export default function SprintDetailScreen() {
+  const c = Brand.colors;
   const { id } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [sprint, setSprint] = useState<Sprint | null>(null);
@@ -51,45 +53,45 @@ export default function SprintDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#f0b36d" />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
 
   if (!sprint) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.title}>Sprint not found</Text>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <Text style={[styles.title, { color: c.text }]}>Sprint not found</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.status}>{(sprint.status || 'unknown').toUpperCase()}</Text>
-        <Text style={styles.title}>{sprint.name}</Text>
-        <Text style={styles.meta}>
+    <View style={[styles.screen, { backgroundColor: c.bg }]}>
+      <View style={[styles.header, { borderBottomColor: c.border }]}>
+        <Text style={[styles.status, { color: c.accentSoft }]}>{(sprint.status || 'unknown').toUpperCase()}</Text>
+        <Text style={[styles.title, { color: c.text }]}>{sprint.name}</Text>
+        <Text style={[styles.meta, { color: c.textMuted }]}>
           {new Date(sprint.start_date).toLocaleDateString()} - {new Date(sprint.end_date).toLocaleDateString()}
         </Text>
-        <Text style={styles.goal}>{sprint.goal || 'No sprint goal provided.'}</Text>
+        <Text style={[styles.goal, { color: c.textMuted }]}>{sprint.goal || 'No sprint goal provided.'}</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Issues ({issues.length})</Text>
+      <Text style={[styles.sectionTitle, { color: c.text }]}>Issues ({issues.length})</Text>
       <FlatList
         data={issues}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <View style={styles.issueCard}>
+          <View style={[styles.issueCard, { borderColor: c.border, backgroundColor: c.surface }]}>
             <View style={styles.row}>
-              <Text style={styles.issueKey}>{item.key || `ISSUE-${item.id}`}</Text>
-              <Text style={styles.issueMeta}>{(item.status || 'unknown').toUpperCase()}</Text>
+              <Text style={[styles.issueKey, { color: c.accentSoft }]}>{item.key || `ISSUE-${item.id}`}</Text>
+              <Text style={[styles.issueMeta, { color: c.textMuted }]}>{(item.status || 'unknown').toUpperCase()}</Text>
             </View>
-            <Text style={styles.issueTitle}>{item.title}</Text>
-            <Text style={styles.issueMeta}>
-              {(item.priority || 'medium').toUpperCase()} • {item.story_points || 0} pts
+            <Text style={[styles.issueTitle, { color: c.text }]}>{item.title}</Text>
+            <Text style={[styles.issueMeta, { color: c.textMuted }]}> 
+              {(item.priority || 'medium').toUpperCase()} | {item.story_points || 0} pts
             </Text>
           </View>
         )}
@@ -99,25 +101,23 @@ export default function SprintDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0f141d' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f141d' },
-  header: { padding: 18, borderBottomWidth: 1, borderBottomColor: '#1e293b', gap: 6 },
-  status: { color: '#f6c287', fontSize: 11, fontWeight: '700' },
-  title: { color: '#f8fafc', fontSize: 24, fontWeight: '800' },
-  meta: { color: '#90a0b5', fontSize: 12 },
-  goal: { color: '#c6d2e3', fontSize: 14, marginTop: 4 },
-  sectionTitle: { color: '#f8fafc', fontSize: 16, fontWeight: '700', paddingHorizontal: 18, paddingTop: 14 },
-  list: { padding: 18, gap: 10 },
+  screen: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  header: { padding: 16, borderBottomWidth: 1, gap: 6 },
+  status: { fontSize: 11, fontWeight: '800', letterSpacing: 0.35 },
+  title: { fontSize: 23, fontWeight: '900' },
+  meta: { fontSize: 12 },
+  goal: { fontSize: 14, marginTop: 4 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', paddingHorizontal: 16, paddingTop: 14 },
+  list: { padding: 16, gap: 10 },
   issueCard: {
-    backgroundColor: '#121a27',
-    borderColor: '#263246',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 0,
     padding: 12,
     gap: 5,
   },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  issueKey: { color: '#f6c287', fontSize: 12, fontWeight: '700' },
-  issueTitle: { color: '#f8fafc', fontSize: 14, fontWeight: '600' },
-  issueMeta: { color: '#90a0b5', fontSize: 11 },
+  issueKey: { fontSize: 12, fontWeight: '800' },
+  issueTitle: { fontSize: 14, fontWeight: '700' },
+  issueMeta: { fontSize: 11 },
 });

@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { DashboardIllustration } from '../../components/TechnicalIllustrations';
+import { Brand } from '../../constants/brand';
 import { decisionService } from '../../services/api';
 
 export default function NewDecisionScreen() {
+  const c = Brand.colors;
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
@@ -40,43 +43,46 @@ export default function NewDecisionScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>New Decision</Text>
-      <Text style={styles.sub}>Document the choice and why it was made.</Text>
+    <ScrollView style={[styles.screen, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
+      <Text style={[styles.title, { color: c.text }]}>New Decision</Text>
+      <Text style={[styles.sub, { color: c.textMuted }]}>Document the choice and why it was made.</Text>
+      <View style={[styles.illustration, { borderColor: c.border, backgroundColor: c.surface }]}>
+        <DashboardIllustration />
+      </View>
 
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: c.border, backgroundColor: c.surface, color: c.text }]}
         placeholder="Decision title"
-        placeholderTextColor="#8ba0b8"
+        placeholderTextColor={c.textMuted}
         value={title}
         onChangeText={setTitle}
       />
       <TextInput
-        style={[styles.input, styles.textArea]}
+        style={[styles.input, styles.textArea, { borderColor: c.border, backgroundColor: c.surface, color: c.text }]}
         placeholder="Decision description"
-        placeholderTextColor="#8ba0b8"
+        placeholderTextColor={c.textMuted}
         value={description}
         onChangeText={setDescription}
         multiline
       />
       <TextInput
-        style={[styles.input, styles.textAreaSmall]}
+        style={[styles.input, styles.textAreaSmall, { borderColor: c.border, backgroundColor: c.surface, color: c.text }]}
         placeholder="Rationale"
-        placeholderTextColor="#8ba0b8"
+        placeholderTextColor={c.textMuted}
         value={rationale}
         onChangeText={setRationale}
         multiline
       />
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: c.border, backgroundColor: c.surface, color: c.text }]}
         placeholder="impact_level (low/medium/high)"
-        placeholderTextColor="#8ba0b8"
+        placeholderTextColor={c.textMuted}
         value={impactLevel}
         onChangeText={setImpactLevel}
         autoCapitalize="none"
       />
 
-      <TouchableOpacity style={styles.submit} onPress={submit} disabled={loading}>
+      <TouchableOpacity style={[styles.submit, { backgroundColor: c.accent }]} onPress={submit} disabled={loading}>
         {loading ? <ActivityIndicator color="#111827" /> : <Text style={styles.submitText}>Create Decision</Text>}
       </TouchableOpacity>
     </ScrollView>
@@ -84,25 +90,22 @@ export default function NewDecisionScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0f141d' },
+  screen: { flex: 1 },
   content: { padding: 18, gap: 10 },
-  title: { color: '#f8fafc', fontSize: 24, fontWeight: '800' },
-  sub: { color: '#9db0c8', marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: '800' },
+  sub: { marginBottom: 8 },
+  illustration: { borderWidth: 1, padding: 8 },
   input: {
     borderWidth: 1,
-    borderColor: '#273449',
-    backgroundColor: '#121a27',
-    borderRadius: 11,
+    borderRadius: 0,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    color: '#f8fafc',
   },
   textArea: { minHeight: 130, textAlignVertical: 'top' },
   textAreaSmall: { minHeight: 90, textAlignVertical: 'top' },
   submit: {
     marginTop: 8,
-    backgroundColor: '#f0b36d',
-    borderRadius: 12,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 13,

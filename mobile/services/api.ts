@@ -75,6 +75,11 @@ export const authService = {
     api.post('/auth/register/', { email, password, organization }),
   
   profile: () => api.get('/auth/profile/'),
+  workspaces: () => api.get('/auth/workspaces/'),
+  requestWorkspaceSwitchCode: (orgSlug: string) =>
+    api.post('/auth/workspaces/switch/request-code/', { org_slug: orgSlug }),
+  switchWorkspace: (payload: { org_slug: string; password?: string; otp_code?: string }) =>
+    api.post('/auth/workspaces/switch/', payload),
 };
 
 export const normalizeList = <T = any>(payload: any): T[] => {
@@ -100,11 +105,11 @@ export const conversationService = {
 };
 
 export const decisionService = {
-  list: (params?: any) => api.get('/recall/decisions/', { params }),
+  list: (params?: any) => api.get('/decisions/', { params }),
   
-  get: (id: number) => api.get(`/recall/decisions/${id}/`),
+  get: (id: number) => api.get(`/decisions/${id}/`),
   
-  create: (data: any) => api.post('/recall/decisions/', data),
+  create: (data: any) => api.post('/decisions/', data),
 };
 
 export const sprintService = {
@@ -112,7 +117,11 @@ export const sprintService = {
   
   get: (id: number) => api.get(`/agile/sprints/${id}/`),
   
-  issues: (sprintId: number) => api.get(`/agile/sprints/${sprintId}/issues/`),
+  // Backend sprint detail already embeds issues; use it to avoid 404 on non-existent /issues route.
+  issues: async (sprintId: number) => {
+    const response = await api.get(`/agile/sprints/${sprintId}/`);
+    return { ...response, data: response.data?.issues || [] };
+  },
 };
 
 export const issueService = {
@@ -127,6 +136,7 @@ export const notificationService = {
   list: () => api.get('/notifications/'),
   markRead: (id: number) => api.post(`/notifications/${id}/read/`),
   markAllRead: () => api.post('/notifications/read-all/'),
+  sendTest: () => api.post('/notifications/test/'),
 };
 
 export default api;

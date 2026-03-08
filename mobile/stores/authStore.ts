@@ -18,6 +18,7 @@ interface AuthStore {
   login: (email: string, password: string, orgSlug?: string) => Promise<void>;
   logout: () => Promise<void>;
   bootstrap: () => Promise<void>;
+  applyAuthPayload: (payload: any) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -44,6 +45,16 @@ export const useAuthStore = create<AuthStore>((set) => ({
   logout: async () => {
     await AsyncStorage.removeItem('access_token');
     set({ user: null, token: null });
+  },
+
+  applyAuthPayload: async (payload: any) => {
+    const accessToken = payload?.access_token;
+    const user = payload?.user;
+    if (!accessToken || !user) {
+      throw new Error('Invalid auth payload');
+    }
+    await AsyncStorage.setItem('access_token', accessToken);
+    set({ token: accessToken, user, initialized: true, error: null });
   },
 
   bootstrap: async () => {

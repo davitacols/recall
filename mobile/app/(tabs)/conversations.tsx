@@ -11,6 +11,9 @@ import {
 import { useRouter } from 'expo-router';
 
 import { ChatIcon, PlusIcon } from '../../components/Icons';
+import MotionScreen from '../../components/MotionScreen';
+import { DashboardIllustration } from '../../components/TechnicalIllustrations';
+import { Brand } from '../../constants/brand';
 import { conversationService, normalizeList } from '../../services/api';
 
 interface Conversation {
@@ -18,6 +21,7 @@ interface Conversation {
   title: string;
   content: string;
   author_name?: string;
+  author?: { full_name?: string };
   post_type?: string;
   priority?: string;
   created_at: string;
@@ -26,15 +30,16 @@ interface Conversation {
 }
 
 export default function ConversationsScreen() {
+  const c = Brand.colors;
   const router = useRouter();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [items, setItems] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchConversations = async () => {
+  const load = async () => {
     try {
-      const response = await conversationService.list();
-      setConversations(normalizeList<Conversation>(response.data));
+      const res = await conversationService.list();
+      setItems(normalizeList<Conversation>(res.data));
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
@@ -44,117 +49,108 @@ export default function ConversationsScreen() {
   };
 
   useEffect(() => {
-    fetchConversations();
+    load();
   }, []);
 
   const formatDate = (raw: string) => {
-    const date = new Date(raw);
-    const diffHours = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60));
-    if (diffHours < 1) return 'Just now';
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffHours < 24 * 7) return `${Math.floor(diffHours / 24)}d ago`;
-    return date.toLocaleDateString();
+    const diffHours = Math.floor((Date.now() - new Date(raw).getTime()) / 3600000);
+    if (diffHours < 1) return 'Now';
+    if (diffHours < 24) return `${diffHours}h`;
+    return `${Math.floor(diffHours / 24)}d`;
   };
-
-  const renderItem = ({ item }: { item: Conversation }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => router.push(`/conversation/${item.id}`)}
-      activeOpacity={0.85}
-    >
-      <View style={styles.row}>
-        <Text style={styles.type}>{(item.post_type || 'discussion').toUpperCase()}</Text>
-        <Text style={styles.time}>{formatDate(item.created_at)}</Text>
-      </View>
-      <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-      <Text style={styles.content} numberOfLines={2}>{item.content}</Text>
-      <View style={styles.row}>
-        <Text style={styles.meta}>{item.author_name || 'Unknown author'}</Text>
-        <Text style={styles.meta}>
-          {(item.reply_count || 0)} replies • {(item.view_count || 0)} views
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
 
   if (loading) {
     return (
-      <View style={styles.loaderWrap}>
-        <ActivityIndicator size="large" color="#f0b36d" />
-        <Text style={styles.loaderText}>Loading conversations...</Text>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <ChatIcon color="#f6c287" />
-          <Text style={styles.headerTitle}>Conversations</Text>
+    <MotionScreen delay={30}>
+    <View style={[styles.screen, { backgroundColor: c.bg }]}> 
+      <View style={[styles.hero, { borderBottomColor: c.border, backgroundColor: c.surface }]}>
+        <View style={styles.heroTop}>
+          <View style={styles.headerLeft}>
+            <ChatIcon color={c.accentSoft} />
+            <Text style={[styles.title, { color: c.text }]}>Conversations</Text>
+          </View>
+          <TouchableOpacity style={[styles.addBtn, { backgroundColor: c.accent }]} onPress={() => router.push('/conversations/new')}>
+            <PlusIcon color="#ffffff" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.plusBtn} onPress={() => router.push('/conversations/new')}>
-          <PlusIcon color="#0f141d" />
-        </TouchableOpacity>
+        <Text style={[styles.sub, { color: c.textMuted }]}>Team context, blockers, and operating signals.</Text>
+        <View style={[styles.artWrap, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+          <DashboardIllustration />
+        </View>
       </View>
 
       <FlatList
-        data={conversations}
-        renderItem={renderItem}
+        data={items}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              fetchConversations();
-            }}
-            tintColor="#f0b36d"
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={c.accent} />}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[styles.card, { borderColor: c.border, backgroundColor: c.surface }]}
+            onPress={() => router.push(`/conversation/${item.id}`)}
+            activeOpacity={0.9}
+          >
+            <View style={[styles.topRule, { backgroundColor: c.accent }]} />
+            <View style={styles.row}>
+              <Text style={[styles.badge, { color: c.accentSoft }]}>{(item.post_type || 'discussion').toUpperCase()}</Text>
+              <Text style={[styles.time, { color: c.textMuted }]}>{formatDate(item.created_at)}</Text>
+            </View>
+            <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={2}>{item.title}</Text>
+            <Text style={[styles.cardBody, { color: c.textMuted }]} numberOfLines={2}>{item.content}</Text>
+            <View style={styles.row}>
+              <Text style={[styles.meta, { color: c.textMuted }]} numberOfLines={1}>
+                {item.author_name || item.author?.full_name || 'Unknown'}
+              </Text>
+              <Text style={[styles.meta, { color: c.textMuted }]}>{item.reply_count || 0} replies | {item.view_count || 0} views</Text>
+            </View>
+          </TouchableOpacity>
+        )}
       />
     </View>
+    </MotionScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0f141d' },
-  header: {
+  screen: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  hero: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 8,
   },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { color: '#f8fafc', fontSize: 20, fontWeight: '700' },
-  plusBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#f0b36d',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  list: { padding: 16 },
+  title: { fontSize: 24, fontWeight: '900', letterSpacing: -0.3 },
+  sub: { fontSize: 13 },
+  addBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  artWrap: { borderWidth: 1, padding: 8 },
+  list: { padding: 16, gap: 10, paddingBottom: 110 },
   card: {
-    backgroundColor: '#121a27',
-    borderColor: '#263246',
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    gap: 6,
+    padding: 12,
+    minHeight: 126,
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
+  topRule: { height: 2, marginBottom: 8 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  type: { color: '#f6c287', fontSize: 11, fontWeight: '700' },
-  time: { color: '#90a0b5', fontSize: 11 },
-  title: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
-  content: { color: '#c6d2e3', fontSize: 13, lineHeight: 18 },
-  meta: { color: '#90a0b5', fontSize: 12 },
-  loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f141d' },
-  loaderText: { color: '#dbe5f3', marginTop: 10 },
+  badge: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  time: { fontSize: 11, fontWeight: '700' },
+  cardTitle: { fontSize: 16, fontWeight: '900', marginTop: 8, letterSpacing: -0.2 },
+  cardBody: { fontSize: 13, lineHeight: 19, marginTop: 4 },
+  meta: { fontSize: 11, marginTop: 10 },
 });

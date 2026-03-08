@@ -1,1 +1,82 @@
-import React, { useState } from 'react';\nimport { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';\nimport axios from 'axios';\n\nconst API_URL = 'https://recall-backend-4hok.onrender.com/api';\n\nexport default function APITest() {\n  const [testing, setTesting] = useState(false);\n  const [result, setResult] = useState('');\n\n  const testConnection = async () => {\n    setTesting(true);\n    setResult('Testing...');\n    \n    try {\n      console.log('Testing API connection to:', API_URL);\n      \n      // Test health endpoint\n      const response = await axios.get(`${API_URL}/health/`, {\n        timeout: 10000,\n        headers: {\n          'Content-Type': 'application/json',\n        },\n      });\n      \n      console.log('Health check response:', response.data);\n      setResult(`✅ API Connected!\\nStatus: ${response.data.status}\\nDatabase: ${response.data.components.database}`);\n      \n      Alert.alert('Success', 'API connection working!');\n    } catch (error: any) {\n      console.error('API test error:', error);\n      \n      let errorMessage = 'Unknown error';\n      if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {\n        errorMessage = 'Network Error - Check internet connection';\n      } else if (error.code === 'ECONNABORTED') {\n        errorMessage = 'Request timeout';\n      } else if (error.response) {\n        errorMessage = `HTTP ${error.response.status}: ${error.response.data}`;\n      } else {\n        errorMessage = error.message;\n      }\n      \n      setResult(`❌ Connection Failed\\n${errorMessage}`);\n      Alert.alert('Error', errorMessage);\n    } finally {\n      setTesting(false);\n    }\n  };\n\n  return (\n    <View style={styles.container}>\n      <Text style={styles.title}>API Connection Test</Text>\n      <Text style={styles.url}>URL: {API_URL}</Text>\n      \n      <TouchableOpacity \n        style={[styles.button, testing && styles.buttonDisabled]} \n        onPress={testConnection}\n        disabled={testing}\n      >\n        <Text style={styles.buttonText}>\n          {testing ? 'Testing...' : 'Test API Connection'}\n        </Text>\n      </TouchableOpacity>\n      \n      {result ? (\n        <View style={styles.resultContainer}>\n          <Text style={styles.resultText}>{result}</Text>\n        </View>\n      ) : null}\n    </View>\n  );\n}\n\nconst styles = StyleSheet.create({\n  container: {\n    flex: 1,\n    padding: 20,\n    justifyContent: 'center',\n    backgroundColor: '#fff',\n  },\n  title: {\n    fontSize: 24,\n    fontWeight: 'bold',\n    textAlign: 'center',\n    marginBottom: 10,\n  },\n  url: {\n    fontSize: 12,\n    textAlign: 'center',\n    marginBottom: 30,\n    color: '#666',\n  },\n  button: {\n    backgroundColor: '#007AFF',\n    padding: 15,\n    borderRadius: 8,\n    alignItems: 'center',\n    marginBottom: 20,\n  },\n  buttonDisabled: {\n    opacity: 0.6,\n  },\n  buttonText: {\n    color: '#fff',\n    fontSize: 16,\n    fontWeight: '600',\n  },\n  resultContainer: {\n    backgroundColor: '#f5f5f5',\n    padding: 15,\n    borderRadius: 8,\n  },\n  resultText: {\n    fontSize: 14,\n    fontFamily: 'monospace',\n  },\n});
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import axios from 'axios';
+
+const API_URL = 'https://recall-backend-4hok.onrender.com/api';
+
+export default function APITest() {
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState('');
+
+  const testConnection = async () => {
+    setTesting(true);
+    setResult('Testing...');
+
+    try {
+      const response = await axios.get(`${API_URL}/health/`, {
+        timeout: 10000,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      setResult(`API Connected: ${response.data?.status || 'ok'}`);
+      Alert.alert('Success', 'API connection working.');
+    } catch (error: any) {
+      const message = error?.message || 'Connection failed';
+      setResult(`Connection Failed: ${message}`);
+      Alert.alert('Error', message);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>API Connection Test</Text>
+      <Text style={styles.url}>{API_URL}</Text>
+      <TouchableOpacity style={[styles.button, testing && styles.buttonDisabled]} onPress={testConnection} disabled={testing}>
+        <Text style={styles.buttonText}>{testing ? 'Testing...' : 'Test API Connection'}</Text>
+      </TouchableOpacity>
+      {result ? <Text style={styles.resultText}>{result}</Text> : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  url: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#666666',
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 0,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resultText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+});

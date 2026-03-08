@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
+import MotionScreen from '../components/MotionScreen';
+import { DashboardIllustration } from '../components/TechnicalIllustrations';
+import { Brand } from '../constants/brand';
 import { notificationService } from '../services/api';
 
 interface NotificationItem {
@@ -14,6 +18,7 @@ interface NotificationItem {
 }
 
 export default function NotificationsScreen() {
+  const c = Brand.colors;
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,6 +41,12 @@ export default function NotificationsScreen() {
     load();
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, [])
+  );
+
   const markAll = async () => {
     try {
       await notificationService.markAllRead();
@@ -45,24 +56,55 @@ export default function NotificationsScreen() {
     }
   };
 
+  const markOne = async (id: number) => {
+    try {
+      await notificationService.markRead(id);
+      setItems((prev) => prev.map((item) => (item.id === id ? { ...item, is_read: true } : item)));
+      setUnread((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const sendTest = async () => {
+    try {
+      await notificationService.sendTest();
+      Alert.alert('Sent', 'Test notification created.');
+      load();
+    } catch (error: any) {
+      Alert.alert('Failed', error?.response?.data?.error || 'Could not send test notification.');
+    }
+  };
+
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#f0b36d" />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Notifications</Text>
-          <Text style={styles.sub}>{unread} unread</Text>
+    <MotionScreen>
+    <View style={[styles.screen, { backgroundColor: c.bg }]}>
+      <View style={[styles.hero, { borderBottomColor: c.border, backgroundColor: c.surface }]}> 
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={[styles.title, { color: c.text }]}>Notifications</Text>
+            <Text style={[styles.sub, { color: c.textMuted }]}>{unread} unread</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={[styles.cta, { backgroundColor: c.surfaceAlt, borderColor: c.border }]} onPress={sendTest}>
+              <Text style={[styles.ctaText, { color: c.text }]}>Send test</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.cta, { backgroundColor: c.accent, borderColor: c.accent }]} onPress={markAll}>
+              <Text style={[styles.ctaText, { color: '#fff' }]}>Mark all</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <TouchableOpacity style={styles.cta} onPress={markAll}>
-          <Text style={styles.ctaText}>Mark all read</Text>
-        </TouchableOpacity>
+        <View style={[styles.artWrap, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+          <DashboardIllustration />
+        </View>
       </View>
 
       <FlatList
@@ -76,46 +118,68 @@ export default function NotificationsScreen() {
               setRefreshing(true);
               load();
             }}
-            tintColor="#f0b36d"
+            tintColor={c.accent}
           />
         }
         renderItem={({ item }) => (
-          <TouchableOpacity style={[styles.card, item.is_read ? styles.read : styles.unread]}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardMsg}>{item.message}</Text>
-            <Text style={styles.cardMeta}>{new Date(item.created_at).toLocaleString()}</Text>
+          <TouchableOpacity
+            style={[
+              styles.card,
+              { borderColor: c.border },
+              item.is_read ? { backgroundColor: c.surface } : { backgroundColor: c.surfaceAlt },
+            ]}
+            onPress={() => {
+              if (!item.is_read) {
+                markOne(item.id);
+              }
+            }}
+          >
+            <View style={[styles.topRule, { backgroundColor: item.is_read ? c.border : c.accent }]} />
+            <Text style={[styles.cardTitle, { color: c.text }]}>{item.title}</Text>
+            <Text style={[styles.cardMsg, { color: c.textMuted }]}>{item.message}</Text>
+            <Text style={[styles.cardMeta, { color: c.textMuted }]}>{new Date(item.created_at).toLocaleString()}</Text>
           </TouchableOpacity>
         )}
       />
     </View>
+    </MotionScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0f141d' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f141d' },
-  header: {
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+  screen: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  hero: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    gap: 8,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: { color: '#f8fafc', fontSize: 24, fontWeight: '800' },
-  sub: { color: '#9db0c8', marginTop: 4 },
-  cta: { backgroundColor: '#243146', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
-  ctaText: { color: '#d8e3f2', fontSize: 12, fontWeight: '600' },
-  list: { padding: 16, gap: 10 },
+  title: { fontSize: 24, fontWeight: '900', letterSpacing: -0.3 },
+  sub: { marginTop: 4, fontSize: 12 },
+  headerActions: { flexDirection: 'row', gap: 8 },
+  cta: { borderWidth: 1, borderRadius: 0, paddingHorizontal: 10, paddingVertical: 8 },
+  ctaText: { fontSize: 12, fontWeight: '800' },
+  artWrap: { borderWidth: 1, padding: 8 },
+  list: { padding: 16, gap: 10, paddingBottom: 32 },
   card: {
-    borderRadius: 12,
+    borderRadius: 0,
     padding: 12,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
-  read: { backgroundColor: '#121a27', borderColor: '#263246' },
-  unread: { backgroundColor: '#172131', borderColor: '#3a4b63' },
-  cardTitle: { color: '#f8fafc', fontSize: 14, fontWeight: '700' },
-  cardMsg: { color: '#c6d2e3', fontSize: 13, marginTop: 4 },
-  cardMeta: { color: '#90a0b5', fontSize: 11, marginTop: 6 },
+  topRule: { height: 2, marginBottom: 8 },
+  cardTitle: { fontSize: 15, fontWeight: '900' },
+  cardMsg: { fontSize: 13, marginTop: 4, lineHeight: 18 },
+  cardMeta: { fontSize: 11, marginTop: 8 },
 });

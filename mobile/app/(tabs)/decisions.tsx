@@ -11,6 +11,9 @@ import {
 import { useRouter } from 'expo-router';
 
 import { DecisionIcon, PlusIcon } from '../../components/Icons';
+import MotionScreen from '../../components/MotionScreen';
+import { DashboardIllustration } from '../../components/TechnicalIllustrations';
+import { Brand } from '../../constants/brand';
 import { decisionService, normalizeList } from '../../services/api';
 
 interface Decision {
@@ -21,21 +24,23 @@ interface Decision {
   impact_level?: string;
   decision_maker_name?: string;
   created_at: string;
+  confidence?: number;
   confidence_level?: number;
 }
 
 export default function DecisionsScreen() {
+  const c = Brand.colors;
   const router = useRouter();
-  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [items, setItems] = useState<Decision[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchDecisions = async () => {
+  const load = async () => {
     try {
-      const response = await decisionService.list();
-      setDecisions(normalizeList<Decision>(response.data));
+      const res = await decisionService.list();
+      setItems(normalizeList<Decision>(res.data));
     } catch (error) {
-      console.error('Error fetching decisions:', error);
+      console.error('Failed to load decisions:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -43,120 +48,110 @@ export default function DecisionsScreen() {
   };
 
   useEffect(() => {
-    fetchDecisions();
+    load();
   }, []);
 
   const statusColor = (status?: string) => {
     switch ((status || '').toLowerCase()) {
       case 'approved':
       case 'accepted':
-        return '#0ea56b';
-      case 'rejected':
-        return '#dc2626';
+        return c.success;
       case 'proposed':
-        return '#f59e0b';
+      case 'under_review':
+        return c.warning;
+      case 'rejected':
+        return c.danger;
       default:
-        return '#64748b';
+        return c.textMuted;
     }
   };
 
-  const renderItem = ({ item }: { item: Decision }) => (
-    <TouchableOpacity style={styles.card} activeOpacity={0.85}>
-      <View style={styles.row}>
-        <Text style={[styles.badge, { color: statusColor(item.status) }]}>
-          {(item.status || 'unknown').toUpperCase()}
-        </Text>
-        <Text style={styles.time}>{new Date(item.created_at).toLocaleDateString()}</Text>
-      </View>
-      <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-      <Text style={styles.description} numberOfLines={2}>{item.description || 'No summary yet.'}</Text>
-      <View style={styles.row}>
-        <Text style={styles.meta}>{item.decision_maker_name || 'Unknown owner'}</Text>
-        <Text style={styles.meta}>
-          {Math.round(item.confidence_level || 0)}% confidence
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-
   if (loading) {
     return (
-      <View style={styles.loaderWrap}>
-        <ActivityIndicator size="large" color="#f0b36d" />
-        <Text style={styles.loaderText}>Loading decisions...</Text>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <DecisionIcon color="#f6c287" />
-          <Text style={styles.headerTitle}>Decisions</Text>
+    <MotionScreen delay={40}>
+    <View style={[styles.screen, { backgroundColor: c.bg }]}>
+      <View style={[styles.hero, { borderBottomColor: c.border, backgroundColor: c.surface }]}>
+        <View style={styles.heroTop}>
+          <View style={styles.headerLeft}>
+            <DecisionIcon color={c.accentSoft} />
+            <Text style={[styles.title, { color: c.text }]}>Decisions</Text>
+          </View>
+          <TouchableOpacity style={[styles.addBtn, { backgroundColor: c.accent }]} onPress={() => router.push('/decisions/new')}>
+            <PlusIcon color="#ffffff" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.plusBtn} onPress={() => router.push('/decisions/new')}>
-          <PlusIcon color="#0f141d" />
-        </TouchableOpacity>
+        <Text style={[styles.sub, { color: c.textMuted }]}>Reasoned decisions with confidence and ownership.</Text>
+        <View style={[styles.artWrap, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+          <DashboardIllustration />
+        </View>
       </View>
 
       <FlatList
-        data={decisions}
-        renderItem={renderItem}
+        data={items}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              fetchDecisions();
-            }}
-            tintColor="#f0b36d"
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={c.accent} />}
+        renderItem={({ item }) => (
+          <TouchableOpacity style={[styles.card, { borderColor: c.border, backgroundColor: c.surface }]} activeOpacity={0.9}>
+            <View style={[styles.topRule, { backgroundColor: statusColor(item.status) }]} />
+            <View style={styles.row}>
+              <Text style={[styles.badge, { color: statusColor(item.status) }]}>{(item.status || 'unknown').toUpperCase()}</Text>
+              <Text style={[styles.meta, { color: c.textMuted }]}>{new Date(item.created_at).toLocaleDateString()}</Text>
+            </View>
+            <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={2}>{item.title}</Text>
+            <Text style={[styles.cardBody, { color: c.textMuted }]} numberOfLines={2}>{item.description || 'No summary provided.'}</Text>
+            <View style={styles.row}>
+              <Text style={[styles.meta, { color: c.textMuted }]}>{item.decision_maker_name || 'Unknown owner'}</Text>
+              <Text style={[styles.confidence, { color: c.text }]}>{Math.round(item.confidence_level || item.confidence || 0)}%</Text>
+            </View>
+          </TouchableOpacity>
+        )}
       />
     </View>
+    </MotionScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0f141d' },
-  header: {
+  screen: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  hero: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 8,
   },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { color: '#f8fafc', fontSize: 20, fontWeight: '700' },
-  plusBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#f0b36d',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  list: { padding: 16 },
+  title: { fontSize: 24, fontWeight: '900', letterSpacing: -0.3 },
+  sub: { fontSize: 13 },
+  addBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  artWrap: { borderWidth: 1, padding: 8 },
+  list: { padding: 16, gap: 10, paddingBottom: 110 },
   card: {
-    backgroundColor: '#121a27',
-    borderColor: '#263246',
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    gap: 6,
+    padding: 12,
+    minHeight: 124,
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
+  topRule: { height: 2, marginBottom: 8 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  badge: { fontSize: 11, fontWeight: '700' },
-  time: { color: '#90a0b5', fontSize: 11 },
-  title: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
-  description: { color: '#c6d2e3', fontSize: 13, lineHeight: 18 },
-  meta: { color: '#90a0b5', fontSize: 12 },
-  loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f141d' },
-  loaderText: { color: '#dbe5f3', marginTop: 10 },
+  badge: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  cardTitle: { fontSize: 16, fontWeight: '900', marginTop: 8, letterSpacing: -0.2 },
+  cardBody: { fontSize: 13, lineHeight: 19, marginTop: 4 },
+  meta: { fontSize: 11, marginTop: 10 },
+  confidence: { fontSize: 16, fontWeight: '900', marginTop: 6 },
 });

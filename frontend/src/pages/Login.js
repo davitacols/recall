@@ -223,9 +223,9 @@ function Login() {
 
           <div>
             <p className="auth-kicker">Knowledge Operating System</p>
-            <h1 className="auth-headline">A sharper login for a sharper workspace.</h1>
+            <h1 className="auth-headline">Calm access for high-velocity teams.</h1>
             <p className="auth-copy">
-              Keep company memory centralized across every team, sprint, and decision lane.
+              Enter a workspace where every decision, rationale, and action stays connected.
             </p>
           </div>
 
@@ -249,7 +249,7 @@ function Login() {
         >
           <section className="auth-card">
             <header className="auth-card-header">
-              <p className="auth-form-kicker">{isLogin ? "Welcome Back" : "Get Started"}</p>
+              <p className="auth-form-kicker">{isLogin ? "Welcome back" : "Get started"}</p>
               <h2>
                 {isLogin
                   ? "Sign in to Knoledgr"
@@ -260,7 +260,7 @@ function Login() {
               <p>
                 {isLogin
                   ? "Access your workspace and continue where your team stopped."
-                  : "Set up your account and unlock your team's knowledge graph."}
+                  : "Set up your account and activate your team's decision memory."}
               </p>
             </header>
 
@@ -341,14 +341,14 @@ function Login() {
                 </Field>
               ) : null}
 
-                <Field label="Email address">
-                  <input
-                    type="email"
-                    required
-                    autoComplete="email"
-                    disabled={Boolean(inviteToken)}
-                    className={inviteToken ? "is-disabled" : ""}
-                    value={credentials.username}
+              <Field label="Email address">
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  disabled={Boolean(inviteToken)}
+                  className={inviteToken ? "is-disabled" : ""}
+                  value={credentials.username}
                   onChange={(event) => setField("username", event.target.value)}
                   placeholder="you@company.com"
                 />
@@ -438,7 +438,7 @@ function Login() {
                 </>
               ) : null}
               <button type="button" onClick={() => navigate("/")} className="auth-back-btn">
-                {"<"} Back to home
+                {"<"} Back to homepage
               </button>
             </footer>
           </section>

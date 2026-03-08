@@ -1,0 +1,489 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+.authp-shell {
+  --authp-bg: #07090d;
+  --authp-card: #10161f;
+  --authp-card-soft: #141b26;
+  --authp-border: rgba(255, 255, 255, 0.14);
+  --authp-text: #f3f6fb;
+  --authp-muted: rgba(191, 202, 219, 0.86);
+  min-height: 100vh;
+  background:
+    radial-gradient(760px 420px at 0% -5%, rgba(90, 130, 240, 0.24), transparent 60%),
+    radial-gradient(720px 520px at 100% 100%, rgba(168, 186, 220, 0.2), transparent 62%),
+    var(--authp-bg);
+  color: var(--authp-text);
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  padding: 18px;
+}
+
+.authp-centered {
+  display: grid;
+  place-items: center;
+}
+
+.authp-grid {
+  width: min(1180px, 100%);
+  min-height: calc(100vh - 36px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) minmax(340px, 500px);
+  border: 1px solid var(--authp-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+}
+
+.authp-grid-invite {
+  grid-template-columns: minmax(340px, 1fr) minmax(340px, 520px);
+}
+
+.authp-aside {
+  padding: 44px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(165deg, rgba(91, 126, 231, 0.2), rgba(255, 255, 255, 0.02) 55%, rgba(166, 182, 214, 0.12));
+  display: grid;
+  align-content: space-between;
+  gap: 28px;
+}
+
+.authp-brand {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  padding: 8px 12px;
+  width: fit-content;
+  cursor: pointer;
+}
+
+.authp-kicker {
+  margin: 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(193, 206, 225, 0.85);
+}
+
+.authp-headline {
+  margin: 10px 0 10px;
+  font-size: clamp(2rem, 4.2vw, 3.1rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.authp-copy {
+  margin: 0;
+  color: var(--authp-muted);
+  line-height: 1.55;
+  max-width: 50ch;
+}
+
+.authp-list {
+  display: grid;
+  gap: 10px;
+}
+
+.authp-list-item {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(13, 17, 23, 0.45);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.authp-list-item strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.authp-list-item span {
+  color: var(--authp-muted);
+  font-size: 13px;
+}
+
+.authp-main {
+  display: grid;
+  align-items: center;
+  padding: 20px;
+}
+
+.authp-card {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: linear-gradient(165deg, rgba(14, 18, 25, 0.94), rgba(12, 17, 24, 0.92));
+  padding: 24px 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.authp-status-card {
+  width: min(480px, 94vw);
+  text-align: center;
+}
+
+.authp-title {
+  margin: 0;
+  font-size: clamp(1.55rem, 2.3vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.authp-subtitle {
+  margin: 8px 0 0;
+  color: var(--authp-muted);
+  line-height: 1.5;
+}
+
+.authp-error,
+.authp-success {
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.authp-error {
+  border: 1px solid rgba(239, 110, 96, 0.55);
+  background: rgba(239, 110, 96, 0.11);
+  color: #ffd8d2;
+}
+
+.authp-success {
+  border: 1px solid rgba(70, 201, 149, 0.5);
+  background: rgba(70, 201, 149, 0.12);
+  color: #b7f7dc;
+}
+
+.authp-form {
+  display: grid;
+  gap: 12px;
+}
+
+.authp-field {
+  display: grid;
+  gap: 6px;
+}
+
+.authp-field span {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(193, 203, 218, 0.8);
+}
+
+.authp-field input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--authp-text);
+  padding: 12px;
+  font-size: 15px;
+  outline: none;
+}
+
+.authp-field input:disabled {
+  opacity: 0.78;
+  cursor: not-allowed;
+}
+
+.authp-field input:focus {
+  border-color: rgba(227, 234, 245, 0.75);
+  box-shadow: 0 0 0 1px rgba(227, 234, 245, 0.22);
+}
+
+.authp-rules {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 8px 10px;
+  display: grid;
+  gap: 5px;
+}
+
+.authp-rule {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: rgba(191, 202, 219, 0.8);
+}
+
+.authp-rule span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(191, 202, 219, 0.34);
+  flex-shrink: 0;
+}
+
+.authp-rule.valid {
+  color: #8be7cc;
+}
+
+.authp-rule.valid span {
+  background: #2fcda0;
+}
+
+.authp-submit {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 10px;
+  background: linear-gradient(140deg, #f4f7fd, #d2dae8);
+  color: #101722;
+  min-height: 46px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.authp-secondary-btn {
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--authp-text);
+  min-height: 42px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 4px auto 0;
+}
+
+.authp-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.authp-submit:disabled {
+  opacity: 0.66;
+  cursor: not-allowed;
+}
+
+.authp-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(16, 23, 34, 0.3);
+  border-top-color: #101722;
+  animation: authp-spin 0.7s linear infinite;
+}
+
+.authp-spinner-lg {
+  width: 24px;
+  height: 24px;
+  margin: 0 auto;
+}
+
+@keyframes authp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.authp-foot {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--authp-muted);
+}
+
+.authp-foot p {
+  margin: 0;
+}
+
+.authp-link,
+.authp-back {
+  border: 0;
+  background: transparent;
+  color: #d4deee;
+  text-decoration: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.authp-link:hover,
+.authp-back:hover {
+  color: #e7eefb;
+}
+
+.authp-back {
+  color: rgba(179, 193, 211, 0.82);
+  font-size: 13px;
+}
+
+.authp-turnstile {
+  margin-top: 2px;
+}
+
+.authp-submit:focus-visible,
+.authp-secondary-btn:focus-visible,
+.authp-link:focus-visible,
+.authp-back:focus-visible,
+.authp-brand:focus-visible,
+.authp-field input:focus-visible {
+  outline: 2px solid #dfe7f4;
+  outline-offset: 2px;
+}
+
+[data-theme="light"] .authp-shell {
+  --authp-bg: #edf2fb;
+  --authp-card: #ffffff;
+  --authp-card-soft: #f5f8fe;
+  --authp-border: rgba(14, 32, 64, 0.14);
+  --authp-text: #0f1d33;
+  --authp-muted: rgba(15, 29, 51, 0.72);
+  background:
+    radial-gradient(900px 460px at -5% 0%, rgba(120, 151, 247, 0.2), transparent 64%),
+    radial-gradient(860px 520px at 100% 100%, rgba(176, 194, 230, 0.24), transparent 60%),
+    #edf2fb;
+}
+
+[data-theme="light"] .authp-grid {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(248, 251, 255, 0.58));
+}
+
+[data-theme="light"] .authp-aside {
+  border-right-color: rgba(20, 40, 76, 0.12);
+  background:
+    linear-gradient(160deg, rgba(128, 160, 251, 0.24), rgba(255, 255, 255, 0.65) 52%, rgba(184, 203, 235, 0.24));
+}
+
+[data-theme="light"] .authp-brand {
+  border-color: rgba(20, 40, 76, 0.2);
+  background: rgba(255, 255, 255, 0.7);
+  color: #102038;
+}
+
+[data-theme="light"] .authp-kicker,
+[data-theme="light"] .authp-copy,
+[data-theme="light"] .authp-list-item span,
+[data-theme="light"] .authp-subtitle,
+[data-theme="light"] .authp-foot {
+  color: rgba(16, 32, 56, 0.72);
+}
+
+[data-theme="light"] .authp-card {
+  border-color: rgba(20, 40, 76, 0.18);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.94), rgba(246, 250, 255, 0.9));
+}
+
+[data-theme="light"] .authp-list-item {
+  border-color: rgba(20, 40, 76, 0.14);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+[data-theme="light"] .authp-field span {
+  color: rgba(16, 32, 56, 0.7);
+}
+
+[data-theme="light"] .authp-field input {
+  border-color: rgba(20, 40, 76, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+  color: #102038;
+}
+
+[data-theme="light"] .authp-rules {
+  border-color: rgba(20, 40, 76, 0.14);
+  background: rgba(16, 32, 56, 0.03);
+}
+
+[data-theme="light"] .authp-rule {
+  color: rgba(16, 32, 56, 0.62);
+}
+
+[data-theme="light"] .authp-rule span {
+  background: rgba(16, 32, 56, 0.28);
+}
+
+[data-theme="light"] .authp-submit {
+  border-color: rgba(52, 80, 128, 0.38);
+  background: linear-gradient(135deg, #112038, #304566);
+  color: #f5f8ff;
+}
+
+[data-theme="light"] .authp-secondary-btn {
+  border-color: rgba(20, 40, 76, 0.2);
+  background: rgba(16, 32, 56, 0.04);
+  color: #102038;
+}
+
+[data-theme="light"] .authp-link {
+  color: #1d3558;
+}
+
+[data-theme="light"] .authp-back {
+  color: rgba(16, 32, 56, 0.6);
+}
+
+[data-theme="light"] .authp-submit:focus-visible,
+[data-theme="light"] .authp-secondary-btn:focus-visible,
+[data-theme="light"] .authp-link:focus-visible,
+[data-theme="light"] .authp-back:focus-visible,
+[data-theme="light"] .authp-brand:focus-visible,
+[data-theme="light"] .authp-field input:focus-visible {
+  outline-color: #2c4f82;
+}
+
+@media (max-width: 1024px) {
+  .authp-shell {
+    padding: 10px;
+  }
+
+  .authp-grid {
+    min-height: calc(100vh - 20px);
+    grid-template-columns: 1fr;
+  }
+
+  .authp-aside {
+    display: none;
+  }
+
+  .authp-main {
+    padding: 14px 10px;
+  }
+
+  .authp-card {
+    width: min(540px, 100%);
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .authp-shell {
+    padding: 8px;
+  }
+
+  .authp-grid {
+    min-height: calc(100vh - 16px);
+    border-radius: 12px;
+  }
+
+  .authp-main {
+    padding: 10px 8px;
+  }
+
+  .authp-card {
+    padding: 18px 12px;
+    border-radius: 12px;
+    gap: 12px;
+  }
+
+  .authp-title {
+    font-size: 1.35rem;
+  }
+
+  .authp-field input {
+    padding: 11px;
+  }
+}

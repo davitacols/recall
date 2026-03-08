@@ -1,242 +1,213 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
-import '../pages/Homepage.css';
-import TurnstileWidget from '../components/TurnstileWidget';
-import BrandLogo from '../components/BrandLogo';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import BrandLogo from "../components/BrandLogo";
+import TurnstileWidget from "../components/TurnstileWidget";
+import api from "../services/api";
+import "./AuthPages.css";
+
+function Field({ label, children }) {
+  return (
+    <label className="authp-field">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
 
 function Signup() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
-    slug: '',
-    username: '',
-    email: '',
-    password: '',
-    full_name: ''
+    name: "",
+    slug: "",
+    username: "",
+    email: "",
+    password: "",
+    full_name: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState("");
   const turnstileEnabled = Boolean(process.env.REACT_APP_TURNSTILE_SITE_KEY);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
     setLoading(true);
     if (turnstileEnabled && !turnstileToken) {
-      setError('Please complete bot verification.');
+      setError("Please complete bot verification.");
       setLoading(false);
       return;
     }
 
     try {
-      const response = await api.post('/api/organizations/signup/', {
+      const response = await api.post("/api/organizations/signup/", {
         ...formData,
         turnstile_token: turnstileToken,
       });
-      localStorage.setItem('access_token', response.data.access_token);
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/');
+      localStorage.setItem("access_token", response.data.access_token);
+      localStorage.setItem("token", response.data.access_token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      navigate("/");
     } catch (err) {
-      setError(err.response?.data?.error || 'Signup failed');
+      setError(err.response?.data?.error || "Signup failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: '"League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-      {/* Left Panel - Branding */}
-      <div style={{ flex: 1, backgroundColor: 'var(--app-info)', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: 'var(--app-surface-alt)' }}>
-        <div style={{ maxWidth: '480px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
-            <BrandLogo tone="dark" size="lg" label="Knoledgr" />
+    <div className="authp-shell">
+      <div className="authp-grid">
+        <aside className="authp-aside">
+          <button type="button" onClick={() => navigate("/")} className="authp-brand">
+            <BrandLogo tone="dark" size="lg" />
+          </button>
+
+          <div>
+            <p className="authp-kicker">Workspace Onboarding</p>
+            <h1 className="authp-headline">Create your organization workspace.</h1>
+            <p className="authp-copy">
+              Bring decisions, documentation, and execution context into one durable
+              operating layer.
+            </p>
           </div>
-          <h1 style={{ fontSize: '40px', fontWeight: 700, lineHeight: '1.2', marginBottom: '24px', letterSpacing: '-0.02em' }}>
-            Create your organization
-          </h1>
-          <p style={{ fontSize: '18px', lineHeight: '1.6', opacity: 0.9, marginBottom: '48px' }}>
-            Start capturing and organizing your team's knowledge. Build a shared memory that grows with your organization.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--app-info-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
-                <span style={{ fontSize: '14px' }}>✓</span>
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Centralized knowledge</div>
-                <div style={{ fontSize: '14px', opacity: 0.8 }}>Keep all conversations and decisions in one place</div>
-              </div>
+
+          <div className="authp-list">
+            <div className="authp-list-item">
+              <strong>Centralized memory</strong>
+              <span>Keep rationale and outcomes attached to every key decision.</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--app-info-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
-                <span style={{ fontSize: '14px' }}>✓</span>
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Team collaboration</div>
-                <div style={{ fontSize: '14px', opacity: 0.8 }}>Work together seamlessly across your organization</div>
-              </div>
+            <div className="authp-list-item">
+              <strong>Cross-team alignment</strong>
+              <span>Product, operations, and leadership stay on the same timeline.</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--app-info-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
-                <span style={{ fontSize: '14px' }}>✓</span>
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Instant insights</div>
-                <div style={{ fontSize: '14px', opacity: 0.8 }}>Find information quickly with powerful search</div>
-              </div>
+            <div className="authp-list-item">
+              <strong>Searchable history</strong>
+              <span>Recover what happened and why in seconds, not hours.</span>
             </div>
           </div>
-        </div>
-      </div>
+        </aside>
 
-      {/* Right Panel - Form */}
-      <div style={{ flex: 1, backgroundColor: 'var(--app-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', overflowY: 'auto' }}>
-        <div style={{ width: '100%', maxWidth: '440px' }}>
-          <div style={{ backgroundColor: 'var(--app-surface-alt)', borderRadius: '8px', padding: '48px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--app-text)', marginBottom: '8px', letterSpacing: '-0.01em' }}>Get started</h2>
-            <p style={{ fontSize: '14px', color: 'var(--app-muted)', marginBottom: '32px' }}>Create your organization account</p>
+        <main className="authp-main">
+          <section className="authp-card">
+            <header>
+              <h2 className="authp-title">Create your workspace account</h2>
+              <p className="authp-subtitle">
+                Set up your organization and start your first workspace.
+              </p>
+            </header>
 
-            {error && (
-              <div style={{ marginBottom: '24px', padding: '12px 16px', backgroundColor: '#FFEBE6', border: '1px solid var(--app-danger)', borderRadius: '6px', color: 'var(--app-danger)', fontSize: '14px' }}>
-                {error}
-              </div>
-            )}
+            {error ? <div className="authp-error" role="alert">{error}</div> : null}
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Organization Name</label>
+            <form onSubmit={handleSubmit} className="authp-form" aria-busy={loading}>
+              <Field label="Organization Name">
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, name: event.target.value }))
+                  }
                   placeholder="Acme Inc."
                   required
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Organization Slug</label>
+              <Field label="Organization Slug">
                 <input
                   type="text"
                   value={formData.slug}
-                  onChange={(e) => setFormData({...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
-                  placeholder="your-company"
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                    }))
+                  }
+                  placeholder="acme-inc"
                   required
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Your Full Name</label>
+              <Field label="Full Name">
                 <input
                   type="text"
                   value={formData.full_name}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
-                  placeholder="John Doe"
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, full_name: event.target.value }))
+                  }
+                  placeholder="Jane Doe"
                   required
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Email</label>
+              <Field label="Email">
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, email: event.target.value }))
+                  }
                   placeholder="you@company.com"
                   required
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Username</label>
+              <Field label="Username">
                 <input
                   type="text"
                   value={formData.username}
-                  onChange={(e) => setFormData({...formData, username: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
-                  placeholder="johndoe"
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, username: event.target.value }))
+                  }
+                  placeholder="janedoe"
                   required
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>Password</label>
+              <Field label="Password">
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--app-border)', borderRadius: '6px', fontSize: '14px', color: 'var(--app-text)', outline: 'none', transition: 'border-color 0.15s' }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--app-info)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--app-border)'}
-                  placeholder="••••••••"
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, password: event.target.value }))
+                  }
+                  placeholder="********"
                   required
                 />
-              </div>
+              </Field>
 
-              <button
-                type="submit"
-                disabled={loading}
-                style={{ width: '100%', marginTop: '8px', padding: '12px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, boxShadow: '0 1px 2px rgba(0,0,0,0.08)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1' }}
-                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = 'var(--app-info)')}
-                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = 'var(--app-info)')}
-              >
+              {turnstileEnabled ? (
+                <div className="authp-turnstile">
+                  <TurnstileWidget
+                    theme="dark"
+                    onVerify={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken("")}
+                    onError={() => setTurnstileToken("")}
+                  />
+                </div>
+              ) : null}
+
+              <button type="submit" disabled={loading} className="authp-submit">
                 {loading ? (
                   <>
-                    <div style={{ width: '16px', height: '16px', border: '2px solid var(--app-surface-alt)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite', marginRight: '8px' }}></div>
+                    <span className="authp-spinner" aria-hidden="true" />
                     Creating...
                   </>
                 ) : (
-                  'Create Organization'
+                  "Create workspace account"
                 )}
               </button>
-              {turnstileEnabled && (
-                <div style={{ marginTop: '10px' }}>
-                  <TurnstileWidget
-                    theme="light"
-                    onVerify={(token) => setTurnstileToken(token)}
-                    onExpire={() => setTurnstileToken('')}
-                    onError={() => setTurnstileToken('')}
-                  />
-                </div>
-              )}
             </form>
 
-            <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: 'var(--app-muted)' }}>
-              Already have an account?{' '}
-              <Link to="/login" style={{ color: 'var(--app-info)', fontWeight: 600, textDecoration: 'none' }}>
-                Sign in
-              </Link>
-            </div>
-
-            <div style={{ marginTop: '16px', textAlign: 'center' }}>
-              <button
-                onClick={() => navigate('/')}
-                style={{ fontSize: '14px', color: 'var(--app-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--app-text)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--app-muted)'}
-              >
-                ← Back to homepage
+            <footer className="authp-foot">
+              <p>
+                Already have an account? <Link to="/login" className="authp-link">Sign in</Link>
+              </p>
+              <button type="button" onClick={() => navigate("/")} className="authp-back">
+                {"<"} Back to homepage
               </button>
-            </div>
-          </div>
-        </div>
+            </footer>
+          </section>
+        </main>
       </div>
     </div>
   );

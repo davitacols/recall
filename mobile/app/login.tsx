@@ -17,9 +17,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 import { EyeIcon, EyeSlashIcon } from '../components/Icons';
+import MotionScreen from '../components/MotionScreen';
+import { AuthIllustration } from '../components/TechnicalIllustrations';
+import { Brand } from '../constants/brand';
 import { useAuthStore } from '../stores/authStore';
 
 export default function LoginScreen() {
+  const c = Brand.colors;
   const router = useRouter();
   const { login, loading, error } = useAuthStore();
 
@@ -38,28 +42,28 @@ export default function LoginScreen() {
       await login(email.trim(), password, orgSlug.trim() || undefined);
       router.replace('/(tabs)');
     } catch {
-      // Error rendered from store
+      // error rendered from store
     }
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#08101c" />
-      <View style={styles.bgOrbA} />
-      <View style={styles.bgOrbB} />
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={c.bg} />
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <MotionScreen>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>KNOLEDGR MOBILE</Text>
+            <View style={[styles.heroBadge, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+              <Text style={[styles.heroBadgeText, { color: c.accentSoft }]}>KNOLEDGR MOBILE</Text>
             </View>
-            <Text style={styles.brand}>Context That Moves Work Forward</Text>
-            <Text style={styles.tagline}>
-              Capture decisions, preserve rationale, and keep teams aligned in one operational memory layer.
-            </Text>
+            <Text style={[styles.brand, { color: c.text }]}>Move Faster With Context</Text>
+            <Text style={[styles.tagline, { color: c.textMuted }]}>Team memory, decisions, and execution in one operating layer.</Text>
+            <View style={[styles.illustrationWrap, { borderColor: c.border, backgroundColor: c.surface }]}>
+              <AuthIllustration />
+            </View>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.card, { borderColor: c.border, backgroundColor: c.surface }]}>
             <View style={styles.cardTop}>
               <Image
                 source={require('../assets/images/knoledgr-logo.png')}
@@ -67,8 +71,8 @@ export default function LoginScreen() {
                 resizeMode="contain"
               />
               <View>
-                <Text style={styles.title}>Sign In</Text>
-                <Text style={styles.sub}>Continue to your workspace</Text>
+                <Text style={[styles.title, { color: c.text }]}>Sign In</Text>
+                <Text style={[styles.sub, { color: c.textMuted }]}>Continue to your workspace</Text>
               </View>
             </View>
 
@@ -78,10 +82,10 @@ export default function LoginScreen() {
               </View>
             ) : null}
 
-            <View style={[styles.fieldWrap, focused === 'email' && styles.fieldWrapFocused]}>
-              <Text style={styles.fieldLabel}>Email</Text>
+            <View style={[styles.fieldWrap, { borderColor: c.border, backgroundColor: c.bgSoft }, focused === 'email' && { borderColor: c.accent }]}>
+              <Text style={[styles.fieldLabel, { color: c.textMuted }]}>Email</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: c.text }]}
                 value={email}
                 onChangeText={setEmail}
                 onFocus={() => setFocused('email')}
@@ -90,14 +94,14 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 keyboardType="email-address"
                 placeholder="you@company.com"
-                placeholderTextColor="#7f93ad"
+                placeholderTextColor={c.textMuted}
               />
             </View>
 
-            <View style={[styles.fieldWrap, focused === 'org' && styles.fieldWrapFocused]}>
-              <Text style={styles.fieldLabel}>Workspace Slug (Optional)</Text>
+            <View style={[styles.fieldWrap, { borderColor: c.border, backgroundColor: c.bgSoft }, focused === 'org' && { borderColor: c.accent }]}>
+              <Text style={[styles.fieldLabel, { color: c.textMuted }]}>Workspace Slug (Optional)</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: c.text }]}
                 value={orgSlug}
                 onChangeText={setOrgSlug}
                 onFocus={() => setFocused('org')}
@@ -105,15 +109,15 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 placeholder="acme-inc"
-                placeholderTextColor="#7f93ad"
+                placeholderTextColor={c.textMuted}
               />
             </View>
 
-            <View style={[styles.fieldWrap, focused === 'password' && styles.fieldWrapFocused]}>
-              <Text style={styles.fieldLabel}>Password</Text>
+            <View style={[styles.fieldWrap, { borderColor: c.border, backgroundColor: c.bgSoft }, focused === 'password' && { borderColor: c.accent }]}>
+              <Text style={[styles.fieldLabel, { color: c.textMuted }]}>Password</Text>
               <View style={styles.passwordRow}>
                 <TextInput
-                  style={[styles.input, styles.passwordInput]}
+                  style={[styles.input, styles.passwordInput, { color: c.text }]}
                   value={password}
                   onChangeText={setPassword}
                   onFocus={() => setFocused('password')}
@@ -122,206 +126,103 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   placeholder="Enter your password"
-                  placeholderTextColor="#7f93ad"
+                  placeholderTextColor={c.textMuted}
                 />
                 <Pressable onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
-                  {showPassword ? <EyeSlashIcon color="#9fb2cb" /> : <EyeIcon color="#9fb2cb" />}
+                  {showPassword ? <EyeSlashIcon color={c.textMuted} /> : <EyeIcon color={c.textMuted} />}
                 </Pressable>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.submit, !canSubmit && styles.submitDisabled]}
+              style={[styles.submit, { backgroundColor: c.accent }, !canSubmit && styles.submitDisabled]}
               disabled={!canSubmit}
               onPress={onLogin}
             >
               {loading ? (
                 <View style={styles.submitLoading}>
-                  <ActivityIndicator size="small" color="#0f172a" />
+                  <ActivityIndicator size="small" color="#ffffff" />
                   <Text style={styles.submitText}>Signing in...</Text>
                 </View>
               ) : (
                 <Text style={styles.submitText}>Sign In</Text>
               )}
             </TouchableOpacity>
-
-            <Text style={styles.footer}>
-              Protected by workspace security controls. Use your official organization account.
-            </Text>
           </View>
         </ScrollView>
+        </MotionScreen>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#08101c',
-  },
-  screen: {
-    flex: 1,
-  },
+  safe: { flex: 1 },
+  screen: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingVertical: 20,
-    gap: 14,
+    gap: 12,
   },
-  bgOrbA: {
-    position: 'absolute',
-    top: 30,
-    right: -70,
-    width: 220,
-    height: 220,
-    borderRadius: 999,
-    backgroundColor: '#1f2937',
-    opacity: 0.35,
-  },
-  bgOrbB: {
-    position: 'absolute',
-    bottom: -80,
-    left: -80,
-    width: 260,
-    height: 260,
-    borderRadius: 999,
-    backgroundColor: '#7c4f26',
-    opacity: 0.2,
-  },
-  hero: {
-    marginBottom: 6,
-    alignItems: 'flex-start',
-  },
+  hero: { gap: 6 },
   heroBadge: {
-    backgroundColor: '#182335',
     borderWidth: 1,
-    borderColor: '#2a3a53',
     borderRadius: 0,
     paddingVertical: 5,
     paddingHorizontal: 10,
-    marginBottom: 10,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
   },
-  heroBadgeText: {
-    color: '#adc0da',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  logo: {
-    width: 44,
-    height: 44,
-    borderRadius: 0,
-  },
-  brand: {
-    color: '#f8fafc',
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: 0.1,
-    lineHeight: 36,
-  },
-  tagline: {
-    marginTop: 6,
-    color: '#94a6bf',
-    fontSize: 13,
-    lineHeight: 20,
-  },
+  heroBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  brand: { fontSize: 30, fontWeight: '900', lineHeight: 36 },
+  tagline: { marginTop: 2, fontSize: 13, lineHeight: 20 },
+  illustrationWrap: { borderWidth: 1, padding: 8, marginTop: 6 },
   card: {
     borderWidth: 1,
-    borderColor: '#2b3a50',
     borderRadius: 0,
-    padding: 16,
-    backgroundColor: '#111a29ee',
+    padding: 14,
     gap: 10,
   },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 4,
-  },
-  title: {
-    color: '#f8fafc',
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  sub: {
-    color: '#9eb1ca',
-    marginBottom: 0,
-  },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 2 },
+  logo: { width: 44, height: 44, borderRadius: 0 },
+  title: { fontSize: 22, fontWeight: '800' },
+  sub: { fontSize: 12 },
   errorWrap: {
     borderWidth: 1,
-    borderColor: '#8b1f1f',
-    backgroundColor: '#4a1a1a',
+    borderColor: '#f5b0b0',
+    backgroundColor: '#fff1f1',
     borderRadius: 0,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  errorText: {
-    color: '#fecaca',
-    fontSize: 13,
-  },
+  errorText: { color: '#991b1b', fontSize: 13 },
   fieldWrap: {
     borderWidth: 1,
-    borderColor: '#2a3a53',
     borderRadius: 0,
-    backgroundColor: '#0b1523',
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 4,
   },
-  fieldWrapFocused: {
-    borderColor: '#f4c48c',
-  },
   fieldLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#9eb1ca',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.45,
   },
-  input: {
-    color: '#f8fafc',
-    fontSize: 14,
-    paddingVertical: 8,
-  },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  passwordInput: {
-    flex: 1,
-  },
-  eyeBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
+  input: { fontSize: 14, paddingVertical: 8 },
+  passwordRow: { flexDirection: 'row', alignItems: 'center' },
+  passwordInput: { flex: 1 },
+  eyeBtn: { paddingHorizontal: 8, paddingVertical: 6 },
   submit: {
-    backgroundColor: '#f4c48c',
     borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 13,
     marginTop: 4,
   },
-  submitDisabled: {
-    opacity: 0.55,
-  },
-  submitText: {
-    color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  submitLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  footer: {
-    color: '#7f93ad',
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 4,
-  },
+  submitDisabled: { opacity: 0.55 },
+  submitText: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+  submitLoading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

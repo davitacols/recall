@@ -11,6 +11,9 @@ import {
 import { useRouter } from 'expo-router';
 
 import { SprintIcon } from '../../components/Icons';
+import MotionScreen from '../../components/MotionScreen';
+import { DashboardIllustration } from '../../components/TechnicalIllustrations';
+import { Brand } from '../../constants/brand';
 import { normalizeList, sprintService } from '../../services/api';
 
 interface Sprint {
@@ -23,15 +26,16 @@ interface Sprint {
 }
 
 export default function SprintsScreen() {
+  const c = Brand.colors;
   const router = useRouter();
-  const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [items, setItems] = useState<Sprint[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadSprints = async () => {
+  const load = async () => {
     try {
-      const response = await sprintService.list();
-      setSprints(normalizeList<Sprint>(response.data));
+      const res = await sprintService.list();
+      setItems(normalizeList<Sprint>(res.data));
     } catch (error) {
       console.error('Failed to load sprints:', error);
     } finally {
@@ -41,99 +45,103 @@ export default function SprintsScreen() {
   };
 
   useEffect(() => {
-    loadSprints();
+    load();
   }, []);
 
   const statusColor = (status?: string) => {
     switch ((status || '').toLowerCase()) {
       case 'active':
-        return '#0ea56b';
+        return c.success;
       case 'planning':
-        return '#f59e0b';
+      case 'planned':
+        return c.warning;
       case 'completed':
-        return '#3b82f6';
+        return c.accent;
       default:
-        return '#64748b';
+        return c.textMuted;
     }
   };
 
-  const renderItem = ({ item }: { item: Sprint }) => (
-    <TouchableOpacity style={styles.card} onPress={() => router.push(`/sprint/${item.id}`)}>
-      <View style={styles.row}>
-        <Text style={styles.title}>{item.name}</Text>
-        <Text style={[styles.status, { color: statusColor(item.status) }]}>
-          {(item.status || 'unknown').toUpperCase()}
-        </Text>
-      </View>
-      <Text style={styles.goal} numberOfLines={2}>{item.goal || 'No sprint goal provided.'}</Text>
-      <Text style={styles.date}>
-        {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
-      </Text>
-    </TouchableOpacity>
-  );
-
   if (loading) {
     return (
-      <View style={styles.loaderWrap}>
-        <ActivityIndicator size="large" color="#f0b36d" />
-        <Text style={styles.loaderText}>Loading sprints...</Text>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
+    <MotionScreen delay={50}>
+    <View style={[styles.screen, { backgroundColor: c.bg }]}>
+      <View style={[styles.hero, { borderBottomColor: c.border, backgroundColor: c.surface }]}>
         <View style={styles.headerLeft}>
-          <SprintIcon color="#f6c287" />
-          <Text style={styles.headerTitle}>Sprints</Text>
+          <SprintIcon color={c.accentSoft} />
+          <Text style={[styles.title, { color: c.text }]}>Sprints</Text>
+        </View>
+        <Text style={[styles.sub, { color: c.textMuted }]}>Plan windows, monitor throughput, and ship cleanly.</Text>
+        <View style={[styles.artWrap, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+          <DashboardIllustration />
         </View>
       </View>
+
       <FlatList
-        data={sprints}
-        renderItem={renderItem}
+        data={items}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              loadSprints();
-            }}
-            tintColor="#f0b36d"
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={c.accent} />}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[styles.card, { borderColor: c.border, backgroundColor: c.surface }]}
+            onPress={() => router.push(`/sprint/${item.id}`)}
+            activeOpacity={0.9}
+          >
+            <View style={[styles.topRule, { backgroundColor: statusColor(item.status) }]} />
+            <View style={styles.row}>
+              <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={1}>{item.name}</Text>
+              <Text style={[styles.badge, { color: statusColor(item.status) }]}>{(item.status || 'unknown').toUpperCase()}</Text>
+            </View>
+            <Text style={[styles.cardBody, { color: c.textMuted }]} numberOfLines={2}>{item.goal || 'No sprint goal set.'}</Text>
+            <Text style={[styles.meta, { color: c.textMuted }]}>
+              {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
+            </Text>
+          </TouchableOpacity>
+        )}
       />
     </View>
+    </MotionScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0f141d' },
-  header: {
+  screen: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  hero: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    gap: 8,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { color: '#f8fafc', fontSize: 20, fontWeight: '700' },
-  list: { padding: 16 },
+  title: { fontSize: 24, fontWeight: '900', letterSpacing: -0.3 },
+  sub: { fontSize: 13 },
+  artWrap: { borderWidth: 1, padding: 8 },
+  list: { padding: 16, gap: 10, paddingBottom: 110 },
   card: {
-    backgroundColor: '#121a27',
-    borderColor: '#263246',
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    gap: 6,
+    padding: 12,
+    minHeight: 114,
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: '#f8fafc', fontSize: 16, fontWeight: '700', flex: 1, paddingRight: 8 },
-  status: { fontSize: 11, fontWeight: '700' },
-  goal: { color: '#c6d2e3', fontSize: 13, lineHeight: 18 },
-  date: { color: '#90a0b5', fontSize: 12 },
-  loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f141d' },
-  loaderText: { color: '#dbe5f3', marginTop: 10 },
+  topRule: { height: 2, marginBottom: 8 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  cardTitle: { fontSize: 16, fontWeight: '900', flex: 1, letterSpacing: -0.2 },
+  badge: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  cardBody: { fontSize: 13, lineHeight: 19, marginTop: 6 },
+  meta: { fontSize: 11, marginTop: 9 },
 });

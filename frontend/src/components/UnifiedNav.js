@@ -41,8 +41,10 @@ export default function UnifiedNav({
   darkMode,
   sidebarWidth = 272,
   collapsed = false,
+  subnavWidth = 236,
   onToggleCollapse = () => {},
   onResizeWidth = () => {},
+  onSubnavChange = () => {},
   minWidth = 220,
   maxWidth = 420,
 }) {
@@ -50,6 +52,7 @@ export default function UnifiedNav({
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
+  const subnavRef = useRef(null);
   const searchRef = useRef(null);
   const searchInputRef = useRef(null);
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -102,8 +105,14 @@ export default function UnifiedNav({
   }, [collapsed]);
 
   useEffect(() => {
+    onSubnavChange(Boolean(openDropdown) && !collapsed);
+  }, [openDropdown, collapsed, onSubnavChange]);
+
+  useEffect(() => {
     const onClickOutside = (event) => {
-      if (!dropdownRef.current?.contains(event.target)) {
+      const clickedNav = dropdownRef.current?.contains(event.target);
+      const clickedSubnav = subnavRef.current?.contains(event.target);
+      if (!clickedNav && !clickedSubnav) {
         setOpenDropdown(null);
       }
       if (!searchRef.current?.contains(event.target)) {
@@ -388,11 +397,43 @@ export default function UnifiedNav({
     }
   };
 
+  const activeSubnav = useMemo(() => {
+    if (!openDropdown) return null;
+    if (openDropdown === "Apps") {
+      return {
+        title: "Apps",
+        items: installedApps.map((app) => {
+          const target = getAppLaunchTarget(app);
+          return {
+            id: `app-${app.id}`,
+            name: app.name,
+            href: target.href,
+            external: target.type === "external",
+          };
+        }),
+        footerLink: { name: "Manage Apps", href: "/enterprise", external: false },
+      };
+    }
+    const group = navItems.find((item) => item.name === openDropdown && Array.isArray(item.items));
+    if (!group) return null;
+    return {
+      title: group.name,
+      items: group.items.map((subItem) => ({
+        id: subItem.href,
+        name: subItem.name,
+        href: subItem.href,
+        icon: subItem.icon,
+        external: false,
+      })),
+    };
+  }, [openDropdown, installedApps, navItems]);
+
   if (isMobile) {
     return null;
   }
 
   return (
+    <>
     <aside
       data-unified-nav-search="true"
       style={{
@@ -559,39 +600,6 @@ export default function UnifiedNav({
                     />
                   )}
                 </button>
-
-                {expanded && !collapsed && (
-                  <div
-                    style={{
-                      ...inlineDropdown,
-                      background: palette.dropdownBg,
-                      border: `1px solid ${palette.border}`,
-                    }}
-                  >
-                    {item.items.map((subItem) => {
-                      const SubIcon = subItem.icon;
-                      const subActive =
-                        location.pathname === subItem.href ||
-                        (subItem.href !== "/" && location.pathname.startsWith(`${subItem.href}/`));
-                      return (
-                        <Link
-                          key={subItem.href}
-                          to={subItem.href}
-                          onClick={() => setOpenDropdown(null)}
-                          style={{
-                            ...dropdownItem,
-                            color: subActive ? palette.text : palette.muted,
-                            background: subActive ? palette.active : "transparent",
-                            borderLeft: `3px solid ${subActive ? palette.accentA : "transparent"}`,
-                          }}
-                        >
-                          <SubIcon style={icon16} />
-                          <span>{subItem.name}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             );
           }
@@ -656,73 +664,7 @@ export default function UnifiedNav({
             )}
           </button>
           {openDropdown === "Apps" && !collapsed && (
-            <div
-              style={{
-                ...inlineDropdown,
-                background: palette.dropdownBg,
-                border: `1px solid ${palette.border}`,
-              }}
-            >
-              {installedApps.length === 0 ? (
-                <Link
-                  to="/enterprise"
-                  onClick={() => setOpenDropdown(null)}
-                  style={{
-                    ...dropdownItem,
-                    color: palette.muted,
-                  }}
-                >
-                  No apps installed
-                </Link>
-              ) : (
-                installedApps.map((app) => {
-                  const target = getAppLaunchTarget(app);
-                  if (target.type === "external") {
-                    return (
-                      <a
-                        key={app.id}
-                        href={target.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={() => setOpenDropdown(null)}
-                        style={{
-                          ...dropdownItem,
-                          color: palette.text,
-                          borderLeft: "3px solid transparent",
-                        }}
-                      >
-                        <span>{app.name}</span>
-                      </a>
-                    );
-                  }
-                  return (
-                    <Link
-                      key={app.id}
-                      to={target.href}
-                      onClick={() => setOpenDropdown(null)}
-                      style={{
-                        ...dropdownItem,
-                        color: palette.text,
-                        borderLeft: "3px solid transparent",
-                      }}
-                    >
-                      <span>{app.name}</span>
-                    </Link>
-                  );
-                })
-              )}
-              <Link
-                to="/enterprise"
-                onClick={() => setOpenDropdown(null)}
-                style={{
-                  ...dropdownItem,
-                  color: palette.muted,
-                  borderTop: `1px solid ${palette.border}`,
-                }}
-              >
-                Manage Apps
-              </Link>
-            </div>
+            null
           )}
         </div>
       </div>
@@ -747,6 +689,92 @@ export default function UnifiedNav({
         />
       )}
     </aside>
+    {!collapsed && activeSubnav && (
+      <aside
+        id="unified-subnav-sidebar"
+        ref={subnavRef}
+        style={{
+          ...subnavSidebar,
+          left: sidebarWidth,
+          width: subnavWidth,
+          color: palette.text,
+          background: palette.dropdownBg,
+          borderRight: `1px solid ${palette.border}`,
+          boxShadow: palette.dropdownShadow,
+        }}
+      >
+        <div style={{ ...subnavHeader, borderBottom: `1px solid ${palette.border}` }}>
+          <p style={subnavTitle}>{activeSubnav.title}</p>
+          <button
+            onClick={() => setOpenDropdown(null)}
+            style={{ ...subnavClose, color: palette.muted, border: `1px solid ${palette.border}` }}
+            aria-label="Close sub-navigation"
+            title="Close sub-navigation"
+          >
+            <XMarkIcon style={icon14} />
+          </button>
+        </div>
+        <div style={subnavList}>
+          {activeSubnav.items.length === 0 ? (
+            <p style={{ ...subnavEmpty, color: palette.muted }}>No items available.</p>
+          ) : (
+            activeSubnav.items.map((item) => {
+              const ItemIcon = item.icon;
+              const subActive =
+                !item.external &&
+                (location.pathname === item.href || (item.href !== "/" && location.pathname.startsWith(`${item.href}/`)));
+              if (item.external) {
+                return (
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setOpenDropdown(null)}
+                    style={{
+                      ...subnavItem,
+                      color: palette.text,
+                      background: "transparent",
+                      borderLeft: "3px solid transparent",
+                    }}
+                  >
+                    <span>{item.name}</span>
+                  </a>
+                );
+              }
+              return (
+                <Link
+                  key={item.id}
+                  to={item.href}
+                  onClick={() => setOpenDropdown(null)}
+                  style={{
+                    ...subnavItem,
+                    color: subActive ? palette.text : palette.muted,
+                    background: subActive ? palette.active : "transparent",
+                    borderLeft: `3px solid ${subActive ? palette.accentA : "transparent"}`,
+                  }}
+                >
+                  {ItemIcon ? <ItemIcon style={icon16} /> : null}
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })
+          )}
+        </div>
+        {activeSubnav.footerLink ? (
+          <div style={{ ...subnavFooter, borderTop: `1px solid ${palette.border}` }}>
+            <Link
+              to={activeSubnav.footerLink.href}
+              onClick={() => setOpenDropdown(null)}
+              style={{ ...subnavItem, color: palette.muted, borderLeft: "3px solid transparent" }}
+            >
+              <span>{activeSubnav.footerLink.name}</span>
+            </Link>
+          </div>
+        ) : null}
+      </aside>
+    )}
+    </>
   );
 }
 
@@ -842,21 +870,69 @@ const topButton = {
   backdropFilter: "blur(3px)",
 };
 
-const inlineDropdown = {
-  marginTop: 4,
-  marginLeft: 8,
-  borderRadius: 10,
-  overflow: "hidden",
+const subnavSidebar = {
+  position: "fixed",
+  top: 0,
+  bottom: 0,
+  zIndex: 69,
+  display: "grid",
+  gridTemplateRows: "auto minmax(0,1fr) auto",
+  backdropFilter: "blur(8px)",
 };
 
-const dropdownItem = {
+const subnavHeader = {
   display: "flex",
   alignItems: "center",
-  gap: 10,
-  padding: "9px 10px",
+  justifyContent: "space-between",
+  gap: 8,
+  padding: "12px 10px",
+};
+
+const subnavTitle = {
+  margin: 0,
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: "0.07em",
+  textTransform: "uppercase",
+};
+
+const subnavClose = {
+  width: 24,
+  height: 24,
+  borderRadius: 6,
+  background: "transparent",
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+};
+
+const subnavList = {
+  display: "grid",
+  alignContent: "start",
+  gap: 2,
+  padding: "8px",
+  overflowY: "auto",
+};
+
+const subnavItem = {
+  display: "flex",
+  alignItems: "center",
+  gap: 9,
+  padding: "9px 9px",
   textDecoration: "none",
   fontSize: 13,
   fontWeight: 600,
+  borderRadius: 10,
+};
+
+const subnavFooter = {
+  padding: "8px",
+};
+
+const subnavEmpty = {
+  margin: 0,
+  padding: "10px 8px",
+  fontSize: 12,
 };
 
 const iconPill = {

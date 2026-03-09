@@ -14,6 +14,7 @@ const SIDEBAR_WIDTH_DEFAULT = 272;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
 const SIDEBAR_WIDTH_MIN = 220;
 const SIDEBAR_WIDTH_MAX = 420;
+const SUBNAV_WIDTH = 236;
 const ASK_FAB_STORAGE_KEY = "askRecallFabPosV1";
 const ASK_FAB_WIDTH = 132;
 const ASK_FAB_HEIGHT = 44;
@@ -64,6 +65,7 @@ export default function UnifiedLayout({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true"
   );
+  const [subnavOpen, setSubnavOpen] = useState(false);
   const [askFabPos, setAskFabPos] = useState(loadFabPosition);
   const [showProfile, setShowProfile] = useState(false);
   const [workspaces, setWorkspaces] = useState([]);
@@ -189,6 +191,12 @@ export default function UnifiedLayout({ children }) {
     });
   };
 
+  useEffect(() => {
+    if (isMobile || sidebarCollapsed) {
+      setSubnavOpen(false);
+    }
+  }, [isMobile, sidebarCollapsed]);
+
   const handleAskFabPointerDown = (event) => {
     askFabDragRef.current = {
       active: true,
@@ -292,8 +300,10 @@ export default function UnifiedLayout({ children }) {
         darkMode={darkMode}
         sidebarWidth={activeSidebarWidth}
         collapsed={sidebarCollapsed}
+        subnavWidth={SUBNAV_WIDTH}
         onToggleCollapse={handleToggleSidebar}
         onResizeWidth={handleSidebarWidthChange}
+        onSubnavChange={setSubnavOpen}
         minWidth={SIDEBAR_WIDTH_MIN}
         maxWidth={SIDEBAR_WIDTH_MAX}
       />
@@ -303,7 +313,9 @@ export default function UnifiedLayout({ children }) {
         style={{
           ...main,
           paddingTop: 0,
-          paddingLeft: isMobile ? 0 : Math.max(0, activeSidebarWidth - 16),
+          paddingLeft: isMobile
+            ? 0
+            : Math.max(0, activeSidebarWidth + (subnavOpen ? SUBNAV_WIDTH : 0) - 16),
           paddingBottom: isMobile ? 0 : undefined,
         }}
       >

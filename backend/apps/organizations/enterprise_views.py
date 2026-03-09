@@ -28,6 +28,53 @@ from apps.notifications.utils import create_notification
 from apps.business.models import Task
 from apps.conversations.models import Conversation
 
+
+DEFAULT_MARKETPLACE_APPS = [
+    {
+        'slug': 'github-advanced-sync',
+        'name': 'GitHub Advanced Sync',
+        'description': 'Deep PR, commit, and release sync into decisions and delivery timelines.',
+        'vendor': 'Knoledgr',
+        'category': 'engineering',
+        'pricing': 'included',
+        'docs_url': 'https://knoledgr.com/docs/integrations/github',
+        'launch_path': '/integrations',
+        'is_active': True,
+    },
+    {
+        'slug': 'incident-ops-feed',
+        'name': 'Incident Ops Feed',
+        'description': 'Stream blocker and incident signals to on-call and response channels.',
+        'vendor': 'Knoledgr',
+        'category': 'automation',
+        'pricing': 'enterprise',
+        'docs_url': 'https://knoledgr.com/docs/enterprise/incident-ops',
+        'launch_path': '/enterprise',
+        'is_active': True,
+    },
+    {
+        'slug': 'jira-portfolio-bridge',
+        'name': 'Jira Portfolio Bridge',
+        'description': 'Cross-project rollups, dependency views, and execution drift alerts.',
+        'vendor': 'Knoledgr',
+        'category': 'reporting',
+        'pricing': 'included',
+        'docs_url': 'https://knoledgr.com/docs/integrations/jira',
+        'launch_path': '/enterprise',
+        'is_active': True,
+    },
+]
+
+
+def ensure_default_marketplace_apps():
+    """Ensure core Knoledgr marketplace apps exist across all environments."""
+    for payload in DEFAULT_MARKETPLACE_APPS:
+        MarketplaceApp.objects.update_or_create(
+            slug=payload['slug'],
+            defaults=payload,
+        )
+
+
 @api_view(['GET', 'POST', 'PUT'])
 @permission_classes([IsAuthenticated])
 def sso_config(request):
@@ -288,6 +335,7 @@ def compliance_policy(request):
 def marketplace_apps(request):
     """List marketplace apps with organization installation status."""
     org = request.user.organization
+    ensure_default_marketplace_apps()
     installations = {
         i.app_id: i for i in InstalledMarketplaceApp.objects.filter(organization=org).select_related('app')
     }
@@ -307,6 +355,49 @@ def marketplace_apps(request):
         'status': installations[app.id].status if app.id in installations else None,
         'installed_at': installations[app.id].installed_at if app.id in installations else None,
     } for app in apps])
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def featured_marketplace_apps(request):
+    """List featured enterprise marketplace apps in curated order."""
+    org = request.user.organization
+    ensure_default_marketplace_apps()
+    installations = {
+        i.app_id: i for i in InstalledMarketplaceApp.objects.filter(organization=org).select_related('app')
+    }
+
+    featured_meta = {
+        'github-advanced-sync': 'engineering | Knoledgr | included',
+        'incident-ops-feed': 'automation | Knoledgr | enterprise',
+        'jira-portfolio-bridge': 'reporting | Knoledgr | included',
+    }
+    ordered_slugs = list(featured_meta.keys())
+    app_map = {
+        app.slug: app
+        for app in MarketplaceApp.objects.filter(is_active=True, slug__in=ordered_slugs)
+    }
+    payload = []
+    for slug in ordered_slugs:
+        app = app_map.get(slug)
+        if not app:
+            continue
+        payload.append({
+            'id': app.id,
+            'slug': app.slug,
+            'name': app.name,
+            'description': app.description,
+            'vendor': app.vendor,
+            'category': app.category,
+            'pricing': app.pricing,
+            'docs_url': app.docs_url,
+            'launch_path': app.launch_path,
+            'meta': featured_meta[slug],
+            'installed': app.id in installations,
+            'status': installations[app.id].status if app.id in installations else None,
+            'installed_at': installations[app.id].installed_at if app.id in installations else None,
+        })
+    return Response(payload)
 
 
 @api_view(['POST'])

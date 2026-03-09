@@ -170,6 +170,7 @@ urlpatterns = [
     path('enterprise/permissions/', enterprise_views.role_permission_policy),
     path('enterprise/permissions/project-scopes/', enterprise_views.project_permission_scopes),
     path('enterprise/marketplace/apps/', enterprise_views.marketplace_apps),
+    path('enterprise/marketplace/featured/', enterprise_views.featured_marketplace_apps),
     path('enterprise/marketplace/apps/<int:app_id>/install/', enterprise_views.install_marketplace_app),
     path('enterprise/marketplace/apps/<int:app_id>/uninstall/', enterprise_views.uninstall_marketplace_app),
     path('enterprise/sla-rules/', enterprise_views.sla_rules),

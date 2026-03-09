@@ -269,6 +269,18 @@
   gap: 8px;
 }
 
+.enterprise-featured-item {
+  border-color: rgba(167, 77, 31, 0.3);
+  background: linear-gradient(135deg, rgba(167, 77, 31, 0.08), rgba(255, 255, 255, 0.7));
+}
+
+.enterprise-featured-meta {
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  color: #7a3f22 !important;
+  margin-bottom: 5px !important;
+}
+
 .enterprise-callout {
   border: 1px solid rgba(15, 107, 99, 0.25);
   border-radius: 12px;

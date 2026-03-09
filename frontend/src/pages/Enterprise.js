@@ -82,6 +82,7 @@ export default function Enterprise() {
   const [onPremise, setOnPremise] = useState(null);
   const [compliance, setCompliance] = useState(null);
   const [marketplaceApps, setMarketplaceApps] = useState([]);
+  const [featuredMarketplace, setFeaturedMarketplace] = useState([]);
   const [portfolio, setPortfolio] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -163,6 +164,7 @@ export default function Enterprise() {
         premise,
         complianceResp,
         appsResp,
+        featuredAppsResp,
         portfolioResp,
         incidentsResp,
         projectsResp,
@@ -177,6 +179,7 @@ export default function Enterprise() {
         fetch(`${API_BASE}/api/organizations/enterprise/on-premise/`, { headers }).then((r) => r.json()),
         fetch(`${API_BASE}/api/organizations/enterprise/compliance/`, { headers }).then((r) => r.json()),
         fetch(`${API_BASE}/api/organizations/enterprise/marketplace/apps/`, { headers }).then((r) => r.json()),
+        fetch(`${API_BASE}/api/organizations/enterprise/marketplace/featured/`, { headers }).then((r) => r.json()).catch(() => []),
         fetch(`${API_BASE}/api/organizations/enterprise/portfolio-report/`, { headers }).then((r) => r.json()),
         fetch(`${API_BASE}/api/organizations/enterprise/incidents/`, { headers }).then((r) => r.json()),
         fetch(`${API_BASE}/api/agile/projects/`, { headers }).then((r) => r.json()).catch(() => []),
@@ -195,6 +198,7 @@ export default function Enterprise() {
       setOnPremise(premise);
       setCompliance(complianceResp);
       setMarketplaceApps(Array.isArray(appsResp) ? appsResp : []);
+      setFeaturedMarketplace(Array.isArray(featuredAppsResp) ? featuredAppsResp : []);
       setPortfolio(portfolioResp?.totals ? portfolioResp : null);
       setIncidents(Array.isArray(incidentsResp) ? incidentsResp : []);
       setProjects(Array.isArray(projectsResp) ? projectsResp : []);
@@ -401,6 +405,25 @@ export default function Enterprise() {
     ];
   }, [portfolio, complianceForm, marketplaceApps, incidents, projectScopes]);
 
+  const featuredMarketplaceApps = useMemo(() => {
+    if (featuredMarketplace.length) {
+      return featuredMarketplace.map((app) => ({
+        slug: app.slug,
+        meta: app.meta || `${app.category} | ${app.vendor} | ${app.pricing}`,
+        app,
+      }));
+    }
+    const featured = [
+      { slug: 'github-advanced-sync', meta: 'engineering | Knoledgr | included' },
+      { slug: 'incident-ops-feed', meta: 'automation | Knoledgr | enterprise' },
+      { slug: 'jira-portfolio-bridge', meta: 'reporting | Knoledgr | included' },
+    ];
+    const bySlug = new Map(marketplaceApps.map((app) => [app.slug, app]));
+    return featured
+      .map((item) => ({ ...item, app: bySlug.get(item.slug) }))
+      .filter((item) => item.app);
+  }, [featuredMarketplace, marketplaceApps]);
+
   return (
     <div className="enterprise-page">
       <header className="enterprise-hero">
@@ -583,7 +606,45 @@ export default function Enterprise() {
           subtitle="Control app installs and enterprise support programs"
         >
           <div className="enterprise-list">
-            {marketplaceApps.map((app) => {
+            {featuredMarketplaceApps.map((item) => {
+              const { app } = item;
+              const target = getAppLaunchTarget(app);
+              return (
+                <article key={`featured-${app.id}`} className="enterprise-list-item enterprise-featured-item">
+                  <div>
+                    <p className="enterprise-list-title">{app.name}</p>
+                    <p className="enterprise-featured-meta">{item.meta}</p>
+                    <p>{app.description}</p>
+                  </div>
+                  <div className="enterprise-inline-actions">
+                    {app.installed ? (
+                      <a
+                        href={target.href}
+                        target={target.type === 'external' ? '_blank' : undefined}
+                        rel={target.type === 'external' ? 'noreferrer' : undefined}
+                        className="enterprise-btn enterprise-btn-secondary"
+                      >
+                        Open
+                      </a>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => toggleMarketplaceApp(app)}
+                      className="enterprise-btn enterprise-btn-primary"
+                      disabled={busyAppId === app.id}
+                    >
+                      {busyAppId === app.id ? 'Please wait...' : app.installed ? 'Uninstall' : 'Install'}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="enterprise-list">
+            {marketplaceApps
+              .filter((app) => !['github-advanced-sync', 'incident-ops-feed', 'jira-portfolio-bridge'].includes(app.slug))
+              .map((app) => {
               const target = getAppLaunchTarget(app);
               return (
                 <article key={app.id} className="enterprise-list-item enterprise-app-item">

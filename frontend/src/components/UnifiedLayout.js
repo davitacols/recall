@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import Breadcrumbs from "./Breadcrumbs";
@@ -68,6 +68,7 @@ export default function UnifiedLayout({ children }) {
   const [subnavOpen, setSubnavOpen] = useState(false);
   const [askFabPos, setAskFabPos] = useState(loadFabPosition);
   const [showProfile, setShowProfile] = useState(false);
+  const [showWorkspaceSwitcher, setShowWorkspaceSwitcher] = useState(false);
   const [workspaces, setWorkspaces] = useState([]);
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
   const [workspacePassword, setWorkspacePassword] = useState("");
@@ -75,6 +76,7 @@ export default function UnifiedLayout({ children }) {
   const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
   const [workspaceError, setWorkspaceError] = useState("");
   const profileRef = useRef(null);
+  const workspaceSwitcherRef = useRef(null);
   const askFabDragRef = useRef({
     active: false,
     pointerId: null,
@@ -104,6 +106,9 @@ export default function UnifiedLayout({ children }) {
       if (!profileRef.current?.contains(event.target)) {
         setShowProfile(false);
       }
+      if (!workspaceSwitcherRef.current?.contains(event.target)) {
+        setShowWorkspaceSwitcher(false);
+      }
     };
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
@@ -111,7 +116,7 @@ export default function UnifiedLayout({ children }) {
 
   useEffect(() => {
     const loadWorkspaces = async () => {
-      if (!showProfile) return;
+      if (!showProfile && !showWorkspaceSwitcher) return;
       setWorkspaceError("");
       setWorkspacesLoading(true);
       const result = await listWorkspaces();
@@ -125,7 +130,7 @@ export default function UnifiedLayout({ children }) {
     };
 
     loadWorkspaces();
-  }, [showProfile]);
+  }, [showProfile, showWorkspaceSwitcher]);
 
   const palette = useMemo(
     () =>
@@ -261,6 +266,7 @@ export default function UnifiedLayout({ children }) {
 
     setWorkspacePassword("");
     setShowProfile(false);
+    setShowWorkspaceSwitcher(false);
     window.location.href = "/";
   };
 
@@ -275,6 +281,96 @@ export default function UnifiedLayout({ children }) {
     }
     setWorkspaceError("Verification code sent to your email");
   };
+
+  const workspaceSwitcherContent = (
+    <div style={{ ...workspaceMenuSection, borderTop: `1px solid ${palette.border}` }}>
+      <p style={{ ...workspaceTitle, color: palette.muted }}>Switch Workspace</p>
+      <input
+        type="text"
+        value={workspacePassword}
+        onChange={(event) => setWorkspacePassword(event.target.value)}
+        placeholder="Enter 6-digit code"
+        className="ui-focus-ring"
+        style={{
+          ...workspacePasswordInput,
+          background: palette.buttonBg,
+          color: palette.text,
+          border: `1px solid ${palette.border}`,
+        }}
+      />
+      {workspaceError ? (
+        <p style={{ ...workspaceMeta, color: workspaceError.includes("sent") ? palette.muted : "var(--app-danger)" }}>{workspaceError}</p>
+      ) : null}
+      {workspacesLoading ? (
+        <p style={{ ...workspaceMeta, color: palette.muted }}>Loading workspaces...</p>
+      ) : null}
+      {!workspacesLoading && workspaces.length <= 1 ? (
+        <p style={{ ...workspaceMeta, color: palette.muted }}>No other workspace found.</p>
+      ) : null}
+      {!workspacesLoading && workspaces.length > 1 ? (
+        <div style={workspaceList}>
+          {workspaces.map((workspace) => {
+            const isCurrent = workspace.org_slug === user?.organization_slug;
+            return (
+              <div
+                key={`${workspace.user_id}-${workspace.org_slug}`}
+                style={{
+                  ...workspaceItem,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.panelBgAlt,
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ ...workspaceName, color: palette.text }}>{workspace.org_name}</p>
+                  <p style={{ ...workspaceMeta, color: palette.muted }}>
+                    {workspace.org_slug} - {workspace.role}
+                  </p>
+                </div>
+                {isCurrent ? (
+                  <span style={{ ...workspaceTag, border: `1px solid ${palette.border}`, color: palette.text }}>
+                    Current
+                  </span>
+                ) : (
+                  <div style={workspaceActions}>
+                    <button
+                      onClick={() => handleRequestWorkspaceCode(workspace.org_slug)}
+                      disabled={requestingCodeOrgSlug === workspace.org_slug}
+                      className="ui-btn-polish ui-focus-ring"
+                      style={{
+                        ...workspaceSwitchButton,
+                        background: palette.buttonBg,
+                        color: palette.text,
+                        border: `1px solid ${palette.border}`,
+                        opacity: requestingCodeOrgSlug === workspace.org_slug ? 0.65 : 1,
+                        cursor: requestingCodeOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {requestingCodeOrgSlug === workspace.org_slug ? "Sending..." : "Send Code"}
+                    </button>
+                    <button
+                      onClick={() => handleSwitchWorkspace(workspace.org_slug)}
+                      disabled={switchingOrgSlug === workspace.org_slug}
+                      className="ui-btn-polish ui-focus-ring"
+                      style={{
+                        ...workspaceSwitchButton,
+                        background: darkMode ? "#8bd0ff" : "#2e7db3",
+                        color: darkMode ? "#0a1118" : "#eef7ff",
+                        border: `1px solid ${darkMode ? "rgba(120,191,233,0.5)" : "#24688f"}`,
+                        opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
+                        cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {switchingOrgSlug === workspace.org_slug ? "Switching..." : "Switch"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <div
@@ -363,7 +459,10 @@ export default function UnifiedLayout({ children }) {
 
                 <div ref={profileRef} style={{ position: "relative" }}>
                   <button
-                    onClick={() => setShowProfile((value) => !value)}
+                    onClick={() => {
+                      setShowProfile((value) => !value);
+                      setShowWorkspaceSwitcher(false);
+                    }}
                     style={{ ...avatarButton, border: `1px solid ${palette.border}` }}
                     aria-label="Open profile menu"
                   >
@@ -414,93 +513,7 @@ export default function UnifiedLayout({ children }) {
                         Sign out
                       </button>
 
-                      <div style={{ ...workspaceMenuSection, borderTop: `1px solid ${palette.border}` }}>
-                        <p style={{ ...workspaceTitle, color: palette.muted }}>Switch Workspace</p>
-                        <input
-                          type="text"
-                          value={workspacePassword}
-                          onChange={(event) => setWorkspacePassword(event.target.value)}
-                          placeholder="Enter 6-digit code"
-                          className="ui-focus-ring"
-                          style={{
-                            ...workspacePasswordInput,
-                            background: palette.buttonBg,
-                            color: palette.text,
-                            border: `1px solid ${palette.border}`,
-                          }}
-                        />
-                        {workspaceError ? (
-                          <p style={{ ...workspaceMeta, color: workspaceError.includes("sent") ? palette.muted : "var(--app-danger)" }}>{workspaceError}</p>
-                        ) : null}
-                        {workspacesLoading ? (
-                          <p style={{ ...workspaceMeta, color: palette.muted }}>Loading workspaces...</p>
-                        ) : null}
-                        {!workspacesLoading && workspaces.length <= 1 ? (
-                          <p style={{ ...workspaceMeta, color: palette.muted }}>No other workspace found.</p>
-                        ) : null}
-                        {!workspacesLoading && workspaces.length > 1 ? (
-                          <div style={workspaceList}>
-                            {workspaces.map((workspace) => {
-                              const isCurrent = workspace.org_slug === user?.organization_slug;
-                              return (
-                                <div
-                                  key={`${workspace.user_id}-${workspace.org_slug}`}
-                                  style={{
-                                    ...workspaceItem,
-                                    border: `1px solid ${palette.border}`,
-                                    background: palette.panelBgAlt,
-                                  }}
-                                >
-                                  <div style={{ minWidth: 0 }}>
-                                    <p style={{ ...workspaceName, color: palette.text }}>{workspace.org_name}</p>
-                                    <p style={{ ...workspaceMeta, color: palette.muted }}>
-                                      {workspace.org_slug} - {workspace.role}
-                                    </p>
-                                  </div>
-                                  {isCurrent ? (
-                                    <span style={{ ...workspaceTag, border: `1px solid ${palette.border}`, color: palette.text }}>
-                                      Current
-                                    </span>
-                                  ) : (
-                                    <div style={workspaceActions}>
-                                      <button
-                                        onClick={() => handleRequestWorkspaceCode(workspace.org_slug)}
-                                        disabled={requestingCodeOrgSlug === workspace.org_slug}
-                                        className="ui-btn-polish ui-focus-ring"
-                                        style={{
-                                          ...workspaceSwitchButton,
-                                          background: palette.buttonBg,
-                                          color: palette.text,
-                                          border: `1px solid ${palette.border}`,
-                                          opacity: requestingCodeOrgSlug === workspace.org_slug ? 0.65 : 1,
-                                          cursor: requestingCodeOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
-                                        }}
-                                      >
-                                        {requestingCodeOrgSlug === workspace.org_slug ? "Sending..." : "Send Code"}
-                                      </button>
-                                      <button
-                                        onClick={() => handleSwitchWorkspace(workspace.org_slug)}
-                                        disabled={switchingOrgSlug === workspace.org_slug}
-                                        className="ui-btn-polish ui-focus-ring"
-                                        style={{
-                                          ...workspaceSwitchButton,
-                                          background: darkMode ? "#8bd0ff" : "#2e7db3",
-                                          color: darkMode ? "#0a1118" : "#eef7ff",
-                                          border: `1px solid ${darkMode ? "rgba(120,191,233,0.5)" : "#24688f"}`,
-                                          opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
-                                          cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
-                                        }}
-                                      >
-                                        {switchingOrgSlug === workspace.org_slug ? "Switching..." : "Switch"}
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : null}
-                      </div>
+                      {workspaceSwitcherContent}
                     </div>
                   )}
                 </div>
@@ -511,16 +524,35 @@ export default function UnifiedLayout({ children }) {
                 <Breadcrumbs darkMode={darkMode} />
               </div>
               <div style={headerMetaPills}>
-                <span
-                  style={{
-                    ...headerPill,
-                    border: `1px solid ${palette.border}`,
-                    background: palette.buttonBg,
-                    color: palette.text,
-                  }}
-                >
-                  {user?.organization_slug || "workspace"}
-                </span>
+                <div ref={workspaceSwitcherRef} style={{ position: "relative" }}>
+                  <button
+                    onClick={() => {
+                      setShowWorkspaceSwitcher((prev) => !prev);
+                      setShowProfile(false);
+                    }}
+                    className="ui-btn-polish ui-focus-ring"
+                    style={{
+                      ...orgSwitcherButton,
+                      border: `1px solid ${palette.border}`,
+                      background: palette.buttonBg,
+                      color: palette.text,
+                    }}
+                  >
+                    <span>{user?.organization_slug || "workspace"}</span>
+                    <ChevronDownIcon style={{ ...icon16, width: 12, height: 12 }} />
+                  </button>
+                  {showWorkspaceSwitcher ? (
+                    <div
+                      style={{
+                        ...orgSwitcherMenu,
+                        background: palette.menuSurface,
+                        border: `1px solid ${palette.border}`,
+                      }}
+                    >
+                      {workspaceSwitcherContent}
+                    </div>
+                  ) : null}
+                </div>
                 <span
                   style={{
                     ...headerPill,
@@ -768,6 +800,29 @@ const workspaceActions = {
   display: "flex",
   alignItems: "center",
   gap: 8,
+};
+
+const orgSwitcherButton = {
+  borderRadius: 999,
+  padding: "6px 10px",
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  cursor: "pointer",
+};
+
+const orgSwitcherMenu = {
+  position: "absolute",
+  right: 0,
+  top: "calc(100% + 8px)",
+  width: "min(92vw, 420px)",
+  borderRadius: 14,
+  overflow: "hidden",
+  boxShadow: "0 20px 40px rgba(0,0,0,0.28)",
+  zIndex: 130,
 };
 
 const main = {

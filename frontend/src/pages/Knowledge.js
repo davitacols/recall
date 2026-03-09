@@ -4,6 +4,7 @@ import {
   ArrowTopRightOnSquareIcon,
   BeakerIcon,
   ChartBarIcon,
+  CpuChipIcon,
   MagnifyingGlassIcon,
   ShareIcon,
   SparklesIcon,
@@ -12,6 +13,7 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
 import BM25 from "../utils/bm25";
+import { useAuth } from "../hooks/useAuth";
 
 const QUICK_QUERIES = [
   "architecture tradeoffs",
@@ -110,6 +112,7 @@ function StatCard({ label, value, tone, palette }) {
 
 export default function Knowledge() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -123,6 +126,13 @@ export default function Knowledge() {
   const [error, setError] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sortMode, setSortMode] = useState("relevance");
+  const [insights, setInsights] = useState({
+    summary: { memory_gaps_count: 0, forgotten_count: 0, faq_count: 0 },
+    memory_gaps: [],
+    forgotten: [],
+    faq: [],
+  });
+  const [trainingState, setTrainingState] = useState({ running: false, error: "", result: null });
 
   const runSearch = async (text) => {
     const q = (text || "").trim();
@@ -160,9 +170,10 @@ export default function Knowledge() {
 
   useEffect(() => {
     const loadTop = async () => {
-      const [statsRes, trendRes] = await Promise.all([
+      const [statsRes, trendRes, insightsRes] = await Promise.all([
         api.get("/api/knowledge/stats/").catch(() => ({ data: {} })),
         api.get("/api/knowledge/trending/").catch(() => ({ data: [] })),
+        api.get("/api/knowledge/insights/overview/").catch(() => ({ data: {} })),
       ]);
       const s = statsRes?.data?.data || statsRes?.data || {};
       setStats({
@@ -171,6 +182,13 @@ export default function Knowledge() {
         total_searches: s.total_searches || 0,
       });
       setTrending(normalizeTrendingResponse(trendRes).slice(0, 8));
+      const inPayload = insightsRes?.data || {};
+      setInsights({
+        summary: inPayload.summary || { memory_gaps_count: 0, forgotten_count: 0, faq_count: 0 },
+        memory_gaps: Array.isArray(inPayload.memory_gaps) ? inPayload.memory_gaps : [],
+        forgotten: Array.isArray(inPayload.forgotten) ? inPayload.forgotten : [],
+        faq: Array.isArray(inPayload.faq) ? inPayload.faq : [],
+      });
     };
 
     loadTop();
@@ -181,6 +199,20 @@ export default function Knowledge() {
       runSearch(preset);
     }
   }, []);
+
+  const runDeepTraining = async () => {
+    setTrainingState({ running: true, error: "", result: null });
+    try {
+      const response = await api.post("/api/knowledge/ai/train-deep-model/", {
+        epochs: 3,
+        max_samples: 800,
+      });
+      setTrainingState({ running: false, error: "", result: response.data?.training || null });
+    } catch (e) {
+      const msg = e?.response?.data?.error || "Training failed.";
+      setTrainingState({ running: false, error: msg, result: null });
+    }
+  };
 
   const resultTypes = useMemo(() => {
     const counts = {};
@@ -241,7 +273,30 @@ export default function Knowledge() {
             <FeatureLink to="/knowledge/graph" icon={ShareIcon} label="Graph" />
             <FeatureLink to="/knowledge/analytics" icon={ChartBarIcon} label="Analytics" />
             <FeatureLink to="/knowledge-health" icon={BeakerIcon} label="Health" />
+            {["admin", "manager"].includes(String(user?.role || "")) && (
+              <button
+                type="button"
+                onClick={runDeepTraining}
+                disabled={trainingState.running}
+                className="ui-btn-polish"
+                style={{ ...ui.primaryButton, opacity: trainingState.running ? 0.65 : 1 }}
+              >
+                <CpuChipIcon style={{ width: 15, height: 15 }} />
+                {trainingState.running ? "Training..." : "Train Deep Model"}
+              </button>
+            )}
           </div>
+          {(trainingState.error || trainingState.result) && (
+            <div style={{ marginTop: 10, borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10 }}>
+              {trainingState.error ? (
+                <p style={{ margin: 0, fontSize: 12, color: "var(--app-danger)" }}>{trainingState.error}</p>
+              ) : (
+                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                  Model trained across {Object.keys(trainingState.result?.label_map || {}).length || 0} organization domains. Accuracy: {trainingState.result?.metrics?.accuracy ?? "N/A"}, dataset: {trainingState.result?.dataset_size ?? 0}.
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         {!searched && (
@@ -249,6 +304,9 @@ export default function Knowledge() {
             <StatCard label="Searchable Items" value={stats.total_items} tone="var(--app-info)" palette={palette} />
             <StatCard label="Indexed This Week" value={stats.this_week} tone="var(--app-success)" palette={palette} />
             <StatCard label="Total Searches" value={stats.total_searches} tone="var(--app-warning)" palette={palette} />
+            <StatCard label="Memory Gaps" value={insights.summary.memory_gaps_count} tone="var(--app-danger)" palette={palette} />
+            <StatCard label="Forgotten Decisions" value={insights.summary.forgotten_count} tone="var(--app-warning)" palette={palette} />
+            <StatCard label="FAQ Items" value={insights.summary.faq_count} tone="var(--app-info)" palette={palette} />
           </section>
         )}
 
@@ -268,6 +326,41 @@ export default function Knowledge() {
             </div>
           </section>
         )}
+
+        {!searched && (insights.memory_gaps.length || insights.forgotten.length || insights.faq.length) ? (
+          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 8, marginBottom: 12 }}>
+            <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Top Memory Gaps</h3>
+              <div style={{ display: "grid", gap: 6 }}>
+                {insights.memory_gaps.slice(0, 3).map((gap) => (
+                  <p key={gap.topic} style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                    {gap.topic} ({gap.discussion_count})
+                  </p>
+                ))}
+              </div>
+            </article>
+            <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Forgotten Decisions</h3>
+              <div style={{ display: "grid", gap: 6 }}>
+                {insights.forgotten.slice(0, 3).map((item) => (
+                  <p key={item.id} style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                    {item.title} ({item.days_old}d)
+                  </p>
+                ))}
+              </div>
+            </article>
+            <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>FAQ Coverage</h3>
+              <div style={{ display: "grid", gap: 6 }}>
+                {insights.faq.slice(0, 3).map((item) => (
+                  <p key={item.id} style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                    {item.question}
+                  </p>
+                ))}
+              </div>
+            </article>
+          </section>
+        ) : null}
 
         {searched && (
           <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>

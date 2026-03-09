@@ -29,4 +29,8 @@ app.conf.beat_schedule = {
         'task': 'apps.notifications.tasks.send_scheduled_marketing_campaigns',
         'schedule': crontab(minute='*/10'),  # Every 10 minutes
     },
+    'train-org-knowledge-models-nightly': {
+        'task': 'apps.knowledge.tasks.train_all_org_knowledge_models_nightly',
+        'schedule': crontab(hour=2, minute=0),  # Daily at 2 AM
+    },
 }

@@ -5,12 +5,107 @@ from rest_framework.response import Response
 from django.db.models import Q, Count
 from django.utils import timezone
 from datetime import timedelta
+from pathlib import Path
+import json
 from .models import KnowledgeEntry
+from .deep_learning import DeepKnowledgeTrainer
 from .search_engine import get_search_engine
 from apps.conversations.models import Conversation, ConversationReply
 from apps.decisions.models import Decision
 from apps.organizations.models import SearchAnalytics
 from apps.users.auth_utils import check_rate_limit
+
+
+def _compute_memory_gaps(org):
+    recent_conversations = Conversation.objects.filter(
+        organization=org,
+        ai_processed=True,
+        created_at__gte=timezone.now() - timedelta(days=90)
+    )
+    keyword_counts = {}
+    for conv in recent_conversations:
+        for keyword in conv.ai_keywords:
+            keyword_counts[keyword] = keyword_counts.get(keyword, 0) + 1
+
+    decisions = Decision.objects.filter(organization=org, status='approved')
+    decision_keywords = set()
+    for dec in decisions:
+        decision_keywords.add(dec.title.lower())
+        for word in dec.title.lower().split():
+            if len(word) > 4:
+                decision_keywords.add(word)
+
+    gaps = []
+    for keyword, count in keyword_counts.items():
+        if count < 3 or keyword.lower() in decision_keywords:
+            continue
+        has_decision = Decision.objects.filter(
+            organization=org,
+            status='approved',
+            title__icontains=keyword
+        ).exists()
+        if not has_decision:
+            gaps.append({
+                'topic': keyword,
+                'discussion_count': count,
+                'message': f'No clear decision recorded for "{keyword}"'
+            })
+    gaps.sort(key=lambda x: x['discussion_count'], reverse=True)
+    return gaps[:10]
+
+
+def _compute_forgotten_knowledge(org):
+    ninety_days_ago = timezone.now() - timedelta(days=90)
+    old_decisions = Decision.objects.filter(
+        organization=org,
+        status__in=['approved', 'implemented'],
+        decided_at__lt=ninety_days_ago
+    )
+    forgotten = []
+    for decision in old_decisions:
+        recent_mentions = Conversation.objects.filter(
+            organization=org,
+            created_at__gte=ninety_days_ago,
+            content__icontains=decision.title[:30]
+        ).count()
+        if recent_mentions == 0:
+            days_old = (timezone.now() - decision.decided_at).days
+            forgotten.append({
+                'id': decision.id,
+                'title': decision.title,
+                'decided_at': decision.decided_at,
+                'days_old': days_old,
+                'impact_level': decision.impact_level,
+                'message': f'Not referenced in {days_old} days'
+            })
+    forgotten.sort(key=lambda x: x['days_old'], reverse=True)
+    return forgotten[:10]
+
+
+def _compute_faq(org):
+    questions = Conversation.objects.filter(
+        organization=org,
+        post_type='question',
+        status_label__in=['resolved', 'good_example'],
+        reply_count__gte=1
+    ).order_by('-reply_count', '-created_at')[:20]
+
+    faq_items = []
+    for q in questions:
+        replies = q.replies.all().order_by('created_at')
+        answer = replies.first().content if replies.exists() else None
+        if answer:
+            faq_items.append({
+                'id': q.id,
+                'question': q.title,
+                'answer': answer[:300],
+                'full_answer': answer,
+                'reply_count': q.reply_count,
+                'view_count': q.view_count,
+                'created_at': q.created_at,
+                'keywords': q.ai_keywords
+            })
+    return faq_items
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -351,50 +446,7 @@ def memory_gaps(request):
     """Detect topics with no clear decisions"""
     org = request.user.organization
     
-    # Get frequently discussed topics without decisions
-    recent_conversations = Conversation.objects.filter(
-        organization=org,
-        ai_processed=True,
-        created_at__gte=timezone.now() - timedelta(days=90)
-    )
-    
-    # Count keywords
-    keyword_counts = {}
-    for conv in recent_conversations:
-        for keyword in conv.ai_keywords:
-            keyword_counts[keyword] = keyword_counts.get(keyword, 0) + 1
-    
-    # Get all decision keywords
-    decisions = Decision.objects.filter(organization=org, status='approved')
-    decision_keywords = set()
-    for dec in decisions:
-        decision_keywords.add(dec.title.lower())
-        for word in dec.title.lower().split():
-            if len(word) > 4:
-                decision_keywords.add(word)
-    
-    # Find gaps: topics discussed 3+ times with no decision
-    gaps = []
-    for keyword, count in keyword_counts.items():
-        if count >= 3 and keyword.lower() not in decision_keywords:
-            # Check if there's a related decision
-            has_decision = Decision.objects.filter(
-                organization=org,
-                status='approved',
-                title__icontains=keyword
-            ).exists()
-            
-            if not has_decision:
-                gaps.append({
-                    'topic': keyword,
-                    'discussion_count': count,
-                    'message': f'No clear decision recorded for "{keyword}"'
-                })
-    
-    # Sort by discussion count
-    gaps.sort(key=lambda x: x['discussion_count'], reverse=True)
-    
-    return Response({'gaps': gaps[:10]})
+    return Response({'gaps': _compute_memory_gaps(org)})
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -402,33 +454,7 @@ def faq(request):
     """Generate FAQ from repeated questions"""
     org = request.user.organization
     
-    # Get resolved questions with replies
-    questions = Conversation.objects.filter(
-        organization=org,
-        post_type='question',
-        status_label__in=['resolved', 'good_example'],
-        reply_count__gte=1
-    ).order_by('-reply_count', '-created_at')[:20]
-    
-    faq_items = []
-    for q in questions:
-        # Get best answer (first reply or most recent)
-        replies = q.replies.all().order_by('created_at')
-        answer = replies.first().content if replies.exists() else None
-        
-        if answer:
-            faq_items.append({
-                'id': q.id,
-                'question': q.title,
-                'answer': answer[:300],
-                'full_answer': answer,
-                'reply_count': q.reply_count,
-                'view_count': q.view_count,
-                'created_at': q.created_at,
-                'keywords': q.ai_keywords
-            })
-    
-    return Response({'faq_items': faq_items})
+    return Response({'faq_items': _compute_faq(org)})
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -436,38 +462,67 @@ def forgotten_knowledge(request):
     """Detect decisions not referenced in months"""
     org = request.user.organization
     
-    # Get approved decisions older than 90 days
-    ninety_days_ago = timezone.now() - timedelta(days=90)
-    old_decisions = Decision.objects.filter(
-        organization=org,
-        status__in=['approved', 'implemented'],
-        decided_at__lt=ninety_days_ago
-    )
-    
-    forgotten = []
-    for decision in old_decisions:
-        # Check if decision was mentioned in recent conversations
-        recent_mentions = Conversation.objects.filter(
-            organization=org,
-            created_at__gte=ninety_days_ago,
-            content__icontains=decision.title[:30]
-        ).count()
-        
-        if recent_mentions == 0:
-            days_old = (timezone.now() - decision.decided_at).days
-            forgotten.append({
-                'id': decision.id,
-                'title': decision.title,
-                'decided_at': decision.decided_at,
-                'days_old': days_old,
-                'impact_level': decision.impact_level,
-                'message': f'Not referenced in {days_old} days'
-            })
-    
-    # Sort by days old
-    forgotten.sort(key=lambda x: x['days_old'], reverse=True)
-    
-    return Response({'forgotten': forgotten[:10]})
+    return Response({'forgotten': _compute_forgotten_knowledge(org)})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def insights_overview(request):
+    """Aggregate advanced knowledge signals for dashboard widgets."""
+    org = request.user.organization
+    gaps = _compute_memory_gaps(org)
+    forgotten = _compute_forgotten_knowledge(org)
+    faq_items = _compute_faq(org)
+    return Response({
+        'summary': {
+            'memory_gaps_count': len(gaps),
+            'forgotten_count': len(forgotten),
+            'faq_count': len(faq_items),
+        },
+        'memory_gaps': gaps[:5],
+        'forgotten': forgotten[:5],
+        'faq': faq_items[:5],
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def train_deep_model(request):
+    """Train a deep organization-wide model for context and user experience."""
+    if request.user.role not in ['admin', 'manager']:
+        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+    epochs = int(request.data.get('epochs', 3))
+    max_samples = int(request.data.get('max_samples', 600))
+    epochs = min(max(1, epochs), 10)
+    max_samples = min(max(100, max_samples), 5000)
+
+    trainer = DeepKnowledgeTrainer(request.user.organization)
+    try:
+        payload = trainer.train(epochs=epochs, max_samples=max_samples)
+    except Exception as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({
+        'message': 'Organization-wide deep learning knowledge model training completed.',
+        'training': payload,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def org_context_profile(request):
+    """Return latest organization context profile produced by training."""
+    profile_path = Path("backend/model_artifacts/knowledge") / f"org_context_profile_org_{request.user.organization.id}.json"
+    if not profile_path.exists():
+        return Response(
+            {'error': 'Organization context profile not found. Run deep model training first.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    try:
+        payload = json.loads(profile_path.read_text(encoding='utf-8'))
+    except Exception:
+        return Response({'error': 'Failed to load organization context profile.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response(payload)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

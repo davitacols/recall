@@ -60,6 +60,8 @@ urlpatterns = [
     path('ai/search/', ai_search, name='ai_search'),
     path('ai/insights/', ai_insights, name='ai_insights'),
     path('ai/summarize/', ai_summarize, name='ai_summarize'),
+    path('ai/train-deep-model/', views.train_deep_model, name='train_deep_model'),
+    path('ai/org-context-profile/', views.org_context_profile, name='org_context_profile'),
     path('health/', knowledge_health, name='knowledge_health'),
     path('search/', views.search_knowledge, name='search_knowledge'),
     path('search/suggestions/', views.search_suggestions, name='search_suggestions'),
@@ -78,4 +80,5 @@ urlpatterns = [
     path('cultural-memory/', views.cultural_memory, name='cultural_memory'),
     path('legacy/', views.legacy_content, name='legacy_content'),
     path('reflection/', views.personal_reflection, name='personal_reflection'),
+    path('insights/overview/', views.insights_overview, name='insights_overview'),
 ]

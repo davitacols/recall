@@ -4,57 +4,57 @@ import { useNavigate } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import "./Homepage.css";
 
-const heroWords = ["focused.", "auditable.", "searchable.", "unblocked."];
+const heroWords = ["searchable.", "grounded.", "traceable.", "usable."];
 
 const principles = [
   {
-    title: "Capture once",
-    text: "Meetings, docs, tickets, and chat become one living timeline.",
+    title: "Capture",
+    text: "Record decisions, conversations, and documents as work happens.",
   },
   {
-    title: "Connect context",
-    text: "Every decision links to rationale, owner, and downstream work.",
+    title: "Connect",
+    text: "Link rationale, owners, related discussions, and downstream work.",
   },
   {
-    title: "Move with clarity",
-    text: "Teams ship faster when everyone can see why a call was made.",
+    title: "Retrieve",
+    text: "Ask a question and recover the real why behind the work in seconds.",
   },
 ];
 
 const modules = [
   {
-    name: "Decision Feed",
-    detail: "Immutable timeline with approvals, revisions, and owners.",
+    name: "Decision Log",
+    detail: "Capture key decisions with rationale, owners, approvals, and impact.",
     tag: "Core",
   },
   {
     name: "Context Graph",
-    detail: "Map conversations to tasks, metrics, and artifacts.",
+    detail: "Connect conversations, documents, projects, and historical signals.",
     tag: "Intelligence",
   },
   {
-    name: "Risk Radar",
-    detail: "Detect conflicting assumptions before they become expensive.",
-    tag: "Alerting",
+    name: "Ask Knoledgr",
+    detail: "Get grounded answers from your team's actual history, not generic AI.",
+    tag: "Assistant",
   },
   {
-    name: "AI Retrieval",
-    detail: "Answers grounded in real organizational memory.",
-    tag: "Assistant",
+    name: "Operational Memory",
+    detail: "Turn scattered activity into a usable record for alignment and onboarding.",
+    tag: "Memory",
   },
 ];
 
 const highlights = [
-  { value: "42%", label: "faster onboarding" },
-  { value: "3.1x", label: "better decision recall" },
-  { value: "0", label: "critical context lost" },
+  { value: "< 60s", label: "to recover decision context" },
+  { value: "1", label: "place to trace the why" },
+  { value: "24/7", label: "grounded answers from team history" },
 ];
 
 const liveEvents = [
-  { title: "Pricing decision updated", time: "08:42" },
-  { title: "Risk signal: scope conflict", time: "08:46" },
-  { title: "Owner confirmed by PM", time: "08:51" },
-  { title: "Roadmap synced to sprint", time: "08:55" },
+  { title: "Pricing decision approved with rationale", time: "08:42" },
+  { title: "Related onboarding discussion linked", time: "08:46" },
+  { title: "Previous rollout risk surfaced", time: "08:51" },
+  { title: "Next action assigned to product lead", time: "08:55" },
 ];
 
 export default function Homepage() {
@@ -102,9 +102,9 @@ export default function Homepage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55 }}
             >
-              <p className="hp-eyebrow">KNOLEDGR PLATFORM</p>
+              <p className="hp-eyebrow">DECISION MEMORY FOR TEAMS</p>
               <h1 className="hp-title">
-                Keep your team
+                Your team's decision memory,
                 <span className="hp-word-slot">
                   <AnimatePresence mode="wait">
                     <motion.span
@@ -121,18 +121,22 @@ export default function Homepage() {
                 </span>
               </h1>
               <p className="hp-subtitle">
-                Built like an operations console: clear hierarchy, fast scanning,
-                and decision memory that compounds over time.
+                Knoledgr captures decisions, discussions, and downstream work in
+                one context layer, so teams stop repeating debates and recover the
+                real why behind execution.
               </p>
               <div className="hp-actions">
                 <button
                   onClick={() => navigate("/login")}
                   className="hp-btn hp-btn-primary hp-btn-lg"
                 >
-                  Create your workspace
+                  Start your workspace
                 </button>
-                <button className="hp-btn hp-btn-ghost hp-btn-lg">
-                  View product tour
+                <button
+                  onClick={() => navigate("/docs")}
+                  className="hp-btn hp-btn-ghost hp-btn-lg"
+                >
+                  See how Ask Knoledgr works
                 </button>
               </div>
             </motion.div>
@@ -147,7 +151,7 @@ export default function Homepage() {
                 <span />
                 <span />
                 <span />
-                <p>Live Decision Console</p>
+                <p>Live Context Console</p>
               </div>
               <div className="hp-console-body">
                 {liveEvents.map((event) => (
@@ -175,7 +179,7 @@ export default function Homepage() {
           <div className="hp-container">
             <div className="hp-section-head">
               <p>How It Works</p>
-              <h2>Simple flow. Durable alignment.</h2>
+              <h2>Simple flow. Durable team memory.</h2>
             </div>
             <div className="hp-principles">
               {principles.map((item, idx) => (
@@ -199,12 +203,12 @@ export default function Homepage() {
         <section className="hp-section hp-section-tight">
           <div className="hp-container hp-bento">
             <div className="hp-bento-lead">
-              <p>Product Surface</p>
-              <h2>A product surface that feels premium and operational</h2>
+              <p>Why teams use Knoledgr</p>
+              <h2>Because work breaks when context disappears</h2>
               <p>
-                Inspired by the confidence of Uber interfaces and the calm clarity
-                of Notion: minimal noise, strong typography, and deliberate
-                spacing.
+                Slack has the conversation. Jira has the task. Notion has the
+                document. Knoledgr connects the why, so your team can trace what
+                happened, why it happened, and what to do next.
               </p>
             </div>
             <div className="hp-modules">
@@ -221,8 +225,8 @@ export default function Homepage() {
 
         <section className="hp-cta">
           <div className="hp-container hp-cta-panel">
-            <h2>Turn decisions into an unfair advantage</h2>
-            <p>Start with one workspace. Compound value with every call you keep.</p>
+            <h2>Stop re-deciding what your team already learned</h2>
+            <p>Preserve context, recover grounded answers, and help people act with confidence.</p>
             <div className="hp-actions">
               <button
                 onClick={() => navigate("/login")}
@@ -231,10 +235,10 @@ export default function Homepage() {
                 Get started free
               </button>
               <button
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/docs")}
                 className="hp-btn hp-btn-line hp-btn-lg"
               >
-                Sign in
+                Book a walkthrough
               </button>
             </div>
           </div>

@@ -209,8 +209,15 @@ function IssueDetail() {
   const watcherCount = Number(issue.watchers_count || 0);
 
   return (
-    <div style={{ minHeight: "100vh", fontFamily: "'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-      <div style={{ ...ambientGlow, background: darkMode ? "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.18),transparent 42%), radial-gradient(circle at 85% 18%,var(--app-info-soft),transparent 36%)" : "radial-gradient(circle at 10% 8%,rgba(245,158,11,0.1),transparent 42%), radial-gradient(circle at 85% 18%,rgba(59,130,246,0.08),transparent 36%)" }} />
+    <div style={{ minHeight: "100vh", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div
+        style={{
+          ...ambientGlow,
+          background: darkMode
+            ? "radial-gradient(circle at 12% 8%, rgba(59,130,246,0.18), transparent 36%), radial-gradient(circle at 86% 16%, rgba(14,165,233,0.12), transparent 32%), radial-gradient(circle at 58% 0%, rgba(99,102,241,0.12), transparent 30%)"
+            : "radial-gradient(circle at 12% 8%, rgba(59,130,246,0.12), transparent 36%), radial-gradient(circle at 86% 16%, rgba(14,165,233,0.08), transparent 32%), radial-gradient(circle at 58% 0%, rgba(99,102,241,0.08), transparent 30%)",
+        }}
+      />
       <div style={{ ...ui.container, width: "min(1420px,100%)", position: "relative", zIndex: 1 }}>
         <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
           <ArrowLeftIcon style={icon14} /> Back To Board
@@ -218,7 +225,18 @@ function IssueDetail() {
 
         {error && <div style={errorBanner}>{error}</div>}
 
-        <section className="ui-enter ui-card-lift ui-smooth" style={{ ...hero, border: `1px solid ${palette.border}`, background: darkMode ? "linear-gradient(140deg,#1b1417 0%,#140f11 100%)" : "linear-gradient(140deg,var(--app-surface-alt)df9 0%,var(--app-surface-alt)7ea 100%)", boxShadow: darkMode ? "0 26px 60px rgba(0,0,0,0.35)" : "0 26px 60px rgba(20,12,4,0.08)", "--ui-delay": "30ms" }}>
+        <section
+          className="ui-enter ui-card-lift ui-smooth"
+          style={{
+            ...hero,
+            border: `1px solid ${palette.border}`,
+            background: darkMode
+              ? "linear-gradient(145deg, rgba(11,18,32,0.96) 0%, rgba(17,24,39,0.94) 52%, rgba(21,32,54,0.88) 100%)"
+              : "linear-gradient(145deg, rgba(255,255,255,0.96) 0%, rgba(246,249,252,0.98) 58%, rgba(230,238,250,0.92) 100%)",
+            boxShadow: darkMode ? "0 28px 64px rgba(2,8,23,0.42)" : "0 28px 64px rgba(15,23,42,0.1)",
+            "--ui-delay": "30ms",
+          }}
+        >
           <div style={{ minWidth: 0 }}>
             <p style={{ ...issueKey, color: palette.muted }}>{issue.key || `ISS-${issue.id}`}</p>
             {!editing ? (
@@ -255,7 +273,16 @@ function IssueDetail() {
           </div>
         </section>
 
-        <section className="ui-enter" style={{ ...signalRail, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "90ms" }}>
+        <section
+          className="ui-enter ui-card-lift ui-smooth"
+          style={{
+            ...signalRail,
+            border: `1px solid ${palette.border}`,
+            background: darkMode ? "rgba(15,23,42,0.82)" : "rgba(255,255,255,0.8)",
+            boxShadow: "var(--ui-shadow-xs)",
+            "--ui-delay": "90ms",
+          }}
+        >
           <p style={{ ...signalTitle, color: palette.muted }}>Execution Snapshot</p>
           <div style={signalPills}>
             <span style={{ ...signalPill, ...getSemanticChipStyle(issue.status, "status", darkMode) }}>{formatLabel(issue.status)}</span>
@@ -435,37 +462,44 @@ const spinner = { width: 34, height: 34, border: "2px solid var(--app-border-str
 const ambientGlow = { position: "fixed", inset: 0, pointerEvents: "none" };
 const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 12 };
 const errorBanner = { borderRadius: 12, border: "1px solid var(--app-danger-border)", background: "var(--app-danger-soft)", color: "var(--app-danger)", padding: "10px 12px", marginBottom: 10, fontSize: 13 };
-const cardBase = { borderRadius: 18, padding: "clamp(12px,2vw,18px)" };
-const hero = { borderRadius: 20, padding: "clamp(14px,2.2vw,22px)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" };
+const cardBase = { borderRadius: 24, padding: "clamp(16px,2.2vw,22px)", boxShadow: "var(--ui-shadow-xs)" };
+const hero = {
+  borderRadius: 28,
+  padding: "clamp(20px,2.8vw,30px)",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  alignItems: "start",
+  gap: 18,
+};
 const issueKey = { margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" };
-const issueTitle = { margin: "8px 0 10px", fontSize: "clamp(1.4rem,3vw,2.15rem)", letterSpacing: "-0.03em", lineHeight: 1.1 };
+const issueTitle = { margin: "10px 0 12px", fontSize: "clamp(1.5rem,3vw,2.3rem)", letterSpacing: "-0.04em", lineHeight: 1.05, maxWidth: 820 };
 const tagRow = { display: "flex", gap: 8, flexWrap: "wrap" };
-const chip = { borderRadius: 999, padding: "5px 10px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
-const heroActions = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
-const dangerButton = { border: "1px solid var(--app-danger-border)", borderRadius: 10, padding: 9, color: "var(--app-danger)", background: "rgba(239,68,68,0.1)", cursor: "pointer", display: "grid", placeItems: "center" };
-const signalRail = { marginTop: 10, borderRadius: 14, padding: "10px 12px", display: "grid", gap: 8 };
+const chip = { borderRadius: 999, padding: "6px 11px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
+const heroActions = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" };
+const dangerButton = { border: "1px solid var(--app-danger-border)", borderRadius: 14, padding: 11, color: "var(--app-danger)", background: "rgba(239,68,68,0.1)", cursor: "pointer", display: "grid", placeItems: "center", boxShadow: "var(--ui-shadow-xs)" };
+const signalRail = { marginTop: 14, borderRadius: 22, padding: "14px 16px", display: "grid", gap: 10 };
 const signalTitle = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 };
 const signalPills = { display: "flex", gap: 8, flexWrap: "wrap" };
-const signalPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "5px 10px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
-const metricsRow = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 };
-const metricCard = { borderRadius: 14, padding: "10px 12px" };
+const signalPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "7px 12px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
+const metricsRow = { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12 };
+const metricCard = { borderRadius: 20, padding: "14px 14px 13px", boxShadow: "var(--ui-shadow-xs)" };
 const metricLabel = { margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5 };
-const metricValue = { margin: "7px 0 0", fontSize: 13, fontWeight: 700 };
-const contentLayout = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 10, alignItems: "start" };
-const mainStack = { display: "grid", gap: 10 };
-const sidePanel = { borderRadius: 18, padding: "clamp(12px,2vw,18px)", display: "grid", gap: 4, alignContent: "start", position: "sticky", top: 12, height: "fit-content" };
-const sectionTitle = { margin: "0 0 10px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 16, fontWeight: 800, letterSpacing: "-0.01em" };
+const metricValue = { margin: "8px 0 0", fontSize: 14, fontWeight: 700, lineHeight: 1.4 };
+const contentLayout = { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))", gap: 12, alignItems: "start" };
+const mainStack = { display: "grid", gap: 12 };
+const sidePanel = { borderRadius: 24, padding: "clamp(16px,2.2vw,22px)", display: "grid", gap: 8, alignContent: "start", position: "sticky", top: 24, height: "fit-content", boxShadow: "var(--ui-shadow-xs)" };
+const sectionTitle = { margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 16, fontWeight: 800, letterSpacing: "-0.015em" };
 const bodyText = { margin: 0, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" };
 const fieldWrap = { display: "grid", gap: 6, marginBottom: 8 };
 const fieldLabel = { fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
 const valueText = { fontSize: 14, fontWeight: 600 };
-const commentList = { display: "grid", gap: 8 };
-const commentCard = { borderRadius: 12, padding: 10 };
+const commentList = { display: "grid", gap: 10 };
+const commentCard = { borderRadius: 16, padding: 12, boxShadow: "var(--ui-shadow-xs)" };
 const commentMeta = { margin: "0 0 6px", fontSize: 11, fontWeight: 700 };
-const commentComposer = { marginTop: 10, display: "grid", gap: 8 };
-const emptyState = { borderRadius: 10, padding: "12px 10px", textAlign: "center", fontSize: 12 };
-const subCard = { borderRadius: 12, padding: 10 };
-const moduleStack = { display: "grid", gap: 10 };
+const commentComposer = { marginTop: 12, display: "grid", gap: 8 };
+const emptyState = { borderRadius: 16, padding: "14px 12px", textAlign: "center", fontSize: 12 };
+const subCard = { borderRadius: 18, padding: 12, boxShadow: "var(--ui-shadow-xs)" };
+const moduleStack = { display: "grid", gap: 12 };
 const icon14 = { width: 14, height: 14 };
 const icon16 = { width: 16, height: 16 };
 

@@ -424,7 +424,27 @@ export default function UnifiedDashboard() {
       ctaTo: "/sprint",
       tone: sprintBlocked > 0 ? palette.warn : palette.good,
     },
-  ].slice(0, 2);
+  ];
+  const heroPulseCards = [
+    {
+      label: "Team Signals",
+      value: stats.activity,
+      helper: "Events captured this week",
+      tint: palette.accent,
+    },
+    {
+      label: "Outcome Reliability",
+      value: `${outcomeStats.avg_reliability || 0}%`,
+      helper: "Average decision confidence",
+      tint: palette.good,
+    },
+    {
+      label: "Sprint Pressure",
+      value: `${sprintBlocked}`,
+      helper: `${sprintInProgress} items moving right now`,
+      tint: sprintBlocked > 0 ? palette.warn : palette.info,
+    },
+  ];
 
   if (loading) {
     return (
@@ -459,10 +479,11 @@ export default function UnifiedDashboard() {
   return (
     <div style={pageStyle}>
       <section className="ui-enter" style={{ ...controlStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
-        <Link to="/projects" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Projects</Link>
-        <Link to="/sprint" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Sprint Board</Link>
-        <Link to="/decisions" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Decision Hub</Link>
-        <Link to="/ask" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Ask Recall</Link>
+        <p style={{ ...controlLabel, color: palette.muted }}>Jump to</p>
+        <Link className="ui-btn-polish ui-focus-ring" to="/projects" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Projects</Link>
+        <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Sprint Board</Link>
+        <Link className="ui-btn-polish ui-focus-ring" to="/decisions" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Decision Hub</Link>
+        <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Ask Recall</Link>
       </section>
 
       <section
@@ -472,9 +493,7 @@ export default function UnifiedDashboard() {
           border: `1px solid ${palette.border}`,
           "--ui-delay": "70ms",
           background: palette.panel,
-          boxShadow: "none",
-          borderRadius: 12,
-          padding: "14px 14px 12px",
+          boxShadow: "var(--ui-shadow-sm)",
         }}
       >
         <div style={heroMainWrap}>
@@ -491,7 +510,19 @@ export default function UnifiedDashboard() {
             <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
               {stats.activity} signals this week
             </div>
+            <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
+              {pendingOutcomeMeta.total} review items open
+            </div>
           </div>
+        </div>
+        <div style={heroRail}>
+          {heroPulseCards.map((card) => (
+            <article key={card.label} style={{ ...heroRailCard, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+              <p style={{ ...heroRailLabel, color: palette.muted }}>{card.label}</p>
+              <p style={{ ...heroRailValue, color: card.tint }}>{card.value}</p>
+              <p style={{ ...heroRailHelper, color: palette.dim }}>{card.helper}</p>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -1011,7 +1042,7 @@ export default function UnifiedDashboard() {
 
 function StatCard({ label, value, icon: Icon, color, tone }) {
   return (
-    <article style={{ ...statCard, border: `1px solid ${tone.border}`, background: tone.panel }}>
+    <article className="ui-card-lift ui-smooth" style={{ ...statCard, border: `1px solid ${tone.border}`, background: tone.panel }}>
       <div style={statHead}>
         <p style={{ ...statLabel, color: tone.muted }}>{label}</p>
         <Icon style={{ ...icon16, color }} />
@@ -1021,7 +1052,7 @@ function StatCard({ label, value, icon: Icon, color, tone }) {
   );
 }
 
-function HealthRow({ label, value, tint, muted = "#9a8a78" }) {
+function HealthRow({ label, value, tint, muted = "var(--ui-muted)" }) {
   return (
     <div style={healthRow}>
       <p style={{ ...healthLabel, color: muted }}>{label}</p>
@@ -1044,10 +1075,11 @@ function CollapsibleCard({
   return (
     <article
       className="ui-card-lift ui-smooth"
-      style={{ ...panel, order }}
+      style={{ ...panel, order, background: palette.panel, border: `1px solid ${palette.border}` }}
     >
       <div style={{ ...collapseHeaderRow, borderBottom: expanded ? `1px solid ${palette.border}` : "none" }}>
         <button
+          className="ui-btn-polish ui-focus-ring"
           onClick={() => setExpanded((v) => !v)}
           style={collapseHeaderMain}
           aria-expanded={expanded}
@@ -1064,6 +1096,7 @@ function CollapsibleCard({
         </button>
         <div style={moveControls}>
           <button
+            className="ui-btn-polish ui-focus-ring"
             onClick={onMoveUp}
             style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}` }}
             aria-label={`Move ${title} up`}
@@ -1072,6 +1105,7 @@ function CollapsibleCard({
             <ChevronUpIcon style={icon14} />
           </button>
           <button
+            className="ui-btn-polish ui-focus-ring"
             onClick={onMoveDown}
             style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}` }}
             aria-label={`Move ${title} down`}
@@ -1088,26 +1122,34 @@ function CollapsibleCard({
 
 const pageStyle = {
   position: "relative",
-  padding: "clamp(14px, 2.4vw, 24px)",
+  padding: "clamp(16px, 2.8vw, 28px)",
   display: "grid",
-  gap: 12,
+  gap: 16,
 };
 
 const controlStrip = {
   position: "relative",
   zIndex: 1,
-  borderRadius: 10,
-  padding: "8px",
+  borderRadius: 20,
+  padding: "12px",
   display: "flex",
   alignItems: "center",
   gap: 8,
   flexWrap: "wrap",
 };
 
+const controlLabel = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+};
+
 const controlPill = {
   textDecoration: "none",
   borderRadius: 999,
-  padding: "7px 12px",
+  padding: "9px 14px",
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: "0.01em",
@@ -1117,13 +1159,12 @@ const controlPill = {
 const hero = {
   position: "relative",
   zIndex: 1,
-  borderRadius: 0,
-  padding: "2px 0 2px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-end",
-  gap: 12,
-  flexWrap: "wrap",
+  borderRadius: 28,
+  padding: "clamp(20px, 3vw, 30px)",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: 18,
+  alignItems: "stretch",
 };
 
 const eyebrow = { margin: 0, fontSize: 10, letterSpacing: "0.14em", fontWeight: 700 };
@@ -1135,8 +1176,8 @@ const title = {
   letterSpacing: "-0.02em",
 };
 
-const subtitle = { margin: 0, fontSize: 14, lineHeight: 1.48, maxWidth: 700 };
-const heroMainWrap = { minWidth: 0, flex: 1 };
+const subtitle = { margin: 0, fontSize: 14, lineHeight: 1.55, maxWidth: 700 };
+const heroMainWrap = { minWidth: 0, display: "grid", alignContent: "space-between", gap: 16 };
 
 const heroBadges = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
 
@@ -1151,12 +1192,46 @@ const heroBadge = {
   background: "var(--app-info-soft)",
 };
 
+const heroRail = {
+  display: "grid",
+  gap: 10,
+  alignContent: "start",
+};
+
+const heroRailCard = {
+  borderRadius: 20,
+  padding: "16px 16px 14px",
+  display: "grid",
+  gap: 6,
+};
+
+const heroRailLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+};
+
+const heroRailValue = {
+  margin: 0,
+  fontSize: 28,
+  fontWeight: 800,
+  lineHeight: 1,
+};
+
+const heroRailHelper = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.45,
+};
+
 const kpiGrid = {
   position: "relative",
   zIndex: 1,
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-  gap: 10,
+  gap: 12,
 };
 
 const focusSection = {
@@ -1179,15 +1254,15 @@ const sectionHelper = { margin: 0, fontSize: 13 };
 const focusGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-  gap: 12,
+  gap: 14,
 };
 
 const focusCard = {
-  borderRadius: 16,
-  padding: "12px 12px 11px",
+  borderRadius: 20,
+  padding: "16px 16px 14px",
   display: "grid",
-  gap: 6,
-  boxShadow: "none",
+  gap: 8,
+  boxShadow: "var(--ui-shadow-sm)",
 };
 
 const focusLabel = { margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" };
@@ -1204,22 +1279,22 @@ const focusLink = {
 };
 
 const statCard = {
-  borderRadius: 16,
-  padding: "12px 12px 11px",
-  boxShadow: "none",
+  borderRadius: 20,
+  padding: "16px 16px 14px",
+  boxShadow: "var(--ui-shadow-sm)",
 };
 const statHead = { display: "flex", justifyContent: "space-between", alignItems: "center" };
 const statLabel = { margin: 0, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
 const statValue = { margin: "9px 0 0", fontSize: 30, lineHeight: 1, fontWeight: 800 };
 
-const mainGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12, alignItems: "start" };
-const leftCol = { display: "grid", gap: 12, alignContent: "start", alignItems: "start", gridAutoRows: "max-content" };
-const rightCol = { display: "grid", gap: 12, alignContent: "start" };
+const mainGrid = { position: "relative", zIndex: 1, display: "grid", gap: 14, alignItems: "start" };
+const leftCol = { display: "grid", gap: 14, alignContent: "start", alignItems: "start", gridAutoRows: "max-content" };
+const rightCol = { display: "grid", gap: 14, alignContent: "start" };
 
 const panel = {
-  borderRadius: 0,
+  borderRadius: 22,
   overflow: "hidden",
-  boxShadow: "none",
+  boxShadow: "var(--ui-shadow-sm)",
 };
 const panelTitle = { margin: 0, fontSize: 16 };
 const collapseHeaderRow = {
@@ -1236,21 +1311,21 @@ const collapseHeaderMain = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: 8,
-  padding: "12px 14px",
+  padding: "16px 16px 14px",
   textAlign: "left",
   cursor: "pointer",
 };
 const moveControls = {
   display: "flex",
   alignItems: "center",
-  gap: 2,
-  paddingRight: 8,
+  gap: 6,
+  paddingRight: 12,
 };
 const moveButton = {
-  width: 24,
-  height: 24,
+  width: 28,
+  height: 28,
   border: "none",
-  borderRadius: 6,
+  borderRadius: 10,
   background: "transparent",
   display: "grid",
   placeItems: "center",
@@ -1263,7 +1338,7 @@ const activityRow = {
   alignItems: "center",
   gap: 10,
   justifyContent: "space-between",
-  padding: "13px 14px",
+  padding: "14px 16px",
   textDecoration: "none",
 };
 
@@ -1279,7 +1354,7 @@ const activityTitle = {
 const activityDate = { margin: "4px 0 0", fontSize: 12 };
 
 const loadMoreWrap = { padding: 12, textAlign: "center" };
-const loadMoreButton = { borderRadius: 12, padding: "9px 13px", fontSize: 13, fontWeight: 800, cursor: "pointer" };
+const loadMoreButton = { borderRadius: 14, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" };
 
 const analyticsRow = {
   display: "grid",
@@ -1289,9 +1364,9 @@ const analyticsRow = {
 };
 
 const railTitle = { margin: 0, padding: "14px 14px 4px", fontSize: 14, fontWeight: 700 };
-const healthList = { padding: "10px 14px 14px", display: "grid", gap: 9 };
+const healthList = { padding: "12px 16px 16px", display: "grid", gap: 10 };
 const healthRow = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 };
-const healthLabel = { margin: 0, fontSize: 12, color: "#9a8a78" };
+const healthLabel = { margin: 0, fontSize: 12, color: "var(--ui-muted)" };
 const healthValue = { margin: 0, fontSize: 12, fontWeight: 700 };
 
 const emptyState = { padding: "26px 14px", textAlign: "center" };

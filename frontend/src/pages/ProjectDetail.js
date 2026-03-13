@@ -137,40 +137,77 @@ function ProjectDetail() {
   }
 
   const tabs = ["sprints", "issues", "roadmap"];
+  const currentBoard = boards[0] || null;
+  const activeSprintCount = sprints.filter((sprint) => sprint.status === "active").length;
+  const completionRate = project.issue_count
+    ? Math.round(((project.completed_issues || 0) / project.issue_count) * 100)
+    : 0;
 
   return (
     <div style={{ minHeight: "100vh" }}>
-      <div style={ui.container}>
-        <section style={{ ...hero, border: "none", background: "transparent" }}>
-          <div style={heroTop}>
-            <div style={{ ...projectBadge, background: palette.ctaGradient, color: palette.buttonText }}>{project.key?.charAt(0) || "P"}</div>
-            <div style={{ minWidth: 0 }}>
-              <h1 style={{ ...title, color: palette.text }}>{project.name}</h1>
-              <p style={{ ...sub, color: palette.muted }}>{project.key}</p>
-              {project.description && <p style={{ ...sub, marginTop: 8, color: palette.muted }}>{project.description}</p>}
+      <div style={{ ...ui.container, width: "min(1480px,100%)" }}>
+        <section className="ui-enter" style={{ ...hero, border: `1px solid ${palette.border}`, background: palette.card, "--ui-delay": "20ms" }}>
+          <div style={heroBody}>
+            <div style={heroTop}>
+              <div style={{ ...projectBadge, background: palette.ctaGradient, color: palette.buttonText }}>{project.key?.charAt(0) || "P"}</div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ ...heroEyebrow, color: palette.muted }}>EXECUTION WORKSPACE</p>
+                <h1 style={{ ...title, color: palette.text }}>{project.name}</h1>
+                <p style={{ ...sub, color: palette.muted }}>{project.key}</p>
+                {project.description && <p style={{ ...sub, marginTop: 10, color: palette.muted }}>{project.description}</p>}
+              </div>
+            </div>
+            <div style={heroMetaRow}>
+              <span style={{ ...heroMetaPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
+                {project.key}
+              </span>
+              <span style={{ ...heroMetaPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
+                {boards.length} board{boards.length === 1 ? "" : "s"}
+              </span>
+              <span style={{ ...heroMetaPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
+                {activeSprintCount} active sprint{activeSprintCount === 1 ? "" : "s"}
+              </span>
+              <span style={{ ...heroMetaPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
+                {completionRate}% complete
+              </span>
             </div>
           </div>
-          <button onClick={() => setShowDeleteConfirm(true)} style={{ ...dangerIconButton, border: `1px solid ${palette.danger}`, color: palette.danger, background: palette.accentSoft }}>
-            <TrashIcon style={icon18} />
-          </button>
+
+          <div style={heroAside}>
+            <div style={quickLinkRow}>
+              <Link className="ui-btn-polish ui-focus-ring" to={`/projects/${projectId}/backlog`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
+                View Backlog
+              </Link>
+              {currentBoard && (
+                <Link className="ui-btn-polish ui-focus-ring" to={`/boards/${currentBoard.id}`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
+                  View Kanban Board
+                </Link>
+              )}
+              <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
+                Sprint Center
+              </Link>
+            </div>
+            <button
+              className="ui-btn-polish ui-focus-ring"
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{ ...dangerIconButton, border: `1px solid ${palette.danger}`, color: palette.danger, background: palette.accentSoft }}
+            >
+              <TrashIcon style={icon18} />
+            </button>
+          </div>
         </section>
 
-        <div style={quickLinkRow}>
-          <Link to={`/projects/${projectId}/backlog`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>View Backlog</Link>
-          {boards.length > 0 && <Link to={`/boards/${boards[0].id}`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>View Kanban Board</Link>}
-          <Link to="/sprint" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Sprint Center</Link>
-        </div>
-
-        <section style={statsGrid}>
+        <section className="ui-enter" style={{ ...statsGrid, "--ui-delay": "80ms" }}>
           <Stat icon={ChartBarIcon} label="Total Issues" value={project.issue_count || 0} palette={palette} />
-          <Stat icon={CheckCircleIcon} label="Completed" value={project.completed_issues || 0} palette={palette} />
+          <Stat icon={CheckCircleIcon} label="Completed" value={`${completionRate}%`} palette={palette} />
           <Stat icon={ClockIcon} label="Active" value={project.active_issues || 0} palette={palette} />
           <Stat icon={RocketLaunchIcon} label="Sprints" value={sprints.length} palette={palette} />
         </section>
 
-        <section style={{ ...tabWrap, border: "none", background: "transparent" }}>
+        <section className="ui-enter" style={{ ...tabWrap, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "120ms" }}>
           {tabs.map((tab) => (
             <button
+              className="ui-btn-polish ui-focus-ring"
               key={tab}
               onClick={() => setActiveTab(tab)}
               style={{
@@ -186,17 +223,17 @@ function ProjectDetail() {
         </section>
 
         {activeTab === "sprints" && (
-          <section>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...contentPanel, border: `1px solid ${palette.border}`, background: palette.card, "--ui-delay": "160ms" }}>
             <div style={sectionHeader}>
               <h2 style={{ ...h2, color: palette.text }}>Sprints</h2>
-              <button onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Sprint</button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Sprint</button>
             </div>
             {sprints.length === 0 ? (
               <Empty text="No sprints yet" palette={palette} />
             ) : (
               <div style={list}>
                 {sprints.map((sprint) => (
-                  <Link key={sprint.id} to={`/sprints/${sprint.id}`} style={{ ...itemCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+                  <Link className="ui-card-lift ui-smooth" key={sprint.id} to={`/sprints/${sprint.id}`} style={{ ...itemCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                       <div>
                         <p style={{ ...itemTitle, color: palette.text }}>{sprint.name}</p>
@@ -213,17 +250,17 @@ function ProjectDetail() {
         )}
 
         {activeTab === "issues" && (
-          <section>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...contentPanel, border: `1px solid ${palette.border}`, background: palette.card, "--ui-delay": "160ms" }}>
             <div style={sectionHeader}>
               <h2 style={{ ...h2, color: palette.text }}>Issues</h2>
-              <button onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Issue</button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Issue</button>
             </div>
             {issues.length === 0 ? (
               <Empty text="No issues yet" palette={palette} />
             ) : (
               <div style={list}>
                 {issues.slice(0, 20).map((issue) => (
-                  <Link key={issue.id} to={`/issues/${issue.id}`} style={{ ...itemCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+                  <Link className="ui-card-lift ui-smooth" key={issue.id} to={`/issues/${issue.id}`} style={{ ...itemCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                       <div>
                         <p style={{ ...itemTitle, color: palette.text }}>{issue.title}</p>
@@ -239,13 +276,13 @@ function ProjectDetail() {
         )}
 
         {activeTab === "roadmap" && (
-          <section style={{ ...emptyBlock, border: `1px solid ${palette.border}`, background: palette.card }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...contentPanel, ...emptyBlock, border: `1px solid ${palette.border}`, background: palette.card, "--ui-delay": "160ms" }}>
             <h3 style={{ margin: 0, color: palette.text }}>Roadmap</h3>
             <p style={{ ...sub, marginTop: 8, color: palette.muted }}>Use milestones and releases pages to manage roadmap planning.</p>
             <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-              <Link to={`/projects/${projectId}/releases`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Open Releases</Link>
-              <Link to="/agile/templates" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Issue Templates</Link>
-              <Link to="/agile/filters" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Saved Filters</Link>
+              <Link className="ui-btn-polish ui-focus-ring" to={`/projects/${projectId}/releases`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>Open Releases</Link>
+              <Link className="ui-btn-polish ui-focus-ring" to="/agile/templates" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>Issue Templates</Link>
+              <Link className="ui-btn-polish ui-focus-ring" to="/agile/filters" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>Saved Filters</Link>
             </div>
           </section>
         )}
@@ -338,33 +375,39 @@ function Stat({ icon: Icon, label, value, palette }) {
 }
 
 const spinner = { width: 28, height: 28, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const hero = { borderRadius: 0, padding: 16, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12 };
-const heroTop = { display: "grid", gridTemplateColumns: "56px 1fr", gap: 10, alignItems: "start" };
-const projectBadge = { width: 56, height: 56, borderRadius: 0, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 18 };
-const title = { margin: "0 0 2px", fontSize: "clamp(1.18rem,2.05vw,1.72rem)", letterSpacing: "-0.02em" };
-const sub = { margin: 0, fontSize: 13 };
-const dangerIconButton = { borderRadius: 0, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer" };
-const quickLinkRow = { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 };
-const quickButton = { padding: "9px 12px", borderRadius: 0, textDecoration: "none", fontSize: 13, fontWeight: 700 };
-const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 };
-const statCard = { borderRadius: 0, padding: 12 };
+const hero = { borderRadius: 28, padding: "clamp(20px, 3vw, 30px)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18, marginBottom: 18, boxShadow: "var(--ui-shadow-sm)" };
+const heroBody = { minWidth: 0, display: "grid", gap: 16 };
+const heroTop = { display: "grid", gridTemplateColumns: "64px 1fr", gap: 14, alignItems: "start" };
+const heroEyebrow = { margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase" };
+const heroMetaRow = { display: "flex", gap: 8, flexWrap: "wrap" };
+const heroMetaPill = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 };
+const heroAside = { display: "grid", alignContent: "space-between", gap: 12, justifyItems: "stretch" };
+const projectBadge = { width: 64, height: 64, borderRadius: 18, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 20, boxShadow: "var(--ui-shadow-sm)" };
+const title = { margin: "0 0 4px", fontSize: "clamp(1.8rem, 2.8vw, 2.5rem)", letterSpacing: "-0.04em", lineHeight: 1.04 };
+const sub = { margin: 0, fontSize: 14, lineHeight: 1.55 };
+const dangerIconButton = { borderRadius: 16, width: 42, height: 42, display: "grid", placeItems: "center", cursor: "pointer" };
+const quickLinkRow = { display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" };
+const quickButton = { padding: "10px 13px", borderRadius: 14, textDecoration: "none", fontSize: 13, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 };
+const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 12, marginBottom: 14 };
+const statCard = { borderRadius: 20, padding: 16, boxShadow: "var(--ui-shadow-sm)" };
 const statLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 };
 const statValue = { margin: "7px 0 0", fontSize: 30, fontWeight: 800 };
-const tabWrap = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, borderRadius: 0, padding: 6, marginBottom: 12 };
-const tabButton = { borderRadius: 0, padding: "9px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const tabWrap = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, borderRadius: 18, padding: 6, marginBottom: 16 };
+const tabButton = { borderRadius: 14, padding: "10px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const contentPanel = { borderRadius: 24, padding: 18 };
 const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 };
 const h2 = { margin: 0, fontSize: 20 };
-const dangerButton = { borderRadius: 0, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
-const list = { display: "grid", gap: 8 };
-const itemCard = { borderRadius: 0, padding: 12, textDecoration: "none" };
-const itemTitle = { margin: 0, fontSize: 15, fontWeight: 700 };
+const dangerButton = { borderRadius: 14, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const list = { display: "grid", gap: 10 };
+const itemCard = { borderRadius: 18, padding: 14, textDecoration: "none" };
+const itemTitle = { margin: 0, fontSize: 16, fontWeight: 800 };
 const itemMeta = { margin: "3px 0 0", fontSize: 12 };
-const statusPill = { borderRadius: 0, padding: "4px 8px", fontSize: 11, textTransform: "capitalize", fontWeight: 700 };
-const emptyBlock = { borderRadius: 0, padding: "24px 14px", textAlign: "center" };
-const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
-const modalCard = { width: "min(560px,100%)", borderRadius: 0, padding: 16 };
+const statusPill = { borderRadius: 999, padding: "7px 10px", fontSize: 11, textTransform: "capitalize", fontWeight: 700, background: "var(--app-info-soft)" };
+const emptyBlock = { borderRadius: 24, padding: "32px 18px", textAlign: "center" };
+const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", backdropFilter: "blur(8px)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
+const modalCard = { width: "min(560px,100%)", borderRadius: 24, padding: 20, boxShadow: "var(--ui-shadow-lg)" };
 const closeBtn = { border: "none", background: "transparent", fontWeight: 700, cursor: "pointer" };
-const formStack = { display: "grid", gap: 8 };
+const formStack = { display: "grid", gap: 10 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
 const icon18 = { width: 18, height: 18 };
 const icon16 = { width: 16, height: 16 };

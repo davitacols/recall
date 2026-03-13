@@ -1,0 +1,21 @@
+<svg width="128" height="128" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="brandmark-shell" x1="6" y1="5" x2="35" y2="39" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17304A" />
+      <stop offset="1" stop-color="#0C1726" />
+    </linearGradient>
+    <radialGradient id="brandmark-halo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(31 13) rotate(90) scale(20)">
+      <stop stop-color="#52E7FF" stop-opacity="0.24" />
+      <stop offset="1" stop-color="transparent" />
+    </radialGradient>
+  </defs>
+  <rect x="3" y="3" width="38" height="38" rx="13" fill="url(#brandmark-shell)" />
+  <rect x="3" y="3" width="38" height="38" rx="13" stroke="rgba(123, 198, 255, 0.22)" />
+  <circle cx="28" cy="18" r="14" fill="url(#brandmark-halo)" />
+  <path d="M14.5 10.5V33.5" stroke="#EEF6FF" stroke-width="4.5" stroke-linecap="round" />
+  <path d="M29.5 11.5L18.5 22L30.5 33" stroke="#EEF6FF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M17.8 22H24.2" stroke="#63BFFF" stroke-width="3.2" stroke-linecap="round" />
+  <circle cx="29.5" cy="11.5" r="3.3" fill="#63BFFF" />
+  <circle cx="18.5" cy="22" r="3.3" fill="#EEF6FF" />
+  <circle cx="30.5" cy="33" r="3.3" fill="#52E7FF" />
+</svg>

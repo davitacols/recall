@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronDownIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+import BrandLogo from "./BrandLogo";
 import Breadcrumbs from "./Breadcrumbs";
 import NLCommandBar from "./NLCommandBar";
 import NotificationBell from "./NotificationBell";
@@ -429,20 +430,52 @@ export default function UnifiedLayout({ children }) {
               background: palette.panelGlass,
               border: `1px solid ${palette.border}`,
               boxShadow: darkMode ? "0 18px 44px rgba(2,8,16,0.36)" : "0 18px 42px rgba(29,55,78,0.12)",
+              overflow: "hidden",
             }}
           >
+            <div
+              aria-hidden="true"
+              style={{
+                ...headerBackdrop,
+                backgroundImage: "url('/brand/knoledgr-aurora.svg')",
+                opacity: darkMode ? 0.42 : 0.22,
+              }}
+            />
+            <div
+              aria-hidden="true"
+              style={{
+                ...headerBackdropGrid,
+                backgroundImage: "url('/brand/knoledgr-grid.svg')",
+                opacity: darkMode ? 0.18 : 0.1,
+              }}
+            />
             <div style={headerPrimaryRow}>
               <div style={headerIdentity}>
-                  <div style={headerTitleBlock}>
-                    <p style={{ ...headerEyebrow, color: palette.accent }}>{pageMeta.section}</p>
-                    <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
-                      {pageTitle}
-                    </h1>
-                    <p style={{ ...headerSubtitle, color: palette.muted }}>
-                      {pageMeta.description}
-                    </p>
+                <div style={headerTitleBlock}>
+                  <div
+                    style={{
+                      ...headerBrandCapsule,
+                      border: `1px solid ${palette.border}`,
+                      background: darkMode
+                        ? "linear-gradient(135deg, rgba(10, 24, 38, 0.82), rgba(19, 37, 58, 0.66))"
+                        : "linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(235, 245, 255, 0.78))",
+                    }}
+                  >
+                    <BrandLogo tone={darkMode ? "light" : "warm"} size="sm" showText={false} />
+                    <div style={headerBrandCopy}>
+                      <p style={{ ...headerBrandLabel, color: palette.text }}>Knoledgr Memory OS</p>
+                      <p style={{ ...headerBrandHint, color: palette.muted }}>Context stays attached to work</p>
+                    </div>
                   </div>
+                  <p style={{ ...headerEyebrow, color: palette.accent }}>{pageMeta.section}</p>
+                  <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
+                    {pageTitle}
+                  </h1>
+                  <p style={{ ...headerSubtitle, color: palette.muted }}>
+                    {pageMeta.description}
+                  </p>
                 </div>
+              </div>
               <div style={{ ...headerActions, ...(isMobile ? headerActionsMobile : null) }}>
                 <div
                   style={{
@@ -580,7 +613,7 @@ export default function UnifiedLayout({ children }) {
                     color: palette.text,
                   }}
                 >
-                  {`Today • ${todayLabel}`}
+                  {`Today | ${todayLabel}`}
                 </span>
               </div>
             </div>
@@ -630,7 +663,9 @@ const page = {
   position: "relative",
   overflowX: "hidden",
   backgroundImage:
-    "radial-gradient(960px 560px at -8% -8%, rgba(79,140,255,0.16), transparent 62%), radial-gradient(880px 620px at 108% -8%, rgba(91,192,235,0.14), transparent 58%), radial-gradient(920px 520px at 50% 118%, rgba(108,138,173,0.09), transparent 66%)",
+    "url('/brand/knoledgr-grid.svg'), radial-gradient(960px 560px at -8% -8%, rgba(79,140,255,0.16), transparent 62%), radial-gradient(880px 620px at 108% -8%, rgba(91,192,235,0.14), transparent 58%), radial-gradient(920px 520px at 50% 118%, rgba(108,138,173,0.09), transparent 66%)",
+  backgroundSize: "820px 820px, auto, auto, auto",
+  backgroundRepeat: "repeat, no-repeat, no-repeat, no-repeat",
 };
 
 const ambientGlowOne = {
@@ -902,6 +937,8 @@ const headerPrimaryRow = {
   justifyContent: "space-between",
   gap: 12,
   flexWrap: "wrap",
+  position: "relative",
+  zIndex: 1,
 };
 
 const headerIdentity = {
@@ -932,6 +969,36 @@ const headerActionCluster = {
 const headerTitleBlock = {
   minWidth: 0,
   maxWidth: 680,
+  display: "grid",
+  gap: 8,
+};
+
+const headerBrandCapsule = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 10,
+  width: "fit-content",
+  borderRadius: 18,
+  padding: "8px 10px",
+  backdropFilter: "blur(16px)",
+};
+
+const headerBrandCopy = {
+  display: "grid",
+  gap: 2,
+};
+
+const headerBrandLabel = {
+  margin: 0,
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: "0.02em",
+};
+
+const headerBrandHint = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 600,
 };
 
 const headerBreadcrumbs = {
@@ -945,11 +1012,31 @@ const headerMetaRow = {
   justifyContent: "space-between",
   gap: 12,
   flexWrap: "wrap",
+  position: "relative",
+  zIndex: 1,
 };
 
 const headerSecondaryRow = {
   ...headerMetaRow,
   paddingTop: 10,
+};
+
+const headerBackdrop = {
+  position: "absolute",
+  inset: 0,
+  pointerEvents: "none",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+  backgroundSize: "cover",
+};
+
+const headerBackdropGrid = {
+  position: "absolute",
+  inset: 0,
+  pointerEvents: "none",
+  backgroundPosition: "center",
+  backgroundRepeat: "repeat",
+  backgroundSize: "900px 900px",
 };
 
 const headerMetaPills = {
@@ -1113,5 +1200,6 @@ const askFabButton = {
   userSelect: "none",
   touchAction: "none",
 };
+
 
 

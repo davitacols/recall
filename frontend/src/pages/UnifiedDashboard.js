@@ -321,6 +321,9 @@ export default function UnifiedDashboard() {
       info: "var(--ui-info)",
       good: "var(--ui-good)",
       warn: "var(--ui-warn)",
+      danger: "var(--ui-danger)",
+      buttonText: "var(--app-button-text)",
+      ctaGradient: "var(--app-gradient-primary)",
       shadow: "none",
     }),
     []
@@ -478,7 +481,17 @@ export default function UnifiedDashboard() {
 
   return (
     <div style={pageStyle}>
-      <section className="ui-enter" style={{ ...controlStrip, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
+      <section
+        className="ui-enter"
+        style={{
+          ...controlStrip,
+          border: `1px solid ${palette.border}`,
+          background: palette.panelAlt,
+          backgroundImage: "url('/brand/knoledgr-grid.svg')",
+          backgroundSize: "820px 820px",
+          "--ui-delay": "10ms",
+        }}
+      >
         <p style={{ ...controlLabel, color: palette.muted }}>Jump to</p>
         <Link className="ui-btn-polish ui-focus-ring" to="/projects" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Projects</Link>
         <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Sprint Board</Link>
@@ -492,8 +505,14 @@ export default function UnifiedDashboard() {
           ...hero,
           border: `1px solid ${palette.border}`,
           "--ui-delay": "70ms",
-          background: palette.panel,
+          background: darkMode
+            ? "linear-gradient(145deg, rgba(10, 24, 38, 0.94), rgba(15, 28, 43, 0.9))"
+            : "linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 247, 255, 0.92))",
+          backgroundImage: "url('/brand/knoledgr-aurora.svg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
           boxShadow: "var(--ui-shadow-sm)",
+          overflow: "hidden",
         }}
       >
         <div style={heroMainWrap}>
@@ -516,8 +535,39 @@ export default function UnifiedDashboard() {
           </div>
         </div>
         <div style={heroRail}>
+          <article
+            style={{
+              ...heroVisualCard,
+              border: `1px solid ${palette.border}`,
+              background: darkMode
+                ? "linear-gradient(160deg, rgba(10, 24, 38, 0.7), rgba(15, 28, 43, 0.58))"
+                : "linear-gradient(160deg, rgba(255, 255, 255, 0.84), rgba(235, 245, 255, 0.72))",
+              backgroundImage: "url('/brand/knoledgr-memory-orbit.svg')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            <p style={{ ...heroVisualLabel, color: palette.muted }}>Live Context Map</p>
+            <h3 style={{ ...heroVisualTitle, color: palette.text }}>
+              Decisions, docs, and execution stay stitched together.
+            </h3>
+            <div style={heroVisualLegend}>
+              <span style={{ ...heroVisualPill, border: `1px solid ${palette.border}`, color: palette.text }}>Decision log</span>
+              <span style={{ ...heroVisualPill, border: `1px solid ${palette.border}`, color: palette.text }}>Documents</span>
+              <span style={{ ...heroVisualPill, border: `1px solid ${palette.border}`, color: palette.text }}>Sprint state</span>
+            </div>
+          </article>
           {heroPulseCards.map((card) => (
-            <article key={card.label} style={{ ...heroRailCard, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+            <article
+              key={card.label}
+              style={{
+                ...heroRailCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(155deg, rgba(12, 24, 38, 0.82), rgba(18, 39, 58, 0.68))"
+                  : "linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(236, 246, 255, 0.82))",
+              }}
+            >
               <p style={{ ...heroRailLabel, color: palette.muted }}>{card.label}</p>
               <p style={{ ...heroRailValue, color: card.tint }}>{card.value}</p>
               <p style={{ ...heroRailHelper, color: palette.dim }}>{card.helper}</p>
@@ -1196,6 +1246,48 @@ const heroRail = {
   display: "grid",
   gap: 10,
   alignContent: "start",
+};
+
+const heroVisualCard = {
+  minHeight: 196,
+  borderRadius: 22,
+  padding: "16px 16px 14px",
+  display: "grid",
+  alignContent: "space-between",
+  gap: 16,
+  boxShadow: "var(--ui-shadow-sm)",
+};
+
+const heroVisualLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+};
+
+const heroVisualTitle = {
+  margin: 0,
+  maxWidth: "14ch",
+  fontSize: 22,
+  lineHeight: 1.02,
+  letterSpacing: "-0.04em",
+};
+
+const heroVisualLegend = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const heroVisualPill = {
+  borderRadius: 999,
+  padding: "6px 9px",
+  fontSize: 10,
+  fontWeight: 700,
+  background: "rgba(8, 17, 26, 0.28)",
+  backdropFilter: "blur(10px)",
 };
 
 const heroRailCard = {

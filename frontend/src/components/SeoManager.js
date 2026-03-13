@@ -5,7 +5,7 @@ const BRAND = "Knoledgr";
 const DEFAULT_TITLE = `${BRAND} | Knowledge-First Collaboration Platform`;
 const DEFAULT_DESCRIPTION =
   "Knoledgr connects conversations, decisions, projects, and documents so teams keep context and move faster.";
-const DEFAULT_IMAGE = "/logo.png";
+const DEFAULT_IMAGE = "/brand/knoledgr-social-card.svg";
 
 function resolveMeta(pathname) {
   if (pathname === "/" || pathname === "/home") {

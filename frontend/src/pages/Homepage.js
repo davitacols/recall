@@ -83,7 +83,7 @@ export default function Homepage() {
           <BrandLogo
             tone="light"
             size="lg"
-            downloadUrl="/knoledgr-brandlogo.svg"
+            downloadUrl="/brand/knoledgr-brandlogo.svg"
             downloadName="knoledgr-brandlogo.svg"
             title="Download Knoledgr logo"
           />

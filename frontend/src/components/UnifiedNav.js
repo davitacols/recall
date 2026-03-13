@@ -455,8 +455,23 @@ export default function UnifiedNav({
           ...brandWrap,
           justifyContent: collapsed ? "center" : "flex-start",
           padding: collapsed ? "0" : brandWrap.padding,
+          border: `1px solid ${palette.border}`,
+          background: darkMode
+            ? "linear-gradient(145deg, rgba(12, 24, 38, 0.84), rgba(18, 39, 58, 0.68))"
+            : "linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(237, 246, 255, 0.84))",
+          boxShadow: darkMode ? "0 12px 30px rgba(2, 10, 18, 0.28)" : "0 12px 24px rgba(21, 52, 84, 0.08)",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
+        <div
+          aria-hidden="true"
+          style={{
+            ...brandWrapBackdrop,
+            backgroundImage: "url('/brand/knoledgr-grid.svg')",
+            opacity: darkMode ? 0.24 : 0.1,
+          }}
+        />
         <button
           onClick={onToggleCollapse}
           className="ui-btn-polish ui-focus-ring"
@@ -472,8 +487,20 @@ export default function UnifiedNav({
           {collapsed ? <ChevronRightIcon style={icon14} /> : <ChevronLeftIcon style={icon14} />}
         </button>
         <Link to="/" style={{ ...brand, color: palette.text, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <BrandLogo tone={darkMode ? "dark" : "light"} size="sm" showText={!collapsed} />
+          <BrandLogo tone={darkMode ? "dark" : "warm"} size="sm" showText={!collapsed} />
         </Link>
+        {!collapsed ? (
+          <span
+            style={{
+              ...brandTag,
+              border: `1px solid ${palette.border}`,
+              background: palette.panelAlt,
+              color: palette.text,
+            }}
+          >
+            Context OS
+          </span>
+        ) : null}
       </div>
 
       {!collapsed && (
@@ -675,12 +702,31 @@ export default function UnifiedNav({
       </div>
 
       {!collapsed && (
-        <div style={{ ...insightCard, background: palette.panelAlt, border: `1px solid ${palette.border}` }}>
+        <div
+          style={{
+            ...insightCard,
+            background: darkMode
+              ? "linear-gradient(160deg, rgba(12, 24, 38, 0.9), rgba(18, 39, 58, 0.74))"
+              : "linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(237, 246, 255, 0.88))",
+            border: `1px solid ${palette.border}`,
+            backgroundImage: "url('/brand/knoledgr-grid.svg')",
+            backgroundSize: "760px 760px",
+            backgroundPosition: "center",
+          }}
+        >
           <p style={{ ...insightLabel, color: palette.muted }}>Memory Health</p>
           <p style={{ ...insightValue, color: palette.text }}>91%</p>
           <p style={{ ...insightHint, color: palette.muted }}>
             Search, linked work, and decision coverage are trending healthy this week.
           </p>
+          <div style={insightPillRow}>
+            <span style={{ ...insightPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+              Coverage +12%
+            </span>
+            <span style={{ ...insightPill, border: `1px solid ${palette.border}`, color: palette.muted }}>
+              Graph stable
+            </span>
+          </div>
           <div style={{ ...insightTrack, background: palette.track }}>
             <div style={{ ...insightFill, background: `linear-gradient(90deg, ${palette.accentA}, ${palette.accentB})` }} />
           </div>
@@ -813,6 +859,14 @@ const brandWrap = {
   borderRadius: 18,
 };
 
+const brandWrapBackdrop = {
+  position: "absolute",
+  inset: 0,
+  backgroundRepeat: "repeat",
+  backgroundSize: "820px 820px",
+  pointerEvents: "none",
+};
+
 const sidebarTextureA = {
   position: "absolute",
   width: 160,
@@ -840,6 +894,18 @@ const brand = {
   fontSize: 18,
   fontWeight: 800,
   letterSpacing: "-0.02em",
+  position: "relative",
+  zIndex: 1,
+};
+
+const brandTag = {
+  marginLeft: "auto",
+  borderRadius: 999,
+  padding: "6px 10px",
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
   position: "relative",
   zIndex: 1,
 };
@@ -1033,6 +1099,23 @@ const insightFill = {
   width: "91%",
   height: "100%",
   borderRadius: 999,
+};
+
+const insightPillRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  flexWrap: "wrap",
+  marginBottom: 12,
+};
+
+const insightPill = {
+  borderRadius: 999,
+  padding: "5px 8px",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  background: "rgba(255,255,255,0.04)",
 };
 
 const collapseButton = {

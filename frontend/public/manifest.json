@@ -1,30 +1,25 @@
 {
-  "short_name": "Knowledgr",
-  "name": "Knowledgr - Knowledge-First Collaboration",
+  "short_name": "Knoledgr",
+  "name": "Knoledgr - Knowledge-First Collaboration",
   "description": "Knowledge management, decisions, and team collaboration platform",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "/logo192.png",
-      "type": "image/png",
-      "sizes": "192x192",
+      "src": "/brand/knoledgr-app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "/logo512.png",
-      "type": "image/png",
-      "sizes": "512x512",
+      "src": "/brand/knoledgr-brandmark.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
       "purpose": "any maskable"
     }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#9333ea",
-  "background_color": "#ffffff",
+  "theme_color": "#071019",
+  "background_color": "#09121c",
   "orientation": "portrait-primary",
   "categories": ["productivity", "business"],
   "screenshots": [
@@ -40,14 +35,14 @@
       "short_name": "Dashboard",
       "description": "View your dashboard",
       "url": "/dashboard",
-      "icons": [{ "src": "/logo192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/brand/knoledgr-brandmark.svg", "sizes": "any" }]
     },
     {
       "name": "New Conversation",
       "short_name": "New",
       "description": "Start a new conversation",
       "url": "/conversations/new",
-      "icons": [{ "src": "/logo192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/brand/knoledgr-brandmark.svg", "sizes": "any" }]
     }
   ]
 }

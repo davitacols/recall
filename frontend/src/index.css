@@ -3,7 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --font-primary: "League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-primary: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "Fira Code", "Courier New", monospace;
   --bg-primary: #071019;
   --bg-secondary: #0e1927;
   --bg-tertiary: #162638;
@@ -105,6 +107,8 @@ body {
   padding: 0;
   overflow-x: hidden;
   min-height: 100vh;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "liga" 1, "kern" 1;
 }
 
 * {
@@ -208,7 +212,15 @@ body {
 .app-page-shell h1,
 .app-page-shell h2,
 .app-page-shell h3 {
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
 }
 
 @media (max-width: 1024px) {

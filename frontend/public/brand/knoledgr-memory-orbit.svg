@@ -1,0 +1,35 @@
+<svg width="860" height="560" viewBox="0 0 860 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="orbit-bg" x1="122" y1="48" x2="742" y2="524" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#102238" />
+      <stop offset="1" stop-color="#08111A" />
+    </linearGradient>
+    <radialGradient id="orbit-a" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(596 166) rotate(90) scale(164 228)">
+      <stop stop-color="#46C8FF" stop-opacity="0.28" />
+      <stop offset="1" stop-color="#46C8FF" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="orbit-b" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(252 186) rotate(90) scale(184 250)">
+      <stop stop-color="#2E7BF5" stop-opacity="0.34" />
+      <stop offset="1" stop-color="#2E7BF5" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect x="24" y="24" width="812" height="512" rx="44" fill="url(#orbit-bg)" />
+  <rect x="24" y="24" width="812" height="512" rx="44" stroke="rgba(120, 199, 255, 0.2)" />
+  <circle cx="596" cy="166" r="164" fill="url(#orbit-a)" />
+  <circle cx="252" cy="186" r="184" fill="url(#orbit-b)" />
+  <path d="M122 374C208 276 320 234 438 246C542 258 628 300 724 370" stroke="rgba(255,255,255,0.18)" stroke-width="4" stroke-linecap="round" />
+  <path d="M188 188C256 138 322 126 406 148C484 169 542 220 588 282" stroke="rgba(99,197,255,0.28)" stroke-width="4" stroke-linecap="round" />
+  <path d="M336 402C420 352 510 344 614 372" stroke="rgba(82,231,255,0.26)" stroke-width="4" stroke-linecap="round" />
+  <circle cx="188" cy="188" r="22" fill="#2E7BF5" />
+  <circle cx="188" cy="188" r="12" fill="#F4FAFF" />
+  <circle cx="322" cy="142" r="16" fill="#7FC8FF" />
+  <circle cx="436" cy="248" r="24" fill="#F4FAFF" />
+  <circle cx="436" cy="248" r="10" fill="#102238" />
+  <circle cx="614" cy="372" r="18" fill="#52E7FF" />
+  <circle cx="724" cy="370" r="14" fill="#7FC8FF" />
+  <circle cx="336" cy="402" r="14" fill="#F4FAFF" />
+  <circle cx="588" cy="282" r="14" fill="#52E7FF" />
+  <rect x="112" y="438" width="194" height="48" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.08)" />
+  <rect x="332" y="438" width="196" height="48" rx="16" fill="rgba(99,197,255,0.12)" stroke="rgba(99,197,255,0.14)" />
+  <rect x="552" y="438" width="196" height="48" rx="16" fill="rgba(82,231,255,0.12)" stroke="rgba(82,231,255,0.14)" />
+</svg>

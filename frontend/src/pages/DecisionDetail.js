@@ -30,6 +30,7 @@ function DecisionDetail() {
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1100);
 
   const [decision, setDecision] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -125,6 +126,12 @@ function DecisionDetail() {
     fetchDecision();
     fetchDecisionIntelligence();
   }, [id]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1100);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleLinkPR = async (event) => {
     event.preventDefault();
@@ -270,9 +277,26 @@ function DecisionDetail() {
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
-      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.2), transparent 34%), radial-gradient(circle at 90% 8%, var(--app-info-soft), transparent 30%)" : "radial-gradient(circle at 8% 3%, rgba(168,85,247,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(59,130,246,0.1), transparent 30%)" }} />
+      <div
+        style={{
+          ...ambientLayer,
+          background: darkMode
+            ? "radial-gradient(circle at 8% 3%, rgba(59,130,246,0.18), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.1), transparent 30%), radial-gradient(circle at 52% 0%, rgba(99,102,241,0.1), transparent 24%)"
+            : "radial-gradient(circle at 8% 3%, rgba(59,130,246,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.08), transparent 30%), radial-gradient(circle at 52% 0%, rgba(99,102,241,0.08), transparent 24%)",
+        }}
+      />
       <div style={ui.container}>
-        <section className="ui-enter" style={{ ...commandStrip, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "10ms" }}>
+        <section
+          className="ui-enter ui-card-lift ui-smooth"
+          style={{
+            ...commandStrip,
+            border: `1px solid ${palette.border}`,
+            background: darkMode ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.82)",
+            backdropFilter: "blur(10px)",
+            boxShadow: "var(--ui-shadow-xs)",
+            "--ui-delay": "10ms",
+          }}
+        >
           <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>All Decisions</button>
           <button className="ui-btn-polish ui-focus-ring" onClick={() => setActiveTab("outcome")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Outcome Review</button>
           <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecision} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
@@ -284,14 +308,27 @@ function DecisionDetail() {
           <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
         </button>
 
-        <section className="ui-enter ui-card-lift ui-smooth" style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: "linear-gradient(135deg,var(--app-surface-alt),var(--app-surface))", padding: 16, marginBottom: 10, "--ui-delay": "120ms" }}>
+        <section
+          className="ui-enter ui-card-lift ui-smooth"
+          style={{
+            borderRadius: 28,
+            border: `1px solid ${palette.border}`,
+            background: darkMode
+              ? "linear-gradient(145deg, rgba(11,18,32,0.96) 0%, rgba(17,24,39,0.94) 56%, rgba(21,32,54,0.9) 100%)"
+              : "linear-gradient(145deg, rgba(255,255,255,0.96) 0%, rgba(246,249,252,0.98) 58%, rgba(232,241,255,0.92) 100%)",
+            padding: "clamp(20px,3vw,30px)",
+            marginBottom: 14,
+            boxShadow: "var(--ui-shadow-sm)",
+            "--ui-delay": "120ms",
+          }}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
                 <Pill text={status} tone="blue" />
                 <Pill text={impact} tone="amber" />
               </div>
-              <h1 style={{ margin: "0 0 8px", fontSize: "clamp(1.12rem,2vw,1.66rem)", color: palette.text, letterSpacing: "-0.02em" }}>{decision.title}</h1>
+              <h1 style={{ margin: "0 0 10px", fontSize: "clamp(1.8rem,3vw,2.6rem)", color: palette.text, letterSpacing: "-0.04em", lineHeight: 1.02 }}>{decision.title}</h1>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: palette.muted }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><UserIcon style={{ width: 14, height: 14 }} /> {decision.decision_maker_name || "Unknown"}</span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><CalendarIcon style={{ width: 14, height: 14 }} /> {new Date(decision.created_at).toLocaleDateString()}</span>
@@ -324,8 +361,8 @@ function DecisionDetail() {
           </div>
         </section>
 
-        <div className="ui-enter" style={{ ...mainGrid, gridTemplateColumns: "minmax(0,1fr) 340px", gap: 10, "--ui-delay": "180ms" }}>
-          <section className="ui-card-lift ui-smooth" style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+        <div className="ui-enter" style={{ ...mainGrid, gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", gap: 14, "--ui-delay": "180ms" }}>
+          <section className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, background: palette.card }}>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               {["overview", "rationale", "code", "details", "outcome", "impact", "replay"].map((tab) => (
                 <button
@@ -334,8 +371,8 @@ function DecisionDetail() {
                   onClick={() => setActiveTab(tab)}
                   style={{
                     ...ui.secondaryButton,
-                    padding: "7px 10px",
-                    fontSize: 11,
+                    padding: "8px 12px",
+                    fontSize: 12,
                     textTransform: "capitalize",
                     background: activeTab === tab ? "rgba(59,130,246,0.2)" : "transparent",
                     border: activeTab === tab ? "1px solid rgba(59,130,246,0.45)" : ui.secondaryButton.border,
@@ -358,7 +395,7 @@ function DecisionDetail() {
                 </div>
 
                 {showLinkPR && (
-                  <form onSubmit={handleLinkPR} style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10, marginBottom: 8, display: "grid", gap: 8 }}>
+                  <form onSubmit={handleLinkPR} style={{ ...innerCard, border: `1px solid ${palette.border}`, marginBottom: 8, display: "grid", gap: 8 }}>
                     <input type="url" value={prUrl} onChange={(event) => setPrUrl(event.target.value)} placeholder="https://github.com/org/repo/pull/123" style={ui.input} />
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
                       <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={!prUrl.trim() || linking} style={ui.primaryButton}>{linking ? "Linking..." : "Link"}</button>
@@ -369,7 +406,7 @@ function DecisionDetail() {
                 {decision.code_links?.length ? (
                   <div style={{ display: "grid", gap: 8 }}>
                     {decision.code_links.map((link, index) => (
-                      <a key={index} href={link.url} target="_blank" rel="noreferrer" style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10, display: "grid", gridTemplateColumns: "auto 1fr", gap: 8, textDecoration: "none", color: palette.text }}>
+                      <a key={index} href={link.url} target="_blank" rel="noreferrer" style={{ ...innerCard, border: `1px solid ${palette.border}`, display: "grid", gridTemplateColumns: "auto 1fr", gap: 8, textDecoration: "none", color: palette.text }}>
                         <LinkIcon style={{ width: 16, height: 16, color: palette.muted, marginTop: 1 }} />
                         <div>
                           <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{link.title || `PR #${link.number || ""}`}</p>
@@ -379,7 +416,7 @@ function DecisionDetail() {
                     ))}
                   </div>
                 ) : (
-                  <div style={{ borderRadius: 10, border: `1px dashed ${palette.border}`, padding: "14px 10px", color: palette.muted, fontSize: 12, textAlign: "center" }}>
+                  <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center" }}>
                     No linked PRs
                   </div>
                 )}
@@ -391,7 +428,7 @@ function DecisionDetail() {
                 {decision.context_reason && <TextBlock title="Context" text={decision.context_reason} palette={palette} darkMode={darkMode} />}
 
                 {decision.if_this_fails && (
-                  <div style={{ borderRadius: 10, border: "1px solid var(--app-danger-border)", background: "rgba(239,68,68,0.1)", padding: 10 }}>
+                  <div style={{ ...innerCard, border: "1px solid var(--app-danger-border)", background: "rgba(239,68,68,0.1)" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 8 }}>
                       <ExclamationTriangleIcon style={{ width: 16, height: 16, color: "var(--app-danger)", marginTop: 1 }} />
                       <div>
@@ -417,7 +454,7 @@ function DecisionDetail() {
 
             {activeTab === "outcome" && (
               <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
                   <p style={{ margin: "0 0 4px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Review status</p>
                   <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
                     {decision.review_completed_at
@@ -425,14 +462,14 @@ function DecisionDetail() {
                       : "No outcome review yet"}
                   </p>
                 </div>
-                <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
                   <p style={{ margin: "0 0 4px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Outcome reliability</p>
                   <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
                     {decision.outcome_reliability?.score ?? 0}% ({decision.outcome_reliability?.band || "low"})
                   </p>
                 </div>
                 {driftAlert && (
-                  <div style={{ borderRadius: 10, border: "1px solid rgba(239,68,68,0.35)", background: "var(--app-danger-soft)", padding: 10 }}>
+                  <div style={{ ...innerCard, border: "1px solid rgba(239,68,68,0.35)", background: "var(--app-danger-soft)" }}>
                     <p style={{ margin: "0 0 4px", fontSize: 13, color: "var(--app-danger)", fontWeight: 700 }}>
                       Drift alert: {driftAlert.severity} ({driftAlert.drift_score})
                     </p>
@@ -533,13 +570,13 @@ function DecisionDetail() {
                   <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>Loading impact graph...</p>
                 ) : (
                   <>
-                    <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
+                    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
                       <InfoRow label="Nodes" value={`${impactTrail.nodes.length}`} palette={palette} />
                       <InfoRow label="Edges" value={`${impactTrail.edges.length}`} palette={palette} />
                     </div>
                     <div style={{ display: "grid", gap: 6 }}>
                       {(impactTrail.edges || []).slice(0, 8).map((edge, idx) => (
-                        <div key={idx} style={{ borderRadius: 8, border: `1px solid ${palette.border}`, padding: "7px 9px", fontSize: 12, color: palette.muted }}>
+                        <div key={idx} style={{ borderRadius: 14, border: `1px solid ${palette.border}`, padding: "10px 12px", fontSize: 12, color: palette.muted, background: palette.cardAlt }}>
                           <span style={{ color: palette.text }}>{edge.type}</span> ({Number(edge.strength || 0).toFixed(2)})
                         </div>
                       ))}
@@ -630,7 +667,7 @@ function DecisionDetail() {
 
                 {replayResult && (
                   <div style={{ display: "grid", gap: 8 }}>
-                    <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
+                    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
                       <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Forecast</p>
                       <InfoRow label="Failure risk" value={`${replayResult.forecast?.predicted_failure_risk_pct ?? 0}%`} palette={palette} />
                       <InfoRow label="Expected impact" value={`${replayResult.forecast?.expected_impact_score ?? 0}/100`} palette={palette} />
@@ -638,7 +675,7 @@ function DecisionDetail() {
                       <InfoRow label="Sample size" value={`${replayResult.based_on?.sample_size ?? 0}`} palette={palette} />
                     </div>
 
-                    <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
+                    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
                       <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Teams Most Affected</p>
                       <ul style={{ margin: 0, paddingLeft: 16, color: palette.muted, fontSize: 12 }}>
                         {(replayResult.teams_most_affected || []).map((item, idx) => (
@@ -647,7 +684,7 @@ function DecisionDetail() {
                       </ul>
                     </div>
 
-                    <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, padding: 10 }}>
+                    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
                       <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Recommended Safeguards</p>
                       <ul style={{ margin: 0, paddingLeft: 16, color: palette.muted, fontSize: 12 }}>
                         {(replayResult.recommended_safeguards || []).map((item, idx) => (
@@ -672,9 +709,9 @@ function DecisionDetail() {
             )}
           </section>
 
-          <aside style={{ display: "grid", gap: 10, alignContent: "start" }}>
+          <aside style={{ display: "grid", gap: 12, alignContent: "start" }}>
             {decision.confidence && (
-              <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+              <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
                 <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Confidence</h3>
                 <p style={{ margin: 0, fontSize: 30, fontWeight: 800, color: "var(--app-text)" }}>{decision.confidence.score || 0}%</p>
                 <div style={{ width: "100%", height: 8, borderRadius: 999, background: "var(--app-track)", overflow: "hidden", marginTop: 6 }}>
@@ -688,7 +725,7 @@ function DecisionDetail() {
               </section>
             )}
 
-            <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
               <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Reliability</h3>
               <InfoRow label="Outcome reliability" value={`${decision.outcome_reliability?.score ?? 0}%`} palette={palette} />
               <InfoRow label="Band" value={(decision.outcome_reliability?.band || "low").toUpperCase()} palette={palette} />
@@ -696,7 +733,7 @@ function DecisionDetail() {
 
             <DecisionReminder decisionId={id} />
 
-            <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
               <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Details</h3>
               <InfoRow label="Decided" value={decision.decided_at ? new Date(decision.decided_at).toLocaleDateString() : "-"} palette={palette} />
               <InfoRow label="Deadline" value={decision.implementation_deadline ? new Date(decision.implementation_deadline).toLocaleDateString() : "-"} palette={palette} />
@@ -716,7 +753,7 @@ function Pill({ text, tone = "blue" }) {
   const style = tone === "amber"
     ? { border: "1px solid rgba(245,158,11,0.45)", color: "var(--app-warning)", background: "var(--app-warning-soft)" }
     : { border: "1px solid rgba(59,130,246,0.45)", color: "var(--app-link)", background: "rgba(59,130,246,0.12)" };
-  return <span style={{ ...style, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 8px", textTransform: "capitalize" }}>{text}</span>;
+  return <span style={{ ...style, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "5px 10px", textTransform: "capitalize" }}>{text}</span>;
 }
 
 function TextBlock({ title, text, palette, darkMode }) {
@@ -749,13 +786,16 @@ function InfoRow({ label, value, palette }) {
 
 const fieldLabel = { margin: 0, fontSize: 12, color: "var(--app-muted)", fontWeight: 700 };
 const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
-const commandStrip = { position: "relative", zIndex: 1, marginBottom: 10, borderRadius: 12, padding: 8, display: "flex", gap: 8, flexWrap: "wrap" };
-const commandPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "7px 11px", background: "transparent", fontSize: 12, fontWeight: 700, cursor: "pointer" };
-const heroMetrics = { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8 };
-const metricChip = { borderRadius: 10, padding: "8px 10px" };
+const commandStrip = { position: "sticky", top: 72, zIndex: 1, marginBottom: 12, borderRadius: 24, padding: 12, display: "flex", gap: 8, flexWrap: "wrap" };
+const commandPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "8px 12px", background: "transparent", fontSize: 12, fontWeight: 700, cursor: "pointer" };
+const heroMetrics = { marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 };
+const metricChip = { borderRadius: 18, padding: "14px 14px 12px", boxShadow: "var(--ui-shadow-xs)" };
 const metricLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 };
-const metricValue = { margin: "4px 0 0", fontSize: 18, fontWeight: 800 };
+const metricValue = { margin: "6px 0 0", fontSize: 20, fontWeight: 800 };
 const mainGrid = { position: "relative", zIndex: 1, display: "grid" };
+const panelCard = { borderRadius: 24, padding: "clamp(16px,2.2vw,22px)", boxShadow: "var(--ui-shadow-xs)" };
+const innerCard = { borderRadius: 18, padding: 14, background: "var(--app-surface-alt)" };
+const sideCard = { borderRadius: 22, padding: 16, boxShadow: "var(--ui-shadow-xs)" };
 
 export default DecisionDetail;
 

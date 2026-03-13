@@ -1,85 +1,145 @@
-﻿import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import { useToast } from '../components/Toast';
-import { MentionInput } from '../components/MentionInput';
-import { AIEnhancementButton, AIResultsPanel } from '../components/AIEnhancements';
-import RichTextEditor from '../components/RichTextEditor';
-import RichTextRenderer from '../components/RichTextRenderer';
-import { ArrowLeftIcon, TrashIcon, PencilIcon, ChatBubbleLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { useToast } from "../components/Toast";
+import { MentionInput } from "../components/MentionInput";
+import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
+import RichTextEditor from "../components/RichTextEditor";
+import RichTextRenderer from "../components/RichTextRenderer";
+import {
+  ArrowDownTrayIcon,
+  ArrowLeftIcon,
+  ChatBubbleLeftIcon,
+  ClockIcon,
+  DocumentTextIcon,
+  PencilIcon,
+  ShieldCheckIcon,
+  TrashIcon,
+  UserCircleIcon,
+} from "@heroicons/react/24/outline";
 
+const DOCUMENT_TYPES = ["policy", "procedure", "guide", "report", "other"];
+
+function formatTypeLabel(value) {
+  if (!value) return "Other";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function SummaryCard({ icon: Icon, label, value, helper, palette, tone }) {
+  return (
+    <article
+      style={{
+        borderRadius: 22,
+        padding: "16px 16px 14px",
+        border: `1px solid ${tone?.border || palette.border}`,
+        background: tone?.bg || palette.cardAlt,
+        display: "grid",
+        gap: 8,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 12,
+            display: "grid",
+            placeItems: "center",
+            background: tone?.iconBg || palette.accentSoft,
+            color: tone?.iconColor || palette.accent,
+          }}
+        >
+          <Icon style={{ width: 16, height: 16 }} />
+        </span>
+        <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", color: palette.muted, textTransform: "uppercase", fontWeight: 700 }}>{label}</p>
+      </div>
+      <p style={{ margin: 0, fontSize: 28, fontWeight: 800, color: tone?.text || palette.text, lineHeight: 1 }}>{value}</p>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.muted }}>{helper}</p>
+    </article>
+  );
+}
+
+function SnapshotTile({ label, value, palette }) {
+  return (
+    <div style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 14 }}>
+      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>{label}</p>
+      <p style={{ margin: "6px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{value}</p>
+    </div>
+  );
+}
 
 export default function DocumentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
   const { success, error } = useToast();
-  const [document, setDocument] = useState(null);
+
+  const [documentRecord, setDocumentRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
-  const [fileUrl, setFileUrl] = useState('');
+  const [fileUrl, setFileUrl] = useState("");
   const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState('');
+  const [newComment, setNewComment] = useState("");
   const [aiResults, setAiResults] = useState(null);
 
-  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-500' : 'text-gray-600';
-  const textTertiary = darkMode ? 'text-stone-400' : 'text-gray-500';
-  const hoverBg = darkMode ? 'hover:bg-stone-700' : 'hover:bg-gray-100';
-  const hoverBorder = darkMode ? 'hover:border-stone-700' : 'hover:border-gray-300';
-  const inputBg = darkMode ? 'bg-stone-800' : 'bg-white';
-  const inputBorder = darkMode ? 'border-stone-700' : 'border-gray-300';
-  const inputText = darkMode ? 'text-stone-200' : 'text-gray-900';
+  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
   useEffect(() => {
     fetchDocument();
     fetchComments();
   }, [id]);
 
-  useEffect(() => () => {
-    if (fileUrl) {
-      URL.revokeObjectURL(fileUrl);
-    }
-  }, [fileUrl]);
+  useEffect(
+    () => () => {
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl);
+      }
+    },
+    [fileUrl]
+  );
 
   const fetchDocument = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        throw new Error('Failed to load document');
+        throw new Error("Failed to load document");
       }
       const data = await res.json();
-      setDocument(data);
+      setDocumentRecord(data);
       setFormData(data);
       setFileUrl((current) => {
         if (current) {
           URL.revokeObjectURL(current);
         }
-        return '';
+        return "";
       });
-      
+
       if (data.has_file) {
-        const fileRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/file/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!fileRes.ok) {
-          throw new Error('Failed to load attached file');
+        try {
+          const fileRes = await fetch(`${apiBase}/api/business/documents/${id}/file/`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!fileRes.ok) {
+            throw new Error("Failed to load attached file");
+          }
+          const blob = await fileRes.blob();
+          const url = URL.createObjectURL(blob);
+          setFileUrl(url);
+        } catch (fileError) {
+          error(fileError.message || "Failed to load attached file");
         }
-        const blob = await fileRes.blob();
-        const url = URL.createObjectURL(blob);
-        setFileUrl(url);
       }
     } catch (err) {
-      console.error('Error:', err);
-      setDocument(null);
-      error('Failed to load document');
+      console.error("Error:", err);
+      setDocumentRecord(null);
+      error("Failed to load document");
     } finally {
       setLoading(false);
     }
@@ -87,337 +147,379 @@ export default function DocumentDetail() {
 
   const fetchComments = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/comments/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/comments/`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        throw new Error('Failed to load comments');
+        throw new Error("Failed to load comments");
       }
       const data = await res.json();
-      setComments(data);
+      setComments(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Error:', err);
-      error('Failed to load comments');
+      console.error("Error:", err);
+      error("Failed to load comments");
     }
   };
 
-  const handleAddComment = async (e) => {
-    e.preventDefault();
+  const handleAddComment = async (event) => {
+    event.preventDefault();
     if (!newComment.trim()) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/comments/`, {
-        method: 'POST',
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/comments/`, {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ content: newComment })
+        body: JSON.stringify({ content: newComment }),
       });
       if (!res.ok) {
-        throw new Error('Failed to add comment');
+        throw new Error("Failed to add comment");
       }
       const data = await res.json();
-      setComments([...comments, data]);
-      setNewComment('');
-      success('Comment added');
+      setComments((current) => [...current, data]);
+      setNewComment("");
+      success("Comment added");
     } catch (err) {
-      error('Failed to add comment');
+      error("Failed to add comment");
     }
   };
 
   const handleExportPDF = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/organizations/pdf/document/${id}/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${apiBase}/api/organizations/pdf/document/${id}/`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        throw new Error('Failed to export PDF');
+        throw new Error("Failed to export PDF");
       }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = window.document.createElement('a');
-      a.href = url;
-      a.download = `${document.title}.pdf`;
-      a.click();
-      success('PDF downloaded');
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${documentRecord.title}.pdf`;
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      success("PDF downloaded");
     } catch (err) {
-      error('Failed to export PDF');
+      error("Failed to export PDF");
     }
   };
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
+  const handleUpdate = async (event) => {
+    event.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
-        method: 'PUT',
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/`, {
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
       if (!res.ok) {
-        throw new Error('Failed to update document');
+        throw new Error("Failed to update document");
       }
       setEditing(false);
       fetchDocument();
-      success('Document updated successfully');
+      success("Document updated successfully");
     } catch (err) {
-      error('Failed to update document');
+      error("Failed to update document");
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this document?')) return;
+    if (!window.confirm("Delete this document?")) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        throw new Error('Failed to delete document');
+        throw new Error("Failed to delete document");
       }
-      success('Document deleted');
-      navigate('/business/documents');
+      success("Document deleted");
+      navigate("/business/documents");
     } catch (err) {
-      error('Failed to delete document');
+      error("Failed to delete document");
     }
   };
 
-  if (loading) return <div className={`min-h-screen ${bgPrimary} p-8`}><div className={textPrimary}>Loading...</div></div>;
-  if (!document) return <div className={`min-h-screen ${bgPrimary} p-8`}><div className={textPrimary}>Document not found</div></div>;
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+        <div style={{ width: 32, height: 32, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+      </div>
+    );
+  }
 
-  const updatedAt = document.updated_at ? new Date(document.updated_at).toLocaleDateString() : "N/A";
-  const createdAt = document.created_at ? new Date(document.created_at).toLocaleDateString() : "N/A";
-  const typeLabel = document.document_type || "general";
-  const versionLabel = document.version || "-";
+  if (!documentRecord) {
+    return (
+      <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+        <div style={ambientLayer} />
+        <div style={{ ...ui.container, position: "relative", zIndex: 1 }}>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={{ ...ui.secondaryButton, marginBottom: 14 }}>
+            <ArrowLeftIcon style={{ width: 14, height: 14 }} /> All Documents
+          </button>
+          <section className="ui-card-lift ui-smooth" style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.card, padding: "40px 22px", textAlign: "center", boxShadow: "var(--ui-shadow-xs)" }}>
+            <DocumentTextIcon style={{ width: 44, height: 44, color: palette.muted, margin: "0 auto 12px" }} />
+            <h1 style={{ margin: 0, color: palette.text, fontSize: 24 }}>Document not found</h1>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  const updatedAt = documentRecord.updated_at ? new Date(documentRecord.updated_at).toLocaleDateString() : "N/A";
+  const createdAt = documentRecord.created_at ? new Date(documentRecord.created_at).toLocaleDateString() : "N/A";
+  const typeLabel = formatTypeLabel(documentRecord.document_type || "other");
+  const versionLabel = documentRecord.version || "-";
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
-        <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5 md:p-6 mb-6`}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <button
-              onClick={() => navigate('/business/documents')}
-              className={`inline-flex items-center gap-2 px-3 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} text-sm transition-all`}
-            >
-              <ArrowLeftIcon className="w-4 h-4" />
-              All Documents
-            </button>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={handleExportPDF}
-                className={`inline-flex items-center gap-2 px-3 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} text-sm transition-all`}
-                title="Export to PDF"
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" />
+    <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div style={ambientLayer} />
+      <div style={{ ...ui.container, position: "relative", zIndex: 1 }}>
+        <section
+          className="ui-enter ui-card-lift ui-smooth"
+          style={{
+            borderRadius: 28,
+            border: `1px solid ${palette.border}`,
+            background: darkMode
+              ? "linear-gradient(145deg, rgba(11,18,32,0.96) 0%, rgba(17,24,39,0.94) 56%, rgba(21,32,54,0.9) 100%)"
+              : "linear-gradient(145deg, rgba(255,255,255,0.96) 0%, rgba(246,249,252,0.98) 58%, rgba(232,241,255,0.92) 100%)",
+            padding: "clamp(20px,3vw,30px)",
+            marginBottom: 16,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
+            gap: 18,
+            boxShadow: "var(--ui-shadow-sm)",
+          }}
+        >
+          <div style={{ display: "grid", alignContent: "space-between", gap: 16, minWidth: 0 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={ui.secondaryButton}>
+                <ArrowLeftIcon style={{ width: 14, height: 14 }} />
+                All Documents
+              </button>
+              <span style={heroChip(palette)}>
+                <ShieldCheckIcon style={{ width: 14, height: 14 }} /> {typeLabel}
+              </span>
+              <span style={heroChip(palette)}>{documentRecord.has_file ? "File-backed" : "Editor-only"}</span>
+            </div>
+
+            <div>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: palette.muted, textTransform: "uppercase" }}>DOCUMENT WORKSPACE</p>
+              <h1 style={{ margin: "8px 0 10px", fontSize: "clamp(2rem,3vw,2.7rem)", letterSpacing: "-0.04em", lineHeight: 1.02, color: palette.text }}>{documentRecord.title}</h1>
+              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: palette.muted, maxWidth: 720 }}>
+                Keep file context, document content, and team comments in one structured page.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={handleExportPDF} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+                <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
                 Export PDF
               </button>
               {!editing && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className={`inline-flex items-center gap-2 px-3 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} text-sm transition-all`}
-                >
-                  <PencilIcon className="w-4 h-4" />
-                  Edit
+                <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+                  <PencilIcon style={{ width: 14, height: 14 }} />
+                  Edit Document
                 </button>
               )}
             </div>
           </div>
-          <p className={`mt-4 text-xs font-semibold tracking-[0.14em] ${textTertiary}`}>DOCUMENT WORKSPACE</p>
-          <h1 className={`mt-2 text-2xl md:text-3xl font-bold ${textPrimary}`}>{document.title}</h1>
-          <p className={`mt-2 text-sm ${textSecondary}`}>
-            Keep file context, document content, and team comments in one structured page.
-          </p>
+
+          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+            <SummaryCard icon={DocumentTextIcon} label="Version" value={versionLabel} helper="Current published revision for this document." palette={palette} />
+            <SummaryCard icon={ClockIcon} label="Updated" value={updatedAt} helper="Most recent change recorded in the document trail." palette={palette} />
+            <SummaryCard icon={ChatBubbleLeftIcon} label="Comments" value={comments.length} helper="Team notes and follow-up context attached here." palette={palette} />
+          </div>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <main className="lg:col-span-8 space-y-6">
-            <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5 md:p-6`}>
+        <div
+          className="ui-enter"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
+            gap: 14,
+            "--ui-delay": "90ms",
+          }}
+        >
+          <main style={{ display: "grid", gap: 14 }}>
+            <section className="ui-card-lift ui-smooth" style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.card, padding: "clamp(16px,2.2vw,22px)", boxShadow: "var(--ui-shadow-xs)" }}>
               {editing ? (
-                <form onSubmit={handleUpdate} className="space-y-4">
-                  <div>
-                    <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Title</label>
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded-md focus:outline-none focus:border-stone-600`}
-                    />
+                <form onSubmit={handleUpdate} style={{ display: "grid", gap: 12 }}>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <label style={fieldLabel(palette)}>Title</label>
+                    <input type="text" value={formData.title || ""} onChange={(event) => setFormData({ ...formData, title: event.target.value })} style={ui.input} />
                   </div>
-                  <div>
-                    <label className={`block text-sm font-medium ${textTertiary} mb-2`}>Content</label>
-                    <RichTextEditor
-                      value={formData.content}
-                      onChange={(value) => setFormData({ ...formData, content: value })}
-                      placeholder="Write document content..."
-                      darkMode={darkMode}
-                    />
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <label style={fieldLabel(palette)}>Document Type</label>
+                    <select value={formData.document_type || "other"} onChange={(event) => setFormData({ ...formData, document_type: event.target.value })} style={ui.input}>
+                      {DOCUMENT_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {formatTypeLabel(type)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="flex gap-3 justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setEditing(false)}
-                      className={`px-4 py-2 bg-transparent ${textTertiary} border ${borderColor} rounded-md ${hoverBg} font-medium text-sm`}
-                    >
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <label style={fieldLabel(palette)}>Description</label>
+                    <textarea rows={3} value={formData.description || ""} onChange={(event) => setFormData({ ...formData, description: event.target.value })} style={{ ...ui.input, resize: "vertical" }} />
+                  </div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <label style={fieldLabel(palette)}>Content</label>
+                    <RichTextEditor value={formData.content || ""} onChange={(value) => setFormData({ ...formData, content: value })} placeholder="Write document content..." darkMode={darkMode} />
+                  </div>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => setEditing(false)} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
                       Cancel
                     </button>
-                    <button
-                      type="submit"
-                      className={`px-4 py-2 bg-transparent border ${inputBorder} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} font-medium text-sm`}
-                    >
+                    <button type="submit" className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
                       Save
                     </button>
                   </div>
                 </form>
               ) : (
-                <div className={`prose prose-stone ${darkMode ? 'prose-invert' : ''} max-w-none`}>
-                  {document.description && <p className={`${textTertiary} mb-6`}>{document.description}</p>}
+                <div style={{ display: "grid", gap: 16 }}>
+                  {documentRecord.description && (
+                    <div style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16 }}>
+                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Summary</p>
+                      <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.7, color: palette.text }}>{documentRecord.description}</p>
+                    </div>
+                  )}
 
-                  {document.has_file && fileUrl && (
-                    <div className={`mb-6 p-5 ${inputBg} border ${borderColor} rounded-xl`}>
-                      <h3 className={`text-lg font-semibold ${textPrimary} mb-4 not-prose`}>Attached File</h3>
-                      {document.file_type?.includes('pdf') ? (
-                        <iframe
-                          src={fileUrl}
-                          className={`w-full h-[560px] border ${borderColor} rounded-lg`}
-                          title="Document Preview"
-                        />
-                      ) : (
-                        <div className="not-prose">
-                          <p className={`${textSecondary} mb-3 text-sm`}>File: {document.file_name}</p>
-                          <a
-                            href={fileUrl}
-                            download={document.file_name}
-                            className={`inline-block px-4 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} font-medium text-sm transition-all`}
-                          >
+                  {documentRecord.has_file && fileUrl && (
+                    <div style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Attached File</p>
+                          <p style={{ margin: "6px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{documentRecord.file_name || "Document file"}</p>
+                        </div>
+                        {!documentRecord.file_type?.includes("pdf") && (
+                          <a href={fileUrl} download={documentRecord.file_name} style={{ ...ui.secondaryButton, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
                             Download File
                           </a>
-                        </div>
+                        )}
+                      </div>
+                      {documentRecord.file_type?.includes("pdf") ? (
+                        <iframe src={fileUrl} style={{ width: "100%", height: 560, border: `1px solid ${palette.border}`, borderRadius: 18, background: palette.card }} title="Document Preview" />
+                      ) : (
+                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>This file is attached to the document and ready to download.</p>
                       )}
                     </div>
                   )}
 
-                  {!document.has_file && document.file_url && (
-                    <div className={`mb-6 p-4 ${inputBg} border border-yellow-600 rounded-lg`}>
-                      <p className="text-yellow-500 text-sm">Warning: this document uses old file storage. Please re-upload the file.</p>
+                  {!documentRecord.has_file && documentRecord.file_url && (
+                    <div style={{ borderRadius: 18, border: "1px solid rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.1)", padding: 16 }}>
+                      <p style={{ margin: 0, fontSize: 13, color: "var(--app-warning)", fontWeight: 700 }}>Legacy file storage detected</p>
+                      <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.6, color: "var(--app-warning)" }}>
+                        This document references older file storage. Re-upload the file to restore inline preview and current download handling.
+                      </p>
                     </div>
                   )}
 
-                  {document.content && (
-                    <div>
-                      <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Content</h3>
-                      <RichTextRenderer content={document.content} darkMode={darkMode} />
-                    </div>
-                  )}
+                  <div style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16 }}>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Content</p>
+                    {documentRecord.content ? (
+                      <div style={{ marginTop: 12 }}>
+                        <RichTextRenderer content={documentRecord.content} darkMode={darkMode} />
+                      </div>
+                    ) : (
+                      <p style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.6, color: palette.muted }}>No document content has been added yet.</p>
+                    )}
+                  </div>
                 </div>
               )}
             </section>
 
             {!editing && (
-              <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5 md:p-6`}>
-                <h3 className={`text-lg font-semibold ${textPrimary} mb-4 flex items-center gap-2`}>
-                  <ChatBubbleLeftIcon className="w-5 h-5" />
+              <section className="ui-card-lift ui-smooth" style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.card, padding: "clamp(16px,2.2vw,22px)", boxShadow: "var(--ui-shadow-xs)" }}>
+                <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 800, color: palette.text, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <ChatBubbleLeftIcon style={{ width: 18, height: 18 }} />
                   Comments ({comments.length})
                 </h3>
 
-                <form onSubmit={handleAddComment} className="mb-6">
-                  <MentionInput
-                    value={newComment}
-                    onChange={setNewComment}
-                    placeholder="Add a comment... (Type @ to mention someone)"
-                    rows={3}
-                    darkMode={darkMode}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newComment.trim()}
-                    className={`mt-2 px-4 py-2 bg-transparent border ${inputBorder} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
+                <form onSubmit={handleAddComment} style={{ marginBottom: 18 }}>
+                  <MentionInput value={newComment} onChange={setNewComment} placeholder="Add a comment... (Type @ to mention someone)" rows={3} darkMode={darkMode} />
+                  <button type="submit" disabled={!newComment.trim()} className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, marginTop: 10, opacity: !newComment.trim() ? 0.65 : 1 }}>
                     Post Comment
                   </button>
                 </form>
 
-                <div className="space-y-4">
+                <div style={{ display: "grid", gap: 10 }}>
                   {comments.map((comment) => (
-                    <div key={comment.id} className={`p-4 ${inputBg} border ${borderColor} rounded-lg`}>
-                      <div className="flex justify-between items-start mb-2 gap-3">
-                        <span className={`font-medium ${textPrimary}`}>{comment.user.full_name}</span>
-                        <span className={`text-xs ${textTertiary}`}>
-                          {new Date(comment.created_at).toLocaleString()}
-                        </span>
+                    <div key={comment.id} style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 14 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>{comment.user?.full_name || comment.user?.username || "Unknown"}</span>
+                        <span style={{ fontSize: 11, color: palette.muted }}>{new Date(comment.created_at).toLocaleString()}</span>
                       </div>
-                      <p className={`${textSecondary} whitespace-pre-wrap`}>{comment.content}</p>
+                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted, whiteSpace: "pre-wrap" }}>{comment.content}</p>
                     </div>
                   ))}
-                  {comments.length === 0 && (
-                    <p className={`text-center ${textTertiary} py-8`}>No comments yet. Be the first to comment.</p>
-                  )}
+                  {comments.length === 0 && <p style={{ margin: 0, textAlign: "center", padding: "28px 12px", color: palette.muted, fontSize: 13 }}>No comments yet. Be the first to add context.</p>}
                 </div>
               </section>
             )}
           </main>
 
-          <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-6 self-start">
-            <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5`}>
-              <h3 className={`text-sm font-semibold tracking-[0.11em] ${textTertiary} uppercase mb-4`}>Document Snapshot</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className={`${inputBg} border ${borderColor} rounded-lg p-3`}>
-                  <p className={`text-[11px] uppercase tracking-[0.08em] ${textTertiary}`}>Type</p>
-                  <p className={`mt-1 text-sm font-semibold ${textPrimary} capitalize`}>{typeLabel}</p>
+          <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
+            <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
+              <h3 style={sideTitle(palette)}>Document Snapshot</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
+                <SnapshotTile label="Type" value={typeLabel} palette={palette} />
+                <SnapshotTile label="Version" value={versionLabel} palette={palette} />
+                <SnapshotTile label="Created" value={createdAt} palette={palette} />
+                <SnapshotTile label="Updated" value={updatedAt} palette={palette} />
+              </div>
+            </section>
+
+            <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
+              <h3 style={sideTitle(palette)}>Ownership</h3>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <span style={avatarChip(palette)}>
+                    <UserCircleIcon style={{ width: 16, height: 16 }} />
+                  </span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Created by</p>
+                    <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{documentRecord.created_by?.full_name || "Unknown"}</p>
+                  </div>
                 </div>
-                <div className={`${inputBg} border ${borderColor} rounded-lg p-3`}>
-                  <p className={`text-[11px] uppercase tracking-[0.08em] ${textTertiary}`}>Version</p>
-                  <p className={`mt-1 text-sm font-semibold ${textPrimary}`}>{versionLabel}</p>
-                </div>
-                <div className={`${inputBg} border ${borderColor} rounded-lg p-3`}>
-                  <p className={`text-[11px] uppercase tracking-[0.08em] ${textTertiary}`}>Created</p>
-                  <p className={`mt-1 text-sm font-semibold ${textPrimary}`}>{createdAt}</p>
-                </div>
-                <div className={`${inputBg} border ${borderColor} rounded-lg p-3`}>
-                  <p className={`text-[11px] uppercase tracking-[0.08em] ${textTertiary}`}>Updated</p>
-                  <p className={`mt-1 text-sm font-semibold ${textPrimary}`}>{updatedAt}</p>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <span style={avatarChip(palette)}>
+                    <UserCircleIcon style={{ width: 16, height: 16 }} />
+                  </span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Last updated by</p>
+                    <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{documentRecord.updated_by?.full_name || "Unknown"}</p>
+                  </div>
                 </div>
               </div>
             </section>
 
-            <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5`}>
-              <h3 className={`text-sm font-semibold tracking-[0.11em] ${textTertiary} uppercase mb-3`}>Ownership</h3>
-              <p className={`text-sm ${textSecondary}`}>
-                Created by <span className={textPrimary}>{document.created_by?.full_name || "Unknown"}</span>
-              </p>
-              <p className={`text-sm ${textSecondary} mt-2`}>
-                Last updated by <span className={textPrimary}>{document.updated_by?.full_name || "Unknown"}</span>
-              </p>
-            </section>
-
-            <section className={`${bgSecondary} border ${borderColor} rounded-2xl p-5`}>
-              <h3 className={`text-sm font-semibold tracking-[0.11em] ${textTertiary} uppercase mb-3`}>Actions</h3>
-              <div className="flex flex-wrap gap-2">
+            <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
+              <h3 style={sideTitle(palette)}>Actions</h3>
+              <div style={{ display: "grid", gap: 10 }}>
                 <AIEnhancementButton
-                  content={document.content || document.description || ''}
-                  title={document.title}
+                  content={documentRecord.content || documentRecord.description || ""}
+                  title={documentRecord.title}
                   type="document"
-                  documentId={document.id}
+                  documentId={documentRecord.id}
                   onResult={(feature, data) => setAiResults(data)}
                 />
-                <button
-                  onClick={() => setEditing(true)}
-                  className={`inline-flex items-center gap-2 px-3 py-2 bg-transparent border ${borderColor} ${textPrimary} rounded-md ${hoverBg} ${hoverBorder} text-sm transition-all`}
-                >
-                  <PencilIcon className="w-4 h-4" />
+                <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+                  <PencilIcon style={{ width: 14, height: 14 }} />
                   Edit
                 </button>
-                <button
-                  onClick={handleDelete}
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-transparent border border-red-600 text-red-600 rounded-md hover:bg-red-600 hover:text-white text-sm transition-all"
-                >
-                  <TrashIcon className="w-4 h-4" />
+                <button onClick={handleDelete} className="ui-btn-polish ui-focus-ring" style={{ border: "1px solid var(--app-danger-border)", color: "var(--app-danger)", background: "rgba(239,68,68,0.1)", borderRadius: 14, padding: "10px 14px", fontSize: 13, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
+                  <TrashIcon style={{ width: 14, height: 14 }} />
                   Delete
                 </button>
               </div>
@@ -425,10 +527,65 @@ export default function DocumentDetail() {
           </aside>
         </div>
       </div>
-      
+
       <AIResultsPanel results={aiResults} onClose={() => setAiResults(null)} />
     </div>
   );
 }
 
+const ambientLayer = {
+  position: "fixed",
+  inset: 0,
+  pointerEvents: "none",
+  background:
+    "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.12), transparent 34%), radial-gradient(circle at 86% 12%, rgba(16,185,129,0.08), transparent 28%), radial-gradient(circle at 52% 0%, rgba(99,102,241,0.06), transparent 24%)",
+};
 
+const fieldLabel = (palette) => ({
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+  color: palette.muted,
+});
+
+const heroChip = (palette) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "8px 12px",
+  border: `1px solid ${palette.border}`,
+  background: palette.cardAlt,
+  color: palette.text,
+  fontSize: 12,
+  fontWeight: 700,
+});
+
+const sideCard = (palette) => ({
+  borderRadius: 24,
+  border: `1px solid ${palette.border}`,
+  background: palette.card,
+  padding: 18,
+  boxShadow: "var(--ui-shadow-xs)",
+});
+
+const sideTitle = (palette) => ({
+  margin: "0 0 14px",
+  fontSize: 13,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+  color: palette.muted,
+});
+
+const avatarChip = (palette) => ({
+  width: 36,
+  height: 36,
+  borderRadius: 12,
+  display: "grid",
+  placeItems: "center",
+  background: palette.accentSoft,
+  color: palette.accent,
+});

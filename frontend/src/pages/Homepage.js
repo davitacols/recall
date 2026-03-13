@@ -76,7 +76,7 @@ export default function Homepage() {
 
       <header className="hp-header">
         <div className="hp-container hp-header-row">
-          <BrandLogo tone="dark" size="lg" />
+          <BrandLogo tone="light" size="lg" />
           <div className="hp-header-actions">
             <button
               onClick={() => navigate("/login")}

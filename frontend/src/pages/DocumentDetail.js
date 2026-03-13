@@ -46,6 +46,9 @@ export default function DocumentDetail() {
       const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) {
+        throw new Error('Failed to load document');
+      }
       const data = await res.json();
       setDocument(data);
       setFormData(data);
@@ -54,12 +57,17 @@ export default function DocumentDetail() {
         const fileRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/file/`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (!fileRes.ok) {
+          throw new Error('Failed to load attached file');
+        }
         const blob = await fileRes.blob();
         const url = URL.createObjectURL(blob);
         setFileUrl(url);
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (err) {
+      console.error('Error:', err);
+      setDocument(null);
+      error('Failed to load document');
     } finally {
       setLoading(false);
     }
@@ -71,10 +79,14 @@ export default function DocumentDetail() {
       const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/comments/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) {
+        throw new Error('Failed to load comments');
+      }
       const data = await res.json();
       setComments(data);
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (err) {
+      console.error('Error:', err);
+      error('Failed to load comments');
     }
   };
 
@@ -91,6 +103,9 @@ export default function DocumentDetail() {
         },
         body: JSON.stringify({ content: newComment })
       });
+      if (!res.ok) {
+        throw new Error('Failed to add comment');
+      }
       const data = await res.json();
       setComments([...comments, data]);
       setNewComment('');
@@ -106,6 +121,9 @@ export default function DocumentDetail() {
       const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/organizations/pdf/document/${id}/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) {
+        throw new Error('Failed to export PDF');
+      }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
@@ -122,7 +140,7 @@ export default function DocumentDetail() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -130,6 +148,9 @@ export default function DocumentDetail() {
         },
         body: JSON.stringify(formData)
       });
+      if (!res.ok) {
+        throw new Error('Failed to update document');
+      }
       setEditing(false);
       fetchDocument();
       success('Document updated successfully');
@@ -142,10 +163,13 @@ export default function DocumentDetail() {
     if (!window.confirm('Delete this document?')) return;
     try {
       const token = localStorage.getItem('token');
-      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) {
+        throw new Error('Failed to delete document');
+      }
       success('Document deleted');
       navigate('/business/documents');
     } catch (err) {

@@ -9,6 +9,7 @@ import {
   PlusIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { useToast } from "../components/Toast";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import RichTextEditor from "../components/RichTextEditor";
@@ -33,6 +34,7 @@ function CardMeta({ label, value, palette }) {
 
 export default function Documents() {
   const navigate = useNavigate();
+  const { success, error } = useToast();
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -67,10 +69,14 @@ export default function Documents() {
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) {
+        throw new Error("Failed to load documents");
+      }
       const payload = await res.json();
       setDocuments(Array.isArray(payload) ? payload : []);
-    } catch (error) {
+    } catch (err) {
       setDocuments([]);
+      error(err.message || "Couldn't load documents.");
     } finally {
       setLoading(false);
     }
@@ -88,10 +94,14 @@ export default function Documents() {
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/search/?q=${encodeURIComponent(trimmed)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) {
+        throw new Error("Search failed");
+      }
       const payload = await res.json();
       setDocuments(Array.isArray(payload) ? payload : []);
-    } catch (error) {
+    } catch (err) {
       setDocuments([]);
+      error(err.message || "Couldn't search documents right now.");
     } finally {
       setBusySearch(false);
     }
@@ -104,6 +114,9 @@ export default function Documents() {
         const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/${doc.id}/file/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) {
+          throw new Error("Failed to open file");
+        }
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         if (doc.file_type?.includes("pdf")) {
@@ -116,7 +129,9 @@ export default function Documents() {
         a.download = doc.file_name;
         a.click();
         URL.revokeObjectURL(url);
-      } catch (error) {}
+      } catch (err) {
+        error("Couldn't open the document file.");
+      }
       return;
     }
     navigate(`/business/documents/${doc.id}`);
@@ -133,16 +148,22 @@ export default function Documents() {
       payload.append("document_type", formData.document_type);
       payload.append("content", formData.content);
       if (uploadFile) payload.append("file", uploadFile);
-      await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: payload,
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to create document");
+      }
       setShowModal(false);
       setFormData({ title: "", description: "", document_type: "other", content: "", tags: [] });
       setUploadFile(null);
-      fetchDocuments();
-    } catch (error) {
+      await fetchDocuments();
+      success("Document created");
+    } catch (err) {
+      error(err.message || "Couldn't create document.");
     } finally {
       setSubmitting(false);
     }

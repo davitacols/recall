@@ -1,13 +1,13 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from django.utils import timezone
+from django.db.models import Q
 from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
-import base64
 from .document_models import Document, DocumentComment
 from apps.knowledge.unified_models import UnifiedActivity
 
@@ -149,12 +149,12 @@ def document_detail(request, pk):
 def document_search(request):
     query = request.GET.get('q', '')
     documents = Document.objects.filter(
-        organization=request.user.organization,
-        title__icontains=query
-    ) | Document.objects.filter(
-        organization=request.user.organization,
-        content__icontains=query
-    )
+        organization=request.user.organization
+    ).filter(
+        Q(title__icontains=query)
+        | Q(description__icontains=query)
+        | Q(content__icontains=query)
+    ).distinct()
     
     data = [{
         'id': d.id,
@@ -165,9 +165,9 @@ def document_search(request):
     return Response(data)
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def document_file(request, pk):
-    document = get_object_or_404(Document, pk=pk)
+    document = get_object_or_404(Document, pk=pk, organization=request.user.organization)
     
     if not document.file_data:
         return Response({'error': 'No file attached'}, status=status.HTTP_404_NOT_FOUND)

@@ -41,7 +41,7 @@ function SprintHistory() {
         <div style={ui.container}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 10 }}>
             {[1, 2, 3].map((item) => (
-              <div key={item} style={{ borderRadius: 12, height: 200, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
+              <div key={item} style={{ borderRadius: 0, height: 200, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
             ))}
           </div>
         </div>
@@ -77,7 +77,7 @@ function SprintHistory() {
         )}
 
         {filteredSprints.length === 0 ? (
-          <div style={{ borderRadius: 12, border: `1px dashed ${palette.border}`, background: palette.card, padding: "20px 14px", textAlign: "center", color: palette.muted, fontSize: 13 }}>
+          <div style={{ borderRadius: 0, border: `1px dashed ${palette.border}`, background: palette.card, padding: "20px 14px", textAlign: "center", color: palette.muted, fontSize: 13 }}>
             No completed sprints yet.
           </div>
         ) : (
@@ -87,7 +87,7 @@ function SprintHistory() {
               const completion = total > 0 ? Math.round(((sprint.completed || 0) / total) * 100) : 0;
 
               return (
-                <article key={sprint.id} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+                <article key={sprint.id} style={{ borderRadius: 0, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                     <div>
                       <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: palette.text }}>{sprint.name}</p>
@@ -129,7 +129,7 @@ function SprintHistory() {
 
 function Metric({ label, value, color, palette }) {
   return (
-    <article style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10 }}>
+    <article style={{ borderRadius: 0, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10 }}>
       <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color }}>{value}</p>
       <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>{label}</p>
     </article>

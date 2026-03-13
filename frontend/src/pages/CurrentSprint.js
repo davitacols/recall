@@ -207,27 +207,27 @@ function Metric({ label, value }) {
 }
 
 const spinner = { width: 30, height: 30, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
+const hero = { borderRadius: 0, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
 const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
 const title = { margin: "8px 0 5px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", letterSpacing: "-0.02em" };
 const subtitle = { margin: 0, fontSize: 13 };
 const ctaRow = { display: "flex", gap: 8, flexWrap: "wrap" };
 const h2 = { fontSize: 19 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
-const metricCard = { borderRadius: 12, padding: 12, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)" };
+const metricCard = { borderRadius: 0, padding: 12, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)" };
 const metricValue = { margin: 0, fontSize: 26, fontWeight: 800, color: "var(--ui-text)" };
 const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "var(--ui-muted)" };
-const progressCard = { borderRadius: 12, padding: 12, marginBottom: 12 };
+const progressCard = { borderRadius: 0, padding: 12, marginBottom: 12 };
 const progressTrack = { width: "100%", height: 10, borderRadius: 999, background: "var(--ui-border)", overflow: "hidden" };
 const progressFill = { height: "100%", background: "linear-gradient(90deg,var(--ui-good),var(--ui-info))" };
-const listCard = { borderRadius: 12, padding: 12 };
+const listCard = { borderRadius: 0, padding: 12 };
 const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 };
 const list = { display: "grid", gap: 8 };
-const blockerCard = { borderRadius: 10, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)", padding: 10 };
-const emptyRow = { borderRadius: 10, border: "1px dashed var(--ui-border)", padding: "14px 10px", fontSize: 13, color: "var(--ui-muted)" };
-const primaryButtonAlt = { border: "none", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "var(--ui-text)", background: "linear-gradient(135deg,#9bd9ff,#6ab8ec)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 };
+const blockerCard = { borderRadius: 0, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)", padding: 10 };
+const emptyRow = { borderRadius: 0, border: "1px dashed var(--ui-border)", padding: "14px 10px", fontSize: 13, color: "var(--ui-muted)" };
+const primaryButtonAlt = { border: "none", borderRadius: 0, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "var(--ui-text)", background: "linear-gradient(135deg,#9bd9ff,#6ab8ec)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 };
 const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
-const modalCard = { width: "min(560px,100%)", borderRadius: 14, padding: 16 };
+const modalCard = { width: "min(560px,100%)", borderRadius: 0, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
 const icon16 = { width: 16, height: 16 };

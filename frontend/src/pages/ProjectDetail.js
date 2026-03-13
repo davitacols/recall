@@ -227,7 +227,7 @@ function ProjectDetail() {
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                       <div>
                         <p style={{ ...itemTitle, color: palette.text }}>{issue.title}</p>
-                        <p style={{ ...itemMeta, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} • {issue.priority || "medium"}</p>
+                        <p style={{ ...itemMeta, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} | {issue.priority || "medium"}</p>
                       </div>
                       <span style={{ ...statusPill, border: `1px solid ${palette.border}`, color: palette.muted }}>{issue.status || "todo"}</span>
                     </div>
@@ -338,31 +338,31 @@ function Stat({ icon: Icon, label, value, palette }) {
 }
 
 const spinner = { width: 28, height: 28, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const hero = { borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12 };
+const hero = { borderRadius: 0, padding: 16, display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12 };
 const heroTop = { display: "grid", gridTemplateColumns: "56px 1fr", gap: 10, alignItems: "start" };
-const projectBadge = { width: 56, height: 56, borderRadius: 14, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 18 };
+const projectBadge = { width: 56, height: 56, borderRadius: 0, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 18 };
 const title = { margin: "0 0 2px", fontSize: "clamp(1.18rem,2.05vw,1.72rem)", letterSpacing: "-0.02em" };
 const sub = { margin: 0, fontSize: 13 };
-const dangerIconButton = { borderRadius: 10, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer" };
+const dangerIconButton = { borderRadius: 0, width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer" };
 const quickLinkRow = { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 };
-const quickButton = { padding: "9px 12px", borderRadius: 10, textDecoration: "none", fontSize: 13, fontWeight: 700 };
+const quickButton = { padding: "9px 12px", borderRadius: 0, textDecoration: "none", fontSize: 13, fontWeight: 700 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 };
-const statCard = { borderRadius: 12, padding: 12 };
+const statCard = { borderRadius: 0, padding: 12 };
 const statLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 };
 const statValue = { margin: "7px 0 0", fontSize: 30, fontWeight: 800 };
-const tabWrap = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, borderRadius: 12, padding: 6, marginBottom: 12 };
-const tabButton = { borderRadius: 9, padding: "9px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const tabWrap = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, borderRadius: 0, padding: 6, marginBottom: 12 };
+const tabButton = { borderRadius: 0, padding: "9px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
 const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 };
 const h2 = { margin: 0, fontSize: 20 };
-const dangerButton = { borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const dangerButton = { borderRadius: 0, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
 const list = { display: "grid", gap: 8 };
-const itemCard = { borderRadius: 12, padding: 12, textDecoration: "none" };
+const itemCard = { borderRadius: 0, padding: 12, textDecoration: "none" };
 const itemTitle = { margin: 0, fontSize: 15, fontWeight: 700 };
 const itemMeta = { margin: "3px 0 0", fontSize: 12 };
-const statusPill = { borderRadius: 999, padding: "4px 8px", fontSize: 11, textTransform: "capitalize", fontWeight: 700 };
-const emptyBlock = { borderRadius: 12, padding: "24px 14px", textAlign: "center" };
+const statusPill = { borderRadius: 0, padding: "4px 8px", fontSize: 11, textTransform: "capitalize", fontWeight: 700 };
+const emptyBlock = { borderRadius: 0, padding: "24px 14px", textAlign: "center" };
 const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
-const modalCard = { width: "min(560px,100%)", borderRadius: 14, padding: 16 };
+const modalCard = { width: "min(560px,100%)", borderRadius: 0, padding: 16 };
 const closeBtn = { border: "none", background: "transparent", fontWeight: 700, cursor: "pointer" };
 const formStack = { display: "grid", gap: 8 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };

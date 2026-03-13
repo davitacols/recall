@@ -76,7 +76,7 @@ export default function Goals() {
         <div style={ui.container}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10 }}>
             {[1, 2, 3, 4].map((item) => (
-              <div key={item} style={{ borderRadius: 12, height: 128, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
+              <div key={item} style={{ borderRadius: 0, height: 128, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
             ))}
           </div>
         </div>
@@ -104,13 +104,13 @@ export default function Goals() {
         </section>
 
         {goals.length === 0 ? (
-          <div style={{ borderRadius: 12, border: `1px dashed ${palette.border}`, background: palette.card, padding: "20px 14px", textAlign: "center", color: palette.muted, fontSize: 13 }}>
+          <div style={{ borderRadius: 0, border: `1px dashed ${palette.border}`, background: palette.card, padding: "20px 14px", textAlign: "center", color: palette.muted, fontSize: 13 }}>
             No goals yet. Create one to start tracking progress.
           </div>
         ) : (
           <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 10 }}>
             {goals.map((goal) => (
-              <article key={goal.id} onClick={() => navigate(`/business/goals/${goal.id}`)} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, cursor: "pointer" }}>
+              <article key={goal.id} onClick={() => navigate(`/business/goals/${goal.id}`)} style={{ borderRadius: 0, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, cursor: "pointer" }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                   <FlagIcon style={{ width: 16, height: 16, color: statusColor(goal.status, palette) }} />
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -134,7 +134,7 @@ export default function Goals() {
 
         {showModal && (
           <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
-            <div style={{ width: "min(560px,100%)", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
+            <div style={{ width: "min(560px,100%)", borderRadius: 0, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
               <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>Create Goal</h2>
               <form onSubmit={handleSubmit} style={{ marginTop: 12, display: "grid", gap: 8 }}>
                 <input required placeholder="Goal title" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} style={ui.input} />
@@ -163,7 +163,7 @@ export default function Goals() {
 
 function Metric({ label, value, palette }) {
   return (
-    <article style={{ borderRadius: 12, padding: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+    <article style={{ borderRadius: 0, padding: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
       <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: palette.text }}>{value}</p>
       <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{label}</p>
     </article>

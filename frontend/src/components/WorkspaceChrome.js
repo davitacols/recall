@@ -127,12 +127,11 @@ export function WorkspaceEmptyState({ palette, title, description, action }) {
 
 const hero = {
   position: "relative",
-  overflow: "hidden",
   borderRadius: 28,
-  padding: "clamp(18px, 3vw, 28px)",
+  padding: "clamp(14px, 2.4vw, 22px)",
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: 18,
+  gap: 14,
   alignItems: "stretch",
 };
 
@@ -141,7 +140,7 @@ const heroMain = {
   zIndex: 1,
   display: "grid",
   alignContent: "space-between",
-  gap: 18,
+  gap: 14,
   minWidth: 0,
 };
 
@@ -155,15 +154,15 @@ const heroEyebrow = {
 
 const heroTitle = {
   margin: 0,
-  fontSize: "clamp(1.7rem, 3vw, 2.7rem)",
-  lineHeight: 1.02,
+  fontSize: "clamp(1.35rem, 2.3vw, 2.05rem)",
+  lineHeight: 1.04,
   letterSpacing: "-0.045em",
 };
 
 const heroDescription = {
   margin: 0,
-  fontSize: 14,
-  lineHeight: 1.6,
+  fontSize: 13,
+  lineHeight: 1.55,
   maxWidth: 720,
 };
 
@@ -195,9 +194,9 @@ const statsGrid = {
 
 const statCard = {
   borderRadius: 20,
-  padding: "14px 14px 12px",
+  padding: "12px 12px 10px",
   display: "grid",
-  gap: 6,
+  gap: 4,
   boxShadow: "var(--ui-shadow-sm)",
 };
 
@@ -211,7 +210,7 @@ const statLabel = {
 
 const statValue = {
   margin: 0,
-  fontSize: 26,
+  fontSize: 22,
   fontWeight: 800,
   lineHeight: 1,
   letterSpacing: "-0.04em",

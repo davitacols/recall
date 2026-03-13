@@ -430,7 +430,6 @@ export default function UnifiedLayout({ children }) {
               background: palette.panelGlass,
               border: `1px solid ${palette.border}`,
               boxShadow: darkMode ? "0 18px 44px rgba(2,8,16,0.36)" : "0 18px 42px rgba(29,55,78,0.12)",
-              overflow: "hidden",
             }}
           >
             <div
@@ -892,15 +891,15 @@ const layoutHeader = {
   top: 0,
   zIndex: 80,
   borderRadius: 24,
-  padding: "16px 18px 12px",
-  marginBottom: 20,
+  padding: "14px 16px 10px",
+  marginBottom: 16,
   backdropFilter: "blur(18px)",
 };
 
 const layoutHeaderMobile = {
   top: 0,
   borderRadius: 18,
-  padding: "12px 12px 10px",
+  padding: "10px 11px 8px",
   marginBottom: 12,
 };
 
@@ -914,7 +913,7 @@ const headerEyebrow = {
 
 const headerTitle = {
   margin: "6px 0 0",
-  fontSize: "clamp(1.15rem, 1.8vw, 1.5rem)",
+  fontSize: "clamp(1.02rem, 1.45vw, 1.32rem)",
   letterSpacing: "-0.03em",
   fontWeight: 800,
 };
@@ -926,7 +925,7 @@ const headerTitleMobile = {
 
 const headerSubtitle = {
   margin: "6px 0 0",
-  fontSize: 13,
+  fontSize: 12,
   lineHeight: 1.45,
   maxWidth: 620,
 };
@@ -979,7 +978,7 @@ const headerBrandCapsule = {
   gap: 10,
   width: "fit-content",
   borderRadius: 18,
-  padding: "8px 10px",
+  padding: "6px 8px",
   backdropFilter: "blur(16px)",
 };
 
@@ -990,14 +989,14 @@ const headerBrandCopy = {
 
 const headerBrandLabel = {
   margin: 0,
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 800,
   letterSpacing: "0.02em",
 };
 
 const headerBrandHint = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 600,
 };
 

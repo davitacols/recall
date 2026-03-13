@@ -11,6 +11,11 @@ import {
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspacePanel,
+} from "../components/WorkspaceChrome";
 
 export default function BusinessDashboard() {
   const { darkMode } = useTheme();
@@ -57,11 +62,6 @@ export default function BusinessDashboard() {
       .filter((meeting) => meeting.meeting_date && new Date(meeting.meeting_date) > now)
       .sort((a, b) => new Date(a.meeting_date) - new Date(b.meeting_date));
 
-    const meetingsToday = upcomingMeetings.filter((meeting) => {
-      const date = new Date(meeting.meeting_date);
-      return date.toDateString() === now.toDateString();
-    }).length;
-
     const meetingsNext24h = upcomingMeetings.filter((meeting) => {
       const date = new Date(meeting.meeting_date);
       return date > now && date.getTime() - now.getTime() <= 24 * 60 * 60 * 1000;
@@ -80,156 +80,229 @@ export default function BusinessDashboard() {
       todoTasks,
       completionRate,
       upcomingMeetings,
-      meetingsToday,
       meetingsNext24h,
       goalsNeedingAttention,
       stalledGoals,
     };
   }, [goals, meetings, tasks]);
 
+  const stats = [
+    {
+      label: "Completion",
+      value: `${computed.completionRate}%`,
+      helper: `${computed.doneTasks} of ${tasks.length} tasks closed`,
+      tone: computed.completionRate >= 60 ? palette.good : palette.warn,
+    },
+    {
+      label: "Upcoming Meetings",
+      value: computed.upcomingMeetings.length,
+      helper: `${computed.meetingsNext24h} landing in the next 24 hours`,
+      tone: palette.info,
+    },
+    {
+      label: "Goals At Risk",
+      value: computed.stalledGoals,
+      helper: "Objectives below 40% progress",
+      tone: computed.stalledGoals ? palette.danger : palette.good,
+    },
+  ];
+
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh" }}>
-        <div style={ui.container}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8 }}>
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} style={{ borderRadius: 12, height: 110, border: `1px solid ${palette.border}`, background: palette.card, opacity: 0.75 }} />
-            ))}
-          </div>
+      <div style={ui.container}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} style={{ borderRadius: 22, height: 126, border: `1px solid ${palette.border}`, background: palette.card, opacity: 0.76 }} />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={ui.container}>
-        <section
-          style={{
-            borderRadius: 12,
-            border: `1px solid ${palette.border}`,
-            background: palette.card,
-            padding: 14,
-            marginBottom: 10,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>BUSINESS OVERVIEW</p>
-              <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", color: palette.text }}>Operations Dashboard</h1>
-              <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>
-                {tasks.length} tasks, {meetings.length} meetings, {goals.length} goals. Completion {computed.completionRate}%.
-              </p>
-            </div>
-            <button onClick={fetchData} className="ui-btn-polish" style={ui.secondaryButton}>
+    <div style={{ ...ui.container, display: "grid", gap: 14 }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Business Overview"
+        title="Operations Dashboard"
+        description={`${tasks.length} tasks, ${meetings.length} meetings, and ${goals.length} goals aligned in one operating view.`}
+        stats={stats}
+        actions={
+          <>
+            <button onClick={fetchData} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
               <ArrowPathIcon style={{ width: 14, height: 14 }} />
               Refresh
             </button>
-          </div>
-        </section>
-
-        <section style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-          <SummaryPill icon={ExclamationTriangleIcon} label="Attention" value={`${computed.stalledGoals} goals`} palette={palette} tone={computed.stalledGoals > 0 ? palette.danger : palette.success} />
-          <SummaryPill icon={CalendarDaysIcon} label="Next 24h" value={`${computed.meetingsNext24h} meetings`} palette={palette} tone={computed.meetingsNext24h > 0 ? palette.warn : palette.success} />
-          <SummaryPill icon={CheckCircleIcon} label="Execution" value={`${computed.completionRate}% done`} palette={palette} tone={computed.completionRate >= 60 ? palette.success : palette.warn} />
-        </section>
-
-        <section style={{ ...ui.responsiveSplit, alignItems: "start" }}>
-          <div style={{ display: "grid", gap: 10 }}>
-            <ListSection title="Upcoming Meetings" linkTo="/business/meetings" linkText="View all meetings" palette={palette}>
-              {computed.upcomingMeetings.length === 0 ? (
-                <EmptyState text="No upcoming meetings scheduled." palette={palette} />
-              ) : (
-                computed.upcomingMeetings.slice(0, 5).map((meeting) => (
-                  <Link key={meeting.id} to={`/business/meetings/${meeting.id}`} style={{ ...rowLink, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{meeting.title}</p>
-                    <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>
-                      {new Date(meeting.meeting_date).toLocaleString()} | {meeting.duration_minutes || 60} min
+            <Link to="/business/tasks" className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
+              Open task board
+            </Link>
+          </>
+        }
+        aside={
+          <div style={{ display: "grid", gap: 10, width: "100%" }}>
+            {[
+              { icon: ExclamationTriangleIcon, label: "Attention", value: `${computed.stalledGoals} goals`, tone: computed.stalledGoals ? palette.danger : palette.good },
+              { icon: CalendarDaysIcon, label: "Next 24h", value: `${computed.meetingsNext24h} meetings`, tone: computed.meetingsNext24h ? palette.warn : palette.good },
+              { icon: CheckCircleIcon, label: "Execution", value: `${computed.completionRate}% done`, tone: computed.completionRate >= 60 ? palette.good : palette.warn },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.label}
+                  style={{
+                    borderRadius: 18,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.cardAlt,
+                    padding: "12px 14px",
+                    display: "grid",
+                    gap: 4,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Icon style={{ width: 14, height: 14, color: item.tone }} />
+                    <p style={{ margin: 0, fontSize: 11, color: palette.muted, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                      {item.label}
                     </p>
-                  </Link>
-                ))
-              )}
-            </ListSection>
-
-            <ListSection title="Goals Needing Attention" linkTo="/business/goals" linkText="Open goals" palette={palette}>
-              {computed.goalsNeedingAttention.length === 0 ? (
-                <EmptyState text="No active goals need attention right now." palette={palette} />
-              ) : (
-                computed.goalsNeedingAttention.map((goal) => {
-                  const progress = Math.max(0, Math.min(100, goal.progress || 0));
-                  return (
-                    <Link key={goal.id} to={`/business/goals/${goal.id}`} style={{ ...rowLink, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{goal.title}</p>
-                        <span style={{ fontSize: 11, color: palette.muted }}>{progress}%</span>
-                      </div>
-                      <div style={{ marginTop: 6, width: "100%", height: 7, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${progress}%`, background: progress >= 70 ? palette.success : progress >= 40 ? palette.warn : palette.danger }} />
-                      </div>
-                    </Link>
-                  );
-                })
-              )}
-            </ListSection>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 24, color: item.tone, fontWeight: 800, lineHeight: 1 }}>{item.value}</p>
+                </div>
+              );
+            })}
           </div>
+        }
+      />
 
-          <section style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.card, padding: 10 }}>
-            <h2 style={{ margin: "0 0 10px", fontSize: 15, color: palette.text, letterSpacing: "0.06em", textTransform: "uppercase" }}>Quick Actions</h2>
-            <div style={{ display: "grid", gap: 8 }}>
-              <ActionLink to="/business/tasks" label="Open Task Board" helper="Move work from To Do to Done" icon={ClockIcon} palette={palette} />
-              <ActionLink to="/business/meetings" label="Plan Meetings" helper="Check upcoming sessions and schedule new ones" icon={CalendarDaysIcon} palette={palette} />
-              <ActionLink to="/business/goals" label="Review Goals" helper="Update stalled objectives and milestones" icon={FlagIcon} palette={palette} />
-              <ActionLink to="/business/analytics" label="Open Analytics" helper="Track trends and outcomes" icon={FlagIcon} palette={palette} />
-            </div>
-          </section>
-        </section>
-      </div>
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Meetings"
+          title="Upcoming Meetings"
+          description="Use the next scheduled sessions to keep context flowing into action."
+          action={
+            <Link to="/business/meetings" style={{ color: palette.link, textDecoration: "none", fontSize: 12, fontWeight: 800 }}>
+              View all
+            </Link>
+          }
+        >
+          {computed.upcomingMeetings.length === 0 ? (
+            <WorkspaceEmptyState
+              palette={palette}
+              title="No upcoming meetings"
+              description="Your next scheduled business sessions will appear here."
+            />
+          ) : (
+            computed.upcomingMeetings.slice(0, 5).map((meeting) => (
+              <Link
+                key={meeting.id}
+                to={`/business/meetings/${meeting.id}`}
+                className="ui-card-lift ui-smooth"
+                style={{
+                  borderRadius: 18,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.cardAlt,
+                  padding: 14,
+                  textDecoration: "none",
+                  display: "grid",
+                  gap: 6,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: palette.text }}>{meeting.title}</p>
+                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                  {new Date(meeting.meeting_date).toLocaleString()} | {meeting.duration_minutes || 60} minutes
+                </p>
+              </Link>
+            ))
+          )}
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Goals"
+          title="Goals Needing Attention"
+          description="These goals are furthest from done and most likely to need intervention."
+          action={
+            <Link to="/business/goals" style={{ color: palette.link, textDecoration: "none", fontSize: 12, fontWeight: 800 }}>
+              Open goals
+            </Link>
+          }
+        >
+          {computed.goalsNeedingAttention.length === 0 ? (
+            <WorkspaceEmptyState
+              palette={palette}
+              title="Goal progress looks healthy"
+              description="No active goals need attention right now."
+            />
+          ) : (
+            computed.goalsNeedingAttention.map((goal) => {
+              const progress = Math.max(0, Math.min(100, goal.progress || 0));
+              const tone = progress >= 70 ? palette.good : progress >= 40 ? palette.warn : palette.danger;
+              return (
+                <Link
+                  key={goal.id}
+                  to={`/business/goals/${goal.id}`}
+                  className="ui-card-lift ui-smooth"
+                  style={{
+                    borderRadius: 18,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.cardAlt,
+                    padding: 14,
+                    textDecoration: "none",
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: palette.text }}>{goal.title}</p>
+                    <span style={{ fontSize: 11, color: palette.muted }}>{progress}%</span>
+                  </div>
+                  <div style={{ width: "100%", height: 8, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
+                    <div style={{ width: `${progress}%`, height: "100%", background: tone }} />
+                  </div>
+                </Link>
+              );
+            })
+          )}
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Quick Actions"
+          title="Keep work moving"
+          description="Jump into the most common business workflows."
+        >
+          <ActionLink to="/business/tasks" label="Open Task Board" helper={`${computed.todoTasks} to do, ${computed.inProgressTasks} in progress`} icon={ClockIcon} palette={palette} />
+          <ActionLink to="/business/meetings" label="Plan Meetings" helper="Review the next sessions and schedule new ones" icon={CalendarDaysIcon} palette={palette} />
+          <ActionLink to="/business/goals" label="Review Goals" helper="Update stalled objectives and unblock ownership" icon={FlagIcon} palette={palette} />
+          <ActionLink to="/business/analytics" label="Open Analytics" helper="Track operating trends and business outcomes" icon={CheckCircleIcon} palette={palette} />
+        </WorkspacePanel>
+      </section>
     </div>
   );
-}
-
-function SummaryPill({ icon: Icon, label, value, palette, tone }) {
-  return (
-    <div style={{ borderRadius: 999, padding: "7px 10px", border: `1px solid ${tone || palette.border}`, background: "transparent", display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <Icon style={{ width: 14, height: 14, color: tone || palette.info }} />
-      <p style={{ margin: 0, fontSize: 11, color: palette.muted }}>{label}</p>
-      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: tone || palette.text }}>{value}</p>
-    </div>
-  );
-}
-
-function ListSection({ title, linkTo, linkText, palette, children }) {
-  return (
-    <section style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.card, padding: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 16, color: palette.text }}>{title}</h2>
-        <Link to={linkTo} style={{ fontSize: 11, fontWeight: 700, color: palette.info, textDecoration: "none" }}>
-          {linkText}
-        </Link>
-      </div>
-      <div style={{ display: "grid", gap: 8 }}>{children}</div>
-    </section>
-  );
-}
-
-function EmptyState({ text, palette }) {
-  return <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>{text}</p>;
 }
 
 function ActionLink({ to, label, helper, icon: Icon, palette }) {
   return (
-    <Link to={to} style={{ borderRadius: 9, border: `1px solid ${palette.border}`, background: "transparent", padding: 9, textDecoration: "none", display: "grid", gridTemplateColumns: "16px 1fr", gap: 8, alignItems: "start" }}>
-      <Icon style={{ width: 16, height: 16, color: palette.info }} />
-      <div>
-        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text }}>{label}</p>
-        <p style={{ margin: "3px 0 0", fontSize: 11, color: palette.muted }}>{helper}</p>
+    <Link
+      to={to}
+      className="ui-card-lift ui-smooth"
+      style={{
+        borderRadius: 18,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardAlt,
+        padding: 14,
+        textDecoration: "none",
+        display: "grid",
+        gridTemplateColumns: "18px 1fr",
+        gap: 10,
+        alignItems: "start",
+      }}
+    >
+      <Icon style={{ width: 18, height: 18, color: palette.info }} />
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: palette.text }}>{label}</p>
+        <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.45 }}>{helper}</p>
       </div>
     </Link>
   );
 }
-
-const rowLink = {
-  borderRadius: 10,
-  textDecoration: "none",
-  padding: 10,
-};

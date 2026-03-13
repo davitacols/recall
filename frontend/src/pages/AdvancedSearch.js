@@ -1,116 +1,294 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../utils/ThemeAndAccessibility';
-import api from '../services/api';
-import { useToast } from '../components/Toast';
-import BrandedTechnicalIllustration from '../components/BrandedTechnicalIllustration';
-import { getProjectPalette, getProjectUi } from '../utils/projectUi';
+import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import api from "../services/api";
+import { useToast } from "../components/Toast";
+import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspacePanel,
+  WorkspaceToolbar,
+} from "../components/WorkspaceChrome";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+
+const SEARCH_ENDPOINTS = {
+  conversations: "/api/conversations/",
+  decisions: "/api/decisions/",
+  knowledge: "/api/knowledge/",
+  goals: "/api/business/goals/",
+  meetings: "/api/business/meetings/",
+};
+
+const TYPE_LABELS = {
+  conversations: "Conversations",
+  decisions: "Decisions",
+  knowledge: "Knowledge",
+  goals: "Goals",
+  meetings: "Meetings",
+};
+
+function getItemDate(item) {
+  return item.meeting_date || item.created_at || item.updated_at || null;
+}
+
+function getItemPreview(item) {
+  const source = item.content || item.description || item.summary || item.notes || "";
+  return source ? `${String(source).slice(0, 160)}${source.length > 160 ? "..." : ""}` : "Open this record to review the linked context.";
+}
+
+function normalizeResults(type, payload) {
+  const items = Array.isArray(payload?.results) ? payload.results : Array.isArray(payload) ? payload : [];
+  return items.map((item) => ({
+    ...item,
+    _type: type,
+    _label: TYPE_LABELS[type] || type,
+    _date: getItemDate(item),
+    _preview: getItemPreview(item),
+    _title: item.title || item.question || item.name || "Untitled",
+  }));
+}
+
+function withinDateRange(itemDate, dateFrom, dateTo) {
+  if (!itemDate) return !dateFrom && !dateTo;
+  const candidate = new Date(itemDate);
+  if (Number.isNaN(candidate.getTime())) return !dateFrom && !dateTo;
+  if (dateFrom) {
+    const start = new Date(`${dateFrom}T00:00:00`);
+    if (candidate < start) return false;
+  }
+  if (dateTo) {
+    const end = new Date(`${dateTo}T23:59:59`);
+    if (candidate > end) return false;
+  }
+  return true;
+}
 
 export default function AdvancedSearch() {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
   const { addToast } = useToast();
-  const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState({ type: 'all', dateFrom: '', dateTo: '' });
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState({ type: "all", dateFrom: "", dateTo: "" });
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
 
+  const activeFilterCount = Number(filters.type !== "all") + Number(Boolean(filters.dateFrom)) + Number(Boolean(filters.dateTo));
+
+  const stats = [
+    { label: "Search Scope", value: "5 modules", helper: "Conversations, decisions, knowledge, goals, meetings", tone: palette.info },
+    { label: "Active Filters", value: activeFilterCount, helper: activeFilterCount ? "Results narrowed by date or module" : "Scanning all indexed modules", tone: activeFilterCount ? palette.warn : palette.good },
+    { label: "Results", value: searched ? results.length : "--", helper: searched ? "Records matched the current query" : "Run a query to populate results", tone: searched ? palette.accent : palette.muted },
+  ];
+
   const search = async () => {
     if (!query.trim()) return;
     setLoading(true);
+    setSearched(true);
     try {
-      const endpoints = filters.type === 'all' 
-        ? ['/api/conversations/', '/api/decisions/', '/api/knowledge/', '/api/business/goals/', '/api/business/meetings/']
-        : [`/api/${filters.type}/`];
-      
-      const responses = await Promise.all(endpoints.map(ep => api.get(`${ep}?search=${query}`).catch(() => ({ data: [] }))));
-      const combined = responses.flatMap((r, i) => (r.data.results || r.data || []).map(item => ({ ...item, _type: filters.type === 'all' ? ['conversations', 'decisions', 'knowledge', 'goals', 'meetings'][i] : filters.type })));
+      const targets =
+        filters.type === "all"
+          ? Object.entries(SEARCH_ENDPOINTS)
+          : [[filters.type, SEARCH_ENDPOINTS[filters.type]]];
+
+      const responses = await Promise.all(
+        targets.map(async ([type, endpoint]) => {
+          try {
+            const response = await api.get(`${endpoint}?search=${encodeURIComponent(query.trim())}`);
+            return normalizeResults(type, response.data);
+          } catch {
+            return [];
+          }
+        })
+      );
+
+      const combined = responses
+        .flat()
+        .filter((item) => withinDateRange(item._date, filters.dateFrom, filters.dateTo))
+        .sort((a, b) => new Date(b._date || 0) - new Date(a._date || 0));
+
       setResults(combined);
     } catch (error) {
-      addToast('Search failed', 'error');
+      addToast("Search failed", "error");
+      setResults([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const navigate_to = (item) => {
-    const routes = { conversations: `/conversations/${item.id}`, decisions: `/decisions/${item.id}`, knowledge: `/knowledge/${item.id}`, goals: `/business/goals/${item.id}`, meetings: `/business/meetings/${item.id}` };
-    navigate(routes[item._type] || '/');
+  const clearFilters = () => {
+    setFilters({ type: "all", dateFrom: "", dateTo: "" });
+    setResults([]);
+    setSearched(false);
+  };
+
+  const navigateTo = (item) => {
+    const routes = {
+      conversations: `/conversations/${item.id}`,
+      decisions: `/decisions/${item.id}`,
+      knowledge: `/knowledge/${item.id}`,
+      goals: `/business/goals/${item.id}`,
+      meetings: `/business/meetings/${item.id}`,
+    };
+    navigate(routes[item._type] || "/");
   };
 
   return (
-    <div style={{ ...ui.container, display: 'grid', gap: 12, fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
-      <section
-        style={{
-          border: `1px solid ${palette.border}`,
-          borderRadius: 16,
-          padding: 'clamp(16px,2.4vw,24px)',
-          background: `linear-gradient(140deg, ${palette.accentSoft}, ${darkMode ? 'rgba(96,165,250,0.14)' : 'rgba(191,219,254,0.4)'})`,
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0,1fr) auto',
-          alignItems: 'end',
-          gap: 12,
-        }}
-      >
-        <div style={{ display: 'grid', gap: 6 }}>
-          <p style={{ margin: 0, fontSize: 11, letterSpacing: '0.12em', fontWeight: 700, color: palette.muted }}>DISCOVERY</p>
-          <h1 style={{ margin: 0, fontSize: 'clamp(1.1rem,2vw,1.56rem)', color: palette.text }}>Advanced Search</h1>
-          <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Find context across conversations, decisions, goals, and meetings.</p>
-        </div>
-        <BrandedTechnicalIllustration darkMode={darkMode} compact />
-      </section>
+    <div style={{ ...ui.container, display: "grid", gap: 14 }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Discovery"
+        title="Advanced Search"
+        description="Search across the connected Knoledgr workspace and narrow results by module or time window without losing context."
+        stats={stats}
+        actions={
+          <>
+            <button onClick={search} disabled={loading || !query.trim()} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+              {loading ? "Searching..." : "Run Search"}
+            </button>
+            <button onClick={clearFilters} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+              Reset Filters
+            </button>
+          </>
+        }
+        aside={<BrandedTechnicalIllustration darkMode={darkMode} compact />}
+      />
 
-      <div style={{ backgroundColor: palette.card, border: `1px solid ${palette.border}`, borderRadius: 16, padding: '16px', marginBottom: '2px' }}>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
-            <MagnifyingGlassIcon style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: palette.muted }} />
+      <WorkspaceToolbar palette={palette}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+          <div style={{ position: "relative", minWidth: 0 }}>
+            <MagnifyingGlassIcon
+              style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 16,
+                height: 16,
+                color: palette.muted,
+              }}
+            />
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && search()}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") search();
+              }}
               placeholder="Search across all modules..."
-              style={{ ...ui.input, paddingLeft: '36px' }}
+              style={{ ...ui.input, paddingLeft: 38 }}
             />
           </div>
-          <button onClick={search} disabled={loading} style={ui.primaryButton}>
-            {loading ? 'Searching...' : 'Search'}
+          <button onClick={search} disabled={loading || !query.trim()} className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, justifyContent: "center" }}>
+            {loading ? "Searching..." : "Search"}
           </button>
         </div>
-        
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <select value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value })} style={{ ...ui.input, width: 'auto', minWidth: 150, padding: '8px 10px', fontSize: 13 }}>
-            <option value="all">All Types</option>
-            <option value="conversations">Conversations</option>
-            <option value="decisions">Decisions</option>
-            <option value="knowledge">Knowledge</option>
-            <option value="goals">Goals</option>
-            <option value="meetings">Meetings</option>
-          </select>
-          <input type="date" value={filters.dateFrom} onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })} style={{ ...ui.input, width: 'auto', minWidth: 148, padding: '8px 10px', fontSize: 13 }} />
-          <input type="date" value={filters.dateTo} onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })} style={{ ...ui.input, width: 'auto', minWidth: 148, padding: '8px 10px', fontSize: 13 }} />
-        </div>
-      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {results.map((item, i) => (
-          <div key={i} onClick={() => navigate_to(item)} style={{ backgroundColor: palette.card, border: `1px solid ${palette.border}`, borderRadius: '12px', padding: '14px', cursor: 'pointer', transition: 'all 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = palette.accent} onMouseLeave={(e) => e.currentTarget.style.borderColor = palette.border}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 700, backgroundColor: palette.accentSoft, color: palette.text, borderRadius: '999px', textTransform: 'capitalize' }}>{item._type}</span>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, color: palette.text, margin: 0 }}>{item.title || item.question || 'Untitled'}</h3>
-            </div>
-            <p style={{ fontSize: '13px', color: palette.muted, margin: 0 }}>{(item.content || item.description || '').substring(0, 150)}...</p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <select
+            value={filters.type}
+            onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))}
+            style={{ ...ui.input, width: "auto", minWidth: 170, padding: "8px 10px", fontSize: 13 }}
+          >
+            <option value="all">All Modules</option>
+            {Object.entries(TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={filters.dateFrom}
+            onChange={(event) => setFilters((current) => ({ ...current, dateFrom: event.target.value }))}
+            style={{ ...ui.input, width: "auto", minWidth: 156, padding: "8px 10px", fontSize: 13 }}
+          />
+          <input
+            type="date"
+            value={filters.dateTo}
+            onChange={(event) => setFilters((current) => ({ ...current, dateTo: event.target.value }))}
+            style={{ ...ui.input, width: "auto", minWidth: 156, padding: "8px 10px", fontSize: 13 }}
+          />
+        </div>
+      </WorkspaceToolbar>
+
+      <WorkspacePanel
+        palette={palette}
+        eyebrow="Results"
+        title={searched ? `${results.length} records matched` : "Run a search to begin"}
+        description={
+          searched
+            ? "Open a result to jump straight into the underlying record."
+            : "Queries search across the main routed knowledge surfaces in Knoledgr."
+        }
+      >
+        {!searched ? (
+          <WorkspaceEmptyState
+            palette={palette}
+            title="Start with a question or keyword"
+            description="Search decisions, goals, meetings, conversations, and knowledge records from one place."
+          />
+        ) : null}
+
+        {searched && !loading && results.length === 0 ? (
+          <WorkspaceEmptyState
+            palette={palette}
+            title="No results found"
+            description="Try broadening the time range, switching back to all modules, or using a shorter query."
+          />
+        ) : null}
+
+        {results.length ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+            {results.map((item) => (
+              <button
+                key={`${item._type}-${item.id}`}
+                type="button"
+                onClick={() => navigateTo(item)}
+                className="ui-card-lift ui-smooth ui-focus-ring"
+                style={{
+                  border: `1px solid ${palette.border}`,
+                  borderRadius: 18,
+                  padding: 16,
+                  background: palette.cardAlt,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <span
+                    style={{
+                      padding: "4px 9px",
+                      fontSize: 10,
+                      fontWeight: 800,
+                      background: palette.accentSoft,
+                      color: palette.text,
+                      borderRadius: 999,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    {item._label}
+                  </span>
+                  <span style={{ fontSize: 11, color: palette.muted }}>
+                    {item._date ? new Date(item._date).toLocaleDateString() : "No date"}
+                  </span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: 17, color: palette.text, lineHeight: 1.15 }}>{item._title}</h3>
+                <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.55 }}>{item._preview}</p>
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
-      
-      {results.length === 0 && query && !loading && (
-        <div style={{ textAlign: 'center', padding: '30px', color: palette.muted }}>No results found</div>
-      )}
+        ) : null}
+      </WorkspacePanel>
     </div>
   );
 }

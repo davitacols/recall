@@ -9,7 +9,8 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from .models import (
     Issue, IssueAttachment, SavedFilter, IssueTemplate,
-    Release, Component, ProjectCategory, Column, IssueLabel, Project, Board, ServiceDeskAITriage
+    Release, Component, ProjectCategory, Column, IssueLabel, Project, Board, ServiceDeskAITriage,
+    Sprint,
 )
 from apps.organizations.models import User
 from .serializers import (
@@ -43,6 +44,110 @@ def _has_project_read_access(user, project_id):
 
 def _has_project_manage_access(user, project_id):
     return has_project_permission(user, Permission.EDIT_PROJECT.value, project_id)
+
+
+def _parse_optional_int(value, field_name):
+    if value in (None, ''):
+        return None, None
+    try:
+        return int(value), None
+    except (TypeError, ValueError):
+        return None, Response({'error': f'Invalid {field_name}'}, status=400)
+
+
+def _validate_bulk_issue_updates(user, issues, updates):
+    cleaned_updates = {}
+    valid_statuses = {choice for choice, _ in Issue.STATUS_CHOICES}
+    valid_priorities = {choice for choice, _ in Issue.PRIORITY_CHOICES}
+
+    if 'status' in updates:
+        status_value = str(updates.get('status') or '').strip()
+        if status_value not in valid_statuses:
+            return None, Response({'error': 'Invalid status'}, status=400)
+        cleaned_updates['status'] = status_value
+
+    if 'priority' in updates:
+        priority_value = str(updates.get('priority') or '').strip().lower()
+        if priority_value not in valid_priorities:
+            return None, Response({'error': 'Invalid priority'}, status=400)
+        cleaned_updates['priority'] = priority_value
+
+    if 'assignee_id' in updates:
+        assignee_id, error_response = _parse_optional_int(updates.get('assignee_id'), 'assignee_id')
+        if error_response:
+            return None, error_response
+        if assignee_id is None:
+            cleaned_updates['assignee_id'] = None
+        else:
+            assignee = User.objects.filter(id=assignee_id, organization=user.organization).first()
+            if not assignee:
+                return None, Response({'error': 'Invalid assignee_id for this organization'}, status=400)
+            cleaned_updates['assignee_id'] = assignee.id
+
+    if 'sprint_id' in updates:
+        sprint_id, error_response = _parse_optional_int(updates.get('sprint_id'), 'sprint_id')
+        if error_response:
+            return None, error_response
+        if sprint_id is None:
+            cleaned_updates['sprint_id'] = None
+        else:
+            sprint = Sprint.objects.filter(id=sprint_id, organization=user.organization).first()
+            if not sprint:
+                return None, Response({'error': 'Invalid sprint_id for this organization'}, status=400)
+            if sprint.project_id and issues.exclude(project_id=sprint.project_id).exists():
+                return None, Response(
+                    {'error': 'Sprint must belong to the same project as every selected issue'},
+                    status=400,
+                )
+            cleaned_updates['sprint_id'] = sprint.id
+
+    return cleaned_updates, None
+
+
+def _build_issue_template_payload(user, data):
+    project = None
+    project_id, error_response = _parse_optional_int(data.get('project_id'), 'project_id')
+    if error_response:
+        return None, error_response
+    if project_id is not None:
+        project = Project.objects.filter(id=project_id, organization=user.organization).first()
+        if not project:
+            return None, Response({'error': 'Project not found in your organization'}, status=400)
+        if not _has_project_manage_access(user, project.id):
+            return None, Response({'error': 'Permission denied for this project'}, status=403)
+
+    name = (data.get('name') or '').strip()
+    if not name:
+        return None, Response({'error': 'name is required'}, status=400)
+
+    issue_type = str(data.get('issue_type') or '').strip().lower()
+    valid_issue_types = {choice for choice, _ in Issue.ISSUE_TYPE_CHOICES}
+    if issue_type not in valid_issue_types:
+        return None, Response({'error': 'Invalid issue_type'}, status=400)
+
+    title_template = (data.get('title_template') or '').strip()
+    if not title_template:
+        return None, Response({'error': 'title_template is required'}, status=400)
+
+    default_priority = str(data.get('default_priority') or 'medium').strip().lower()
+    valid_priorities = {choice for choice, _ in Issue.PRIORITY_CHOICES}
+    if default_priority not in valid_priorities:
+        return None, Response({'error': 'Invalid default_priority'}, status=400)
+
+    default_labels = data.get('default_labels', [])
+    if not isinstance(default_labels, list):
+        return None, Response({'error': 'default_labels must be a list'}, status=400)
+
+    return {
+        'organization': user.organization,
+        'project': project,
+        'name': name,
+        'issue_type': issue_type,
+        'title_template': title_template,
+        'description_template': data.get('description_template') or '',
+        'default_priority': default_priority,
+        'default_labels': [str(label).strip() for label in default_labels if str(label).strip()],
+    }, None
 
 
 # Attachments
@@ -172,7 +277,10 @@ def bulk_update_issues(request):
         if has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id)
     ]
     issues = issues.filter(id__in=allowed_issue_ids)
-    count = issues.update(**updates)
+    cleaned_updates, error_response = _validate_bulk_issue_updates(request.user, issues, updates)
+    if error_response:
+        return error_response
+    count = issues.update(**cleaned_updates)
     
     return Response({'updated': count, 'issues': allowed_issue_ids})
 
@@ -219,16 +327,10 @@ def issue_templates(request):
         return Response(IssueTemplateSerializer(templates, many=True).data)
     
     elif request.method == 'POST':
-        template = IssueTemplate.objects.create(
-            organization=request.user.organization,
-            project_id=request.data.get('project_id'),
-            name=request.data['name'],
-            issue_type=request.data['issue_type'],
-            title_template=request.data['title_template'],
-            description_template=request.data['description_template'],
-            default_priority=request.data.get('default_priority', 'medium'),
-            default_labels=request.data.get('default_labels', [])
-        )
+        payload, error_response = _build_issue_template_payload(request.user, request.data)
+        if error_response:
+            return error_response
+        template = IssueTemplate.objects.create(**payload)
         return Response(IssueTemplateSerializer(template).data, status=201)
 
 

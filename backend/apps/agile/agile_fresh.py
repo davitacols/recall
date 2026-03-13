@@ -625,6 +625,19 @@ def issue_detail(request, issue_id):
             if errors:
                 return Response({'valid': False, 'errors': errors}, status=400)
 
+        if 'assignee_id' in request.data:
+            assignee_id = request.data.get('assignee_id')
+            if assignee_id in ('', None, 'null'):
+                request.data['assignee_id'] = None
+            else:
+                try:
+                    assignee_id = int(assignee_id)
+                except (TypeError, ValueError):
+                    return Response({'error': 'assignee_id must be an integer'}, status=400)
+                if not User.objects.filter(id=assignee_id, organization=request.user.organization).exists():
+                    return Response({'error': 'Invalid assignee_id for this organization'}, status=400)
+                request.data['assignee_id'] = assignee_id
+
         if 'title' in request.data:
             issue.title = request.data['title']
         if 'description' in request.data:

@@ -7,6 +7,10 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
 from .models import Task
+from apps.business.models import Goal, Meeting
+from apps.conversations.models import Conversation
+from apps.decisions.models import Decision
+from apps.organizations.models import User
 from apps.knowledge.unified_models import UnifiedActivity
 
 
@@ -35,6 +39,48 @@ def _track_view_activity(request, obj, title, description=""):
     except Exception:
         pass
 
+
+def _task_related_objects(request, data):
+    organization = request.user.organization
+    assigned_to = None
+    goal = None
+    meeting = None
+    conversation = None
+    decision = None
+
+    if data.get('assigned_to_id') not in (None, ''):
+        assigned_to = User.objects.filter(id=data.get('assigned_to_id'), organization=organization).first()
+        if assigned_to is None:
+            return None, Response({'error': 'Assignee must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('goal_id') not in (None, ''):
+        goal = Goal.objects.filter(id=data.get('goal_id'), organization=organization).first()
+        if goal is None:
+            return None, Response({'error': 'Goal must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('meeting_id') not in (None, ''):
+        meeting = Meeting.objects.filter(id=data.get('meeting_id'), organization=organization).first()
+        if meeting is None:
+            return None, Response({'error': 'Meeting must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('conversation_id') not in (None, ''):
+        conversation = Conversation.objects.filter(id=data.get('conversation_id'), organization=organization).first()
+        if conversation is None:
+            return None, Response({'error': 'Conversation must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('decision_id') not in (None, ''):
+        decision = Decision.objects.filter(id=data.get('decision_id'), organization=organization).first()
+        if decision is None:
+            return None, Response({'error': 'Decision must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return {
+        'assigned_to': assigned_to,
+        'goal': goal,
+        'meeting': meeting,
+        'conversation': conversation,
+        'decision': decision,
+    }, None
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def tasks_list(request):
@@ -61,17 +107,21 @@ def tasks_list(request):
         return Response(data)
     
     elif request.method == 'POST':
+        resolved, error_response = _task_related_objects(request, request.data)
+        if error_response:
+            return error_response
+
         task = Task.objects.create(
             organization=request.user.organization,
             title=request.data['title'],
             description=request.data.get('description', ''),
             status=request.data.get('status', 'todo'),
             priority=request.data.get('priority', 'medium'),
-            assigned_to_id=request.data.get('assigned_to_id'),
-            goal_id=request.data.get('goal_id'),
-            meeting_id=request.data.get('meeting_id'),
-            conversation_id=request.data.get('conversation_id'),
-            decision_id=request.data.get('decision_id'),
+            assigned_to=resolved['assigned_to'],
+            goal=resolved['goal'],
+            meeting=resolved['meeting'],
+            conversation=resolved['conversation'],
+            decision=resolved['decision'],
             due_date=request.data.get('due_date'),
         )
         
@@ -117,6 +167,9 @@ def task_detail(request, pk):
     elif request.method == 'PUT':
         old_assignee = task.assigned_to
         old_status = task.status
+        resolved, error_response = _task_related_objects(request, request.data)
+        if error_response:
+            return error_response
         
         task.title = request.data.get('title', task.title)
         task.description = request.data.get('description', task.description)
@@ -124,9 +177,15 @@ def task_detail(request, pk):
         task.priority = request.data.get('priority', task.priority)
         task.due_date = request.data.get('due_date', task.due_date)
         if 'assigned_to_id' in request.data:
-            task.assigned_to_id = request.data['assigned_to_id']
+            task.assigned_to = resolved['assigned_to']
         if 'goal_id' in request.data:
-            task.goal_id = request.data['goal_id']
+            task.goal = resolved['goal']
+        if 'meeting_id' in request.data:
+            task.meeting = resolved['meeting']
+        if 'conversation_id' in request.data:
+            task.conversation = resolved['conversation']
+        if 'decision_id' in request.data:
+            task.decision = resolved['decision']
         
         if old_status != 'done' and task.status == 'done':
             task.completed_at = timezone.now()

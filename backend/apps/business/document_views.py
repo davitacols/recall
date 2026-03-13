@@ -9,6 +9,7 @@ from django.db.models import Q
 from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
 from .document_models import Document, DocumentComment
+from .models import Goal, Meeting, Task
 from apps.knowledge.unified_models import UnifiedActivity
 
 VALID_DOCUMENT_TYPES = {choice[0] for choice in Document.DOCUMENT_TYPES}
@@ -79,6 +80,27 @@ def _validate_document_payload(data, partial=False):
 
     return None
 
+
+def _resolve_document_links(request, data):
+    organization = request.user.organization
+    resolved = {}
+
+    for field, model, label in (
+        ('goal_id', Goal, 'Goal'),
+        ('meeting_id', Meeting, 'Meeting'),
+        ('task_id', Task, 'Task'),
+    ):
+        value = data.get(field)
+        if value in (None, ''):
+            resolved[field] = None
+            continue
+        obj = model.objects.filter(id=value, organization=organization).first()
+        if obj is None:
+            return None, Response({'error': f'{label} must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+        resolved[field] = obj.id
+
+    return resolved, None
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def documents_list(request):
@@ -111,6 +133,9 @@ def documents_list(request):
         validation_error = _validate_document_payload(request.data)
         if validation_error:
             return Response(validation_error, status=status.HTTP_400_BAD_REQUEST)
+        resolved_links, error_response = _resolve_document_links(request, request.data)
+        if error_response:
+            return error_response
 
         file_data = None
         file_name = ''
@@ -137,9 +162,9 @@ def documents_list(request):
             version=request.data.get('version', '1.0'),
             created_by=request.user,
             updated_by=request.user,
-            goal_id=request.data.get('goal_id'),
-            meeting_id=request.data.get('meeting_id'),
-            task_id=request.data.get('task_id'),
+            goal_id=resolved_links['goal_id'],
+            meeting_id=resolved_links['meeting_id'],
+            task_id=resolved_links['task_id'],
             tags=_normalize_tags(request.data.get('tags', []))
         )
         return Response({'id': document.id}, status=status.HTTP_201_CREATED)

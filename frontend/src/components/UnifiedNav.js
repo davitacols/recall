@@ -459,6 +459,7 @@ export default function UnifiedNav({
       >
         <button
           onClick={onToggleCollapse}
+          className="ui-btn-polish ui-focus-ring"
           style={{
             ...collapseButton,
             color: palette.muted,
@@ -485,21 +486,22 @@ export default function UnifiedNav({
             }}
           >
             <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
-            <input
-              ref={searchInputRef}
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
+              <input
+                className="ui-focus-ring"
+                ref={searchInputRef}
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
                 setSearchOpen(true);
                 setSelectedIndex(-1);
               }}
-              onFocus={() => setSearchOpen(true)}
-              onKeyDown={onSearchKeyDown}
-              placeholder="Search"
-              style={{ ...searchInput, color: palette.text }}
-            />
+                onFocus={() => setSearchOpen(true)}
+                onKeyDown={onSearchKeyDown}
+                placeholder="Search Knoledgr"
+                style={{ ...searchInput, color: palette.text }}
+              />
             {query ? (
-              <button onClick={() => setQuery("")} style={{ ...clearButton, color: palette.muted }} aria-label="Clear search">
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => setQuery("")} style={{ ...clearButton, color: palette.muted }} aria-label="Clear search">
                 <XMarkIcon style={icon14} />
               </button>
             ) : (
@@ -554,7 +556,7 @@ export default function UnifiedNav({
 
       {!collapsed && (
         <div style={sectionLabelWrap}>
-          <span style={{ ...sectionLabel, color: palette.muted }}>Workstreams</span>
+          <span style={{ ...sectionLabel, color: palette.muted }}>Platform</span>
         </div>
       )}
 
@@ -568,6 +570,7 @@ export default function UnifiedNav({
             return (
               <div key={item.name} style={{ position: "relative" }}>
                 <button
+                  className="ui-btn-polish ui-focus-ring"
                   onClick={() => {
                     if (collapsed) {
                       navigate(item.items[0]?.href || "/");
@@ -608,6 +611,7 @@ export default function UnifiedNav({
             <Link
               key={item.name}
               to={item.href}
+              className="ui-btn-polish ui-focus-ring"
               style={{
                 ...topButton,
                 color: active ? palette.text : palette.muted,
@@ -628,6 +632,7 @@ export default function UnifiedNav({
 
         <div style={{ position: "relative" }}>
           <button
+            className="ui-btn-polish ui-focus-ring"
             onClick={() => {
               if (collapsed) {
                 navigate("/enterprise");
@@ -673,6 +678,9 @@ export default function UnifiedNav({
         <div style={{ ...insightCard, background: palette.panelAlt, border: `1px solid ${palette.border}` }}>
           <p style={{ ...insightLabel, color: palette.muted }}>Memory Health</p>
           <p style={{ ...insightValue, color: palette.text }}>91%</p>
+          <p style={{ ...insightHint, color: palette.muted }}>
+            Search, linked work, and decision coverage are trending healthy this week.
+          </p>
           <div style={{ ...insightTrack, background: palette.track }}>
             <div style={{ ...insightFill, background: `linear-gradient(90deg, ${palette.accentA}, ${palette.accentB})` }} />
           </div>
@@ -707,6 +715,7 @@ export default function UnifiedNav({
           <p style={subnavTitle}>{activeSubnav.title}</p>
           <button
             onClick={() => setOpenDropdown(null)}
+            className="ui-btn-polish ui-focus-ring"
             style={{ ...subnavClose, color: palette.muted, border: `1px solid ${palette.border}` }}
             aria-label="Close sub-navigation"
             title="Close sub-navigation"
@@ -725,15 +734,16 @@ export default function UnifiedNav({
                 (location.pathname === item.href || (item.href !== "/" && location.pathname.startsWith(`${item.href}/`)));
               if (item.external) {
                 return (
-                  <a
-                    key={item.id}
-                    href={item.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => setOpenDropdown(null)}
-                    style={{
-                      ...subnavItem,
-                      color: palette.text,
+                    <a
+                      key={item.id}
+                      href={item.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => setOpenDropdown(null)}
+                      className="ui-btn-polish ui-focus-ring"
+                      style={{
+                        ...subnavItem,
+                        color: palette.text,
                       background: "transparent",
                       borderLeft: "3px solid transparent",
                     }}
@@ -747,6 +757,7 @@ export default function UnifiedNav({
                   key={item.id}
                   to={item.href}
                   onClick={() => setOpenDropdown(null)}
+                  className="ui-btn-polish ui-focus-ring"
                   style={{
                     ...subnavItem,
                     color: subActive ? palette.text : palette.muted,
@@ -766,6 +777,7 @@ export default function UnifiedNav({
             <Link
               to={activeSubnav.footerLink.href}
               onClick={() => setOpenDropdown(null)}
+              className="ui-btn-polish ui-focus-ring"
               style={{ ...subnavItem, color: palette.muted, borderLeft: "3px solid transparent" }}
             >
               <span>{activeSubnav.footerLink.name}</span>
@@ -785,19 +797,20 @@ const sidebar = {
   bottom: 0,
   display: "grid",
   gridTemplateRows: "auto auto auto minmax(0,1fr) auto",
-  gap: 10,
-  padding: "12px 10px",
+  gap: 12,
+  padding: "14px 12px",
   zIndex: 70,
-  backdropFilter: "blur(12px)",
+  backdropFilter: "blur(18px)",
   overflow: "hidden",
 };
 
 const brandWrap = {
-  padding: "0 8px",
-  minHeight: 36,
+  padding: "10px 10px 12px",
+  minHeight: 52,
   display: "flex",
   alignItems: "center",
   gap: 8,
+  borderRadius: 18,
 };
 
 const sidebarTextureA = {
@@ -832,23 +845,23 @@ const brand = {
 };
 
 const sectionLabelWrap = {
-  padding: "0 10px",
+  padding: "0 12px",
 };
 
 const sectionLabel = {
   fontSize: 11,
   fontWeight: 700,
   textTransform: "uppercase",
-  letterSpacing: "0.08em",
+  letterSpacing: "0.12em",
 };
 
 const navList = {
   display: "grid",
-  gap: 7,
+  gap: 8,
   minWidth: 0,
   overflowY: "auto",
   overflowX: "hidden",
-  padding: "0 2px",
+  padding: "0 4px",
   position: "relative",
   zIndex: 1,
 };
@@ -856,18 +869,18 @@ const navList = {
 const topButton = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 8,
-  borderRadius: 12,
+  gap: 10,
+  borderRadius: 16,
   fontSize: 13,
-  fontWeight: 600,
+  fontWeight: 700,
   textDecoration: "none",
-  padding: "9px 11px",
+  padding: "11px 12px",
   cursor: "pointer",
   whiteSpace: "nowrap",
   width: "100%",
   textAlign: "left",
-  transition: "all 0.2s ease",
-  backdropFilter: "blur(3px)",
+  transition: "all 0.18s ease",
+  backdropFilter: "blur(8px)",
 };
 
 const subnavSidebar = {
@@ -877,7 +890,7 @@ const subnavSidebar = {
   zIndex: 69,
   display: "grid",
   gridTemplateRows: "auto minmax(0,1fr) auto",
-  backdropFilter: "blur(8px)",
+  backdropFilter: "blur(18px)",
 };
 
 const subnavHeader = {
@@ -885,21 +898,21 @@ const subnavHeader = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: 8,
-  padding: "12px 10px",
+  padding: "18px 14px 12px",
 };
 
 const subnavTitle = {
   margin: 0,
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 800,
-  letterSpacing: "0.07em",
+  letterSpacing: "0.14em",
   textTransform: "uppercase",
 };
 
 const subnavClose = {
   width: 24,
   height: 24,
-  borderRadius: 6,
+  borderRadius: 10,
   background: "transparent",
   display: "grid",
   placeItems: "center",
@@ -909,20 +922,20 @@ const subnavClose = {
 const subnavList = {
   display: "grid",
   alignContent: "start",
-  gap: 2,
-  padding: "8px",
+  gap: 4,
+  padding: "10px",
   overflowY: "auto",
 };
 
 const subnavItem = {
   display: "flex",
   alignItems: "center",
-  gap: 9,
-  padding: "9px 9px",
+  gap: 10,
+  padding: "11px 12px",
   textDecoration: "none",
   fontSize: 13,
-  fontWeight: 600,
-  borderRadius: 10,
+  fontWeight: 700,
+  borderRadius: 14,
 };
 
 const subnavFooter = {
@@ -938,15 +951,15 @@ const subnavEmpty = {
 const iconPill = {
   width: 24,
   height: 24,
-  borderRadius: 8,
+  borderRadius: 10,
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
 };
 
 const appsGlyph = {
-  borderRadius: 8,
-  padding: "4px 8px",
+  borderRadius: 10,
+  padding: "6px 10px",
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: "0.03em",
@@ -954,16 +967,16 @@ const appsGlyph = {
 
 const searchWrap = {
   position: "relative",
-  padding: "0 2px",
+  padding: "0 4px",
 };
 
 const searchShell = {
   display: "inline-flex",
   alignItems: "center",
   gap: 8,
-  borderRadius: 10,
-  padding: "6px 8px",
-  height: 36,
+  borderRadius: 16,
+  padding: "8px 10px",
+  height: 42,
   minWidth: 0,
   width: "100%",
 };
@@ -976,12 +989,13 @@ const searchInput = {
   width: "100%",
   minWidth: 0,
   fontFamily: "inherit",
+  fontWeight: 600,
 };
 
 const insightCard = {
-  borderRadius: 12,
-  padding: "10px 12px",
-  marginTop: 2,
+  borderRadius: 18,
+  padding: "14px 14px 12px",
+  marginTop: 4,
   position: "relative",
   zIndex: 1,
 };
@@ -996,9 +1010,15 @@ const insightLabel = {
 
 const insightValue = {
   margin: "5px 0 8px",
-  fontSize: 22,
+  fontSize: 24,
   fontWeight: 800,
   letterSpacing: "-0.02em",
+};
+
+const insightHint = {
+  margin: "0 0 12px",
+  fontSize: 12,
+  lineHeight: 1.45,
 };
 
 const insightTrack = {
@@ -1018,7 +1038,7 @@ const insightFill = {
 const collapseButton = {
   width: 24,
   height: 24,
-  borderRadius: 6,
+  borderRadius: 10,
   display: "grid",
   placeItems: "center",
   cursor: "pointer",
@@ -1061,7 +1081,7 @@ const resultsDropdown = {
   right: 0,
   maxHeight: 360,
   overflowY: "auto",
-  borderRadius: 12,
+  borderRadius: 18,
   boxShadow: "none",
   zIndex: 90,
 };
@@ -1079,9 +1099,10 @@ const resultRow = {
   alignItems: "flex-start",
   gap: 8,
   textAlign: "left",
-  padding: "9px 10px",
+  padding: "11px 12px",
   cursor: "pointer",
   fontFamily: "inherit",
+  borderRadius: 12,
 };
 
 const resultTypePill = {

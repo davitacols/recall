@@ -136,32 +136,36 @@ export default function UnifiedLayout({ children }) {
     () =>
       darkMode
         ? {
-            pageBg: "#0b1014",
-            panelBg: "rgba(16, 24, 31, 0.82)",
-            panelBgAlt: "#111b23",
-            panelGlass: "linear-gradient(140deg, rgba(19,30,40,0.92), rgba(13,20,27,0.88))",
-            border: "rgba(174, 210, 234, 0.2)",
-            text: "#e8f0f6",
-            muted: "#9fb2c3",
-            hover: "rgba(138, 188, 224, 0.12)",
-            glowOne: "rgba(85, 177, 235, 0.2)",
-            glowTwo: "rgba(53, 122, 168, 0.18)",
-            buttonBg: "rgba(18, 31, 42, 0.9)",
+            pageBg: "#0a121c",
+            panelBg: "rgba(16, 25, 38, 0.84)",
+            panelBgAlt: "#162231",
+            panelGlass: "linear-gradient(180deg, rgba(16, 25, 38, 0.92), rgba(12, 20, 31, 0.88))",
+            border: "rgba(148, 163, 184, 0.18)",
+            text: "#ebf3ff",
+            muted: "#97aac1",
+            hover: "rgba(118, 167, 255, 0.1)",
+            glowOne: "rgba(79, 140, 255, 0.15)",
+            glowTwo: "rgba(91, 192, 235, 0.13)",
+            buttonBg: "rgba(12, 20, 31, 0.84)",
             menuSurface: "#111b23",
+            accent: "#76a7ff",
+            accentSoft: "rgba(118, 167, 255, 0.14)",
           }
         : {
-            pageBg: "#e9f1f7",
-            panelBg: "rgba(255, 255, 255, 0.82)",
-            panelBgAlt: "#f8fcff",
-            panelGlass: "linear-gradient(145deg, rgba(255,255,255,0.94), rgba(243,250,255,0.88))",
-            border: "rgba(83, 126, 157, 0.24)",
-            text: "#0e2434",
-            muted: "#4a6578",
-            hover: "rgba(37, 99, 153, 0.08)",
-            glowOne: "rgba(79, 164, 219, 0.2)",
-            glowTwo: "rgba(157, 198, 226, 0.26)",
-            buttonBg: "rgba(255, 255, 255, 0.9)",
-            menuSurface: "#f8fcff",
+            pageBg: "#f3f7fb",
+            panelBg: "rgba(255, 255, 255, 0.88)",
+            panelBgAlt: "#f8fbff",
+            panelGlass: "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,250,255,0.92))",
+            border: "rgba(15, 23, 42, 0.09)",
+            text: "#13263c",
+            muted: "#61758d",
+            hover: "rgba(37, 109, 255, 0.08)",
+            glowOne: "rgba(79, 140, 255, 0.1)",
+            glowTwo: "rgba(85, 183, 255, 0.1)",
+            buttonBg: "rgba(247, 250, 255, 0.96)",
+            menuSurface: "#ffffff",
+            accent: "#256dff",
+            accentSoft: "rgba(37, 109, 255, 0.1)",
           },
     [darkMode]
   );
@@ -169,7 +173,8 @@ export default function UnifiedLayout({ children }) {
   const avatar = user?.avatar;
   const initial = user?.full_name?.charAt(0)?.toUpperCase() || "U";
   const activeSidebarWidth = sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidth;
-  const pageTitle = getPageTitle(location.pathname);
+  const pageMeta = getPageMeta(location.pathname);
+  const pageTitle = pageMeta.title;
   const todayLabel = useMemo(
     () =>
       new Intl.DateTimeFormat("en-US", {
@@ -427,13 +432,16 @@ export default function UnifiedLayout({ children }) {
           >
             <div style={headerPrimaryRow}>
               <div style={headerIdentity}>
-                <div style={headerTitleBlock}>
-                  <p style={{ ...headerEyebrow, color: palette.muted }}>Operations Layer</p>
-                  <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
-                    {pageTitle}
-                  </h1>
+                  <div style={headerTitleBlock}>
+                    <p style={{ ...headerEyebrow, color: palette.accent }}>{pageMeta.section}</p>
+                    <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
+                      {pageTitle}
+                    </h1>
+                    <p style={{ ...headerSubtitle, color: palette.muted }}>
+                      {pageMeta.description}
+                    </p>
+                  </div>
                 </div>
-              </div>
               <div style={{ ...headerActions, ...(isMobile ? headerActionsMobile : null) }}>
                 <div
                   style={{
@@ -561,17 +569,17 @@ export default function UnifiedLayout({ children }) {
                     color: palette.muted,
                   }}
                 >
-                  {String(user?.experience_mode || "standard").toUpperCase()}
+                  {`Mode: ${String(user?.experience_mode || "standard")}`}
                 </span>
                 <span
                   style={{
                     ...headerPill,
                     border: `1px solid ${palette.border}`,
-                    background: darkMode ? "rgba(139,208,255,0.12)" : "rgba(46,125,179,0.08)",
+                    background: palette.accentSoft,
                     color: palette.text,
                   }}
                 >
-                  {todayLabel}
+                  {`Today • ${todayLabel}`}
                 </span>
               </div>
             </div>
@@ -621,7 +629,7 @@ const page = {
   position: "relative",
   overflowX: "hidden",
   backgroundImage:
-    "radial-gradient(920px 520px at -4% -8%, rgba(122,181,224,0.2), transparent 62%), radial-gradient(860px 620px at 108% -10%, rgba(72,129,172,0.16), transparent 58%), radial-gradient(900px 500px at 50% 120%, rgba(73,139,181,0.1), transparent 66%)",
+    "radial-gradient(960px 560px at -8% -8%, rgba(79,140,255,0.16), transparent 62%), radial-gradient(880px 620px at 108% -8%, rgba(91,192,235,0.14), transparent 58%), radial-gradient(920px 520px at 50% 118%, rgba(108,138,173,0.09), transparent 66%)",
 };
 
 const ambientGlowOne = {
@@ -649,7 +657,7 @@ const ambientGlowTwo = {
 const iconButton = {
   width: 34,
   height: 34,
-  borderRadius: 12,
+  borderRadius: 14,
   display: "grid",
   placeItems: "center",
   cursor: "pointer",
@@ -658,13 +666,13 @@ const iconButton = {
 const avatarButton = {
   width: 40,
   height: 40,
-  borderRadius: 14,
+  borderRadius: 16,
   overflow: "hidden",
   display: "grid",
   placeItems: "center",
   padding: 0,
-  background: "linear-gradient(135deg, #ffcf8f, #ff965f)",
-  color: "#261812",
+  background: "linear-gradient(135deg, #87afff, #59b8ff)",
+  color: "#0b1b34",
   fontWeight: 800,
   cursor: "pointer",
 };
@@ -685,9 +693,9 @@ const profileMenu = {
   top: 48,
   minWidth: 340,
   maxWidth: 420,
-  borderRadius: 18,
+  borderRadius: 22,
   overflow: "hidden",
-  boxShadow: "0 20px 40px rgba(0,0,0,0.28)",
+  boxShadow: "0 24px 56px rgba(2,12,26,0.26)",
   zIndex: 120,
 };
 
@@ -700,7 +708,7 @@ const profileMenuMobile = {
   maxWidth: "none",
   maxHeight: "calc(100vh - 92px)",
   overflowY: "auto",
-  borderRadius: 12,
+  borderRadius: 18,
 };
 
 const profileHead = {
@@ -750,8 +758,8 @@ const workspaceItem = {
   gridTemplateColumns: "1fr auto",
   alignItems: "center",
   gap: 10,
-  borderRadius: 12,
-  padding: "10px 11px",
+  borderRadius: 16,
+  padding: "12px 13px",
 };
 
 const workspaceName = {
@@ -770,7 +778,7 @@ const workspaceMeta = {
 
 const workspaceSwitchButton = {
   borderRadius: 10,
-  padding: "8px 12px",
+  padding: "9px 12px",
   fontSize: 12,
   fontWeight: 700,
   minWidth: 92,
@@ -778,7 +786,7 @@ const workspaceSwitchButton = {
 
 const workspaceTag = {
   borderRadius: 999,
-  padding: "6px 10px",
+  padding: "7px 12px",
   fontSize: 11,
   fontWeight: 700,
   textTransform: "uppercase",
@@ -804,7 +812,7 @@ const workspaceActions = {
 
 const orgSwitcherButton = {
   borderRadius: 999,
-  padding: "6px 10px",
+  padding: "8px 12px",
   fontSize: 11,
   fontWeight: 700,
   letterSpacing: "0.04em",
@@ -830,54 +838,61 @@ const main = {
   zIndex: 1,
   minHeight: "100vh",
   transition: "padding-left 0.22s ease",
-  paddingBottom: 24,
+  paddingBottom: 32,
 };
 
 const contentContainer = {
   maxWidth: 1840,
   margin: "0 auto",
-  padding: "8px clamp(8px, 1.4vw, 14px) 20px",
+  padding: "12px clamp(12px, 1.6vw, 18px) 28px",
 };
 
 const contentContainerMobile = {
-  padding: "4px 10px calc(90px + env(safe-area-inset-bottom, 0px))",
+  padding: "8px 12px calc(92px + env(safe-area-inset-bottom, 0px))",
 };
 
 const layoutHeader = {
   position: "sticky",
   top: 0,
   zIndex: 80,
-  borderRadius: 16,
-  padding: "12px 14px 10px",
-  marginBottom: 18,
-  backdropFilter: "blur(10px)",
+  borderRadius: 24,
+  padding: "16px 18px 12px",
+  marginBottom: 20,
+  backdropFilter: "blur(18px)",
 };
 
 const layoutHeaderMobile = {
   top: 0,
-  borderRadius: 12,
-  padding: "10px 10px 8px",
-  marginBottom: 10,
+  borderRadius: 18,
+  padding: "12px 12px 10px",
+  marginBottom: 12,
 };
 
 const headerEyebrow = {
   margin: 0,
   fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.16em",
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
 };
 
 const headerTitle = {
-  margin: "5px 0 0",
-  fontSize: "clamp(0.95rem, 1.55vw, 1.22rem)",
-  letterSpacing: "-0.02em",
+  margin: "6px 0 0",
+  fontSize: "clamp(1.15rem, 1.8vw, 1.5rem)",
+  letterSpacing: "-0.03em",
   fontWeight: 800,
 };
 
 const headerTitleMobile = {
-  marginBottom: 2,
-  fontSize: "1.05rem",
+  marginBottom: 4,
+  fontSize: "1.18rem",
+};
+
+const headerSubtitle = {
+  margin: "6px 0 0",
+  fontSize: 13,
+  lineHeight: 1.45,
+  maxWidth: 620,
 };
 
 const headerPrimaryRow = {
@@ -891,14 +906,14 @@ const headerPrimaryRow = {
 const headerIdentity = {
   display: "flex",
   alignItems: "flex-start",
-  gap: 10,
+  gap: 12,
   minWidth: 0,
 };
 
 const headerActions = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  gap: 10,
 };
 
 const headerActionsMobile = {
@@ -909,12 +924,13 @@ const headerActionCluster = {
   display: "flex",
   alignItems: "center",
   gap: 6,
-  borderRadius: 12,
-  padding: "4px 5px",
+  borderRadius: 16,
+  padding: "6px",
 };
 
 const headerTitleBlock = {
   minWidth: 0,
+  maxWidth: 680,
 };
 
 const headerBreadcrumbs = {
@@ -938,45 +954,144 @@ const headerSecondaryRow = {
 const headerMetaPills = {
   display: "flex",
   alignItems: "center",
-  gap: 7,
+  gap: 8,
   flexWrap: "wrap",
 };
 
 const headerPill = {
   borderRadius: 999,
-  padding: "6px 10px",
+  padding: "8px 12px",
   fontSize: 11,
   fontWeight: 700,
-  letterSpacing: "0.04em",
+  letterSpacing: "0.02em",
 };
 
-
-function getPageTitle(pathname) {
-  const routeTitles = [
-    { prefix: "/conversations", title: "Conversations" },
-    { prefix: "/decisions", title: "Decisions" },
-    { prefix: "/knowledge/graph", title: "Knowledge Graph" },
-    { prefix: "/knowledge/analytics", title: "Knowledge Analytics" },
-    { prefix: "/knowledge", title: "Knowledge" },
-    { prefix: "/projects", title: "Projects" },
-    { prefix: "/business/goals", title: "Goals" },
-    { prefix: "/business/meetings", title: "Meetings" },
-    { prefix: "/business/tasks", title: "Tasks" },
-    { prefix: "/business/documents", title: "Documents" },
-    { prefix: "/service-desk", title: "Service Desk" },
-    { prefix: "/sprint", title: "Sprints" },
-    { prefix: "/docs", title: "Documentation" },
-    { prefix: "/settings", title: "Settings" },
-    { prefix: "/profile", title: "Profile" },
-    { prefix: "/notifications", title: "Notifications" },
-    { prefix: "/messages", title: "Messages" },
-    { prefix: "/business", title: "Business" },
+function getPageMeta(pathname) {
+  const routeMeta = [
+    {
+      prefix: "/conversations",
+      title: "Conversations",
+      section: "Collaborate",
+      description: "Capture ongoing discussions, decisions, and the rationale behind team work.",
+    },
+    {
+      prefix: "/decisions",
+      title: "Decisions",
+      section: "Decision Memory",
+      description: "Track approvals, rationale, impact, and the history behind each key call.",
+    },
+    {
+      prefix: "/knowledge/graph",
+      title: "Knowledge Graph",
+      section: "Knowledge",
+      description: "See how conversations, documents, projects, and decisions connect across the workspace.",
+    },
+    {
+      prefix: "/knowledge/analytics",
+      title: "Knowledge Analytics",
+      section: "Knowledge",
+      description: "Measure coverage, recall quality, and how usable your team memory really is.",
+    },
+    {
+      prefix: "/knowledge",
+      title: "Knowledge",
+      section: "Knowledge",
+      description: "Search team memory quickly and recover the context behind what changed.",
+    },
+    {
+      prefix: "/projects",
+      title: "Projects",
+      section: "Execution",
+      description: "Plan delivery, follow execution, and keep linked work visible across teams.",
+    },
+    {
+      prefix: "/business/goals",
+      title: "Goals",
+      section: "Business",
+      description: "Align work to outcomes, owners, and the context behind each objective.",
+    },
+    {
+      prefix: "/business/meetings",
+      title: "Meetings",
+      section: "Business",
+      description: "Turn meeting activity into structured context your team can reuse later.",
+    },
+    {
+      prefix: "/business/tasks",
+      title: "Tasks",
+      section: "Business",
+      description: "Manage follow-through with enough context to keep execution grounded.",
+    },
+    {
+      prefix: "/business/documents",
+      title: "Documents",
+      section: "Memory",
+      description: "Keep the source record close to the work so teams can trace what matters quickly.",
+    },
+    {
+      prefix: "/service-desk",
+      title: "Service Desk",
+      section: "Execution",
+      description: "Handle requests with context, history, and the next best action in view.",
+    },
+    {
+      prefix: "/sprint",
+      title: "Sprints",
+      section: "Execution",
+      description: "Track sprint flow, blockers, and delivery signals in one operating layer.",
+    },
+    {
+      prefix: "/docs",
+      title: "Documentation",
+      section: "Resources",
+      description: "Reference how the platform works without leaving the broader workflow context.",
+    },
+    {
+      prefix: "/settings",
+      title: "Settings",
+      section: "Administration",
+      description: "Control workspace configuration, access, and product behavior from one place.",
+    },
+    {
+      prefix: "/profile",
+      title: "Profile",
+      section: "Workspace",
+      description: "Manage your identity, preferences, and how you work across Knoledgr.",
+    },
+    {
+      prefix: "/notifications",
+      title: "Notifications",
+      section: "Workspace",
+      description: "Stay on top of changes that matter without losing signal in the noise.",
+    },
+    {
+      prefix: "/messages",
+      title: "Messages",
+      section: "Workspace",
+      description: "Keep direct communication connected to the rest of your team context.",
+    },
+    {
+      prefix: "/business",
+      title: "Business",
+      section: "Business",
+      description: "Get a broader operating view across goals, meetings, tasks, and supporting memory.",
+    },
   ];
 
-  const matched = routeTitles.find((route) => pathname.startsWith(route.prefix));
-  if (matched) return matched.title;
-  if (pathname === "/" || pathname === "/dashboard") return "Dashboard";
-  return "Workspace";
+  const matched = routeMeta.find((route) => pathname.startsWith(route.prefix));
+  if (matched) return matched;
+  if (pathname === "/" || pathname === "/dashboard") {
+    return {
+      title: "Dashboard",
+      section: "Overview",
+      description: "Track context, execution, and recent decisions across the workspace at a glance.",
+    };
+  }
+  return {
+    title: "Workspace",
+    section: "Workspace",
+    description: "Move through team memory, decisions, and execution from one connected surface.",
+  };
 }
 
 const icon16 = { width: 16, height: 16 };
@@ -986,13 +1101,13 @@ const askFabButton = {
   zIndex: 150,
   width: ASK_FAB_WIDTH,
   height: ASK_FAB_HEIGHT,
-  borderRadius: 14,
+  borderRadius: 16,
   display: "grid",
   placeItems: "center",
   fontSize: 13,
   fontWeight: 800,
   letterSpacing: "0.01em",
-  boxShadow: "0 12px 28px rgba(2,6,23,0.28)",
+  boxShadow: "0 18px 38px rgba(2,12,26,0.24)",
   cursor: "grab",
   userSelect: "none",
   touchAction: "none",

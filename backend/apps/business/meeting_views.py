@@ -7,6 +7,10 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
 from .models import Meeting
+from apps.business.models import Goal
+from apps.conversations.models import Conversation
+from apps.decisions.models import Decision
+from apps.organizations.models import User
 from apps.knowledge.unified_models import UnifiedActivity
 
 
@@ -35,6 +39,42 @@ def _track_view_activity(request, obj, title, description=""):
     except Exception:
         pass
 
+
+def _meeting_related_objects(request, data):
+    organization = request.user.organization
+    goal = None
+    conversation = None
+    decision = None
+    attendees = None
+
+    if data.get('goal_id') not in (None, ''):
+        goal = Goal.objects.filter(id=data.get('goal_id'), organization=organization).first()
+        if goal is None:
+            return None, Response({'error': 'Goal must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('conversation_id') not in (None, ''):
+        conversation = Conversation.objects.filter(id=data.get('conversation_id'), organization=organization).first()
+        if conversation is None:
+            return None, Response({'error': 'Conversation must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('decision_id') not in (None, ''):
+        decision = Decision.objects.filter(id=data.get('decision_id'), organization=organization).first()
+        if decision is None:
+            return None, Response({'error': 'Decision must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if 'attendee_ids' in data:
+        attendee_ids = list(data.get('attendee_ids') or [])
+        attendees = list(User.objects.filter(id__in=attendee_ids, organization=organization))
+        if len(attendees) != len(attendee_ids):
+            return None, Response({'error': 'All attendees must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return {
+        'goal': goal,
+        'conversation': conversation,
+        'decision': decision,
+        'attendees': attendees,
+    }, None
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def meetings_list(request):
@@ -53,6 +93,10 @@ def meetings_list(request):
         return Response(data)
     
     elif request.method == 'POST':
+        resolved, error_response = _meeting_related_objects(request, request.data)
+        if error_response:
+            return error_response
+
         meeting = Meeting.objects.create(
             organization=request.user.organization,
             title=request.data['title'],
@@ -61,13 +105,13 @@ def meetings_list(request):
             duration_minutes=request.data.get('duration_minutes', 60),
             location=request.data.get('location', ''),
             notes=request.data.get('notes', ''),
-            goal_id=request.data.get('goal_id'),
-            conversation_id=request.data.get('conversation_id'),
-            decision_id=request.data.get('decision_id'),
+            goal=resolved['goal'],
+            conversation=resolved['conversation'],
+            decision=resolved['decision'],
             created_by=request.user,
         )
         if 'attendee_ids' in request.data:
-            meeting.attendees.set(request.data['attendee_ids'])
+            meeting.attendees.set(resolved['attendees'])
             
             # Notify attendees
             from apps.notifications.utils import create_notification
@@ -109,14 +153,24 @@ def meeting_detail(request, pk):
         })
     
     elif request.method == 'PUT':
+        resolved, error_response = _meeting_related_objects(request, request.data)
+        if error_response:
+            return error_response
+
         meeting.title = request.data.get('title', meeting.title)
         meeting.description = request.data.get('description', meeting.description)
         meeting.meeting_date = request.data.get('meeting_date', meeting.meeting_date)
         meeting.duration_minutes = request.data.get('duration_minutes', meeting.duration_minutes)
         meeting.location = request.data.get('location', meeting.location)
         meeting.notes = request.data.get('notes', meeting.notes)
+        if 'goal_id' in request.data:
+            meeting.goal = resolved['goal']
+        if 'conversation_id' in request.data:
+            meeting.conversation = resolved['conversation']
+        if 'decision_id' in request.data:
+            meeting.decision = resolved['decision']
         if 'attendee_ids' in request.data:
-            meeting.attendees.set(request.data['attendee_ids'])
+            meeting.attendees.set(resolved['attendees'])
         meeting.save()
         return Response({'message': 'Meeting updated'})
     

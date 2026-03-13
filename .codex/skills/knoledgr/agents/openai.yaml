@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knoledgr"
+  short_description: "Knoledgr project guidance across web, backend, and mobile"
+  default_prompt: "Use $knoledgr to work safely across the Knoledgr frontend, backend, mobile, and product surface."

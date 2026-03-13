@@ -5,7 +5,28 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from .advanced_models import Milestone, Template, Reminder, Comment
-from .models import Goal
+from .models import Goal, Meeting, Task
+
+
+def _resolve_business_links(request, data):
+    organization = request.user.organization
+    resolved = {}
+
+    for field, model, label in (
+        ('goal_id', Goal, 'Goal'),
+        ('meeting_id', Meeting, 'Meeting'),
+        ('task_id', Task, 'Task'),
+    ):
+        value = data.get(field)
+        if value in (None, ''):
+            resolved[field] = None
+            continue
+        obj = model.objects.filter(id=value, organization=organization).first()
+        if obj is None:
+            return None, Response({'error': f'{label} must belong to your organization'}, status=status.HTTP_400_BAD_REQUEST)
+        resolved[field] = obj.id
+
+    return resolved, None
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -117,13 +138,17 @@ def comments_list(request):
         return Response(data)
     
     elif request.method == 'POST':
+        resolved, error_response = _resolve_business_links(request, request.data)
+        if error_response:
+            return error_response
+
         comment = Comment.objects.create(
             organization=request.user.organization,
             author=request.user,
             content=request.data['content'],
-            goal_id=request.data.get('goal_id'),
-            meeting_id=request.data.get('meeting_id'),
-            task_id=request.data.get('task_id')
+            goal_id=resolved['goal_id'],
+            meeting_id=resolved['meeting_id'],
+            task_id=resolved['task_id']
         )
         return Response({'id': comment.id}, status=status.HTTP_201_CREATED)
 
@@ -164,14 +189,18 @@ def reminders_list(request):
         return Response(data)
     
     elif request.method == 'POST':
+        resolved, error_response = _resolve_business_links(request, request.data)
+        if error_response:
+            return error_response
+
         reminder = Reminder.objects.create(
             organization=request.user.organization,
             user=request.user,
             title=request.data['title'],
             message=request.data['message'],
             remind_at=request.data['remind_at'],
-            goal_id=request.data.get('goal_id'),
-            meeting_id=request.data.get('meeting_id'),
-            task_id=request.data.get('task_id')
+            goal_id=resolved['goal_id'],
+            meeting_id=resolved['meeting_id'],
+            task_id=resolved['task_id']
         )
         return Response({'id': reminder.id}, status=status.HTTP_201_CREATED)

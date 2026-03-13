@@ -22,6 +22,7 @@ from apps.agile.permissions import (
 from apps.agile.ai_service import generate_sprint_update_summary
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
+from apps.organizations.models import User
 import logging
 
 logger = logging.getLogger(__name__)
@@ -541,8 +542,10 @@ def move_issue(request, issue_id):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     try:
-        issue = Issue.objects.get(id=issue_id)
-        column = Column.objects.get(id=request.data['column_id'])
+        issue = Issue.objects.get(id=issue_id, organization=org)
+        column = Column.objects.get(id=request.data['column_id'], board__organization=org)
+        if issue.board_id != column.board_id:
+            return Response({'error': 'Column must belong to the issue board'}, status=400)
         
         issue.column = column
         issue.status = request.data.get('status', issue.status)
@@ -570,7 +573,7 @@ def add_comment(request, issue_id):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     try:
-        issue = Issue.objects.get(id=issue_id)
+        issue = Issue.objects.get(id=issue_id, organization=org)
         if not request.data.get('content'):
             return Response({'error': 'content required'}, status=400)
         

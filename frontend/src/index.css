@@ -4,31 +4,31 @@
 
 :root {
   --font-primary: "League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --bg-primary: #0c0a09;
-  --bg-secondary: #1c1917;
-  --bg-tertiary: #292524;
-  --text-primary: #e7e5e4;
-  --text-secondary: #a8a29e;
-  --border-color: #292524;
-  --app-bg: #0f0b0d;
-  --app-surface: #171215;
-  --app-surface-alt: #1f181c;
-  --app-text: #f4ece0;
-  --app-muted: #baa892;
-  --app-border: rgba(255, 225, 193, 0.14);
-  --app-border-strong: rgba(255, 225, 193, 0.2);
-  --app-track: rgba(120, 120, 120, 0.25);
+  --bg-primary: #08111b;
+  --bg-secondary: #101926;
+  --bg-tertiary: #162334;
+  --text-primary: #e9f1fb;
+  --text-secondary: #95a8bf;
+  --border-color: rgba(148, 163, 184, 0.18);
+  --app-bg: #0a121c;
+  --app-surface: #101926;
+  --app-surface-alt: #162231;
+  --app-text: #ebf3ff;
+  --app-muted: #97aac1;
+  --app-border: rgba(148, 163, 184, 0.18);
+  --app-border-strong: rgba(148, 163, 184, 0.28);
+  --app-track: rgba(148, 163, 184, 0.22);
   --app-overlay: rgba(0, 0, 0, 0.65);
-  --app-accent: #d9692e;
-  --app-accent-soft: rgba(217, 105, 46, 0.2);
-  --app-button-text: #20140f;
-  --app-gradient-primary: linear-gradient(135deg, #ffd390, #ff9f62);
-  --app-gradient-accent: linear-gradient(135deg, #ffcc8b, #ff935d);
-  --app-success: #66d5ab;
-  --app-warning: #f59e0b;
-  --app-danger: #ef4444;
-  --app-info: #60a5fa;
-  --app-link: #93c5fd;
+  --app-accent: #4f8cff;
+  --app-accent-soft: rgba(79, 140, 255, 0.18);
+  --app-button-text: #eef5ff;
+  --app-gradient-primary: linear-gradient(135deg, #4f8cff, #78b4ff);
+  --app-gradient-accent: linear-gradient(135deg, #388bff, #7cc5ff);
+  --app-success: #4ec78f;
+  --app-warning: #f2a65a;
+  --app-danger: #ff6b7d;
+  --app-info: #69b7ff;
+  --app-link: #9ec7ff;
   --app-danger-soft: rgba(239, 68, 68, 0.08);
   --app-danger-border: rgba(239, 68, 68, 0.45);
   --app-info-soft: rgba(59, 130, 246, 0.16);
@@ -37,34 +37,42 @@
   --app-success-border: rgba(34, 197, 94, 0.45);
   --app-warning-soft: rgba(245, 158, 11, 0.12);
   --app-warning-border: rgba(245, 158, 11, 0.4);
+  --ui-radius-xs: 8px;
+  --ui-radius-sm: 12px;
+  --ui-radius-md: 16px;
+  --ui-radius-lg: 22px;
+  --ui-radius-xl: 28px;
+  --ui-shadow-sm: 0 10px 24px rgba(2, 12, 26, 0.14);
+  --ui-shadow-md: 0 18px 42px rgba(2, 12, 26, 0.18);
+  --ui-shadow-lg: 0 26px 64px rgba(2, 12, 26, 0.22);
 }
 
 [data-theme="light"] {
-  --bg-primary: #f6f8fb;
+  --bg-primary: #eef3f9;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #eef2f7;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --border-color: #dbe4ef;
-  --app-bg: #f6f1ea;
-  --app-surface: #fffaf3;
-  --app-surface-alt: #ffffff;
-  --app-text: #231814;
-  --app-muted: #7d6d5a;
-  --app-border: #eadfce;
-  --app-border-strong: rgba(125, 109, 90, 0.26);
-  --app-track: rgba(120, 120, 120, 0.2);
+  --bg-tertiary: #e5edf6;
+  --text-primary: #12243a;
+  --text-secondary: #5c7087;
+  --border-color: rgba(15, 23, 42, 0.09);
+  --app-bg: #f3f7fb;
+  --app-surface: #ffffff;
+  --app-surface-alt: #f8fbff;
+  --app-text: #13263c;
+  --app-muted: #61758d;
+  --app-border: rgba(15, 23, 42, 0.09);
+  --app-border-strong: rgba(15, 23, 42, 0.16);
+  --app-track: rgba(148, 163, 184, 0.2);
   --app-overlay: rgba(0, 0, 0, 0.5);
-  --app-accent: #d9692e;
-  --app-accent-soft: rgba(217, 105, 46, 0.2);
-  --app-button-text: #20140f;
-  --app-gradient-primary: linear-gradient(135deg, #ffd390, #ff9f62);
-  --app-gradient-accent: linear-gradient(135deg, #ffcc8b, #ff935d);
+  --app-accent: #256dff;
+  --app-accent-soft: rgba(37, 109, 255, 0.16);
+  --app-button-text: #eef5ff;
+  --app-gradient-primary: linear-gradient(135deg, #256dff, #68abff);
+  --app-gradient-accent: linear-gradient(135deg, #1f72f2, #72c0ff);
   --app-success: #1f8f66;
-  --app-warning: #a16207;
-  --app-danger: #b91c1c;
-  --app-info: #2563eb;
-  --app-link: #1d4ed8;
+  --app-warning: #b7792e;
+  --app-danger: #cc425a;
+  --app-info: #256dff;
+  --app-link: #1f61d4;
   --app-danger-soft: rgba(185, 28, 28, 0.08);
   --app-danger-border: rgba(185, 28, 28, 0.45);
   --app-info-soft: rgba(37, 99, 235, 0.14);
@@ -77,22 +85,19 @@
 
 body {
   font-family: var(--font-primary);
-  background-color: var(--bg-primary);
+  background:
+    radial-gradient(circle at top left, rgba(89, 144, 255, 0.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(80, 196, 255, 0.12), transparent 24%),
+    linear-gradient(180deg, var(--bg-primary), var(--app-bg));
   color: var(--text-primary);
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
 * {
   box-sizing: border-box;
-}
-
-/* Enforce sharp edges globally across the app */
-*,
-*::before,
-*::after {
-  border-radius: 0 !important;
 }
 
 .ui-smooth {
@@ -105,12 +110,12 @@ body {
 
 .ui-card-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .ui-card-lift[data-theme="light"]:hover,
 [data-theme="light"] .ui-card-lift:hover {
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 .ui-card-lift:active {
@@ -124,6 +129,7 @@ body {
 .ui-btn-polish:hover {
   transform: translateY(-1px);
   filter: brightness(1.03);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 [data-theme="light"] .ui-btn-polish:hover {
@@ -180,7 +186,7 @@ body {
   width: min(100%, 1540px);
   margin: 0 auto;
   display: grid;
-  gap: 14px;
+  gap: 18px;
   align-content: start;
 }
 
@@ -197,6 +203,6 @@ body {
 @media (max-width: 1024px) {
   .app-page-shell {
     width: 100%;
-    gap: 12px;
+    gap: 14px;
   }
 }

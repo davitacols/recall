@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import "./Homepage.css";
 
@@ -23,24 +23,28 @@ const principles = [
 
 const modules = [
   {
-    name: "Decision Log",
+    name: "Decisions",
     detail: "Capture key decisions with rationale, owners, approvals, and impact.",
     tag: "Core",
+    href: "/decisions",
   },
   {
-    name: "Context Graph",
+    name: "Knowledge Graph",
     detail: "Connect conversations, documents, projects, and historical signals.",
     tag: "Intelligence",
+    href: "/knowledge/graph",
   },
   {
-    name: "Ask Knoledgr",
+    name: "Ask Recall",
     detail: "Get grounded answers from your team's actual history, not generic AI.",
     tag: "Assistant",
+    href: "/ask",
   },
   {
-    name: "Operational Memory",
-    detail: "Turn scattered activity into a usable record for alignment and onboarding.",
+    name: "Documents",
+    detail: "Keep source documents in one place so teams can reference the record behind the work.",
     tag: "Memory",
+    href: "/business/documents",
   },
 ];
 
@@ -76,7 +80,13 @@ export default function Homepage() {
 
       <header className="hp-header">
         <div className="hp-container hp-header-row">
-          <BrandLogo tone="light" size="lg" />
+          <BrandLogo
+            tone="light"
+            size="lg"
+            downloadUrl="/knoledgr-brandlogo.svg"
+            downloadName="knoledgr-brandlogo.svg"
+            title="Download Knoledgr logo"
+          />
           <div className="hp-header-actions">
             <button
               onClick={() => navigate("/login")}
@@ -136,7 +146,7 @@ export default function Homepage() {
                   onClick={() => navigate("/docs")}
                   className="hp-btn hp-btn-ghost hp-btn-lg"
                 >
-                  See how Ask Knoledgr works
+                  See how Ask Recall works
                 </button>
               </div>
             </motion.div>
@@ -213,11 +223,11 @@ export default function Homepage() {
             </div>
             <div className="hp-modules">
               {modules.map((module) => (
-                <article key={module.name} className="hp-module-card">
+                <Link key={module.name} to={module.href} className="hp-module-card hp-module-link">
                   <span>{module.tag}</span>
                   <h3>{module.name}</h3>
                   <p>{module.detail}</p>
-                </article>
+                </Link>
               ))}
             </div>
           </div>

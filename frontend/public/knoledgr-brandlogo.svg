@@ -1,0 +1,14 @@
+<svg width="320" height="64" viewBox="0 0 320 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="knoledgrMarkBg" x1="8" y1="6" x2="28" y2="34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F2DDC7"/>
+      <stop offset="1" stop-color="#E5C4A5"/>
+    </linearGradient>
+  </defs>
+  <rect x="8.75" y="8.75" width="30.5" height="30.5" rx="7.25" fill="url(#knoledgrMarkBg)" stroke="rgba(84, 52, 31, 0.22)" stroke-width="1.5"/>
+  <rect x="16" y="12" width="4" height="24" rx="2" fill="#24170F"/>
+  <path d="M22 18H24.5C28.6421 18 32 21.3579 32 25.5V28" stroke="#24170F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="52" y="33" fill="#F4F5F6" font-family="Space Grotesk, Segoe UI, sans-serif" font-size="28" font-weight="800" letter-spacing="-0.56">
+    Knoledgr
+  </text>
+</svg>

@@ -34,14 +34,16 @@ export default function BrandLogo({
   label = "Knoledgr",
   textWeight = 800,
   style,
+   downloadUrl,
+   downloadName,
+   title,
 }) {
   const color = tones[tone] || tones.warm;
   const token = getSizeTokens(size);
   const strokeWidth = Math.max(1.5, Math.round(token.mark * 0.08));
   const beamWidth = Math.max(2, Math.round(token.mark * 0.14));
   const curveHeight = Math.max(6, Math.round(token.mark * 0.36));
-
-  return (
+  const content = (
     <span
       style={{
         display: "inline-flex",
@@ -105,4 +107,24 @@ export default function BrandLogo({
       ) : null}
     </span>
   );
+
+  if (downloadUrl) {
+    return (
+      <a
+        href={downloadUrl}
+        download={downloadName}
+        title={title || "Download brand logo"}
+        style={{
+          display: "inline-flex",
+          textDecoration: "none",
+          cursor: "pointer",
+        }}
+        aria-label={title || "Download brand logo"}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return content;
 }

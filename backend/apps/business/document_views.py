@@ -11,6 +11,8 @@ from django.contrib.contenttypes.models import ContentType
 from .document_models import Document, DocumentComment
 from apps.knowledge.unified_models import UnifiedActivity
 
+VALID_DOCUMENT_TYPES = {choice[0] for choice in Document.DOCUMENT_TYPES}
+
 
 def _track_view_activity(request, obj, title, description=""):
     try:
@@ -36,6 +38,46 @@ def _track_view_activity(request, obj, title, description=""):
             )
     except Exception:
         pass
+
+
+def _normalize_tags(raw_tags):
+    if raw_tags in (None, "", []):
+        return []
+    if isinstance(raw_tags, list):
+        values = raw_tags
+    else:
+        values = str(raw_tags).split(",")
+    normalized = []
+    for tag in values:
+        cleaned = str(tag).strip()
+        if cleaned:
+            normalized.append(cleaned[:50])
+    return normalized[:20]
+
+
+def _validate_document_payload(data, partial=False):
+    title = (data.get("title") or "").strip()
+    document_type = (data.get("document_type") or "other").strip()
+    content = data.get("content")
+
+    if not partial or "title" in data:
+        if not title:
+            return {"error": "Title is required"}
+        if len(title) > 255:
+            return {"error": "Title must be 255 characters or fewer"}
+
+    if document_type not in VALID_DOCUMENT_TYPES:
+        return {"error": "Document type is invalid"}
+
+    if content is not None and not isinstance(content, str):
+        return {"error": "Content must be text"}
+
+    if "tags" in data:
+        tags = data.get("tags")
+        if tags not in (None, "", []) and not isinstance(tags, (list, str)):
+            return {"error": "Tags must be a list or comma-separated string"}
+
+    return None
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -66,6 +108,10 @@ def documents_list(request):
         return Response(data)
     
     elif request.method == 'POST':
+        validation_error = _validate_document_payload(request.data)
+        if validation_error:
+            return Response(validation_error, status=status.HTTP_400_BAD_REQUEST)
+
         file_data = None
         file_name = ''
         file_type = ''
@@ -81,9 +127,9 @@ def documents_list(request):
         
         document = Document.objects.create(
             organization=request.user.organization,
-            title=request.data['title'],
+            title=(request.data.get('title') or '').strip(),
             description=request.data.get('description', ''),
-            document_type=request.data.get('document_type', 'other'),
+            document_type=(request.data.get('document_type') or 'other').strip(),
             content=request.data.get('content', ''),
             file_data=file_data,
             file_name=file_name,
@@ -94,7 +140,7 @@ def documents_list(request):
             goal_id=request.data.get('goal_id'),
             meeting_id=request.data.get('meeting_id'),
             task_id=request.data.get('task_id'),
-            tags=request.data.get('tags', [])
+            tags=_normalize_tags(request.data.get('tags', []))
         )
         return Response({'id': document.id}, status=status.HTTP_201_CREATED)
 
@@ -129,13 +175,17 @@ def document_detail(request, pk):
         })
     
     elif request.method == 'PUT':
-        document.title = request.data.get('title', document.title)
+        validation_error = _validate_document_payload(request.data, partial=True)
+        if validation_error:
+            return Response(validation_error, status=status.HTTP_400_BAD_REQUEST)
+
+        document.title = (request.data.get('title', document.title) or '').strip()
         document.description = request.data.get('description', document.description)
         document.document_type = request.data.get('document_type', document.document_type)
         document.content = request.data.get('content', document.content)
         document.file_url = request.data.get('file_url', document.file_url)
         document.version = request.data.get('version', document.version)
-        document.tags = request.data.get('tags', document.tags)
+        document.tags = _normalize_tags(request.data.get('tags', document.tags))
         document.updated_by = request.user
         document.save()
         return Response({'message': 'Document updated'})

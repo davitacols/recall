@@ -62,6 +62,12 @@ export default function Documents() {
     fetchDocuments();
   }, []);
 
+  useEffect(() => () => {
+    if (viewerUrl) {
+      URL.revokeObjectURL(viewerUrl);
+    }
+  }, [viewerUrl]);
+
   const fetchDocuments = async () => {
     setLoading(true);
     try {
@@ -120,6 +126,9 @@ export default function Documents() {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         if (doc.file_type?.includes("pdf")) {
+          if (viewerUrl) {
+            URL.revokeObjectURL(viewerUrl);
+          }
           setViewerUrl(url);
           setShowViewer(true);
           return;

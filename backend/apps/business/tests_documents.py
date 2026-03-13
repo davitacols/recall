@@ -100,3 +100,42 @@ class DocumentsFeatureTests(TestCase):
         document = Document.objects.get(id=response.data["id"])
         self.assertEqual(document.file_name, "policy.txt")
         self.assertEqual(bytes(document.file_data), b"policy body")
+
+    def test_document_create_rejects_invalid_document_type(self):
+        response = self.client.post(
+            "/api/business/documents/",
+            {
+                "title": "Invalid Type Doc",
+                "description": "Bad type",
+                "document_type": "memo",
+                "content": "content",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["error"], "Document type is invalid")
+
+    def test_document_update_normalizes_tags(self):
+        document = Document.objects.create(
+            organization=self.org,
+            title="Tagged doc",
+            description="Metadata",
+            document_type="guide",
+            content="guide body",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        response = self.client.put(
+            f"/api/business/documents/{document.id}/",
+            {
+                "title": "Tagged doc",
+                "tags": "alpha, beta, , gamma",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        document.refresh_from_db()
+        self.assertEqual(document.tags, ["alpha", "beta", "gamma"])

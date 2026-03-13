@@ -40,6 +40,12 @@ export default function DocumentDetail() {
     fetchComments();
   }, [id]);
 
+  useEffect(() => () => {
+    if (fileUrl) {
+      URL.revokeObjectURL(fileUrl);
+    }
+  }, [fileUrl]);
+
   const fetchDocument = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -52,6 +58,12 @@ export default function DocumentDetail() {
       const data = await res.json();
       setDocument(data);
       setFormData(data);
+      setFileUrl((current) => {
+        if (current) {
+          URL.revokeObjectURL(current);
+        }
+        return '';
+      });
       
       if (data.has_file) {
         const fileRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/business/documents/${id}/file/`, {

@@ -4,9 +4,38 @@ Provides full-text search with relevance ranking
 """
 from django.db.models import Q, F
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
-from rank_bm25 import BM25Okapi
 import re
 from collections import defaultdict
+
+try:
+    from rank_bm25 import BM25Okapi
+except ImportError:
+    class BM25Okapi:
+        """Minimal fallback scorer used when rank_bm25 is unavailable locally."""
+
+        def __init__(self, corpus, k1=1.5, b=0.75):
+            self.corpus = corpus
+            self.k1 = k1
+            self.b = b
+
+        def get_scores(self, query_tokens):
+            scores = []
+            query_terms = [token for token in query_tokens if token]
+            for doc_tokens in self.corpus:
+                if not doc_tokens:
+                    scores.append(0.0)
+                    continue
+                score = 0.0
+                doc_len = len(doc_tokens)
+                for term in query_terms:
+                    term_freq = doc_tokens.count(term)
+                    if term_freq == 0:
+                        continue
+                    score += (term_freq * (self.k1 + 1)) / (
+                        term_freq + self.k1 * (1 - self.b + self.b * (doc_len / max(doc_len, 1)))
+                    )
+                scores.append(float(score))
+            return scores
 
 
 class BM25SearchEngine:

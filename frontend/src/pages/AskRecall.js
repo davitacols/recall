@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+import BrandedTechnicalIllustration from '../components/BrandedTechnicalIllustration';
+import { WorkspaceHero, WorkspacePanel } from '../components/WorkspaceChrome';
 import { getProjectPalette } from '../utils/projectUi';
 
 function toDisplayDate(value) {
@@ -431,54 +433,149 @@ export default function AskRecall() {
           { label: 'Decisions', href: '/decisions' },
         ];
 
+  const heroStats = [
+    {
+      label: 'Readiness',
+      value: results?.readinessScore ?? '--',
+      helper: results ? 'Current readiness signal from the latest answer' : 'Run a question to generate readiness guidance',
+      tone: results?.riskStatus === 'critical' ? palette.danger : results?.riskStatus === 'watch' ? palette.warn : palette.good,
+    },
+    {
+      label: 'Evidence',
+      value: results?.evidenceCount ?? 0,
+      helper: results ? `${results?.sourceTypes?.join(', ') || 'No source types'}` : 'No evidence sources yet',
+      tone: lowEvidence ? palette.warn : palette.info,
+    },
+    {
+      label: 'Actions',
+      value: results?.nextActions?.length ?? 0,
+      helper: canRunAutonomousFixes ? 'Autonomous fixes are available' : 'Guidance only until confidence improves',
+      tone: canRunAutonomousFixes ? palette.good : palette.accent,
+    },
+  ];
+
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
-      <section style={{ ...panel(palette), padding: 14 }}>
-        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: palette.muted }}>ORGANIZATIONAL COPILOT</p>
-        <h1 style={{ margin: '6px 0 2px', fontSize: 'clamp(1.3rem,2.4vw,1.9rem)', color: palette.text }}>Ask Recall</h1>
-        <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>Diagnose risk, recommend interventions, and run safe autonomous fixes.</p>
+    <div style={{ display: 'grid', gap: 14 }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Organizational Copilot"
+        title="Ask Recall"
+        description="Diagnose risk, recommend interventions, and run safe autonomous fixes grounded in your team's actual history."
+        stats={heroStats}
+        actions={
+          <>
+            <button type="button" onClick={() => setQuery('Where is execution risk highest this week?')} style={buttonGhost(palette)}>
+              Use sample prompt
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setResults(null);
+                setRequestState('idle');
+                setRequestMessage('');
+              }}
+              style={buttonFilled(palette, !results)}
+              disabled={!results}
+            >
+              New Analysis
+            </button>
+          </>
+        }
+        aside={<BrandedTechnicalIllustration darkMode={darkMode} compact />}
+      />
+
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Query"
+          title="Ask a grounded question"
+          description="Describe the organizational problem and submit with Ctrl+Enter."
+        >
+          <form onSubmit={handleSearch} style={{ display: 'grid', gap: 10 }}>
+            <textarea
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                if (!loading && !executing) {
+                  setRequestState('idle');
+                  setRequestMessage('');
+                }
+              }}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  if (canSubmit) e.currentTarget.form?.requestSubmit();
+                }
+              }}
+              placeholder="Describe the organizational problem to solve..."
+              rows={4}
+              style={{ ...inputStyle(palette), minHeight: 108, resize: 'vertical' }}
+            />
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="submit" disabled={!canSubmit} style={buttonFilled(palette, !canSubmit)}>
+                {loading ? 'Thinking...' : 'Ask Recall'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExecute}
+                disabled={executing || loading || !canRunAutonomousFixes}
+                style={buttonGhost(palette, executing || loading || !canRunAutonomousFixes)}
+              >
+                {executing ? 'Executing...' : 'Run Autonomous Fixes'}
+              </button>
+            </div>
+
+            <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+              Press <strong style={{ color: palette.text }}>Ctrl+Enter</strong> to submit.
+            </p>
+
+            {requestState !== 'idle' ? <p style={{ margin: 0, fontSize: 12, color: statusTone }}>{requestMessage}</p> : null}
+          </form>
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="What-if"
+          title="Simulation Controls"
+          description="Model the effect of resolving decisions, clearing blockers, or assigning high-priority work."
+        >
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <select value={whatIfAction} onChange={(e) => setWhatIfAction(e.target.value)} style={inputCompact(palette)}>
+              <option value="resolve_decisions">Resolve decisions</option>
+              <option value="clear_blockers">Clear blockers</option>
+              <option value="assign_high_priority_tasks">Assign high-priority tasks</option>
+            </select>
+            <input type="number" min={1} max={10} value={whatIfUnits} onChange={(e) => setWhatIfUnits(e.target.value)} style={{ ...inputCompact(palette), width: 78 }} />
+            <input type="number" min={1} max={120} value={whatIfHorizon} onChange={(e) => setWhatIfHorizon(e.target.value)} style={{ ...inputCompact(palette), width: 88 }} />
+            <button type="button" onClick={runWhatIf} disabled={whatIfLoading} style={buttonGhost(palette, whatIfLoading)}>
+              {whatIfLoading ? 'Simulating...' : 'Run'}
+            </button>
+          </div>
+          {!!whatIfError ? <p style={{ margin: 0, fontSize: 12, color: palette.warn }}>{whatIfError}</p> : null}
+          {whatIfResult ? (
+            <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+              Baseline {whatIfResult.baseline?.readiness_score} ({whatIfResult.baseline?.status}) -> Projected{' '}
+              <strong style={{ color: palette.text }}>{whatIfResult.projected?.readiness_score}</strong> ({whatIfResult.projected?.status}), delta{' '}
+              <strong style={{ color: (whatIfResult.projected?.delta || 0) >= 0 ? palette.success : palette.danger }}>
+                {(whatIfResult.projected?.delta || 0) >= 0 ? '+' : ''}
+                {whatIfResult.projected?.delta}
+              </strong>
+              .
+            </p>
+          ) : null}
+        </WorkspacePanel>
       </section>
 
-      <form onSubmit={handleSearch} style={{ ...panel(palette), padding: 12 }}>
-        <textarea
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            if (!loading && !executing) {
-              setRequestState('idle');
-              setRequestMessage('');
-            }
-          }}
-          onKeyDown={(e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-              e.preventDefault();
-              if (canSubmit) e.currentTarget.form?.requestSubmit();
-            }
-          }}
-          placeholder="Describe the organizational problem to solve..."
-          rows={3}
-          style={{ ...inputStyle(palette), minHeight: 90, resize: 'vertical' }}
-        />
-
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-          <button type="submit" disabled={!canSubmit} style={buttonFilled(palette, !canSubmit)}>
-            {loading ? 'Thinking...' : 'Ask Recall'}
-          </button>
-          <button type="button" onClick={handleExecute} disabled={executing || loading || !canRunAutonomousFixes} style={buttonGhost(palette, executing || loading || !canRunAutonomousFixes)}>
-            {executing ? 'Executing...' : 'Run Autonomous Fixes'}
-          </button>
-        </div>
-
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: palette.muted }}>
-          Press <strong style={{ color: palette.text }}>Ctrl+Enter</strong> to submit.
-        </p>
-
-        {requestState !== 'idle' && <p style={{ margin: '6px 0 0', fontSize: 12, color: statusTone }}>{requestMessage}</p>}
-      </form>
-
-      {!results && !loading && (
-        <section style={{ ...panel(palette), padding: 12 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: palette.text }}>Suggested Prompts</p>
+      {!results && !loading ? (
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Suggestions"
+          title="Suggested Prompts"
+          description="Start with one of these questions to explore the copilot."
+        >
           <div style={{ display: 'grid', gap: 8 }}>
             {suggestedQuestions.map((item) => (
               <button key={item} type="button" onClick={() => setQuery(item)} style={{ ...buttonGhost(palette), textAlign: 'left' }}>
@@ -486,57 +583,55 @@ export default function AskRecall() {
               </button>
             ))}
           </div>
-        </section>
-      )}
+        </WorkspacePanel>
+      ) : null}
 
-      <section style={{ ...panel(palette), padding: 12 }}>
-        <p style={{ margin: '0 0 8px', fontSize: 13, color: palette.muted }}>What-if Simulation</p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <select value={whatIfAction} onChange={(e) => setWhatIfAction(e.target.value)} style={inputCompact(palette)}>
-            <option value="resolve_decisions">Resolve decisions</option>
-            <option value="clear_blockers">Clear blockers</option>
-            <option value="assign_high_priority_tasks">Assign high-priority tasks</option>
-          </select>
-          <input type="number" min={1} max={10} value={whatIfUnits} onChange={(e) => setWhatIfUnits(e.target.value)} style={{ ...inputCompact(palette), width: 70 }} />
-          <input type="number" min={1} max={120} value={whatIfHorizon} onChange={(e) => setWhatIfHorizon(e.target.value)} style={{ ...inputCompact(palette), width: 80 }} />
-          <button type="button" onClick={runWhatIf} disabled={whatIfLoading} style={buttonGhost(palette, whatIfLoading)}>
-            {whatIfLoading ? 'Simulating...' : 'Run'}
-          </button>
-        </div>
-        {!!whatIfError && <p style={{ margin: '8px 0 0', fontSize: 12, color: palette.warning }}>{whatIfError}</p>}
-        {whatIfResult && (
-          <p style={{ margin: '8px 0 0', fontSize: 12, color: palette.muted }}>
-            Baseline {whatIfResult.baseline?.readiness_score} ({whatIfResult.baseline?.status}) -> Projected <strong style={{ color: palette.text }}>{whatIfResult.projected?.readiness_score}</strong> ({whatIfResult.projected?.status}), delta <strong style={{ color: (whatIfResult.projected?.delta || 0) >= 0 ? palette.success : palette.danger }}>{(whatIfResult.projected?.delta || 0) >= 0 ? '+' : ''}{whatIfResult.projected?.delta}</strong>.
-          </p>
-        )}
-      </section>
-
-      {feedbackSummary && (
-        <section style={{ ...panel(palette), padding: 12 }}>
-          <p style={{ margin: '0 0 6px', fontSize: 12, color: palette.muted }}>Copilot Feedback (Last {feedbackSummary.window_days || 30} Days)</p>
+      {feedbackSummary ? (
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Feedback Loop"
+          title={`Copilot Feedback (${feedbackSummary.window_days || 30} days)`}
+          description="Track how people are responding to Ask Recall guidance."
+        >
           <p style={{ margin: 0, fontSize: 12, color: palette.text }}>
             Total {feedbackSummary.total_feedback || 0} | Positive {feedbackSummary.positive_rate ?? '--'}% | Up {feedbackSummary.upvotes || 0} | Down {feedbackSummary.downvotes || 0}
           </p>
-          {feedbackTrend.length > 0 && (
-            <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
+          {feedbackTrend.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
               {feedbackTrend.map((point) => {
                 const total = Number(point.total || 0);
                 const up = Number(point.upvotes || 0);
                 const ratio = total > 0 ? Math.max(0.1, up / total) : 0.5;
-                return <div key={point.date} title={`${point.date}: ${up}/${total}`} style={{ height: 20, border: `1px solid ${palette.border}`, borderRadius: 6, background: `linear-gradient(180deg, ${palette.success} ${Math.round(ratio * 100)}%, ${palette.warning} ${Math.round(ratio * 100)}%)`, opacity: total > 0 ? 1 : 0.35 }} />;
+                return (
+                  <div
+                    key={point.date}
+                    title={`${point.date}: ${up}/${total}`}
+                    style={{
+                      height: 24,
+                      border: `1px solid ${palette.border}`,
+                      borderRadius: 8,
+                      background: `linear-gradient(180deg, ${palette.success} ${Math.round(ratio * 100)}%, ${palette.warn} ${Math.round(ratio * 100)}%)`,
+                      opacity: total > 0 ? 1 : 0.35,
+                    }}
+                  />
+                );
               })}
             </div>
-          )}
-        </section>
-      )}
+          ) : null}
+        </WorkspacePanel>
+      ) : null}
 
-      {loading && <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>Analyzing organization state...</p>}
+      {loading ? <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>Analyzing organization state...</p> : null}
 
-      {results && !loading && (
-        <div style={{ display: 'grid', gap: 10 }}>
-          {isNavigationIntent && (
-            <section style={{ ...panel(palette), padding: 12 }}>
-              <h3 style={{ margin: '0 0 8px', color: palette.text }}>Quick Links</h3>
+      {results && !loading ? (
+        <div style={{ display: 'grid', gap: 14 }}>
+          {isNavigationIntent ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Quick Links"
+              title="Relevant destinations"
+              description="Jump straight to the likely tool or route behind the request."
+            >
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {quickToolLinks.map((item) => (
                   <a key={item.id || item.href} href={item.href} style={{ ...buttonGhost(palette), textDecoration: 'none' }}>
@@ -544,30 +639,38 @@ export default function AskRecall() {
                   </a>
                 ))}
               </div>
-            </section>
-          )}
+            </WorkspacePanel>
+          ) : null}
 
-          <section style={{ ...panel(palette), padding: 12 }}>
-            <h3 style={{ margin: '0 0 6px', color: palette.text }}>Answer</h3>
-            {lowEvidence && <p style={{ margin: '0 0 8px', fontSize: 12, color: palette.warning }}>Low evidence: this answer may be incomplete.</p>}
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Answer"
+            title="Grounded response"
+            description="Review the answer, evidence coverage, and confidence before acting."
+          >
+            {lowEvidence ? <p style={{ margin: 0, fontSize: 12, color: palette.warn }}>Low evidence: this answer may be incomplete.</p> : null}
             <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>{results.answer}</p>
-            {!isNavigationIntent && (
-              <p style={{ margin: '8px 0 0', fontSize: 12, color: palette.muted }}>
-                Coverage <strong style={{ color: palette.text }}>{results.coverageScore}</strong> | Evidence <strong style={{ color: palette.text }}>{results.evidenceCount}</strong> | Types <strong style={{ color: palette.text }}>{results.sourceTypes.join(', ') || 'none'}</strong>
+            {!isNavigationIntent ? (
+              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                Coverage <strong style={{ color: palette.text }}>{results.coverageScore}</strong> | Evidence{' '}
+                <strong style={{ color: palette.text }}>{results.evidenceCount}</strong> | Types{' '}
+                <strong style={{ color: palette.text }}>{results.sourceTypes.join(', ') || 'none'}</strong>
               </p>
-            )}
+            ) : null}
 
-            <div style={{ marginTop: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ display: 'grid', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                 <span style={{ fontSize: 12, color: palette.muted }}>Confidence</span>
-                <strong style={{ fontSize: 12, color: palette.text }}>{results.confidence}% ({confidenceLabel})</strong>
+                <strong style={{ fontSize: 12, color: palette.text }}>
+                  {results.confidence}% ({confidenceLabel})
+                </strong>
               </div>
               <div style={{ height: 8, borderRadius: 999, overflow: 'hidden', background: palette.cardAlt }}>
                 <div style={{ width: confidenceWidth, height: '100%', background: palette.ctaGradient }} />
               </div>
             </div>
 
-            <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <button type="button" onClick={() => setFeedbackVote('up')} style={feedbackVote === 'up' ? buttonFilled(palette) : buttonGhost(palette)}>Helpful</button>
               <button type="button" onClick={() => setFeedbackVote('down')} style={feedbackVote === 'down' ? buttonFilled(palette) : buttonGhost(palette)}>Not Helpful</button>
               <select value={feedbackOutcome} onChange={(e) => setFeedbackOutcome(e.target.value)} style={inputCompact(palette)}>
@@ -580,81 +683,98 @@ export default function AskRecall() {
                 {feedbackSubmitting ? 'Saving...' : 'Submit Feedback'}
               </button>
             </div>
-            {!!feedbackMessage && <p style={{ margin: '8px 0 0', fontSize: 12, color: feedbackMessage.includes('Thanks') ? palette.success : palette.warning }}>{feedbackMessage}</p>}
-          </section>
+            {!!feedbackMessage ? (
+              <p style={{ margin: 0, fontSize: 12, color: feedbackMessage.includes('Thanks') ? palette.success : palette.warn }}>
+                {feedbackMessage}
+              </p>
+            ) : null}
+          </WorkspacePanel>
 
-          {!isNavigationIntent && (
-            <section style={{ ...panel(palette), padding: 12 }}>
-              <h3 style={{ margin: '0 0 6px', color: palette.text }}>Current Status</h3>
+          {!isNavigationIntent ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Current Status"
+              title="Risk posture"
+              description="Track the latest status and readiness signal for the situation."
+            >
               <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                Status <strong style={{ color: results.riskStatus === 'critical' ? palette.danger : results.riskStatus === 'watch' ? palette.warning : palette.success }}>{results.riskStatus}</strong>
+                Status{' '}
+                <strong style={{ color: results.riskStatus === 'critical' ? palette.danger : results.riskStatus === 'watch' ? palette.warn : palette.success }}>
+                  {results.riskStatus}
+                </strong>
                 {results.readinessScore !== null ? ` | Readiness ${results.readinessScore}` : ''}
               </p>
-            </section>
-          )}
+            </WorkspacePanel>
+          ) : null}
 
-          {!!results.execution?.performed && !!results.execution?.result && (
-            <section style={{ ...panel(palette), padding: 12 }}>
-              <h3 style={{ margin: '0 0 6px', color: palette.text }}>Execution Result</h3>
+          {!!results.execution?.performed && !!results.execution?.result ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Execution"
+              title="Autonomous fix result"
+              description="Review what Ask Recall executed and what it skipped."
+            >
               <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
                 Executed: {results.execution.result.executed_count} | Skipped: {results.execution.result.skipped_count}
               </p>
-            </section>
-          )}
+            </WorkspacePanel>
+          ) : null}
 
-          {results.nextActions.length > 0 && !isNavigationIntent && !lowEvidence && (
-            <section style={{ ...panel(palette), padding: 12 }}>
-              <h3 style={{ margin: '0 0 8px', color: palette.text }}>Suggested Next Actions</h3>
+          {results.nextActions.length > 0 && !isNavigationIntent && !lowEvidence ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Next Actions"
+              title="Suggested interventions"
+              description="These recommendations are grounded in the current evidence trail."
+            >
               <div style={{ display: 'grid', gap: 8 }}>
                 {results.nextActions.map((action) => (
-                  <div key={action.id} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, background: palette.cardAlt, padding: 10 }}>
+                  <div key={action.id} style={{ border: `1px solid ${palette.border}`, borderRadius: 14, background: palette.cardAlt, padding: 12 }}>
                     <a href={action.href || '#'} style={{ textDecoration: 'none', color: palette.text, fontWeight: 700, fontSize: 13 }}>{action.title}</a>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: palette.muted }}>{action.reason}</p>
                     <p style={{ margin: '4px 0 0', fontSize: 11, color: palette.muted }}>Impact {action.impact} | Confidence {action.confidence}%</p>
                   </div>
                 ))}
               </div>
-            </section>
-          )}
+            </WorkspacePanel>
+          ) : null}
 
-          {results.sources.length > 0 && (
-            <section style={{ ...panel(palette), padding: 12 }}>
-              <h3 style={{ margin: '0 0 8px', color: palette.text }}>Evidence Sources</h3>
+          {results.sources.length > 0 ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Evidence"
+              title="Supporting sources"
+              description="Open the records Ask Recall grounded this answer on."
+            >
               <div style={{ display: 'grid', gap: 8 }}>
                 {results.sources.map((source) => (
-                  <a key={`${source.type}-${source.id}`} href={source.href} style={{ textDecoration: 'none', color: palette.text, border: `1px solid ${palette.border}`, borderRadius: 10, background: palette.cardAlt, padding: 10, display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                  <a
+                    key={`${source.type}-${source.id}`}
+                    href={source.href}
+                    style={{
+                      textDecoration: 'none',
+                      color: palette.text,
+                      border: `1px solid ${palette.border}`,
+                      borderRadius: 14,
+                      background: palette.cardAlt,
+                      padding: 12,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                    }}
+                  >
                     <span style={{ fontSize: 12 }}>{source.title}</span>
                     <span style={{ fontSize: 11, color: palette.muted }}>{source.type} | {source.date}</span>
                   </a>
                 ))}
               </div>
-            </section>
-          )}
-
-          <button
-            type="button"
-            onClick={() => {
-              setQuery('');
-              setResults(null);
-              setRequestState('idle');
-              setRequestMessage('');
-            }}
-            style={buttonGhost(palette)}
-          >
-            New Analysis
-          </button>
+            </WorkspacePanel>
+          ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
-}
-
-function panel(palette) {
-  return {
-    border: `1px solid ${palette.border}`,
-    borderRadius: 12,
-    background: palette.card,
-  };
 }
 
 function inputStyle(palette) {

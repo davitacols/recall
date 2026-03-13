@@ -1,289 +1,606 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowTrendingUpIcon,
+  CalendarDaysIcon,
+  ChartBarIcon,
+  FlagIcon,
+} from "@heroicons/react/24/outline";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import api from "../services/api";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspacePanel,
+  WorkspaceToolbar,
+} from "../components/WorkspaceChrome";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
-function Reports() {
-  const { projectId } = useParams();
-  const [sprints, setSprints] = useState([]);
-  const [selectedSprint, setSelectedSprint] = useState(null);
-  const [burndown, setBurndown] = useState(null);
-  const [velocity, setVelocity] = useState(null);
-  const [loading, setLoading] = useState(true);
+function normalizeItems(payload) {
+  if (Array.isArray(payload?.results)) return payload.results;
+  if (Array.isArray(payload)) return payload;
+  return [];
+}
 
-  useEffect(() => {
-    fetchSprints();
-  }, [projectId]);
-
-  useEffect(() => {
-    if (selectedSprint) {
-      fetchReports();
-    }
-  }, [selectedSprint]);
-
-  const fetchSprints = async () => {
-    try {
-      const response = await api.get(`/api/agile/projects/${projectId}/sprints/`);
-      setSprints(response.data);
-      if (response.data.length > 0) {
-        setSelectedSprint(response.data[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to fetch sprints:', error);
-    } finally {
-      setLoading(false);
-    }
+function generateMockBurndown(total = 50) {
+  const actualSeries = [50, 48, 44, 42, 38, 33, 29, 21, 15, 8, 3];
+  return {
+    data: actualSeries.map((actual, index) => ({
+      day: index,
+      ideal: Math.max(0, total - (total / (actualSeries.length - 1)) * index),
+      actual,
+    })),
+    total,
   };
+}
 
-  const fetchReports = async () => {
-    try {
-      const [burndownRes, velocityRes] = await Promise.all([
-        api.get(`/api/agile/sprints/${selectedSprint}/burndown/`).catch(() => null),
-        api.get(`/api/agile/projects/${projectId}/velocity/`).catch(() => null)
-      ]);
-      setBurndown(burndownRes?.data || generateMockBurndown());
-      setVelocity(velocityRes?.data || generateMockVelocity());
-    } catch (error) {
-      console.error('Failed to fetch reports:', error);
-    }
+function generateMockVelocity() {
+  return {
+    sprints: [
+      { name: "Sprint 1", committed: 30, completed: 27 },
+      { name: "Sprint 2", committed: 34, completed: 31 },
+      { name: "Sprint 3", committed: 36, completed: 35 },
+      { name: "Sprint 4", committed: 38, completed: 36 },
+      { name: "Sprint 5", committed: 42, completed: 39 },
+    ],
+    average: 34,
   };
+}
 
-  const generateMockBurndown = () => {
-    const days = 10;
-    const data = [];
-    let remaining = 50;
-    for (let i = 0; i <= days; i++) {
-      data.push({
-        day: i,
-        ideal: 50 - (50 / days) * i,
-        actual: remaining
-      });
-      remaining = Math.max(0, remaining - Math.random() * 8);
-    }
-    return { data, total: 50 };
-  };
+function formatDateRange(sprint) {
+  if (!sprint?.start_date || !sprint?.end_date) return "Dates unavailable";
+  const start = new Date(sprint.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const end = new Date(sprint.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${start} to ${end}`;
+}
 
-  const generateMockVelocity = () => {
-    return {
-      sprints: [
-        { name: 'Sprint 1', committed: 30, completed: 28 },
-        { name: 'Sprint 2', committed: 35, completed: 32 },
-        { name: 'Sprint 3', committed: 40, completed: 38 },
-        { name: 'Sprint 4', committed: 38, completed: 40 },
-        { name: 'Sprint 5', committed: 42, completed: 41 }
-      ],
-      average: 36
-    };
-  };
+function safeCompletionRate(velocity) {
+  const lastSprint = velocity?.sprints?.[velocity.sprints.length - 1];
+  if (!lastSprint?.committed) return 0;
+  return Math.round((lastSprint.completed / lastSprint.committed) * 100);
+}
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: 'var(--app-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: '32px', height: '32px', border: '2px solid #d97706', borderTop: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-      </div>
-    );
-  }
-
+function MetricCard({ icon: Icon, label, value, helper, tone, palette }) {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--app-text)' }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'var(--app-surface-alt)', marginBottom: '8px', letterSpacing: '-0.02em' }}>Reports & Analytics</h1>
-          <p style={{ fontSize: '14px', color: 'var(--app-muted)' }}>Track team performance and sprint progress</p>
+    <article
+      className="ui-card-lift ui-smooth"
+      style={{
+        borderRadius: 18,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardAlt,
+        padding: 16,
+        display: "grid",
+        gap: 10,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 14,
+            background: `${tone}18`,
+            color: tone,
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          <Icon style={{ width: 18, height: 18 }} />
         </div>
-
-        {/* Sprint Selector */}
-        {sprints.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Select Sprint</label>
-            <select
-              value={selectedSprint || ''}
-              onChange={(e) => setSelectedSprint(parseInt(e.target.value))}
-              style={{ padding: '10px 16px', backgroundColor: 'var(--app-surface)', color: 'var(--app-surface-alt)', border: '1px solid #374151', fontSize: '14px', fontWeight: 600, cursor: 'pointer', minWidth: '250px' }}
-            >
-              {sprints.map(sprint => (
-                <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Metrics Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-          <MetricCard label="Avg Velocity" value={velocity?.average || 0} unit="pts" color="#d97706" />
-          <MetricCard label="Current Sprint" value={burndown?.data?.[burndown.data.length - 1]?.actual.toFixed(0) || 0} unit="pts left" color="var(--app-info)" />
-          <MetricCard label="Completion Rate" value={velocity ? Math.round((velocity.sprints[velocity.sprints.length - 1]?.completed / velocity.sprints[velocity.sprints.length - 1]?.committed) * 100) : 0} unit="%" color="var(--app-success)" />
-          <MetricCard label="Total Sprints" value={velocity?.sprints?.length || 0} unit="" color="var(--app-info)" />
-        </div>
-
-        {/* Charts Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-          {/* Burndown Chart */}
-          <div style={{ backgroundColor: 'var(--app-surface)', border: '1px solid #374151', padding: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--app-surface-alt)', marginBottom: '16px' }}>Sprint Burndown</h2>
-            {burndown && <BurndownChart data={burndown.data} />}
-          </div>
-
-          {/* Velocity Chart */}
-          <div style={{ backgroundColor: 'var(--app-surface)', border: '1px solid #374151', padding: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--app-surface-alt)', marginBottom: '16px' }}>Team Velocity</h2>
-            {velocity && <VelocityChart data={velocity.sprints} average={velocity.average} />}
-          </div>
-        </div>
-
-        {/* Velocity Table */}
-        {velocity && (
-          <div style={{ backgroundColor: 'var(--app-surface)', border: '1px solid #374151', padding: '24px', marginTop: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--app-surface-alt)', marginBottom: '16px' }}>Sprint History</h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #374151' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase' }}>Sprint</th>
-                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase' }}>Committed</th>
-                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase' }}>Completed</th>
-                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase' }}>Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {velocity.sprints.map((sprint, idx) => {
-                  const rate = Math.round((sprint.completed / sprint.committed) * 100);
-                  return (
-                    <tr key={idx} style={{ borderBottom: '1px solid #374151' }}>
-                      <td style={{ padding: '12px', fontSize: '14px', color: 'var(--app-surface-alt)', fontWeight: 600 }}>{sprint.name}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '14px', color: 'var(--app-muted)' }}>{sprint.committed}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '14px', color: 'var(--app-surface-alt)', fontWeight: 600 }}>{sprint.completed}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '14px', color: rate >= 90 ? 'var(--app-success)' : rate >= 70 ? '#eab308' : 'var(--app-danger)', fontWeight: 700 }}>{rate}%</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <strong style={{ fontSize: 28, lineHeight: 1, letterSpacing: "-0.04em", color: palette.text }}>{value}</strong>
       </div>
-    </div>
+      <div style={{ display: "grid", gap: 4 }}>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: palette.muted }}>
+          {label}
+        </p>
+        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.muted }}>{helper}</p>
+      </div>
+    </article>
   );
 }
 
-function MetricCard({ label, value, unit, color }) {
-  return (
-    <div style={{ backgroundColor: 'var(--app-surface)', border: '1px solid #374151', padding: '20px' }}>
-      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--app-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-        <span style={{ fontSize: '32px', fontWeight: 900, color }}>{value}</span>
-        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--app-muted)' }}>{unit}</span>
-      </div>
-    </div>
-  );
-}
-
-function BurndownChart({ data }) {
-  const width = 500;
+function BurndownChart({ data, palette }) {
+  const width = 520;
   const height = 300;
   const padding = 40;
   const chartWidth = width - padding * 2;
   const chartHeight = height - padding * 2;
-
-  const maxY = Math.max(...data.map(d => Math.max(d.ideal, d.actual)));
-  const maxX = data.length - 1;
+  const maxY = Math.max(...data.map((item) => Math.max(item.ideal, item.actual)), 1);
+  const maxX = Math.max(data.length - 1, 1);
 
   const getX = (day) => padding + (day / maxX) * chartWidth;
   const getY = (value) => padding + chartHeight - (value / maxY) * chartHeight;
 
-  const idealPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.day)} ${getY(d.ideal)}`).join(' ');
-  const actualPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.day)} ${getY(d.actual)}`).join(' ');
+  const idealPath = data.map((item, index) => `${index === 0 ? "M" : "L"} ${getX(item.day)} ${getY(item.ideal)}`).join(" ");
+  const actualPath = data.map((item, index) => `${index === 0 ? "M" : "L"} ${getX(item.day)} ${getY(item.actual)}`).join(" ");
 
   return (
     <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
-      {/* Grid lines */}
-      {[0, 0.25, 0.5, 0.75, 1].map(ratio => (
-        <line key={ratio} x1={padding} y1={getY(maxY * ratio)} x2={width - padding} y2={getY(maxY * ratio)} stroke="#374151" strokeWidth="1" />
+      {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
+        <line
+          key={ratio}
+          x1={padding}
+          y1={getY(maxY * ratio)}
+          x2={width - padding}
+          y2={getY(maxY * ratio)}
+          stroke={palette.border}
+          strokeWidth="1"
+        />
       ))}
-      
-      {/* Ideal line */}
-      <path d={idealPath} fill="none" stroke="var(--app-muted)" strokeWidth="2" strokeDasharray="5,5" />
-      
-      {/* Actual line */}
-      <path d={actualPath} fill="none" stroke="#d97706" strokeWidth="3" />
-      
-      {/* Data points */}
-      {data.map(d => (
-        <circle key={d.day} cx={getX(d.day)} cy={getY(d.actual)} r="4" fill="#d97706" />
+
+      <path d={idealPath} fill="none" stroke={palette.muted} strokeWidth="2" strokeDasharray="5,5" />
+      <path d={actualPath} fill="none" stroke={palette.info} strokeWidth="3" />
+
+      {data.map((item) => (
+        <circle key={item.day} cx={getX(item.day)} cy={getY(item.actual)} r="4" fill={palette.info} />
       ))}
-      
-      {/* Axes */}
-      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="var(--app-muted)" strokeWidth="2" />
-      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="var(--app-muted)" strokeWidth="2" />
-      
-      {/* Labels */}
-      <text x={width / 2} y={height - 10} fill="var(--app-muted)" fontSize="12" textAnchor="middle">Days</text>
-      <text x={15} y={height / 2} fill="var(--app-muted)" fontSize="12" textAnchor="middle" transform={`rotate(-90, 15, ${height / 2})`}>Story Points</text>
-      
-      {/* Legend */}
-      <line x1={width - 150} y1={20} x2={width - 120} y2={20} stroke="var(--app-muted)" strokeWidth="2" strokeDasharray="5,5" />
-      <text x={width - 115} y={24} fill="var(--app-muted)" fontSize="12">Ideal</text>
-      <line x1={width - 150} y1={40} x2={width - 120} y2={40} stroke="#d97706" strokeWidth="2" />
-      <text x={width - 115} y={44} fill="var(--app-muted)" fontSize="12">Actual</text>
+
+      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke={palette.muted} strokeWidth="1.5" />
+      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke={palette.muted} strokeWidth="1.5" />
+
+      <text x={width / 2} y={height - 10} fill={palette.muted} fontSize="12" textAnchor="middle">
+        Days
+      </text>
+      <text x={18} y={height / 2} fill={palette.muted} fontSize="12" textAnchor="middle" transform={`rotate(-90, 18, ${height / 2})`}>
+        Story Points
+      </text>
+
+      <line x1={width - 160} y1={22} x2={width - 128} y2={22} stroke={palette.muted} strokeWidth="2" strokeDasharray="5,5" />
+      <text x={width - 121} y={26} fill={palette.muted} fontSize="12">
+        Ideal
+      </text>
+      <line x1={width - 160} y1={42} x2={width - 128} y2={42} stroke={palette.info} strokeWidth="2.5" />
+      <text x={width - 121} y={46} fill={palette.muted} fontSize="12">
+        Actual
+      </text>
     </svg>
   );
 }
 
-function VelocityChart({ data, average }) {
-  const width = 500;
+function VelocityChart({ data, average, palette }) {
+  const width = 520;
   const height = 300;
   const padding = 40;
   const chartWidth = width - padding * 2;
   const chartHeight = height - padding * 2;
-
-  const maxY = Math.max(...data.map(d => Math.max(d.committed, d.completed)));
-  const barWidth = chartWidth / data.length / 2.5;
-  const groupWidth = chartWidth / data.length;
+  const maxY = Math.max(...data.map((item) => Math.max(item.committed, item.completed)), 1);
+  const barWidth = chartWidth / Math.max(data.length, 1) / 2.6;
+  const groupWidth = chartWidth / Math.max(data.length, 1);
 
   const getY = (value) => padding + chartHeight - (value / maxY) * chartHeight;
   const getHeight = (value) => (value / maxY) * chartHeight;
 
   return (
     <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
-      {/* Grid lines */}
-      {[0, 0.25, 0.5, 0.75, 1].map(ratio => (
-        <line key={ratio} x1={padding} y1={getY(maxY * ratio)} x2={width - padding} y2={getY(maxY * ratio)} stroke="#374151" strokeWidth="1" />
+      {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
+        <line
+          key={ratio}
+          x1={padding}
+          y1={getY(maxY * ratio)}
+          x2={width - padding}
+          y2={getY(maxY * ratio)}
+          stroke={palette.border}
+          strokeWidth="1"
+        />
       ))}
-      
-      {/* Average line */}
-      <line x1={padding} y1={getY(average)} x2={width - padding} y2={getY(average)} stroke="var(--app-success)" strokeWidth="2" strokeDasharray="5,5" />
-      
-      {/* Bars */}
-      {data.map((d, i) => {
-        const x = padding + i * groupWidth + groupWidth / 2;
+
+      <line x1={padding} y1={getY(average)} x2={width - padding} y2={getY(average)} stroke={palette.success} strokeWidth="2" strokeDasharray="5,5" />
+
+      {data.map((item, index) => {
+        const x = padding + index * groupWidth + groupWidth / 2;
         return (
-          <g key={i}>
-            {/* Committed bar */}
-            <rect x={x - barWidth - 2} y={getY(d.committed)} width={barWidth} height={getHeight(d.committed)} fill="var(--app-info)" />
-            {/* Completed bar */}
-            <rect x={x + 2} y={getY(d.completed)} width={barWidth} height={getHeight(d.completed)} fill="#d97706" />
-            {/* Label */}
-            <text x={x} y={height - padding + 20} fill="var(--app-muted)" fontSize="10" textAnchor="middle">{d.name.replace('Sprint ', 'S')}</text>
+          <g key={item.name || index}>
+            <rect x={x - barWidth - 3} y={getY(item.committed)} width={barWidth} height={getHeight(item.committed)} rx="6" fill={palette.accent} opacity="0.78" />
+            <rect x={x + 3} y={getY(item.completed)} width={barWidth} height={getHeight(item.completed)} rx="6" fill={palette.info} />
+            <text x={x} y={height - padding + 20} fill={palette.muted} fontSize="10" textAnchor="middle">
+              {String(item.name || `S${index + 1}`).replace("Sprint ", "S")}
+            </text>
           </g>
         );
       })}
-      
-      {/* Axes */}
-      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="var(--app-muted)" strokeWidth="2" />
-      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="var(--app-muted)" strokeWidth="2" />
-      
-      {/* Labels */}
-      <text x={width / 2} y={height - 10} fill="var(--app-muted)" fontSize="12" textAnchor="middle">Sprints</text>
-      <text x={15} y={height / 2} fill="var(--app-muted)" fontSize="12" textAnchor="middle" transform={`rotate(-90, 15, ${height / 2})`}>Story Points</text>
-      
-      {/* Legend */}
-      <rect x={width - 150} y={15} width={15} height={15} fill="var(--app-info)" />
-      <text x={width - 130} y={26} fill="var(--app-muted)" fontSize="12">Committed</text>
-      <rect x={width - 150} y={35} width={15} height={15} fill="#d97706" />
-      <text x={width - 130} y={46} fill="var(--app-muted)" fontSize="12">Completed</text>
-      <line x1={width - 150} y1={60} x2={width - 135} y2={60} stroke="var(--app-success)" strokeWidth="2" strokeDasharray="5,5" />
-      <text x={width - 130} y={64} fill="var(--app-muted)" fontSize="12">Average</text>
+
+      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke={palette.muted} strokeWidth="1.5" />
+      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke={palette.muted} strokeWidth="1.5" />
+
+      <text x={width / 2} y={height - 10} fill={palette.muted} fontSize="12" textAnchor="middle">
+        Sprints
+      </text>
+      <text x={18} y={height / 2} fill={palette.muted} fontSize="12" textAnchor="middle" transform={`rotate(-90, 18, ${height / 2})`}>
+        Story Points
+      </text>
+
+      <rect x={width - 170} y={16} width={14} height={14} rx="4" fill={palette.accent} opacity="0.78" />
+      <text x={width - 149} y={27} fill={palette.muted} fontSize="12">
+        Committed
+      </text>
+      <rect x={width - 170} y={38} width={14} height={14} rx="4" fill={palette.info} />
+      <text x={width - 149} y={49} fill={palette.muted} fontSize="12">
+        Completed
+      </text>
+      <line x1={width - 170} y1={62} x2={width - 154} y2={62} stroke={palette.success} strokeWidth="2" strokeDasharray="5,5" />
+      <text x={width - 149} y={66} fill={palette.muted} fontSize="12">
+        Average
+      </text>
     </svg>
   );
 }
 
-export default Reports;
+export default function Reports() {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState("");
+  const [sprints, setSprints] = useState([]);
+  const [selectedSprint, setSelectedSprint] = useState("");
+  const [burndown, setBurndown] = useState(null);
+  const [velocity, setVelocity] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await api.get("/api/agile/projects/");
+        const projectList = normalizeItems(response?.data);
+        setProjects(projectList);
+        setSelectedProject((current) => current || String(projectList[0]?.id || ""));
+      } catch (requestError) {
+        console.error("Failed to fetch agile projects:", requestError);
+        setProjects([]);
+        setError("We could not load agile projects for reporting.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
+  useEffect(() => {
+    const fetchProjectContext = async () => {
+      if (!selectedProject) {
+        setSprints([]);
+        setSelectedSprint("");
+        setVelocity(null);
+        setBurndown(null);
+        return;
+      }
+
+      setReportLoading(true);
+      try {
+        const sprintResponse = await api.get(`/api/agile/projects/${selectedProject}/sprints/`).catch(() => ({ data: [] }));
+        const sprintList = normalizeItems(sprintResponse?.data);
+        setSprints(sprintList);
+        setSelectedSprint((current) => {
+          const stillValid = sprintList.some((sprint) => String(sprint.id) === String(current));
+          return stillValid ? current : String(sprintList[0]?.id || "");
+        });
+
+        const velocityResponse = await api.get(`/api/agile/projects/${selectedProject}/velocity/`).catch(() => null);
+        setVelocity(velocityResponse?.data || generateMockVelocity());
+      } catch (requestError) {
+        console.error("Failed to fetch reports context:", requestError);
+        setVelocity(generateMockVelocity());
+      } finally {
+        setReportLoading(false);
+      }
+    };
+
+    fetchProjectContext();
+  }, [selectedProject]);
+
+  useEffect(() => {
+    const fetchBurndown = async () => {
+      if (!selectedSprint) {
+        setBurndown(null);
+        return;
+      }
+
+      setReportLoading(true);
+      try {
+        const response = await api.get(`/api/agile/sprints/${selectedSprint}/burndown/`).catch(() => null);
+        setBurndown(response?.data || generateMockBurndown());
+      } catch (requestError) {
+        console.error("Failed to fetch burndown:", requestError);
+        setBurndown(generateMockBurndown());
+      } finally {
+        setReportLoading(false);
+      }
+    };
+
+    fetchBurndown();
+  }, [selectedSprint]);
+
+  const selectedProjectRecord = projects.find((project) => String(project.id) === String(selectedProject));
+  const selectedSprintRecord = sprints.find((sprint) => String(sprint.id) === String(selectedSprint));
+  const completionRate = safeCompletionRate(velocity);
+  const currentRemaining = burndown?.data?.[burndown.data.length - 1]?.actual ?? 0;
+
+  const heroStats = [
+    {
+      label: "Projects",
+      value: projects.length,
+      helper: selectedProjectRecord ? `${selectedProjectRecord.name} is selected` : "Choose a project to view sprint reporting",
+      tone: palette.info,
+    },
+    {
+      label: "Avg Velocity",
+      value: velocity?.average || 0,
+      helper: "Average points completed per sprint",
+      tone: palette.accent,
+    },
+    {
+      label: "Completion",
+      value: `${completionRate}%`,
+      helper: selectedSprintRecord ? `Current sprint ${selectedSprintRecord.name}` : "Based on the latest sprint trend",
+      tone: completionRate >= 90 ? palette.success : completionRate >= 70 ? palette.warn : palette.danger,
+    },
+  ];
+
+  return (
+    <div style={{ ...ui.container, display: "grid", gap: 14 }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Delivery Reporting"
+        title="Reports and Analytics"
+        description="Track sprint progress, velocity, and delivery momentum from a cleaner reporting surface that works even when the underlying agile data is sparse."
+        stats={heroStats}
+        aside={
+          <div
+            style={{
+              minWidth: 230,
+              borderRadius: 20,
+              border: `1px solid ${palette.border}`,
+              background: palette.cardAlt,
+              padding: 14,
+              display: "grid",
+              gap: 6,
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 800, color: palette.muted }}>
+              Reporting Scope
+            </p>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>
+              Choose a project and sprint to compare committed work, completed work, and the expected burn path.
+            </p>
+          </div>
+        }
+      />
+
+      <WorkspaceToolbar palette={palette}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <select
+            value={selectedProject}
+            onChange={(event) => setSelectedProject(event.target.value)}
+            className="ui-focus-ring"
+            style={{ ...ui.input, width: "auto", minWidth: 230, padding: "9px 12px", fontSize: 13 }}
+          >
+            <option value="">Select Project</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedSprint}
+            onChange={(event) => setSelectedSprint(event.target.value)}
+            className="ui-focus-ring"
+            style={{ ...ui.input, width: "auto", minWidth: 230, padding: "9px 12px", fontSize: 13 }}
+            disabled={!sprints.length}
+          >
+            <option value="">{sprints.length ? "Select Sprint" : "No sprints available"}</option>
+            {sprints.map((sprint) => (
+              <option key={sprint.id} value={sprint.id}>
+                {sprint.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {selectedSprintRecord ? (
+          <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+            {selectedSprintRecord.name} · {formatDateRange(selectedSprintRecord)}
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+            Pick a sprint to populate the burndown and sprint history views.
+          </p>
+        )}
+      </WorkspaceToolbar>
+
+      {loading ? (
+        <div
+          style={{
+            minHeight: 240,
+            borderRadius: 20,
+            border: `1px solid ${palette.border}`,
+            background: palette.card,
+            opacity: 0.7,
+          }}
+        />
+      ) : null}
+
+      {!loading && error ? (
+        <WorkspaceEmptyState
+          palette={palette}
+          title="Reporting is unavailable"
+          description={error}
+          action={
+            <Link to="/projects" className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, textDecoration: "none" }}>
+              Open Projects
+            </Link>
+          }
+        />
+      ) : null}
+
+      {!loading && !error && projects.length === 0 ? (
+        <WorkspaceEmptyState
+          palette={palette}
+          title="No agile projects yet"
+          description="Create a project first so sprint reports, velocity, and burndown trends have a delivery surface to draw from."
+          action={
+            <Link to="/projects" className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, textDecoration: "none" }}>
+              Create or Open Projects
+            </Link>
+          }
+        />
+      ) : null}
+
+      {!loading && !error && projects.length > 0 ? (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            <MetricCard
+              icon={ArrowTrendingUpIcon}
+              label="Average Velocity"
+              value={velocity?.average || 0}
+              helper="Average completed story points per sprint"
+              tone={palette.info}
+              palette={palette}
+            />
+            <MetricCard
+              icon={FlagIcon}
+              label="Current Sprint"
+              value={currentRemaining}
+              helper="Story points currently left in the selected sprint"
+              tone={palette.warn}
+              palette={palette}
+            />
+            <MetricCard
+              icon={ChartBarIcon}
+              label="Completion Rate"
+              value={`${completionRate}%`}
+              helper="Latest sprint completion ratio"
+              tone={completionRate >= 90 ? palette.success : palette.info}
+              palette={palette}
+            />
+            <MetricCard
+              icon={CalendarDaysIcon}
+              label="Sprint Count"
+              value={velocity?.sprints?.length || sprints.length}
+              helper="Sprint records available for comparison"
+              tone={palette.accent}
+              palette={palette}
+            />
+          </div>
+
+          {!selectedSprint && !reportLoading ? (
+            <WorkspaceEmptyState
+              palette={palette}
+              title="Select a sprint to open reporting"
+              description="The project has loaded, but we still need a sprint selection before we can draw the burndown chart."
+            />
+          ) : null}
+
+          {selectedSprint ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 12 }}>
+              <WorkspacePanel
+                palette={palette}
+                eyebrow="Burn"
+                title="Sprint burndown"
+                description="Compare the ideal burndown line with the actual trend so teams can see whether work is clearing at the expected pace."
+              >
+                {burndown?.data?.length ? (
+                  <BurndownChart data={burndown.data} palette={palette} />
+                ) : (
+                  <WorkspaceEmptyState
+                    palette={palette}
+                    title="No burndown data"
+                    description="Start a sprint and move work through the board to generate burndown activity."
+                  />
+                )}
+              </WorkspacePanel>
+
+              <WorkspacePanel
+                palette={palette}
+                eyebrow="Throughput"
+                title="Team velocity"
+                description="Review the difference between committed and completed work across recent sprints."
+              >
+                {velocity?.sprints?.length ? (
+                  <VelocityChart data={velocity.sprints} average={velocity.average} palette={palette} />
+                ) : (
+                  <WorkspaceEmptyState
+                    palette={palette}
+                    title="No velocity history"
+                    description="Velocity appears here once sprint history is available."
+                  />
+                )}
+              </WorkspacePanel>
+            </div>
+          ) : null}
+
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="History"
+            title="Sprint history"
+            description="Use the latest sprint outcomes to understand consistency, overcommitment, and delivery reliability."
+          >
+            {velocity?.sprints?.length ? (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${palette.border}` }}>
+                      {["Sprint", "Committed", "Completed", "Rate"].map((heading) => (
+                        <th
+                          key={heading}
+                          style={{
+                            padding: "12px 10px",
+                            textAlign: heading === "Sprint" ? "left" : "right",
+                            fontSize: 11,
+                            fontWeight: 800,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            color: palette.muted,
+                          }}
+                        >
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {velocity.sprints.map((sprint, index) => {
+                      const rate = sprint.committed ? Math.round((sprint.completed / sprint.committed) * 100) : 0;
+                      return (
+                        <tr key={`${sprint.name}-${index}`} style={{ borderBottom: `1px solid ${palette.border}` }}>
+                          <td style={{ padding: "12px 10px", fontSize: 14, fontWeight: 700, color: palette.text }}>{sprint.name}</td>
+                          <td style={{ padding: "12px 10px", textAlign: "right", fontSize: 14, color: palette.muted }}>{sprint.committed}</td>
+                          <td style={{ padding: "12px 10px", textAlign: "right", fontSize: 14, fontWeight: 700, color: palette.text }}>{sprint.completed}</td>
+                          <td
+                            style={{
+                              padding: "12px 10px",
+                              textAlign: "right",
+                              fontSize: 14,
+                              fontWeight: 800,
+                              color: rate >= 90 ? palette.success : rate >= 70 ? palette.warn : palette.danger,
+                            }}
+                          >
+                            {rate}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <WorkspaceEmptyState
+                palette={palette}
+                title="No sprint history yet"
+                description="Velocity history will appear here after the team closes a few sprints."
+              />
+            )}
+          </WorkspacePanel>
+        </>
+      ) : null}
+    </div>
+  );
+}

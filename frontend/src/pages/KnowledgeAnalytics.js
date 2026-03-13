@@ -1,8 +1,60 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowTrendingUpIcon, ChartBarIcon, LinkIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowTrendingUpIcon,
+  ChartBarIcon,
+  LinkIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspacePanel,
+} from "../components/WorkspaceChrome";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
+
+function summarizeRows(rows) {
+  const entries = Object.entries(rows || {});
+  if (!entries.length) return "No data yet";
+  const [topKey, topValue] = entries.sort((left, right) => right[1] - left[1])[0];
+  return `${topKey.replace(/_/g, " ")} leads with ${topValue}`;
+}
+
+function Breakdown({ rows, total, color, palette }) {
+  const entries = Object.entries(rows || {});
+  if (!entries.length) {
+    return (
+      <WorkspaceEmptyState
+        palette={palette}
+        title="No analytics signals yet"
+        description="As new conversations, decisions, and knowledge records accumulate, the distribution view will populate here."
+      />
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {entries
+        .sort((left, right) => right[1] - left[1])
+        .map(([type, count]) => (
+          <div key={type} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" }}>
+            <div style={{ display: "grid", gap: 5 }}>
+              <p style={{ margin: 0, fontSize: 12, color: palette.muted, textTransform: "capitalize" }}>
+                {type.replace(/_/g, " ")}
+              </p>
+              <div style={{ width: "100%", height: 8, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
+                <div style={{ width: `${(count / total) * 100}%`, height: "100%", background: color }} />
+              </div>
+            </div>
+            <p style={{ margin: 0, minWidth: 26, fontSize: 13, fontWeight: 800, color: palette.text, textAlign: "right" }}>
+              {count}
+            </p>
+          </div>
+        ))}
+    </div>
+  );
+}
 
 export default function KnowledgeAnalytics() {
   const { darkMode } = useTheme();
@@ -13,118 +65,155 @@ export default function KnowledgeAnalytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchStats = async () => {
+      setLoading(true);
+      try {
+        const [timelineRes, graphRes] = await Promise.all([
+          api.get("/api/knowledge/timeline/?days=30"),
+          api.get("/api/knowledge/graph/"),
+        ]);
+
+        const timeline = timelineRes?.data?.results || timelineRes?.data || [];
+        const graph = graphRes?.data || { nodes: [], edges: [] };
+
+        const activityByType = {};
+        timeline.forEach((item) => {
+          activityByType[item.type] = (activityByType[item.type] || 0) + 1;
+        });
+
+        const nodesByType = {};
+        (graph.nodes || []).forEach((node) => {
+          nodesByType[node.type] = (nodesByType[node.type] || 0) + 1;
+        });
+
+        setStats({
+          totalActivity: timeline.length,
+          totalNodes: graph.nodes?.length || 0,
+          totalLinks: graph.edges?.length || 0,
+          activityByType,
+          nodesByType,
+          avgLinksPerNode: graph.nodes?.length ? (graph.edges.length / graph.nodes.length).toFixed(1) : "0.0",
+        });
+      } catch (error) {
+        console.error("Failed to load knowledge analytics:", error);
+        setStats({
+          totalActivity: 0,
+          totalNodes: 0,
+          totalLinks: 0,
+          activityByType: {},
+          nodesByType: {},
+          avgLinksPerNode: "0.0",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchStats();
   }, []);
 
-  const fetchStats = async () => {
-    try {
-      const [timelineRes, graphRes] = await Promise.all([
-        api.get("/api/knowledge/timeline/?days=30"),
-        api.get("/api/knowledge/graph/"),
-      ]);
-      const timeline = timelineRes?.data?.results || timelineRes?.data || [];
-      const graph = graphRes?.data || { nodes: [], edges: [] };
-
-      const activityByType = {};
-      (timeline || []).forEach((item) => {
-        activityByType[item.type] = (activityByType[item.type] || 0) + 1;
-      });
-
-      const nodesByType = {};
-      (graph.nodes || []).forEach((node) => {
-        nodesByType[node.type] = (nodesByType[node.type] || 0) + 1;
-      });
-
-      setStats({
-        totalActivity: (timeline || []).length,
-        totalNodes: graph.nodes?.length || 0,
-        totalLinks: graph.edges?.length || 0,
-        activityByType,
-        nodesByType,
-        avgLinksPerNode: graph.nodes?.length ? (graph.edges.length / graph.nodes.length).toFixed(1) : "0.0",
-      });
-    } catch (error) {
-      console.error("Error:", error);
-      setStats({ totalActivity: 0, totalNodes: 0, totalLinks: 0, activityByType: {}, nodesByType: {}, avgLinksPerNode: "0.0" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh" }}>
-        <div style={ui.container}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8 }}>
-            {[1, 2, 3, 4].map((i) => <div key={i} style={{ borderRadius: 12, height: 120, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />)}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const heroStats = stats
+    ? [
+        {
+          label: "30 Day Activity",
+          value: stats.totalActivity,
+          helper: summarizeRows(stats.activityByType),
+          tone: palette.info,
+        },
+        {
+          label: "Knowledge Items",
+          value: stats.totalNodes,
+          helper: summarizeRows(stats.nodesByType),
+          tone: palette.accent,
+        },
+        {
+          label: "Link Density",
+          value: stats.avgLinksPerNode,
+          helper: `${stats.totalLinks} relationships across the graph`,
+          tone: palette.success,
+        },
+      ]
+    : [];
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={ui.container}>
-        <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 16, marginBottom: 12 }}>
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>KNOWLEDGE ANALYTICS</p>
-          <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", color: palette.text, letterSpacing: "-0.02em" }}>Knowledge Analytics</h1>
-          <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>30-day trend, content distribution, and knowledge linkage density.</p>
-        </section>
+    <div style={{ ...ui.container, display: "grid", gap: 14 }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Knowledge Signals"
+        title="Knowledge Analytics"
+        description="Track how activity flows through the workspace, which record types dominate the graph, and how richly the knowledge network is connected."
+        stats={heroStats}
+        aside={
+          <div style={{ display: "grid", gap: 10, minWidth: 220 }}>
+            {[
+              { icon: ChartBarIcon, label: "Timeline window", value: "30 days" },
+              { icon: UserGroupIcon, label: "Graph coverage", value: stats?.totalNodes || 0 },
+              { icon: LinkIcon, label: "Connections", value: stats?.totalLinks || 0 },
+              { icon: ArrowTrendingUpIcon, label: "Avg links", value: stats?.avgLinksPerNode || "0.0" },
+            ].map((item) => (
+              <div
+                key={item.label}
+                style={{
+                  borderRadius: 18,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.cardAlt,
+                  padding: "12px 14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <item.icon style={{ width: 16, height: 16, color: palette.info }} />
+                  <span style={{ fontSize: 12, color: palette.muted }}>{item.label}</span>
+                </div>
+                <strong style={{ color: palette.text, fontSize: 14 }}>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+        }
+      />
 
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
-          <TopStat icon={ChartBarIcon} label="Total Activity" value={stats.totalActivity} palette={palette} />
-          <TopStat icon={UserGroupIcon} label="Knowledge Items" value={stats.totalNodes} palette={palette} />
-          <TopStat icon={LinkIcon} label="Connections" value={stats.totalLinks} palette={palette} />
-          <TopStat icon={ArrowTrendingUpIcon} label="Avg Links/Item" value={stats.avgLinksPerNode} palette={palette} />
-        </section>
+      {loading ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+          {[1, 2, 3].map((item) => (
+            <div
+              key={item}
+              style={{
+                minHeight: 180,
+                borderRadius: 20,
+                border: `1px solid ${palette.border}`,
+                background: palette.card,
+                opacity: 0.7,
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
 
-        <section style={ui.responsiveSplit}>
-          <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
-            <h2 style={{ margin: "0 0 10px", fontSize: 16, color: palette.text }}>Activity by Type</h2>
-            <Breakdown rows={stats.activityByType} total={stats.totalActivity || 1} color={palette.info} palette={palette} />
-          </article>
+      {!loading ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Timeline"
+            title="Activity by type"
+            description="Use the recent activity split to understand whether conversations, decisions, and structured records are staying balanced."
+          >
+            <Breakdown rows={stats?.activityByType} total={stats?.totalActivity || 1} color={palette.info} palette={palette} />
+          </WorkspacePanel>
 
-          <article style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
-            <h2 style={{ margin: "0 0 10px", fontSize: 16, color: palette.text }}>Content Distribution</h2>
-            <Breakdown rows={stats.nodesByType} total={stats.totalNodes || 1} color={palette.info} palette={palette} />
-          </article>
-        </section>
-      </div>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Graph"
+            title="Content distribution"
+            description="This distribution helps show whether the knowledge graph is dominated by only one kind of record."
+          >
+            <Breakdown rows={stats?.nodesByType} total={stats?.totalNodes || 1} color={palette.accent} palette={palette} />
+          </WorkspacePanel>
+        </div>
+      ) : null}
     </div>
   );
 }
-
-function TopStat({ icon: Icon, label, value, palette }) {
-  return (
-    <article style={{ borderRadius: 12, padding: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Icon style={{ width: 18, height: 18, color: palette.info }} />
-        <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: palette.text }}>{value}</p>
-      </div>
-      <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>{label}</p>
-    </article>
-  );
-}
-
-function Breakdown({ rows, total, color, palette }) {
-  const entries = Object.entries(rows || {});
-  if (!entries.length) return <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>No data</p>;
-
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      {entries.map(([type, count]) => (
-        <div key={type} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
-          <div>
-            <p style={{ margin: "0 0 4px", fontSize: 12, color: palette.muted, textTransform: "capitalize" }}>{type.replace("_", " ")}</p>
-            <div style={{ width: "100%", height: 7, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(count / total) * 100}%`, background: color }} />
-            </div>
-          </div>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text, minWidth: 24, textAlign: "right" }}>{count}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-

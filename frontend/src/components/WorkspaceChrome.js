@@ -15,13 +15,7 @@ export function WorkspaceHero({
       className="ui-enter"
       style={{
         ...hero,
-        border: `1px solid ${palette.border}`,
-        background: darkMode
-          ? "linear-gradient(145deg, rgba(10, 24, 38, 0.94), rgba(15, 28, 43, 0.9))"
-          : "linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 247, 255, 0.92))",
-        backgroundImage: "url('/brand/knoledgr-aurora.svg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
+        background: "transparent",
       }}
     >
       <div style={heroMain}>
@@ -127,12 +121,11 @@ export function WorkspaceEmptyState({ palette, title, description, action }) {
 
 const hero = {
   position: "relative",
-  borderRadius: 28,
-  padding: "clamp(14px, 2.4vw, 22px)",
+  padding: "clamp(2px, 0.7vw, 6px) 0 clamp(4px, 0.9vw, 8px)",
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: 14,
-  alignItems: "stretch",
+  gap: 12,
+  alignItems: "start",
 };
 
 const heroMain = {

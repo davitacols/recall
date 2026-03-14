@@ -427,37 +427,20 @@ export default function UnifiedLayout({ children }) {
             style={{
               ...layoutHeader,
               ...(isMobile ? layoutHeaderMobile : null),
-              background: palette.panelGlass,
-              border: `1px solid ${palette.border}`,
-              boxShadow: darkMode ? "0 18px 44px rgba(2,8,16,0.36)" : "0 18px 42px rgba(29,55,78,0.12)",
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
+              backdropFilter: "none",
             }}
           >
-            <div
-              aria-hidden="true"
-              style={{
-                ...headerBackdrop,
-                backgroundImage: "url('/brand/knoledgr-aurora.svg')",
-                opacity: darkMode ? 0.42 : 0.22,
-              }}
-            />
-            <div
-              aria-hidden="true"
-              style={{
-                ...headerBackdropGrid,
-                backgroundImage: "url('/brand/knoledgr-grid.svg')",
-                opacity: darkMode ? 0.18 : 0.1,
-              }}
-            />
             <div style={headerPrimaryRow}>
               <div style={headerIdentity}>
                 <div style={headerTitleBlock}>
                   <div
                     style={{
                       ...headerBrandCapsule,
-                      border: `1px solid ${palette.border}`,
-                      background: darkMode
-                        ? "linear-gradient(135deg, rgba(10, 24, 38, 0.82), rgba(19, 37, 58, 0.66))"
-                        : "linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(235, 245, 255, 0.78))",
+                      border: "none",
+                      background: "transparent",
                     }}
                   >
                     <BrandLogo tone={darkMode ? "light" : "warm"} size="sm" showText={false} />
@@ -890,51 +873,50 @@ const layoutHeader = {
   position: "sticky",
   top: 0,
   zIndex: 80,
-  borderRadius: 24,
-  padding: "14px 16px 10px",
-  marginBottom: 16,
-  backdropFilter: "blur(18px)",
+  borderRadius: 0,
+  padding: "8px 2px 6px",
+  marginBottom: 10,
 };
 
 const layoutHeaderMobile = {
   top: 0,
-  borderRadius: 18,
-  padding: "10px 11px 8px",
-  marginBottom: 12,
+  borderRadius: 0,
+  padding: "6px 0 6px",
+  marginBottom: 8,
 };
 
 const headerEyebrow = {
   margin: 0,
-  fontSize: 10,
+  fontSize: 9,
   fontWeight: 700,
-  letterSpacing: "0.18em",
+  letterSpacing: "0.16em",
   textTransform: "uppercase",
 };
 
 const headerTitle = {
-  margin: "6px 0 0",
-  fontSize: "clamp(1.02rem, 1.45vw, 1.32rem)",
+  margin: "3px 0 0",
+  fontSize: "clamp(0.96rem, 1.2vw, 1.14rem)",
   letterSpacing: "-0.03em",
   fontWeight: 800,
 };
 
 const headerTitleMobile = {
-  marginBottom: 4,
-  fontSize: "1.18rem",
+  marginBottom: 2,
+  fontSize: "1.02rem",
 };
 
 const headerSubtitle = {
-  margin: "6px 0 0",
-  fontSize: 12,
-  lineHeight: 1.45,
-  maxWidth: 620,
+  margin: "4px 0 0",
+  fontSize: 11,
+  lineHeight: 1.4,
+  maxWidth: 560,
 };
 
 const headerPrimaryRow = {
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   justifyContent: "space-between",
-  gap: 12,
+  gap: 10,
   flexWrap: "wrap",
   position: "relative",
   zIndex: 1,
@@ -943,7 +925,7 @@ const headerPrimaryRow = {
 const headerIdentity = {
   display: "flex",
   alignItems: "flex-start",
-  gap: 12,
+  gap: 8,
   minWidth: 0,
 };
 
@@ -969,34 +951,34 @@ const headerTitleBlock = {
   minWidth: 0,
   maxWidth: 680,
   display: "grid",
-  gap: 8,
+  gap: 6,
 };
 
 const headerBrandCapsule = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 10,
+  gap: 8,
   width: "fit-content",
-  borderRadius: 18,
-  padding: "6px 8px",
-  backdropFilter: "blur(16px)",
+  borderRadius: 999,
+  padding: "0",
+  backdropFilter: "none",
 };
 
 const headerBrandCopy = {
   display: "grid",
-  gap: 2,
+  gap: 1,
 };
 
 const headerBrandLabel = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 800,
-  letterSpacing: "0.02em",
+  letterSpacing: "0.01em",
 };
 
 const headerBrandHint = {
   margin: 0,
-  fontSize: 10,
+  fontSize: 9,
   fontWeight: 600,
 };
 
@@ -1005,7 +987,7 @@ const headerBreadcrumbs = {
 };
 
 const headerMetaRow = {
-  marginTop: 10,
+  marginTop: 8,
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
@@ -1017,7 +999,7 @@ const headerMetaRow = {
 
 const headerSecondaryRow = {
   ...headerMetaRow,
-  paddingTop: 10,
+  paddingTop: 8,
 };
 
 const headerBackdrop = {
@@ -1041,14 +1023,14 @@ const headerBackdropGrid = {
 const headerMetaPills = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  gap: 6,
   flexWrap: "wrap",
 };
 
 const headerPill = {
   borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 11,
+  padding: "6px 10px",
+  fontSize: 10,
   fontWeight: 700,
   letterSpacing: "0.02em",
 };

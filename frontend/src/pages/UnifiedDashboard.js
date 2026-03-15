@@ -10,37 +10,35 @@ import {
   TeamExpertiseMap,
   TrendAnalysis,
 } from "../components/EnhancedWidgets";
+import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import {
-  ArrowTrendingUpIcon,
-  ChatBubbleLeftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   ClipboardDocumentListIcon,
-  DocumentCheckIcon,
-  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { buildApiUrl } from "../utils/apiBase";
+import { getProjectPalette } from "../utils/projectUi";
 
-const DASHBOARD_CARD_ORDER_KEY = "unifiedDashboardCardOrderV1";
+const DASHBOARD_CARD_ORDER_KEY = "unifiedDashboardCardOrderV2";
 const LEFT_CARD_IDS = [
   "mission-control",
   "chief-of-staff",
+  "daily-digest",
   "health-snapshot",
   "copilot-feedback",
   "trends-metrics",
   "team-expertise",
-  "daily-digest",
 ];
 const RIGHT_CARD_IDS = [
+  "pending-outcomes",
+  "decision-drift",
   "decision-twin",
   "decision-debt",
   "decision-outcomes",
-  "pending-outcomes",
-  "decision-drift",
   "team-calibration",
-  "advanced-insights",
   "ai-recommendations",
+  "advanced-insights",
 ];
 
 function normalizeOrder(columnOrder, defaults) {
@@ -56,6 +54,13 @@ function normalizeOrder(columnOrder, defaults) {
     if (!seen.has(id)) cleaned.push(id);
   }
   return cleaned;
+}
+
+function humanizeActivityType(activity) {
+  const raw = activity?.content_type?.split(".").pop() || activity?.type || "activity";
+  return raw
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function loadCardOrder() {
@@ -309,25 +314,29 @@ export default function UnifiedDashboard() {
     }
   };
 
-  const palette = useMemo(
-    () => ({
+  const palette = useMemo(() => {
+    const basePalette = getProjectPalette(darkMode);
+    return {
       panel: "var(--ui-panel)",
+      card: "var(--ui-panel)",
       panelAlt: "var(--ui-panel-alt)",
+      cardAlt: "var(--ui-panel-alt)",
       border: "var(--ui-border)",
       text: "var(--ui-text)",
       muted: "var(--ui-muted)",
       dim: "var(--ui-muted)",
       accent: "var(--ui-accent)",
+      accentSoft: basePalette.accentSoft,
       info: "var(--ui-info)",
       good: "var(--ui-good)",
+      success: "var(--ui-good)",
       warn: "var(--ui-warn)",
       danger: "var(--ui-danger)",
       buttonText: "var(--app-button-text)",
       ctaGradient: "var(--app-gradient-primary)",
       shadow: "none",
-    }),
-    []
-  );
+    };
+  }, [darkMode]);
 
   const getActivityUrl = (activity) => {
     const type = activity.content_type?.split(".")[1] || "conversation";
@@ -402,6 +411,9 @@ export default function UnifiedDashboard() {
 
   const sprintBlocked = currentSprint?.blocked_count || currentSprint?.blocked || 0;
   const sprintInProgress = currentSprint?.in_progress || 0;
+  const sprintTotal = currentSprint?.issue_count || 0;
+  const sprintCompleted = currentSprint?.completed_count || currentSprint?.completed || 0;
+  const sprintProgress = sprintTotal > 0 ? Math.round((sprintCompleted / sprintTotal) * 100) : 0;
   const topFocusCards = [
     {
       title: "Outcome Reviews",
@@ -428,25 +440,37 @@ export default function UnifiedDashboard() {
       tone: sprintBlocked > 0 ? palette.warn : palette.good,
     },
   ];
-  const heroPulseCards = [
+  const overviewStats = [
     {
-      label: "Team Signals",
+      label: "Signals",
       value: stats.activity,
       helper: "Events captured this week",
-      tint: palette.accent,
+      tone: palette.accent,
     },
     {
-      label: "Outcome Reliability",
+      label: "Reliability",
       value: `${outcomeStats.avg_reliability || 0}%`,
       helper: "Average decision confidence",
-      tint: palette.good,
+      tone: palette.good,
     },
     {
-      label: "Sprint Pressure",
+      label: "Pending Reviews",
+      value: pendingOutcomeMeta.total,
+      helper: pendingOutcomeMeta.overdue ? `${pendingOutcomeMeta.overdue} overdue right now` : "Outcome review queue is under control",
+      tone: pendingOutcomeMeta.overdue ? palette.warn : palette.info,
+    },
+    {
+      label: "Sprint Risk",
       value: `${sprintBlocked}`,
       helper: `${sprintInProgress} items moving right now`,
-      tint: sprintBlocked > 0 ? palette.warn : palette.info,
+      tone: sprintBlocked > 0 ? palette.warn : palette.good,
     },
+  ];
+  const quickLinks = [
+    { label: "Projects", to: "/projects", primary: true },
+    { label: "Sprint Board", to: "/sprint", primary: true },
+    { label: "Decision Hub", to: "/decisions", primary: false },
+    { label: "Ask Recall", to: "/ask", primary: false },
   ];
 
   if (loading) {
@@ -455,17 +479,31 @@ export default function UnifiedDashboard() {
         <div
           style={{
             ...loadingCard,
-            background: palette.panel,
+            background: `linear-gradient(180deg, ${palette.panel}, ${palette.cardAlt})`,
             border: `1px solid ${palette.border}`,
           }}
         >
           <div style={loadingTop}>
-            <span className="spinner" aria-hidden="true" />
+            <div style={{ ...loadingOrb, background: palette.ctaGradient }}>
+              <span className="spinner" aria-hidden="true" />
+            </div>
             <div style={{ minWidth: 0 }}>
+              <p style={{ ...loadingEyebrow, color: palette.muted }}>Dashboard Sync</p>
               <p style={loadingTitle}>Hydrating your command center</p>
               <p style={{ ...loadingSubtitle, color: palette.muted }}>
                 Pulling activity, decisions, outcomes, and sprint signals
               </p>
+            </div>
+          </div>
+
+          <div style={loadingMetricRail}>
+            <div style={{ ...loadingMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+              <div style={{ ...loadingMetricValue, background: palette.panelAlt }} />
+              <div style={{ ...loadingMetricLabel, background: palette.panelAlt }} />
+            </div>
+            <div style={{ ...loadingMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+              <div style={{ ...loadingMetricValue, background: palette.panelAlt }} />
+              <div style={{ ...loadingMetricLabel, background: palette.panelAlt }} />
             </div>
           </div>
 
@@ -481,147 +519,124 @@ export default function UnifiedDashboard() {
 
   return (
     <div style={pageStyle}>
-      <section
-        className="ui-enter"
-        style={{
-          ...controlStrip,
-          border: `1px solid ${palette.border}`,
-          background: palette.panelAlt,
-          backgroundImage: "url('/brand/knoledgr-grid.svg')",
-          backgroundSize: "820px 820px",
-          "--ui-delay": "10ms",
-        }}
-      >
-        <p style={{ ...controlLabel, color: palette.muted }}>Jump to</p>
-        <Link className="ui-btn-polish ui-focus-ring" to="/projects" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Projects</Link>
-        <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Sprint Board</Link>
-        <Link className="ui-btn-polish ui-focus-ring" to="/decisions" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Decision Hub</Link>
-        <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={{ ...controlPill, background: palette.ctaGradient, color: palette.buttonText }}>Ask Recall</Link>
-      </section>
-
-      <section
-        className="ui-enter"
-        style={{
-          ...hero,
-          border: `1px solid ${palette.border}`,
-          "--ui-delay": "70ms",
-          background: darkMode
-            ? "linear-gradient(145deg, rgba(10, 24, 38, 0.94), rgba(15, 28, 43, 0.9))"
-            : "linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 247, 255, 0.92))",
-          backgroundImage: "url('/brand/knoledgr-aurora.svg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          boxShadow: "var(--ui-shadow-sm)",
-          overflow: "hidden",
-        }}
-      >
-        <div style={heroMainWrap}>
-          <p style={{ ...eyebrow, color: palette.muted }}>UNIFIED DASHBOARD</p>
-          <h1 style={{ ...title, color: palette.text }}>Unified Operations</h1>
-          <p style={{ ...subtitle, color: palette.muted }}>
-            Understand what needs attention now, what is healthy, and where to act next across decisions, outcomes, and sprint execution.
-          </p>
-
-          <div style={heroBadges}>
-            <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
-              <SparklesIcon style={icon16} /> AI rate {stats.rate}%
-            </div>
-            <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
-              {stats.activity} signals this week
-            </div>
-            <div style={{ ...heroBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
-              {pendingOutcomeMeta.total} review items open
-            </div>
-          </div>
-        </div>
-        <div style={heroRail}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Dashboard"
+        title="Command Center"
+        description="Scan delivery health, decision follow-through, and live team signals without the visual noise of the older dashboard shell."
+        stats={overviewStats}
+        actions={
+          <>
+            {quickLinks.map((item) => (
+              <Link
+                key={item.to}
+                className="ui-btn-polish ui-focus-ring"
+                to={item.to}
+                style={item.primary ? commandPrimaryLink(palette) : commandSecondaryLink(palette)}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </>
+        }
+        aside={
           <article
+            className="ui-card-lift ui-smooth"
             style={{
-              ...heroVisualCard,
+              ...dashboardAsideCard,
               border: `1px solid ${palette.border}`,
-              background: darkMode
-                ? "linear-gradient(160deg, rgba(10, 24, 38, 0.7), rgba(15, 28, 43, 0.58))"
-                : "linear-gradient(160deg, rgba(255, 255, 255, 0.84), rgba(235, 245, 255, 0.72))",
-              backgroundImage: "url('/brand/knoledgr-memory-orbit.svg')",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
+              background: palette.cardAlt,
             }}
           >
-            <p style={{ ...heroVisualLabel, color: palette.muted }}>Live Context Map</p>
-            <h3 style={{ ...heroVisualTitle, color: palette.text }}>
-              Decisions, docs, and execution stay stitched together.
-            </h3>
-            <div style={heroVisualLegend}>
-              <span style={{ ...heroVisualPill, border: `1px solid ${palette.border}`, color: palette.text }}>Decision log</span>
-              <span style={{ ...heroVisualPill, border: `1px solid ${palette.border}`, color: palette.text }}>Documents</span>
-              <span style={{ ...heroVisualPill, border: `1px solid ${palette.border}`, color: palette.text }}>Sprint state</span>
-            </div>
+            <p style={{ ...dashboardAsideEyebrow, color: palette.muted }}>Current Sprint</p>
+            {currentSprint ? (
+              <>
+                <h3 style={{ ...dashboardAsideTitle, color: palette.text }}>{currentSprint.name}</h3>
+                <p style={{ ...dashboardAsideBody, color: palette.muted }}>
+                  {sprintProgress}% complete with {sprintBlocked} blocked items and {sprintInProgress} active right now.
+                </p>
+                <div style={{ ...dashboardProgressTrack, background: palette.border }}>
+                  <div style={{ ...dashboardProgressFill, width: `${sprintProgress}%`, background: palette.ctaGradient }} />
+                </div>
+                <div style={dashboardAsideGrid}>
+                  <div style={{ ...dashboardAsideMetric, border: `1px solid ${palette.border}`, background: palette.card }}>
+                    <p style={{ ...dashboardAsideMetricLabel, color: palette.muted }}>Done</p>
+                    <p style={{ ...dashboardAsideMetricValue, color: palette.good }}>{sprintCompleted}</p>
+                  </div>
+                  <div style={{ ...dashboardAsideMetric, border: `1px solid ${palette.border}`, background: palette.card }}>
+                    <p style={{ ...dashboardAsideMetricLabel, color: palette.muted }}>Total</p>
+                    <p style={{ ...dashboardAsideMetricValue, color: palette.text }}>{sprintTotal}</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p style={{ ...dashboardAsideBody, color: palette.muted }}>
+                No active sprint is running right now. Open the sprint board or projects view to start planning the next execution cycle.
+              </p>
+            )}
           </article>
-          {heroPulseCards.map((card) => (
-            <article
-              key={card.label}
+        }
+      />
+
+      <WorkspaceToolbar palette={palette}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {topFocusCards.map((card) => (
+            <Link
+              key={card.title}
+              to={card.ctaTo}
+              className="ui-btn-polish ui-focus-ring"
               style={{
-                ...heroRailCard,
+                ...toolbarFocusLink,
                 border: `1px solid ${palette.border}`,
-                background: darkMode
-                  ? "linear-gradient(155deg, rgba(12, 24, 38, 0.82), rgba(18, 39, 58, 0.68))"
-                  : "linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(236, 246, 255, 0.82))",
+                background: palette.cardAlt,
+                color: palette.text,
               }}
             >
-              <p style={{ ...heroRailLabel, color: palette.muted }}>{card.label}</p>
-              <p style={{ ...heroRailValue, color: card.tint }}>{card.value}</p>
-              <p style={{ ...heroRailHelper, color: palette.dim }}>{card.helper}</p>
-            </article>
+              <span style={{ ...toolbarFocusLabel, color: palette.muted }}>{card.title}</span>
+              <span style={{ ...toolbarFocusValue, color: card.tone }}>{card.value}</span>
+            </Link>
           ))}
         </div>
-      </section>
-
-      <section className="ui-enter" style={{ ...kpiGrid, "--ui-delay": "130ms" }}>
-        <StatCard label="Activities" value={stats.activity} icon={ChatBubbleLeftIcon} color={palette.accent} tone={palette} />
-        <StatCard label="Decisions" value={stats.nodes} icon={DocumentCheckIcon} color={palette.info} tone={palette} />
-        <StatCard label="Success Rate" value={`${stats.rate}%`} icon={ArrowTrendingUpIcon} color={palette.good} tone={palette} />
-      </section>
-
-      <section className="ui-enter" style={{ ...focusSection, "--ui-delay": "160ms" }}>
-        <div style={sectionHeader}>
-          <p style={{ ...sectionEyebrow, color: palette.muted }}>Immediate Focus</p>
-          <p style={{ ...sectionHelper, color: palette.muted }}>
-            Start here to resolve the biggest blockers before scanning detailed widgets.
-          </p>
-        </div>
-        <div style={focusGrid}>
-          {topFocusCards.map((card) => (
-            <article
-              key={card.title}
-              className="ui-card-lift ui-smooth"
-              style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}
-            >
-              <p style={{ ...focusLabel, color: palette.muted }}>{card.title}</p>
-              <p style={{ ...focusValue, color: card.tone }}>{card.value}</p>
-              <p style={{ ...focusHelper, color: palette.dim }}>{card.helper}</p>
-              <Link
-                to={card.ctaTo}
-                style={{ ...focusLink, color: palette.buttonText, background: palette.ctaGradient }}
-              >
-                {card.ctaLabel}
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
+        <p style={{ ...toolbarNote, color: palette.muted }}>
+          {pendingOutcomeMeta.overdue > 0
+            ? `${pendingOutcomeMeta.overdue} outcome reviews are overdue, so that queue should be cleared before lower-priority dashboard work.`
+            : "The dashboard is stable enough to use as a quick scan instead of a firefighting queue."}
+        </p>
+      </WorkspaceToolbar>
 
       <section
         className="ui-enter"
         style={{
           ...mainGrid,
-          "--ui-delay": "190ms",
+          "--ui-delay": "160ms",
           gridTemplateColumns: "minmax(0,1fr)",
         }}
       >
         <div style={leftCol}>
           <CollapsibleCard title="Latest Signals (last 7 days)" palette={palette} defaultExpanded>
             {timeline.length === 0 ? (
-              <div style={{ ...emptyState, color: palette.dim }}>No activity</div>
+              <div
+                style={{
+                  ...emptyState,
+                  border: `1px dashed ${palette.border}`,
+                  background: palette.cardAlt,
+                  color: palette.dim,
+                }}
+              >
+                <ClipboardDocumentListIcon style={{ ...emptyIcon, color: palette.accent }} />
+                <p style={{ ...emptyTitle, color: palette.text }}>Signal queue is quiet</p>
+                <p style={{ ...emptyDescription, color: palette.muted }}>
+                  Recent decisions, documents, and sprint moves will appear here as the team creates new context.
+                </p>
+                <Link
+                  className="ui-btn-polish ui-focus-ring"
+                  to="/activity"
+                  style={{ ...emptyLink, color: palette.buttonText, background: palette.ctaGradient }}
+                >
+                  Open Activity Feed
+                </Link>
+              </div>
             ) : (
               <>
                 <div style={activityList}>
@@ -630,13 +645,18 @@ export default function UnifiedDashboard() {
                       className="ui-card-lift ui-smooth"
                       key={activity.id}
                       to={getActivityUrl(activity)}
-                      style={{ ...activityRow, borderBottom: `1px solid ${palette.border}` }}
+                      style={{ ...activityRow, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
                     >
                       <div style={activityMain}>
+                        <div style={activityMeta}>
+                          <span style={{ ...activityBadge, border: `1px solid ${palette.border}`, color: palette.accent }}>
+                            {humanizeActivityType(activity)}
+                          </span>
+                          <span style={{ ...activityDateChip, color: palette.muted }}>
+                            {new Date(activity.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </span>
+                        </div>
                         <p style={{ ...activityTitle, color: palette.text }}>{activity.title}</p>
-                        <p style={{ ...activityDate, color: palette.muted }}>
-                          {new Date(activity.created_at).toLocaleDateString()}
-                        </p>
                       </div>
                       <ClipboardDocumentListIcon style={{ ...icon16, color: palette.dim }} />
                     </Link>
@@ -665,23 +685,27 @@ export default function UnifiedDashboard() {
         className="ui-enter"
         style={{
           ...mainGrid,
-          "--ui-delay": "240ms",
+          "--ui-delay": "210ms",
           gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "repeat(2, minmax(0, 1fr))",
         }}
       >
         <div style={leftCol}>
           <div style={{ order: getCardOrder("left", "mission-control"), width: "100%" }}>
-            <MissionControlPanel />
+            <article className="ui-card-lift ui-smooth" style={{ ...embeddedPanelShell, border: `1px solid ${palette.border}`, background: palette.panel }}>
+              <MissionControlPanel />
+            </article>
           </div>
 
           <div style={{ order: getCardOrder("left", "chief-of-staff"), width: "100%" }}>
-            <ChiefOfStaffPanel />
+            <article className="ui-card-lift ui-smooth" style={{ ...embeddedPanelShell, border: `1px solid ${palette.border}`, background: palette.panel }}>
+              <ChiefOfStaffPanel />
+            </article>
           </div>
 
           <CollapsibleCard
             title="Health Snapshot"
             palette={palette}
-            defaultExpanded
+            defaultExpanded={false}
             cardId="health-snapshot"
             column="left"
             order={getCardOrder("left", "health-snapshot")}
@@ -712,7 +736,7 @@ export default function UnifiedDashboard() {
           <CollapsibleCard
             title="Copilot Feedback"
             palette={palette}
-            defaultExpanded
+            defaultExpanded={false}
             cardId="copilot-feedback"
             column="left"
             order={getCardOrder("left", "copilot-feedback")}
@@ -804,7 +828,7 @@ export default function UnifiedDashboard() {
           <CollapsibleCard
             title="Autonomous Decision Twin"
             palette={palette}
-            defaultExpanded
+            defaultExpanded={false}
             cardId="decision-twin"
             column="right"
             order={getCardOrder("right", "decision-twin")}
@@ -862,7 +886,7 @@ export default function UnifiedDashboard() {
           <CollapsibleCard
             title="Decision Debt Ledger"
             palette={palette}
-            defaultExpanded
+            defaultExpanded={false}
             cardId="decision-debt"
             column="right"
             order={getCardOrder("right", "decision-debt")}
@@ -913,7 +937,7 @@ export default function UnifiedDashboard() {
           <CollapsibleCard
             title="Decision Outcomes (Month)"
             palette={palette}
-            defaultExpanded
+            defaultExpanded={false}
             cardId="decision-outcomes"
             column="right"
             order={getCardOrder("right", "decision-outcomes")}
@@ -1056,7 +1080,7 @@ export default function UnifiedDashboard() {
           <CollapsibleCard
             title="Team Calibration"
             palette={palette}
-            defaultExpanded
+            defaultExpanded={false}
             cardId="team-calibration"
             column="right"
             order={getCardOrder("right", "team-calibration")}
@@ -1090,18 +1114,6 @@ export default function UnifiedDashboard() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, color, tone }) {
-  return (
-    <article className="ui-card-lift ui-smooth" style={{ ...statCard, border: `1px solid ${tone.border}`, background: tone.panel }}>
-      <div style={statHead}>
-        <p style={{ ...statLabel, color: tone.muted }}>{label}</p>
-        <Icon style={{ ...icon16, color }} />
-      </div>
-      <p style={{ ...statValue, color: tone.text }}>{value}</p>
-    </article>
-  );
-}
-
 function HealthRow({ label, value, tint, muted = "var(--ui-muted)" }) {
   return (
     <div style={healthRow}>
@@ -1125,9 +1137,20 @@ function CollapsibleCard({
   return (
     <article
       className="ui-card-lift ui-smooth"
-      style={{ ...panel, order, background: palette.panel, border: `1px solid ${palette.border}` }}
+      style={{
+        ...panel,
+        order,
+        background: `linear-gradient(180deg, ${palette.panel}, ${palette.cardAlt})`,
+        border: `1px solid ${palette.border}`,
+      }}
     >
-      <div style={{ ...collapseHeaderRow, borderBottom: expanded ? `1px solid ${palette.border}` : "none" }}>
+      <div
+        style={{
+          ...collapseHeaderRow,
+          borderBottom: expanded ? `1px solid ${palette.border}` : "none",
+          background: expanded ? palette.cardAlt : "transparent",
+        }}
+      >
         <button
           className="ui-btn-polish ui-focus-ring"
           onClick={() => setExpanded((v) => !v)}
@@ -1148,7 +1171,7 @@ function CollapsibleCard({
           <button
             className="ui-btn-polish ui-focus-ring"
             onClick={onMoveUp}
-            style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}` }}
+            style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
             aria-label={`Move ${title} up`}
             title="Move up"
           >
@@ -1157,7 +1180,7 @@ function CollapsibleCard({
           <button
             className="ui-btn-polish ui-focus-ring"
             onClick={onMoveDown}
-            style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}` }}
+            style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
             aria-label={`Move ${title} down`}
             title="Move down"
           >
@@ -1172,216 +1195,144 @@ function CollapsibleCard({
 
 const pageStyle = {
   position: "relative",
-  padding: "clamp(16px, 2.8vw, 28px)",
+  padding: "clamp(14px, 2.4vw, 24px)",
   display: "grid",
-  gap: 16,
+  gap: 14,
 };
 
-const controlStrip = {
-  position: "relative",
-  zIndex: 1,
+function commandPrimaryLink(palette) {
+  return {
+    textDecoration: "none",
+    borderRadius: 999,
+    padding: "10px 14px",
+    fontSize: 12,
+    fontWeight: 800,
+    background: palette.ctaGradient,
+    color: palette.buttonText,
+  };
+}
+
+function commandSecondaryLink(palette) {
+  return {
+    textDecoration: "none",
+    borderRadius: 999,
+    padding: "10px 14px",
+    fontSize: 12,
+    fontWeight: 800,
+    border: `1px solid ${palette.border}`,
+    background: palette.cardAlt,
+    color: palette.text,
+  };
+}
+
+const dashboardAsideCard = {
+  minWidth: 224,
   borderRadius: 20,
-  padding: "12px",
-  display: "flex",
-  alignItems: "center",
+  padding: 14,
+  display: "grid",
   gap: 8,
-  flexWrap: "wrap",
-};
-
-const controlLabel = {
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-};
-
-const controlPill = {
-  textDecoration: "none",
-  borderRadius: 999,
-  padding: "9px 14px",
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: "0.01em",
-  background: "transparent",
-};
-
-const hero = {
-  position: "relative",
-  zIndex: 1,
-  borderRadius: 28,
-  padding: "clamp(20px, 3vw, 30px)",
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: 18,
-  alignItems: "stretch",
-};
-
-const eyebrow = { margin: 0, fontSize: 10, letterSpacing: "0.14em", fontWeight: 700 };
-
-const title = {
-  margin: "10px 0 8px",
-  fontSize: "clamp(1.4rem, 3vw, 2.15rem)",
-  lineHeight: 1.08,
-  letterSpacing: "-0.02em",
-};
-
-const subtitle = { margin: 0, fontSize: 14, lineHeight: 1.55, maxWidth: 700 };
-const heroMainWrap = { minWidth: 0, display: "grid", alignContent: "space-between", gap: 16 };
-
-const heroBadges = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
-
-const heroBadge = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 12,
-  fontWeight: 700,
-  background: "var(--app-info-soft)",
-};
-
-const heroRail = {
-  display: "grid",
-  gap: 10,
-  alignContent: "start",
-};
-
-const heroVisualCard = {
-  minHeight: 196,
-  borderRadius: 22,
-  padding: "16px 16px 14px",
-  display: "grid",
-  alignContent: "space-between",
-  gap: 16,
   boxShadow: "var(--ui-shadow-sm)",
 };
 
-const heroVisualLabel = {
+const dashboardAsideEyebrow = {
   margin: 0,
   fontSize: 10,
   fontWeight: 800,
-  letterSpacing: "0.16em",
+  letterSpacing: "0.14em",
   textTransform: "uppercase",
 };
 
-const heroVisualTitle = {
+const dashboardAsideTitle = {
   margin: 0,
-  maxWidth: "14ch",
-  fontSize: 22,
-  lineHeight: 1.02,
-  letterSpacing: "-0.04em",
+  fontSize: 16,
+  lineHeight: 1.1,
+  letterSpacing: "-0.03em",
 };
 
-const heroVisualLegend = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "wrap",
+const dashboardAsideBody = {
+  margin: 0,
+  fontSize: 11,
+  lineHeight: 1.55,
 };
 
-const heroVisualPill = {
+const dashboardProgressTrack = {
+  width: "100%",
+  height: 9,
   borderRadius: 999,
-  padding: "6px 9px",
-  fontSize: 10,
-  fontWeight: 700,
-  background: "rgba(8, 17, 26, 0.28)",
-  backdropFilter: "blur(10px)",
+  overflow: "hidden",
 };
 
-const heroRailCard = {
-  borderRadius: 20,
-  padding: "16px 16px 14px",
+const dashboardProgressFill = {
+  height: "100%",
+  borderRadius: 999,
+};
+
+const dashboardAsideGrid = {
   display: "grid",
-  gap: 6,
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
 };
 
-const heroRailLabel = {
+const dashboardAsideMetric = {
+  borderRadius: 14,
+  padding: "9px 11px",
+  display: "grid",
+  gap: 4,
+};
+
+const dashboardAsideMetricLabel = {
   margin: 0,
   fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.16em",
+  fontWeight: 800,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
-const heroRailValue = {
+const dashboardAsideMetricValue = {
   margin: 0,
-  fontSize: 28,
+  fontSize: 16,
   fontWeight: 800,
   lineHeight: 1,
 };
 
-const heroRailHelper = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.45,
-};
-
-const kpiGrid = {
-  position: "relative",
-  zIndex: 1,
+const toolbarFocusLink = {
+  textDecoration: "none",
+  borderRadius: 14,
+  padding: "9px 11px",
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-  gap: 12,
+  gap: 4,
+  minWidth: 136,
 };
 
-const focusSection = {
-  position: "relative",
-  zIndex: 1,
-  display: "grid",
-  gap: 10,
-};
-
-const sectionHeader = { display: "grid", gap: 4 };
-const sectionEyebrow = {
+const toolbarFocusLabel = {
   margin: 0,
   fontSize: 10,
   fontWeight: 800,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
-  letterSpacing: "0.2em",
-};
-const sectionHelper = { margin: 0, fontSize: 13 };
-
-const focusGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-  gap: 14,
 };
 
-const focusCard = {
-  borderRadius: 20,
-  padding: "16px 16px 14px",
-  display: "grid",
-  gap: 8,
-  boxShadow: "var(--ui-shadow-sm)",
-};
-
-const focusLabel = { margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" };
-const focusValue = { margin: 0, fontSize: 22, fontWeight: 800, lineHeight: 1.1 };
-const focusHelper = { margin: 0, fontSize: 12 };
-const focusLink = {
-  marginTop: 4,
-  textDecoration: "none",
-  borderRadius: 12,
-  padding: "8px 10px",
-  fontSize: 12,
+const toolbarFocusValue = {
+  margin: 0,
+  fontSize: 16,
   fontWeight: 800,
-  textAlign: "center",
+  lineHeight: 1.1,
 };
 
-const statCard = {
-  borderRadius: 20,
-  padding: "16px 16px 14px",
+const toolbarNote = {
+  margin: 0,
+  fontSize: 11,
+  lineHeight: 1.55,
+};
+
+const mainGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12, alignItems: "start" };
+const leftCol = { display: "grid", gap: 12, alignContent: "start", alignItems: "start", gridAutoRows: "max-content" };
+const rightCol = { display: "grid", gap: 12, alignContent: "start" };
+const embeddedPanelShell = {
+  borderRadius: 22,
+  padding: "14px 14px 12px",
   boxShadow: "var(--ui-shadow-sm)",
 };
-const statHead = { display: "flex", justifyContent: "space-between", alignItems: "center" };
-const statLabel = { margin: 0, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
-const statValue = { margin: "9px 0 0", fontSize: 30, lineHeight: 1, fontWeight: 800 };
-
-const mainGrid = { position: "relative", zIndex: 1, display: "grid", gap: 14, alignItems: "start" };
-const leftCol = { display: "grid", gap: 14, alignContent: "start", alignItems: "start", gridAutoRows: "max-content" };
-const rightCol = { display: "grid", gap: 14, alignContent: "start" };
 
 const panel = {
   borderRadius: 22,
@@ -1424,7 +1375,7 @@ const moveButton = {
   cursor: "pointer",
 };
 
-const activityList = { display: "grid" };
+const activityList = { display: "grid", gap: 10 };
 const activityRow = {
   display: "flex",
   alignItems: "center",
@@ -1432,18 +1383,37 @@ const activityRow = {
   justifyContent: "space-between",
   padding: "14px 16px",
   textDecoration: "none",
+  borderRadius: 16,
 };
 
 const activityMain = { minWidth: 0 };
+const activityMeta = { display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" };
+const activityBadge = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  padding: "4px 8px",
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  background: "var(--ui-panel)",
+};
+const activityDateChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  fontSize: 11,
+  fontWeight: 700,
+};
 const activityTitle = {
   margin: 0,
   fontSize: 14,
   fontWeight: 600,
   overflow: "hidden",
   textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
+  whiteSpace: "normal",
+  lineHeight: 1.4,
 };
-const activityDate = { margin: "4px 0 0", fontSize: 12 };
 
 const loadMoreWrap = { padding: 12, textAlign: "center" };
 const loadMoreButton = { borderRadius: 14, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" };
@@ -1456,12 +1426,31 @@ const analyticsRow = {
 };
 
 const railTitle = { margin: 0, padding: "14px 14px 4px", fontSize: 14, fontWeight: 700 };
-const healthList = { padding: "12px 16px 16px", display: "grid", gap: 10 };
-const healthRow = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 };
+const healthList = { padding: "14px 16px 16px", display: "grid", gap: 10 };
+const healthRow = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  padding: "10px 12px",
+  borderRadius: 14,
+  border: "1px solid var(--ui-border)",
+  background: "var(--ui-panel-alt)",
+};
 const healthLabel = { margin: 0, fontSize: 12, color: "var(--ui-muted)" };
-const healthValue = { margin: 0, fontSize: 12, fontWeight: 700 };
+const healthValue = { margin: 0, fontSize: 13, fontWeight: 800 };
 
-const emptyState = { padding: "26px 14px", textAlign: "center" };
+const emptyState = { padding: "30px 18px", textAlign: "center", borderRadius: 20, display: "grid", gap: 10, placeItems: "center" };
+const emptyIcon = { width: 24, height: 24 };
+const emptyTitle = { margin: 0, fontSize: 15, fontWeight: 800 };
+const emptyDescription = { margin: 0, fontSize: 12, lineHeight: 1.6, maxWidth: 360 };
+const emptyLink = {
+  textDecoration: "none",
+  borderRadius: 999,
+  padding: "10px 14px",
+  fontSize: 12,
+  fontWeight: 800,
+};
 const loadingWrap = {
   padding: "clamp(16px, 3vw, 28px)",
   minHeight: "50vh",
@@ -1470,15 +1459,31 @@ const loadingWrap = {
 };
 const loadingCard = {
   width: "min(560px, 100%)",
-  borderRadius: 16,
-  padding: "16px 16px 14px",
+  borderRadius: 22,
+  padding: "18px 18px 16px",
   boxShadow: "0 18px 40px rgba(0,0,0,0.16)",
 };
 const loadingTop = {
   display: "flex",
   alignItems: "center",
   gap: 12,
-  marginBottom: 12,
+  marginBottom: 16,
+};
+const loadingOrb = {
+  width: 40,
+  height: 40,
+  borderRadius: 14,
+  display: "grid",
+  placeItems: "center",
+  color: "var(--app-button-text)",
+  flexShrink: 0,
+};
+const loadingEyebrow = {
+  margin: "0 0 4px",
+  fontSize: 10,
+  fontWeight: 800,
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
 };
 const loadingTitle = {
   margin: 0,
@@ -1489,6 +1494,28 @@ const loadingTitle = {
 const loadingSubtitle = {
   margin: "4px 0 0",
   fontSize: 12,
+};
+const loadingMetricRail = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  marginBottom: 14,
+};
+const loadingMetricCard = {
+  borderRadius: 16,
+  padding: "12px 12px 10px",
+  display: "grid",
+  gap: 8,
+};
+const loadingMetricValue = {
+  width: "56%",
+  height: 18,
+  borderRadius: 999,
+};
+const loadingMetricLabel = {
+  width: "72%",
+  height: 10,
+  borderRadius: 999,
 };
 const loadingSkeletonGrid = {
   display: "grid",

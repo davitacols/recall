@@ -121,4 +121,4 @@ function Notice({ text, level, palette }) {
 const h3 = { margin: "0 0 10px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 };
 const icon = { width: 14, height: 14, color: "var(--app-muted)" };
 const box = { borderRadius: 9, border: "1px solid var(--app-border-strong)", background: "var(--app-surface-alt)", padding: 8 };
-const pText = { margin: 0, fontSize: 12, color: "#d9cdbf", lineHeight: 1.45 };
+const pText = { margin: 0, fontSize: 12, color: "var(--ui-text)", lineHeight: 1.45 };

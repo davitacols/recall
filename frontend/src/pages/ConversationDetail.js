@@ -67,10 +67,10 @@ const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette,
 
           {reply.author_id === currentUserId && (
             <div style={replyActionRow}>
-              <button onClick={() => setIsEditing((value) => !value)} style={inlineAction}>
+              <button onClick={() => setIsEditing((value) => !value)} style={inlineAction(palette)}>
                 {isEditing ? "Cancel" : "Edit"}
               </button>
-              <button onClick={() => onDelete(reply.id)} style={inlineActionDanger}>
+              <button onClick={() => onDelete(reply.id)} style={inlineActionDanger(palette)}>
                 Delete
               </button>
             </div>
@@ -568,20 +568,20 @@ function ConversationDetail() {
                 type="conversation"
                 onResult={(feature, data) => setAiResults(data)}
               />
-              <FavoriteButton conversationId={id} />
-              <ExportButton conversationId={id} type="conversation" />
-              <UndoRedoButtons />
-              {conversation.author_id === currentUserId && (
-                <>
-                  <button className="ui-btn-polish ui-focus-ring" onClick={() => setIsEditingPost((value) => !value)} style={smallOutlineButton}>
-                    {isEditingPost ? "Cancel" : "Edit"}
-                  </button>
-                  <button className="ui-btn-polish ui-focus-ring" onClick={handleDeletePost} style={smallDangerButton}>
-                    {deletingPost ? "Deleting..." : "Delete"}
-                  </button>
-                </>
-              )}
-            </div>
+                  <FavoriteButton conversationId={id} />
+                  <ExportButton conversationId={id} type="conversation" />
+                  <UndoRedoButtons />
+                  {conversation.author_id === currentUserId && (
+                    <>
+                      <button className="ui-btn-polish ui-focus-ring" onClick={() => setIsEditingPost((value) => !value)} style={smallOutlineButton(palette)}>
+                        {isEditingPost ? "Cancel" : "Edit"}
+                      </button>
+                      <button className="ui-btn-polish ui-focus-ring" onClick={handleDeletePost} style={smallDangerButton(palette, darkMode)}>
+                        {deletingPost ? "Deleting..." : "Delete"}
+                      </button>
+                    </>
+                  )}
+                </div>
           </section>
 
           <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "180ms" }}>
@@ -623,9 +623,9 @@ function ConversationDetail() {
                   onClick={() => handleReaction(type)}
                   style={{
                     ...reactionButton,
-                    background: reactions.user_reaction === type ? "var(--app-info)" : palette.panelAlt,
-                    color: reactions.user_reaction === type ? "var(--app-surface-alt)" : palette.text,
-                    border: `1px solid ${palette.border}`,
+                    background: reactions.user_reaction === type ? palette.accentSoft : palette.panelAlt,
+                    color: reactions.user_reaction === type ? palette.link : palette.text,
+                    border: `1px solid ${reactions.user_reaction === type ? palette.accent : palette.border}`,
                   }}
                 >
                   <Icon style={icon14} />
@@ -790,8 +790,24 @@ const authorNameStyle = { margin: 0, fontSize: 13, fontWeight: 700 };
 const metaText = { margin: "2px 0 0", fontSize: 11 };
 const actionRow = { display: "flex", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" };
 const ghostSuccessButton = { border: "1px solid var(--app-success-border)", borderRadius: 8, background: "var(--app-success-soft)", color: "var(--app-success)", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
-const smallOutlineButton = { border: "1px solid var(--app-border-strong)", borderRadius: 8, background: "transparent", color: "#94a3b8", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
-const smallDangerButton = { border: "1px solid rgba(239,68,68,0.5)", borderRadius: 8, background: "rgba(239,68,68,0.1)", color: "var(--app-danger)", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
+const smallOutlineButton = (palette) => ({
+  border: `1px solid ${palette.border}`,
+  borderRadius: 8,
+  background: palette.panelAlt,
+  color: palette.text,
+  fontSize: 12,
+  padding: "6px 10px",
+  cursor: "pointer",
+});
+const smallDangerButton = (palette, darkMode) => ({
+  border: `1px solid ${darkMode ? "rgba(238,146,153,0.42)" : "rgba(200,86,93,0.26)"}`,
+  borderRadius: 8,
+  background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)",
+  color: palette.danger,
+  fontSize: 12,
+  padding: "6px 10px",
+  cursor: "pointer",
+});
 const sectionLabelRow = { marginBottom: 8 };
 const sectionLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" };
 const reactionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
@@ -810,8 +826,15 @@ const replyCard = { borderRadius: 10, padding: 10, marginBottom: 8 };
 const replyHeader = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 };
 const replyAuthorWrap = { display: "flex", alignItems: "center", gap: 8 };
 const replyActionRow = { display: "flex", gap: 6 };
-const inlineAction = { border: "none", background: "transparent", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "pointer" };
-const inlineActionDanger = { ...inlineAction, color: "var(--app-danger)" };
+const inlineAction = (palette) => ({
+  border: "none",
+  background: "transparent",
+  color: palette.muted,
+  fontSize: 11,
+  fontWeight: 700,
+  cursor: "pointer",
+});
+const inlineActionDanger = (palette) => ({ ...inlineAction(palette), color: palette.danger });
 const icon18 = { width: 18, height: 18 };
 const icon14 = { width: 14, height: 14 };
 

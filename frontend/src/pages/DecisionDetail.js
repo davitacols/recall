@@ -258,7 +258,7 @@ function DecisionDetail() {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-        <div style={{ width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+        <div style={{ width: 30, height: 30, border: `2px solid ${palette.border}`, borderTopColor: palette.info, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
       </div>
     );
   }
@@ -316,8 +316,8 @@ function DecisionDetail() {
         <WorkspaceToolbar palette={palette}>
           <div style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Pill text={status} tone="blue" />
-              <Pill text={impact} tone="amber" />
+              <Pill text={status} tone="blue" palette={palette} />
+              <Pill text={impact} tone="amber" palette={palette} />
               <span style={toolbarMetaChip(palette)}>
                 <UserIcon style={{ width: 14, height: 14 }} /> {decision.decision_maker_name || "Unknown"}
               </span>
@@ -353,9 +353,9 @@ function DecisionDetail() {
                     padding: "8px 12px",
                     fontSize: 12,
                     textTransform: "capitalize",
-                    background: activeTab === tab ? "rgba(59,130,246,0.2)" : "transparent",
-                    border: activeTab === tab ? "1px solid rgba(59,130,246,0.45)" : ui.secondaryButton.border,
-                    color: activeTab === tab ? "var(--app-link)" : ui.secondaryButton.color,
+                    background: activeTab === tab ? palette.accentSoft : palette.card,
+                    border: activeTab === tab ? `1px solid ${palette.accent}` : ui.secondaryButton.border,
+                    color: activeTab === tab ? palette.link : ui.secondaryButton.color,
                   }}
                 >
                   {tab}
@@ -407,12 +407,18 @@ function DecisionDetail() {
                 {decision.context_reason && <TextBlock title="Context" text={decision.context_reason} palette={palette} darkMode={darkMode} />}
 
                 {decision.if_this_fails && (
-                  <div style={{ ...innerCard, border: "1px solid var(--app-danger-border)", background: "rgba(239,68,68,0.1)" }}>
+                  <div
+                    style={{
+                      ...innerCard,
+                      border: `1px solid ${darkMode ? "rgba(238,146,153,0.42)" : "rgba(200,86,93,0.24)"}`,
+                      background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)",
+                    }}
+                  >
                     <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 8 }}>
-                      <ExclamationTriangleIcon style={{ width: 16, height: 16, color: "var(--app-danger)", marginTop: 1 }} />
+                      <ExclamationTriangleIcon style={{ width: 16, height: 16, color: palette.danger, marginTop: 1 }} />
                       <div>
-                        <p style={{ margin: 0, fontSize: 13, color: "var(--app-danger)", fontWeight: 700 }}>If This Fails</p>
-                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--app-danger)" }}>{decision.if_this_fails}</p>
+                        <p style={{ margin: 0, fontSize: 13, color: palette.danger, fontWeight: 700 }}>If This Fails</p>
+                        <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.text }}>{decision.if_this_fails}</p>
                       </div>
                     </div>
                   </div>
@@ -448,11 +454,11 @@ function DecisionDetail() {
                   </p>
                 </div>
                 {driftAlert && (
-                  <div style={{ ...innerCard, border: "1px solid rgba(239,68,68,0.35)", background: "var(--app-danger-soft)" }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 13, color: "var(--app-danger)", fontWeight: 700 }}>
+                  <div style={{ ...innerCard, border: `1px solid ${darkMode ? "rgba(238,146,153,0.42)" : "rgba(200,86,93,0.24)"}`, background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 13, color: palette.danger, fontWeight: 700 }}>
                       Drift alert: {driftAlert.severity} ({driftAlert.drift_score})
                     </p>
-                    <ul style={{ margin: 0, paddingLeft: 16, color: "#fecaca", fontSize: 12 }}>
+                    <ul style={{ margin: 0, paddingLeft: 16, color: palette.text, fontSize: 12 }}>
                       {(driftAlert.signals || []).slice(0, 3).map((signal, idx) => (
                         <li key={idx}>{signal}</li>
                       ))}
@@ -518,10 +524,10 @@ function DecisionDetail() {
                   />
 
                   {outcomeError && (
-                    <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>{outcomeError}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: palette.danger }}>{outcomeError}</p>
                   )}
                   {outcomeMessage && (
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--app-success)" }}>{outcomeMessage}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: palette.success }}>{outcomeMessage}</p>
                   )}
 
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
@@ -641,8 +647,8 @@ function DecisionDetail() {
                   </div>
                 </div>
 
-                {replayError && <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>{replayError}</p>}
-                {replayTaskMessage && <p style={{ margin: 0, fontSize: 12, color: "var(--app-success)" }}>{replayTaskMessage}</p>}
+                {replayError && <p style={{ margin: 0, fontSize: 12, color: palette.danger }}>{replayError}</p>}
+                {replayTaskMessage && <p style={{ margin: 0, fontSize: 12, color: palette.success }}>{replayTaskMessage}</p>}
 
                 {replayResult && (
                   <div style={{ display: "grid", gap: 8 }}>
@@ -692,9 +698,9 @@ function DecisionDetail() {
             {decision.confidence && (
               <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
                 <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Confidence</h3>
-                <p style={{ margin: 0, fontSize: 30, fontWeight: 800, color: "var(--app-text)" }}>{decision.confidence.score || 0}%</p>
-                <div style={{ width: "100%", height: 8, borderRadius: 999, background: "var(--app-track)", overflow: "hidden", marginTop: 6 }}>
-                  <div style={{ height: "100%", width: `${decision.confidence.score || 0}%`, background: "linear-gradient(90deg,var(--app-success),var(--app-success))" }} />
+                <p style={{ margin: 0, fontSize: 30, fontWeight: 800, color: palette.text }}>{decision.confidence.score || 0}%</p>
+                <div style={{ width: "100%", height: 8, borderRadius: 999, background: palette.progressTrack, overflow: "hidden", marginTop: 6 }}>
+                  <div style={{ height: "100%", width: `${decision.confidence.score || 0}%`, background: `linear-gradient(90deg, ${palette.success}, ${palette.success})` }} />
                 </div>
                 {decision.confidence.factors?.length > 0 && (
                   <ul style={{ margin: "8px 0 0", paddingLeft: 16, color: palette.muted, fontSize: 11 }}>
@@ -728,11 +734,20 @@ function DecisionDetail() {
   );
 }
 
-function Pill({ text, tone = "blue" }) {
+function Pill({ text, tone = "blue", palette }) {
   const style = tone === "amber"
-    ? { border: "1px solid rgba(245,158,11,0.45)", color: "var(--app-warning)", background: "var(--app-warning-soft)" }
-    : { border: "1px solid rgba(59,130,246,0.45)", color: "var(--app-link)", background: "rgba(59,130,246,0.12)" };
+    ? { border: `1px solid ${palette.warn}`, color: palette.warn, background: darkenableSoft(palette.warn) }
+    : { border: `1px solid ${palette.accent}`, color: palette.link, background: palette.accentSoft };
   return <span style={{ ...style, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "5px 10px", textTransform: "capitalize" }}>{text}</span>;
+}
+
+function darkenableSoft(color) {
+  const normalized = color.replace("#", "");
+  if (normalized.length !== 6) return "rgba(168, 116, 57, 0.12)";
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, 0.12)`;
 }
 
 function TextBlock({ title, text, palette, darkMode }) {

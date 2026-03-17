@@ -145,6 +145,11 @@ export default function UnifiedLayout({ children }) {
             menuSurface: "#1c1714",
             accent: "#9ab9ff",
             accentSoft: "rgba(154, 185, 255, 0.14)",
+            avatarGradient: "linear-gradient(135deg, #e7effd, #9ab9ff)",
+            avatarText: "#121418",
+            primaryGradient: "linear-gradient(135deg, #e7effd, #9ab9ff)",
+            primaryText: "#121418",
+            primaryBorder: "rgba(154, 185, 255, 0.32)",
             headerBg: "rgba(26, 22, 19, 0.76)",
             headerShadow: "0 18px 38px rgba(0,0,0,0.18)",
             backdrop:
@@ -165,6 +170,11 @@ export default function UnifiedLayout({ children }) {
             menuSurface: "#fffcf8",
             accent: "#2e63d0",
             accentSoft: "rgba(46, 99, 208, 0.1)",
+            avatarGradient: "linear-gradient(135deg, #2e63d0, #5e8fe8)",
+            avatarText: "#fbf7f0",
+            primaryGradient: "linear-gradient(135deg, #2e63d0, #5e8fe8)",
+            primaryText: "#fbf7f0",
+            primaryBorder: "rgba(46, 99, 208, 0.22)",
             headerBg: "rgba(255, 252, 248, 0.76)",
             headerShadow: "0 18px 36px rgba(38, 30, 24, 0.06)",
             backdrop:
@@ -360,9 +370,9 @@ export default function UnifiedLayout({ children }) {
                       className="ui-btn-polish ui-focus-ring"
                       style={{
                         ...workspaceSwitchButton,
-                        background: darkMode ? "linear-gradient(135deg, #e7effd, #9ab9ff)" : "linear-gradient(135deg, #2e63d0, #5e8fe8)",
-                        color: darkMode ? "#121418" : "#fbf7f0",
-                        border: `1px solid ${darkMode ? "rgba(154, 185, 255, 0.38)" : "rgba(46, 99, 208, 0.24)"}`,
+                        background: palette.primaryGradient,
+                        color: palette.primaryText,
+                        border: `1px solid ${palette.primaryBorder}`,
                         opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
                         cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
                       }}
@@ -506,7 +516,13 @@ export default function UnifiedLayout({ children }) {
                     }}
                     aria-label="Open workspace menu"
                   >
-                    <span style={avatarButton}>
+                    <span
+                      style={{
+                        ...avatarButton,
+                        background: palette.avatarGradient,
+                        color: palette.avatarText,
+                      }}
+                    >
                       {avatar ? (
                         <img src={avatar} alt={user?.full_name || "User"} style={avatarImage} />
                       ) : (
@@ -602,13 +618,9 @@ export default function UnifiedLayout({ children }) {
             ...askFabButton,
             left: askFabPos.x,
             top: askFabPos.y,
-            color: darkMode ? "#121418" : "#fbf7f0",
-            border: darkMode
-              ? "1px solid rgba(154, 185, 255, 0.32)"
-              : "1px solid rgba(46, 99, 208, 0.22)",
-            background: darkMode
-              ? "linear-gradient(135deg, #e7effd, #9ab9ff)"
-              : "linear-gradient(135deg, #2e63d0, #5e8fe8)",
+            color: palette.primaryText,
+            border: `1px solid ${palette.primaryBorder}`,
+            background: palette.primaryGradient,
           }}
           className="ui-btn-polish ui-focus-ring"
           aria-label="Open Ask Recall"
@@ -666,10 +678,7 @@ const avatarButton = {
   display: "grid",
   placeItems: "center",
   padding: 0,
-  background: "linear-gradient(135deg, #87afff, #59b8ff)",
-  color: "#0b1b34",
   fontWeight: 800,
-  cursor: "pointer",
 };
 
 const avatarImage = {

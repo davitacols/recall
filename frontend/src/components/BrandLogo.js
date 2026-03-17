@@ -2,34 +2,34 @@ import React, { useId } from "react";
 
 const tones = {
   warm: {
-    shellStart: "#f6fbff",
-    shellEnd: "#d9ebff",
-    shellStroke: "rgba(31, 70, 114, 0.16)",
-    core: "#11263f",
-    nodeA: "#2977ff",
-    nodeB: "#43d4ff",
-    halo: "rgba(67, 212, 255, 0.2)",
-    text: "#13263d",
+    shellStart: "#fffdf8",
+    shellEnd: "#e9e2d6",
+    shellStroke: "rgba(46, 38, 30, 0.12)",
+    core: "#1f1a17",
+    nodeA: "#2e63d0",
+    nodeB: "#6e95e7",
+    halo: "rgba(94, 143, 232, 0.18)",
+    text: "#1f1a17",
   },
   dark: {
-    shellStart: "#17304a",
-    shellEnd: "#0c1726",
-    shellStroke: "rgba(123, 198, 255, 0.22)",
-    core: "#eef6ff",
-    nodeA: "#63bfff",
-    nodeB: "#52e7ff",
-    halo: "rgba(82, 231, 255, 0.22)",
-    text: "var(--app-text, #edf4ff)",
+    shellStart: "#2b241f",
+    shellEnd: "#15110f",
+    shellStroke: "rgba(240, 230, 214, 0.14)",
+    core: "#f5efe6",
+    nodeA: "#9ab9ff",
+    nodeB: "#d0deff",
+    halo: "rgba(154, 185, 255, 0.2)",
+    text: "var(--app-text, #f5efe6)",
   },
   light: {
-    shellStart: "#1d3652",
-    shellEnd: "#091321",
-    shellStroke: "rgba(160, 221, 255, 0.26)",
-    core: "#f7fbff",
-    nodeA: "#7ac5ff",
-    nodeB: "#5af0ff",
-    halo: "rgba(90, 240, 255, 0.24)",
-    text: "#f4f9ff",
+    shellStart: "#31487a",
+    shellEnd: "#18243f",
+    shellStroke: "rgba(228, 236, 255, 0.22)",
+    core: "#f7f4ee",
+    nodeA: "#9bbaff",
+    nodeB: "#d7e3ff",
+    halo: "rgba(155, 186, 255, 0.24)",
+    text: "#f7f4ee",
   },
 };
 
@@ -111,7 +111,7 @@ export default function BrandLogo({
             letterSpacing: "-0.045em",
             color: color.text,
             fontFamily:
-              'var(--font-display, "Space Grotesk"), var(--font-primary, "Segoe UI"), sans-serif',
+              'var(--font-primary, "Sora"), var(--font-display, "Fraunces"), sans-serif',
           }}
         >
           {label}

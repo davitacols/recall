@@ -38,8 +38,8 @@ export function WorkspaceHero({
                   ...statCard,
                   border: `1px solid ${palette.border}`,
                   background: darkMode
-                    ? "linear-gradient(155deg, rgba(12, 24, 38, 0.82), rgba(18, 39, 58, 0.68))"
-                    : "linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(236, 246, 255, 0.82))",
+                    ? "linear-gradient(155deg, rgba(33, 28, 24, 0.9), rgba(24, 20, 17, 0.76))"
+                    : "linear-gradient(155deg, rgba(255, 252, 248, 0.96), rgba(246, 239, 229, 0.86))",
                 }}
               >
                 <p style={{ ...statLabel, color: palette.muted }}>{stat.label}</p>
@@ -121,10 +121,10 @@ export function WorkspaceEmptyState({ palette, title, description, action }) {
 
 const hero = {
   position: "relative",
-  padding: "clamp(2px, 0.7vw, 6px) 0 clamp(4px, 0.9vw, 8px)",
+  padding: "clamp(6px, 1vw, 10px) 0 clamp(8px, 1.2vw, 12px)",
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: 12,
+  gap: 16,
   alignItems: "start",
 };
 
@@ -141,22 +141,24 @@ const heroEyebrow = {
   margin: 0,
   fontSize: 11,
   fontWeight: 800,
-  letterSpacing: "0.18em",
+  letterSpacing: "0.16em",
   textTransform: "uppercase",
 };
 
 const heroTitle = {
   margin: 0,
-  fontSize: "clamp(1.35rem, 2.3vw, 2.05rem)",
-  lineHeight: 1.04,
-  letterSpacing: "-0.045em",
+  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
+  fontSize: "clamp(1.8rem, 3vw, 3rem)",
+  lineHeight: 0.98,
+  letterSpacing: "-0.05em",
+  maxWidth: "14ch",
 };
 
 const heroDescription = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.55,
-  maxWidth: 720,
+  fontSize: 14,
+  lineHeight: 1.65,
+  maxWidth: 680,
 };
 
 const heroActions = {
@@ -182,14 +184,14 @@ const asideWrap = {
 const statsGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-  gap: 10,
+  gap: 12,
 };
 
 const statCard = {
-  borderRadius: 20,
-  padding: "12px 12px 10px",
+  borderRadius: 24,
+  padding: "14px 14px 12px",
   display: "grid",
-  gap: 4,
+  gap: 6,
   boxShadow: "var(--ui-shadow-sm)",
 };
 
@@ -203,10 +205,11 @@ const statLabel = {
 
 const statValue = {
   margin: 0,
-  fontSize: 22,
-  fontWeight: 800,
-  lineHeight: 1,
-  letterSpacing: "-0.04em",
+  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
+  fontSize: 26,
+  fontWeight: 700,
+  lineHeight: 0.98,
+  letterSpacing: "-0.05em",
 };
 
 const statHelper = {
@@ -216,18 +219,18 @@ const statHelper = {
 };
 
 const toolbar = {
-  borderRadius: 22,
-  padding: "14px 16px",
+  borderRadius: 26,
+  padding: "16px 18px",
   display: "grid",
   gap: 12,
   boxShadow: "var(--ui-shadow-sm)",
 };
 
 const panel = {
-  borderRadius: 22,
-  padding: "16px",
+  borderRadius: 26,
+  padding: "18px",
   display: "grid",
-  gap: 12,
+  gap: 14,
   boxShadow: "var(--ui-shadow-sm)",
 };
 
@@ -249,15 +252,16 @@ const panelEyebrow = {
 
 const panelTitle = {
   margin: 0,
-  fontSize: 18,
-  lineHeight: 1.1,
-  letterSpacing: "-0.03em",
+  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
+  fontSize: 24,
+  lineHeight: 1.02,
+  letterSpacing: "-0.05em",
 };
 
 const panelDescription = {
   margin: 0,
-  fontSize: 12,
-  lineHeight: 1.5,
+  fontSize: 13,
+  lineHeight: 1.6,
   maxWidth: 620,
 };
 

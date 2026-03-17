@@ -57,26 +57,26 @@ export const MobileNav = ({ onSearchOpen }) => {
     () =>
       darkMode
         ? {
-            surface: "rgba(16,12,14,0.96)",
-            panel: "#1a1417",
-            panelAlt: "#20181c",
-            border: "rgba(255, 225, 193, 0.16)",
+            surface: "rgba(29, 24, 21, 0.94)",
+            panel: "#1c1714",
+            panelAlt: "#241f1b",
+            border: "rgba(238, 229, 216, 0.12)",
             text: "var(--app-text)",
-            muted: "#b6a492",
+            muted: "#b7ab9b",
             active: "var(--app-accent)",
             overlay: "rgba(0,0,0,0.58)",
             navPill: "var(--app-info-soft)",
           }
         : {
-            surface: "rgba(255,250,243,0.98)",
+            surface: "rgba(255, 252, 248, 0.95)",
             panel: "var(--app-surface-alt)",
-            panelAlt: "var(--app-surface-alt)7ef",
+            panelAlt: "#f7f1e8",
             border: "var(--app-border)",
             text: "var(--app-text)",
-            muted: "#7b6a58",
+            muted: "#6e655b",
             active: "var(--app-accent)",
-            overlay: "rgba(20, 24, 28, 0.34)",
-            navPill: "rgba(35,24,20,0.04)",
+            overlay: "rgba(20, 17, 13, 0.3)",
+            navPill: "rgba(46, 99, 208, 0.08)",
           },
     [darkMode]
   );
@@ -297,11 +297,12 @@ export const MobileOptimized = ({ children }) => {
 };
 
 const iconButton = {
-  width: 34,
-  height: 34,
+  width: 38,
+  height: 38,
   display: "grid",
   placeItems: "center",
   background: "transparent",
+  borderRadius: 12,
   padding: 0,
   cursor: "pointer",
 };
@@ -312,16 +313,17 @@ const mobileBottomNav = {
   right: 0,
   bottom: 0,
   zIndex: 65,
-  backdropFilter: "blur(10px)",
+  backdropFilter: "blur(14px)",
   paddingBottom: "env(safe-area-inset-bottom, 0px)",
+  boxShadow: "0 -12px 28px rgba(26, 20, 16, 0.08)",
 };
 
 const mobileBottomInner = {
-  minHeight: 64,
+  minHeight: 68,
   display: "grid",
   gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
   gap: 4,
-  padding: "6px 6px 7px",
+  padding: "8px 8px 9px",
 };
 
 const mobileNavItem = {
@@ -329,11 +331,12 @@ const mobileNavItem = {
   display: "grid",
   justifyItems: "center",
   alignContent: "center",
-  gap: 2,
+  gap: 4,
   fontSize: 11,
   fontWeight: 700,
   lineHeight: 1.1,
-  padding: "6px 4px",
+  padding: "7px 4px",
+  borderRadius: 14,
 };
 
 const menuOverlay = {
@@ -350,10 +353,11 @@ const menuPanel = {
   width: "min(360px, 88vw)",
   display: "grid",
   gridTemplateRows: "auto minmax(0, 1fr)",
+  boxShadow: "var(--ui-shadow-lg)",
 };
 
 const menuHeader = {
-  padding: "12px 12px",
+  padding: "14px 14px",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
@@ -362,24 +366,27 @@ const menuHeader = {
 
 const menuTitle = {
   margin: 0,
-  fontSize: 16,
-  fontWeight: 800,
+  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
+  fontSize: 22,
+  fontWeight: 700,
 };
 
 const menuContent = {
   overflowY: "auto",
-  padding: "12px",
+  padding: "14px",
   display: "grid",
-  gap: 12,
+  gap: 14,
 };
 
 const quickLinks = {
   display: "grid",
+  borderRadius: 22,
+  overflow: "hidden",
 };
 
 const quickLink = {
   textDecoration: "none",
-  padding: "12px 10px",
+  padding: "14px 12px",
   fontSize: 14,
   fontWeight: 700,
   borderBottom: "1px solid rgba(148,163,184,0.16)",
@@ -387,8 +394,9 @@ const quickLink = {
 
 const workspaceBlock = {
   display: "grid",
-  gap: 8,
-  padding: "10px",
+  gap: 10,
+  padding: "14px",
+  borderRadius: 22,
 };
 
 const workspaceHeading = {
@@ -401,10 +409,11 @@ const workspaceHeading = {
 
 const workspaceInput = {
   width: "100%",
-  padding: "10px 11px",
+  padding: "12px 13px",
   outline: "none",
   fontSize: 14,
   fontFamily: "inherit",
+  borderRadius: 16,
 };
 
 const workspaceList = {
@@ -413,9 +422,10 @@ const workspaceList = {
 };
 
 const workspaceCard = {
-  padding: "9px",
+  padding: "12px",
   display: "grid",
   gap: 8,
+  borderRadius: 18,
 };
 
 const workspaceName = {
@@ -439,7 +449,8 @@ const currentTag = {
   fontSize: 11,
   fontWeight: 700,
   textTransform: "uppercase",
-  padding: "4px 8px",
+  padding: "5px 10px",
+  borderRadius: 999,
 };
 
 const workspaceActions = {
@@ -449,19 +460,20 @@ const workspaceActions = {
 };
 
 const ghostButton = {
-  border: "none",
+  borderRadius: 999,
   background: "transparent",
-  padding: "7px 10px",
+  padding: "8px 11px",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
 };
 
 const primaryButton = {
-  border: "1px solid rgba(255,180,118,0.45)",
-  background: "linear-gradient(135deg, #ffd499, #ff9f61)",
-  color: "#25160f",
-  padding: "7px 10px",
+  border: "1px solid rgba(46, 99, 208, 0.22)",
+  borderRadius: 999,
+  background: "linear-gradient(135deg, #2e63d0, #5e8fe8)",
+  color: "#fbf7f0",
+  padding: "8px 11px",
   fontSize: 12,
   fontWeight: 800,
   cursor: "pointer",

@@ -217,15 +217,15 @@ function Login() {
           transition={{ duration: 0.55 }}
           className="auth-showcase"
         >
-          <button type="button" onClick={() => navigate("/")} className="auth-brand">
-            <BrandLogo tone="dark" size="lg" />
+          <button type="button" onClick={() => navigate("/home")} className="auth-brand">
+            <BrandLogo tone="warm" size="lg" />
           </button>
 
           <div>
-            <p className="auth-kicker">Knowledge Operating System</p>
-            <h1 className="auth-headline">Calm access for high-velocity teams.</h1>
+            <p className="auth-kicker">Decision memory for teams</p>
+            <h1 className="auth-headline">Pick up the thread without re-reading everything.</h1>
             <p className="auth-copy">
-              Enter a workspace where every decision, rationale, and action stays connected.
+              Sign in to Knoledgr and recover the rationale, documents, and next actions attached to your team's work.
             </p>
           </div>
 
@@ -428,16 +428,12 @@ function Login() {
                       Sign up
                     </button>
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/forgot-password")}
-                    className="auth-link-btn"
-                  >
+                  <button type="button" onClick={() => navigate("/forgot-password")} className="auth-link-btn">
                     Forgot password?
                   </button>
                 </>
               ) : null}
-              <button type="button" onClick={() => navigate("/")} className="auth-back-btn">
+              <button type="button" onClick={() => navigate("/home")} className="auth-back-btn">
                 {"<"} Back to homepage
               </button>
             </footer>

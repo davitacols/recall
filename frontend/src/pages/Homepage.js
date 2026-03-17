@@ -4,20 +4,23 @@ import { Link, useNavigate } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import "./Homepage.css";
 
-const heroWords = ["searchable.", "grounded.", "traceable.", "usable."];
+const heroWords = ["searchable.", "traceable.", "remembered.", "shared."];
 
 const principles = [
   {
-    title: "Capture",
-    text: "Record decisions, conversations, and documents as work happens.",
+    index: "01",
+    title: "Capture the moment work happens",
+    text: "Keep decisions, meeting notes, and conversations close to the action instead of scattering them across tools.",
   },
   {
-    title: "Connect",
-    text: "Link rationale, owners, related discussions, and downstream work.",
+    index: "02",
+    title: "Connect the why to the work",
+    text: "Link rationale, owners, documents, and downstream follow-through so context survives handoffs and time.",
   },
   {
-    title: "Retrieve",
-    text: "Ask a question and recover the real why behind the work in seconds.",
+    index: "03",
+    title: "Recover context in seconds",
+    text: "Ask Recall and the Knowledge Graph help teams find the reasoning behind what changed without replaying old debates.",
   },
 ];
 
@@ -26,39 +29,53 @@ const modules = [
     name: "Decisions",
     detail: "Capture key decisions with rationale, owners, approvals, and impact.",
     tag: "Core",
-    href: "/decisions",
+    href: "/login",
   },
   {
     name: "Knowledge Graph",
-    detail: "Connect conversations, documents, projects, and historical signals.",
+    detail: "See how conversations, documents, projects, and historical signals connect across the workspace.",
     tag: "Intelligence",
-    href: "/knowledge/graph",
+    href: "/login",
   },
   {
     name: "Ask Recall",
-    detail: "Get grounded answers from your team's actual history, not generic AI.",
+    detail: "Get grounded answers from your team's actual history, not generic AI output.",
     tag: "Assistant",
-    href: "/ask",
+    href: "/login",
   },
   {
     name: "Documents",
-    detail: "Keep source documents in one place so teams can reference the record behind the work.",
+    detail: "Keep the source record close to active work so teams can trace the record behind every decision.",
     tag: "Memory",
-    href: "/business/documents",
+    href: "/login",
   },
 ];
 
 const highlights = [
   { value: "< 60s", label: "to recover decision context" },
-  { value: "1", label: "place to trace the why" },
+  { value: "1 place", label: "for the why behind execution" },
   { value: "24/7", label: "grounded answers from team history" },
 ];
 
-const liveEvents = [
-  { title: "Pricing decision approved with rationale", time: "08:42" },
-  { title: "Related onboarding discussion linked", time: "08:46" },
-  { title: "Previous rollout risk surfaced", time: "08:51" },
-  { title: "Next action assigned to product lead", time: "08:55" },
+const previewNotes = [
+  { label: "Morning brief", text: "A pricing decision now points to the original discussion, approval, and rollout risk." },
+  { label: "Linked memory", text: "Meeting notes, documents, and follow-up tasks stay attached instead of becoming loose references." },
+  { label: "Ask Recall", text: "A teammate can ask what changed, why it changed, and what still needs attention." },
+];
+
+const signalCards = [
+  {
+    title: "Less re-explaining",
+    text: "New teammates and busy stakeholders can pick up the thread without waiting for someone to retell the story.",
+  },
+  {
+    title: "Calmer execution",
+    text: "Projects, decisions, and business work stay connected, so follow-through feels grounded instead of reactive.",
+  },
+  {
+    title: "A better record",
+    text: "The Knowledge Graph and Documents surface give teams a durable memory instead of a fragile chain of tabs and chats.",
+  },
 ];
 
 export default function Homepage() {
@@ -74,31 +91,22 @@ export default function Homepage() {
 
   return (
     <div className="hp">
-      <div className="hp-noise" />
-      <div className="hp-orb hp-orb-a" />
-      <div className="hp-orb hp-orb-b" />
+      <div className="hp-texture" />
+      <div className="hp-glow hp-glow-a" />
+      <div className="hp-glow hp-glow-b" />
 
       <header className="hp-header">
         <div className="hp-container hp-header-row">
-          <BrandLogo
-            tone="light"
-            size="lg"
-            downloadUrl="/brand/knoledgr-brandlogo.svg"
-            downloadName="knoledgr-brandlogo.svg"
-            title="Download Knoledgr logo"
-          />
+          <Link to="/home" className="hp-brand-link" aria-label="Knoledgr homepage">
+            <BrandLogo tone="warm" size="lg" />
+          </Link>
+
           <div className="hp-header-actions">
-            <button
-              onClick={() => navigate("/login")}
-              className="hp-btn hp-btn-ghost"
-            >
-              Sign in
-            </button>
-            <button
-              onClick={() => navigate("/login")}
-              className="hp-btn hp-btn-primary"
-            >
-              Get started free
+            <a href="#preview" className="hp-btn hp-btn-ghost">
+              Preview the workspace
+            </a>
+            <button onClick={() => navigate("/login")} className="hp-btn hp-btn-primary">
+              Start free
             </button>
           </div>
         </div>
@@ -108,13 +116,14 @@ export default function Homepage() {
         <section className="hp-hero">
           <div className="hp-container hp-hero-grid">
             <motion.div
-              initial={{ opacity: 0, y: 22 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55 }}
+              className="hp-hero-copy"
             >
-              <p className="hp-eyebrow">DECISION MEMORY FOR TEAMS</p>
+              <p className="hp-eyebrow">Decision memory for teams</p>
               <h1 className="hp-title">
-                Your team's decision memory,
+                Knoledgr keeps your team's context
                 <span className="hp-word-slot">
                   <AnimatePresence mode="wait">
                     <motion.span
@@ -131,66 +140,73 @@ export default function Homepage() {
                 </span>
               </h1>
               <p className="hp-subtitle">
-                Knoledgr captures decisions, discussions, and downstream work in
-                one context layer, so teams stop repeating debates and recover the
-                real why behind execution.
+                Decisions, documents, conversations, and follow-through should feel like one narrative,
+                not four disconnected places to search when someone asks what happened and why.
               </p>
+
               <div className="hp-actions">
-                <button
-                  onClick={() => navigate("/login")}
-                  className="hp-btn hp-btn-primary hp-btn-lg"
-                >
+                <button onClick={() => navigate("/login")} className="hp-btn hp-btn-primary hp-btn-lg">
                   Start your workspace
                 </button>
-                <button
-                  onClick={() => navigate("/docs")}
-                  className="hp-btn hp-btn-ghost hp-btn-lg"
-                >
-                  See how Ask Recall works
-                </button>
+                <a href="#modules" className="hp-btn hp-btn-ghost hp-btn-lg">
+                  See the product surface
+                </a>
+              </div>
+
+              <div className="hp-highlights">
+                {highlights.map((item) => (
+                  <article key={item.label} className="hp-highlight-card">
+                    <p className="hp-highlight-value">{item.value}</p>
+                    <p className="hp-highlight-label">{item.label}</p>
+                  </article>
+                ))}
               </div>
             </motion.div>
 
             <motion.aside
-              initial={{ opacity: 0, x: 28 }}
+              id="preview"
+              initial={{ opacity: 0, x: 22 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1, duration: 0.55 }}
-              className="hp-console"
+              transition={{ delay: 0.08, duration: 0.55 }}
+              className="hp-preview"
             >
-              <div className="hp-console-head">
-                <span />
-                <span />
-                <span />
-                <p>Live Context Console</p>
+              <div className="hp-preview-head">
+                <div>
+                  <p className="hp-preview-kicker">Workspace preview</p>
+                  <h2>One place to recover the thread</h2>
+                </div>
+                <span className="hp-preview-pill">Live context</span>
               </div>
-              <div className="hp-console-body">
-                {liveEvents.map((event) => (
-                  <div key={event.title} className="hp-event">
-                    <div className="hp-event-dot" />
-                    <p>{event.title}</p>
-                    <span>{event.time}</span>
-                  </div>
-                ))}
+
+              <div className="hp-preview-card">
+                <div className="hp-preview-panel">
+                  <p className="hp-preview-label">Decision timeline</p>
+                  <h3>Pricing review approved</h3>
+                  <p>
+                    Rationale, linked discussion, and rollout risk are attached to the same record instead of buried in separate tools.
+                  </p>
+                </div>
+
+                <div className="hp-preview-stack">
+                  {previewNotes.map((note) => (
+                    <article key={note.label} className="hp-preview-note">
+                      <span>{note.label}</span>
+                      <p>{note.text}</p>
+                    </article>
+                  ))}
+                </div>
               </div>
             </motion.aside>
-          </div>
-
-          <div className="hp-container hp-stats">
-            {highlights.map((item) => (
-              <div key={item.label} className="hp-stat-card">
-                <p className="hp-stat-value">{item.value}</p>
-                <p className="hp-stat-label">{item.label}</p>
-              </div>
-            ))}
           </div>
         </section>
 
         <section className="hp-section">
           <div className="hp-container">
             <div className="hp-section-head">
-              <p>How It Works</p>
-              <h2>Simple flow. Durable team memory.</h2>
+              <p>How it works</p>
+              <h2>A calmer system for context-heavy work</h2>
             </div>
+
             <div className="hp-principles">
               {principles.map((item, idx) => (
                 <motion.article
@@ -201,7 +217,7 @@ export default function Homepage() {
                   viewport={{ once: true, amount: 0.3 }}
                   transition={{ delay: idx * 0.08, duration: 0.4 }}
                 >
-                  <span>{`0${idx + 1}`}</span>
+                  <span>{item.index}</span>
                   <h3>{item.title}</h3>
                   <p>{item.text}</p>
                 </motion.article>
@@ -210,20 +226,20 @@ export default function Homepage() {
           </div>
         </section>
 
-        <section className="hp-section hp-section-tight">
-          <div className="hp-container hp-bento">
-            <div className="hp-bento-lead">
-              <p>Why teams use Knoledgr</p>
-              <h2>Because work breaks when context disappears</h2>
+        <section className="hp-section hp-section-tight" id="modules">
+          <div className="hp-container hp-editorial-grid">
+            <div className="hp-editorial-copy">
+              <p>Shipped product surface</p>
+              <h2>Built around the routes teams actually use</h2>
               <p>
-                Slack has the conversation. Jira has the task. Notion has the
-                document. Knoledgr connects the why, so your team can trace what
-                happened, why it happened, and what to do next.
+                Knoledgr centers the real product surface: Decisions, Knowledge Graph, Ask Recall, and Documents.
+                The landing page now points people into the same story the app tells after sign-in.
               </p>
             </div>
-            <div className="hp-modules">
+
+            <div className="hp-module-grid">
               {modules.map((module) => (
-                <Link key={module.name} to={module.href} className="hp-module-card hp-module-link">
+                <Link key={module.name} to={module.href} className="hp-module-card">
                   <span>{module.tag}</span>
                   <h3>{module.name}</h3>
                   <p>{module.detail}</p>
@@ -233,23 +249,35 @@ export default function Homepage() {
           </div>
         </section>
 
+        <section className="hp-section">
+          <div className="hp-container">
+            <div className="hp-section-head">
+              <p>Why teams stay</p>
+              <h2>Because context should travel with the work</h2>
+            </div>
+
+            <div className="hp-signal-grid">
+              {signalCards.map((card) => (
+                <article key={card.title} className="hp-signal-card">
+                  <h3>{card.title}</h3>
+                  <p>{card.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="hp-cta">
           <div className="hp-container hp-cta-panel">
-            <h2>Stop re-deciding what your team already learned</h2>
-            <p>Preserve context, recover grounded answers, and help people act with confidence.</p>
+            <p>Ready to stop re-deciding what your team already learned?</p>
+            <h2>Start a workspace that remembers.</h2>
             <div className="hp-actions">
-              <button
-                onClick={() => navigate("/login")}
-                className="hp-btn hp-btn-ink hp-btn-lg"
-              >
+              <button onClick={() => navigate("/login")} className="hp-btn hp-btn-primary hp-btn-lg">
                 Get started free
               </button>
-              <button
-                onClick={() => navigate("/docs")}
-                className="hp-btn hp-btn-line hp-btn-lg"
-              >
-                Book a walkthrough
-              </button>
+              <a href="#preview" className="hp-btn hp-btn-line hp-btn-lg">
+                Preview the experience
+              </a>
             </div>
           </div>
         </section>

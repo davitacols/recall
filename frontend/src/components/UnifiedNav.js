@@ -457,9 +457,9 @@ export default function UnifiedNav({
           padding: collapsed ? "0" : brandWrap.padding,
           border: `1px solid ${palette.border}`,
           background: darkMode
-            ? "linear-gradient(145deg, rgba(12, 24, 38, 0.84), rgba(18, 39, 58, 0.68))"
-            : "linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(237, 246, 255, 0.84))",
-          boxShadow: darkMode ? "0 12px 30px rgba(2, 10, 18, 0.28)" : "0 12px 24px rgba(21, 52, 84, 0.08)",
+            ? "linear-gradient(145deg, rgba(32, 27, 23, 0.92), rgba(22, 18, 15, 0.82))"
+            : "linear-gradient(145deg, rgba(255, 252, 248, 0.96), rgba(244, 237, 226, 0.9))",
+          boxShadow: "var(--ui-shadow-sm)",
           position: "relative",
           overflow: "hidden",
         }}
@@ -498,7 +498,7 @@ export default function UnifiedNav({
               color: palette.text,
             }}
           >
-            Context OS
+            Workspace
           </span>
         ) : null}
       </div>
@@ -524,7 +524,8 @@ export default function UnifiedNav({
               }}
                 onFocus={() => setSearchOpen(true)}
                 onKeyDown={onSearchKeyDown}
-                placeholder="Search Knoledgr"
+                placeholder="Search workspace"
+                aria-label="Search workspace"
                 style={{ ...searchInput, color: palette.text }}
               />
             {query ? (
@@ -583,7 +584,7 @@ export default function UnifiedNav({
 
       {!collapsed && (
         <div style={sectionLabelWrap}>
-          <span style={{ ...sectionLabel, color: palette.muted }}>Platform</span>
+          <span style={{ ...sectionLabel, color: palette.muted }}>Explore</span>
         </div>
       )}
 
@@ -717,7 +718,7 @@ export default function UnifiedNav({
           <p style={{ ...insightLabel, color: palette.muted }}>Memory Health</p>
           <p style={{ ...insightValue, color: palette.text }}>91%</p>
           <p style={{ ...insightHint, color: palette.muted }}>
-            Search, linked work, and decision coverage are trending healthy this week.
+            Search signal, linked work, and decision coverage are holding steady this week.
           </p>
           <div style={insightPillRow}>
             <span style={{ ...insightPill, border: `1px solid ${palette.border}`, color: palette.text }}>
@@ -843,20 +844,20 @@ const sidebar = {
   bottom: 0,
   display: "grid",
   gridTemplateRows: "auto auto auto minmax(0,1fr) auto",
-  gap: 12,
-  padding: "14px 12px",
+  gap: 14,
+  padding: "18px 14px",
   zIndex: 70,
   backdropFilter: "blur(18px)",
   overflow: "hidden",
 };
 
 const brandWrap = {
-  padding: "10px 10px 12px",
-  minHeight: 52,
+  padding: "12px 12px 14px",
+  minHeight: 62,
   display: "flex",
   alignItems: "center",
-  gap: 8,
-  borderRadius: 18,
+  gap: 10,
+  borderRadius: 24,
 };
 
 const brandWrapBackdrop = {
@@ -893,7 +894,7 @@ const brand = {
   textDecoration: "none",
   fontSize: 18,
   fontWeight: 800,
-  letterSpacing: "-0.02em",
+  letterSpacing: "-0.03em",
   position: "relative",
   zIndex: 1,
 };
@@ -901,33 +902,33 @@ const brand = {
 const brandTag = {
   marginLeft: "auto",
   borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 10,
+  padding: "7px 10px",
+  fontSize: 11,
   fontWeight: 800,
-  letterSpacing: "0.08em",
+  letterSpacing: "0.05em",
   textTransform: "uppercase",
   position: "relative",
   zIndex: 1,
 };
 
 const sectionLabelWrap = {
-  padding: "0 12px",
+  padding: "0 14px",
 };
 
 const sectionLabel = {
   fontSize: 11,
   fontWeight: 700,
   textTransform: "uppercase",
-  letterSpacing: "0.12em",
+  letterSpacing: "0.14em",
 };
 
 const navList = {
   display: "grid",
-  gap: 8,
+  gap: 9,
   minWidth: 0,
   overflowY: "auto",
   overflowX: "hidden",
-  padding: "0 4px",
+  padding: "0 4px 4px",
   position: "relative",
   zIndex: 1,
 };
@@ -935,12 +936,12 @@ const navList = {
 const topButton = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 10,
-  borderRadius: 16,
+  gap: 12,
+  borderRadius: 18,
   fontSize: 13,
   fontWeight: 700,
   textDecoration: "none",
-  padding: "11px 12px",
+  padding: "12px 13px",
   cursor: "pointer",
   whiteSpace: "nowrap",
   width: "100%",
@@ -964,7 +965,7 @@ const subnavHeader = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: 8,
-  padding: "18px 14px 12px",
+  padding: "22px 16px 14px",
 };
 
 const subnavTitle = {
@@ -976,9 +977,9 @@ const subnavTitle = {
 };
 
 const subnavClose = {
-  width: 24,
-  height: 24,
-  borderRadius: 10,
+  width: 28,
+  height: 28,
+  borderRadius: 12,
   background: "transparent",
   display: "grid",
   placeItems: "center",
@@ -988,8 +989,8 @@ const subnavClose = {
 const subnavList = {
   display: "grid",
   alignContent: "start",
-  gap: 4,
-  padding: "10px",
+  gap: 6,
+  padding: "12px",
   overflowY: "auto",
 };
 
@@ -997,11 +998,11 @@ const subnavItem = {
   display: "flex",
   alignItems: "center",
   gap: 10,
-  padding: "11px 12px",
+  padding: "12px 13px",
   textDecoration: "none",
   fontSize: 13,
   fontWeight: 700,
-  borderRadius: 14,
+  borderRadius: 16,
 };
 
 const subnavFooter = {
@@ -1015,17 +1016,17 @@ const subnavEmpty = {
 };
 
 const iconPill = {
-  width: 24,
-  height: 24,
-  borderRadius: 10,
+  width: 28,
+  height: 28,
+  borderRadius: 12,
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
 };
 
 const appsGlyph = {
-  borderRadius: 10,
-  padding: "6px 10px",
+  borderRadius: 999,
+  padding: "7px 11px",
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: "0.03em",
@@ -1033,16 +1034,16 @@ const appsGlyph = {
 
 const searchWrap = {
   position: "relative",
-  padding: "0 4px",
+  padding: "0 4px 2px",
 };
 
 const searchShell = {
   display: "inline-flex",
   alignItems: "center",
   gap: 8,
-  borderRadius: 16,
-  padding: "8px 10px",
-  height: 42,
+  borderRadius: 18,
+  padding: "10px 12px",
+  height: 48,
   minWidth: 0,
   width: "100%",
 };
@@ -1059,8 +1060,8 @@ const searchInput = {
 };
 
 const insightCard = {
-  borderRadius: 18,
-  padding: "14px 14px 12px",
+  borderRadius: 24,
+  padding: "16px 16px 14px",
   marginTop: 4,
   position: "relative",
   zIndex: 1,
@@ -1076,15 +1077,16 @@ const insightLabel = {
 
 const insightValue = {
   margin: "5px 0 8px",
-  fontSize: 24,
-  fontWeight: 800,
-  letterSpacing: "-0.02em",
+  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
+  fontSize: 28,
+  fontWeight: 700,
+  letterSpacing: "-0.04em",
 };
 
 const insightHint = {
   margin: "0 0 12px",
   fontSize: 12,
-  lineHeight: 1.45,
+  lineHeight: 1.6,
 };
 
 const insightTrack = {
@@ -1111,7 +1113,7 @@ const insightPillRow = {
 
 const insightPill = {
   borderRadius: 999,
-  padding: "5px 8px",
+  padding: "6px 9px",
   fontSize: 10,
   fontWeight: 700,
   letterSpacing: "0.04em",
@@ -1119,9 +1121,9 @@ const insightPill = {
 };
 
 const collapseButton = {
-  width: 24,
-  height: 24,
-  borderRadius: 10,
+  width: 28,
+  height: 28,
+  borderRadius: 12,
   display: "grid",
   placeItems: "center",
   cursor: "pointer",
@@ -1164,7 +1166,7 @@ const resultsDropdown = {
   right: 0,
   maxHeight: 360,
   overflowY: "auto",
-  borderRadius: 18,
+  borderRadius: 20,
   boxShadow: "none",
   zIndex: 90,
 };
@@ -1182,10 +1184,10 @@ const resultRow = {
   alignItems: "flex-start",
   gap: 8,
   textAlign: "left",
-  padding: "11px 12px",
+  padding: "12px 13px",
   cursor: "pointer",
   fontFamily: "inherit",
-  borderRadius: 12,
+  borderRadius: 16,
 };
 
 const resultTypePill = {

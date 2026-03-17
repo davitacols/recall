@@ -137,36 +137,44 @@ export default function UnifiedLayout({ children }) {
     () =>
       darkMode
         ? {
-            pageBg: "#09121c",
-            panelBg: "rgba(15, 26, 41, 0.84)",
-            panelBgAlt: "#162739",
-            panelGlass: "linear-gradient(180deg, rgba(15, 26, 41, 0.92), rgba(11, 20, 31, 0.88))",
-            border: "rgba(144, 164, 189, 0.18)",
-            text: "#edf4ff",
-            muted: "#90a6c0",
-            hover: "rgba(99, 197, 255, 0.1)",
-            glowOne: "rgba(46, 123, 245, 0.16)",
-            glowTwo: "rgba(69, 209, 255, 0.12)",
-            buttonBg: "rgba(11, 20, 31, 0.84)",
-            menuSurface: "#101b2a",
-            accent: "#63c5ff",
-            accentSoft: "rgba(99, 197, 255, 0.14)",
+            pageBg: "#14110f",
+            panelBg: "rgba(29, 24, 21, 0.9)",
+            panelBgAlt: "#221d19",
+            panelGlass: "linear-gradient(180deg, rgba(31, 26, 23, 0.94), rgba(21, 18, 15, 0.92))",
+            border: "rgba(238, 229, 216, 0.12)",
+            text: "#f5efe6",
+            muted: "#b7ab9b",
+            hover: "rgba(154, 185, 255, 0.08)",
+            glowOne: "rgba(154, 185, 255, 0.14)",
+            glowTwo: "rgba(210, 168, 106, 0.1)",
+            buttonBg: "rgba(35, 29, 25, 0.88)",
+            menuSurface: "#1c1714",
+            accent: "#9ab9ff",
+            accentSoft: "rgba(154, 185, 255, 0.14)",
+            headerBg: "rgba(26, 22, 19, 0.76)",
+            headerShadow: "0 18px 38px rgba(0,0,0,0.18)",
+            backdrop:
+              "url('/brand/knoledgr-grid.svg'), radial-gradient(900px 540px at -8% -8%, rgba(154, 185, 255, 0.12), transparent 62%), radial-gradient(760px 520px at 108% -4%, rgba(210, 168, 106, 0.08), transparent 58%), linear-gradient(180deg, #14110f, #171310)",
           }
         : {
-            pageBg: "#f2f7fc",
-            panelBg: "rgba(255, 255, 255, 0.88)",
-            panelBgAlt: "#f6fafe",
-            panelGlass: "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,250,255,0.92))",
-            border: "rgba(15, 23, 42, 0.09)",
-            text: "#13263d",
-            muted: "#5f7690",
-            hover: "rgba(33, 118, 255, 0.08)",
-            glowOne: "rgba(33, 118, 255, 0.1)",
-            glowTwo: "rgba(57, 183, 255, 0.1)",
-            buttonBg: "rgba(245, 250, 255, 0.96)",
-            menuSurface: "#ffffff",
-            accent: "#2176ff",
-            accentSoft: "rgba(33, 118, 255, 0.1)",
+            pageBg: "#f6f1e8",
+            panelBg: "rgba(255, 252, 248, 0.94)",
+            panelBgAlt: "#f1e9dd",
+            panelGlass: "linear-gradient(180deg, rgba(255, 252, 248, 0.96), rgba(246, 238, 226, 0.94))",
+            border: "rgba(58, 47, 38, 0.12)",
+            text: "#1f1a17",
+            muted: "#6e655b",
+            hover: "rgba(46, 99, 208, 0.06)",
+            glowOne: "rgba(94, 143, 232, 0.12)",
+            glowTwo: "rgba(214, 196, 167, 0.18)",
+            buttonBg: "rgba(255, 252, 248, 0.9)",
+            menuSurface: "#fffcf8",
+            accent: "#2e63d0",
+            accentSoft: "rgba(46, 99, 208, 0.1)",
+            headerBg: "rgba(255, 252, 248, 0.76)",
+            headerShadow: "0 18px 36px rgba(38, 30, 24, 0.06)",
+            backdrop:
+              "url('/brand/knoledgr-grid.svg'), radial-gradient(920px 560px at -8% -8%, rgba(94, 143, 232, 0.12), transparent 62%), radial-gradient(760px 520px at 108% -4%, rgba(214, 196, 167, 0.18), transparent 58%), linear-gradient(180deg, #f6f1e8, #fbf7f0)",
           },
     [darkMode]
   );
@@ -359,9 +367,9 @@ export default function UnifiedLayout({ children }) {
                       className="ui-btn-polish ui-focus-ring"
                       style={{
                         ...workspaceSwitchButton,
-                        background: darkMode ? "#8bd0ff" : "#2e7db3",
-                        color: darkMode ? "#0a1118" : "#eef7ff",
-                        border: `1px solid ${darkMode ? "rgba(120,191,233,0.5)" : "#24688f"}`,
+                        background: darkMode ? "linear-gradient(135deg, #e7effd, #9ab9ff)" : "linear-gradient(135deg, #2e63d0, #5e8fe8)",
+                        color: darkMode ? "#121418" : "#fbf7f0",
+                        border: `1px solid ${darkMode ? "rgba(154, 185, 255, 0.38)" : "rgba(46, 99, 208, 0.24)"}`,
                         opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
                         cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
                       }}
@@ -383,6 +391,9 @@ export default function UnifiedLayout({ children }) {
       style={{
         ...page,
         background: palette.pageBg,
+        backgroundImage: palette.backdrop,
+        backgroundSize: "860px 860px, auto, auto, auto",
+        backgroundRepeat: "repeat, no-repeat, no-repeat, no-repeat",
         "--ui-bg": palette.pageBg,
         "--ui-panel": palette.panelBg,
         "--ui-panel-alt": palette.panelBgAlt,
@@ -427,10 +438,10 @@ export default function UnifiedLayout({ children }) {
             style={{
               ...layoutHeader,
               ...(isMobile ? layoutHeaderMobile : null),
-              background: "transparent",
-              border: "none",
-              boxShadow: "none",
-              backdropFilter: "none",
+              background: palette.headerBg,
+              border: `1px solid ${palette.border}`,
+              boxShadow: palette.headerShadow,
+              backdropFilter: "blur(18px)",
             }}
           >
             <div style={headerPrimaryRow}>
@@ -439,17 +450,17 @@ export default function UnifiedLayout({ children }) {
                   <div
                     style={{
                       ...headerBrandCapsule,
-                      border: "none",
-                      background: "transparent",
+                      border: `1px solid ${palette.border}`,
+                      background: palette.buttonBg,
                     }}
                   >
                     <BrandLogo tone={darkMode ? "light" : "warm"} size="sm" showText={false} />
                     <div style={headerBrandCopy}>
-                      <p style={{ ...headerBrandLabel, color: palette.text }}>Knoledgr Memory OS</p>
-                      <p style={{ ...headerBrandHint, color: palette.muted }}>Context stays attached to work</p>
+                      <p style={{ ...headerBrandLabel, color: palette.text }}>Knoledgr</p>
+                      <p style={{ ...headerBrandHint, color: palette.muted }}>Decision memory for teams</p>
                     </div>
                   </div>
-                  <p style={{ ...headerEyebrow, color: palette.accent }}>{pageMeta.section}</p>
+                  <p style={{ ...headerEyebrow, color: palette.muted }}>{pageMeta.section}</p>
                   <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
                     {pageTitle}
                   </h1>
@@ -621,13 +632,13 @@ export default function UnifiedLayout({ children }) {
             ...askFabButton,
             left: askFabPos.x,
             top: askFabPos.y,
-            color: darkMode ? "#062032" : "#eef8ff",
+            color: darkMode ? "#121418" : "#fbf7f0",
             border: darkMode
-              ? "1px solid rgba(139,208,255,0.45)"
-              : "1px solid rgba(46,125,179,0.35)",
+              ? "1px solid rgba(154, 185, 255, 0.32)"
+              : "1px solid rgba(46, 99, 208, 0.22)",
             background: darkMode
-              ? "linear-gradient(135deg, #9bd9ff, #6ab8ec)"
-              : "linear-gradient(135deg, #2f80b8, #65aede)",
+              ? "linear-gradient(135deg, #e7effd, #9ab9ff)"
+              : "linear-gradient(135deg, #2e63d0, #5e8fe8)",
           }}
           className="ui-btn-polish ui-focus-ring"
           aria-label="Open Ask Recall"
@@ -644,32 +655,28 @@ const page = {
   minHeight: "100vh",
   position: "relative",
   overflowX: "hidden",
-  backgroundImage:
-    "url('/brand/knoledgr-grid.svg'), radial-gradient(960px 560px at -8% -8%, rgba(79,140,255,0.16), transparent 62%), radial-gradient(880px 620px at 108% -8%, rgba(91,192,235,0.14), transparent 58%), radial-gradient(920px 520px at 50% 118%, rgba(108,138,173,0.09), transparent 66%)",
-  backgroundSize: "820px 820px, auto, auto, auto",
-  backgroundRepeat: "repeat, no-repeat, no-repeat, no-repeat",
 };
 
 const ambientGlowOne = {
   position: "fixed",
-  width: 500,
-  height: 500,
-  top: -220,
-  left: -170,
+  width: 420,
+  height: 420,
+  top: -180,
+  left: -130,
   borderRadius: "50%",
   pointerEvents: "none",
-  filter: "blur(72px)",
+  filter: "blur(74px)",
 };
 
 const ambientGlowTwo = {
   position: "fixed",
-  width: 540,
-  height: 540,
-  right: -220,
-  bottom: -260,
+  width: 460,
+  height: 460,
+  right: -180,
+  bottom: -180,
   borderRadius: "50%",
   pointerEvents: "none",
-  filter: "blur(80px)",
+  filter: "blur(82px)",
 };
 
 const iconButton = {
@@ -711,9 +718,9 @@ const profileMenu = {
   top: 48,
   minWidth: 340,
   maxWidth: 420,
-  borderRadius: 22,
+  borderRadius: 26,
   overflow: "hidden",
-  boxShadow: "0 24px 56px rgba(2,12,26,0.26)",
+  boxShadow: "var(--ui-shadow-md)",
   zIndex: 120,
 };
 
@@ -760,8 +767,8 @@ const workspaceTitle = {
 
 const workspacePasswordInput = {
   width: "100%",
-  borderRadius: 10,
-  padding: "10px 11px",
+  borderRadius: 16,
+  padding: "12px 13px",
   fontSize: 14,
   outline: "none",
 };
@@ -776,8 +783,8 @@ const workspaceItem = {
   gridTemplateColumns: "1fr auto",
   alignItems: "center",
   gap: 10,
-  borderRadius: 16,
-  padding: "12px 13px",
+  borderRadius: 18,
+  padding: "13px 14px",
 };
 
 const workspaceName = {
@@ -795,8 +802,8 @@ const workspaceMeta = {
 };
 
 const workspaceSwitchButton = {
-  borderRadius: 10,
-  padding: "9px 12px",
+  borderRadius: 999,
+  padding: "9px 13px",
   fontSize: 12,
   fontWeight: 700,
   minWidth: 92,
@@ -815,7 +822,7 @@ const menuButton = {
   textAlign: "left",
   border: "none",
   background: "transparent",
-  padding: "12px 16px",
+  padding: "14px 16px",
   fontSize: 14,
   cursor: "pointer",
   fontFamily: "inherit",
@@ -830,7 +837,7 @@ const workspaceActions = {
 
 const orgSwitcherButton = {
   borderRadius: 999,
-  padding: "8px 12px",
+  padding: "9px 13px",
   fontSize: 11,
   fontWeight: 700,
   letterSpacing: "0.04em",
@@ -845,9 +852,9 @@ const orgSwitcherMenu = {
   right: 0,
   top: "calc(100% + 8px)",
   width: "min(92vw, 420px)",
-  borderRadius: 14,
+  borderRadius: 22,
   overflow: "hidden",
-  boxShadow: "0 20px 40px rgba(0,0,0,0.28)",
+  boxShadow: "var(--ui-shadow-md)",
   zIndex: 130,
 };
 
@@ -860,9 +867,9 @@ const main = {
 };
 
 const contentContainer = {
-  maxWidth: 1840,
+  maxWidth: 1720,
   margin: "0 auto",
-  padding: "12px clamp(12px, 1.6vw, 18px) 28px",
+  padding: "14px clamp(12px, 1.8vw, 22px) 32px",
 };
 
 const contentContainerMobile = {
@@ -871,45 +878,47 @@ const contentContainerMobile = {
 
 const layoutHeader = {
   position: "sticky",
-  top: 0,
+  top: 10,
   zIndex: 80,
-  borderRadius: 0,
-  padding: "8px 2px 6px",
-  marginBottom: 10,
+  borderRadius: 28,
+  padding: "16px 18px 14px",
+  marginBottom: 14,
 };
 
 const layoutHeaderMobile = {
-  top: 0,
-  borderRadius: 0,
-  padding: "6px 0 6px",
-  marginBottom: 8,
+  top: 8,
+  borderRadius: 22,
+  padding: "12px 12px 10px",
+  marginBottom: 10,
 };
 
 const headerEyebrow = {
   margin: 0,
-  fontSize: 9,
+  fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.16em",
+  letterSpacing: "0.14em",
   textTransform: "uppercase",
 };
 
 const headerTitle = {
-  margin: "3px 0 0",
-  fontSize: "clamp(0.96rem, 1.2vw, 1.14rem)",
-  letterSpacing: "-0.03em",
-  fontWeight: 800,
+  margin: "2px 0 0",
+  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
+  fontSize: "clamp(1.55rem, 2.4vw, 2.6rem)",
+  letterSpacing: "-0.05em",
+  lineHeight: 0.96,
+  fontWeight: 700,
 };
 
 const headerTitleMobile = {
   marginBottom: 2,
-  fontSize: "1.02rem",
+  fontSize: "1.5rem",
 };
 
 const headerSubtitle = {
   margin: "4px 0 0",
-  fontSize: 11,
-  lineHeight: 1.4,
-  maxWidth: 560,
+  fontSize: 13,
+  lineHeight: 1.65,
+  maxWidth: 620,
 };
 
 const headerPrimaryRow = {
@@ -932,7 +941,7 @@ const headerIdentity = {
 const headerActions = {
   display: "flex",
   alignItems: "center",
-  gap: 10,
+  gap: 12,
 };
 
 const headerActionsMobile = {
@@ -943,25 +952,25 @@ const headerActionCluster = {
   display: "flex",
   alignItems: "center",
   gap: 6,
-  borderRadius: 16,
+  borderRadius: 999,
   padding: "6px",
 };
 
 const headerTitleBlock = {
   minWidth: 0,
-  maxWidth: 680,
+  maxWidth: 720,
   display: "grid",
-  gap: 6,
+  gap: 7,
 };
 
 const headerBrandCapsule = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 8,
+  gap: 10,
   width: "fit-content",
   borderRadius: 999,
-  padding: "0",
-  backdropFilter: "none",
+  padding: "8px 12px",
+  backdropFilter: "blur(12px)",
 };
 
 const headerBrandCopy = {
@@ -973,13 +982,14 @@ const headerBrandLabel = {
   margin: 0,
   fontSize: 10,
   fontWeight: 800,
-  letterSpacing: "0.01em",
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
 };
 
 const headerBrandHint = {
   margin: 0,
-  fontSize: 9,
-  fontWeight: 600,
+  fontSize: 11,
+  fontWeight: 500,
 };
 
 const headerBreadcrumbs = {
@@ -987,7 +997,7 @@ const headerBreadcrumbs = {
 };
 
 const headerMetaRow = {
-  marginTop: 8,
+  marginTop: 10,
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
@@ -999,7 +1009,7 @@ const headerMetaRow = {
 
 const headerSecondaryRow = {
   ...headerMetaRow,
-  paddingTop: 8,
+  paddingTop: 12,
 };
 
 const headerBackdrop = {
@@ -1023,14 +1033,14 @@ const headerBackdropGrid = {
 const headerMetaPills = {
   display: "flex",
   alignItems: "center",
-  gap: 6,
+  gap: 8,
   flexWrap: "wrap",
 };
 
 const headerPill = {
   borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 10,
+  padding: "7px 11px",
+  fontSize: 11,
   fontWeight: 700,
   letterSpacing: "0.02em",
 };
@@ -1170,13 +1180,13 @@ const askFabButton = {
   zIndex: 150,
   width: ASK_FAB_WIDTH,
   height: ASK_FAB_HEIGHT,
-  borderRadius: 16,
+  borderRadius: 999,
   display: "grid",
   placeItems: "center",
   fontSize: 13,
   fontWeight: 800,
   letterSpacing: "0.01em",
-  boxShadow: "0 18px 38px rgba(2,12,26,0.24)",
+  boxShadow: "var(--ui-shadow-md)",
   cursor: "grab",
   userSelect: "none",
   touchAction: "none",

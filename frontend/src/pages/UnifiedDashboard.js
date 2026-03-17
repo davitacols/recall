@@ -524,7 +524,7 @@ export default function UnifiedDashboard() {
         darkMode={darkMode}
         eyebrow="Dashboard"
         title="Command Center"
-        description="Scan delivery health, decision follow-through, and live team signals without the visual noise of the older dashboard shell."
+        description="Scan delivery health, decision follow-through, and live team signals in one calm command surface."
         stats={overviewStats}
         actions={
           <>

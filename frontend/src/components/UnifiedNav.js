@@ -19,7 +19,6 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
-import BrandLogo from "./BrandLogo";
 import { getUnifiedNavPalette } from "../utils/projectUi";
 import { useAuth } from "../hooks/useAuth";
 
@@ -35,6 +34,13 @@ function getAppLaunchTarget(app) {
     return { type: "external", href: app.docs_url };
   }
   return { type: "internal", href: "/enterprise" };
+}
+
+function formatWorkspaceName(orgSlug) {
+  if (!orgSlug) return "Team navigation";
+  return orgSlug
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export default function UnifiedNav({
@@ -243,6 +249,7 @@ export default function UnifiedNav({
   }, []);
 
   const palette = useMemo(() => getUnifiedNavPalette(darkMode), [darkMode]);
+  const workspaceName = formatWorkspaceName(user?.organization_slug);
 
   const navItemsBase = [
     { name: "Home", href: "/", icon: HomeIcon },
@@ -453,25 +460,20 @@ export default function UnifiedNav({
       <div
         style={{
           ...brandWrap,
-          justifyContent: collapsed ? "center" : "flex-start",
-          padding: collapsed ? "0" : brandWrap.padding,
+          justifyContent: collapsed ? "center" : "space-between",
+          padding: collapsed ? "6px 0" : brandWrap.padding,
           border: `1px solid ${palette.border}`,
-          background: darkMode
-            ? "linear-gradient(145deg, rgba(32, 27, 23, 0.92), rgba(22, 18, 15, 0.82))"
-            : "linear-gradient(145deg, rgba(255, 252, 248, 0.96), rgba(244, 237, 226, 0.9))",
-          boxShadow: "var(--ui-shadow-sm)",
-          position: "relative",
-          overflow: "hidden",
+          background: palette.searchBg,
+          boxShadow: "none",
         }}
       >
-        <div
-          aria-hidden="true"
-          style={{
-            ...brandWrapBackdrop,
-            backgroundImage: "url('/brand/knoledgr-grid.svg')",
-            opacity: darkMode ? 0.24 : 0.1,
-          }}
-        />
+        {!collapsed ? (
+          <Link to="/" style={brandHome}>
+            <p style={{ ...brandEyebrow, color: palette.muted }}>Workspace</p>
+            <p style={{ ...brandTitle, color: palette.text }}>Knoledgr</p>
+            <p style={{ ...brandMeta, color: palette.muted }}>{workspaceName}</p>
+          </Link>
+        ) : null}
         <button
           onClick={onToggleCollapse}
           className="ui-btn-polish ui-focus-ring"
@@ -486,21 +488,6 @@ export default function UnifiedNav({
         >
           {collapsed ? <ChevronRightIcon style={icon14} /> : <ChevronLeftIcon style={icon14} />}
         </button>
-        <Link to="/" style={{ ...brand, color: palette.text, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <BrandLogo tone={darkMode ? "dark" : "warm"} size="sm" showText={!collapsed} />
-        </Link>
-        {!collapsed ? (
-          <span
-            style={{
-              ...brandTag,
-              border: `1px solid ${palette.border}`,
-              background: palette.panelAlt,
-              color: palette.text,
-            }}
-          >
-            Workspace
-          </span>
-        ) : null}
       </div>
 
       {!collapsed && (
@@ -704,38 +691,6 @@ export default function UnifiedNav({
 
       {!collapsed && (
         <div
-          style={{
-            ...insightCard,
-            background: darkMode
-              ? "linear-gradient(160deg, rgba(12, 24, 38, 0.9), rgba(18, 39, 58, 0.74))"
-              : "linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(237, 246, 255, 0.88))",
-            border: `1px solid ${palette.border}`,
-            backgroundImage: "url('/brand/knoledgr-grid.svg')",
-            backgroundSize: "760px 760px",
-            backgroundPosition: "center",
-          }}
-        >
-          <p style={{ ...insightLabel, color: palette.muted }}>Memory Health</p>
-          <p style={{ ...insightValue, color: palette.text }}>91%</p>
-          <p style={{ ...insightHint, color: palette.muted }}>
-            Search signal, linked work, and decision coverage are holding steady this week.
-          </p>
-          <div style={insightPillRow}>
-            <span style={{ ...insightPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-              Coverage +12%
-            </span>
-            <span style={{ ...insightPill, border: `1px solid ${palette.border}`, color: palette.muted }}>
-              Graph stable
-            </span>
-          </div>
-          <div style={{ ...insightTrack, background: palette.track }}>
-            <div style={{ ...insightFill, background: `linear-gradient(90deg, ${palette.accentA}, ${palette.accentB})` }} />
-          </div>
-        </div>
-      )}
-
-      {!collapsed && (
-        <div
           onMouseDown={() => {
             isResizingRef.current = true;
           }}
@@ -843,29 +798,21 @@ const sidebar = {
   left: 0,
   bottom: 0,
   display: "grid",
-  gridTemplateRows: "auto auto auto minmax(0,1fr) auto",
-  gap: 14,
-  padding: "18px 14px",
+  gridTemplateRows: "auto auto auto minmax(0,1fr)",
+  gap: 10,
+  padding: "16px 12px",
   zIndex: 70,
   backdropFilter: "blur(18px)",
   overflow: "hidden",
 };
 
 const brandWrap = {
-  padding: "12px 12px 14px",
-  minHeight: 62,
+  padding: "12px 12px 10px",
+  minHeight: 68,
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   gap: 10,
-  borderRadius: 24,
-};
-
-const brandWrapBackdrop = {
-  position: "absolute",
-  inset: 0,
-  backgroundRepeat: "repeat",
-  backgroundSize: "820px 820px",
-  pointerEvents: "none",
+  borderRadius: 20,
 };
 
 const sidebarTextureA = {
@@ -890,25 +837,34 @@ const sidebarTextureB = {
   zIndex: 0,
 };
 
-const brand = {
+const brandHome = {
   textDecoration: "none",
-  fontSize: 18,
-  fontWeight: 800,
-  letterSpacing: "-0.03em",
-  position: "relative",
-  zIndex: 1,
+  display: "grid",
+  gap: 3,
+  minWidth: 0,
+  flex: 1,
 };
 
-const brandTag = {
-  marginLeft: "auto",
-  borderRadius: 999,
-  padding: "7px 10px",
-  fontSize: 11,
+const brandEyebrow = {
+  margin: 0,
+  fontSize: 10,
   fontWeight: 800,
-  letterSpacing: "0.05em",
+  letterSpacing: "0.12em",
   textTransform: "uppercase",
-  position: "relative",
-  zIndex: 1,
+};
+
+const brandTitle = {
+  margin: 0,
+  fontSize: 17,
+  fontWeight: 800,
+  letterSpacing: "-0.03em",
+  lineHeight: 1.1,
+};
+
+const brandMeta = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.45,
 };
 
 const sectionLabelWrap = {
@@ -1057,67 +1013,6 @@ const searchInput = {
   minWidth: 0,
   fontFamily: "inherit",
   fontWeight: 600,
-};
-
-const insightCard = {
-  borderRadius: 24,
-  padding: "16px 16px 14px",
-  marginTop: 4,
-  position: "relative",
-  zIndex: 1,
-};
-
-const insightLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.09em",
-  textTransform: "uppercase",
-};
-
-const insightValue = {
-  margin: "5px 0 8px",
-  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
-  fontSize: 28,
-  fontWeight: 700,
-  letterSpacing: "-0.04em",
-};
-
-const insightHint = {
-  margin: "0 0 12px",
-  fontSize: 12,
-  lineHeight: 1.6,
-};
-
-const insightTrack = {
-  width: "100%",
-  height: 6,
-  borderRadius: 999,
-  background: "transparent",
-  overflow: "hidden",
-};
-
-const insightFill = {
-  width: "91%",
-  height: "100%",
-  borderRadius: 999,
-};
-
-const insightPillRow = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  flexWrap: "wrap",
-  marginBottom: 12,
-};
-
-const insightPill = {
-  borderRadius: 999,
-  padding: "6px 9px",
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.04em",
-  background: "rgba(255,255,255,0.04)",
 };
 
 const collapseButton = {

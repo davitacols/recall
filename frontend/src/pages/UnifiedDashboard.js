@@ -1,82 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import AIRecommendations from "../components/AIRecommendations";
-import AdvancedAIInsights from "../components/AdvancedAIInsights";
-import DashboardWidgets from "../components/DashboardWidgets";
 import MissionControlPanel from "../components/MissionControlPanel";
-import ChiefOfStaffPanel from "../components/ChiefOfStaffPanel";
-import {
-  MetricsTracker,
-  TeamExpertiseMap,
-  TrendAnalysis,
-} from "../components/EnhancedWidgets";
 import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import {
   ChevronDownIcon,
-  ChevronUpIcon,
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { buildApiUrl } from "../utils/apiBase";
 import { getProjectPalette } from "../utils/projectUi";
 
-const DASHBOARD_CARD_ORDER_KEY = "unifiedDashboardCardOrderV2";
-const LEFT_CARD_IDS = [
-  "mission-control",
-  "chief-of-staff",
-  "daily-digest",
-  "health-snapshot",
-  "copilot-feedback",
-  "trends-metrics",
-  "team-expertise",
-];
-const RIGHT_CARD_IDS = [
-  "pending-outcomes",
-  "decision-drift",
-  "decision-twin",
-  "decision-debt",
-  "decision-outcomes",
-  "team-calibration",
-  "ai-recommendations",
-  "advanced-insights",
-];
-
-function normalizeOrder(columnOrder, defaults) {
-  const seen = new Set();
-  const cleaned = [];
-  for (const id of columnOrder || []) {
-    if (defaults.includes(id) && !seen.has(id)) {
-      seen.add(id);
-      cleaned.push(id);
-    }
-  }
-  for (const id of defaults) {
-    if (!seen.has(id)) cleaned.push(id);
-  }
-  return cleaned;
-}
-
 function humanizeActivityType(activity) {
   const raw = activity?.content_type?.split(".").pop() || activity?.type || "activity";
   return raw
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function loadCardOrder() {
-  try {
-    const raw = window.localStorage.getItem(DASHBOARD_CARD_ORDER_KEY);
-    if (!raw) {
-      return { left: LEFT_CARD_IDS, right: RIGHT_CARD_IDS };
-    }
-    const parsed = JSON.parse(raw);
-    return {
-      left: normalizeOrder(parsed?.left, LEFT_CARD_IDS),
-      right: normalizeOrder(parsed?.right, RIGHT_CARD_IDS),
-    };
-  } catch {
-    return { left: LEFT_CARD_IDS, right: RIGHT_CARD_IDS };
-  }
 }
 
 export default function UnifiedDashboard() {
@@ -96,21 +34,11 @@ export default function UnifiedDashboard() {
   const [orchestratingOutcomes, setOrchestratingOutcomes] = useState(false);
   const [driftAlerts, setDriftAlerts] = useState([]);
   const [driftMeta, setDriftMeta] = useState({ total: 0, critical: 0, high: 0 });
-  const [calibrationRows, setCalibrationRows] = useState([]);
   const [currentSprint, setCurrentSprint] = useState(null);
-  const [decisionTwinSummary, setDecisionTwinSummary] = useState(null);
-  const [decisionTwinError, setDecisionTwinError] = useState("");
-  const [decisionTwinUpgrade, setDecisionTwinUpgrade] = useState(null);
-  const [decisionDebt, setDecisionDebt] = useState(null);
-  const [decisionDebtError, setDecisionDebtError] = useState("");
-  const [decisionDebtUpgrade, setDecisionDebtUpgrade] = useState(null);
-  const [copilotFeedback, setCopilotFeedback] = useState(null);
-  const [copilotFeedbackTrend, setCopilotFeedbackTrend] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1160);
-  const [cardOrder, setCardOrder] = useState(loadCardOrder);
 
   useEffect(() => {
     fetchDashboardData();
@@ -121,10 +49,6 @@ export default function UnifiedDashboard() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(DASHBOARD_CARD_ORDER_KEY, JSON.stringify(cardOrder));
-  }, [cardOrder]);
 
   const readJsonSafe = async (response, fallback = {}) => {
     try {
@@ -150,25 +74,42 @@ export default function UnifiedDashboard() {
       const token = localStorage.getItem("access_token") || localStorage.getItem("token");
       const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const timelineRes = await fetch(
-        buildApiUrl(`/api/knowledge/timeline/?days=7&page=${page}&per_page=10`),
-        { headers: authHeaders }
-      );
-      const timelineRaw = await readJsonSafe(timelineRes, { results: [], pagination: { has_next: false } });
-      const timelineData = unwrapPayload(timelineRaw, { results: [], pagination: { has_next: false } });
+      const [timelineRes, statsRes, outcomesRes, pendingRes, driftRes, sprintRes] = await Promise.all([
+        fetch(buildApiUrl(`/api/knowledge/timeline/?days=7&page=${page}&per_page=10`), {
+          headers: authHeaders,
+        }),
+        fetch(buildApiUrl("/api/knowledge/ai/success-rates/"), {
+          headers: authHeaders,
+        }),
+        fetch(buildApiUrl("/api/decisions/outcomes/stats/"), {
+          headers: authHeaders,
+        }),
+        fetch(buildApiUrl("/api/decisions/outcomes/pending/?overdue_only=false"), {
+          headers: authHeaders,
+        }),
+        fetch(buildApiUrl("/api/decisions/outcomes/drift-alerts/"), {
+          headers: authHeaders,
+        }),
+        fetch(buildApiUrl("/api/agile/current-sprint/"), {
+          headers: authHeaders,
+        }),
+      ]);
+
+      const timelineRaw = await readJsonSafe(timelineRes, {
+        results: [],
+        pagination: { has_next: false },
+      });
+      const timelineData = unwrapPayload(timelineRaw, {
+        results: [],
+        pagination: { has_next: false },
+      });
       const results = timelineData.results || timelineData;
       setTimeline((prev) => (page === 1 ? results : [...prev, ...results]));
       setHasMore(timelineData.pagination?.has_next || false);
 
-      const statsRes = await fetch(buildApiUrl("/api/knowledge/ai/success-rates/"), {
-        headers: authHeaders,
-      });
       const statsRaw = await readJsonSafe(statsRes, {});
       const statsData = unwrapPayload(statsRaw, {});
 
-      const outcomesRes = await fetch(buildApiUrl("/api/decisions/outcomes/stats/"), {
-        headers: authHeaders,
-      });
       const outcomesRaw = await readJsonSafe(outcomesRes, {});
       const outcomesData = unwrapPayload(outcomesRaw, {});
       setOutcomeStats({
@@ -179,9 +120,6 @@ export default function UnifiedDashboard() {
         avg_reliability: outcomesData.avg_reliability || 0,
       });
 
-      const pendingRes = await fetch(buildApiUrl("/api/decisions/outcomes/pending/?overdue_only=false"), {
-        headers: authHeaders,
-      });
       const pendingRaw = await readJsonSafe(pendingRes, { items: [] });
       const pendingData = unwrapPayload(pendingRaw, { items: [] });
       setPendingOutcomeReviews(pendingData.items || []);
@@ -190,9 +128,6 @@ export default function UnifiedDashboard() {
         overdue: pendingData.overdue || 0,
       });
 
-      const driftRes = await fetch(buildApiUrl("/api/decisions/outcomes/drift-alerts/"), {
-        headers: authHeaders,
-      });
       const driftRaw = await readJsonSafe(driftRes, { items: [] });
       const driftData = unwrapPayload(driftRaw, { items: [] });
       setDriftAlerts(driftData.items || []);
@@ -202,104 +137,9 @@ export default function UnifiedDashboard() {
         high: driftData.high || 0,
       });
 
-      const calibrationRes = await fetch(buildApiUrl("/api/decisions/outcomes/calibration/?days=120"), {
-        headers: authHeaders,
-      });
-      const calibrationRaw = await readJsonSafe(calibrationRes, { reviewers: [] });
-      const calibrationData = unwrapPayload(calibrationRaw, { reviewers: [] });
-      setCalibrationRows(calibrationData.reviewers || []);
-
-      const sprintRes = await fetch(buildApiUrl("/api/agile/current-sprint/"), {
-        headers: authHeaders,
-      });
       const sprintRaw = await readJsonSafe(sprintRes, null);
       const sprintData = unwrapPayload(sprintRaw, null);
       setCurrentSprint(sprintData || null);
-
-      if (sprintData?.id) {
-        const twinRes = await fetch(
-          buildApiUrl(`/api/agile/sprints/${sprintData.id}/decision-twin/?min_confidence_band=medium&min_probability_delta=1&max_scope_changes=4&allow_backlog_adds=true&enforce_policy=true`),
-          { headers: authHeaders }
-        );
-        if (twinRes.ok) {
-          const twinRaw = await readJsonSafe(twinRes, {});
-          const twinData = unwrapPayload(twinRaw, {});
-          const scenarios = twinData.scenarios || [];
-          const recommended = scenarios.find((item) => item.id === twinData.recommended_scenario_id) || scenarios[0] || null;
-          setDecisionTwinSummary({
-            sprintId: sprintData.id,
-            objective: twinData.objective,
-            recommendedScenario: recommended,
-            autoApplyScenarioId: twinData.recommended_auto_apply_scenario_id || null,
-          });
-          setDecisionTwinError("");
-          setDecisionTwinUpgrade(null);
-        } else {
-          const twinErrorData = await readJsonSafe(twinRes, null);
-          setDecisionTwinSummary(null);
-          if (twinRes.status === 402) {
-            setDecisionTwinError(twinErrorData?.error || "Decision Twin is available on paid plans.");
-            setDecisionTwinUpgrade({
-              required_plan: twinErrorData?.required_plan || "professional",
-              current_plan: twinErrorData?.current_plan || "free",
-            });
-          } else {
-            setDecisionTwinError("Decision Twin not available on this backend deployment.");
-            setDecisionTwinUpgrade(null);
-          }
-        }
-      } else {
-        setDecisionTwinSummary(null);
-        setDecisionTwinError("");
-        setDecisionTwinUpgrade(null);
-      }
-
-      const debtRes = await fetch(buildApiUrl("/api/agile/decisions/debt-ledger/?days=14"), {
-        headers: authHeaders,
-      });
-      if (debtRes.ok) {
-        const debtRaw = await readJsonSafe(debtRes, {});
-        const debtData = unwrapPayload(debtRaw, {});
-        setDecisionDebt(debtData);
-        setDecisionDebtError("");
-        setDecisionDebtUpgrade(null);
-      } else {
-        const debtErrorData = await readJsonSafe(debtRes, null);
-        setDecisionDebt(null);
-        if (debtRes.status === 402) {
-          setDecisionDebtError(debtErrorData?.error || "Decision Debt Ledger is available on paid plans.");
-          setDecisionDebtUpgrade({
-            required_plan: debtErrorData?.required_plan || "professional",
-            current_plan: debtErrorData?.current_plan || "free",
-          });
-        } else {
-          setDecisionDebtError("Decision Debt Ledger unavailable on this backend deployment.");
-          setDecisionDebtUpgrade(null);
-        }
-      }
-
-      const [copilotFeedbackRes, copilotFeedbackTrendRes] = await Promise.all([
-        fetch(buildApiUrl("/api/knowledge/ai/copilot/feedback-summary/"), {
-          headers: authHeaders,
-        }),
-        fetch(buildApiUrl("/api/knowledge/ai/copilot/feedback-trend/?days=7"), {
-          headers: authHeaders,
-        }),
-      ]);
-      if (copilotFeedbackRes.ok) {
-        const feedbackRaw = await readJsonSafe(copilotFeedbackRes, null);
-        const feedbackData = unwrapPayload(feedbackRaw, null);
-        setCopilotFeedback(feedbackData);
-      } else {
-        setCopilotFeedback(null);
-      }
-      if (copilotFeedbackTrendRes.ok) {
-        const trendRaw = await readJsonSafe(copilotFeedbackTrendRes, { points: [] });
-        const trendData = unwrapPayload(trendRaw, { points: [] });
-        setCopilotFeedbackTrend((trendData.points || []).slice(-7));
-      } else {
-        setCopilotFeedbackTrend([]);
-      }
 
       setStats({
         activity: timelineData.pagination?.total || results.length,
@@ -388,25 +228,6 @@ export default function UnifiedDashboard() {
     } finally {
       setOrchestratingOutcomes(false);
     }
-  };
-
-  const getCardOrder = (column, cardId) => {
-    const index = cardOrder[column]?.indexOf(cardId);
-    return index < 0 ? 999 : index;
-  };
-
-  const moveCard = (column, cardId, direction) => {
-    setCardOrder((prev) => {
-      const nextColumn = [...(prev[column] || [])];
-      const index = nextColumn.indexOf(cardId);
-      if (index < 0) return prev;
-      const target = index + direction;
-      if (target < 0 || target >= nextColumn.length) return prev;
-      const temp = nextColumn[target];
-      nextColumn[target] = nextColumn[index];
-      nextColumn[index] = temp;
-      return { ...prev, [column]: nextColumn };
-    });
   };
 
   const sprintBlocked = currentSprint?.blocked_count || currentSprint?.blocked || 0;
@@ -686,282 +507,22 @@ export default function UnifiedDashboard() {
         style={{
           ...mainGrid,
           "--ui-delay": "210ms",
-          gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "repeat(2, minmax(0, 1fr))",
+          gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0, 1.28fr) minmax(320px, 0.92fr)",
         }}
       >
         <div style={leftCol}>
-          <div style={{ order: getCardOrder("left", "mission-control"), width: "100%" }}>
+          <div style={{ width: "100%" }}>
             <article className="ui-card-lift ui-smooth" style={{ ...embeddedPanelShell, border: `1px solid ${palette.border}`, background: palette.panel }}>
               <MissionControlPanel />
             </article>
           </div>
-
-          <div style={{ order: getCardOrder("left", "chief-of-staff"), width: "100%" }}>
-            <article className="ui-card-lift ui-smooth" style={{ ...embeddedPanelShell, border: `1px solid ${palette.border}`, background: palette.panel }}>
-              <ChiefOfStaffPanel />
-            </article>
-          </div>
-
-          <CollapsibleCard
-            title="Health Snapshot"
-            palette={palette}
-            defaultExpanded={false}
-            cardId="health-snapshot"
-            column="left"
-            order={getCardOrder("left", "health-snapshot")}
-            onMoveUp={() => moveCard("left", "health-snapshot", -1)}
-            onMoveDown={() => moveCard("left", "health-snapshot", 1)}
-          >
-            <div style={healthList}>
-              <HealthRow label="Knowledge freshness" value="High" tint={palette.good} />
-              <HealthRow label="Decision throughput" value={`${stats.nodes}`} tint={palette.info} />
-              <HealthRow label="Pending links" value={`${stats.links}`} tint={palette.accent} />
-            </div>
-          </CollapsibleCard>
-
-          <section
-            style={{
-              order: getCardOrder("left", "trends-metrics"),
-              width: "100%",
-              padding: 0,
-            }}
-          >
-            <h3 style={{ margin: "0 0 10px", fontSize: 14, color: palette.text }}>Trends And Metrics</h3>
-            <div style={analyticsRow}>
-              <TrendAnalysis />
-              <MetricsTracker />
-            </div>
-          </section>
-
-          <CollapsibleCard
-            title="Copilot Feedback"
-            palette={palette}
-            defaultExpanded={false}
-            cardId="copilot-feedback"
-            column="left"
-            order={getCardOrder("left", "copilot-feedback")}
-            onMoveUp={() => moveCard("left", "copilot-feedback", -1)}
-            onMoveDown={() => moveCard("left", "copilot-feedback", 1)}
-          >
-            <div style={healthList}>
-              {copilotFeedback ? (
-                <>
-                  <HealthRow
-                    label={`Total (${copilotFeedback.window_days || 30}d)`}
-                    value={`${copilotFeedback.total_feedback || 0}`}
-                    tint={palette.info}
-                  />
-                  <HealthRow
-                    label="Positive rate"
-                    value={
-                      copilotFeedback.positive_rate !== null && copilotFeedback.positive_rate !== undefined
-                        ? `${copilotFeedback.positive_rate}%`
-                        : "--"
-                    }
-                    tint={palette.good}
-                  />
-                  <HealthRow label="Upvotes" value={`${copilotFeedback.upvotes || 0}`} tint={palette.good} />
-                  <HealthRow label="Downvotes" value={`${copilotFeedback.downvotes || 0}`} tint={palette.warn} />
-                  <HealthRow
-                    label="Outcomes"
-                    value={`${copilotFeedback.outcomes?.improved || 0}/${copilotFeedback.outcomes?.neutral || 0}/${copilotFeedback.outcomes?.worse || 0}`}
-                    tint={palette.accent}
-                  />
-                  {copilotFeedbackTrend.length > 0 && (
-                    <div style={{ marginTop: 8 }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 11, color: palette.muted }}>7-day trend (up/down)</p>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 6 }}>
-                        {copilotFeedbackTrend.map((point) => {
-                          const total = Number(point.total || 0);
-                          const up = Number(point.upvotes || 0);
-                          const ratio = total > 0 ? Math.max(0.1, up / total) : 0.5;
-                          return (
-                            <div
-                              key={point.date}
-                              title={`${point.date}: ${up}/${total}`}
-                              style={{
-                                height: 26,
-                                border: `1px solid ${palette.border}`,
-                                borderRadius: 6,
-                                background: `linear-gradient(180deg, ${palette.good} ${Math.round(ratio * 100)}%, ${palette.warn} ${Math.round(ratio * 100)}%)`,
-                                opacity: total > 0 ? 1 : 0.35,
-                              }}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                  No copilot feedback data yet.
-                </p>
-              )}
-            </div>
-          </CollapsibleCard>
-
-          <section
-            style={{
-              order: getCardOrder("left", "team-expertise"),
-              width: "100%",
-              padding: 0,
-            }}
-          >
-            <h3 style={{ margin: "0 0 10px", fontSize: 14, color: palette.text }}>Team Expertise</h3>
-            <TeamExpertiseMap />
-          </section>
-
-          <section
-            style={{
-              order: getCardOrder("left", "daily-digest"),
-              width: "100%",
-              padding: 0,
-            }}
-          >
-            <h3 style={{ margin: "0 0 10px", fontSize: 14, color: palette.text }}>Daily Digest</h3>
-            <DashboardWidgets />
-          </section>
         </div>
 
         <aside style={rightCol}>
           <CollapsibleCard
-            title="Autonomous Decision Twin"
-            palette={palette}
-            defaultExpanded={false}
-            cardId="decision-twin"
-            column="right"
-            order={getCardOrder("right", "decision-twin")}
-            onMoveUp={() => moveCard("right", "decision-twin", -1)}
-            onMoveDown={() => moveCard("right", "decision-twin", 1)}
-          >
-            <div style={healthList}>
-              {currentSprint ? (
-                <>
-                  <HealthRow label="Current sprint" value={`${currentSprint.name || `#${currentSprint.id}`}`} tint={palette.info} />
-                  {decisionTwinSummary?.recommendedScenario ? (
-                    <>
-                      <HealthRow
-                        label="Recommended"
-                        value={`${decisionTwinSummary.recommendedScenario.name} (${decisionTwinSummary.recommendedScenario.projected_goal_probability}%)`}
-                        tint={palette.good}
-                      />
-                      <HealthRow
-                        label="Delta"
-                        value={`${decisionTwinSummary.recommendedScenario.delta_vs_baseline >= 0 ? "+" : ""}${decisionTwinSummary.recommendedScenario.delta_vs_baseline}`}
-                        tint={palette.accent}
-                      />
-                      <Link
-                        className="ui-card-lift ui-smooth"
-                        to={`/sprints/${decisionTwinSummary.sprintId}`}
-                        style={{
-                          textDecoration: "none",
-                          border: `1px solid ${palette.border}`,
-                          borderRadius: 10,
-                          padding: "8px 10px",
-                          display: "block",
-                          color: palette.text,
-                          fontSize: 12,
-                          fontWeight: 700,
-                        }}
-                      >
-                        Open Sprint Twin
-                      </Link>
-                    </>
-                  ) : (
-                    <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                      {decisionTwinError || "Refresh backend deployment to enable Decision Twin recommendations."}
-                      {decisionTwinUpgrade ? ` Upgrade from ${decisionTwinUpgrade.current_plan} to ${decisionTwinUpgrade.required_plan}.` : ""}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                  No active sprint right now.
-                </p>
-              )}
-            </div>
-          </CollapsibleCard>
-
-          <CollapsibleCard
-            title="Decision Debt Ledger"
-            palette={palette}
-            defaultExpanded={false}
-            cardId="decision-debt"
-            column="right"
-            order={getCardOrder("right", "decision-debt")}
-            onMoveUp={() => moveCard("right", "decision-debt", -1)}
-            onMoveDown={() => moveCard("right", "decision-debt", 1)}
-          >
-            <div style={healthList}>
-              {decisionDebt?.summary ? (
-                <>
-                  <HealthRow label="Debt score" value={`${decisionDebt.summary.decision_debt_score}`} tint={palette.accent} />
-                  <HealthRow label="Interest / week" value={`${decisionDebt.summary.interest_per_week}`} tint={palette.warn || palette.accent} />
-                  <HealthRow label="Unresolved" value={`${decisionDebt.summary.unresolved_count}`} tint={palette.info} />
-                  <HealthRow
-                    label={`Trend (${decisionDebt.summary.trend_window_days}d)`}
-                    value={`${decisionDebt.summary.trend_delta > 0 ? "+" : ""}${decisionDebt.summary.trend_delta}`}
-                    tint={decisionDebt.summary.trend_delta <= 0 ? palette.good : palette.accent}
-                  />
-                  {(decisionDebt.top_items || []).slice(0, 3).map((item) => (
-                    <Link
-                      className="ui-card-lift ui-smooth"
-                      key={item.decision_id}
-                      to={item.link || `/decisions/${item.decision_id}`}
-                      style={{
-                        textDecoration: "none",
-                        border: `1px solid ${palette.border}`,
-                        borderRadius: 10,
-                        padding: "8px 10px",
-                        display: "block",
-                        color: palette.text,
-                      }}
-                    >
-                      <div style={{ fontSize: 12, fontWeight: 700 }}>{item.title}</div>
-                      <div style={{ fontSize: 11, color: palette.muted }}>
-                        score {item.debt_score} | age {item.age_days}d | {item.status}
-                      </div>
-                    </Link>
-                  ))}
-                </>
-              ) : (
-                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                  {decisionDebtError || "No decision debt data yet."}
-                  {decisionDebtUpgrade ? ` Upgrade from ${decisionDebtUpgrade.current_plan} to ${decisionDebtUpgrade.required_plan}.` : ""}
-                </p>
-              )}
-            </div>
-          </CollapsibleCard>
-
-          <CollapsibleCard
-            title="Decision Outcomes (Month)"
-            palette={palette}
-            defaultExpanded={false}
-            cardId="decision-outcomes"
-            column="right"
-            order={getCardOrder("right", "decision-outcomes")}
-            onMoveUp={() => moveCard("right", "decision-outcomes", -1)}
-            onMoveDown={() => moveCard("right", "decision-outcomes", 1)}
-          >
-            <div style={healthList}>
-              <HealthRow label="Reviewed" value={`${outcomeStats.reviewed_count}`} tint={palette.info} />
-              <HealthRow label="Successful" value={`${outcomeStats.success_count}`} tint={palette.good} />
-              <HealthRow label="Unsuccessful" value={`${outcomeStats.failure_count}`} tint={palette.accent} />
-              <HealthRow label="Success rate" value={`${outcomeStats.success_rate}%`} tint={palette.good} />
-              <HealthRow label="Avg reliability" value={`${outcomeStats.avg_reliability}%`} tint={palette.info} />
-            </div>
-          </CollapsibleCard>
-
-          <CollapsibleCard
             title="Pending Outcome Reviews"
             palette={palette}
             defaultExpanded
-            cardId="pending-outcomes"
-            column="right"
-            order={getCardOrder("right", "pending-outcomes")}
-            onMoveUp={() => moveCard("right", "pending-outcomes", -1)}
-            onMoveDown={() => moveCard("right", "pending-outcomes", 1)}
           >
             <div style={healthList}>
               <HealthRow label="Total pending" value={`${pendingOutcomeMeta.total}`} tint={palette.info} />
@@ -1044,11 +605,6 @@ export default function UnifiedDashboard() {
             title="Decision Drift Alerts"
             palette={palette}
             defaultExpanded
-            cardId="decision-drift"
-            column="right"
-            order={getCardOrder("right", "decision-drift")}
-            onMoveUp={() => moveCard("right", "decision-drift", -1)}
-            onMoveDown={() => moveCard("right", "decision-drift", 1)}
           >
             <div style={healthList}>
               <HealthRow label="Total alerts" value={`${driftMeta.total}`} tint={palette.info} />
@@ -1077,37 +633,6 @@ export default function UnifiedDashboard() {
             </div>
           </CollapsibleCard>
 
-          <CollapsibleCard
-            title="Team Calibration"
-            palette={palette}
-            defaultExpanded={false}
-            cardId="team-calibration"
-            column="right"
-            order={getCardOrder("right", "team-calibration")}
-            onMoveUp={() => moveCard("right", "team-calibration", -1)}
-            onMoveDown={() => moveCard("right", "team-calibration", 1)}
-          >
-            <div style={healthList}>
-              {calibrationRows.slice(0, 4).map((row) => (
-                <div key={`${row.reviewer_id}-${row.reviewer_name}`} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: "8px 10px" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>{row.reviewer_name}</div>
-                  <div style={{ fontSize: 11, color: palette.muted }}>
-                    Gap {row.calibration_gap}% | {row.reviews} reviews | {row.quality_band}
-                  </div>
-                </div>
-              ))}
-              {calibrationRows.length === 0 && (
-                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>No calibration data yet.</p>
-              )}
-            </div>
-          </CollapsibleCard>
-
-          <div style={{ order: getCardOrder("right", "advanced-insights"), width: "100%" }}>
-            <AdvancedAIInsights />
-          </div>
-          <div style={{ order: getCardOrder("right", "ai-recommendations"), width: "100%" }}>
-            <AIRecommendations darkMode={darkMode} />
-          </div>
         </aside>
       </section>
     </div>
@@ -1128,9 +653,6 @@ function CollapsibleCard({
   children,
   palette,
   defaultExpanded = true,
-  order = 0,
-  onMoveUp,
-  onMoveDown,
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -1139,7 +661,6 @@ function CollapsibleCard({
       className="ui-card-lift ui-smooth"
       style={{
         ...panel,
-        order,
         background: `linear-gradient(180deg, ${palette.panel}, ${palette.cardAlt})`,
         border: `1px solid ${palette.border}`,
       }}
@@ -1167,26 +688,6 @@ function CollapsibleCard({
             }}
           />
         </button>
-        <div style={moveControls}>
-          <button
-            className="ui-btn-polish ui-focus-ring"
-            onClick={onMoveUp}
-            style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
-            aria-label={`Move ${title} up`}
-            title="Move up"
-          >
-            <ChevronUpIcon style={icon14} />
-          </button>
-          <button
-            className="ui-btn-polish ui-focus-ring"
-            onClick={onMoveDown}
-            style={{ ...moveButton, color: palette.muted, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
-            aria-label={`Move ${title} down`}
-            title="Move down"
-          >
-            <ChevronDownIcon style={icon14} />
-          </button>
-        </div>
       </div>
       {expanded ? <div>{children}</div> : null}
     </article>
@@ -1358,22 +859,6 @@ const collapseHeaderMain = {
   textAlign: "left",
   cursor: "pointer",
 };
-const moveControls = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  paddingRight: 12,
-};
-const moveButton = {
-  width: 28,
-  height: 28,
-  border: "none",
-  borderRadius: 10,
-  background: "transparent",
-  display: "grid",
-  placeItems: "center",
-  cursor: "pointer",
-};
 
 const activityList = { display: "grid", gap: 10 };
 const activityRow = {
@@ -1417,15 +902,6 @@ const activityTitle = {
 
 const loadMoreWrap = { padding: 12, textAlign: "center" };
 const loadMoreButton = { borderRadius: 14, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" };
-
-const analyticsRow = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-  gap: 12,
-  alignItems: "start",
-};
-
-const railTitle = { margin: 0, padding: "14px 14px 4px", fontSize: 14, fontWeight: 700 };
 const healthList = { padding: "14px 16px 16px", display: "grid", gap: 10 };
 const healthRow = {
   display: "flex",

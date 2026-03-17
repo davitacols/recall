@@ -5,6 +5,7 @@ import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { useToast } from "../components/Toast";
 import { MentionInput } from "../components/MentionInput";
 import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
+import { WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import RichTextEditor from "../components/RichTextEditor";
 import RichTextRenderer from "../components/RichTextRenderer";
 import {
@@ -279,67 +280,69 @@ export default function DocumentDetail() {
   const createdAt = documentRecord.created_at ? new Date(documentRecord.created_at).toLocaleDateString() : "N/A";
   const typeLabel = formatTypeLabel(documentRecord.document_type || "other");
   const versionLabel = documentRecord.version || "-";
+  const heroStats = [
+    { label: "Version", value: versionLabel, helper: "Current published revision." },
+    { label: "Updated", value: updatedAt, helper: "Most recent recorded change." },
+    { label: "Comments", value: `${comments.length}`, helper: "Discussion attached here." },
+  ];
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
       <div style={ambientLayer} />
-      <div style={{ ...ui.container, position: "relative", zIndex: 1 }}>
-        <section
-          className="ui-enter ui-card-lift ui-smooth"
-          style={{
-            borderRadius: 28,
-            border: `1px solid ${palette.border}`,
-            background: darkMode
-              ? "linear-gradient(145deg, rgba(11,18,32,0.96) 0%, rgba(17,24,39,0.94) 56%, rgba(21,32,54,0.9) 100%)"
-              : "linear-gradient(145deg, rgba(255,255,255,0.96) 0%, rgba(246,249,252,0.98) 58%, rgba(232,241,255,0.92) 100%)",
-            padding: "clamp(20px,3vw,30px)",
-            marginBottom: 16,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
-            gap: 18,
-            boxShadow: "var(--ui-shadow-sm)",
-          }}
-        >
-          <div style={{ display: "grid", alignContent: "space-between", gap: 16, minWidth: 0 }}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={ui.secondaryButton}>
-                <ArrowLeftIcon style={{ width: 14, height: 14 }} />
-                All Documents
-              </button>
+      <div style={{ ...ui.container, position: "relative", zIndex: 1, display: "grid", gap: 16 }}>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Document Workspace"
+          title={documentRecord.title}
+          description={documentRecord.description || "Keep file context, document content, and team comments in one structured page."}
+          stats={heroStats}
+          aside={
+            <div style={{ display: "grid", gap: 10, justifyItems: "end" }}>
               <span style={heroChip(palette)}>
                 <ShieldCheckIcon style={{ width: 14, height: 14 }} /> {typeLabel}
               </span>
               <span style={heroChip(palette)}>{documentRecord.has_file ? "File-backed" : "Editor-only"}</span>
             </div>
-
-            <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: palette.muted, textTransform: "uppercase" }}>DOCUMENT WORKSPACE</p>
-              <h1 style={{ margin: "8px 0 10px", fontSize: "clamp(2rem,3vw,2.7rem)", letterSpacing: "-0.04em", lineHeight: 1.02, color: palette.text }}>{documentRecord.title}</h1>
-              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: palette.muted, maxWidth: 720 }}>
-                Keep file context, document content, and team comments in one structured page.
-              </p>
-            </div>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          }
+          actions={
+            <>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={ui.secondaryButton}>
+                <ArrowLeftIcon style={{ width: 14, height: 14 }} />
+                All Documents
+              </button>
               <button onClick={handleExportPDF} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
                 <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
                 Export PDF
               </button>
-              {!editing && (
+              {!editing ? (
                 <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
                   <PencilIcon style={{ width: 14, height: 14 }} />
                   Edit Document
                 </button>
-              )}
+              ) : null}
+            </>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Library Controls</p>
+              <h2 style={{ margin: 0, fontSize: 28, lineHeight: 1.05, letterSpacing: "-0.04em", fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', color: palette.text }}>
+                Move between reading, editing, export, and team commentary
+              </h2>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: palette.muted }}>
+                The document detail page now keeps its primary actions close to the content instead of burying them inside disconnected card stacks.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <span style={heroChip(palette)}>Version {versionLabel}</span>
+              <span style={heroChip(palette)}>{comments.length} comments</span>
+              <span style={heroChip(palette)}>{editing ? "Editing" : "Reading"}</span>
             </div>
           </div>
-
-          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
-            <SummaryCard icon={DocumentTextIcon} label="Version" value={versionLabel} helper="Current published revision for this document." palette={palette} />
-            <SummaryCard icon={ClockIcon} label="Updated" value={updatedAt} helper="Most recent change recorded in the document trail." palette={palette} />
-            <SummaryCard icon={ChatBubbleLeftIcon} label="Comments" value={comments.length} helper="Team notes and follow-up context attached here." palette={palette} />
-          </div>
-        </section>
+        </WorkspaceToolbar>
 
         <div
           className="ui-enter"
@@ -440,12 +443,12 @@ export default function DocumentDetail() {
             </section>
 
             {!editing && (
-              <section className="ui-card-lift ui-smooth" style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.card, padding: "clamp(16px,2.2vw,22px)", boxShadow: "var(--ui-shadow-xs)" }}>
-                <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 800, color: palette.text, display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  <ChatBubbleLeftIcon style={{ width: 18, height: 18 }} />
-                  Comments ({comments.length})
-                </h3>
-
+              <WorkspacePanel
+                palette={palette}
+                eyebrow="Team Commentary"
+                title={`Comments (${comments.length})`}
+                description="Conversation now sits in its own calmer panel so the document body stays readable."
+              >
                 <form onSubmit={handleAddComment} style={{ marginBottom: 18 }}>
                   <MentionInput value={newComment} onChange={setNewComment} placeholder="Add a comment... (Type @ to mention someone)" rows={3} darkMode={darkMode} />
                   <button type="submit" disabled={!newComment.trim()} className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, marginTop: 10, opacity: !newComment.trim() ? 0.65 : 1 }}>
@@ -465,20 +468,19 @@ export default function DocumentDetail() {
                   ))}
                   {comments.length === 0 && <p style={{ margin: 0, textAlign: "center", padding: "28px 12px", color: palette.muted, fontSize: 13 }}>No comments yet. Be the first to add context.</p>}
                 </div>
-              </section>
+              </WorkspacePanel>
             )}
           </main>
 
           <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
-            <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
-              <h3 style={sideTitle(palette)}>Document Snapshot</h3>
+            <WorkspacePanel palette={palette} eyebrow="Snapshot" title="Document Snapshot" description="Key metadata stays visible without competing with the main content.">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
                 <SnapshotTile label="Type" value={typeLabel} palette={palette} />
                 <SnapshotTile label="Version" value={versionLabel} palette={palette} />
                 <SnapshotTile label="Created" value={createdAt} palette={palette} />
                 <SnapshotTile label="Updated" value={updatedAt} palette={palette} />
               </div>
-            </section>
+            </WorkspacePanel>
 
             <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
               <h3 style={sideTitle(palette)}>Ownership</h3>

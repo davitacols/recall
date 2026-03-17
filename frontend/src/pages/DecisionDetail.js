@@ -22,6 +22,7 @@ import {
   DecisionReminder,
   UndoRedoButtons,
 } from "../components/QuickWinFeatures";
+import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import api from "../services/api";
 
 function DecisionDetail() {
@@ -285,81 +286,59 @@ function DecisionDetail() {
             : "radial-gradient(circle at 8% 3%, rgba(59,130,246,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.08), transparent 30%), radial-gradient(circle at 52% 0%, rgba(99,102,241,0.08), transparent 24%)",
         }}
       />
-      <div style={ui.container}>
-        <section
-          className="ui-enter ui-card-lift ui-smooth"
-          style={{
-            ...commandStrip,
-            border: `1px solid ${palette.border}`,
-            background: darkMode ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.82)",
-            backdropFilter: "blur(10px)",
-            boxShadow: "var(--ui-shadow-xs)",
-            "--ui-delay": "10ms",
-          }}
-        >
-          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>All Decisions</button>
-          <button className="ui-btn-polish ui-focus-ring" onClick={() => setActiveTab("outcome")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>Outcome Review</button>
-          <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecision} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-            <ArrowPathIcon style={{ width: 13, height: 13 }} /> Refresh
-          </button>
-        </section>
-
-        <button className="ui-enter ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...ui.secondaryButton, marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 6, "--ui-delay": "60ms" }}>
-          <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
-        </button>
-
-        <section
-          className="ui-enter ui-card-lift ui-smooth"
-          style={{
-            borderRadius: 28,
-            border: `1px solid ${palette.border}`,
-            background: darkMode
-              ? "linear-gradient(145deg, rgba(11,18,32,0.96) 0%, rgba(17,24,39,0.94) 56%, rgba(21,32,54,0.9) 100%)"
-              : "linear-gradient(145deg, rgba(255,255,255,0.96) 0%, rgba(246,249,252,0.98) 58%, rgba(232,241,255,0.92) 100%)",
-            padding: "clamp(20px,3vw,30px)",
-            marginBottom: 14,
-            boxShadow: "var(--ui-shadow-sm)",
-            "--ui-delay": "120ms",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                <Pill text={status} tone="blue" />
-                <Pill text={impact} tone="amber" />
-              </div>
-              <h1 style={{ margin: "0 0 10px", fontSize: "clamp(1.8rem,3vw,2.6rem)", color: palette.text, letterSpacing: "-0.04em", lineHeight: 1.02 }}>{decision.title}</h1>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: palette.muted }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><UserIcon style={{ width: 14, height: 14 }} /> {decision.decision_maker_name || "Unknown"}</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><CalendarIcon style={{ width: 14, height: 14 }} /> {new Date(decision.created_at).toLocaleDateString()}</span>
-                {decision.confidence?.score && <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><ChartBarIcon style={{ width: 14, height: 14 }} /> {decision.confidence.score}% confidence</span>}
-              </div>
-            </div>
-            <DecisionIllustration decision={decision} darkMode={darkMode} size={96} />
-
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <div style={{ ...ui.container, display: "grid", gap: 16 }}>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Decision Record"
+          title={decision.title}
+          description="Recover the reasoning, confidence, review signals, and downstream impact from one structured decision workspace."
+          stats={[
+            { label: "Confidence", value: `${confidenceScore}%`, helper: "Current decision confidence score." },
+            { label: "Reliability", value: `${reliabilityScore}%`, helper: "Outcome reliability recorded so far." },
+            { label: "Impact trail", value: `${impactTrail.edges?.length || 0}`, helper: "Connected links in the graph trail." },
+          ]}
+          aside={<DecisionIllustration decision={decision} darkMode={darkMode} size={96} />}
+          actions={
+            <>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
+                <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
+              </button>
               <QuickLink sourceType="decisions.decision" sourceId={id} />
               <AIEnhancementButton content={decision?.description} title={decision?.title} type="decision" onResult={(feature, data) => setAiResults(data)} />
               <FavoriteButton decisionId={id} />
               <ExportButton decisionId={id} type="decision" />
               <UndoRedoButtons />
+            </>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Pill text={status} tone="blue" />
+              <Pill text={impact} tone="amber" />
+              <span style={toolbarMetaChip(palette)}>
+                <UserIcon style={{ width: 14, height: 14 }} /> {decision.decision_maker_name || "Unknown"}
+              </span>
+              <span style={toolbarMetaChip(palette)}>
+                <CalendarIcon style={{ width: 14, height: 14 }} /> {new Date(decision.created_at).toLocaleDateString()}
+              </span>
+              {decision.confidence?.score ? (
+                <span style={toolbarMetaChip(palette)}>
+                  <ChartBarIcon style={{ width: 14, height: 14 }} /> {decision.confidence.score}% confidence
+                </span>
+              ) : null}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>All Decisions</button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => setActiveTab("outcome")} style={ui.secondaryButton}>Outcome Review</button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecision} style={ui.secondaryButton}>
+                <ArrowPathIcon style={{ width: 13, height: 13 }} /> Refresh
+              </button>
             </div>
           </div>
-          <div style={heroMetrics}>
-            <div style={{ ...metricChip, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-              <p style={{ ...metricLabel, color: palette.muted }}>Confidence</p>
-              <p style={{ ...metricValue, color: palette.text }}>{confidenceScore}%</p>
-            </div>
-            <div style={{ ...metricChip, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-              <p style={{ ...metricLabel, color: palette.muted }}>Reliability</p>
-              <p style={{ ...metricValue, color: palette.text }}>{reliabilityScore}%</p>
-            </div>
-            <div style={{ ...metricChip, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-              <p style={{ ...metricLabel, color: palette.muted }}>Impact trail</p>
-              <p style={{ ...metricValue, color: palette.text }}>{impactTrail.edges?.length || 0} links</p>
-            </div>
-          </div>
-        </section>
+        </WorkspaceToolbar>
 
         <div className="ui-enter" style={{ ...mainGrid, gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", gap: 14, "--ui-delay": "180ms" }}>
           <section className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, background: palette.card }}>
@@ -788,6 +767,7 @@ const fieldLabel = { margin: 0, fontSize: 12, color: "var(--app-muted)", fontWei
 const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
 const commandStrip = { position: "sticky", top: 72, zIndex: 1, marginBottom: 12, borderRadius: 24, padding: 12, display: "flex", gap: 8, flexWrap: "wrap" };
 const commandPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "8px 12px", background: "transparent", fontSize: 12, fontWeight: 700, cursor: "pointer" };
+const toolbarMetaChip = (palette) => ({ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, fontSize: 12, fontWeight: 700 });
 const heroMetrics = { marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 };
 const metricChip = { borderRadius: 18, padding: "14px 14px 12px", boxShadow: "var(--ui-shadow-xs)" };
 const metricLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 };

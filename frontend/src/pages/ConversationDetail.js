@@ -19,6 +19,8 @@ import AIAssistant from "../components/AIAssistant";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
 import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 
 const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette, darkMode }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -157,27 +159,15 @@ function ConversationDetail() {
     }
   }, [id]);
 
-  const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            panel: "var(--app-surface)",
-            panelAlt: "var(--app-surface-alt)",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "var(--app-muted)",
-            accent: "#ffaf72",
-          }
-        : {
-            panel: "var(--app-surface)",
-            panelAlt: "var(--app-surface-alt)",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "var(--app-muted)",
-            accent: "var(--app-accent)",
-          },
-    [darkMode]
-  );
+  const palette = useMemo(() => {
+    const basePalette = getProjectPalette(darkMode);
+    return {
+      ...basePalette,
+      panel: basePalette.card,
+      panelAlt: basePalette.cardAlt,
+    };
+  }, [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   const fetchConversation = async () => {
     try {
@@ -357,14 +347,31 @@ function ConversationDetail() {
 
   if (id === "new") {
     return (
-      <div style={page}>
-        <Link to="/conversations" style={{ ...backLink, color: palette.muted }}>
-          <ArrowLeftIcon style={icon14} /> Back to Conversations
-        </Link>
+      <div style={{ ...page, display: "grid", gap: 16 }}>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Conversation Composer"
+          title={selectedType ? `Create ${formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}` : "Create New Conversation"}
+          description={selectedType ? "Shape the thread with a clearer title, context, and priority before it lands in the shared stream." : "Choose a conversation type to start from a stronger, more intentional template."}
+          stats={[
+            { label: "Route", value: "New thread", helper: "This page creates a fresh conversation record." },
+            { label: "Priority", value: formData.priority || "medium", helper: "Current urgency setting." },
+          ]}
+          actions={
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations")} style={ui.secondaryButton}>
+              <ArrowLeftIcon style={icon14} /> Back to Conversations
+            </button>
+          }
+        />
+
         {!selectedType ? (
-          <section>
-            <h1 style={{ ...h1, color: palette.text }}>Create New Conversation</h1>
-            <p style={{ ...sub, color: palette.muted }}>Choose a conversation type to start.</p>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Thread Types"
+            title="Choose the shape of the conversation"
+            description="Each thread type now reads like a deliberate editorial choice instead of a plain utility card."
+          >
             <div style={typeGrid}>
               {[
                 { type: "update", label: "Update", desc: "Team announcements and status updates" },
@@ -374,6 +381,7 @@ function ConversationDetail() {
               ].map(({ type, label, desc }) => (
                 <button
                   key={type}
+                  className="ui-card-lift ui-smooth"
                   onClick={() => {
                     setSelectedType(type);
                     setFormData({ ...formData, post_type: type });
@@ -385,47 +393,57 @@ function ConversationDetail() {
                 </button>
               ))}
             </div>
-          </section>
+          </WorkspacePanel>
         ) : (
-          <section style={{ ...formCard, background: palette.panel, border: `1px solid ${palette.border}` }}>
-            <h1 style={{ ...h1, color: palette.text }}>
-              Create {formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}
-            </h1>
-            <div style={formStack}>
-              <label style={label}>Title</label>
-              <input
-                value={formData.title}
-                onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-                style={{ ...textInput, background: palette.panelAlt, border: `1px solid ${palette.border}`, color: palette.text }}
-              />
-              <label style={label}>Content</label>
-              <textarea
-                value={formData.content}
-                onChange={(event) => setFormData({ ...formData, content: event.target.value })}
-                rows={8}
-                style={{ ...textareaInput, background: palette.panelAlt, border: `1px solid ${palette.border}`, color: palette.text }}
-              />
-              <label style={label}>Priority</label>
-              <select
-                value={formData.priority}
-                onChange={(event) => setFormData({ ...formData, priority: event.target.value })}
-                style={{ ...textInput, background: palette.panelAlt, border: `1px solid ${palette.border}`, color: palette.text }}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-              <div style={buttonRow}>
-                <button onClick={handleCreateConversation} style={primaryButton}>
-                  {creating ? "Creating..." : "Create Conversation"}
-                </button>
-                <button onClick={() => setSelectedType(null)} style={secondaryButton}>
-                  Cancel
-                </button>
+          <>
+            <WorkspaceToolbar palette={palette}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{formData.post_type}</span>
+                <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{formData.priority}</span>
               </div>
-            </div>
-          </section>
+            </WorkspaceToolbar>
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Composer"
+              title={`Create ${formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}`}
+              description="Write the thread with enough context that the team can react, reply, or convert it into a decision later."
+            >
+              <div style={formStack}>
+                <label style={label}>Title</label>
+                <input
+                  value={formData.title}
+                  onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+                  style={{ ...ui.input, background: palette.panelAlt, color: palette.text }}
+                />
+                <label style={label}>Content</label>
+                <textarea
+                  value={formData.content}
+                  onChange={(event) => setFormData({ ...formData, content: event.target.value })}
+                  rows={8}
+                  style={{ ...ui.input, background: palette.panelAlt, color: palette.text, resize: "vertical" }}
+                />
+                <label style={label}>Priority</label>
+                <select
+                  value={formData.priority}
+                  onChange={(event) => setFormData({ ...formData, priority: event.target.value })}
+                  style={{ ...ui.input, background: palette.panelAlt, color: palette.text }}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+                <div style={buttonRow}>
+                  <button onClick={handleCreateConversation} style={ui.primaryButton}>
+                    {creating ? "Creating..." : "Create Conversation"}
+                  </button>
+                  <button onClick={() => setSelectedType(null)} style={ui.secondaryButton}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </WorkspacePanel>
+          </>
         )}
       </div>
     );
@@ -462,29 +480,40 @@ function ConversationDetail() {
   return (
     <div style={{ ...page, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
       <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.16), transparent 30%)" : "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 90% 8%, var(--app-success-soft), transparent 30%)" }} />
-      <section className="ui-enter ui-card-lift ui-smooth" style={{ ...masthead, border: `1px solid ${palette.border}`, background: palette.panelAlt, "--ui-delay": "10ms" }}>
-        <div style={mastheadTopRow}>
-          <div style={{ display: "grid", gap: 8 }}>
-            <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...backPill, border: `1px solid ${palette.border}`, color: palette.text }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow={`Conversation Thread #${id}`}
+        title={conversation.title}
+        description="Track discussion context, reactions, and decisions from one structured workspace."
+        stats={[
+          { label: "Replies", value: `${replyCount}`, helper: "Responses attached to the thread." },
+          { label: "Reactions", value: `${reactionTotal}`, helper: "Signals from the team." },
+          { label: "Updated", value: updatedLabel, helper: "Most recent visible activity." },
+        ]}
+        aside={!isNarrow ? <BrandedTechnicalIllustration darkMode={darkMode} compact /> : null}
+        actions={
+          <>
+            <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
               <ArrowLeftIcon style={icon14} /> All Conversations
             </Link>
-            <div style={commandStrip}>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-                Decision Hub
-              </button>
-              <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={{ ...commandPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-                Refresh
-              </button>
-            </div>
-          </div>
-          {!isNarrow ? <BrandedTechnicalIllustration darkMode={darkMode} compact /> : null}
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
+              Decision Hub
+            </button>
+            <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={ui.secondaryButton}>
+              Refresh
+            </button>
+          </>
+        }
+      />
+
+      <WorkspaceToolbar palette={palette}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{conversationType}</span>
+          <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{replyCount} replies</span>
+          <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{reactionTotal} reactions</span>
         </div>
-        <p style={{ ...eyebrow, color: palette.muted }}>CONVERSATION THREAD #{id}</p>
-        <h1 style={{ ...mastheadTitle, color: palette.text }}>{conversation.title}</h1>
-        <p style={{ ...mastheadSub, color: palette.muted }}>
-          Track discussion context, reactions, and decisions from one structured workspace.
-        </p>
-      </section>
+      </WorkspaceToolbar>
 
       <div className="ui-enter" style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", "--ui-delay": "110ms" }}>
         <div>
@@ -749,6 +778,7 @@ const secondaryButton = {
 const titleMain = { margin: "0 0 10px", fontSize: "clamp(1.3rem,2.8vw,1.8rem)" };
 const heroSignals = { display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 8 };
 const signalChip = { borderRadius: 999, padding: "4px 9px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
+const heroChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
 const titleInput = { width: "100%", border: "none", background: "transparent", fontSize: 22, fontWeight: 700, marginBottom: 10, paddingBottom: 8, outline: "none" };
 const authorRow = { display: "flex", alignItems: "center", gap: 8 };
 const avatarWrap = { width: 34, height: 34, borderRadius: 10, overflow: "hidden", background: "linear-gradient(135deg,#ffcb8b,#ff935d)", display: "grid", placeItems: "center" };

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowLeftIcon,
+  ArrowPathIcon,
   ChartBarIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -11,10 +13,19 @@ import {
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspacePanel,
+  WorkspaceToolbar,
+} from "../components/WorkspaceChrome";
 
-function ProjectDetail() {
+export default function ProjectDetail() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   const [project, setProject] = useState(null);
   const [sprints, setSprints] = useState([]);
@@ -23,25 +34,26 @@ function ProjectDetail() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("sprints");
-
+  const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1080);
   const [showCreateSprint, setShowCreateSprint] = useState(false);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingSprint, setIsCreatingSprint] = useState(false);
   const [isCreatingIssue, setIsCreatingIssue] = useState(false);
-
   const [sprintForm, setSprintForm] = useState({ name: "", start_date: "", end_date: "", goal: "" });
   const [issueForm, setIssueForm] = useState({ title: "", description: "", priority: "medium", sprint_id: "", assignee_id: "" });
-
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   useEffect(() => {
     fetchProject();
     fetchTeamMembers();
     const interval = setInterval(fetchProject, 6000);
-    return () => clearInterval(interval);
+    const handleResize = () => setIsNarrow(window.innerWidth < 1080);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("resize", handleResize);
+    };
   }, [projectId]);
 
   const fetchTeamMembers = async () => {
@@ -66,6 +78,7 @@ function ProjectDetail() {
       setBoards(projectRes.data.boards || []);
     } catch (error) {
       console.error("Failed to fetch project:", error);
+      setProject(null);
     } finally {
       setLoading(false);
     }
@@ -90,14 +103,9 @@ function ProjectDetail() {
     event.preventDefault();
     setIsCreatingIssue(true);
     try {
-      const payload = {
-        title: issueForm.title,
-        description: issueForm.description,
-        priority: issueForm.priority,
-      };
+      const payload = { title: issueForm.title, description: issueForm.description, priority: issueForm.priority };
       if (issueForm.sprint_id) payload.sprint_id = parseInt(issueForm.sprint_id, 10);
       if (issueForm.assignee_id) payload.assignee_id = parseInt(issueForm.assignee_id, 10);
-
       await api.post(`/api/agile/projects/${projectId}/issues/`, payload);
       setShowCreateIssue(false);
       setIssueForm({ title: "", description: "", priority: "medium", sprint_id: "", assignee_id: "" });
@@ -113,7 +121,7 @@ function ProjectDetail() {
     setIsDeleting(true);
     try {
       await api.delete(`/api/agile/projects/${projectId}/delete/`);
-      window.location.href = "/projects";
+      navigate("/projects");
     } catch (error) {
       console.error("Failed to delete project:", error);
       setIsDeleting(false);
@@ -121,297 +129,161 @@ function ProjectDetail() {
   };
 
   if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-        <div style={spinner} />
-      </div>
-    );
+    return <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}><div style={{ width: 28, height: 28, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" }} /></div>;
   }
 
   if (!project) {
-    return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-        <h2 style={{ color: palette.muted }}>Project not found</h2>
-      </div>
-    );
+    return <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: palette.muted }}>Project not found</div>;
   }
 
-  const tabs = ["sprints", "issues", "roadmap"];
   const currentBoard = boards[0] || null;
   const activeSprintCount = sprints.filter((sprint) => sprint.status === "active").length;
-  const completionRate = project.issue_count
-    ? Math.round(((project.completed_issues || 0) / project.issue_count) * 100)
-    : 0;
+  const completionRate = project.issue_count ? Math.round(((project.completed_issues || 0) / project.issue_count) * 100) : 0;
+  const tabs = [
+    { key: "sprints", label: "Sprints", count: sprints.length },
+    { key: "issues", label: "Issues", count: issues.length },
+    { key: "roadmap", label: "Roadmap", count: boards.length },
+  ];
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={{ ...ui.container, width: "min(1480px,100%)" }}>
-        <section className="ui-enter" style={{ ...hero, border: `1px solid ${palette.border}`, background: palette.card, "--ui-delay": "20ms" }}>
-          <div style={heroBody}>
-            <div style={heroTop}>
-              <div style={{ ...projectBadge, background: palette.ctaGradient, color: palette.buttonText }}>{project.key?.charAt(0) || "P"}</div>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ ...heroEyebrow, color: palette.muted }}>EXECUTION WORKSPACE</p>
-                <h1 style={{ ...title, color: palette.text }}>{project.name}</h1>
-                <p style={{ ...sub, color: palette.muted }}>{project.key}</p>
-                {project.description && <p style={{ ...sub, marginTop: 10, color: palette.muted }}>{project.description}</p>}
-              </div>
+    <div style={{ minHeight: "100vh", position: "relative" }}>
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: darkMode ? "radial-gradient(circle at 10% 5%, rgba(154,185,255,0.16), transparent 30%), radial-gradient(circle at 92% 12%, rgba(121,200,159,0.12), transparent 28%)" : "radial-gradient(circle at 10% 5%, rgba(46,99,208,0.1), transparent 30%), radial-gradient(circle at 92% 12%, rgba(47,127,95,0.08), transparent 28%)" }} />
+      <div style={{ ...ui.container, position: "relative", zIndex: 1, display: "grid", gap: 16 }}>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Execution Workspace"
+          title={project.name}
+          description={project.description || "Plan sprints, shape the issue queue, and keep delivery context in one calmer workspace."}
+          stats={[
+            { label: "Issue coverage", value: `${project.issue_count || 0}`, helper: "Tracked items inside this project." },
+            { label: "Completion", value: `${completionRate}%`, helper: "Share of issues already completed." },
+            { label: "Active sprints", value: `${activeSprintCount}`, helper: "Current sprint rhythm." },
+            { label: "Boards", value: `${boards.length}`, helper: "Connected execution boards." },
+          ]}
+          aside={<div style={{ display: "grid", gap: 12, justifyItems: "end" }}><div style={{ width: 112, height: 112, borderRadius: 28, background: palette.ctaGradient, color: palette.buttonText, display: "grid", placeItems: "center", fontSize: 28, fontWeight: 800, letterSpacing: "-0.05em", boxShadow: "var(--ui-shadow-sm)" }}>{project.key?.slice(0, 2) || "PR"}</div><div style={{ display: "grid", gap: 8 }}><InfoTile label="Project key" value={project.key || "Untitled"} palette={palette} /><InfoTile label="Team members" value={`${teamMembers.length}`} palette={palette} /></div></div>}
+          actions={<><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Sprint</button><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.secondaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Issue</button></>}
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: palette.muted }}>Control Room</p>
+              <h2 style={{ margin: 0, fontSize: 28, lineHeight: 1.05, letterSpacing: "-0.04em", fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', color: palette.text }}>Move between planning, execution, and roadmap routes</h2>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: palette.muted }}>The detail view now keeps primary project actions and the active section selector in one place instead of scattering them across isolated rows.</p>
             </div>
-            <div style={heroMetaRow}>
-              <span style={{ ...heroMetaPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                {project.key}
-              </span>
-              <span style={{ ...heroMetaPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                {boards.length} board{boards.length === 1 ? "" : "s"}
-              </span>
-              <span style={{ ...heroMetaPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                {activeSprintCount} active sprint{activeSprintCount === 1 ? "" : "s"}
-              </span>
-              <span style={{ ...heroMetaPill, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                {completionRate}% complete
-              </span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <span style={chipStyle(palette)}>{project.key || "Project"}</span>
+              <span style={chipStyle(palette)}>{completionRate}% complete</span>
+              <span style={chipStyle(palette)}>{activeTab}</span>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/projects")} style={ui.secondaryButton}><ArrowLeftIcon style={{ width: 14, height: 14 }} /> All Projects</button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={fetchProject} style={ui.secondaryButton}><ArrowPathIcon style={{ width: 14, height: 14 }} /> Refresh</button>
+              <Link className="ui-btn-polish ui-focus-ring" to={`/projects/${projectId}/backlog`} style={{ ...ui.secondaryButton, textDecoration: "none" }}>Backlog</Link>
+              {currentBoard ? <Link className="ui-btn-polish ui-focus-ring" to={`/boards/${currentBoard.id}`} style={{ ...ui.secondaryButton, textDecoration: "none" }}>Kanban Board</Link> : null}
+              <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Sprint Center</Link>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowDeleteConfirm(true)} style={{ border: `1px solid ${palette.danger}`, borderRadius: 999, padding: "10px 16px", background: palette.accentSoft, color: palette.danger, fontSize: 13, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}><TrashIcon style={{ width: 14, height: 14 }} /> Delete</button>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {tabs.map((tab) => {
+                const active = activeTab === tab.key;
+                return <button key={tab.key} className="ui-btn-polish ui-focus-ring" onClick={() => setActiveTab(tab.key)} style={{ borderRadius: 999, padding: "10px 14px", fontSize: 13, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${active ? palette.accent : palette.border}`, background: active ? palette.accentSoft : palette.cardAlt, color: active ? palette.accent : palette.text, cursor: "pointer" }}><span>{tab.label}</span><span style={{ opacity: 0.72 }}>{tab.count}</span></button>;
+              })}
             </div>
           </div>
+        </WorkspaceToolbar>
 
-          <div style={heroAside}>
-            <div style={quickLinkRow}>
-              <Link className="ui-btn-polish ui-focus-ring" to={`/projects/${projectId}/backlog`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                View Backlog
-              </Link>
-              {currentBoard && (
-                <Link className="ui-btn-polish ui-focus-ring" to={`/boards/${currentBoard.id}`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                  View Kanban Board
-                </Link>
-              )}
-              <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                Sprint Center
-              </Link>
-            </div>
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              onClick={() => setShowDeleteConfirm(true)}
-              style={{ ...dangerIconButton, border: `1px solid ${palette.danger}`, color: palette.danger, background: palette.accentSoft }}
-            >
-              <TrashIcon style={icon18} />
-            </button>
+        <div style={{ display: "grid", gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 320px", gap: 14, alignItems: "start" }}>
+          <div style={{ display: "grid", gap: 14 }}>
+            {activeTab === "sprints" ? (
+              <WorkspacePanel palette={palette} eyebrow="Delivery Cadence" title="Sprint Timeline" description="Each sprint reads as a more deliberate record with goal, schedule, and current state surfaced together." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> Create Sprint</button>}>
+                {sprints.length === 0 ? <WorkspaceEmptyState palette={palette} title="Start the sprint rhythm" description="Create the first sprint to give the project a visible execution cadence." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}>New Sprint</button>} /> : <div style={{ display: "grid", gap: 12 }}>{sprints.map((sprint) => <Link key={sprint.id} className="ui-card-lift ui-smooth" to={`/sprints/${sprint.id}`} style={{ borderRadius: 22, padding: 18, display: "grid", gap: 10, textDecoration: "none", border: `1px solid ${palette.border}`, background: palette.cardAlt }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}><div style={{ minWidth: 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: palette.text }}>{sprint.name}</p><p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{sprint.start_date} to {sprint.end_date}</p></div><span style={{ borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 700, textTransform: "capitalize", border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>{sprint.status}</span></div><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{sprint.goal || "No explicit sprint goal has been recorded yet."}</p></Link>)}</div>}
+              </WorkspacePanel>
+            ) : null}
+            {activeTab === "issues" ? (
+              <WorkspacePanel palette={palette} eyebrow="Execution Queue" title="Issue Stream" description="Review the work queue with clearer priority and state rhythm." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> Create Issue</button>}>
+                {issues.length === 0 ? <WorkspaceEmptyState palette={palette} title="No issues in the queue yet" description="Create an issue to start turning the project plan into executable work." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}>New Issue</button>} /> : <div style={{ display: "grid", gap: 12 }}>{issues.slice(0, 24).map((issue) => <Link key={issue.id} className="ui-card-lift ui-smooth" to={`/issues/${issue.id}`} style={{ borderRadius: 22, padding: 18, display: "grid", gap: 10, textDecoration: "none", border: `1px solid ${palette.border}`, background: palette.cardAlt }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}><div style={{ minWidth: 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: palette.text }}>{issue.title}</p><p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} · {(issue.priority || "medium").toUpperCase()}</p></div><span style={{ borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 700, textTransform: "capitalize", border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>{issue.status || "todo"}</span></div><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{issue.description || "No issue description has been added yet."}</p></Link>)}</div>}
+              </WorkspacePanel>
+            ) : null}
+            {activeTab === "roadmap" ? (
+              <WorkspacePanel palette={palette} eyebrow="Planning Horizon" title="Roadmap Routes" description="This workspace now points the team toward existing roadmap surfaces instead of leaving roadmap as a dead end.">
+                <WorkspaceEmptyState palette={palette} title="Use linked planning surfaces for roadmap work" description="Releases, templates, and filters already support roadmap planning. This detail page now makes those routes explicit." action={<div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}><Link className="ui-btn-polish ui-focus-ring" to={`/projects/${projectId}/releases`} style={{ ...ui.primaryButton, textDecoration: "none" }}>Open Releases</Link><Link className="ui-btn-polish ui-focus-ring" to="/agile/templates" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Issue Templates</Link><Link className="ui-btn-polish ui-focus-ring" to="/agile/filters" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Saved Filters</Link></div>} />
+              </WorkspacePanel>
+            ) : null}
           </div>
-        </section>
 
-        <section className="ui-enter" style={{ ...statsGrid, "--ui-delay": "80ms" }}>
-          <Stat icon={ChartBarIcon} label="Total Issues" value={project.issue_count || 0} palette={palette} />
-          <Stat icon={CheckCircleIcon} label="Completed" value={`${completionRate}%`} palette={palette} />
-          <Stat icon={ClockIcon} label="Active" value={project.active_issues || 0} palette={palette} />
-          <Stat icon={RocketLaunchIcon} label="Sprints" value={sprints.length} palette={palette} />
-        </section>
-
-        <section className="ui-enter" style={{ ...tabWrap, border: `1px solid ${palette.border}`, background: palette.cardAlt, "--ui-delay": "120ms" }}>
-          {tabs.map((tab) => (
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                ...tabButton,
-                color: activeTab === tab ? palette.text : palette.muted,
-                background: activeTab === tab ? palette.cardAlt : "transparent",
-                border: `1px solid ${activeTab === tab ? palette.border : "transparent"}`,
-              }}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </section>
-
-        {activeTab === "sprints" && (
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...contentPanel, border: `1px solid ${palette.border}`, background: palette.card, "--ui-delay": "160ms" }}>
-            <div style={sectionHeader}>
-              <h2 style={{ ...h2, color: palette.text }}>Sprints</h2>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Sprint</button>
-            </div>
-            {sprints.length === 0 ? (
-              <Empty text="No sprints yet" palette={palette} />
-            ) : (
-              <div style={list}>
-                {sprints.map((sprint) => (
-                  <Link className="ui-card-lift ui-smooth" key={sprint.id} to={`/sprints/${sprint.id}`} style={{ ...itemCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                      <div>
-                        <p style={{ ...itemTitle, color: palette.text }}>{sprint.name}</p>
-                        <p style={{ ...itemMeta, color: palette.muted }}>{sprint.start_date} to {sprint.end_date}</p>
-                        {sprint.goal && <p style={{ ...itemMeta, marginTop: 5, color: palette.muted }}>{sprint.goal}</p>}
-                      </div>
-                      <span style={{ ...statusPill, border: `1px solid ${palette.border}`, color: palette.muted }}>{sprint.status}</span>
-                    </div>
-                  </Link>
-                ))}
+          <div style={{ display: "grid", gap: 14 }}>
+            <WorkspacePanel palette={palette} eyebrow="Snapshot" title="Project Readout" description="A tighter summary rail for the state of delivery.">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
+                <SummaryTile icon={ChartBarIcon} label="Total Issues" value={project.issue_count || 0} palette={palette} />
+                <SummaryTile icon={CheckCircleIcon} label="Completed" value={`${completionRate}%`} palette={palette} />
+                <SummaryTile icon={ClockIcon} label="Active Issues" value={project.active_issues || 0} palette={palette} />
+                <SummaryTile icon={RocketLaunchIcon} label="Sprints" value={sprints.length} palette={palette} />
               </div>
-            )}
-          </section>
-        )}
-
-        {activeTab === "issues" && (
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...contentPanel, border: `1px solid ${palette.border}`, background: palette.card, "--ui-delay": "160ms" }}>
-            <div style={sectionHeader}>
-              <h2 style={{ ...h2, color: palette.text }}>Issues</h2>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Issue</button>
-            </div>
-            {issues.length === 0 ? (
-              <Empty text="No issues yet" palette={palette} />
-            ) : (
-              <div style={list}>
-                {issues.slice(0, 20).map((issue) => (
-                  <Link className="ui-card-lift ui-smooth" key={issue.id} to={`/issues/${issue.id}`} style={{ ...itemCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                      <div>
-                        <p style={{ ...itemTitle, color: palette.text }}>{issue.title}</p>
-                        <p style={{ ...itemMeta, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} | {issue.priority || "medium"}</p>
-                      </div>
-                      <span style={{ ...statusPill, border: `1px solid ${palette.border}`, color: palette.muted }}>{issue.status || "todo"}</span>
-                    </div>
-                  </Link>
-                ))}
+            </WorkspacePanel>
+            <WorkspacePanel palette={palette} eyebrow="Links" title="Quick Routes" description="Primary project destinations stay available regardless of the tab you are viewing.">
+              <div style={{ display: "grid", gap: 10 }}>
+                <Link className="ui-btn-polish ui-focus-ring" to={`/projects/${projectId}/backlog`} style={{ ...ui.secondaryButton, textDecoration: "none", justifyContent: "center" }}>Backlog</Link>
+                {currentBoard ? <Link className="ui-btn-polish ui-focus-ring" to={`/boards/${currentBoard.id}`} style={{ ...ui.secondaryButton, textDecoration: "none", justifyContent: "center" }}>Kanban Board</Link> : null}
+                <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={{ ...ui.secondaryButton, textDecoration: "none", justifyContent: "center" }}>Sprint Center</Link>
+                <Link className="ui-btn-polish ui-focus-ring" to={`/projects/${projectId}/releases`} style={{ ...ui.secondaryButton, textDecoration: "none", justifyContent: "center" }}>Releases</Link>
               </div>
-            )}
-          </section>
-        )}
+            </WorkspacePanel>
+            <WorkspacePanel palette={palette} eyebrow="Team" title="Staffing Context" description="Member counts and sprint load give the page more operational texture.">
+              <InfoRow label="Team members" value={`${teamMembers.length}`} palette={palette} />
+              <InfoRow label="Boards connected" value={`${boards.length}`} palette={palette} />
+              <InfoRow label="Active sprints" value={`${activeSprintCount}`} palette={palette} />
+              <InfoRow label="Issue completion" value={`${completionRate}%`} palette={palette} />
+            </WorkspacePanel>
+          </div>
+        </div>
 
-        {activeTab === "roadmap" && (
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...contentPanel, ...emptyBlock, border: `1px solid ${palette.border}`, background: palette.card, "--ui-delay": "160ms" }}>
-            <h3 style={{ margin: 0, color: palette.text }}>Roadmap</h3>
-            <p style={{ ...sub, marginTop: 8, color: palette.muted }}>Use milestones and releases pages to manage roadmap planning.</p>
-            <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-              <Link className="ui-btn-polish ui-focus-ring" to={`/projects/${projectId}/releases`} style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>Open Releases</Link>
-              <Link className="ui-btn-polish ui-focus-ring" to="/agile/templates" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>Issue Templates</Link>
-              <Link className="ui-btn-polish ui-focus-ring" to="/agile/filters" style={{ ...quickButton, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>Saved Filters</Link>
-            </div>
-          </section>
-        )}
+        {showCreateSprint ? <Modal title="Create Sprint" onClose={() => setShowCreateSprint(false)} palette={palette}><form onSubmit={handleCreateSprint} style={{ display: "grid", gap: 14 }}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Sprint name</label><input required value={sprintForm.name} onChange={(event) => setSprintForm({ ...sprintForm, name: event.target.value })} style={ui.input} placeholder="Sprint name" /></div><div style={ui.twoCol}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Start date</label><input type="date" required value={sprintForm.start_date} onChange={(event) => setSprintForm({ ...sprintForm, start_date: event.target.value })} style={ui.input} /></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>End date</label><input type="date" required value={sprintForm.end_date} onChange={(event) => setSprintForm({ ...sprintForm, end_date: event.target.value })} style={ui.input} /></div></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Goal</label><textarea rows={4} value={sprintForm.goal} onChange={(event) => setSprintForm({ ...sprintForm, goal: event.target.value })} style={{ ...ui.input, resize: "vertical" }} placeholder="What should this sprint accomplish?" /></div><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><button type="button" className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(false)} style={ui.secondaryButton}>Cancel</button><button className="ui-btn-polish ui-focus-ring" type="submit" style={ui.primaryButton}>{isCreatingSprint ? "Creating..." : "Create Sprint"}</button></div></form></Modal> : null}
 
-        {showCreateSprint && (
-          <Modal title="Create Sprint" onClose={() => setShowCreateSprint(false)} palette={palette}>
-            <form onSubmit={handleCreateSprint} style={formStack}>
-              <input required placeholder="Sprint name" value={sprintForm.name} onChange={(e) => setSprintForm({ ...sprintForm, name: e.target.value })} style={ui.input} />
-              <div style={ui.twoCol}>
-                <input type="date" required value={sprintForm.start_date} onChange={(e) => setSprintForm({ ...sprintForm, start_date: e.target.value })} style={ui.input} />
-                <input type="date" required value={sprintForm.end_date} onChange={(e) => setSprintForm({ ...sprintForm, end_date: e.target.value })} style={ui.input} />
-              </div>
-              <textarea rows={4} placeholder="Sprint goal" value={sprintForm.goal} onChange={(e) => setSprintForm({ ...sprintForm, goal: e.target.value })} style={ui.input} />
-              <div style={modalButtons}>
-                <button type="button" onClick={() => setShowCreateSprint(false)} style={ui.secondaryButton}>Cancel</button>
-                <button type="submit" style={ui.primaryButton}>{isCreatingSprint ? "Creating..." : "Create"}</button>
-              </div>
-            </form>
-          </Modal>
-        )}
+        {showCreateIssue ? <Modal title="Create Issue" onClose={() => setShowCreateIssue(false)} palette={palette}><form onSubmit={handleCreateIssue} style={{ display: "grid", gap: 14 }}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Issue title</label><input required value={issueForm.title} onChange={(event) => setIssueForm({ ...issueForm, title: event.target.value })} style={ui.input} placeholder="Issue title" /></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Description</label><textarea rows={4} value={issueForm.description} onChange={(event) => setIssueForm({ ...issueForm, description: event.target.value })} style={{ ...ui.input, resize: "vertical" }} placeholder="Describe the work" /></div><div style={ui.twoCol}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Priority</label><select value={issueForm.priority} onChange={(event) => setIssueForm({ ...issueForm, priority: event.target.value })} style={ui.input}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Sprint</label><select value={issueForm.sprint_id} onChange={(event) => setIssueForm({ ...issueForm, sprint_id: event.target.value })} style={ui.input}><option value="">No Sprint</option>{sprints.map((sprint) => <option key={sprint.id} value={sprint.id}>{sprint.name}</option>)}</select></div></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Assignee</label><select value={issueForm.assignee_id} onChange={(event) => setIssueForm({ ...issueForm, assignee_id: event.target.value })} style={ui.input}><option value="">Unassigned</option>{teamMembers.map((member) => <option key={member.id} value={member.id}>{member.full_name || member.username}</option>)}</select></div><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><button type="button" className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(false)} style={ui.secondaryButton}>Cancel</button><button className="ui-btn-polish ui-focus-ring" type="submit" style={ui.primaryButton}>{isCreatingIssue ? "Creating..." : "Create Issue"}</button></div></form></Modal> : null}
 
-        {showCreateIssue && (
-          <Modal title="Create Issue" onClose={() => setShowCreateIssue(false)} palette={palette}>
-            <form onSubmit={handleCreateIssue} style={formStack}>
-              <input required placeholder="Issue title" value={issueForm.title} onChange={(e) => setIssueForm({ ...issueForm, title: e.target.value })} style={ui.input} />
-              <textarea rows={4} placeholder="Description" value={issueForm.description} onChange={(e) => setIssueForm({ ...issueForm, description: e.target.value })} style={ui.input} />
-              <div style={ui.twoCol}>
-                <select value={issueForm.priority} onChange={(e) => setIssueForm({ ...issueForm, priority: e.target.value })} style={ui.input}>
-                  <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
-                </select>
-                <select value={issueForm.sprint_id} onChange={(e) => setIssueForm({ ...issueForm, sprint_id: e.target.value })} style={ui.input}>
-                  <option value="">No Sprint</option>
-                  {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <select value={issueForm.assignee_id} onChange={(e) => setIssueForm({ ...issueForm, assignee_id: e.target.value })} style={ui.input}>
-                <option value="">Unassigned</option>
-                {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name || m.username}</option>)}
-              </select>
-              <div style={modalButtons}>
-                <button type="button" onClick={() => setShowCreateIssue(false)} style={ui.secondaryButton}>Cancel</button>
-                <button type="submit" style={ui.primaryButton}>{isCreatingIssue ? "Creating..." : "Create"}</button>
-              </div>
-            </form>
-          </Modal>
-        )}
-
-        {showDeleteConfirm && (
-          <Modal title="Delete Project" onClose={() => setShowDeleteConfirm(false)} palette={palette}>
-            <p style={{ fontSize: 14, color: palette.muted, marginBottom: 12 }}>This action cannot be undone.</p>
-            <div style={modalButtons}>
-              <button onClick={() => setShowDeleteConfirm(false)} style={ui.secondaryButton}>Cancel</button>
-              <button onClick={handleDeleteProject} style={{ ...dangerButton, border: `1px solid ${palette.danger}`, color: palette.danger, background: palette.accentSoft }}>{isDeleting ? "Deleting..." : "Delete"}</button>
-            </div>
-          </Modal>
-        )}
+        {showDeleteConfirm ? <Modal title="Delete Project" onClose={() => setShowDeleteConfirm(false)} palette={palette}><p style={{ margin: 0, color: palette.muted, fontSize: 14, lineHeight: 1.6 }}>This removes the project workspace permanently. Make sure any linked sprint or issue work has been moved or closed first.</p><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowDeleteConfirm(false)} style={ui.secondaryButton}>Cancel</button><button className="ui-btn-polish ui-focus-ring" onClick={handleDeleteProject} style={{ border: `1px solid ${palette.danger}`, borderRadius: 999, padding: "10px 16px", background: palette.accentSoft, color: palette.danger, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{isDeleting ? "Deleting..." : "Delete Project"}</button></div></Modal> : null}
       </div>
     </div>
   );
 }
 
 function Modal({ title, onClose, children, palette }) {
-  return (
-    <div style={overlay}>
-      <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 20, color: palette.text }}>{title}</h3>
-          <button onClick={onClose} style={{ ...closeBtn, color: palette.muted }}>Close</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
+  return <div style={{ position: "fixed", inset: 0, background: "rgba(22,18,15,0.56)", backdropFilter: "blur(14px)", display: "grid", placeItems: "center", padding: 18, zIndex: 120 }}><div style={{ width: "min(680px,100%)", borderRadius: 32, padding: 24, boxShadow: "var(--ui-shadow-lg)", display: "grid", gap: 18, border: `1px solid ${palette.border}`, background: palette.card }}><div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}><div><p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: palette.muted }}>Project Workspace</p><h3 style={{ margin: 0, fontSize: 28, color: palette.text, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif' }}>{title}</h3></div><button className="ui-btn-polish ui-focus-ring" onClick={onClose} style={{ border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, borderRadius: 999, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Close</button></div>{children}</div></div>;
 }
 
-function Empty({ text, palette }) {
-  return <div style={emptyBlock}><p style={{ margin: 0, color: palette.muted }}>{text}</p></div>;
+function SummaryTile({ icon: Icon, label, value, palette }) {
+  return <article style={{ borderRadius: 20, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 14, display: "grid", gap: 10 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>{label}</p><span style={{ width: 34, height: 34, borderRadius: 12, display: "grid", placeItems: "center", background: palette.accentSoft, color: palette.accent }}><Icon style={{ width: 16, height: 16 }} /></span></div><p style={{ margin: 0, fontSize: 26, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.05em", fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', color: palette.text }}>{value}</p></article>;
 }
 
-function Stat({ icon: Icon, label, value, palette }) {
-  return (
-    <article style={{ ...statCard, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ ...statLabel, color: palette.muted }}>{label}</p>
-        <Icon style={icon16} />
-      </div>
-      <p style={statValue}>{value}</p>
-    </article>
-  );
+function InfoTile({ label, value, palette }) {
+  return <div style={{ borderRadius: 18, padding: "12px 14px", border: `1px solid ${palette.border}`, background: palette.card, minWidth: 150 }}><p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>{label}</p><p style={{ margin: "6px 0 0", fontSize: 16, fontWeight: 700, color: palette.text }}>{value}</p></div>;
 }
 
-const spinner = { width: 28, height: 28, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const hero = { borderRadius: 28, padding: "clamp(20px, 3vw, 30px)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18, marginBottom: 18, boxShadow: "var(--ui-shadow-sm)" };
-const heroBody = { minWidth: 0, display: "grid", gap: 16 };
-const heroTop = { display: "grid", gridTemplateColumns: "64px 1fr", gap: 14, alignItems: "start" };
-const heroEyebrow = { margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase" };
-const heroMetaRow = { display: "flex", gap: 8, flexWrap: "wrap" };
-const heroMetaPill = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 };
-const heroAside = { display: "grid", alignContent: "space-between", gap: 12, justifyItems: "stretch" };
-const projectBadge = { width: 64, height: 64, borderRadius: 18, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 20, boxShadow: "var(--ui-shadow-sm)" };
-const title = { margin: "0 0 4px", fontSize: "clamp(1.8rem, 2.8vw, 2.5rem)", letterSpacing: "-0.04em", lineHeight: 1.04 };
-const sub = { margin: 0, fontSize: 14, lineHeight: 1.55 };
-const dangerIconButton = { borderRadius: 16, width: 42, height: 42, display: "grid", placeItems: "center", cursor: "pointer" };
-const quickLinkRow = { display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" };
-const quickButton = { padding: "10px 13px", borderRadius: 14, textDecoration: "none", fontSize: 13, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 };
-const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 12, marginBottom: 14 };
-const statCard = { borderRadius: 20, padding: 16, boxShadow: "var(--ui-shadow-sm)" };
-const statLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 };
-const statValue = { margin: "7px 0 0", fontSize: 30, fontWeight: 800 };
-const tabWrap = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, borderRadius: 18, padding: 6, marginBottom: 16 };
-const tabButton = { borderRadius: 14, padding: "10px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
-const contentPanel = { borderRadius: 24, padding: 18 };
-const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 };
-const h2 = { margin: 0, fontSize: 20 };
-const dangerButton = { borderRadius: 14, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
-const list = { display: "grid", gap: 10 };
-const itemCard = { borderRadius: 18, padding: 14, textDecoration: "none" };
-const itemTitle = { margin: 0, fontSize: 16, fontWeight: 800 };
-const itemMeta = { margin: "3px 0 0", fontSize: 12 };
-const statusPill = { borderRadius: 999, padding: "7px 10px", fontSize: 11, textTransform: "capitalize", fontWeight: 700, background: "var(--app-info-soft)" };
-const emptyBlock = { borderRadius: 24, padding: "32px 18px", textAlign: "center" };
-const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", backdropFilter: "blur(8px)", display: "grid", placeItems: "center", zIndex: 110, padding: 14 };
-const modalCard = { width: "min(560px,100%)", borderRadius: 24, padding: 20, boxShadow: "var(--ui-shadow-lg)" };
-const closeBtn = { border: "none", background: "transparent", fontWeight: 700, cursor: "pointer" };
-const formStack = { display: "grid", gap: 10 };
-const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
-const icon18 = { width: 18, height: 18 };
-const icon16 = { width: 16, height: 16 };
-const icon14 = { width: 14, height: 14 };
+function InfoRow({ label, value, palette }) {
+  return <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}><span style={{ color: palette.muted }}>{label}</span><span style={{ color: palette.text, fontWeight: 700 }}>{value}</span></div>;
+}
 
-export default ProjectDetail;
+const chipStyle = (palette) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "8px 12px",
+  borderRadius: 999,
+  border: `1px solid ${palette.border}`,
+  background: palette.cardAlt,
+  color: palette.text,
+  fontSize: 12,
+  fontWeight: 700,
+  textTransform: "capitalize",
+});
 
+const fieldLabel = (palette) => ({
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+  color: palette.muted,
+});

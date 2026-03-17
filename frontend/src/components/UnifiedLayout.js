@@ -4,7 +4,6 @@ import { ChevronDownIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline"
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import BrandLogo from "./BrandLogo";
-import Breadcrumbs from "./Breadcrumbs";
 import NLCommandBar from "./NLCommandBar";
 import NotificationBell from "./NotificationBell";
 import UnifiedNav from "./UnifiedNav";
@@ -69,7 +68,6 @@ export default function UnifiedLayout({ children }) {
   const [subnavOpen, setSubnavOpen] = useState(false);
   const [askFabPos, setAskFabPos] = useState(loadFabPosition);
   const [showProfile, setShowProfile] = useState(false);
-  const [showWorkspaceSwitcher, setShowWorkspaceSwitcher] = useState(false);
   const [workspaces, setWorkspaces] = useState([]);
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
   const [workspacePassword, setWorkspacePassword] = useState("");
@@ -77,7 +75,6 @@ export default function UnifiedLayout({ children }) {
   const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
   const [workspaceError, setWorkspaceError] = useState("");
   const profileRef = useRef(null);
-  const workspaceSwitcherRef = useRef(null);
   const askFabDragRef = useRef({
     active: false,
     pointerId: null,
@@ -107,9 +104,6 @@ export default function UnifiedLayout({ children }) {
       if (!profileRef.current?.contains(event.target)) {
         setShowProfile(false);
       }
-      if (!workspaceSwitcherRef.current?.contains(event.target)) {
-        setShowWorkspaceSwitcher(false);
-      }
     };
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
@@ -117,7 +111,7 @@ export default function UnifiedLayout({ children }) {
 
   useEffect(() => {
     const loadWorkspaces = async () => {
-      if (!showProfile && !showWorkspaceSwitcher) return;
+      if (!showProfile) return;
       setWorkspaceError("");
       setWorkspacesLoading(true);
       const result = await listWorkspaces();
@@ -131,7 +125,7 @@ export default function UnifiedLayout({ children }) {
     };
 
     loadWorkspaces();
-  }, [showProfile, showWorkspaceSwitcher]);
+  }, [showProfile]);
 
   const palette = useMemo(
     () =>
@@ -280,7 +274,6 @@ export default function UnifiedLayout({ children }) {
 
     setWorkspacePassword("");
     setShowProfile(false);
-    setShowWorkspaceSwitcher(false);
     window.location.href = "/";
   };
 
@@ -446,29 +439,37 @@ export default function UnifiedLayout({ children }) {
           >
             <div style={headerPrimaryRow}>
               <div style={headerIdentity}>
-                <div style={headerTitleBlock}>
-                  <div
-                    style={{
-                      ...headerBrandCapsule,
-                      border: `1px solid ${palette.border}`,
-                      background: palette.buttonBg,
-                    }}
-                  >
-                    <BrandLogo tone={darkMode ? "light" : "warm"} size="sm" showText={false} />
+                <div
+                  style={{
+                    ...headerBrandCapsule,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.buttonBg,
+                  }}
+                >
+                  <BrandLogo tone={darkMode ? "light" : "warm"} size="sm" showText={false} />
+                  {!isMobile ? (
                     <div style={headerBrandCopy}>
                       <p style={{ ...headerBrandLabel, color: palette.text }}>Knoledgr</p>
-                      <p style={{ ...headerBrandHint, color: palette.muted }}>Decision memory for teams</p>
                     </div>
-                  </div>
-                  <p style={{ ...headerEyebrow, color: palette.muted }}>{pageMeta.section}</p>
+                  ) : null}
+                </div>
+                <div style={headerTitleBlock}>
+                  <span
+                    style={{
+                      ...headerSectionPill,
+                      border: `1px solid ${palette.border}`,
+                      background: palette.buttonBg,
+                      color: palette.muted,
+                    }}
+                  >
+                    {pageMeta.section}
+                  </span>
                   <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
                     {pageTitle}
                   </h1>
-                  <p style={{ ...headerSubtitle, color: palette.muted }}>
-                    {pageMeta.description}
-                  </p>
                 </div>
               </div>
+
               <div style={{ ...headerActions, ...(isMobile ? headerActionsMobile : null) }}>
                 <div
                   style={{
@@ -496,16 +497,26 @@ export default function UnifiedLayout({ children }) {
                   <button
                     onClick={() => {
                       setShowProfile((value) => !value);
-                      setShowWorkspaceSwitcher(false);
                     }}
-                    style={{ ...avatarButton, border: `1px solid ${palette.border}` }}
-                    aria-label="Open profile menu"
+                    style={{
+                      ...menuTriggerButton,
+                      border: `1px solid ${palette.border}`,
+                      background: palette.buttonBg,
+                      color: palette.text,
+                    }}
+                    aria-label="Open workspace menu"
                   >
-                    {avatar ? (
-                      <img src={avatar} alt={user?.full_name || "User"} style={avatarImage} />
-                    ) : (
-                      <span style={avatarInitial}>{initial}</span>
-                    )}
+                    <span style={avatarButton}>
+                      {avatar ? (
+                        <img src={avatar} alt={user?.full_name || "User"} style={avatarImage} />
+                      ) : (
+                        <span style={avatarInitial}>{initial}</span>
+                      )}
+                    </span>
+                    {!isMobile ? (
+                      <span style={menuTriggerLabel}>{user?.organization_slug || "workspace"}</span>
+                    ) : null}
+                    <ChevronDownIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
                   </button>
 
                   {showProfile && (
@@ -520,6 +531,17 @@ export default function UnifiedLayout({ children }) {
                       <div style={{ ...profileHead, borderBottom: `1px solid ${palette.border}` }}>
                         <p style={{ ...nameLine, color: palette.text }}>{user?.full_name || "User"}</p>
                         <p style={{ ...emailLine, color: palette.muted }}>{user?.email || ""}</p>
+                        <div style={menuMetaRail}>
+                          <span style={{ ...menuMetaPill, border: `1px solid ${palette.border}`, background: palette.panelBgAlt, color: palette.text }}>
+                            {user?.organization_slug || "workspace"}
+                          </span>
+                          <span style={{ ...menuMetaPill, border: `1px solid ${palette.border}`, background: palette.panelBgAlt, color: palette.muted }}>
+                            {`Mode: ${String(user?.experience_mode || "standard")}`}
+                          </span>
+                          <span style={{ ...menuMetaPill, border: `1px solid ${palette.border}`, background: palette.accentSoft, color: palette.text }}>
+                            {`Today | ${todayLabel}`}
+                          </span>
+                        </div>
                       </div>
 
                       <button
@@ -544,7 +566,11 @@ export default function UnifiedLayout({ children }) {
                         Settings
                       </button>
 
-                      <button onClick={logout} className="ui-btn-polish ui-focus-ring" style={{ ...menuButton, color: "var(--app-danger)", background: palette.panelBgAlt }}>
+                      <button
+                        onClick={logout}
+                        className="ui-btn-polish ui-focus-ring"
+                        style={{ ...menuButton, color: "var(--app-danger)", background: palette.panelBgAlt }}
+                      >
                         Sign out
                       </button>
 
@@ -552,62 +578,6 @@ export default function UnifiedLayout({ children }) {
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-            <div style={{ ...headerSecondaryRow, borderTop: `1px solid ${palette.border}` }}>
-              <div style={{ ...headerBreadcrumbs, ...(isMobile ? { display: "none" } : null) }}>
-                <Breadcrumbs darkMode={darkMode} />
-              </div>
-              <div style={headerMetaPills}>
-                <div ref={workspaceSwitcherRef} style={{ position: "relative" }}>
-                  <button
-                    onClick={() => {
-                      setShowWorkspaceSwitcher((prev) => !prev);
-                      setShowProfile(false);
-                    }}
-                    className="ui-btn-polish ui-focus-ring"
-                    style={{
-                      ...orgSwitcherButton,
-                      border: `1px solid ${palette.border}`,
-                      background: palette.buttonBg,
-                      color: palette.text,
-                    }}
-                  >
-                    <span>{user?.organization_slug || "workspace"}</span>
-                    <ChevronDownIcon style={{ ...icon16, width: 12, height: 12 }} />
-                  </button>
-                  {showWorkspaceSwitcher ? (
-                    <div
-                      style={{
-                        ...orgSwitcherMenu,
-                        background: palette.menuSurface,
-                        border: `1px solid ${palette.border}`,
-                      }}
-                    >
-                      {workspaceSwitcherContent}
-                    </div>
-                  ) : null}
-                </div>
-                <span
-                  style={{
-                    ...headerPill,
-                    border: `1px solid ${palette.border}`,
-                    background: palette.buttonBg,
-                    color: palette.muted,
-                  }}
-                >
-                  {`Mode: ${String(user?.experience_mode || "standard")}`}
-                </span>
-                <span
-                  style={{
-                    ...headerPill,
-                    border: `1px solid ${palette.border}`,
-                    background: palette.accentSoft,
-                    color: palette.text,
-                  }}
-                >
-                  {`Today | ${todayLabel}`}
-                </span>
               </div>
             </div>
           </header>
@@ -689,9 +659,9 @@ const iconButton = {
 };
 
 const avatarButton = {
-  width: 40,
-  height: 40,
-  borderRadius: 16,
+  width: 34,
+  height: 34,
+  borderRadius: 12,
   overflow: "hidden",
   display: "grid",
   placeItems: "center",
@@ -709,13 +679,29 @@ const avatarImage = {
 };
 
 const avatarInitial = {
-  fontSize: 15,
+  fontSize: 13,
+};
+
+const menuTriggerButton = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  borderRadius: 999,
+  padding: "4px 10px 4px 4px",
+  cursor: "pointer",
+  fontWeight: 700,
+};
+
+const menuTriggerLabel = {
+  fontSize: 12,
+  lineHeight: 1,
+  whiteSpace: "nowrap",
 };
 
 const profileMenu = {
   position: "absolute",
   right: 0,
-  top: 48,
+  top: 46,
   minWidth: 340,
   maxWidth: 420,
   borderRadius: 26,
@@ -738,6 +724,8 @@ const profileMenuMobile = {
 
 const profileHead = {
   padding: "14px 16px",
+  display: "grid",
+  gap: 10,
 };
 
 const nameLine = {
@@ -749,6 +737,21 @@ const nameLine = {
 const emailLine = {
   margin: "4px 0 0",
   fontSize: 13,
+};
+
+const menuMetaRail = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const menuMetaPill = {
+  borderRadius: 999,
+  padding: "6px 10px",
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.02em",
 };
 
 const workspaceMenuSection = {
@@ -835,29 +838,6 @@ const workspaceActions = {
   gap: 8,
 };
 
-const orgSwitcherButton = {
-  borderRadius: 999,
-  padding: "9px 13px",
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.04em",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  cursor: "pointer",
-};
-
-const orgSwitcherMenu = {
-  position: "absolute",
-  right: 0,
-  top: "calc(100% + 8px)",
-  width: "min(92vw, 420px)",
-  borderRadius: 22,
-  overflow: "hidden",
-  boxShadow: "var(--ui-shadow-md)",
-  zIndex: 130,
-};
-
 const main = {
   position: "relative",
   zIndex: 1,
@@ -880,50 +860,34 @@ const layoutHeader = {
   position: "sticky",
   top: 10,
   zIndex: 80,
-  borderRadius: 28,
-  padding: "16px 18px 14px",
-  marginBottom: 14,
+  borderRadius: 18,
+  padding: "10px 14px",
+  marginBottom: 12,
 };
 
 const layoutHeaderMobile = {
   top: 8,
-  borderRadius: 22,
-  padding: "12px 12px 10px",
-  marginBottom: 10,
-};
-
-const headerEyebrow = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
+  borderRadius: 16,
+  padding: "10px 10px",
+  marginBottom: 8,
 };
 
 const headerTitle = {
-  margin: "2px 0 0",
-  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
-  fontSize: "clamp(1.55rem, 2.4vw, 2.6rem)",
-  letterSpacing: "-0.05em",
-  lineHeight: 0.96,
+  margin: 0,
+  fontFamily: "inherit",
+  fontSize: "clamp(1.05rem, 1.6vw, 1.34rem)",
+  letterSpacing: "-0.02em",
+  lineHeight: 1.15,
   fontWeight: 700,
 };
 
 const headerTitleMobile = {
-  marginBottom: 2,
-  fontSize: "1.5rem",
-};
-
-const headerSubtitle = {
-  margin: "4px 0 0",
-  fontSize: 13,
-  lineHeight: 1.65,
-  maxWidth: 620,
+  fontSize: "1rem",
 };
 
 const headerPrimaryRow = {
   display: "flex",
-  alignItems: "flex-start",
+  alignItems: "center",
   justifyContent: "space-between",
   gap: 10,
   flexWrap: "wrap",
@@ -933,15 +897,15 @@ const headerPrimaryRow = {
 
 const headerIdentity = {
   display: "flex",
-  alignItems: "flex-start",
-  gap: 8,
+  alignItems: "center",
+  gap: 12,
   minWidth: 0,
 };
 
 const headerActions = {
   display: "flex",
   alignItems: "center",
-  gap: 12,
+  gap: 8,
 };
 
 const headerActionsMobile = {
@@ -953,23 +917,24 @@ const headerActionCluster = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "6px",
+  padding: "4px",
 };
 
 const headerTitleBlock = {
   minWidth: 0,
-  maxWidth: 720,
-  display: "grid",
-  gap: 7,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap",
 };
 
 const headerBrandCapsule = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 10,
+  gap: 8,
   width: "fit-content",
   borderRadius: 999,
-  padding: "8px 12px",
+  padding: "6px 10px",
   backdropFilter: "blur(12px)",
 };
 
@@ -980,69 +945,20 @@ const headerBrandCopy = {
 
 const headerBrandLabel = {
   margin: 0,
-  fontSize: 10,
+  fontSize: 11,
   fontWeight: 800,
   letterSpacing: "0.04em",
   textTransform: "uppercase",
 };
 
-const headerBrandHint = {
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 500,
-};
-
-const headerBreadcrumbs = {
-  minWidth: 0,
-};
-
-const headerMetaRow = {
-  marginTop: 10,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  flexWrap: "wrap",
-  position: "relative",
-  zIndex: 1,
-};
-
-const headerSecondaryRow = {
-  ...headerMetaRow,
-  paddingTop: 12,
-};
-
-const headerBackdrop = {
-  position: "absolute",
-  inset: 0,
-  pointerEvents: "none",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
-  backgroundSize: "cover",
-};
-
-const headerBackdropGrid = {
-  position: "absolute",
-  inset: 0,
-  pointerEvents: "none",
-  backgroundPosition: "center",
-  backgroundRepeat: "repeat",
-  backgroundSize: "900px 900px",
-};
-
-const headerMetaPills = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const headerPill = {
+const headerSectionPill = {
   borderRadius: 999,
-  padding: "7px 11px",
-  fontSize: 11,
+  padding: "6px 10px",
+  fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.02em",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
 };
 
 function getPageMeta(pathname) {

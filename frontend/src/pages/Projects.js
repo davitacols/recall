@@ -1,14 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowRightIcon,
-  ChartBarIcon,
   ClipboardDocumentListIcon,
   FolderIcon,
   PlusIcon,
   RocketLaunchIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspaceToolbar,
+} from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
@@ -33,6 +37,8 @@ export default function Projects() {
     }),
     [projects]
   );
+  const leadCoverage = projectSummary.total ? Math.round((projectSummary.withLead / projectSummary.total) * 100) : 0;
+  const briefCoverage = projectSummary.total ? Math.round((projectSummary.documented / projectSummary.total) * 100) : 0;
 
   useEffect(() => {
     fetchProjects();
@@ -44,6 +50,7 @@ export default function Projects() {
       setProjects(response.data || []);
     } catch (error) {
       console.error("Failed to fetch projects:", error);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -69,235 +76,557 @@ export default function Projects() {
       console.error("Failed to create project:", error);
       setCreateError(
         error?.response?.data?.detail ||
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        "Failed to create project"
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to create project"
       );
     } finally {
       setCreating(false);
     }
   };
 
+  const heroStats = [
+    {
+      label: "Workspaces",
+      value: projectSummary.total,
+      helper: "Active project spaces",
+      tone: palette.accent,
+    },
+    {
+      label: "Lead Coverage",
+      value: `${leadCoverage}%`,
+      helper: `${projectSummary.withLead} with named leads`,
+      tone: palette.text,
+    },
+    {
+      label: "Documented",
+      value: `${briefCoverage}%`,
+      helper: `${projectSummary.documented} with briefs or context`,
+      tone: palette.info,
+    },
+  ];
+
+  const operationsAside = (
+    <div
+      style={{
+        ...asideCard,
+        border: `1px solid ${palette.border}`,
+        background: darkMode
+          ? "linear-gradient(160deg, rgba(32,27,23,0.9), rgba(22,18,15,0.82))"
+          : "linear-gradient(160deg, rgba(255,252,248,0.96), rgba(244,237,226,0.88))",
+      }}
+    >
+      <p style={{ ...asideEyebrow, color: palette.muted }}>Execution Readiness</p>
+      <h3 style={{ ...asideTitle, color: palette.text }}>Projects feel stronger when ownership and briefs are obvious.</h3>
+      <p style={{ ...asideBody, color: palette.muted }}>
+        {projectSummary.withLead} have clear owners and {projectSummary.documented} already carry enough context for handoffs.
+      </p>
+      <div style={asideMetricGrid}>
+        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+          <p style={{ ...asideMetricLabel, color: palette.muted }}>Leads</p>
+          <p style={{ ...asideMetricValue, color: palette.text }}>{leadCoverage}%</p>
+        </div>
+        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+          <p style={{ ...asideMetricLabel, color: palette.muted }}>Briefs</p>
+          <p style={{ ...asideMetricValue, color: palette.text }}>{briefCoverage}%</p>
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh" }}>
-        <div style={ui.container}>
-          <div style={skeletonGrid}>
-            {[1, 2, 3].map((item) => (
-              <div key={item} style={{ ...skeletonCard, background: palette.card, border: `1px solid ${palette.border}` }} />
-            ))}
-          </div>
+      <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+          {[1, 2, 3].map((item) => (
+            <div
+              key={item}
+              style={{
+                borderRadius: 24,
+                height: 150,
+                background: palette.card,
+                border: `1px solid ${palette.border}`,
+                opacity: 0.76,
+                boxShadow: "var(--ui-shadow-sm)",
+              }}
+            />
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 12 }}>
+          {[1, 2, 3].map((item) => (
+            <div
+              key={`card-${item}`}
+              style={{
+                borderRadius: 24,
+                minHeight: 240,
+                background: palette.card,
+                border: `1px solid ${palette.border}`,
+                opacity: 0.72,
+              }}
+            />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={{ ...ui.container, width: "min(1480px,100%)" }}>
-        <section
-          className="ui-enter"
-          style={{
-            ...hero,
-            border: `1px solid ${palette.border}`,
-            background: palette.card,
-            "--ui-delay": "20ms",
-          }}
-        >
-          <div style={heroMain}>
-            <p style={{ ...eyebrow, color: palette.muted }}>PROJECT WORKSPACE</p>
-            <h1 style={{ ...title, color: palette.text }}>Projects built around execution context</h1>
-            <p style={{ ...subtitle, color: palette.muted }}>
-              Organize delivery tracks, boards, owners, and active work in one modern workspace.
-            </p>
-            <div style={heroActions}>
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                onClick={() => setShowCreate(true)}
-                style={{ ...ui.primaryButton, ...newButton, color: palette.buttonText, background: palette.ctaGradient }}
-              >
-                <PlusIcon style={icon16} /> New Project
-              </button>
-              <Link
-                className="ui-btn-polish ui-focus-ring"
-                to="/sprint"
-                style={{ ...ui.secondaryButton, ...heroLink, color: palette.text }}
-              >
-                <RocketLaunchIcon style={icon16} /> Sprint Center
-              </Link>
-            </div>
-          </div>
-          <div style={heroStatGrid}>
-            <SummaryCard
-              icon={FolderIcon}
-              label="Workspaces"
-              value={projectSummary.total}
-              helper="Active project spaces"
-              palette={palette}
-            />
-            <SummaryCard
-              icon={UserGroupIcon}
-              label="With Leads"
-              value={projectSummary.withLead}
-              helper="Clear ownership assigned"
-              palette={palette}
-            />
-            <SummaryCard
-              icon={ClipboardDocumentListIcon}
-              label="Documented"
-              value={projectSummary.documented}
-              helper="Project briefs in place"
-              palette={palette}
-            />
-          </div>
-        </section>
-
-        {showCreate && (
-          <div style={modalOverlay}>
-            <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-              <h2 style={{ margin: 0, fontSize: 22, color: palette.text }}>Create Project</h2>
-              <form onSubmit={handleCreate} style={formStack}>
-                {createError && (
-                  <div style={{ ...errorBox, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger }}>{createError}</div>
-                )}
-                <label style={{ ...label, color: palette.muted }}>Project Name</label>
-                <input
-                  required
-                  value={newProject.name}
-                  onChange={(event) => setNewProject({ ...newProject, name: event.target.value })}
-                  style={{ ...ui.input, ...input }}
-                />
-                <label style={{ ...label, color: palette.muted }}>Description</label>
-                <textarea
-                  rows={4}
-                  value={newProject.description}
-                  onChange={(event) => setNewProject({ ...newProject, description: event.target.value })}
-                  style={{ ...ui.input, ...input, resize: "vertical" }}
-                />
-                <div style={buttonRow}>
-                  <button type="button" onClick={() => setShowCreate(false)} style={ui.secondaryButton}>Cancel</button>
-                  <button type="submit" disabled={creating} style={ui.primaryButton}>{creating ? "Creating..." : "Create"}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {projects.length === 0 ? (
-          <div className="ui-enter ui-card-lift ui-smooth" style={{ ...emptyCard, background: palette.card, border: `1px solid ${palette.border}`, "--ui-delay": "90ms" }}>
-            <FolderIcon style={{ width: 48, height: 48, color: palette.muted }} />
-            <h2 style={{ margin: "16px 0 6px", fontSize: 22, color: palette.text }}>Start your first project workspace</h2>
-            <p style={{ color: palette.muted, margin: 0, maxWidth: 460 }}>
-              Create a project to coordinate boards, issues, sprint work, and team context from one place.
-            </p>
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              onClick={() => setShowCreate(true)}
-              style={{ ...ui.primaryButton, marginTop: 18, alignSelf: "center" }}
-            >
-              <PlusIcon style={icon16} /> Create Project
+    <div style={{ display: "grid", gap: 16 }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Execution Workspace"
+        title="Projects"
+        description="Organize delivery tracks, roadmaps, and ownership in a calmer project workspace that keeps execution context close."
+        stats={heroStats}
+        aside={operationsAside}
+        actions={
+          <>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreate(true)} style={ui.primaryButton}>
+              <PlusIcon style={icon14} /> New Project
             </button>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/sprint")} style={ui.secondaryButton}>
+              <RocketLaunchIcon style={icon14} /> Sprint Center
+            </button>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={ui.secondaryButton}>
+              Documents
+            </button>
+          </>
+        }
+      />
+
+      <WorkspaceToolbar palette={palette}>
+        <div style={toolbarLayout}>
+          <div style={toolbarIntro}>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Delivery Surface</p>
+            <h2 style={{ ...toolbarTitle, color: palette.text }}>Move from a project list to the right workspace fast</h2>
+            <p style={{ ...toolbarCopy, color: palette.muted }}>
+              Each workspace can act as the front door into overview, roadmap planning, and the management layer for ongoing delivery.
+            </p>
           </div>
-        ) : (
-          <div className="ui-enter" style={{ ...grid, "--ui-delay": "90ms" }}>
-            {projects.map((project) => (
-              <article
-                className="ui-card-lift ui-smooth"
-                key={project.id}
-                onClick={() => navigate(`/projects/${project.id}`)}
-                style={{ ...card, background: palette.card, border: `1px solid ${palette.border}` }}
-              >
-                <div style={cardTop}>
-                  <div style={{ ...keyBadge, background: palette.ctaGradient, color: palette.buttonText }}>
-                    {project.key || "PRJ"}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ ...cardEyebrow, color: palette.muted }}>Delivery Workspace</p>
-                    <h3 style={{ ...cardTitle, color: palette.text }}>{project.name}</h3>
-                    <p style={{ ...cardDesc, color: palette.muted }}>{project.description || "No description"}</p>
-                  </div>
-                </div>
-                <div style={cardSignalRow}>
-                  <span style={{ ...signalChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                    <UserGroupIcon style={icon14} /> {project.lead_name || "No lead assigned"}
-                  </span>
-                  <span style={{ ...signalChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-                    <ChartBarIcon style={icon14} /> Active workspace
-                  </span>
-                </div>
-                <div style={{ ...cardMeta, borderTop: `1px solid ${palette.border}` }}>
-                  <span style={{ ...metaItem, color: palette.muted }}>Open workspace</span>
-                  <span style={{ ...metaItem, color: palette.accent }}>
-                    View <ArrowRightIcon style={icon14} />
-                  </span>
-                </div>
-              </article>
-            ))}
+
+          <div style={toolbarChipRail}>
+            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {projectSummary.total} active workspaces
+            </span>
+            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {projectSummary.withLead} with clear leads
+            </span>
+            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {projectSummary.documented} documented
+            </span>
           </div>
-        )}
-      </div>
+        </div>
+      </WorkspaceToolbar>
+
+      {showCreate ? (
+        <div style={modalOverlay}>
+          <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+            <div style={modalHeader}>
+              <div>
+                <p style={{ ...modalEyebrow, color: palette.muted }}>Create Delivery Workspace</p>
+                <h2 style={{ ...modalTitle, color: palette.text }}>Create Project</h2>
+                <p style={{ ...modalBody, color: palette.muted }}>
+                  Start with a clear name and a short project brief, then shape the roadmap and management views afterward.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreate} style={formStack}>
+              {createError ? (
+                <div style={{ ...errorBox, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger }}>
+                  {createError}
+                </div>
+              ) : null}
+
+              <label style={{ ...label, color: palette.muted }}>Project Name</label>
+              <input
+                required
+                value={newProject.name}
+                onChange={(event) => setNewProject({ ...newProject, name: event.target.value })}
+                className="ui-focus-ring"
+                style={ui.input}
+              />
+
+              <label style={{ ...label, color: palette.muted }}>Description</label>
+              <textarea
+                rows={4}
+                value={newProject.description}
+                onChange={(event) => setNewProject({ ...newProject, description: event.target.value })}
+                className="ui-focus-ring"
+                style={{ ...ui.input, resize: "vertical" }}
+              />
+
+              <div style={buttonRow}>
+                <button type="button" onClick={() => setShowCreate(false)} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={creating} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+                  {creating ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {projects.length === 0 ? (
+        <WorkspaceEmptyState
+          palette={palette}
+          title="Start your first project workspace"
+          description="Create a project to coordinate boards, issue flow, roadmap work, and the surrounding context from one place."
+          action={
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreate(true)} style={ui.primaryButton}>
+              <PlusIcon style={icon14} /> Create Project
+            </button>
+          }
+        />
+      ) : (
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 14 }}>
+          {projects.map((project) => (
+            <article
+              key={project.id}
+              className="ui-card-lift ui-smooth"
+              onClick={() => navigate(`/projects/${project.id}`)}
+              style={{
+                ...projectCard,
+                border: `1px solid ${palette.border}`,
+                background: palette.card,
+              }}
+            >
+              <div style={projectCardTop}>
+                <div style={{ ...keyBadge, background: palette.ctaGradient, color: palette.buttonText }}>
+                  {project.key || "PRJ"}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ ...cardEyebrow, color: palette.muted }}>Delivery Workspace</p>
+                  <h3 style={{ ...cardTitle, color: palette.text }}>{project.name || "Untitled project"}</h3>
+                  <p style={{ ...cardDescription, color: palette.muted }}>
+                    {project.description || "No project brief yet. Open the workspace to add context, direction, and planning detail."}
+                  </p>
+                </div>
+              </div>
+
+              <div style={projectChipRail}>
+                <span style={{ ...chip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  <UserGroupIcon style={icon12} /> {project.lead_name || "No lead assigned"}
+                </span>
+                <span style={{ ...chip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  <ClipboardDocumentListIcon style={icon12} /> {project.description?.trim() ? "Brief in place" : "Needs brief"}
+                </span>
+              </div>
+
+              <div style={{ ...projectActions, borderTop: `1px solid ${palette.border}` }}>
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/projects/${project.id}`);
+                  }}
+                  style={miniActionButton(palette)}
+                >
+                  Overview
+                </button>
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/projects/${project.id}/roadmap`);
+                  }}
+                  style={miniActionButton(palette)}
+                >
+                  Roadmap
+                </button>
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/projects/${project.id}/manage`);
+                  }}
+                  style={miniActionButton(palette)}
+                >
+                  Manage
+                </button>
+                <span style={{ ...openLink, color: palette.accent }}>
+                  Open workspace <ArrowRightIcon style={icon12} />
+                </span>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
 
-function SummaryCard({ icon: Icon, label, value, helper, palette }) {
-  return (
-    <article style={{ ...summaryCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-      <div style={summaryHead}>
-        <span style={{ ...summaryIcon, background: palette.accentSoft, color: palette.accent }}>
-          <Icon style={icon16} />
-        </span>
-        <p style={{ ...summaryLabel, color: palette.muted }}>{label}</p>
-      </div>
-      <p style={{ ...summaryValue, color: palette.text }}>{value}</p>
-      <p style={{ ...summaryHelper, color: palette.muted }}>{helper}</p>
-    </article>
-  );
+function miniActionButton(palette) {
+  return {
+    border: "none",
+    borderRadius: 999,
+    padding: "8px 12px",
+    background: palette.cardAlt,
+    color: palette.text,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  };
 }
 
-const hero = {
-  borderRadius: 28,
-  padding: "clamp(20px, 3vw, 30px)",
+const toolbarLayout = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: 18,
-  marginBottom: 18,
+  gap: 14,
+};
+
+const toolbarIntro = {
+  display: "grid",
+  gap: 4,
+};
+
+const toolbarEyebrow = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const toolbarTitle = {
+  margin: 0,
+  fontSize: 24,
+  lineHeight: 1.02,
+};
+
+const toolbarCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.6,
+  maxWidth: 760,
+};
+
+const toolbarChipRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const toolbarChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const asideCard = {
+  minWidth: 240,
+  borderRadius: 24,
+  padding: 16,
+  display: "grid",
+  gap: 10,
+};
+
+const asideEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const asideTitle = {
+  margin: 0,
+  fontSize: 20,
+  lineHeight: 1.04,
+};
+
+const asideBody = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.6,
+};
+
+const asideMetricGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const asideMetric = {
+  borderRadius: 18,
+  padding: "10px 12px",
+  display: "grid",
+  gap: 3,
+};
+
+const asideMetricLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const asideMetricValue = {
+  margin: 0,
+  fontSize: 18,
+  fontWeight: 700,
+  lineHeight: 1,
+};
+
+const modalOverlay = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(14, 10, 8, 0.36)",
+  backdropFilter: "blur(8px)",
+  display: "grid",
+  placeItems: "center",
+  zIndex: 100,
+  padding: 16,
+};
+
+const modalCard = {
+  width: "min(560px,100%)",
+  borderRadius: 28,
+  padding: 22,
+  boxShadow: "var(--ui-shadow-lg)",
+};
+
+const modalHeader = {
+  display: "grid",
+  gap: 4,
+};
+
+const modalEyebrow = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const modalTitle = {
+  margin: 0,
+  fontSize: 28,
+  lineHeight: 1.02,
+};
+
+const modalBody = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.6,
+};
+
+const formStack = {
+  marginTop: 16,
+  display: "grid",
+  gap: 10,
+};
+
+const label = {
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+};
+
+const errorBox = {
+  borderRadius: 16,
+  padding: "10px 12px",
+  fontSize: 13,
+};
+
+const buttonRow = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 8,
+  marginTop: 8,
+  flexWrap: "wrap",
+};
+
+const projectCard = {
+  borderRadius: 26,
+  padding: 20,
+  cursor: "pointer",
+  display: "grid",
+  gap: 14,
+  minHeight: 266,
   boxShadow: "var(--ui-shadow-sm)",
 };
-const heroMain = { minWidth: 0, display: "grid", alignContent: "space-between", gap: 16 };
-const eyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase" };
-const title = { margin: "7px 0 8px", fontSize: "clamp(2rem,3vw,2.8rem)", letterSpacing: "-0.04em", lineHeight: 1.02 };
-const subtitle = { margin: 0, fontSize: 15, lineHeight: 1.55, maxWidth: 720 };
-const heroActions = { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" };
-const heroLink = { textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 7 };
-const heroStatGrid = { display: "grid", gap: 10, alignContent: "start" };
-const summaryCard = { borderRadius: 22, padding: "16px 16px 14px", display: "grid", gap: 8 };
-const summaryHead = { display: "flex", alignItems: "center", gap: 10 };
-const summaryIcon = { width: 34, height: 34, borderRadius: 12, display: "grid", placeItems: "center" };
-const summaryLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" };
-const summaryValue = { margin: 0, fontSize: 28, fontWeight: 800, lineHeight: 1 };
-const summaryHelper = { margin: 0, fontSize: 13, lineHeight: 1.45 };
-const newButton = { display: "inline-flex", alignItems: "center", gap: 7 };
-const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14 };
-const card = { borderRadius: 22, padding: 18, cursor: "pointer", display: "grid", gap: 14 };
-const cardTop = { display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "start" };
-const keyBadge = { width: 56, height: 56, borderRadius: 16, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 13, boxShadow: "var(--ui-shadow-sm)" };
-const cardEyebrow = { margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
-const cardTitle = { margin: 0, fontSize: 19, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-const cardDesc = { margin: "6px 0 0", fontSize: 14, lineHeight: 1.5, minHeight: 44 };
-const cardSignalRow = { display: "flex", gap: 8, flexWrap: "wrap" };
-const signalChip = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700 };
-const cardMeta = { marginTop: 4, paddingTop: 12, display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, alignItems: "center" };
-const metaItem = { display: "inline-flex", alignItems: "center", gap: 5 };
-const emptyCard = { borderRadius: 24, padding: "54px 22px", textAlign: "center", display: "grid", justifyItems: "center" };
-const modalOverlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", backdropFilter: "blur(8px)", display: "grid", placeItems: "center", zIndex: 100, padding: 16 };
-const modalCard = { width: "min(560px,100%)", borderRadius: 24, padding: 22, boxShadow: "var(--ui-shadow-lg)" };
-const formStack = { marginTop: 14, display: "grid", gap: 10 };
-const label = { fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" };
-const errorBox = { borderRadius: 14, padding: "10px 12px", fontSize: 13 };
-const input = { padding: "10px 12px", fontSize: 14, outline: "none", fontFamily: "inherit" };
-const buttonRow = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
-const skeletonGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14 };
-const skeletonCard = { borderRadius: 22, minHeight: 170, opacity: 0.7 };
-const icon16 = { width: 16, height: 16 };
+
+const projectCardTop = {
+  display: "grid",
+  gridTemplateColumns: "auto 1fr",
+  gap: 12,
+  alignItems: "start",
+};
+
+const keyBadge = {
+  width: 58,
+  height: 58,
+  borderRadius: 18,
+  display: "grid",
+  placeItems: "center",
+  fontWeight: 800,
+  fontSize: 13,
+  boxShadow: "var(--ui-shadow-sm)",
+};
+
+const cardEyebrow = {
+  margin: "0 0 6px",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const cardTitle = {
+  margin: 0,
+  fontSize: 24,
+  lineHeight: 1.04,
+};
+
+const cardDescription = {
+  margin: "8px 0 0",
+  fontSize: 14,
+  lineHeight: 1.65,
+  minHeight: 70,
+};
+
+const projectChipRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const chip = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "8px 10px",
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const projectActions = {
+  marginTop: "auto",
+  paddingTop: 14,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const openLink = {
+  marginLeft: "auto",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  fontSize: 12,
+  fontWeight: 700,
+};
+
 const icon14 = { width: 14, height: 14 };
+const icon12 = { width: 12, height: 12 };

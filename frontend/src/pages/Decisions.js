@@ -12,6 +12,12 @@ import {
   RocketLaunchIcon,
   Squares2X2Icon,
 } from "@heroicons/react/24/outline";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspacePanel,
+  WorkspaceToolbar,
+} from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
@@ -59,36 +65,40 @@ function Decisions() {
       proposed: {
         label: "Proposed",
         tone: darkMode
-          ? { bg: "rgba(245,158,11,0.15)", border: "rgba(245,158,11,0.45)", text: "var(--app-warning)" }
-          : { bg: "var(--app-warning-soft)", border: "rgba(180,83,9,0.35)", text: "#92400e" },
+          ? { bg: "rgba(210,168,106,0.14)", border: "rgba(210,168,106,0.28)", text: "#f4d3a4" }
+          : { bg: "rgba(168,116,57,0.1)", border: "rgba(168,116,57,0.22)", text: "#8c5f2f" },
       },
       under_review: {
         label: "Under Review",
         tone: darkMode
-          ? { bg: "rgba(59,130,246,0.18)", border: "rgba(59,130,246,0.45)", text: "var(--app-link)" }
-          : { bg: "rgba(59,130,246,0.12)", border: "var(--app-info-border)", text: "var(--app-link)" },
+          ? { bg: "rgba(154,185,255,0.14)", border: "rgba(154,185,255,0.3)", text: "#d7e3ff" }
+          : { bg: "rgba(46,99,208,0.08)", border: "rgba(46,99,208,0.18)", text: "#2e63d0" },
       },
       approved: {
         label: "Approved",
         tone: darkMode
-          ? { bg: "rgba(16,185,129,0.18)", border: "var(--app-success-border)", text: "#6ee7b7" }
-          : { bg: "var(--app-success-soft)", border: "rgba(5,150,105,0.35)", text: "#047857" },
+          ? { bg: "rgba(121,200,159,0.14)", border: "rgba(121,200,159,0.3)", text: "#bcebcf" }
+          : { bg: "rgba(47,127,95,0.08)", border: "rgba(47,127,95,0.18)", text: "#2f7f5f" },
       },
       implemented: {
         label: "Implemented",
         tone: darkMode
-          ? { bg: "rgba(168,85,247,0.2)", border: "rgba(168,85,247,0.45)", text: "#d8b4fe" }
-          : { bg: "rgba(168,85,247,0.12)", border: "rgba(126,34,206,0.32)", text: "#7e22ce" },
+          ? { bg: "rgba(238,229,216,0.08)", border: "rgba(238,229,216,0.18)", text: "#f5efe6" }
+          : { bg: "rgba(31,26,23,0.06)", border: "rgba(58,47,38,0.14)", text: "#1f1a17" },
       },
       default: {
         label: "Proposed",
         tone: darkMode
-          ? { bg: "rgba(245,158,11,0.15)", border: "rgba(245,158,11,0.45)", text: "var(--app-warning)" }
-          : { bg: "var(--app-warning-soft)", border: "rgba(180,83,9,0.35)", text: "#92400e" },
+          ? { bg: "rgba(210,168,106,0.14)", border: "rgba(210,168,106,0.28)", text: "#f4d3a4" }
+          : { bg: "rgba(168,116,57,0.1)", border: "rgba(168,116,57,0.22)", text: "#8c5f2f" },
       },
     }),
     [darkMode]
   );
+
+  const impactTone = darkMode
+    ? { bg: "rgba(245,239,230,0.05)", border: "rgba(245,239,230,0.18)", text: "#d8cdbf" }
+    : { bg: "rgba(31,26,23,0.05)", border: "rgba(58,47,38,0.12)", text: "#5b5148" };
 
   const filteredDecisions = useMemo(() => {
     const loweredQuery = query.trim().toLowerCase();
@@ -118,359 +128,337 @@ function Decisions() {
     if (Number.isNaN(timestamp)) return false;
     return Date.now() - timestamp <= 1000 * 60 * 60 * 24 * 30;
   }).length;
+  const visibleRatio = decisions.length ? Math.round((filteredDecisions.length / decisions.length) * 100) : 0;
+  const implementedCount = statusCounts.implemented || 0;
+
+  const decisionStats = [
+    {
+      label: "Recorded",
+      value: decisions.length,
+      helper: "Decision records in the workspace",
+      tone: palette.accent,
+    },
+    {
+      label: "Review Queue",
+      value: reviewQueue,
+      helper: "Proposals still moving toward a call",
+      tone: statusConfig.under_review.tone.text,
+    },
+    {
+      label: "Approved",
+      value: `${approvalRate}%`,
+      helper: `${statusCounts.approved || 0} approved decisions`,
+      tone: statusConfig.approved.tone.text,
+    },
+    {
+      label: "Implemented",
+      value: `${implementedRate}%`,
+      helper: `${implementedCount} moved into delivery`,
+      tone: palette.text,
+    },
+  ];
+
+  const reviewAside = (
+    <div
+      style={{
+        ...decisionAsideCard,
+        border: `1px solid ${palette.border}`,
+        background: darkMode
+          ? "linear-gradient(160deg, rgba(32,27,23,0.9), rgba(22,18,15,0.82))"
+          : "linear-gradient(160deg, rgba(255,252,248,0.96), rgba(244,237,226,0.88))",
+      }}
+    >
+      <p style={{ ...decisionAsideEyebrow, color: palette.muted }}>Decision Flow</p>
+      <h3 style={{ ...decisionAsideTitle, color: palette.text }}>Keep rationale and rollout attached.</h3>
+      <p style={{ ...decisionAsideBody, color: palette.muted }}>
+        {recentCount} new records landed in the last 30 days, and {reviewQueue} still need active attention.
+      </p>
+      <div style={decisionAsideMetrics}>
+        <div style={{ ...decisionAsideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+          <p style={{ ...decisionAsideMetricLabel, color: palette.muted }}>Visible</p>
+          <p style={{ ...decisionAsideMetricValue, color: palette.text }}>{visibleRatio}%</p>
+        </div>
+        <div style={{ ...decisionAsideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+          <p style={{ ...decisionAsideMetricLabel, color: palette.muted }}>Recent</p>
+          <p style={{ ...decisionAsideMetricValue, color: palette.text }}>{recentCount}</p>
+        </div>
+      </div>
+    </div>
+  );
 
   const statusLabel = (status) => statusConfig[status]?.label || statusConfig.default.label;
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", position: "relative" }}>
-        <div
-          style={{
-            ...ambientLayer,
-            background: darkMode
-              ? "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 86% 12%, rgba(168,85,247,0.1), transparent 26%)"
-              : "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.1), transparent 34%), radial-gradient(circle at 86% 12%, rgba(168,85,247,0.08), transparent 26%)",
-          }}
-        />
-        <div style={{ ...ui.container, position: "relative", zIndex: 1 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14 }}>
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} style={{ borderRadius: 22, height: 156, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.72, boxShadow: "var(--ui-shadow-xs)" }} />
-            ))}
-          </div>
+      <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+          {[1, 2, 3, 4].map((item) => (
+            <div
+              key={item}
+              style={{
+                borderRadius: 24,
+                height: 150,
+                background: palette.card,
+                border: `1px solid ${palette.border}`,
+                opacity: 0.76,
+                boxShadow: "var(--ui-shadow-sm)",
+              }}
+            />
+          ))}
         </div>
+        <div style={{ borderRadius: 26, height: 420, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
-      <div
-        style={{
-          ...ambientLayer,
-          background: darkMode
-            ? "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 86% 12%, rgba(168,85,247,0.1), transparent 26%), radial-gradient(circle at 52% 0%, rgba(16,185,129,0.08), transparent 24%)"
-            : "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.09), transparent 34%), radial-gradient(circle at 86% 12%, rgba(168,85,247,0.08), transparent 26%), radial-gradient(circle at 52% 0%, rgba(16,185,129,0.06), transparent 24%)",
-        }}
+    <div style={{ display: "grid", gap: 16 }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Decision Memory"
+        title="Decisions"
+        description="Capture proposals, approvals, and implementation moves in one place so teams can recover the reasoning behind what changed."
+        stats={decisionStats}
+        aside={reviewAside}
+        actions={
+          <>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={ui.primaryButton}>
+              <PlusIcon style={icon14} /> Capture Decision
+            </button>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decision-proposals")} style={ui.secondaryButton}>
+              Decision Proposals
+            </button>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/sprint")} style={ui.secondaryButton}>
+              Current Sprint
+            </button>
+            <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecisions} style={ui.secondaryButton}>
+              <ArrowPathIcon style={icon14} /> Refresh
+            </button>
+          </>
+        }
       />
-      <div style={{ ...ui.container, position: "relative", zIndex: 1 }}>
-        <section
-          className="ui-enter ui-card-lift ui-smooth"
-          style={{
-            ...heroCard,
-            border: `1px solid ${palette.border}`,
-            background: darkMode
-              ? "linear-gradient(145deg, rgba(11,18,32,0.96) 0%, rgba(17,24,39,0.94) 54%, rgba(21,32,54,0.88) 100%)"
-              : "linear-gradient(145deg, rgba(255,255,255,0.96) 0%, rgba(246,249,252,0.98) 58%, rgba(232,241,255,0.92) 100%)",
-            boxShadow: "var(--ui-shadow-sm)",
-            "--ui-delay": "10ms",
-          }}
-        >
-          <div style={{ display: "grid", alignContent: "space-between", gap: 16, minWidth: 0 }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: palette.muted, textTransform: "uppercase" }}>DECISION CENTER</p>
-              <h1 style={{ margin: "8px 0 10px", fontSize: "clamp(2rem,3vw,2.7rem)", color: palette.text, letterSpacing: "-0.04em", lineHeight: 1.02 }}>Decisions</h1>
-              <p style={{ margin: 0, fontSize: 15, color: palette.muted, lineHeight: 1.6, maxWidth: 720 }}>
-                Capture proposals, approvals, and implementation moves in one place so teams can trace how work actually changed.
-              </p>
-            </div>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                <ClockIcon style={{ width: 14, height: 14 }} /> {recentCount} added in 30 days
-              </span>
-              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                <FunnelIcon style={{ width: 14, height: 14 }} /> {filteredDecisions.length} visible now
-              </span>
-            </div>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={ui.primaryButton}>
-                <PlusIcon style={{ width: 14, height: 14 }} /> New Decision
-              </button>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations")} style={ui.secondaryButton}>
-                Conversations
-              </button>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/sprint")} style={ui.secondaryButton}>
-                Current Sprint
-              </button>
-              <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecisions} style={ui.secondaryButton}>
-                <ArrowPathIcon style={{ width: 14, height: 14 }} /> Refresh
-              </button>
-            </div>
+      <WorkspaceToolbar palette={palette}>
+        <div style={toolbarLayout}>
+          <div style={toolbarIntro}>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Refine The Stream</p>
+            <h2 style={{ ...toolbarTitle, color: palette.text }}>Find the records that need attention now</h2>
+            <p style={{ ...toolbarCopy, color: palette.muted }}>
+              Filter by stage, search across the log, and switch between an editorial list or compact card layout.
+            </p>
           </div>
 
-          <div style={heroStatGrid}>
-            <Metric icon={ListBulletIcon} label="Total decisions" value={decisions.length} helper="Records in the decision log." palette={palette} />
-            <Metric icon={ClockIcon} label="Review queue" value={reviewQueue} helper="Proposals still moving toward a call." palette={palette} tone={statusConfig.under_review.tone} />
-            <Metric icon={CheckBadgeIcon} label="Approved" value={statusCounts.approved || 0} helper={`${approvalRate}% of all recorded decisions.`} palette={palette} tone={statusConfig.approved.tone} />
-            <Metric icon={RocketLaunchIcon} label="Implemented" value={statusCounts.implemented || 0} helper={`${implementedRate}% have moved into delivery.`} palette={palette} tone={statusConfig.implemented.tone} />
-          </div>
-        </section>
-
-        <section
-          className="ui-enter ui-card-lift ui-smooth"
-          style={{
-            borderRadius: 24,
-            border: `1px solid ${palette.border}`,
-            background: palette.card,
-            padding: 18,
-            marginBottom: 16,
-            display: "grid",
-            gap: 14,
-            boxShadow: "var(--ui-shadow-xs)",
-            "--ui-delay": "140ms",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: palette.muted, textTransform: "uppercase" }}>Refine The View</p>
-              <h2 style={{ margin: "8px 0 4px", fontSize: 20, color: palette.text }}>Filter the decision stream</h2>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.muted }}>Narrow by status, search across the record, and choose the layout that fits the review.</p>
-            </div>
-            <span style={{ ...heroChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+          <div style={toolbarMetaRail}>
+            <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {filteredDecisions.length} visible
+            </span>
+            <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
               {viewMode === "grid" ? "Grid view" : "List view"}
             </span>
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {["all", "proposed", "under_review", "approved", "implemented"].map((status) => (
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                key={status}
-                onClick={() => setFilter(status)}
-                style={{
-                  ...ui.secondaryButton,
-                  fontSize: 11,
-                  padding: "8px 12px",
-                  textTransform: "capitalize",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  background: filter === status ? (darkMode ? "rgba(59,130,246,0.2)" : "rgba(59,130,246,0.12)") : "transparent",
-                  border: filter === status ? (darkMode ? "1px solid rgba(59,130,246,0.45)" : "1px solid rgba(37,99,235,0.32)") : ui.secondaryButton.border,
-                  color: filter === status ? "var(--app-link)" : ui.secondaryButton.color,
-                }}
-              >
-                <FunnelIcon style={{ width: 11, height: 11 }} />
-                {status === "all" ? "All" : status.replace("_", " ")}
-              </button>
-            ))}
+          <div style={filterRail}>
+            {["all", "proposed", "under_review", "approved", "implemented"].map((status) => {
+              const active = filter === status;
+              return (
+                <button
+                  key={status}
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={() => setFilter(status)}
+                  style={{
+                    ...filterPill,
+                    border: `1px solid ${active ? palette.accent : palette.border}`,
+                    background: active ? palette.accentSoft : palette.cardAlt,
+                    color: active ? palette.accent : palette.text,
+                  }}
+                >
+                  <FunnelIcon style={icon12} />
+                  {status === "all" ? "All" : statusLabel(status)}
+                </button>
+              );
+            })}
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", width: "100%", alignItems: "center" }}>
-            <div style={{ position: "relative", minWidth: isMobile ? 0 : 260, width: isMobile ? "100%" : "auto", flex: 1 }}>
-              <MagnifyingGlassIcon style={{ width: 14, height: 14, position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: palette.muted }} />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search decisions..." style={{ ...ui.input, paddingLeft: 30 }} />
+          <div style={{ ...searchRail, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) auto auto auto" }}>
+            <div style={{ position: "relative", minWidth: 0 }}>
+              <MagnifyingGlassIcon style={{ ...searchIcon, color: palette.muted }} />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search titles, descriptions, or owners..."
+                className="ui-focus-ring"
+                style={{ ...ui.input, paddingLeft: 38 }}
+              />
             </div>
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...ui.input, width: isMobile ? "100%" : 150, padding: "9px 10px" }}>
-              <option value="recent">Recent</option>
-              <option value="oldest">Oldest</option>
+
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...ui.input, width: isMobile ? "100%" : 160 }}>
+              <option value="recent">Recent first</option>
+              <option value="oldest">Oldest first</option>
               <option value="title">Title</option>
             </select>
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              onClick={() => setViewMode("grid")}
-              style={{
-                ...ui.secondaryButton,
-                padding: "8px 10px",
-                background: viewMode === "grid" ? (darkMode ? "rgba(120,120,120,0.18)" : "rgba(120,120,120,0.1)") : "transparent",
-              }}
-            >
-              <Squares2X2Icon style={{ width: 15, height: 15 }} />
-            </button>
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              onClick={() => setViewMode("list")}
-              style={{
-                ...ui.secondaryButton,
-                padding: "8px 10px",
-                background: viewMode === "list" ? (darkMode ? "rgba(120,120,120,0.18)" : "rgba(120,120,120,0.1)") : "transparent",
-              }}
-            >
-              <ListBulletIcon style={{ width: 15, height: 15 }} />
-            </button>
-          </div>
-        </section>
 
-        {filteredDecisions.length === 0 ? (
-          <div
-            className="ui-enter ui-card-lift ui-smooth"
-            style={{
-              borderRadius: 24,
-              border: `1px dashed ${palette.border}`,
-              background: palette.card,
-              padding: "52px 22px",
-              textAlign: "center",
-              color: palette.muted,
-              display: "grid",
-              justifyItems: "center",
-              gap: 10,
-              boxShadow: "var(--ui-shadow-xs)",
-              "--ui-delay": "210ms",
-            }}
-          >
-            <CheckBadgeIcon style={{ width: 48, height: 48, color: palette.muted }} />
-            <h2 style={{ margin: "6px 0 0", fontSize: 24, color: palette.text }}>
-              {decisions.length === 0 ? "Start the decision record" : "No decisions match this view"}
-            </h2>
-            <p style={{ margin: 0, maxWidth: 540, fontSize: 14, lineHeight: 1.6 }}>
-              {decisions.length === 0
-                ? "Capture the next proposal, approval, or implementation move so the team can trace what changed."
-                : "Try adjusting the search, switching status filters, or changing the sort order to widen the view."}
-            </p>
+            <div style={viewToggle}>
+              <button
+                className="ui-btn-polish ui-focus-ring"
+                onClick={() => setViewMode("grid")}
+                style={{
+                  ...toggleButton,
+                  background: viewMode === "grid" ? palette.accentSoft : "transparent",
+                  color: viewMode === "grid" ? palette.accent : palette.muted,
+                }}
+                aria-label="Grid view"
+              >
+                <Squares2X2Icon style={icon14} />
+              </button>
+              <button
+                className="ui-btn-polish ui-focus-ring"
+                onClick={() => setViewMode("list")}
+                style={{
+                  ...toggleButton,
+                  background: viewMode === "list" ? palette.accentSoft : "transparent",
+                  color: viewMode === "list" ? palette.accent : palette.muted,
+                }}
+                aria-label="List view"
+              >
+                <ListBulletIcon style={icon14} />
+              </button>
+            </div>
+
+            <div style={toolbarSummary}>
+              <p style={{ ...toolbarSummaryLabel, color: palette.muted }}>Implementation</p>
+              <p style={{ ...toolbarSummaryValue, color: palette.text }}>{implementedCount}</p>
+            </div>
+          </div>
+        </div>
+      </WorkspaceToolbar>
+
+      {filteredDecisions.length === 0 ? (
+        <WorkspaceEmptyState
+          palette={palette}
+          title={decisions.length === 0 ? "Start the decision record" : "No decisions match this view"}
+          description={
+            decisions.length === 0
+              ? "Capture the next proposal, approval, or implementation move so the team can trace what changed."
+              : "Try adjusting the search, widening the filter, or changing the sort order to bring more records back into view."
+          }
+          action={
             <button
               className="ui-btn-polish ui-focus-ring"
-              onClick={() => (decisions.length === 0 ? navigate("/conversations/new") : (setFilter("all"), setQuery(""), setSortBy("recent")))}
-              style={{ ...ui.primaryButton, marginTop: 8 }}
+              onClick={() =>
+                decisions.length === 0
+                  ? navigate("/conversations/new")
+                  : (setFilter("all"), setQuery(""), setSortBy("recent"))
+              }
+              style={ui.primaryButton}
             >
               {decisions.length === 0 ? "Capture Decision" : "Reset Filters"}
             </button>
-          </div>
-        ) : viewMode === "grid" ? (
-          <section className="ui-enter" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(290px,1fr))", gap: 14, "--ui-delay": "210ms" }}>
-            {filteredDecisions.map((decision) => (
-              <article
-                className="ui-card-lift ui-smooth"
-                key={decision.id}
-                onClick={() => navigate(`/decisions/${decision.id}`)}
-                style={{
-                  borderRadius: 22,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.card,
-                  padding: 18,
-                  cursor: "pointer",
-                  display: "grid",
-                  gap: 14,
-                  minHeight: 228,
-                  boxShadow: "var(--ui-shadow-xs)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start", minWidth: 0 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>Decision Record</p>
-                    <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: palette.text, lineHeight: 1.15 }}>{decision.title}</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: palette.muted, whiteSpace: "nowrap" }}>{formatDate(decision.created_at)}</span>
-                </div>
-
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>
+          }
+        />
+      ) : viewMode === "grid" ? (
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14 }}>
+          {filteredDecisions.map((decision) => (
+            <DecisionGridCard
+              key={decision.id}
+              decision={decision}
+              palette={palette}
+              statusLabel={statusLabel(decision.status)}
+              statusTone={statusConfig[decision.status]?.tone || statusConfig.default.tone}
+              impactTone={impactTone}
+              onOpen={() => navigate(`/decisions/${decision.id}`)}
+            />
+          ))}
+        </section>
+      ) : (
+        <section style={{ display: "grid", gap: 12 }}>
+          {filteredDecisions.map((decision) => (
+            <WorkspacePanel
+              key={decision.id}
+              palette={palette}
+              title={decision.title || "Untitled decision"}
+              eyebrow="Decision Record"
+              description={decision.description || "No description provided yet."}
+              action={<DecisionActionRail palette={palette} decision={decision} onOpen={() => navigate(`/decisions/${decision.id}`)} />}
+            >
+              <div style={decisionListRow}>
+                <div style={decisionBadgeRail}>
                   <Badge text={statusLabel(decision.status)} tone={statusConfig[decision.status]?.tone || statusConfig.default.tone} />
-                  <Badge
-                    text={(decision.impact_level || "medium").toUpperCase()}
-                    tone={
-                      darkMode
-                        ? { bg: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.42)", text: "var(--app-warning)" }
-                        : { bg: "rgba(245,158,11,0.1)", border: "rgba(180,83,9,0.3)", text: "#92400e" }
-                    }
-                  />
+                  <Badge text={(decision.impact_level || "medium").toUpperCase()} tone={impactTone} />
+                  <Badge text={`Owner ${decision.decision_maker_name || "Unknown"}`} tone={{ bg: palette.cardAlt, border: palette.border, text: palette.text }} />
                 </div>
-
-                {decision.description && <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.6 }}>{decision.description}</p>}
-
-                <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 12, color: palette.muted, paddingTop: 12, borderTop: `1px solid ${palette.border}`, alignItems: "flex-end" }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>Owner</p>
-                    <p style={{ margin: "6px 0 0", color: palette.text, fontWeight: 700 }}>{decision.decision_maker_name || "Unknown"}</p>
-                  </div>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: palette.accent, fontWeight: 700 }}>
-                    Open decision <ArrowRightIcon style={{ width: 12, height: 12 }} />
-                  </span>
+                <div style={decisionMetaRail}>
+                  <span style={{ color: palette.muted }}>{formatDate(decision.created_at)}</span>
+                  <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(`/decisions/${decision.id}`)} style={decisionLinkButton(palette)}>
+                    Open decision <ArrowRightIcon style={icon12} />
+                  </button>
                 </div>
-              </article>
-            ))}
-          </section>
-        ) : (
-          <section className="ui-enter" style={{ display: "grid", gap: 10, "--ui-delay": "210ms" }}>
-            {filteredDecisions.map((decision) => (
-              <article
-                className="ui-card-lift ui-smooth"
-                key={decision.id}
-                onClick={() => navigate(`/decisions/${decision.id}`)}
-                style={{
-                  borderRadius: 22,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.card,
-                  padding: 18,
-                  cursor: "pointer",
-                  display: "grid",
-                  gap: 12,
-                  boxShadow: "var(--ui-shadow-xs)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <Badge text={statusLabel(decision.status)} tone={statusConfig[decision.status]?.tone || statusConfig.default.tone} />
-                        <Badge
-                          text={(decision.impact_level || "medium").toUpperCase()}
-                          tone={
-                            darkMode
-                              ? { bg: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.42)", text: "var(--app-warning)" }
-                              : { bg: "rgba(245,158,11,0.1)", border: "rgba(180,83,9,0.3)", text: "#92400e" }
-                          }
-                        />
-                      </div>
-                      <span style={{ fontSize: 11, color: palette.muted }}>{formatDate(decision.created_at)}</span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: palette.text, lineHeight: 1.15 }}>{decision.title}</p>
-                    {decision.description && <p style={{ margin: "8px 0 0", fontSize: 13, color: palette.muted, lineHeight: 1.6 }}>{decision.description}</p>}
-                  </div>
-                  <span style={{ ...heroChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    Owner: {decision.decision_maker_name || "Unknown"}
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap", paddingTop: 12, borderTop: `1px solid ${palette.border}` }}>
-                  <div style={{ fontSize: 12, color: palette.muted }}>
-                    Decision status: <span style={{ color: palette.text, fontWeight: 700 }}>{statusLabel(decision.status)}</span>
-                  </div>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: palette.accent, fontWeight: 700, fontSize: 12 }}>
-                    Open decision <ArrowRightIcon style={{ width: 12, height: 12 }} />
-                  </span>
-                </div>
-              </article>
-            ))}
-          </section>
-        )}
-      </div>
+              </div>
+            </WorkspacePanel>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
 
-function Metric({ icon: Icon, label, value, helper, palette, tone }) {
+function DecisionGridCard({ decision, palette, statusLabel, statusTone, impactTone, onOpen }) {
   return (
     <article
+      className="ui-card-lift ui-smooth"
+      onClick={onOpen}
       style={{
-        borderRadius: 22,
-        padding: "16px 16px 14px",
-        border: `1px solid ${tone?.border || palette.border}`,
-        background: tone?.bg || palette.cardAlt,
+        borderRadius: 26,
+        border: `1px solid ${palette.border}`,
+        background: palette.card,
+        padding: 20,
+        cursor: "pointer",
         display: "grid",
-        gap: 8,
-        boxShadow: "var(--ui-shadow-xs)",
+        gap: 14,
+        minHeight: 258,
+        boxShadow: "var(--ui-shadow-sm)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 12,
-            display: "grid",
-            placeItems: "center",
-            background: tone?.bg || palette.accentSoft,
-            color: tone?.text || palette.accent,
-          }}
-        >
-          <Icon style={{ width: 16, height: 16 }} />
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ ...cardEyebrow, color: palette.muted }}>Decision Record</p>
+          <h3 style={{ ...cardTitle, color: palette.text }}>{decision.title || "Untitled decision"}</h3>
+        </div>
+        <span style={{ ...dateChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.muted }}>
+          {formatDate(decision.created_at)}
         </span>
-        <p style={{ margin: 0, fontSize: 11, color: palette.muted, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>{label}</p>
       </div>
-      <p style={{ margin: 0, fontSize: 28, fontWeight: 800, color: tone?.text || palette.text, lineHeight: 1 }}>{value}</p>
-      <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.5 }}>{helper}</p>
+
+      <div style={decisionBadgeRail}>
+        <Badge text={statusLabel} tone={statusTone} />
+        <Badge text={(decision.impact_level || "medium").toUpperCase()} tone={impactTone} />
+      </div>
+
+      <p style={{ ...cardDescription, color: palette.muted }}>
+        {decision.description || "No description provided yet. Open the record to add rationale, context, and follow-through."}
+      </p>
+
+      <div style={{ ...decisionFoot, borderTop: `1px solid ${palette.border}` }}>
+        <div>
+          <p style={{ ...cardLabel, color: palette.muted }}>Owner</p>
+          <p style={{ ...cardOwner, color: palette.text }}>{decision.decision_maker_name || "Unknown"}</p>
+        </div>
+        <span style={{ ...openLink, color: palette.accent }}>
+          Open decision <ArrowRightIcon style={icon12} />
+        </span>
+      </div>
     </article>
+  );
+}
+
+function DecisionActionRail({ palette, decision, onOpen }) {
+  return (
+    <div style={decisionActionRail}>
+      <Badge text={formatDate(decision.created_at)} tone={{ bg: palette.cardAlt, border: palette.border, text: palette.muted }} />
+      <button className="ui-btn-polish ui-focus-ring" onClick={onOpen} style={decisionLinkButton(palette)}>
+        Open decision <ArrowRightIcon style={icon12} />
+      </button>
+    </div>
   );
 }
 
@@ -484,8 +472,10 @@ function Badge({ text, tone }) {
         fontSize: 11,
         fontWeight: 700,
         borderRadius: 999,
-        padding: "4px 9px",
-        textTransform: "capitalize",
+        padding: "6px 10px",
+        lineHeight: 1.2,
+        display: "inline-flex",
+        alignItems: "center",
       }}
     >
       {text}
@@ -493,19 +483,65 @@ function Badge({ text, tone }) {
   );
 }
 
-const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
-const heroCard = {
-  position: "relative",
-  zIndex: 1,
-  marginBottom: 16,
-  borderRadius: 28,
-  padding: "clamp(20px, 3vw, 30px)",
+function formatDate(rawDate) {
+  if (!rawDate) return "Unknown date";
+  return new Date(rawDate).toLocaleDateString();
+}
+
+function decisionLinkButton(palette) {
+  return {
+    border: "none",
+    borderRadius: 999,
+    padding: "8px 12px",
+    background: palette.accentSoft,
+    color: palette.accent,
+    fontSize: 12,
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    cursor: "pointer",
+  };
+}
+
+const toolbarLayout = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: 18,
+  gap: 14,
 };
-const heroStatGrid = { display: "grid", gap: 10, alignContent: "start" };
-const heroChip = {
+
+const toolbarIntro = {
+  display: "grid",
+  gap: 4,
+};
+
+const toolbarEyebrow = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const toolbarTitle = {
+  margin: 0,
+  fontSize: 24,
+  lineHeight: 1.02,
+};
+
+const toolbarCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.6,
+  maxWidth: 760,
+};
+
+const toolbarMetaRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const toolbarMetaChip = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
@@ -515,9 +551,226 @@ const heroChip = {
   fontWeight: 700,
 };
 
-function formatDate(rawDate) {
-  if (!rawDate) return "Unknown date";
-  return new Date(rawDate).toLocaleDateString();
-}
+const filterRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const filterPill = {
+  borderRadius: 999,
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  cursor: "pointer",
+};
+
+const searchRail = {
+  display: "grid",
+  gap: 10,
+  alignItems: "center",
+};
+
+const searchIcon = {
+  width: 16,
+  height: 16,
+  position: "absolute",
+  left: 12,
+  top: "50%",
+  transform: "translateY(-50%)",
+};
+
+const viewToggle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  borderRadius: 999,
+  padding: 4,
+  background: "var(--ui-panel-alt)",
+  border: "1px solid var(--ui-border)",
+  width: "fit-content",
+};
+
+const toggleButton = {
+  width: 36,
+  height: 36,
+  borderRadius: 999,
+  border: "none",
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+};
+
+const toolbarSummary = {
+  display: "grid",
+  gap: 2,
+  minWidth: 88,
+};
+
+const toolbarSummaryLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const toolbarSummaryValue = {
+  margin: 0,
+  fontSize: 24,
+  fontWeight: 700,
+  lineHeight: 1,
+};
+
+const decisionAsideCard = {
+  minWidth: 240,
+  borderRadius: 24,
+  padding: 16,
+  display: "grid",
+  gap: 10,
+};
+
+const decisionAsideEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const decisionAsideTitle = {
+  margin: 0,
+  fontSize: 20,
+  lineHeight: 1.04,
+};
+
+const decisionAsideBody = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.6,
+};
+
+const decisionAsideMetrics = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const decisionAsideMetric = {
+  borderRadius: 18,
+  padding: "10px 12px",
+  display: "grid",
+  gap: 3,
+};
+
+const decisionAsideMetricLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const decisionAsideMetricValue = {
+  margin: 0,
+  fontSize: 18,
+  fontWeight: 700,
+  lineHeight: 1,
+};
+
+const decisionBadgeRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const cardEyebrow = {
+  margin: "0 0 6px",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const cardTitle = {
+  margin: 0,
+  fontSize: 22,
+  lineHeight: 1.05,
+};
+
+const dateChip = {
+  fontSize: 11,
+  fontWeight: 700,
+  borderRadius: 999,
+  padding: "7px 10px",
+  whiteSpace: "nowrap",
+};
+
+const cardDescription = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.7,
+};
+
+const decisionFoot = {
+  marginTop: "auto",
+  paddingTop: 12,
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  alignItems: "flex-end",
+  flexWrap: "wrap",
+};
+
+const cardLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const cardOwner = {
+  margin: "6px 0 0",
+  fontSize: 14,
+  fontWeight: 700,
+};
+
+const openLink = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const decisionListRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  alignItems: "center",
+  flexWrap: "wrap",
+};
+
+const decisionMetaRail = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap",
+};
+
+const decisionActionRail = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+};
+
+const icon14 = { width: 14, height: 14 };
+const icon12 = { width: 12, height: 12 };
 
 export default Decisions;

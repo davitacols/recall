@@ -1,19 +1,27 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeftIcon,
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  ArrowUturnLeftIcon,
+  ArrowUturnRightIcon,
   ChatBubbleLeftIcon,
   ExclamationTriangleIcon,
   HandThumbUpIcon,
   QuestionMarkCircleIcon,
+  SparklesIcon,
+  StarIcon,
+  TagIcon,
+  FaceSmileIcon,
+  LightBulbIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { useToast } from "../components/Toast";
-import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
+import { AIResultsPanel } from "../components/AIEnhancements";
 import api from "../services/api";
 import MentionTagInput from "../components/MentionTagInput";
 import RichTextRenderer from "../components/RichTextRenderer";
-import { FavoriteButton, ExportButton, UndoRedoButtons } from "../components/QuickWinFeatures";
 import { getAvatarUrl } from "../utils/avatarUtils";
 import AIAssistant from "../components/AIAssistant";
 import ContextPanel from "../components/ContextPanel";
@@ -22,6 +30,14 @@ import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustra
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 
+const AI_ACTIONS = [
+  { key: "summarize", label: "Summarize", helper: "Pull the thread into a crisp recap.", icon: SparklesIcon },
+  { key: "tags", label: "Generate tags", helper: "Suggest topics and labels to keep it findable.", icon: TagIcon },
+  { key: "sentiment", label: "Read sentiment", helper: "Surface tone, confidence, and emotional signals.", icon: FaceSmileIcon },
+  { key: "suggestions", label: "Next-step ideas", helper: "Draft sharper follow-ups and actions.", icon: LightBulbIcon },
+  { key: "batch", label: "Run all", helper: "Process the full AI pass in one step.", icon: SparklesIcon },
+];
+
 const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette, darkMode }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
@@ -29,6 +45,7 @@ const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette,
   const authorName =
     typeof reply.author === "string" ? reply.author : reply.author?.username || "Unknown";
   const avatarUrl = getAvatarUrl(reply.author?.avatar || reply.author_avatar);
+  const isReplyOwner = Number(reply.author?.id || reply.author_id) === Number(currentUserId);
 
   const handleSave = async () => {
     await onEdit(reply.id, editContent);
@@ -65,7 +82,7 @@ const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette,
             </div>
           </div>
 
-          {reply.author_id === currentUserId && (
+          {isReplyOwner && (
             <div style={replyActionRow}>
               <button onClick={() => setIsEditing((value) => !value)} style={inlineAction(palette)}>
                 {isEditing ? "Cancel" : "Edit"}
@@ -124,6 +141,7 @@ function ConversationDetail() {
   const [isEditingPost, setIsEditingPost] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+  const draftRef = useRef({ title: "", content: "" });
   const [currentUserId, setCurrentUserId] = useState(null);
   const [reactions, setReactions] = useState({ reactions: [], user_reaction: null });
   const [savingPost, setSavingPost] = useState(false);
@@ -139,7 +157,18 @@ function ConversationDetail() {
   const [creating, setCreating] = useState(false);
   const [converting, setConverting] = useState(false);
   const [aiResults, setAiResults] = useState(null);
+  const [bookmarkState, setBookmarkState] = useState({
+    bookmarked: false,
+    bookmarkId: null,
+    loading: false,
+  });
+  const [draftHistory, setDraftHistory] = useState([]);
+  const [draftFuture, setDraftFuture] = useState([]);
+  const [aiMenuOpen, setAiMenuOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState("");
+  const [exporting, setExporting] = useState(false);
   const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1080);
+  const aiMenuRef = useRef(null);
 
   useEffect(() => {
     const onResize = () => setIsNarrow(window.innerWidth < 1080);
@@ -154,10 +183,50 @@ function ConversationDetail() {
       fetchConversation();
       fetchReplies();
       fetchReactions();
+      fetchBookmarkState();
     } else {
       setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    draftRef.current = { title: editTitle, content: editContent };
+  }, [editContent, editTitle]);
+
+  useEffect(() => {
+    if (!aiMenuOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!aiMenuRef.current?.contains(event.target)) {
+        setAiMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [aiMenuOpen]);
+
+  useEffect(() => {
+    if (!isEditingPost) return undefined;
+
+    const handleKeyDown = (event) => {
+      const isModifier = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+
+      if (isModifier && !event.shiftKey && key === "z") {
+        event.preventDefault();
+        handleUndoDraft();
+      }
+
+      if (isModifier && (key === "y" || (event.shiftKey && key === "z"))) {
+        event.preventDefault();
+        handleRedoDraft();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isEditingPost, draftFuture.length, draftHistory.length]);
 
   const palette = useMemo(() => {
     const basePalette = getProjectPalette(darkMode);
@@ -173,8 +242,7 @@ function ConversationDetail() {
     try {
       const response = await api.get(`/api/recall/conversations/${id}/`);
       setConversation(response.data);
-      setEditTitle(response.data.title);
-      setEditContent(response.data.content);
+      resetDraftHistory(response.data.title, response.data.content);
     } catch (error) {
       console.error("Failed to fetch conversation:", error);
     } finally {
@@ -200,11 +268,158 @@ function ConversationDetail() {
     }
   };
 
+  const fetchBookmarkState = async () => {
+    try {
+      const response = await api.get("/api/recall/bookmarks/");
+      const bookmarks = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response.data?.results)
+          ? response.data.results
+          : [];
+      const match = bookmarks.find(
+        (bookmark) => Number(bookmark.conversation?.id) === Number(id)
+      );
+
+      setBookmarkState({
+        bookmarked: Boolean(match),
+        bookmarkId: match?.id || null,
+        loading: false,
+      });
+    } catch (error) {
+      console.error("Failed to fetch bookmark state:", error);
+      setBookmarkState((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const resetDraftHistory = (nextTitle = "", nextContent = "") => {
+    setEditTitle(nextTitle);
+    setEditContent(nextContent);
+    setDraftHistory([]);
+    setDraftFuture([]);
+  };
+
+  const beginEditingPost = () => {
+    resetDraftHistory(conversation?.title || "", conversation?.content || "");
+    setIsEditingPost(true);
+  };
+
+  const cancelEditingPost = () => {
+    resetDraftHistory(conversation?.title || "", conversation?.content || "");
+    setIsEditingPost(false);
+  };
+
+  const updateDraft = (field, value) => {
+    const currentDraft = draftRef.current;
+    const nextDraft = { ...currentDraft, [field]: value };
+
+    if (currentDraft[field] === value) return;
+
+    setDraftHistory((prev) => [...prev.slice(-39), currentDraft]);
+    setDraftFuture([]);
+    setEditTitle(nextDraft.title);
+    setEditContent(nextDraft.content);
+  };
+
+  const handleUndoDraft = () => {
+    if (!isEditingPost || draftHistory.length === 0) return;
+
+    const previousDraft = draftHistory[draftHistory.length - 1];
+    setDraftHistory((prev) => prev.slice(0, -1));
+    setDraftFuture((prev) => [draftRef.current, ...prev].slice(0, 40));
+    setEditTitle(previousDraft.title);
+    setEditContent(previousDraft.content);
+  };
+
+  const handleRedoDraft = () => {
+    if (!isEditingPost || draftFuture.length === 0) return;
+
+    const [nextDraft, ...remaining] = draftFuture;
+    setDraftFuture(remaining);
+    setDraftHistory((prev) => [...prev.slice(-39), draftRef.current]);
+    setEditTitle(nextDraft.title);
+    setEditContent(nextDraft.content);
+  };
+
+  const handleToggleBookmark = async () => {
+    setBookmarkState((prev) => ({ ...prev, loading: true }));
+
+    try {
+      if (bookmarkState.bookmarked && bookmarkState.bookmarkId) {
+        await api.delete(`/api/recall/bookmarks/${bookmarkState.bookmarkId}/`);
+        setBookmarkState({ bookmarked: false, bookmarkId: null, loading: false });
+        addToast("Removed from favorites", "success");
+      } else {
+        const response = await api.post(`/api/recall/conversations/${id}/bookmark/`, { note: "" });
+        setBookmarkState({
+          bookmarked: true,
+          bookmarkId: response.data?.id || null,
+          loading: false,
+        });
+        addToast("Added to favorites", "success");
+      }
+    } catch (error) {
+      console.error("Failed to update bookmark:", error);
+      addToast("Failed to update favorites", "error");
+      setBookmarkState((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleRunAi = async (feature) => {
+    setAiLoading(feature);
+    setAiMenuOpen(false);
+
+    try {
+      const endpoint =
+        feature === "batch"
+          ? "/api/organizations/ai/batch/"
+          : `/api/organizations/ai/${feature}/`;
+      const response = await api.post(endpoint, {
+        content: conversation?.content,
+        title: conversation?.title,
+        content_type: "conversation",
+      });
+      setAiResults(response.data);
+      addToast(`AI ${feature} complete`, "success");
+    } catch (error) {
+      console.error("Failed to run AI action:", error);
+      addToast("AI action failed", "error");
+    } finally {
+      setAiLoading("");
+    }
+  };
+
+  const handleExportConversation = async () => {
+    setExporting(true);
+
+    try {
+      const response = await api.get("/api/recall/export/conversation-pdf/", {
+        params: { id },
+        responseType: "blob",
+      });
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.setAttribute("download", `conversation_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+      addToast("Conversation exported", "success");
+    } catch (error) {
+      console.error("Failed to export conversation:", error);
+      addToast("Failed to export conversation", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleEditPost = async () => {
     setSavingPost(true);
     try {
       await api.put(`/api/recall/conversations/${id}/`, { title: editTitle, content: editContent });
       setIsEditingPost(false);
+      setDraftHistory([]);
+      setDraftFuture([]);
       fetchConversation();
     } catch (error) {
       console.error("Failed to update:", error);
@@ -476,6 +691,10 @@ function ConversationDetail() {
   const updatedLabel = conversation.updated_at
     ? new Date(conversation.updated_at).toLocaleDateString()
     : createdLabel;
+  const canUndo = isEditingPost && draftHistory.length > 0;
+  const canRedo = isEditingPost && draftFuture.length > 0;
+  const isConversationOwner =
+    Number(conversation.author?.id || conversation.author_id) === Number(currentUserId);
 
   return (
     <div style={{ ...page, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
@@ -521,7 +740,7 @@ function ConversationDetail() {
             {isEditingPost ? (
               <input
                 value={editTitle}
-                onChange={(event) => setEditTitle(event.target.value)}
+                onChange={(event) => updateDraft("title", event.target.value)}
                 style={{ ...titleInput, color: palette.text, borderBottom: `1px solid ${palette.border}` }}
               />
             ) : (
@@ -552,36 +771,155 @@ function ConversationDetail() {
               </div>
             </div>
 
-            <div style={actionRow}>
-              <QuickLink sourceType="conversations.conversation" sourceId={id} />
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                onClick={handleConvertToDecision}
-                disabled={converting || savingPost || deletingPost}
-                style={ghostSuccessButton}
-              >
-                {converting ? "Converting..." : "Convert"}
-              </button>
-              <AIEnhancementButton
-                content={conversation?.content}
-                title={conversation?.title}
-                type="conversation"
-                onResult={(feature, data) => setAiResults(data)}
-              />
-                  <FavoriteButton conversationId={id} />
-                  <ExportButton conversationId={id} type="conversation" />
-                  <UndoRedoButtons />
-                  {conversation.author_id === currentUserId && (
-                    <>
-                      <button className="ui-btn-polish ui-focus-ring" onClick={() => setIsEditingPost((value) => !value)} style={smallOutlineButton(palette)}>
-                        {isEditingPost ? "Cancel" : "Edit"}
-                      </button>
-                      <button className="ui-btn-polish ui-focus-ring" onClick={handleDeletePost} style={smallDangerButton(palette, darkMode)}>
-                        {deletingPost ? "Deleting..." : "Delete"}
-                      </button>
-                    </>
-                  )}
+            <div style={{ ...actionDeck, borderTop: `1px solid ${palette.border}` }}>
+              <div style={actionDeckHeader}>
+                <div>
+                  <p style={{ ...sectionLabel, color: palette.muted, marginBottom: 4 }}>Thread Actions</p>
+                  <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.5 }}>
+                    Use favorites, export, AI, and editing controls without leaving the thread.
+                  </p>
                 </div>
+                {isEditingPost ? (
+                  <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>
+                    Draft mode
+                  </span>
+                ) : null}
+              </div>
+
+              <div style={actionRow}>
+                <QuickLink sourceType="conversations.conversation" sourceId={id} />
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={handleConvertToDecision}
+                  disabled={converting || savingPost || deletingPost}
+                  style={ghostSuccessButton}
+                >
+                  {converting ? <ArrowPathIcon style={{ ...icon14, animation: "spin 1s linear infinite" }} /> : null}
+                  {converting ? "Converting..." : "Convert to Decision"}
+                </button>
+
+                <div ref={aiMenuRef} style={{ position: "relative" }}>
+                  <button
+                    className="ui-btn-polish ui-focus-ring"
+                    onClick={() => setAiMenuOpen((value) => !value)}
+                    disabled={Boolean(aiLoading)}
+                    style={actionButton(palette, {
+                      borderColor: palette.accent,
+                      background: palette.accentSoft,
+                      color: palette.link,
+                    })}
+                  >
+                    {aiLoading ? (
+                      <ArrowPathIcon style={{ ...icon14, animation: "spin 1s linear infinite" }} />
+                    ) : (
+                      <SparklesIcon style={icon14} />
+                    )}
+                    {aiLoading ? "Running AI..." : "AI"}
+                  </button>
+
+                  {aiMenuOpen ? (
+                    <div style={aiMenuCard(palette)}>
+                      {AI_ACTIONS.map(({ key, label, helper, icon: Icon }) => (
+                        <button
+                          key={key}
+                          className="ui-btn-polish ui-focus-ring"
+                          onClick={() => handleRunAi(key)}
+                          style={aiMenuAction(palette)}
+                        >
+                          <span style={aiMenuIconWrap(palette, key === "batch")}>
+                            <Icon style={icon14} />
+                          </span>
+                          <span style={{ display: "grid", gap: 2, textAlign: "left" }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>{label}</span>
+                            <span style={{ fontSize: 11, color: palette.muted, lineHeight: 1.4 }}>{helper}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={handleToggleBookmark}
+                  disabled={bookmarkState.loading}
+                  style={actionButton(palette, bookmarkState.bookmarked
+                    ? {
+                        borderColor: "rgba(202,138,4,0.32)",
+                        background: darkMode ? "rgba(202,138,4,0.16)" : "rgba(234,179,8,0.12)",
+                        color: darkMode ? "#facc15" : "#a16207",
+                      }
+                    : null)}
+                >
+                  <StarIcon style={icon14} />
+                  {bookmarkState.loading
+                    ? "Saving..."
+                    : bookmarkState.bookmarked
+                      ? "Favorited"
+                      : "Add to Favorites"}
+                </button>
+
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={handleExportConversation}
+                  disabled={exporting}
+                  style={actionButton(palette)}
+                >
+                  <ArrowDownTrayIcon style={icon14} />
+                  {exporting ? "Exporting..." : "Export PDF"}
+                </button>
+
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={handleUndoDraft}
+                  disabled={!canUndo}
+                  style={actionButton(palette, null, !canUndo)}
+                  title="Undo draft change"
+                >
+                  <ArrowUturnLeftIcon style={icon14} />
+                  Undo
+                </button>
+
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={handleRedoDraft}
+                  disabled={!canRedo}
+                  style={actionButton(palette, null, !canRedo)}
+                  title="Redo draft change"
+                >
+                  <ArrowUturnRightIcon style={icon14} />
+                  Redo
+                </button>
+
+                {isConversationOwner ? (
+                  <>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={isEditingPost ? cancelEditingPost : beginEditingPost}
+                      style={smallOutlineButton(palette)}
+                    >
+                      {isEditingPost ? "Cancel edit" : "Edit"}
+                    </button>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={handleDeletePost}
+                      style={smallDangerButton(palette, darkMode)}
+                    >
+                      {deletingPost ? "Deleting..." : "Delete"}
+                    </button>
+                  </>
+                ) : null}
+              </div>
+
+              {isEditingPost ? (
+                <div style={{ ...editingHint, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                  <span style={{ color: palette.text, fontWeight: 700 }}>Draft history is live.</span>
+                  <span style={{ color: palette.muted }}>
+                    Use Undo/Redo here or <strong style={{ color: palette.text }}>Ctrl/Cmd + Z</strong> and <strong style={{ color: palette.text }}>Ctrl/Cmd + Y</strong>.
+                  </span>
+                </div>
+              ) : null}
+            </div>
           </section>
 
           <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "180ms" }}>
@@ -594,7 +932,7 @@ function ConversationDetail() {
               <>
                 <textarea
                   value={editContent}
-                  onChange={(event) => setEditContent(event.target.value)}
+                  onChange={(event) => updateDraft("content", event.target.value)}
                   rows={10}
                   style={{ ...textareaInput, border: `1px solid ${palette.border}`, color: palette.text }}
                 />
@@ -788,25 +1126,84 @@ const avatarInitial = { color: "var(--app-button-text)", fontSize: 13, fontWeigh
 const avatarSmallInitial = { color: "var(--app-button-text)", fontSize: 12, fontWeight: 700 };
 const authorNameStyle = { margin: 0, fontSize: 13, fontWeight: 700 };
 const metaText = { margin: "2px 0 0", fontSize: 11 };
-const actionRow = { display: "flex", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" };
-const ghostSuccessButton = { border: "1px solid var(--app-success-border)", borderRadius: 8, background: "var(--app-success-soft)", color: "var(--app-success)", fontSize: 12, padding: "6px 10px", cursor: "pointer" };
+const actionDeck = { display: "grid", gap: 12, marginTop: 14, paddingTop: 14 };
+const actionDeckHeader = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" };
+const actionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
+const editingHint = { borderRadius: 12, padding: "10px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
+const ghostSuccessButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--app-success-border)", borderRadius: 999, background: "var(--app-success-soft)", color: "var(--app-success)", fontSize: 12, fontWeight: 700, padding: "8px 12px", cursor: "pointer" };
+const actionButton = (palette, emphasis = null, disabled = false) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  border: `1px solid ${emphasis?.borderColor || palette.border}`,
+  background: emphasis?.background || palette.panelAlt,
+  color: emphasis?.color || palette.text,
+  fontSize: 12,
+  fontWeight: 700,
+  padding: "8px 12px",
+  cursor: disabled ? "not-allowed" : "pointer",
+  opacity: disabled ? 0.52 : 1,
+});
 const smallOutlineButton = (palette) => ({
   border: `1px solid ${palette.border}`,
-  borderRadius: 8,
+  borderRadius: 999,
   background: palette.panelAlt,
   color: palette.text,
   fontSize: 12,
-  padding: "6px 10px",
+  fontWeight: 700,
+  padding: "8px 12px",
   cursor: "pointer",
 });
 const smallDangerButton = (palette, darkMode) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
   border: `1px solid ${darkMode ? "rgba(238,146,153,0.42)" : "rgba(200,86,93,0.26)"}`,
-  borderRadius: 8,
+  borderRadius: 999,
   background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)",
   color: palette.danger,
   fontSize: 12,
-  padding: "6px 10px",
+  fontWeight: 700,
+  padding: "8px 12px",
   cursor: "pointer",
+});
+const aiMenuCard = (palette) => ({
+  position: "absolute",
+  top: "calc(100% + 8px)",
+  left: 0,
+  zIndex: 16,
+  width: 280,
+  maxWidth: "min(80vw,280px)",
+  borderRadius: 18,
+  border: `1px solid ${palette.border}`,
+  background: palette.panel,
+  boxShadow: "var(--ui-shadow-sm)",
+  padding: 8,
+  display: "grid",
+  gap: 6,
+});
+const aiMenuAction = (palette) => ({
+  width: "100%",
+  border: "none",
+  borderRadius: 14,
+  background: palette.panelAlt,
+  padding: "10px 12px",
+  display: "grid",
+  gridTemplateColumns: "36px minmax(0,1fr)",
+  alignItems: "center",
+  gap: 10,
+  cursor: "pointer",
+});
+const aiMenuIconWrap = (palette, strong = false) => ({
+  width: 32,
+  height: 32,
+  borderRadius: 10,
+  display: "grid",
+  placeItems: "center",
+  border: `1px solid ${strong ? palette.accent : palette.border}`,
+  background: strong ? palette.accentSoft : palette.panel,
+  color: strong ? palette.link : palette.text,
 });
 const sectionLabelRow = { marginBottom: 8 };
 const sectionLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" };

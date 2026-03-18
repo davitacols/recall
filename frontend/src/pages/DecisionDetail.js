@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowDownTrayIcon,
   ArrowLeftIcon,
   ArrowPathIcon,
   CalendarIcon,
@@ -16,12 +17,6 @@ import DecisionIllustration from "../components/DecisionIllustration";
 import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
-import {
-  FavoriteButton,
-  ExportButton,
-  DecisionReminder,
-  UndoRedoButtons,
-} from "../components/QuickWinFeatures";
 import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import api from "../services/api";
 
@@ -52,6 +47,7 @@ function DecisionDetail() {
   const [replayTaskMessage, setReplayTaskMessage] = useState("");
   const [replayTaskSaving, setReplayTaskSaving] = useState(false);
   const [replayResult, setReplayResult] = useState(null);
+  const [exporting, setExporting] = useState(false);
   const [replayForm, setReplayForm] = useState({
     alternative_title: "",
     alternative_summary: "",
@@ -255,6 +251,29 @@ function DecisionDetail() {
     }
   };
 
+  const handleExportDecision = async () => {
+    setExporting(true);
+    try {
+      const response = await api.get("/api/recall/export/decision-pdf/", {
+        params: { id },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `decision_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to export decision:", error);
+      alert("Failed to export decision");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
@@ -275,6 +294,16 @@ function DecisionDetail() {
   const impact = (decision.impact_level || "medium").replace("_", " ");
   const reliabilityScore = decision.outcome_reliability?.score ?? 0;
   const confidenceScore = decision.confidence?.score || 0;
+  const decisionMakerName =
+    decision.decision_maker_name ||
+    decision.decision_maker?.full_name ||
+    decision.decision_maker?.username ||
+    "Unknown";
+  const createdLabel = new Date(decision.created_at).toLocaleDateString();
+  const decisionDate = decision.decided_at
+    ? new Date(decision.decided_at).toLocaleDateString()
+    : "Awaiting final approval";
+  const linkedConversation = decision.conversation || null;
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
@@ -306,9 +335,9 @@ function DecisionDetail() {
               </button>
               <QuickLink sourceType="decisions.decision" sourceId={id} />
               <AIEnhancementButton content={decision?.description} title={decision?.title} type="decision" onResult={(feature, data) => setAiResults(data)} />
-              <FavoriteButton decisionId={id} />
-              <ExportButton decisionId={id} type="decision" />
-              <UndoRedoButtons />
+              <button className="ui-btn-polish ui-focus-ring" onClick={handleExportDecision} disabled={exporting} style={ui.secondaryButton}>
+                <ArrowDownTrayIcon style={{ width: 14, height: 14 }} /> {exporting ? "Exporting..." : "Export PDF"}
+              </button>
             </>
           }
         />
@@ -319,10 +348,10 @@ function DecisionDetail() {
               <Pill text={status} tone="blue" palette={palette} />
               <Pill text={impact} tone="amber" palette={palette} />
               <span style={toolbarMetaChip(palette)}>
-                <UserIcon style={{ width: 14, height: 14 }} /> {decision.decision_maker_name || "Unknown"}
+                <UserIcon style={{ width: 14, height: 14 }} /> {decisionMakerName}
               </span>
               <span style={toolbarMetaChip(palette)}>
-                <CalendarIcon style={{ width: 14, height: 14 }} /> {new Date(decision.created_at).toLocaleDateString()}
+                <CalendarIcon style={{ width: 14, height: 14 }} /> {createdLabel}
               </span>
               {decision.confidence?.score ? (
                 <span style={toolbarMetaChip(palette)}>
@@ -342,6 +371,60 @@ function DecisionDetail() {
 
         <div className="ui-enter" style={{ ...mainGrid, gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", gap: 14, "--ui-delay": "180ms" }}>
           <section className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <div style={{ display: "grid", gap: 12, marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${palette.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                <div style={{ display: "grid", gap: 6, maxWidth: 760 }}>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+                    Decision Brief
+                  </p>
+                  <h2 style={{ margin: 0, fontSize: "clamp(1.24rem,2vw,1.68rem)", color: palette.text }}>
+                    What we are deciding and why it matters
+                  </h2>
+                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: palette.muted }}>
+                    The page now leads with the decision statement and ownership details before the deeper review tools, so it reads like a proper decision record first.
+                  </p>
+                </div>
+                <div style={{ display: "grid", gap: 8, minWidth: "min(100%, 220px)" }}>
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, padding: "10px 12px" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>Decision date</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{decisionDate}</p>
+                  </div>
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, padding: "10px 12px" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>Owner</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{decisionMakerName}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+                {decision.impact_assessment ? (
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Impact Assessment</p>
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{decision.impact_assessment}</p>
+                  </div>
+                ) : null}
+                {decision.tradeoffs ? (
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Tradeoffs</p>
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+                      {Array.isArray(decision.tradeoffs) ? decision.tradeoffs.join(", ") : decision.tradeoffs}
+                    </p>
+                  </div>
+                ) : null}
+                {linkedConversation ? (
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Source Conversation</p>
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.text }}>
+                      {linkedConversation.title || `Conversation #${linkedConversation.id}`}
+                    </p>
+                    <p style={{ margin: "6px 0 0", fontSize: 12, lineHeight: 1.6, color: palette.muted }}>
+                      This decision stays linked to its original discussion thread.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               {["overview", "rationale", "code", "details", "outcome", "impact", "replay"].map((tab) => (
                 <button
@@ -716,13 +799,23 @@ function DecisionDetail() {
               <InfoRow label="Band" value={(decision.outcome_reliability?.band || "low").toUpperCase()} palette={palette} />
             </section>
 
-            <DecisionReminder decisionId={id} />
-
             <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
               <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Details</h3>
-              <InfoRow label="Decided" value={decision.decided_at ? new Date(decision.decided_at).toLocaleDateString() : "-"} palette={palette} />
+              <InfoRow label="Decided" value={decisionDate} palette={palette} />
               <InfoRow label="Deadline" value={decision.implementation_deadline ? new Date(decision.implementation_deadline).toLocaleDateString() : "-"} palette={palette} />
             </section>
+
+            {linkedConversation && (
+              <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+                <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Linked Context</h3>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.text }}>
+                  {linkedConversation.title || `Conversation #${linkedConversation.id}`}
+                </p>
+                <p style={{ margin: "6px 0 0", fontSize: 12, lineHeight: 1.6, color: palette.muted }}>
+                  This decision traces back to a source conversation so the reasoning stays connected.
+                </p>
+              </section>
+            )}
 
             <ContextPanel contentType="decisions.decision" objectId={id} />
           </aside>

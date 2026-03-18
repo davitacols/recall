@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { LinkIcon, TrashIcon } from '@heroicons/react/24/outline';
-import api from '../services/api';
+import React, { useEffect, useMemo, useState } from "react";
+import { LinkIcon } from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
-export function DecisionImpactPanel({ issueId, issueTitle }) {
+export function DecisionImpactPanel({ issueId }) {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
   const [impacts, setImpacts] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,128 +20,149 @@ export function DecisionImpactPanel({ issueId, issueTitle }) {
   const fetchImpacts = async () => {
     try {
       const response = await api.get(`/api/agile/issues/${issueId}/decision-impacts/`);
-      setImpacts(response.data.impacts || []);
-      setHistory(response.data.history || []);
+      setImpacts(response.data?.impacts || []);
+      setHistory(response.data?.history || []);
     } catch (error) {
-      console.error('Failed to fetch impacts:', error);
+      console.error("Failed to fetch impacts:", error);
+      setImpacts([]);
+      setHistory([]);
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="text-gray-600">Loading...</div>;
+    return <div style={{ fontSize: 12, color: palette.muted }}>Loading decision context...</div>;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Decision Impacts */}
-      <div className="p-6 bg-white border border-gray-200">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-gray-900">Decision Impacts</h3>
-          <button
-            onClick={() => setShowLinkModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white hover:bg-black font-bold text-sm transition-all"
-          >
-            <LinkIcon className="w-4 h-4" />
-            Link Decision
-          </button>
+    <div style={stack}>
+      <div style={headerRow}>
+        <div>
+          <p style={{ ...title, color: palette.text }}>Decision Impact</p>
+          <p style={{ ...meta, color: palette.muted }}>
+            Capture how decisions unblock, reshape, or delay delivery on this issue.
+          </p>
         </div>
 
-        {impacts.length === 0 ? (
-          <p className="text-gray-600 text-sm">No decisions linked to this issue</p>
-        ) : (
-          <div className="space-y-3">
-            {impacts.map(impact => (
-              <div key={impact.id} className="p-4 bg-gray-50 border border-gray-200">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <div className="font-bold text-gray-900">{impact.decision_title}</div>
-                    <div className={`text-xs font-semibold mt-1 ${getImpactColor(impact.impact_type)}`}>
-                      {impact.impact_type.toUpperCase()}
-                    </div>
-                  </div>
-                  <span className="text-xs text-gray-600">{impact.created_by_name}</span>
-                </div>
-                <p className="text-sm text-gray-600 mb-3">{impact.description}</p>
-                <div className="flex gap-4 text-xs text-gray-600">
-                  {impact.estimated_effort_change !== 0 && (
-                    <div className={impact.estimated_effort_change > 0 ? 'text-red-600' : 'text-green-600'}>
-                      {impact.estimated_effort_change > 0 ? '+' : ''}{impact.estimated_effort_change} pts
-                    </div>
-                  )}
-                  {impact.estimated_delay_days > 0 && (
-                    <div className="text-orange-600">{impact.estimated_delay_days} days delay</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <button
+          className="ui-btn-polish ui-focus-ring"
+          onClick={() => setShowLinkModal(true)}
+          style={primaryButton(palette)}
+        >
+          <LinkIcon style={icon14} />
+          Link Decision
+        </button>
       </div>
 
-      {/* Change History */}
-      {history.length > 0 && (
-        <div className="p-6 bg-white border border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Decision-Driven Changes</h3>
-          <div className="space-y-3">
-            {history.map(entry => (
-              <div key={entry.id} className="p-3 bg-gray-50 border-l-4 border-blue-500">
-                <div className="flex justify-between items-start mb-1">
-                  <div className="font-semibold text-gray-900 text-sm">{entry.change_type.replace('_', ' ')}</div>
-                  <span className="text-xs text-gray-600">{new Date(entry.created_at).toLocaleDateString()}</span>
-                </div>
-                <div className="text-xs text-gray-600 mb-1">
-                  Decision: <span className="font-semibold">{entry.decision_title}</span>
-                </div>
-                {entry.old_value && entry.new_value && (
-                  <div className="text-xs text-gray-600">
-                    {entry.old_value} → {entry.new_value}
+      {impacts.length ? (
+        <div style={stack}>
+          {impacts.map((impact) => (
+            <article
+              key={impact.id}
+              className="ui-card-lift ui-smooth"
+              style={{ ...impactCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
+            >
+              <div style={impactHeader}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ ...impactTitle, color: palette.text }}>{impact.decision_title}</p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                    <span style={{ ...tonePill(getImpactTone(impact.impact_type, palette)), textTransform: "capitalize" }}>
+                      {impact.impact_type}
+                    </span>
+                    <span style={{ ...smallPill, border: `1px solid ${palette.border}`, color: palette.muted }}>
+                      {impact.created_by_name || "Unknown"}
+                    </span>
                   </div>
-                )}
-                <p className="text-xs text-gray-600 italic mt-1">{entry.reason}</p>
+                </div>
               </div>
-            ))}
-          </div>
+
+              <p style={{ ...body, color: palette.muted }}>
+                {impact.description || "No explanation was added for this decision relationship yet."}
+              </p>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {impact.estimated_effort_change !== 0 ? (
+                  <span
+                    style={{
+                      ...smallPill,
+                      color: impact.estimated_effort_change > 0 ? palette.warn : palette.good,
+                      border: `1px solid ${palette.border}`,
+                    }}
+                  >
+                    {impact.estimated_effort_change > 0 ? "+" : ""}
+                    {impact.estimated_effort_change} pts
+                  </span>
+                ) : null}
+                {impact.estimated_delay_days > 0 ? (
+                  <span style={{ ...smallPill, color: palette.warn, border: `1px solid ${palette.border}` }}>
+                    {impact.estimated_delay_days} day delay
+                    {impact.estimated_delay_days > 1 ? "s" : ""}
+                  </span>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div style={{ ...emptyState, border: `1px dashed ${palette.border}`, color: palette.muted }}>
+          No decisions are linked to this issue yet.
         </div>
       )}
 
-      {showLinkModal && (
+      {history.length ? (
+        <div style={stack}>
+          <p style={{ ...sectionLabel, color: palette.muted }}>Decision-driven changes</p>
+          {history.map((entry) => (
+            <article
+              key={entry.id}
+              style={{
+                ...historyCard,
+                border: `1px solid ${palette.border}`,
+                background: palette.cardAlt,
+              }}
+            >
+              <div style={impactHeader}>
+                <p style={{ ...historyType, color: palette.text }}>{String(entry.change_type || "").replace(/_/g, " ")}</p>
+                <span style={{ ...meta, color: palette.muted }}>
+                  {entry.created_at ? new Date(entry.created_at).toLocaleDateString() : "-"}
+                </span>
+              </div>
+              <p style={{ ...meta, color: palette.muted }}>
+                Decision: <span style={{ color: palette.text, fontWeight: 700 }}>{entry.decision_title}</span>
+              </p>
+              {entry.old_value && entry.new_value ? (
+                <p style={{ ...body, color: palette.text }}>
+                  {entry.old_value} -> {entry.new_value}
+                </p>
+              ) : null}
+              {entry.reason ? <p style={{ ...meta, color: palette.muted }}>{entry.reason}</p> : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {showLinkModal ? (
         <LinkDecisionModal
           issueId={issueId}
+          palette={palette}
+          ui={ui}
           onClose={() => setShowLinkModal(false)}
           onSuccess={() => {
             setShowLinkModal(false);
             fetchImpacts();
           }}
         />
-      )}
+      ) : null}
     </div>
   );
 }
 
-function getImpactColor(type) {
-  switch (type) {
-    case 'blocks':
-      return 'text-red-600';
-    case 'enables':
-      return 'text-green-600';
-    case 'changes':
-      return 'text-orange-600';
-    case 'accelerates':
-      return 'text-blue-600';
-    case 'delays':
-      return 'text-yellow-600';
-    default:
-      return 'text-gray-600';
-  }
-}
-
-function LinkDecisionModal({ issueId, onClose, onSuccess }) {
+function LinkDecisionModal({ issueId, palette, ui, onClose, onSuccess }) {
   const [decisions, setDecisions] = useState([]);
-  const [selectedDecision, setSelectedDecision] = useState('');
-  const [impactType, setImpactType] = useState('enables');
-  const [description, setDescription] = useState('');
+  const [selectedDecision, setSelectedDecision] = useState("");
+  const [impactType, setImpactType] = useState("enables");
+  const [description, setDescription] = useState("");
   const [effortChange, setEffortChange] = useState(0);
   const [delayDays, setDelayDays] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -147,114 +173,104 @@ function LinkDecisionModal({ issueId, onClose, onSuccess }) {
 
   const fetchDecisions = async () => {
     try {
-      const response = await api.get('/api/decisions/');
-      setDecisions(response.data);
+      const response = await api.get("/api/decisions/");
+      setDecisions(response.data?.results || response.data || []);
     } catch (error) {
-      console.error('Failed to fetch decisions:', error);
+      console.error("Failed to fetch decisions:", error);
+      setDecisions([]);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setSubmitting(true);
     try {
       await api.post(`/api/agile/issues/${issueId}/link-decision/`, {
         decision_id: selectedDecision,
         impact_type: impactType,
         description,
-        estimated_effort_change: parseInt(effortChange),
-        estimated_delay_days: parseInt(delayDays)
+        estimated_effort_change: parseInt(effortChange, 10) || 0,
+        estimated_delay_days: parseInt(delayDays, 10) || 0,
       });
       onSuccess();
     } catch (error) {
-      console.error('Failed to link decision:', error);
+      console.error("Failed to link decision:", error);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Link Decision to Issue</h2>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <div style={overlay}>
+      <div
+        className="ui-card-lift ui-smooth"
+        style={{
+          ...modalCard,
+          border: `1px solid ${palette.border}`,
+          background: palette.card,
+        }}
+      >
+        <div style={headerRow}>
           <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Decision</label>
-            <select
-              value={selectedDecision}
-              onChange={(e) => setSelectedDecision(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-              required
-            >
+            <p style={{ ...sectionLabel, color: palette.muted }}>Link Decision</p>
+            <h3 style={{ ...modalTitle, color: palette.text }}>Connect a decision to this issue</h3>
+          </div>
+          <button className="ui-btn-polish ui-focus-ring" onClick={onClose} style={secondaryButton(palette)}>
+            Close
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={stack}>
+          <Field label="Decision" palette={palette}>
+            <select value={selectedDecision} onChange={(event) => setSelectedDecision(event.target.value)} style={ui.input} required>
               <option value="">Select a decision...</option>
-              {decisions.map(d => (
-                <option key={d.id} value={d.id}>{d.title}</option>
+              {decisions.map((decision) => (
+                <option key={decision.id} value={decision.id}>
+                  {decision.title}
+                </option>
               ))}
             </select>
-          </div>
+          </Field>
 
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Impact Type</label>
-            <select
-              value={impactType}
-              onChange={(e) => setImpactType(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-            >
+          <Field label="Impact type" palette={palette}>
+            <select value={impactType} onChange={(event) => setImpactType(event.target.value)} style={ui.input}>
               <option value="enables">Enables</option>
               <option value="blocks">Blocks</option>
               <option value="changes">Changes Requirements</option>
               <option value="accelerates">Accelerates</option>
               <option value="delays">Delays</option>
             </select>
-          </div>
+          </Field>
 
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Description</label>
+          <Field label="Description" palette={palette}>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="How does this decision impact the issue?"
-              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all min-h-20"
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="How does this decision affect the issue?"
+              style={{ ...ui.input, minHeight: 96, resize: "vertical" }}
             />
+          </Field>
+
+          <div style={ui.twoCol}>
+            <Field label="Effort change (pts)" palette={palette}>
+              <input type="number" value={effortChange} onChange={(event) => setEffortChange(event.target.value)} style={ui.input} />
+            </Field>
+            <Field label="Delay (days)" palette={palette}>
+              <input type="number" value={delayDays} onChange={(event) => setDelayDays(event.target.value)} style={ui.input} />
+            </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Effort Change (pts)</label>
-              <input
-                type="number"
-                value={effortChange}
-                onChange={(e) => setEffortChange(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Delay (days)</label>
-              <input
-                type="number"
-                value={delayDays}
-                onChange={(e) => setDelayDays(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 justify-end pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white font-bold uppercase text-sm transition-all disabled:opacity-50"
-            >
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            <button className="ui-btn-polish ui-focus-ring" type="button" onClick={onClose} style={secondaryButton(palette)}>
               Cancel
             </button>
             <button
+              className="ui-btn-polish ui-focus-ring"
               type="submit"
               disabled={submitting || !selectedDecision}
-              className="px-6 py-3 bg-gray-900 text-white hover:bg-black font-bold uppercase text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ ...primaryButton(palette), border: "none", opacity: submitting || !selectedDecision ? 0.7 : 1 }}
             >
-              {submitting ? 'Linking...' : 'Link Decision'}
+              {submitting ? "Linking..." : "Link Decision"}
             </button>
           </div>
         </form>
@@ -262,5 +278,90 @@ function LinkDecisionModal({ issueId, onClose, onSuccess }) {
     </div>
   );
 }
+
+function Field({ label, children, palette }) {
+  return (
+    <label style={{ display: "grid", gap: 6 }}>
+      <span style={{ ...sectionLabel, color: palette.muted }}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function getImpactTone(type, palette) {
+  switch (type) {
+    case "blocks":
+      return { background: "rgba(239, 68, 68, 0.12)", color: palette.danger };
+    case "enables":
+      return { background: "rgba(34, 197, 94, 0.12)", color: palette.good };
+    case "changes":
+      return { background: "rgba(245, 158, 11, 0.12)", color: palette.warn };
+    case "accelerates":
+      return { background: palette.accentSoft, color: palette.accent };
+    case "delays":
+      return { background: "rgba(245, 158, 11, 0.12)", color: palette.warn };
+    default:
+      return { background: palette.accentSoft, color: palette.accent };
+  }
+}
+
+function tonePill(tone) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    borderRadius: 999,
+    padding: "5px 9px",
+    fontSize: 11,
+    fontWeight: 800,
+    ...tone,
+  };
+}
+
+function primaryButton(palette) {
+  return {
+    borderRadius: 999,
+    padding: "10px 14px",
+    fontSize: 12,
+    fontWeight: 800,
+    color: palette.buttonText,
+    background: palette.ctaGradient,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    cursor: "pointer",
+    border: "none",
+  };
+}
+
+function secondaryButton(palette) {
+  return {
+    borderRadius: 999,
+    padding: "10px 14px",
+    fontSize: 12,
+    fontWeight: 800,
+    color: palette.text,
+    background: palette.cardAlt,
+    border: `1px solid ${palette.border}`,
+    cursor: "pointer",
+  };
+}
+
+const stack = { display: "grid", gap: 12 };
+const headerRow = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" };
+const title = { margin: 0, fontSize: 14, fontWeight: 800, letterSpacing: "-0.01em" };
+const meta = { margin: 0, fontSize: 12, lineHeight: 1.55 };
+const impactCard = { borderRadius: 18, padding: 16, display: "grid", gap: 10 };
+const impactHeader = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" };
+const impactTitle = { margin: 0, fontSize: 15, fontWeight: 800, lineHeight: 1.4 };
+const body = { margin: 0, fontSize: 13, lineHeight: 1.65 };
+const smallPill = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "5px 9px", fontSize: 11, fontWeight: 700 };
+const emptyState = { borderRadius: 16, padding: "18px 14px", textAlign: "center", fontSize: 12 };
+const sectionLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
+const historyCard = { borderRadius: 16, padding: 14, display: "grid", gap: 6 };
+const historyType = { margin: 0, fontSize: 13, fontWeight: 800, textTransform: "capitalize" };
+const overlay = { position: "fixed", inset: 0, background: "rgba(8, 10, 14, 0.55)", display: "grid", placeItems: "center", zIndex: 140, padding: 16 };
+const modalCard = { width: "min(640px, 100%)", borderRadius: 24, padding: 20, display: "grid", gap: 16 };
+const modalTitle = { margin: "4px 0 0", fontSize: 24, lineHeight: 1.05, letterSpacing: "-0.04em" };
+const icon14 = { width: 14, height: 14 };
 
 export default DecisionImpactPanel;

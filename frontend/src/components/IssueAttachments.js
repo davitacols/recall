@@ -1,29 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
-import { PaperClipIcon, TrashIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
+import { PaperClipIcon, TrashIcon } from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette } from "../utils/projectUi";
 
-function IssueAttachments({ issueId }) {
+function IssueAttachments({ issueId, onCountChange }) {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchAttachments();
   }, [issueId]);
 
   const getErrorMessage = (err, fallback) =>
-    err?.response?.data?.error ||
-    err?.response?.data?.detail ||
-    err?.message ||
-    fallback;
+    err?.response?.data?.error || err?.response?.data?.detail || err?.message || fallback;
 
   const fetchAttachments = async () => {
     try {
       const response = await api.get(`/api/agile/issues/${issueId}/attachments/list/`);
-      setAttachments(response.data || []);
-      setError('');
+      const next = response.data || [];
+      setAttachments(next);
+      onCountChange?.(next.length);
+      setError("");
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to load attachments'));
+      setError(getErrorMessage(err, "Failed to load attachments"));
+      setAttachments([]);
+      onCountChange?.(0);
     }
   };
 
@@ -33,29 +38,29 @@ function IssueAttachments({ issueId }) {
 
     setUploading(true);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     try {
       await api.post(`/api/agile/issues/${issueId}/attachments/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { "Content-Type": "multipart/form-data" },
       });
       await fetchAttachments();
-      event.target.value = '';
+      event.target.value = "";
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to upload file'));
+      setError(getErrorMessage(err, "Failed to upload file"));
     } finally {
       setUploading(false);
     }
   };
 
   const handleDelete = async (attachmentId) => {
-    if (!window.confirm('Delete this attachment?')) return;
+    if (!window.confirm("Delete this attachment?")) return;
 
     try {
       await api.delete(`/api/agile/attachments/${attachmentId}/`);
       await fetchAttachments();
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to delete attachment'));
+      setError(getErrorMessage(err, "Failed to delete attachment"));
     }
   };
 
@@ -66,47 +71,96 @@ function IssueAttachments({ issueId }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold">Attachments ({attachments.length})</h3>
-        <label className="px-4 py-2 bg-gray-900 text-white text-sm font-bold cursor-pointer hover:bg-black">
-          {uploading ? 'Uploading...' : 'Upload File'}
-          <input type="file" onChange={handleUpload} disabled={uploading} className="hidden" />
+    <div style={stack}>
+      <div style={headerRow}>
+        <div>
+          <p style={{ ...title, color: palette.text }}>Attachments</p>
+          <p style={{ ...meta, color: palette.muted }}>{attachments.length} files linked to this issue</p>
+        </div>
+
+        <label
+          className="ui-btn-polish ui-focus-ring"
+          style={{
+            ...uploadButton,
+            color: palette.buttonText,
+            background: palette.ctaGradient,
+          }}
+        >
+          {uploading ? "Uploading..." : "Upload File"}
+          <input type="file" onChange={handleUpload} disabled={uploading} style={{ display: "none" }} />
         </label>
       </div>
 
-      {error && (
-        <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+      {error ? (
+        <div style={{ ...errorBanner, border: `1px solid ${palette.danger}`, color: palette.danger }}>
           {error}
         </div>
-      )}
+      ) : null}
 
-      <div className="space-y-2">
-        {attachments.map((attachment) => (
-          <div key={attachment.id} className="flex items-center justify-between p-3 border border-gray-200 hover:border-gray-900">
-            <div className="flex items-center gap-3">
-              <PaperClipIcon className="w-5 h-5 text-gray-600" />
-              <div>
-                <a href={attachment.file} target="_blank" rel="noopener noreferrer" className="font-medium text-gray-900 hover:underline">
-                  {attachment.filename}
-                </a>
-                <p className="text-xs text-gray-600">
-                  {formatFileSize(attachment.file_size)} | {attachment.uploaded_by_name || 'Unknown'} | {new Date(attachment.uploaded_at).toLocaleDateString()}
-                </p>
+      {attachments.length ? (
+        <div style={stack}>
+          {attachments.map((attachment) => (
+            <article
+              key={attachment.id}
+              className="ui-card-lift ui-smooth"
+              style={{ ...attachmentCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+                <div style={{ ...iconWrap, background: palette.accentSoft, color: palette.accent }}>
+                  <PaperClipIcon style={icon16} />
+                </div>
+                <div style={{ minWidth: 0, display: "grid", gap: 4 }}>
+                  <a
+                    href={attachment.file}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ ...fileLink, color: palette.text }}
+                  >
+                    {attachment.filename}
+                  </a>
+                  <p style={{ ...meta, color: palette.muted }}>
+                    {formatFileSize(attachment.file_size)} | {attachment.uploaded_by_name || "Unknown"} |{" "}
+                    {new Date(attachment.uploaded_at).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
-            </div>
-            <button onClick={() => handleDelete(attachment.id)} className="p-2 text-red-600 hover:bg-red-50">
-              <TrashIcon className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
 
-        {attachments.length === 0 && (
-          <p className="text-center text-gray-600 py-8">No attachments yet</p>
-        )}
-      </div>
+              <button
+                className="ui-btn-polish ui-focus-ring"
+                onClick={() => handleDelete(attachment.id)}
+                style={{
+                  ...deleteButton,
+                  border: `1px solid ${palette.border}`,
+                  color: palette.danger,
+                  background: palette.card,
+                }}
+              >
+                <TrashIcon style={icon14} />
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div style={{ ...emptyState, border: `1px dashed ${palette.border}`, color: palette.muted }}>
+          No attachments yet. Upload design files, screenshots, or supporting evidence here.
+        </div>
+      )}
     </div>
   );
 }
+
+const stack = { display: "grid", gap: 12 };
+const headerRow = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" };
+const title = { margin: 0, fontSize: 14, fontWeight: 800, letterSpacing: "-0.01em" };
+const meta = { margin: 0, fontSize: 12, lineHeight: 1.5 };
+const uploadButton = { borderRadius: 999, padding: "10px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center" };
+const errorBanner = { borderRadius: 14, padding: "10px 12px", fontSize: 12, background: "rgba(239, 68, 68, 0.08)" };
+const attachmentCard = { borderRadius: 16, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 };
+const iconWrap = { width: 34, height: 34, borderRadius: 12, display: "grid", placeItems: "center", flexShrink: 0 };
+const fileLink = { textDecoration: "none", fontSize: 13, fontWeight: 700, lineHeight: 1.45, wordBreak: "break-word" };
+const deleteButton = { width: 34, height: 34, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0 };
+const emptyState = { borderRadius: 16, padding: "18px 14px", textAlign: "center", fontSize: 12 };
+const icon14 = { width: 14, height: 14 };
+const icon16 = { width: 16, height: 16 };
 
 export default IssueAttachments;

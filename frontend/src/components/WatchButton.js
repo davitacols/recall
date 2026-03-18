@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
-import api from '../services/api';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette } from "../utils/projectUi";
 
-function WatchButton({ issueId, isWatching: initialWatching }) {
-  const [isWatching, setIsWatching] = useState(initialWatching);
+function WatchButton({ issueId, isWatching: initialWatching, onToggle }) {
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const [isWatching, setIsWatching] = useState(Boolean(initialWatching));
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setIsWatching(Boolean(initialWatching));
+  }, [initialWatching]);
 
   const toggleWatch = async () => {
     setLoading(true);
@@ -12,12 +20,14 @@ function WatchButton({ issueId, isWatching: initialWatching }) {
       if (isWatching) {
         await api.delete(`/api/agile/issues/${issueId}/unwatch/`);
         setIsWatching(false);
+        onToggle?.(false);
       } else {
         await api.post(`/api/agile/issues/${issueId}/watch/`);
         setIsWatching(true);
+        onToggle?.(true);
       }
     } catch (error) {
-      console.error('Failed to toggle watch:', error);
+      console.error("Failed to toggle watch:", error);
     } finally {
       setLoading(false);
     }
@@ -25,18 +35,31 @@ function WatchButton({ issueId, isWatching: initialWatching }) {
 
   return (
     <button
+      className="ui-btn-polish ui-focus-ring"
       onClick={toggleWatch}
       disabled={loading}
-      className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border transition-all ${
-        isWatching
-          ? 'bg-gray-900 text-white border-gray-900'
-          : 'bg-white text-gray-900 border-gray-300 hover:border-gray-900'
-      }`}
+      style={{
+        borderRadius: 999,
+        padding: "10px 14px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        fontSize: 12,
+        fontWeight: 800,
+        border: `1px solid ${isWatching ? "transparent" : palette.border}`,
+        background: isWatching ? palette.ctaGradient : palette.card,
+        color: isWatching ? palette.buttonText : palette.text,
+        cursor: loading ? "wait" : "pointer",
+        opacity: loading ? 0.7 : 1,
+        boxShadow: "var(--ui-shadow-sm)",
+      }}
     >
-      {isWatching ? <EyeIcon className="w-4 h-4" /> : <EyeSlashIcon className="w-4 h-4" />}
-      {loading ? 'Loading...' : isWatching ? 'Watching' : 'Watch'}
+      {isWatching ? <EyeIcon style={icon14} /> : <EyeSlashIcon style={icon14} />}
+      {loading ? "Updating..." : isWatching ? "Watching" : "Watch"}
     </button>
   );
 }
+
+const icon14 = { width: 14, height: 14 };
 
 export default WatchButton;

@@ -1,14 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeftIcon,
+  ArrowTopRightOnSquareIcon,
   CalendarDaysIcon,
-  CheckIcon,
   ChatBubbleBottomCenterTextIcon,
+  CheckIcon,
   ClockIcon,
+  CodeBracketIcon,
   EyeIcon,
+  FolderIcon,
   PaperClipIcon,
   PencilIcon,
+  QueueListIcon,
   SparklesIcon,
   TrashIcon,
   UserCircleIcon,
@@ -19,11 +23,13 @@ import DecisionImpactPanel from "../components/DecisionImpactPanel";
 import IssueAttachments from "../components/IssueAttachments";
 import WatchButton from "../components/WatchButton";
 import { TimeEstimate, TimeTracker } from "../components/TimeTracker";
+import { WorkspaceEmptyState, WorkspacePanel } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 const STATUSES = ["backlog", "todo", "in_progress", "in_review", "testing", "done"];
 const PRIORITIES = ["lowest", "low", "medium", "high", "highest"];
+const ISSUE_TYPES = ["epic", "story", "task", "bug", "subtask"];
 
 const getApiErrorMessage = (error, fallback) =>
   error?.response?.data?.detail ||
@@ -32,7 +38,7 @@ const getApiErrorMessage = (error, fallback) =>
   error?.message ||
   fallback;
 
-const formatLabel = (value) => (value ? value.replaceAll("_", " ") : "-");
+const formatLabel = (value) => (value ? String(value).replaceAll("_", " ") : "-");
 const formatDateTime = (value) => (value ? new Date(value).toLocaleString() : "-");
 const formatDateOnly = (value) => (value ? new Date(value).toLocaleDateString() : "-");
 
@@ -78,6 +84,8 @@ function IssueDetail() {
   const [commenting, setCommenting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  const [attachmentCount, setAttachmentCount] = useState(0);
+
   const resolvedIssueId = issue?.id ? String(issue.id) : String(issueId);
 
   const fetchIssue = useCallback(async () => {
@@ -99,11 +107,14 @@ function IssueDetail() {
         story_points: response.data.story_points ?? "",
         due_date: response.data.due_date || "",
       });
+      setAttachmentCount(Array.isArray(response.data.attachments) ? response.data.attachments.length : 0);
       setError("");
 
       if (response.data.project_id) {
         const sprintResponse = await api.get(`/api/agile/projects/${response.data.project_id}/sprints/`);
         setSprints(sprintResponse.data || []);
+      } else {
+        setSprints([]);
       }
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to load issue"));
@@ -116,7 +127,7 @@ function IssueDetail() {
     try {
       const response = await api.get("/api/organizations/members/");
       setTeamMembers(response.data || []);
-    } catch (err) {
+    } catch (_) {
       setTeamMembers([]);
     }
   }, []);
@@ -181,9 +192,22 @@ function IssueDetail() {
     }
   };
 
+  const handleWatchToggle = (nextWatching) => {
+    setIssue((current) => {
+      if (!current) return current;
+      const previous = Boolean(current.is_watching);
+      const delta = previous === nextWatching ? 0 : nextWatching ? 1 : -1;
+      return {
+        ...current,
+        is_watching: nextWatching,
+        watchers_count: Math.max(0, Number(current.watchers_count || 0) + delta),
+      };
+    });
+  };
+
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+      <div style={loadingWrap}>
         <div style={spinner} />
       </div>
     );
@@ -193,246 +217,497 @@ function IssueDetail() {
     return (
       <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
-          <button onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
             <ArrowLeftIcon style={icon14} /> Back
           </button>
-          <section style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
-            <h1 style={{ margin: 0, color: palette.text }}>Issue not found</h1>
-          </section>
+          <WorkspacePanel palette={palette} eyebrow="Issue" title="Issue not found">
+            <p style={{ ...bodyText, color: palette.muted }}>
+              The issue could not be loaded or may no longer exist.
+            </p>
+          </WorkspacePanel>
         </div>
       </div>
     );
   }
 
   const commentCount = Array.isArray(issue.comments) ? issue.comments.length : 0;
-  const attachmentCount = Array.isArray(issue.attachments) ? issue.attachments.length : 0;
   const watcherCount = Number(issue.watchers_count || 0);
+  const labels = Array.isArray(issue.labels) ? issue.labels : [];
+  const isOverdue =
+    issue.due_date &&
+    issue.status !== "done" &&
+    new Date(issue.due_date).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
+
+  const engineeringRows = [
+    { label: "Code review", value: issue.code_review_status ? formatLabel(issue.code_review_status) : "Not linked" },
+    { label: "Branch", value: issue.branch_name || "Not linked" },
+    { label: "Commit", value: issue.commit_hash || "Not linked" },
+    { label: "CI status", value: issue.ci_status ? formatLabel(issue.ci_status) : "Not linked" },
+    { label: "Test coverage", value: issue.test_coverage != null ? `${issue.test_coverage}%` : "Unknown" },
+  ];
+
+  const hasEngineeringLinks = Boolean(issue.pr_url || issue.ci_url);
+  const hasEngineeringSignals = hasEngineeringLinks || engineeringRows.some((item) => item.value !== "Not linked");
 
   return (
-    <div style={{ minHeight: "100vh", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+    <div style={pageRoot}>
       <div
         style={{
           ...ambientGlow,
           background: darkMode
-            ? "radial-gradient(circle at 12% 8%, rgba(59,130,246,0.18), transparent 36%), radial-gradient(circle at 86% 16%, rgba(14,165,233,0.12), transparent 32%), radial-gradient(circle at 58% 0%, rgba(99,102,241,0.12), transparent 30%)"
-            : "radial-gradient(circle at 12% 8%, rgba(59,130,246,0.12), transparent 36%), radial-gradient(circle at 86% 16%, rgba(14,165,233,0.08), transparent 32%), radial-gradient(circle at 58% 0%, rgba(99,102,241,0.08), transparent 30%)",
+            ? "radial-gradient(circle at 12% 10%, rgba(154,185,255,0.18), transparent 34%), radial-gradient(circle at 88% 8%, rgba(210,168,106,0.12), transparent 28%), radial-gradient(circle at 56% 0%, rgba(121,200,159,0.08), transparent 24%)"
+            : "radial-gradient(circle at 12% 10%, rgba(46,99,208,0.12), transparent 34%), radial-gradient(circle at 88% 8%, rgba(168,116,57,0.08), transparent 28%), radial-gradient(circle at 56% 0%, rgba(47,127,95,0.08), transparent 24%)",
         }}
       />
-      <div style={{ ...ui.container, width: "min(1420px,100%)", position: "relative", zIndex: 1 }}>
-        <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
-          <ArrowLeftIcon style={icon14} /> Back To Board
-        </button>
 
-        {error && <div style={errorBanner}>{error}</div>}
+      <div style={{ ...ui.container, width: "min(1500px, 100%)", position: "relative", zIndex: 1 }}>
+        <div style={topRow}>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
+            <ArrowLeftIcon style={icon14} /> Back
+          </button>
+
+          <div style={contextLinkRow}>
+            {issue.project_id ? (
+              <Link className="ui-btn-polish ui-focus-ring" to={`/projects/${issue.project_id}`} style={contextLink(palette)}>
+                <FolderIcon style={icon14} />
+                Project Workspace
+              </Link>
+            ) : null}
+            {issue.sprint_id ? (
+              <Link className="ui-btn-polish ui-focus-ring" to={`/sprints/${issue.sprint_id}`} style={contextLink(palette)}>
+                <QueueListIcon style={icon14} />
+                {issue.sprint_name || "Open Sprint"}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        {error ? (
+          <div
+            style={{
+              ...errorBanner,
+              border: `1px solid ${palette.danger}`,
+              color: palette.danger,
+              background: darkMode ? "rgba(200, 86, 93, 0.14)" : "rgba(200, 86, 93, 0.08)",
+            }}
+          >
+            {error}
+          </div>
+        ) : null}
 
         <section
           className="ui-enter ui-card-lift ui-smooth"
           style={{
-            ...hero,
+            ...heroCard,
             border: `1px solid ${palette.border}`,
             background: darkMode
-              ? "linear-gradient(145deg, rgba(11,18,32,0.96) 0%, rgba(17,24,39,0.94) 52%, rgba(21,32,54,0.88) 100%)"
-              : "linear-gradient(145deg, rgba(255,255,255,0.96) 0%, rgba(246,249,252,0.98) 58%, rgba(230,238,250,0.92) 100%)",
-            boxShadow: darkMode ? "0 28px 64px rgba(2,8,23,0.42)" : "0 28px 64px rgba(15,23,42,0.1)",
-            "--ui-delay": "30ms",
+              ? "linear-gradient(145deg, rgba(24,20,18,0.96) 0%, rgba(31,26,23,0.94) 56%, rgba(39,33,29,0.9) 100%)"
+              : "linear-gradient(145deg, rgba(255,252,248,0.97) 0%, rgba(247,242,235,0.98) 56%, rgba(241,233,221,0.94) 100%)",
+            "--ui-delay": "40ms",
           }}
         >
-          <div style={{ minWidth: 0 }}>
-            <p style={{ ...issueKey, color: palette.muted }}>{issue.key || `ISS-${issue.id}`}</p>
-            {!editing ? (
-              <h1 style={{ ...issueTitle, color: palette.text }}>{issue.title}</h1>
-            ) : (
-              <input value={formData.title || ""} onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))} style={ui.input} />
-            )}
-            <div style={tagRow}>
-              <span style={{ ...chip, ...getSemanticChipStyle(issue.status, "status", darkMode) }}>{formatLabel(issue.status)}</span>
-              <span style={{ ...chip, ...getSemanticChipStyle(issue.priority, "priority", darkMode) }}>{formatLabel(issue.priority)}</span>
-              <span style={{ ...chip, border: `1px solid ${palette.border}`, color: palette.muted }}>{formatLabel(issue.issue_type)}</span>
+          <div style={{ minWidth: 0, display: "grid", gap: 14 }}>
+            <div style={{ display: "grid", gap: 8 }}>
+              <p style={{ ...eyebrow, color: palette.muted }}>Issue Workspace</p>
+              <p style={{ ...issueKey, color: palette.muted }}>{issue.key || `ISS-${issue.id}`}</p>
+              {!editing ? (
+                <h1 style={{ ...heroTitle, color: palette.text }}>{issue.title}</h1>
+              ) : (
+                <input
+                  value={formData.title || ""}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))}
+                  style={{ ...ui.input, fontSize: 18, fontWeight: 700 }}
+                />
+              )}
+              <p style={{ ...heroSummary, color: palette.muted }}>
+                {(editing ? formData.description : issue.description) || "Capture the issue outcome, blockers, and supporting context in a single workspace."}
+              </p>
+            </div>
+
+            <div style={chipRow}>
+              <span style={{ ...chip, ...getSemanticChipStyle(editing ? formData.status : issue.status, "status", darkMode) }}>
+                {formatLabel(editing ? formData.status : issue.status)}
+              </span>
+              <span style={{ ...chip, ...getSemanticChipStyle(editing ? formData.priority : issue.priority, "priority", darkMode) }}>
+                {formatLabel(editing ? formData.priority : issue.priority)}
+              </span>
+              <span style={{ ...chip, border: `1px solid ${palette.border}`, color: palette.muted }}>
+                {formatLabel(editing ? formData.issue_type : issue.issue_type)}
+              </span>
+              {labels.slice(0, 4).map((label) => (
+                <span key={label} style={{ ...chip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            <div style={heroMetaRow}>
+              <p style={{ ...tinyMeta, color: palette.muted }}>Updated {formatDateTime(issue.updated_at)}</p>
+              {isOverdue ? (
+                <span style={{ ...statusNote, color: palette.warn, border: `1px solid ${palette.border}` }}>
+                  Due date has passed
+                </span>
+              ) : null}
             </div>
           </div>
 
-          <div style={heroActions}>
-            <div className="ui-btn-polish ui-focus-ring"><WatchButton issueId={resolvedIssueId} isWatching={Boolean(issue.is_watching)} /></div>
-            {!editing ? (
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => setEditing(true)} style={ui.secondaryButton}>
-                <PencilIcon style={icon14} /> Edit
-              </button>
-            ) : (
-              <>
-                <button className="ui-btn-polish ui-focus-ring" onClick={handleSave} disabled={saving} style={ui.primaryButton}>
-                  <CheckIcon style={icon14} /> {saving ? "Saving..." : "Save"}
+          <aside style={heroAside}>
+            <div style={heroAsideHeader}>
+              <div>
+                <p style={{ ...eyebrow, color: palette.muted }}>Execution Snapshot</p>
+                <p style={{ ...asideTitle, color: palette.text }}>Operational view of this issue</p>
+              </div>
+              <div style={heroActionRow}>
+                <WatchButton issueId={resolvedIssueId} isWatching={Boolean(issue.is_watching)} onToggle={handleWatchToggle} />
+                <button className="ui-btn-polish ui-focus-ring" onClick={handleDelete} style={dangerButton(palette)}>
+                  <TrashIcon style={icon14} />
                 </button>
-                <button className="ui-btn-polish ui-focus-ring" onClick={() => setEditing(false)} disabled={saving} style={ui.secondaryButton}>
-                  <XMarkIcon style={icon14} /> Cancel
-                </button>
-              </>
-            )}
-            <button className="ui-btn-polish ui-focus-ring" onClick={handleDelete} style={dangerButton}>
-              <TrashIcon style={icon14} />
-            </button>
-          </div>
+              </div>
+            </div>
+
+            <div style={summaryGrid}>
+              <SummaryTile icon={EyeIcon} label="Watching" value={watcherCount} helper="Team members following this issue" palette={palette} />
+              <SummaryTile icon={ChatBubbleBottomCenterTextIcon} label="Comments" value={commentCount} helper="Discussion and delivery notes" palette={palette} />
+              <SummaryTile icon={PaperClipIcon} label="Files" value={attachmentCount} helper="Attachments and supporting evidence" palette={palette} />
+              <SummaryTile icon={SparklesIcon} label="Story Points" value={issue.story_points ?? "-"} helper={issue.due_date ? `Due ${formatDateOnly(issue.due_date)}` : "No due date set"} palette={palette} />
+            </div>
+          </aside>
         </section>
 
         <section
-          className="ui-enter ui-card-lift ui-smooth"
+          className="ui-enter"
           style={{
-            ...signalRail,
-            border: `1px solid ${palette.border}`,
-            background: darkMode ? "rgba(15,23,42,0.82)" : "rgba(255,255,255,0.8)",
-            boxShadow: "var(--ui-shadow-xs)",
-            "--ui-delay": "90ms",
+            ...contentGrid,
+            "--ui-delay": "120ms",
           }}
         >
-          <p style={{ ...signalTitle, color: palette.muted }}>Execution Snapshot</p>
-          <div style={signalPills}>
-            <span style={{ ...signalPill, ...getSemanticChipStyle(issue.status, "status", darkMode) }}>{formatLabel(issue.status)}</span>
-            <span style={{ ...signalPill, ...getSemanticChipStyle(issue.priority, "priority", darkMode) }}>{formatLabel(issue.priority)} priority</span>
-            <span style={{ ...signalPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-              <EyeIcon style={icon14} /> {watcherCount} watching
-            </span>
-            <span style={{ ...signalPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-              <ChatBubbleBottomCenterTextIcon style={icon14} /> {commentCount} comments
-            </span>
-            <span style={{ ...signalPill, border: `1px solid ${palette.border}`, color: palette.text }}>
-              <PaperClipIcon style={icon14} /> {attachmentCount} attachments
-            </span>
-          </div>
-        </section>
-
-        <div className="ui-enter" style={{ ...metricsRow, "--ui-delay": "140ms" }}>
-          <Metric icon={UserCircleIcon} label="Reporter" value={issue.reporter_name || "-"} palette={palette} className="ui-card-lift ui-smooth" />
-          <Metric icon={UserCircleIcon} label="Assignee" value={issue.assignee_name || "Unassigned"} palette={palette} className="ui-card-lift ui-smooth" />
-          <Metric icon={ClockIcon} label="Created" value={formatDateTime(issue.created_at)} palette={palette} className="ui-card-lift ui-smooth" />
-          <Metric icon={CalendarDaysIcon} label="Due" value={formatDateOnly(issue.due_date)} palette={palette} className="ui-card-lift ui-smooth" />
-          <Metric icon={SparklesIcon} label="Story Points" value={issue.story_points ?? "-"} palette={palette} className="ui-card-lift ui-smooth" />
-        </div>
-
-        <div className="ui-enter" style={{ ...contentLayout, "--ui-delay": "190ms" }}>
-          <main style={mainStack}>
-            <section className="ui-card-lift ui-smooth" style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
-              <h2 style={{ ...sectionTitle, color: palette.text }}>Issue Brief</h2>
+          <main style={mainColumn}>
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Brief"
+              title="Issue brief"
+              description="Keep the problem statement and implementation notes readable instead of burying them under metadata."
+            >
               {!editing ? (
-                <p style={{ ...bodyText, color: palette.muted }}>{issue.description || "No description provided yet."}</p>
+                <p style={{ ...descriptionText, color: palette.muted }}>
+                  {issue.description || "No description provided yet."}
+                </p>
               ) : (
-                <textarea rows={7} value={formData.description || ""} onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))} style={{ ...ui.input, resize: "vertical" }} />
+                <textarea
+                  rows={8}
+                  value={formData.description || ""}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
+                  style={{ ...ui.input, resize: "vertical" }}
+                />
               )}
-            </section>
 
-            <section className="ui-card-lift ui-smooth" style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
-              <h2 style={{ ...sectionTitle, color: palette.text }}>
-                <ChatBubbleBottomCenterTextIcon style={icon16} /> Discussion
-              </h2>
+              {labels.length ? (
+                <div style={supportingRow}>
+                  <p style={{ ...eyebrow, color: palette.muted }}>Labels</p>
+                  <div style={chipRow}>
+                    {labels.map((label) => (
+                      <span key={label} style={{ ...chip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </WorkspacePanel>
 
-              <div style={commentList}>
-                {(issue.comments || []).length === 0 && <div style={{ ...emptyState, border: `1px dashed ${palette.border}`, color: palette.muted }}>No comments yet.</div>}
-                {(issue.comments || []).map((comment) => (
-                  <article key={comment.id} style={{ ...commentCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                    <p style={{ ...commentMeta, color: palette.muted }}>{comment.author} | {formatDateTime(comment.created_at)}</p>
-                    <p style={{ ...bodyText, color: palette.text }}>{comment.content}</p>
-                  </article>
-                ))}
-              </div>
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Discussion"
+              title="Team thread"
+              description="Capture blockers, implementation notes, and decision breadcrumbs in one place."
+            >
+              {(issue.comments || []).length ? (
+                <div style={commentList}>
+                  {(issue.comments || []).map((comment) => (
+                    <article
+                      key={comment.id}
+                      className="ui-card-lift ui-smooth"
+                      style={{ ...commentCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
+                    >
+                      <div style={commentHead}>
+                        <p style={{ ...commentAuthor, color: palette.text }}>{comment.author || "Unknown"}</p>
+                        <p style={{ ...tinyMeta, color: palette.muted }}>{formatDateTime(comment.created_at)}</p>
+                      </div>
+                      <p style={{ ...commentBody, color: palette.text }}>{comment.content}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ ...emptyState, border: `1px dashed ${palette.border}`, color: palette.muted }}>
+                  No comments yet. Use this thread to leave blockers, decisions, and implementation notes.
+                </div>
+              )}
 
               <form onSubmit={handleAddComment} style={commentComposer}>
-                <textarea rows={3} value={newComment} onChange={(event) => setNewComment(event.target.value)} placeholder="Add context, blockers, links..." style={{ ...ui.input, resize: "vertical" }} />
-                <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={commenting || !newComment.trim()} style={ui.primaryButton}>
-                  {commenting ? "Posting..." : "Post Comment"}
-                </button>
+                <textarea
+                  rows={4}
+                  value={newComment}
+                  onChange={(event) => setNewComment(event.target.value)}
+                  placeholder="Add context, blockers, links, or implementation notes..."
+                  style={{ ...ui.input, resize: "vertical" }}
+                />
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    className="ui-btn-polish ui-focus-ring"
+                    type="submit"
+                    disabled={commenting || !newComment.trim()}
+                    style={{
+                      ...ui.primaryButton,
+                      opacity: commenting || !newComment.trim() ? 0.7 : 1,
+                      cursor: commenting || !newComment.trim() ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {commenting ? "Posting..." : "Post Comment"}
+                  </button>
+                </div>
               </form>
-            </section>
+            </WorkspacePanel>
 
-            <section className="ui-card-lift ui-smooth" style={{ ...cardBase, border: `1px solid ${palette.border}`, background: palette.card }}>
-              <h2 style={{ ...sectionTitle, color: palette.text }}>Delivery Signals</h2>
-              <div style={moduleStack}>
-                <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Signals"
+              title="Execution signals"
+              description="Bring together time, files, and decision context without making the issue page feel overloaded."
+            >
+              <div style={moduleGrid}>
+                <div style={{ ...moduleCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                   <TimeTracker issueId={resolvedIssueId} />
                 </div>
-                <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                  <IssueAttachments issueId={resolvedIssueId} />
+                <div style={{ ...moduleCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                  <IssueAttachments issueId={resolvedIssueId} onCountChange={setAttachmentCount} />
                 </div>
+              </div>
+              <div style={{ ...moduleCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                 <DecisionImpactPanel issueId={resolvedIssueId} issueTitle={issue.title} />
               </div>
-            </section>
+            </WorkspacePanel>
           </main>
 
-          <aside className="ui-card-lift ui-smooth" style={{ ...sidePanel, border: `1px solid ${palette.border}`, background: palette.card }}>
-            <h2 style={{ ...sectionTitle, color: palette.text }}>Properties</h2>
+          <aside style={asideColumn}>
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Workflow"
+              title="Issue controls"
+              description="Update the issue state, assignment, planning context, and estimate from one calmer control surface."
+              action={
+                !editing ? (
+                  <button className="ui-btn-polish ui-focus-ring" onClick={() => setEditing(true)} style={ui.secondaryButton}>
+                    <PencilIcon style={icon14} /> Edit
+                  </button>
+                ) : (
+                  <div style={actionRow}>
+                    <button className="ui-btn-polish ui-focus-ring" onClick={handleSave} disabled={saving} style={ui.primaryButton}>
+                      <CheckIcon style={icon14} /> {saving ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={() => {
+                        setEditing(false);
+                        setFormData({
+                          title: issue.title || "",
+                          description: issue.description || "",
+                          status: issue.status || "todo",
+                          priority: issue.priority || "medium",
+                          issue_type: issue.issue_type || "task",
+                          assignee_id: issue.assignee_id ?? "",
+                          sprint_id: issue.sprint_id ?? "",
+                          story_points: issue.story_points ?? "",
+                          due_date: issue.due_date || "",
+                        });
+                      }}
+                      disabled={saving}
+                      style={ui.secondaryButton}
+                    >
+                      <XMarkIcon style={icon14} /> Cancel
+                    </button>
+                  </div>
+                )
+              }
+            >
+              <div style={fieldGrid}>
+                <Field label="Status" palette={palette}>
+                  {!editing ? (
+                    <span style={{ ...chip, width: "fit-content", ...getSemanticChipStyle(issue.status, "status", darkMode) }}>
+                      {formatLabel(issue.status)}
+                    </span>
+                  ) : (
+                    <select value={formData.status || "todo"} onChange={(event) => setFormData((prev) => ({ ...prev, status: event.target.value }))} style={ui.input}>
+                      {STATUSES.map((status) => (
+                        <option key={status} value={status}>{formatLabel(status)}</option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
 
-            <Field label="Status" palette={palette}>
-              {!editing ? (
-                <span style={{ ...chip, width: "fit-content", ...getSemanticChipStyle(issue.status, "status", darkMode) }}>{formatLabel(issue.status)}</span>
-              ) : (
-                <select value={formData.status || "todo"} onChange={(event) => setFormData((prev) => ({ ...prev, status: event.target.value }))} style={ui.input}>
-                  {STATUSES.map((status) => (
-                    <option key={status} value={status}>{formatLabel(status)}</option>
+                <Field label="Priority" palette={palette}>
+                  {!editing ? (
+                    <span style={{ ...chip, width: "fit-content", ...getSemanticChipStyle(issue.priority, "priority", darkMode) }}>
+                      {formatLabel(issue.priority)}
+                    </span>
+                  ) : (
+                    <select value={formData.priority || "medium"} onChange={(event) => setFormData((prev) => ({ ...prev, priority: event.target.value }))} style={ui.input}>
+                      {PRIORITIES.map((priority) => (
+                        <option key={priority} value={priority}>{formatLabel(priority)}</option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
+
+                <Field label="Issue type" palette={palette}>
+                  {!editing ? (
+                    <span style={{ ...chip, width: "fit-content", border: `1px solid ${palette.border}`, color: palette.text }}>
+                      {formatLabel(issue.issue_type)}
+                    </span>
+                  ) : (
+                    <select value={formData.issue_type || "task"} onChange={(event) => setFormData((prev) => ({ ...prev, issue_type: event.target.value }))} style={ui.input}>
+                      {ISSUE_TYPES.map((type) => (
+                        <option key={type} value={type}>{formatLabel(type)}</option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
+
+                <Field label="Assignee" palette={palette}>
+                  {!editing ? (
+                    <span style={{ ...valueText, color: palette.text }}>{issue.assignee_name || "Unassigned"}</span>
+                  ) : (
+                    <select value={formData.assignee_id ?? ""} onChange={(event) => setFormData((prev) => ({ ...prev, assignee_id: event.target.value }))} style={ui.input}>
+                      <option value="">Unassigned</option>
+                      {teamMembers.map((member) => (
+                        <option key={member.id} value={member.id}>{member.full_name || member.username}</option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
+
+                <Field label="Sprint" palette={palette}>
+                  {!editing ? (
+                    <span style={{ ...valueText, color: palette.text }}>{issue.sprint_name || "Backlog"}</span>
+                  ) : (
+                    <select value={formData.sprint_id ?? ""} onChange={(event) => setFormData((prev) => ({ ...prev, sprint_id: event.target.value }))} style={ui.input}>
+                      <option value="">Backlog</option>
+                      {sprints.map((sprint) => (
+                        <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
+
+                <Field label="Story points" palette={palette}>
+                  {!editing ? (
+                    <span style={{ ...valueText, color: palette.text }}>{issue.story_points ?? "-"}</span>
+                  ) : (
+                    <input type="number" min="0" value={formData.story_points ?? ""} onChange={(event) => setFormData((prev) => ({ ...prev, story_points: event.target.value }))} style={ui.input} />
+                  )}
+                </Field>
+
+                <Field label="Due date" palette={palette}>
+                  {!editing ? (
+                    <span style={{ ...valueText, color: palette.text }}>{formatDateOnly(issue.due_date)}</span>
+                  ) : (
+                    <input type="date" value={formData.due_date || ""} onChange={(event) => setFormData((prev) => ({ ...prev, due_date: event.target.value }))} style={ui.input} />
+                  )}
+                </Field>
+              </div>
+            </WorkspacePanel>
+
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Context"
+              title="Timeline and ownership"
+              description="Keep the owning people and connected planning surfaces visible without digging through the project."
+            >
+              <InfoRow icon={UserCircleIcon} label="Reporter" value={issue.reporter_name || "-"} palette={palette} />
+              <InfoRow icon={UserCircleIcon} label="Assignee" value={issue.assignee_name || "Unassigned"} palette={palette} />
+              <InfoRow icon={ClockIcon} label="Created" value={formatDateTime(issue.created_at)} palette={palette} />
+              <InfoRow icon={CalendarDaysIcon} label="Updated" value={formatDateTime(issue.updated_at)} palette={palette} />
+              <InfoRow
+                icon={FolderIcon}
+                label="Project"
+                palette={palette}
+                valueNode={
+                  issue.project_id ? (
+                    <Link className="ui-focus-ring" to={`/projects/${issue.project_id}`} style={inlineLink(palette)}>
+                      Open project workspace
+                    </Link>
+                  ) : (
+                    <span style={{ ...valueText, color: palette.muted }}>No project linked</span>
+                  )
+                }
+              />
+              <InfoRow
+                icon={QueueListIcon}
+                label="Sprint"
+                palette={palette}
+                valueNode={
+                  issue.sprint_id ? (
+                    <Link className="ui-focus-ring" to={`/sprints/${issue.sprint_id}`} style={inlineLink(palette)}>
+                      {issue.sprint_name || "Open sprint"}
+                    </Link>
+                  ) : (
+                    <span style={{ ...valueText, color: palette.muted }}>Backlog</span>
+                  )
+                }
+              />
+            </WorkspacePanel>
+
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Engineering"
+              title="Code and delivery signals"
+              description="Surface pull request, CI, branch, and estimate context when this issue is connected to execution."
+            >
+              {hasEngineeringSignals ? (
+                <div style={infoStack}>
+                  {engineeringRows.map((row) => (
+                    <InfoRow key={row.label} icon={CodeBracketIcon} label={row.label} value={row.value} palette={palette} />
                   ))}
-                </select>
-              )}
-            </Field>
 
-            <Field label="Priority" palette={palette}>
-              {!editing ? (
-                <span style={{ ...chip, width: "fit-content", ...getSemanticChipStyle(issue.priority, "priority", darkMode) }}>{formatLabel(issue.priority)}</span>
+                  {issue.pr_url ? (
+                    <InfoRow
+                      icon={ArrowTopRightOnSquareIcon}
+                      label="Pull request"
+                      palette={palette}
+                      valueNode={
+                        <a href={issue.pr_url} target="_blank" rel="noopener noreferrer" style={inlineLink(palette)}>
+                          Open pull request
+                        </a>
+                      }
+                    />
+                  ) : null}
+
+                  {issue.ci_url ? (
+                    <InfoRow
+                      icon={ArrowTopRightOnSquareIcon}
+                      label="CI build"
+                      palette={palette}
+                      valueNode={
+                        <a href={issue.ci_url} target="_blank" rel="noopener noreferrer" style={inlineLink(palette)}>
+                          Open CI run
+                        </a>
+                      }
+                    />
+                  ) : null}
+                </div>
               ) : (
-                <select value={formData.priority || "medium"} onChange={(event) => setFormData((prev) => ({ ...prev, priority: event.target.value }))} style={ui.input}>
-                  {PRIORITIES.map((priority) => (
-                    <option key={priority} value={priority}>{formatLabel(priority)}</option>
-                  ))}
-                </select>
+                <WorkspaceEmptyState
+                  palette={palette}
+                  title="No engineering signals yet"
+                  description="Link a branch, pull request, CI run, or estimate to make this issue more execution-aware."
+                />
               )}
-            </Field>
 
-            <Field label="Assignee" palette={palette}>
-              {!editing ? (
-                <span style={{ ...valueText, color: palette.text }}>{issue.assignee_name || "Unassigned"}</span>
-              ) : (
-                <select value={formData.assignee_id ?? ""} onChange={(event) => setFormData((prev) => ({ ...prev, assignee_id: event.target.value }))} style={ui.input}>
-                  <option value="">Unassigned</option>
-                  {teamMembers.map((member) => (
-                    <option key={member.id} value={member.id}>{member.full_name || member.username}</option>
-                  ))}
-                </select>
-              )}
-            </Field>
-
-            <Field label="Sprint" palette={palette}>
-              {!editing ? (
-                <span style={{ ...valueText, color: palette.text }}>{issue.sprint_name || "Backlog"}</span>
-              ) : (
-                <select value={formData.sprint_id ?? ""} onChange={(event) => setFormData((prev) => ({ ...prev, sprint_id: event.target.value }))} style={ui.input}>
-                  <option value="">Backlog</option>
-                  {sprints.map((sprint) => (
-                    <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
-                  ))}
-                </select>
-              )}
-            </Field>
-
-            <Field label="Story Points" palette={palette}>
-              {!editing ? (
-                <span style={{ ...valueText, color: palette.text }}>{issue.story_points ?? "-"}</span>
-              ) : (
-                <input type="number" min="0" value={formData.story_points ?? ""} onChange={(event) => setFormData((prev) => ({ ...prev, story_points: event.target.value }))} style={ui.input} />
-              )}
-            </Field>
-
-            <Field label="Due Date" palette={palette}>
-              {!editing ? (
-                <span style={{ ...valueText, color: palette.text }}>{formatDateOnly(issue.due_date)}</span>
-              ) : (
-                <input type="date" value={formData.due_date || ""} onChange={(event) => setFormData((prev) => ({ ...prev, due_date: event.target.value }))} style={ui.input} />
-              )}
-            </Field>
-
-            <Field label="Updated" palette={palette}>
-              <span style={{ ...valueText, color: palette.muted }}>{formatDateTime(issue.updated_at)}</span>
-            </Field>
-
-            <div style={{ ...subCard, border: `1px solid ${palette.border}`, background: palette.cardAlt, marginTop: 4 }}>
-              <TimeEstimate issueId={resolvedIssueId} estimate={issue.time_estimate} onUpdate={fetchIssue} />
-            </div>
+              <div style={{ ...moduleCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                <TimeEstimate issueId={resolvedIssueId} estimate={issue.time_estimate} onUpdate={fetchIssue} />
+              </div>
+            </WorkspacePanel>
           </aside>
-        </div>
+        </section>
       </div>
     </div>
   );
@@ -447,61 +722,121 @@ function Field({ label, children, palette }) {
   );
 }
 
-function Metric({ icon: Icon, label, value, palette, className = "" }) {
+function SummaryTile({ icon: Icon, label, value, helper, palette }) {
   return (
-    <article className={className} style={{ ...metricCard, border: `1px solid ${palette.border}`, background: palette.card }}>
-      <p style={{ ...metricLabel, color: palette.muted }}>
+    <article style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+      <p style={{ ...summaryLabel, color: palette.muted }}>
         <Icon style={icon14} /> {label}
       </p>
-      <p style={{ ...metricValue, color: palette.text }}>{value}</p>
+      <p style={{ ...summaryValue, color: palette.text }}>{value}</p>
+      <p style={{ ...summaryHelper, color: palette.muted }}>{helper}</p>
     </article>
   );
 }
 
-const spinner = { width: 34, height: 34, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-warning)", borderRadius: "50%", animation: "spin 1s linear infinite" };
+function InfoRow({ icon: Icon, label, value, palette, valueNode }) {
+  return (
+    <div style={{ ...infoRow, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+      <p style={{ ...infoLabel, color: palette.muted }}>
+        <Icon style={icon14} /> {label}
+      </p>
+      <div style={{ minWidth: 0 }}>{valueNode || <span style={{ ...valueText, color: palette.text }}>{value}</span>}</div>
+    </div>
+  );
+}
+
+function contextLink(palette) {
+  return {
+    textDecoration: "none",
+    borderRadius: 999,
+    padding: "9px 12px",
+    fontSize: 12,
+    fontWeight: 800,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    border: `1px solid ${palette.border}`,
+    background: palette.card,
+    color: palette.text,
+  };
+}
+
+function inlineLink(palette) {
+  return {
+    color: palette.link,
+    fontSize: 13,
+    fontWeight: 700,
+    textDecoration: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  };
+}
+
+function dangerButton(palette) {
+  return {
+    borderRadius: 999,
+    width: 40,
+    height: 40,
+    display: "grid",
+    placeItems: "center",
+    border: `1px solid ${palette.border}`,
+    color: palette.danger,
+    background: "rgba(239, 68, 68, 0.1)",
+    cursor: "pointer",
+  };
+}
+
+const pageRoot = { minHeight: "100vh", position: "relative" };
 const ambientGlow = { position: "fixed", inset: 0, pointerEvents: "none" };
-const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 12 };
-const errorBanner = { borderRadius: 12, border: "1px solid var(--app-danger-border)", background: "var(--app-danger-soft)", color: "var(--app-danger)", padding: "10px 12px", marginBottom: 10, fontSize: 13 };
-const cardBase = { borderRadius: 24, padding: "clamp(16px,2.2vw,22px)", boxShadow: "var(--ui-shadow-xs)" };
-const hero = {
-  borderRadius: 28,
-  padding: "clamp(20px,2.8vw,30px)",
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  alignItems: "start",
-  gap: 18,
-};
-const issueKey = { margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" };
-const issueTitle = { margin: "10px 0 12px", fontSize: "clamp(1.5rem,3vw,2.3rem)", letterSpacing: "-0.04em", lineHeight: 1.05, maxWidth: 820 };
-const tagRow = { display: "flex", gap: 8, flexWrap: "wrap" };
+const loadingWrap = { minHeight: "100vh", display: "grid", placeItems: "center" };
+const spinner = { width: 34, height: 34, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-warning)", borderRadius: "50%", animation: "spin 1s linear infinite" };
+const topRow = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 };
+const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", fontWeight: 700, fontSize: 13, cursor: "pointer" };
+const contextLinkRow = { display: "flex", gap: 8, flexWrap: "wrap" };
+const errorBanner = { borderRadius: 16, padding: "12px 14px", marginBottom: 12, fontSize: 13, lineHeight: 1.55 };
+const heroCard = { borderRadius: 30, padding: "clamp(20px, 2.8vw, 30px)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18, alignItems: "start", boxShadow: "var(--ui-shadow-sm)" };
+const heroAside = { display: "grid", gap: 14 };
+const heroAsideHeader = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" };
+const heroActionRow = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
+const eyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const issueKey = { margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" };
+const heroTitle = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: "clamp(1.8rem, 3vw, 3rem)", lineHeight: 0.98, letterSpacing: "-0.05em", maxWidth: "17ch" };
+const heroSummary = { margin: 0, fontSize: 14, lineHeight: 1.7, maxWidth: 760 };
+const chipRow = { display: "flex", gap: 8, flexWrap: "wrap" };
 const chip = { borderRadius: 999, padding: "6px 11px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
-const heroActions = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" };
-const dangerButton = { border: "1px solid var(--app-danger-border)", borderRadius: 14, padding: 11, color: "var(--app-danger)", background: "rgba(239,68,68,0.1)", cursor: "pointer", display: "grid", placeItems: "center", boxShadow: "var(--ui-shadow-xs)" };
-const signalRail = { marginTop: 14, borderRadius: 22, padding: "14px 16px", display: "grid", gap: 10 };
-const signalTitle = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 };
-const signalPills = { display: "flex", gap: 8, flexWrap: "wrap" };
-const signalPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "7px 12px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
-const metricsRow = { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12 };
-const metricCard = { borderRadius: 20, padding: "14px 14px 13px", boxShadow: "var(--ui-shadow-xs)" };
-const metricLabel = { margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5 };
-const metricValue = { margin: "8px 0 0", fontSize: 14, fontWeight: 700, lineHeight: 1.4 };
-const contentLayout = { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))", gap: 12, alignItems: "start" };
-const mainStack = { display: "grid", gap: 12 };
-const sidePanel = { borderRadius: 24, padding: "clamp(16px,2.2vw,22px)", display: "grid", gap: 8, alignContent: "start", position: "sticky", top: 24, height: "fit-content", boxShadow: "var(--ui-shadow-xs)" };
-const sectionTitle = { margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 16, fontWeight: 800, letterSpacing: "-0.015em" };
-const bodyText = { margin: 0, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" };
-const fieldWrap = { display: "grid", gap: 6, marginBottom: 8 };
-const fieldLabel = { fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
-const valueText = { fontSize: 14, fontWeight: 600 };
+const heroMetaRow = { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" };
+const tinyMeta = { margin: 0, fontSize: 11, lineHeight: 1.5 };
+const statusNote = { borderRadius: 999, padding: "5px 10px", fontSize: 11, fontWeight: 800, background: "rgba(245,158,11,0.1)" };
+const asideTitle = { margin: "4px 0 0", fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em" };
+const summaryGrid = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 };
+const summaryTile = { borderRadius: 18, padding: 14, display: "grid", gap: 6 };
+const summaryLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", gap: 5 };
+const summaryValue = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: 24, lineHeight: 1, letterSpacing: "-0.05em" };
+const summaryHelper = { margin: 0, fontSize: 12, lineHeight: 1.55 };
+const contentGrid = { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, alignItems: "start" };
+const mainColumn = { display: "grid", gap: 14 };
+const asideColumn = { display: "grid", gap: 14, alignContent: "start", position: "sticky", top: 18 };
+const descriptionText = { margin: 0, fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" };
+const supportingRow = { display: "grid", gap: 8 };
 const commentList = { display: "grid", gap: 10 };
-const commentCard = { borderRadius: 16, padding: 12, boxShadow: "var(--ui-shadow-xs)" };
-const commentMeta = { margin: "0 0 6px", fontSize: 11, fontWeight: 700 };
-const commentComposer = { marginTop: 12, display: "grid", gap: 8 };
-const emptyState = { borderRadius: 16, padding: "14px 12px", textAlign: "center", fontSize: 12 };
-const subCard = { borderRadius: 18, padding: 12, boxShadow: "var(--ui-shadow-xs)" };
-const moduleStack = { display: "grid", gap: 12 };
+const commentCard = { borderRadius: 18, padding: 14, display: "grid", gap: 8 };
+const commentHead = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" };
+const commentAuthor = { margin: 0, fontSize: 13, fontWeight: 800 };
+const commentBody = { margin: 0, fontSize: 13, lineHeight: 1.65, whiteSpace: "pre-wrap" };
+const commentComposer = { display: "grid", gap: 10 };
+const emptyState = { borderRadius: 16, padding: "18px 14px", textAlign: "center", fontSize: 12 };
+const moduleGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 };
+const moduleCard = { borderRadius: 18, padding: 14 };
+const actionRow = { display: "flex", gap: 8, flexWrap: "wrap" };
+const fieldGrid = { display: "grid", gap: 10 };
+const fieldWrap = { display: "grid", gap: 6 };
+const fieldLabel = { fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
+const valueText = { fontSize: 13, fontWeight: 700, lineHeight: 1.5, wordBreak: "break-word" };
+const infoStack = { display: "grid", gap: 10 };
+const infoRow = { borderRadius: 16, padding: "12px 14px", display: "grid", gap: 6 };
+const infoLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", gap: 5 };
+const bodyText = { margin: 0, fontSize: 14, lineHeight: 1.6 };
 const icon14 = { width: 14, height: 14 };
-const icon16 = { width: 16, height: 16 };
 
 export default IssueDetail;
-

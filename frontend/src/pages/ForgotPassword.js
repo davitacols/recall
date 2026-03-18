@@ -7,6 +7,11 @@ import "./AuthPages.css";
 
 function ForgotPassword() {
   const navigate = useNavigate();
+  React.useEffect(() => {
+    const saved = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'light');
+    return () => document.documentElement.setAttribute('data-theme', saved || localStorage.getItem('theme') || 'light');
+  }, []);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");

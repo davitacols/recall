@@ -6,6 +6,11 @@ import "./AuthPages.css";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  React.useEffect(() => {
+    const saved = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'light');
+    return () => document.documentElement.setAttribute('data-theme', saved || localStorage.getItem('theme') || 'light');
+  }, []);
   const [searchParams] = useSearchParams();
   const uid = searchParams.get("uid") || "";
   const token = searchParams.get("token") || "";

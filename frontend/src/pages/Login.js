@@ -17,7 +17,16 @@ function Field({ label, children }) {
   );
 }
 
+function useForceLightMode() {
+  React.useEffect(() => {
+    const saved = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'light');
+    return () => document.documentElement.setAttribute('data-theme', saved || localStorage.getItem('theme') || 'light');
+  }, []);
+}
+
 function Login() {
+  useForceLightMode();
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get("token");
   const inviteEmail = searchParams.get("email");

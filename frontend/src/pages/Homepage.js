@@ -80,6 +80,12 @@ export default function Homepage() {
   const { user } = useAuth();
   const appEntryHref = user ? "/dashboard" : "/login";
 
+  React.useEffect(() => {
+    const saved = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'light');
+    return () => document.documentElement.setAttribute('data-theme', saved || localStorage.getItem('theme') || 'light');
+  }, []);
+
   return (
     <div className="hp">
       <div className="hp-texture" />

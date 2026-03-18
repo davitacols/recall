@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import TurnstileWidget from "../components/TurnstileWidget";
 import BrandLogo from "../components/BrandLogo";
 import { useToast } from "../components/Toast";
@@ -436,6 +436,17 @@ function Login() {
               <button type="button" onClick={() => navigate("/home")} className="auth-back-btn">
                 {"<"} Back to homepage
               </button>
+              <div className="auth-legal">
+                <Link to="/privacy" className="auth-legal-link">
+                  Privacy
+                </Link>
+                <Link to="/terms" className="auth-legal-link">
+                  Terms
+                </Link>
+                <Link to="/security-annex" className="auth-legal-link">
+                  Security Annex
+                </Link>
+              </div>
             </footer>
           </section>
         </motion.main>

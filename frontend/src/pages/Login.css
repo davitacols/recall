@@ -432,9 +432,29 @@
   font-size: 13px;
 }
 
+.auth-legal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.auth-legal-link {
+  color: var(--auth-muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.auth-legal-link:hover {
+  color: var(--auth-accent);
+}
+
 .auth-mode-btn:focus-visible,
 .auth-submit:focus-visible,
 .auth-link-btn:focus-visible,
+.auth-legal-link:focus-visible,
 .auth-back-btn:focus-visible,
 .auth-password-toggle:focus-visible,
 .auth-brand:focus-visible,

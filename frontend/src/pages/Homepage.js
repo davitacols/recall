@@ -280,6 +280,11 @@ export default function Homepage() {
               </a>
             </div>
           </div>
+          <div className="hp-container hp-legal">
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
+            <Link to="/security-annex">Security Annex</Link>
+          </div>
         </section>
       </main>
     </div>

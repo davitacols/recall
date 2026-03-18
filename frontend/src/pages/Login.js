@@ -72,7 +72,7 @@ function Login() {
 
   const finalizeAuth = () => {
     addToast("Welcome back!", "success");
-    window.location.href = "/";
+    navigate("/dashboard", { replace: true });
   };
 
   const handleSubmit = async (event) => {

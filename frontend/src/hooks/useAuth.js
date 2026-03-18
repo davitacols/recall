@@ -4,45 +4,118 @@ import api from '../services/api';
 const AuthContext = createContext();
 const LAST_WORKSPACE_SLUG_KEY = 'last_workspace_slug';
 const REFRESH_TOKEN_KEY = 'refresh_token';
+const USER_STORAGE_KEY = 'user';
+const ACCESS_TOKEN_KEY = 'access_token';
+const LEGACY_TOKEN_KEY = 'token';
+const PROFILE_BOOT_TIMEOUT_MS = 5000;
+
+function readStoredUser() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const rawUser = localStorage.getItem(USER_STORAGE_KEY);
+    if (!rawUser) return null;
+
+    const parsedUser = JSON.parse(rawUser);
+    return parsedUser && typeof parsedUser === 'object' ? parsedUser : null;
+  } catch (error) {
+    localStorage.removeItem(USER_STORAGE_KEY);
+    return null;
+  }
+}
+
+function clearStoredSession() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(USER_STORAGE_KEY);
+  delete api.defaults.headers.common['Authorization'];
+}
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-12 h-12 bg-primary-600 rounded-google flex items-center justify-center mx-auto mb-4">
-          <span className="text-white font-bold text-lg">R</span>
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center px-6">
+      <div className="text-center max-w-sm">
+        <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <span className="text-white font-bold text-lg">K</span>
         </div>
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <div className="w-8 h-8 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p className="mt-4 text-sm font-medium text-slate-900">Loading your workspace...</p>
+        <p className="mt-1 text-sm text-slate-500">Restoring your session and recent context.</p>
       </div>
     </div>
   );
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => readStoredUser());
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY));
+    return hasToken && !readStoredUser();
+  });
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      api.get('/api/auth/profile/')
-        .then((response) => {
-          const profileData = response.data.data || response.data;
-          setUser(profileData);
-          if (profileData?.experience_mode) {
-            localStorage.setItem('ui_experience_mode', profileData.experience_mode);
-          }
-        })
-        .catch(() => {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          localStorage.removeItem('user');
-        })
-        .finally(() => setLoading(false));
-    } else {
+    let active = true;
+    const storedUser = readStoredUser();
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+
+    if (storedUser) {
+      setUser(storedUser);
+    }
+
+    if (!token) {
+      setLoading(false);
+      return undefined;
+    }
+
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+    if (storedUser) {
       setLoading(false);
     }
+
+    const profileRequest = api.get('/api/auth/profile/');
+    const timeoutRequest = new Promise((resolve) => {
+      window.setTimeout(() => resolve({ __profileBootTimeout: true }), PROFILE_BOOT_TIMEOUT_MS);
+    });
+
+    Promise.race([profileRequest, timeoutRequest])
+      .then((result) => {
+        if (!active) return;
+
+        if (result?.__profileBootTimeout) {
+          setLoading(false);
+          return;
+        }
+
+        const profileData = result.data.data || result.data;
+        setUser(profileData);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(profileData));
+        if (profileData?.experience_mode) {
+          localStorage.setItem('ui_experience_mode', profileData.experience_mode);
+        }
+        if (profileData?.organization_slug) {
+          localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, profileData.organization_slug);
+        }
+        setLoading(false);
+      })
+      .catch((error) => {
+        if (!active) return;
+
+        if (error.response?.status === 401) {
+          clearStoredSession();
+          setUser(null);
+        } else if (storedUser) {
+          setUser(storedUser);
+        }
+
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const register = async (userData) => {
@@ -80,12 +153,12 @@ export function AuthProvider({ children }) {
         throw new Error('Invalid response format');
       }
       
-      localStorage.setItem('access_token', access_token);
+      localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
       if (refresh_token) {
         localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
       }
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem(LEGACY_TOKEN_KEY, access_token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
       if (userData?.organization_slug) {
         localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
       }
@@ -113,11 +186,8 @@ export function AuthProvider({ children }) {
     } catch (error) {
       // Continue local cleanup even if server revocation fails.
     }
-    localStorage.removeItem('access_token');
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem('user');
-    delete api.defaults.headers.common['Authorization'];
-    setUser(null);
+      clearStoredSession();
+      setUser(null);
   };
 
   const googleLogin = async ({ credential }) => {
@@ -135,12 +205,12 @@ export function AuthProvider({ children }) {
         throw new Error('Invalid response format');
       }
 
-      localStorage.setItem('access_token', access_token);
+      localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
       if (refresh_token) {
         localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
       }
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem(LEGACY_TOKEN_KEY, access_token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
       if (userData?.organization_slug) {
         localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
       }
@@ -224,12 +294,12 @@ export function AuthProvider({ children }) {
         throw new Error('Invalid response format');
       }
 
-      localStorage.setItem('access_token', access_token);
+      localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
       if (refresh_token) {
         localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
       }
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem(LEGACY_TOKEN_KEY, access_token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
       if (userData?.organization_slug) {
         localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
       }
@@ -265,7 +335,7 @@ export function AuthProvider({ children }) {
       const response = await api.get('/api/auth/profile/');
       const profileData = response.data.data || response.data;
       setUser(profileData);
-      localStorage.setItem('user', JSON.stringify(profileData));
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(profileData));
     } catch (error) {
       console.error('Failed to refresh user:', error);
     }

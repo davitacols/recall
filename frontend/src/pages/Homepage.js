@@ -1,11 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import React from "react";
 import { Link } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import { useAuth } from "../hooks/useAuth";
 import "./Homepage.css";
-
-const heroWords = ["searchable.", "traceable.", "remembered.", "shared."];
 
 const principles = [
   {
@@ -80,16 +77,8 @@ const signalCards = [
 ];
 
 export default function Homepage() {
-  const [heroWordIndex, setHeroWordIndex] = useState(0);
   const { user } = useAuth();
   const appEntryHref = user ? "/dashboard" : "/login";
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setHeroWordIndex((prev) => (prev + 1) % heroWords.length);
-    }, 2100);
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <div className="hp">
@@ -120,28 +109,12 @@ export default function Homepage() {
       <main>
         <section className="hp-hero">
           <div className="hp-container hp-hero-grid">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55 }}
-              className="hp-hero-copy"
-            >
+            <div className="hp-hero-copy">
               <p className="hp-eyebrow">Decision memory for teams</p>
               <h1 className="hp-title">
                 Knoledgr keeps your team's context
                 <span className="hp-word-slot">
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={heroWords[heroWordIndex]}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.25 }}
-                      className="hp-word"
-                    >
-                      {heroWords[heroWordIndex]}
-                    </motion.span>
-                  </AnimatePresence>
+                  <span className="hp-word">searchable.</span>
                 </span>
               </h1>
               <p className="hp-subtitle">
@@ -166,15 +139,9 @@ export default function Homepage() {
                   </article>
                 ))}
               </div>
-            </motion.div>
+            </div>
 
-            <motion.aside
-              id="preview"
-              initial={{ opacity: 0, x: 22 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.08, duration: 0.55 }}
-              className="hp-preview"
-            >
+            <aside id="preview" className="hp-preview">
               <div className="hp-preview-head">
                 <div>
                   <p className="hp-preview-kicker">Workspace preview</p>
@@ -214,7 +181,7 @@ export default function Homepage() {
                   ))}
                 </div>
               </div>
-            </motion.aside>
+            </aside>
           </div>
         </section>
 
@@ -226,19 +193,12 @@ export default function Homepage() {
             </div>
 
             <div className="hp-principles">
-              {principles.map((item, idx) => (
-                <motion.article
-                  key={item.title}
-                  className="hp-principle-card"
-                  initial={{ opacity: 0, y: 18 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.3 }}
-                  transition={{ delay: idx * 0.08, duration: 0.4 }}
-                >
+              {principles.map((item) => (
+                <article key={item.title} className="hp-principle-card">
                   <span>{item.index}</span>
                   <h3>{item.title}</h3>
                   <p>{item.text}</p>
-                </motion.article>
+                </article>
               ))}
             </div>
           </div>

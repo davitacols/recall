@@ -217,7 +217,7 @@ function Login() {
           transition={{ duration: 0.55 }}
           className="auth-showcase"
         >
-          <button type="button" onClick={() => navigate("/home")} className="auth-brand">
+          <button type="button" onClick={() => navigate("/")} className="auth-brand">
             <BrandLogo tone="warm" size="lg" />
           </button>
 
@@ -433,7 +433,7 @@ function Login() {
                   </button>
                 </>
               ) : null}
-              <button type="button" onClick={() => navigate("/home")} className="auth-back-btn">
+              <button type="button" onClick={() => navigate("/")} className="auth-back-btn">
                 {"<"} Back to homepage
               </button>
               <div className="auth-legal">

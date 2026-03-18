@@ -1,17 +1,15 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const effectiveDate = "March 4, 2026";
 
 export default function TermsEnterprise() {
-  const navigate = useNavigate();
-
   return (
     <div style={page}>
       <div style={container}>
-        <button onClick={() => navigate("/home")} style={backButton}>
+        <Link to="/" style={backButton}>
           Back to Home
-        </button>
+        </Link>
         <h1 style={title}>Knoledgr Enterprise Terms of Service</h1>
         <p style={meta}>Effective Date: {effectiveDate}</p>
         <p style={meta}>Last Updated: {effectiveDate}</p>
@@ -74,6 +72,11 @@ export default function TermsEnterprise() {
         <Section title="11. Contact">
           Legal and enterprise terms: <a href="mailto:legal@knoledgr.com">legal@knoledgr.com</a>
         </Section>
+
+        <div style={footerLinks}>
+          <Link to="/privacy" style={footerLink}>Privacy Notice</Link>
+          <Link to="/security-annex" style={footerLink}>Security Annex</Link>
+        </div>
       </div>
     </div>
   );
@@ -102,6 +105,8 @@ const container = {
 };
 
 const backButton = {
+  display: "inline-flex",
+  textDecoration: "none",
   border: "1px solid #334155",
   background: "transparent",
   color: "#cbd5e1",
@@ -138,4 +143,16 @@ const copy = {
   margin: 0,
   lineHeight: 1.62,
   color: "#d1d5db",
+};
+
+const footerLinks = {
+  display: "flex",
+  gap: 12,
+  flexWrap: "wrap",
+  marginTop: 28,
+};
+
+const footerLink = {
+  color: "#93c5fd",
+  textDecoration: "none",
 };

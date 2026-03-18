@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import "./Homepage.css";
 
@@ -79,7 +79,6 @@ const signalCards = [
 ];
 
 export default function Homepage() {
-  const navigate = useNavigate();
   const [heroWordIndex, setHeroWordIndex] = useState(0);
 
   useEffect(() => {
@@ -97,17 +96,20 @@ export default function Homepage() {
 
       <header className="hp-header">
         <div className="hp-container hp-header-row">
-          <Link to="/home" className="hp-brand-link" aria-label="Knoledgr homepage">
+          <Link to="/" className="hp-brand-link" aria-label="Knoledgr homepage">
             <BrandLogo tone="warm" size="lg" />
           </Link>
 
           <div className="hp-header-actions">
+            <Link to="/docs" className="hp-btn hp-btn-ghost">
+              Documentation
+            </Link>
             <a href="#preview" className="hp-btn hp-btn-ghost">
               Preview the workspace
             </a>
-            <button onClick={() => navigate("/login")} className="hp-btn hp-btn-primary">
+            <Link to="/login" className="hp-btn hp-btn-primary">
               Start free
-            </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -145,9 +147,9 @@ export default function Homepage() {
               </p>
 
               <div className="hp-actions">
-                <button onClick={() => navigate("/login")} className="hp-btn hp-btn-primary hp-btn-lg">
+                <Link to="/login" className="hp-btn hp-btn-primary hp-btn-lg">
                   Start your workspace
-                </button>
+                </Link>
                 <a href="#modules" className="hp-btn hp-btn-ghost hp-btn-lg">
                   See the product surface
                 </a>
@@ -272,15 +274,16 @@ export default function Homepage() {
             <p>Ready to stop re-deciding what your team already learned?</p>
             <h2>Start a workspace that remembers.</h2>
             <div className="hp-actions">
-              <button onClick={() => navigate("/login")} className="hp-btn hp-btn-primary hp-btn-lg">
+              <Link to="/login" className="hp-btn hp-btn-primary hp-btn-lg">
                 Get started free
-              </button>
+              </Link>
               <a href="#preview" className="hp-btn hp-btn-line hp-btn-lg">
                 Preview the experience
               </a>
             </div>
           </div>
           <div className="hp-container hp-legal">
+            <Link to="/docs">Documentation</Link>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Terms</Link>
             <Link to="/security-annex">Security Annex</Link>

@@ -2,80 +2,193 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 const BRAND = "Knoledgr";
-const DEFAULT_TITLE = `${BRAND} | Knowledge-First Collaboration Platform`;
+const SITE_URL = "https://knoledgr.com";
+const DEFAULT_IMAGE = `${SITE_URL}/brand/knoledgr-social-card.svg`;
 const DEFAULT_DESCRIPTION =
   "Knoledgr connects conversations, decisions, projects, and documents so teams keep context and move faster.";
-const DEFAULT_IMAGE = "/brand/knoledgr-social-card.svg";
+
+function webPageSchema(title, description, pathname) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    description,
+    url: `${SITE_URL}${pathname}`,
+    isPartOf: {
+      "@type": "WebSite",
+      name: BRAND,
+      url: SITE_URL,
+    },
+  };
+}
 
 function resolveMeta(pathname) {
   if (pathname === "/" || pathname === "/home") {
     return {
-      title: `${BRAND} | Team Memory and Decision Intelligence`,
+      title: `${BRAND} | Decision Memory for Teams`,
       description:
-        "Turn conversations, decisions, and project knowledge into a reliable system your team can use every day.",
+        "Knoledgr helps teams capture decisions, documents, and conversations in one knowledge-first workspace that keeps context searchable and reusable.",
       robots: "index,follow",
+      canonicalPath: "/",
+      ogType: "website",
+      structuredData: [
+        {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: BRAND,
+          url: SITE_URL,
+          logo: `${SITE_URL}/brand/knoledgr-app-icon.svg`,
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: BRAND,
+          url: SITE_URL,
+          description:
+            "Decision memory and knowledge-first collaboration for teams.",
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: BRAND,
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web",
+          url: SITE_URL,
+          description:
+            "A knowledge-first collaboration platform for decisions, conversations, projects, and documents.",
+        },
+      ],
     };
   }
+
+  if (pathname === "/docs") {
+    const title = `Documentation | ${BRAND}`;
+    const description =
+      "Explore Knoledgr documentation covering conversations, decisions, agile execution, knowledge graph workflows, and operational guidance.";
+    return {
+      title,
+      description,
+      robots: "index,follow",
+      canonicalPath: "/docs",
+      ogType: "article",
+      structuredData: [
+        webPageSchema(title, description, "/docs"),
+        {
+          "@context": "https://schema.org",
+          "@type": "TechArticle",
+          headline: title,
+          description,
+          url: `${SITE_URL}/docs`,
+          author: {
+            "@type": "Organization",
+            name: BRAND,
+          },
+          publisher: {
+            "@type": "Organization",
+            name: BRAND,
+            logo: {
+              "@type": "ImageObject",
+              url: `${SITE_URL}/brand/knoledgr-app-icon.svg`,
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  if (pathname === "/privacy") {
+    const title = `Privacy Notice | ${BRAND}`;
+    const description =
+      "Read the Knoledgr enterprise privacy notice, including data categories, subprocessors, retention, and customer privacy support.";
+    return {
+      title,
+      description,
+      robots: "index,follow",
+      canonicalPath: "/privacy",
+      ogType: "article",
+      structuredData: [webPageSchema(title, description, "/privacy")],
+    };
+  }
+
+  if (pathname === "/terms") {
+    const title = `Terms of Service | ${BRAND}`;
+    const description =
+      "Review Knoledgr enterprise terms covering customer data, security obligations, support, confidentiality, and liability structure.";
+    return {
+      title,
+      description,
+      robots: "index,follow",
+      canonicalPath: "/terms",
+      ogType: "article",
+      structuredData: [webPageSchema(title, description, "/terms")],
+    };
+  }
+
+  if (pathname === "/security-annex") {
+    const title = `Security Annex | ${BRAND}`;
+    const description =
+      "Review the Knoledgr security annex covering access controls, encryption, logging, incident response, resilience, and governance.";
+    return {
+      title,
+      description,
+      robots: "index,follow",
+      canonicalPath: "/security-annex",
+      ogType: "article",
+      structuredData: [webPageSchema(title, description, "/security-annex")],
+    };
+  }
+
   if (pathname.startsWith("/login")) {
     return {
       title: `Login | ${BRAND}`,
       description: `Sign in to ${BRAND} and continue your team's knowledge workflows.`,
       robots: "noindex,nofollow",
+      canonicalPath: "/login",
+      ogType: "website",
+      structuredData: [],
     };
   }
+
+  if (pathname.startsWith("/forgot-password")) {
+    return {
+      title: `Forgot Password | ${BRAND}`,
+      description: `Request a password reset link for your ${BRAND} account.`,
+      robots: "noindex,nofollow",
+      canonicalPath: "/forgot-password",
+      ogType: "website",
+      structuredData: [],
+    };
+  }
+
+  if (pathname.startsWith("/reset-password")) {
+    return {
+      title: `Reset Password | ${BRAND}`,
+      description: `Set a new password for your ${BRAND} account.`,
+      robots: "noindex,nofollow",
+      canonicalPath: "/forgot-password",
+      ogType: "website",
+      structuredData: [],
+    };
+  }
+
   if (pathname.startsWith("/invite/")) {
     return {
-      title: `Invitation | ${BRAND}`,
+      title: `Workspace Invitation | ${BRAND}`,
       description: `Accept your ${BRAND} workspace invitation.`,
       robots: "noindex,nofollow",
+      canonicalPath: "/login",
+      ogType: "website",
+      structuredData: [],
     };
   }
-  if (pathname.startsWith("/conversations")) {
-    return {
-      title: `Conversations | ${BRAND}`,
-      description: "Track discussions, preserve context, and connect conversations to outcomes.",
-      robots: "index,follow",
-    };
-  }
-  if (pathname.startsWith("/decisions")) {
-    return {
-      title: `Decisions | ${BRAND}`,
-      description: "Document, review, and reference decisions with full context and ownership.",
-      robots: "index,follow",
-    };
-  }
-  if (pathname.startsWith("/projects")) {
-    return {
-      title: `Projects | ${BRAND}`,
-      description: "Manage projects, issues, sprints, and delivery in a unified workspace.",
-      robots: "index,follow",
-    };
-  }
-  if (pathname.startsWith("/knowledge")) {
-    return {
-      title: `Knowledge | ${BRAND}`,
-      description: "Search and analyze your team knowledge graph across docs, conversations, and decisions.",
-      robots: "index,follow",
-    };
-  }
-  if (pathname.startsWith("/business/")) {
-    return {
-      title: `Business Workspace | ${BRAND}`,
-      description: "Run goals, meetings, tasks, and documents with shared context.",
-      robots: "index,follow",
-    };
-  }
-  if (pathname.startsWith("/notifications")) {
-    return {
-      title: `Notifications | ${BRAND}`,
-      description: "Stay updated on decisions, mentions, tasks, and team activity.",
-      robots: "noindex,nofollow",
-    };
-  }
+
   return {
-    title: DEFAULT_TITLE,
+    title: `${BRAND} App`,
     description: DEFAULT_DESCRIPTION,
-    robots: "index,follow",
+    robots: "noindex,nofollow",
+    canonicalPath: pathname,
+    ogType: "website",
+    structuredData: [],
   };
 }
 
@@ -97,37 +210,50 @@ function setOrCreateLink(selector, attrs) {
   Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
 }
 
+function setStructuredData(payload) {
+  const scriptId = "seo-structured-data";
+  let node = document.head.querySelector(`#${scriptId}`);
+
+  if (!payload?.length) {
+    if (node) node.remove();
+    return;
+  }
+
+  if (!node) {
+    node = document.createElement("script");
+    node.id = scriptId;
+    node.type = "application/ld+json";
+    document.head.appendChild(node);
+  }
+
+  node.textContent = JSON.stringify(payload);
+}
+
 export default function SeoManager() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const origin = window.location.origin;
-    const canonicalUrl = `${origin}${pathname}`;
-    const { title, description, robots } = resolveMeta(pathname);
+    const meta = resolveMeta(pathname);
+    const canonicalUrl = `${SITE_URL}${meta.canonicalPath}`;
 
-    document.title = title;
-    setOrCreateMeta('meta[name="description"]', { name: "description", content: description });
-    setOrCreateMeta('meta[name="robots"]', { name: "robots", content: robots });
-
-    setOrCreateMeta('meta[property="og:type"]', { property: "og:type", content: "website" });
+    document.title = meta.title;
+    setOrCreateMeta('meta[name="description"]', { name: "description", content: meta.description });
+    setOrCreateMeta('meta[name="robots"]', { name: "robots", content: meta.robots });
+    setOrCreateMeta('meta[name="googlebot"]', { name: "googlebot", content: meta.robots });
+    setOrCreateMeta('meta[property="og:type"]', { property: "og:type", content: meta.ogType });
     setOrCreateMeta('meta[property="og:site_name"]', { property: "og:site_name", content: BRAND });
-    setOrCreateMeta('meta[property="og:title"]', { property: "og:title", content: title });
-    setOrCreateMeta('meta[property="og:description"]', { property: "og:description", content: description });
+    setOrCreateMeta('meta[property="og:title"]', { property: "og:title", content: meta.title });
+    setOrCreateMeta('meta[property="og:description"]', { property: "og:description", content: meta.description });
     setOrCreateMeta('meta[property="og:url"]', { property: "og:url", content: canonicalUrl });
-    setOrCreateMeta('meta[property="og:image"]', {
-      property: "og:image",
-      content: `${origin}${DEFAULT_IMAGE}`,
-    });
-
+    setOrCreateMeta('meta[property="og:image"]', { property: "og:image", content: DEFAULT_IMAGE });
+    setOrCreateMeta('meta[property="og:image:alt"]', { property: "og:image:alt", content: `${BRAND} social card` });
     setOrCreateMeta('meta[name="twitter:card"]', { name: "twitter:card", content: "summary_large_image" });
-    setOrCreateMeta('meta[name="twitter:title"]', { name: "twitter:title", content: title });
-    setOrCreateMeta('meta[name="twitter:description"]', { name: "twitter:description", content: description });
-    setOrCreateMeta('meta[name="twitter:image"]', {
-      name: "twitter:image",
-      content: `${origin}${DEFAULT_IMAGE}`,
-    });
-
+    setOrCreateMeta('meta[name="twitter:title"]', { name: "twitter:title", content: meta.title });
+    setOrCreateMeta('meta[name="twitter:description"]', { name: "twitter:description", content: meta.description });
+    setOrCreateMeta('meta[name="twitter:image"]', { name: "twitter:image", content: DEFAULT_IMAGE });
+    setOrCreateMeta('meta[name="twitter:image:alt"]', { name: "twitter:image:alt", content: `${BRAND} social card` });
     setOrCreateLink('link[rel="canonical"]', { rel: "canonical", href: canonicalUrl });
+    setStructuredData(meta.structuredData);
   }, [pathname]);
 
   return null;

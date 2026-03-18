@@ -104,9 +104,14 @@ import Workflows from "./pages/Workflows";
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/home" replace />;
-  if (adminOnly && user.role !== "admin") return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/" replace />;
+  if (adminOnly && user.role !== "admin") return <Navigate to="/dashboard" replace />;
   return children;
+}
+
+function PublicHomeRoute() {
+  const { user } = useAuth();
+  return user ? <Navigate to="/dashboard" replace /> : <Homepage />;
 }
 
 function AppLayoutRoute() {
@@ -128,7 +133,9 @@ function AdminOnlyRoute() {
 }
 
 const PUBLIC_ROUTES = [
-  { path: "/home", element: <Homepage /> },
+  { path: "/", element: <PublicHomeRoute /> },
+  { path: "/home", element: <Navigate to="/" replace /> },
+  { path: "/docs", element: <Documentation /> },
   { path: "/privacy", element: <PrivacyEnterprise /> },
   { path: "/terms", element: <TermsEnterprise /> },
   { path: "/security-annex", element: <SecurityAnnex /> },
@@ -140,8 +147,8 @@ const PUBLIC_ROUTES = [
 ];
 
 const APP_ROUTES = [
-  { index: true, element: <UnifiedDashboard /> },
-  { path: "/dashboard", element: <Navigate to="/" replace /> },
+  { index: true, element: <Navigate to="/dashboard" replace /> },
+  { path: "/dashboard", element: <UnifiedDashboard /> },
   { path: "/conversations", element: <Conversations /> },
   { path: "/conversations/new", element: <CreateConversation /> },
   { path: "/conversations/:id", element: <ConversationDetail /> },
@@ -152,7 +159,6 @@ const APP_ROUTES = [
   { path: "/knowledge/analytics", element: <KnowledgeAnalytics /> },
   { path: "/knowledge-base", element: <KnowledgeBase /> },
   { path: "/knowledge-health", element: <KnowledgeHealthDashboard /> },
-  { path: "/docs", element: <Documentation /> },
   { path: "/ask", element: <AskRecall /> },
   { path: "/insights", element: <Insights /> },
   { path: "/search", element: <AdvancedSearch /> },
@@ -249,7 +255,7 @@ function AppContent() {
       "new-sprint": "/sprint-history",
       "show-blockers": "/blockers",
       "my-tasks": "/projects",
-      "goto-dashboard": "/",
+      "goto-dashboard": "/dashboard",
     }),
     []
   );
@@ -313,7 +319,7 @@ function AppContent() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to={user ? "/" : "/home"} replace />} />
+        <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
       </Routes>
     </>
   );

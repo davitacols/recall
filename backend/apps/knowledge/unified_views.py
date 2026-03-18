@@ -9,12 +9,20 @@ from apps.users.auth_utils import check_rate_limit
 from apps.knowledge.context_engine import ContextEngine
 from apps.knowledge.unified_models import ContentLink, UnifiedActivity
 
+def _context_cache_key(content_type_name, object_id, organization_id):
+    return f'context_{content_type_name}_{object_id}_{organization_id}'
+
+
+def _invalidate_context_cache(organization_id, content_type_name, object_id):
+    cache.delete(_context_cache_key(content_type_name, object_id, organization_id))
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_context_panel(request, content_type_name, object_id):
     """Get unified context for any content object with caching"""
     # Check cache first
-    cache_key = f'context_{content_type_name}_{object_id}_{request.user.organization.id}'
+    cache_key = _context_cache_key(content_type_name, object_id, request.user.organization.id)
     cached_data = cache.get(cache_key)
     if cached_data:
         return Response(cached_data)
@@ -74,6 +82,10 @@ def create_link(request):
         target_type = request.data.get('target_type')
         target_id = request.data.get('target_id')
         link_type = request.data.get('link_type', 'relates_to')
+        if not source_type or not source_id or not target_type or not target_id:
+            return Response({'error': 'source_type, source_id, target_type, and target_id are required'}, status=400)
+        if source_type == target_type and str(source_id) == str(target_id):
+            return Response({'error': 'A record cannot be linked to itself.'}, status=400)
         
         # Get source object
         app_label, model = source_type.split('.')
@@ -88,21 +100,44 @@ def create_link(request):
         target_obj = target_class.objects.get(id=target_id, organization=request.user.organization)
         
         # Create link
-        link = ContentLink.objects.create(
+        link, created = ContentLink.objects.get_or_create(
             organization=request.user.organization,
             source_content_type=source_ct,
             source_object_id=source_obj.id,
             target_content_type=target_ct,
             target_object_id=target_obj.id,
-            link_type=link_type,
-            created_by=request.user,
-            is_auto_generated=False
+            defaults={
+                'link_type': link_type,
+                'created_by': request.user,
+                'is_auto_generated': False,
+            }
         )
+
+        if not created:
+            updated_fields = []
+            if link.link_type != link_type:
+                link.link_type = link_type
+                updated_fields.append('link_type')
+            if link.created_by_id is None:
+                link.created_by = request.user
+                updated_fields.append('created_by')
+            if link.is_auto_generated:
+                link.is_auto_generated = False
+                updated_fields.append('is_auto_generated')
+            if updated_fields:
+                link.save(update_fields=updated_fields)
+
+        _invalidate_context_cache(request.user.organization.id, source_type, source_obj.id)
+        _invalidate_context_cache(request.user.organization.id, target_type, target_obj.id)
+        ContextEngine.compute_context(source_obj, request.user.organization)
+        ContextEngine.compute_context(target_obj, request.user.organization)
         
         return Response({
             'id': link.id,
             'link_type': link.link_type,
-            'created_at': link.created_at
+            'created_at': link.created_at,
+            'created': created,
+            'message': 'Link created' if created else 'Link updated',
         })
     except Exception as e:
         return Response({'error': str(e)}, status=400)
@@ -184,6 +219,8 @@ def search_everything(request):
     if len(query) > 200:
         return Response({'error': 'Query too long'}, status=400)
     q_lower = query.lower()
+    query_is_numeric = query.isdigit()
+    query_id = int(query) if query_is_numeric else None
     
     from apps.conversations.models import Conversation
     from apps.decisions.models import Decision
@@ -193,10 +230,12 @@ def search_everything(request):
     results = []
     
     # Search conversations
+    conversation_filter = Q(title__icontains=query) | Q(content__icontains=query) | Q(ai_summary__icontains=query)
+    if query_is_numeric:
+        conversation_filter |= Q(id=query_id)
     conversations = Conversation.objects.filter(
         organization=request.user.organization,
-        title__icontains=query
-    )[:5]
+    ).filter(conversation_filter)[:5]
     for conv in conversations:
         results.append({
             'type': 'conversation',
@@ -216,7 +255,10 @@ def search_everything(request):
         for token in keyword_tokens[:3]:
             decision_qs = decision_qs.filter(Q(title__icontains=token) | Q(description__icontains=token))
     else:
-        decision_qs = decision_qs.filter(title__icontains=query)
+        decision_filter = Q(title__icontains=query) | Q(description__icontains=query)
+        if query_is_numeric:
+            decision_filter |= Q(id=query_id)
+        decision_qs = decision_qs.filter(decision_filter)
 
     decisions = decision_qs[:5]
     for decision in decisions:
@@ -231,10 +273,12 @@ def search_everything(request):
     
     # Search tasks
     try:
+        task_filter = Q(title__icontains=query) | Q(description__icontains=query)
+        if query_is_numeric:
+            task_filter |= Q(id=query_id)
         tasks = Task.objects.filter(
             organization=request.user.organization,
-            title__icontains=query
-        )[:5]
+        ).filter(task_filter)[:5]
         for task in tasks:
             results.append({
                 'type': 'task',
@@ -249,10 +293,12 @@ def search_everything(request):
 
     # Search meetings
     try:
+        meeting_filter = Q(title__icontains=query) | Q(description__icontains=query)
+        if query_is_numeric:
+            meeting_filter |= Q(id=query_id)
         meetings = Meeting.objects.filter(
             organization=request.user.organization,
-            title__icontains=query
-        )[:5]
+        ).filter(meeting_filter)[:5]
         for meeting in meetings:
             results.append({
                 'type': 'meeting',
@@ -267,10 +313,12 @@ def search_everything(request):
 
     # Search documents
     try:
+        document_filter = Q(title__icontains=query) | Q(description__icontains=query) | Q(content__icontains=query)
+        if query_is_numeric:
+            document_filter |= Q(id=query_id)
         documents = Document.objects.filter(
             organization=request.user.organization,
-            title__icontains=query
-        )[:5]
+        ).filter(document_filter)[:5]
         for document in documents:
             results.append({
                 'type': 'document',

@@ -58,6 +58,10 @@ class KnowledgeCrossModuleRegressionTests(TestCase):
         )
 
     def test_manual_link_surfaces_in_graph_and_context(self):
+        context_before = self.client.get(f"/api/knowledge/context/decisions.decision/{self.decision.id}/")
+        self.assertEqual(context_before.status_code, 200)
+        self.assertFalse(any(item.get("id") == self.task.id for item in context_before.data.get("related_tasks", [])))
+
         create_link = self.client.post(
             "/api/knowledge/link/",
             {
@@ -70,6 +74,7 @@ class KnowledgeCrossModuleRegressionTests(TestCase):
             format="json",
         )
         self.assertEqual(create_link.status_code, 200)
+        self.assertTrue(create_link.data.get("created"))
 
         graph_response = self.client.get("/api/knowledge/graph/")
         self.assertEqual(graph_response.status_code, 200)

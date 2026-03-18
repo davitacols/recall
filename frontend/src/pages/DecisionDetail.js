@@ -46,6 +46,7 @@ function DecisionDetail() {
   const [replayTaskSaving, setReplayTaskSaving] = useState(false);
   const [replayResult, setReplayResult] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [contextRefreshKey, setContextRefreshKey] = useState(0);
   const [replayForm, setReplayForm] = useState({
     alternative_title: "",
     alternative_summary: "",
@@ -331,7 +332,14 @@ function DecisionDetail() {
               <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
                 <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
               </button>
-              <QuickLink sourceType="decisions.decision" sourceId={id} />
+              <QuickLink
+                sourceType="decisions.decision"
+                sourceId={id}
+                onLinked={() => {
+                  setContextRefreshKey((current) => current + 1);
+                  fetchDecisionIntelligence();
+                }}
+              />
               <button className="ui-btn-polish ui-focus-ring" onClick={handleExportDecision} disabled={exporting} style={ui.secondaryButton}>
                 <ArrowDownTrayIcon style={{ width: 14, height: 14 }} /> {exporting ? "Exporting..." : "Export PDF"}
               </button>
@@ -814,7 +822,7 @@ function DecisionDetail() {
               </section>
             )}
 
-            <ContextPanel contentType="decisions.decision" objectId={id} />
+            <ContextPanel contentType="decisions.decision" objectId={id} refreshKey={contextRefreshKey} />
           </aside>
         </div>
       </div>

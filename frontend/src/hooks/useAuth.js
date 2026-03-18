@@ -71,9 +71,10 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(() => {
     if (typeof window === 'undefined') return true;
-    const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY));
     const isPublicRoute = isPublicBootstrapPath(window.location.pathname);
-    return hasToken && !readStoredUser() && !isPublicRoute;
+    if (isPublicRoute) return false;
+    const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY));
+    return hasToken && !readStoredUser();
   });
 
   useEffect(() => {
@@ -82,20 +83,26 @@ export function AuthProvider({ children }) {
     const storedUser = token ? readStoredUser() : null;
     const isPublicRoute = isPublicBootstrapPath(window.location.pathname);
 
-    if (storedUser && !isPublicRoute) {
-      setUser(storedUser);
-    }
-
-    if (!token) {
-      localStorage.removeItem(USER_STORAGE_KEY);
-      setUser(null);
+    // On public routes, never block rendering - just set loading false immediately
+    if (isPublicRoute) {
+      if (storedUser) setUser(storedUser);
       setLoading(false);
-      return undefined;
+      if (!token) return undefined;
+    } else {
+      if (storedUser) setUser(storedUser);
+      if (!token) {
+        localStorage.removeItem(USER_STORAGE_KEY);
+        setUser(null);
+        setLoading(false);
+        return undefined;
+      }
     }
 
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-    if (storedUser || isPublicRoute) {
+    if (!isPublicRoute && !storedUser) {
+      // loading stays true until profile resolves
+    } else {
       setLoading(false);
     }
 
@@ -107,12 +114,10 @@ export function AuthProvider({ children }) {
     Promise.race([profileRequest, timeoutRequest])
       .then((result) => {
         if (!active) return;
-
         if (result?.__profileBootTimeout) {
           setLoading(false);
           return;
         }
-
         const profileData = result.data.data || result.data;
         setUser(profileData);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(profileData));
@@ -126,14 +131,12 @@ export function AuthProvider({ children }) {
       })
       .catch((error) => {
         if (!active) return;
-
         if (error.response?.status === 401) {
           clearStoredSession();
           setUser(null);
         } else if (storedUser) {
           setUser(storedUser);
         }
-
         setLoading(false);
       });
 

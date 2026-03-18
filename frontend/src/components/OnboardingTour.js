@@ -46,8 +46,12 @@ export default function OnboardingTour() {
     }
     const hasSeenTour = localStorage.getItem('onboarding_completed');
     if (!hasSeenTour && !user.onboarding_completed) {
-      setShow(true);
-      setStep(0);
+      // Delay showing tour so it doesn't block initial render
+      const timer = setTimeout(() => {
+        setShow(true);
+        setStep(0);
+      }, 1000);
+      return () => clearTimeout(timer);
     } else {
       setShow(false);
     }

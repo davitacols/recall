@@ -104,7 +104,7 @@ import Workflows from "./pages/Workflows";
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/login" replace />;
   if (adminOnly && user.role !== "admin") return <Navigate to="/dashboard" replace />;
   return children;
 }
@@ -162,7 +162,6 @@ function isPublicPath(pathname) {
 }
 
 const APP_ROUTES = [
-  { index: true, element: <Navigate to="/dashboard" replace /> },
   { path: "/dashboard", element: <UnifiedDashboard /> },
   { path: "/conversations", element: <Conversations /> },
   { path: "/conversations/new", element: <CreateConversation /> },

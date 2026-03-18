@@ -9,9 +9,12 @@
   --authp-muted: rgba(191, 202, 219, 0.86);
   min-height: 100vh;
   background:
-    radial-gradient(760px 420px at 0% -5%, rgba(90, 130, 240, 0.24), transparent 60%),
-    radial-gradient(720px 520px at 100% 100%, rgba(168, 186, 220, 0.2), transparent 62%),
+    linear-gradient(180deg, rgba(7, 9, 13, 0.72), rgba(7, 9, 13, 0.92)),
+    url("../assets/brand/knoledgr-aurora.svg"),
     var(--authp-bg);
+  background-position: center top, center top, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-size: auto, cover, auto;
   color: var(--authp-text);
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   padding: 18px;
@@ -42,7 +45,11 @@
   padding: 44px;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   background:
+    url("../assets/brand/knoledgr-grid.svg"),
     linear-gradient(165deg, rgba(91, 126, 231, 0.2), rgba(255, 255, 255, 0.02) 55%, rgba(166, 182, 214, 0.12));
+  background-position: center top, 0 0;
+  background-repeat: repeat, no-repeat;
+  background-size: 720px 720px, auto;
   display: grid;
   align-content: space-between;
   gap: 28px;
@@ -344,9 +351,12 @@
   --authp-text: #0f1d33;
   --authp-muted: rgba(15, 29, 51, 0.72);
   background:
-    radial-gradient(900px 460px at -5% 0%, rgba(120, 151, 247, 0.2), transparent 64%),
-    radial-gradient(860px 520px at 100% 100%, rgba(176, 194, 230, 0.24), transparent 60%),
+    linear-gradient(180deg, rgba(237, 242, 251, 0.8), rgba(237, 242, 251, 0.94)),
+    url("../assets/brand/knoledgr-aurora.svg"),
     #edf2fb;
+  background-position: center top, center top, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-size: auto, cover, auto;
 }
 
 [data-theme="light"] .authp-grid {
@@ -356,7 +366,11 @@
 [data-theme="light"] .authp-aside {
   border-right-color: rgba(20, 40, 76, 0.12);
   background:
+    url("../assets/brand/knoledgr-grid.svg"),
     linear-gradient(160deg, rgba(128, 160, 251, 0.24), rgba(255, 255, 255, 0.65) 52%, rgba(184, 203, 235, 0.24));
+  background-position: center top, 0 0;
+  background-repeat: repeat, no-repeat;
+  background-size: 720px 720px, auto;
 }
 
 [data-theme="light"] .authp-brand {

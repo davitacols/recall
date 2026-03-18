@@ -229,6 +229,19 @@ function Login() {
             </p>
           </div>
 
+          <div className="auth-showcase-visual" aria-hidden="true">
+            <img
+              src="/brand/knoledgr-app-screenshot.svg"
+              alt=""
+              className="auth-showcase-shot"
+            />
+            <img
+              src="/brand/knoledgr-memory-orbit.svg"
+              alt=""
+              className="auth-showcase-orbit"
+            />
+          </div>
+
           <div className="auth-stats">
             <div className="auth-stat-card">
               <strong>Org-aware access</strong>

@@ -184,6 +184,19 @@ export default function Homepage() {
               </div>
 
               <div className="hp-preview-card">
+                <div className="hp-preview-visual" aria-hidden="true">
+                  <img
+                    src="/brand/knoledgr-app-screenshot.svg"
+                    alt=""
+                    className="hp-preview-shot"
+                  />
+                  <img
+                    src="/brand/knoledgr-memory-orbit.svg"
+                    alt=""
+                    className="hp-preview-orbit"
+                  />
+                </div>
+
                 <div className="hp-preview-panel">
                   <p className="hp-preview-label">Decision timeline</p>
                   <h3>Pricing review approved</h3>

@@ -14,9 +14,12 @@
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(820px 420px at 4% -2%, rgba(94, 143, 232, 0.16), transparent 60%),
-    radial-gradient(760px 500px at 100% 100%, rgba(214, 196, 167, 0.2), transparent 60%),
+    linear-gradient(180deg, rgba(246, 241, 232, 0.76), rgba(251, 247, 240, 0.92)),
+    url("../assets/brand/knoledgr-aurora.svg"),
     linear-gradient(180deg, #f6f1e8, #fbf7f0);
+  background-position: center top, center top, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-size: auto, cover, auto;
   color: var(--auth-text);
   font-family: var(--font-primary);
 }
@@ -68,8 +71,12 @@
   align-content: space-between;
   gap: 32px;
   background:
+    url("../assets/brand/knoledgr-grid.svg"),
     radial-gradient(circle at top left, rgba(94, 143, 232, 0.12), transparent 40%),
     linear-gradient(180deg, rgba(255, 252, 248, 0.38), rgba(247, 240, 230, 0.52));
+  background-position: center top, 0 0, 0 0;
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-size: 720px 720px, auto, auto;
 }
 
 .auth-brand {
@@ -115,6 +122,29 @@
   max-width: 520px;
   line-height: 1.72;
   font-size: 1rem;
+}
+
+.auth-showcase-visual {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid var(--auth-border);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0));
+  box-shadow: 0 20px 44px rgba(38, 30, 24, 0.08);
+}
+
+.auth-showcase-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.auth-showcase-orbit {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: min(42%, 220px);
+  filter: drop-shadow(0 16px 28px rgba(38, 30, 24, 0.14));
 }
 
 .auth-stats {
@@ -475,9 +505,12 @@
   --auth-accent: #9ab9ff;
   --auth-accent-soft: rgba(154, 185, 255, 0.14);
   background:
-    radial-gradient(820px 420px at 4% -2%, rgba(154, 185, 255, 0.12), transparent 60%),
-    radial-gradient(760px 500px at 100% 100%, rgba(210, 168, 106, 0.08), transparent 60%),
+    linear-gradient(180deg, rgba(20, 17, 15, 0.48), rgba(23, 19, 16, 0.9)),
+    url("../assets/brand/knoledgr-aurora.svg"),
     linear-gradient(180deg, #14110f, #171310);
+  background-position: center top, center top, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-size: auto, cover, auto;
 }
 
 [data-theme="dark"] .auth-grid {
@@ -487,8 +520,12 @@
 
 [data-theme="dark"] .auth-showcase {
   background:
+    url("../assets/brand/knoledgr-grid.svg"),
     radial-gradient(circle at top left, rgba(154, 185, 255, 0.1), transparent 40%),
     linear-gradient(180deg, rgba(29, 24, 21, 0.28), rgba(22, 18, 15, 0.48));
+  background-position: center top, 0 0, 0 0;
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-size: 720px 720px, auto, auto;
 }
 
 [data-theme="dark"] .auth-brand,
@@ -520,6 +557,10 @@
 [data-theme="dark"] .auth-google-badge {
   color: #111418;
   background: linear-gradient(135deg, #e7effd, #9ab9ff);
+}
+
+[data-theme="dark"] .auth-showcase-visual {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
 }
 
 @media (max-width: 1024px) {

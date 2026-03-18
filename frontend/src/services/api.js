@@ -1,5 +1,21 @@
 import axios from 'axios';
 
+const PUBLIC_PATHS = new Set([
+  '/',
+  '/home',
+  '/docs',
+  '/privacy',
+  '/terms',
+  '/security-annex',
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+]);
+
+function isPublicPathname(pathname) {
+  return PUBLIC_PATHS.has(pathname);
+}
+
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
   headers: {
@@ -56,7 +72,11 @@ api.interceptors.response.use(
       localStorage.removeItem('access_token');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      const shouldRedirect = !error.config?.skipAuthRedirect;
+      const pathname = window.location?.pathname || '/';
+      if (shouldRedirect && !isPublicPathname(pathname)) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

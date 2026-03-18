@@ -8,6 +8,21 @@ const USER_STORAGE_KEY = 'user';
 const ACCESS_TOKEN_KEY = 'access_token';
 const LEGACY_TOKEN_KEY = 'token';
 const PROFILE_BOOT_TIMEOUT_MS = 5000;
+const PUBLIC_BOOTSTRAP_PATHS = new Set([
+  '/',
+  '/home',
+  '/docs',
+  '/privacy',
+  '/terms',
+  '/security-annex',
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+]);
+
+function isPublicBootstrapPath(pathname) {
+  return PUBLIC_BOOTSTRAP_PATHS.has(pathname);
+}
 
 function readStoredUser() {
   if (typeof window === 'undefined') return null;
@@ -56,13 +71,15 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(() => {
     if (typeof window === 'undefined') return true;
     const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY));
-    return hasToken && !readStoredUser();
+    const isPublicRoute = isPublicBootstrapPath(window.location.pathname);
+    return hasToken && !readStoredUser() && !isPublicRoute;
   });
 
   useEffect(() => {
     let active = true;
     const token = localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
     const storedUser = token ? readStoredUser() : null;
+    const isPublicRoute = isPublicBootstrapPath(window.location.pathname);
 
     if (storedUser) {
       setUser(storedUser);
@@ -77,11 +94,11 @@ export function AuthProvider({ children }) {
 
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-    if (storedUser) {
+    if (storedUser || isPublicRoute) {
       setLoading(false);
     }
 
-    const profileRequest = api.get('/api/auth/profile/');
+    const profileRequest = api.get('/api/auth/profile/', { skipAuthRedirect: true });
     const timeoutRequest = new Promise((resolve) => {
       window.setTimeout(() => resolve({ __profileBootTimeout: true }), PROFILE_BOOT_TIMEOUT_MS);
     });

@@ -10,15 +10,10 @@ import {
   ExclamationTriangleIcon,
   HandThumbUpIcon,
   QuestionMarkCircleIcon,
-  SparklesIcon,
   StarIcon,
-  TagIcon,
-  FaceSmileIcon,
-  LightBulbIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { useToast } from "../components/Toast";
-import { AIResultsPanel } from "../components/AIEnhancements";
 import api from "../services/api";
 import MentionTagInput from "../components/MentionTagInput";
 import RichTextRenderer from "../components/RichTextRenderer";
@@ -29,14 +24,6 @@ import QuickLink from "../components/QuickLink";
 import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
-
-const AI_ACTIONS = [
-  { key: "summarize", label: "Summarize", helper: "Pull the thread into a crisp recap.", icon: SparklesIcon },
-  { key: "tags", label: "Generate tags", helper: "Suggest topics and labels to keep it findable.", icon: TagIcon },
-  { key: "sentiment", label: "Read sentiment", helper: "Surface tone, confidence, and emotional signals.", icon: FaceSmileIcon },
-  { key: "suggestions", label: "Next-step ideas", helper: "Draft sharper follow-ups and actions.", icon: LightBulbIcon },
-  { key: "batch", label: "Run all", helper: "Process the full AI pass in one step.", icon: SparklesIcon },
-];
 
 const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette, darkMode }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -156,7 +143,6 @@ function ConversationDetail() {
   });
   const [creating, setCreating] = useState(false);
   const [converting, setConverting] = useState(false);
-  const [aiResults, setAiResults] = useState(null);
   const [bookmarkState, setBookmarkState] = useState({
     bookmarked: false,
     bookmarkId: null,
@@ -164,11 +150,8 @@ function ConversationDetail() {
   });
   const [draftHistory, setDraftHistory] = useState([]);
   const [draftFuture, setDraftFuture] = useState([]);
-  const [aiMenuOpen, setAiMenuOpen] = useState(false);
-  const [aiLoading, setAiLoading] = useState("");
   const [exporting, setExporting] = useState(false);
   const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1080);
-  const aiMenuRef = useRef(null);
 
   useEffect(() => {
     const onResize = () => setIsNarrow(window.innerWidth < 1080);
@@ -192,19 +175,6 @@ function ConversationDetail() {
   useEffect(() => {
     draftRef.current = { title: editTitle, content: editContent };
   }, [editContent, editTitle]);
-
-  useEffect(() => {
-    if (!aiMenuOpen) return undefined;
-
-    const handlePointerDown = (event) => {
-      if (!aiMenuRef.current?.contains(event.target)) {
-        setAiMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [aiMenuOpen]);
 
   useEffect(() => {
     if (!isEditingPost) return undefined;
@@ -361,30 +331,6 @@ function ConversationDetail() {
       console.error("Failed to update bookmark:", error);
       addToast("Failed to update favorites", "error");
       setBookmarkState((prev) => ({ ...prev, loading: false }));
-    }
-  };
-
-  const handleRunAi = async (feature) => {
-    setAiLoading(feature);
-    setAiMenuOpen(false);
-
-    try {
-      const endpoint =
-        feature === "batch"
-          ? "/api/organizations/ai/batch/"
-          : `/api/organizations/ai/${feature}/`;
-      const response = await api.post(endpoint, {
-        content: conversation?.content,
-        title: conversation?.title,
-        content_type: "conversation",
-      });
-      setAiResults(response.data);
-      addToast(`AI ${feature} complete`, "success");
-    } catch (error) {
-      console.error("Failed to run AI action:", error);
-      addToast("AI action failed", "error");
-    } finally {
-      setAiLoading("");
     }
   };
 
@@ -776,7 +722,7 @@ function ConversationDetail() {
                 <div>
                   <p style={{ ...sectionLabel, color: palette.muted, marginBottom: 4 }}>Thread Actions</p>
                   <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.5 }}>
-                    Use favorites, export, AI, and editing controls without leaving the thread.
+                    Use favorites, export, and editing controls without leaving the thread.
                   </p>
                 </div>
                 {isEditingPost ? (
@@ -797,47 +743,6 @@ function ConversationDetail() {
                   {converting ? <ArrowPathIcon style={{ ...icon14, animation: "spin 1s linear infinite" }} /> : null}
                   {converting ? "Converting..." : "Convert to Decision"}
                 </button>
-
-                <div ref={aiMenuRef} style={{ position: "relative" }}>
-                  <button
-                    className="ui-btn-polish ui-focus-ring"
-                    onClick={() => setAiMenuOpen((value) => !value)}
-                    disabled={Boolean(aiLoading)}
-                    style={actionButton(palette, {
-                      borderColor: palette.accent,
-                      background: palette.accentSoft,
-                      color: palette.link,
-                    })}
-                  >
-                    {aiLoading ? (
-                      <ArrowPathIcon style={{ ...icon14, animation: "spin 1s linear infinite" }} />
-                    ) : (
-                      <SparklesIcon style={icon14} />
-                    )}
-                    {aiLoading ? "Running AI..." : "AI"}
-                  </button>
-
-                  {aiMenuOpen ? (
-                    <div style={aiMenuCard(palette)}>
-                      {AI_ACTIONS.map(({ key, label, helper, icon: Icon }) => (
-                        <button
-                          key={key}
-                          className="ui-btn-polish ui-focus-ring"
-                          onClick={() => handleRunAi(key)}
-                          style={aiMenuAction(palette)}
-                        >
-                          <span style={aiMenuIconWrap(palette, key === "batch")}>
-                            <Icon style={icon14} />
-                          </span>
-                          <span style={{ display: "grid", gap: 2, textAlign: "left" }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: palette.text }}>{label}</span>
-                            <span style={{ fontSize: 11, color: palette.muted, lineHeight: 1.4 }}>{helper}</span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
 
                 <button
                   className="ui-btn-polish ui-focus-ring"
@@ -1049,7 +954,6 @@ function ConversationDetail() {
         </div>
       </div>
 
-      <AIResultsPanel results={aiResults} onClose={() => setAiResults(null)} />
     </div>
   );
 }
@@ -1167,43 +1071,6 @@ const smallDangerButton = (palette, darkMode) => ({
   fontWeight: 700,
   padding: "8px 12px",
   cursor: "pointer",
-});
-const aiMenuCard = (palette) => ({
-  position: "absolute",
-  top: "calc(100% + 8px)",
-  left: 0,
-  zIndex: 16,
-  width: 280,
-  maxWidth: "min(80vw,280px)",
-  borderRadius: 18,
-  border: `1px solid ${palette.border}`,
-  background: palette.panel,
-  boxShadow: "var(--ui-shadow-sm)",
-  padding: 8,
-  display: "grid",
-  gap: 6,
-});
-const aiMenuAction = (palette) => ({
-  width: "100%",
-  border: "none",
-  borderRadius: 14,
-  background: palette.panelAlt,
-  padding: "10px 12px",
-  display: "grid",
-  gridTemplateColumns: "36px minmax(0,1fr)",
-  alignItems: "center",
-  gap: 10,
-  cursor: "pointer",
-});
-const aiMenuIconWrap = (palette, strong = false) => ({
-  width: 32,
-  height: 32,
-  borderRadius: 10,
-  display: "grid",
-  placeItems: "center",
-  border: `1px solid ${strong ? palette.accent : palette.border}`,
-  background: strong ? palette.accentSoft : palette.panel,
-  color: strong ? palette.link : palette.text,
 });
 const sectionLabelRow = { marginBottom: 8 };
 const sectionLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" };

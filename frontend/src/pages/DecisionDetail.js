@@ -14,7 +14,6 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import RichTextRenderer from "../components/RichTextRenderer";
 import DecisionIllustration from "../components/DecisionIllustration";
-import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
 import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
@@ -34,7 +33,6 @@ function DecisionDetail() {
   const [showLinkPR, setShowLinkPR] = useState(false);
   const [prUrl, setPrUrl] = useState("");
   const [linking, setLinking] = useState(false);
-  const [aiResults, setAiResults] = useState(null);
   const [outcomeSaving, setOutcomeSaving] = useState(false);
   const [outcomeError, setOutcomeError] = useState("");
   const [outcomeMessage, setOutcomeMessage] = useState("");
@@ -334,7 +332,6 @@ function DecisionDetail() {
                 <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
               </button>
               <QuickLink sourceType="decisions.decision" sourceId={id} />
-              <AIEnhancementButton content={decision?.description} title={decision?.title} type="decision" onResult={(feature, data) => setAiResults(data)} />
               <button className="ui-btn-polish ui-focus-ring" onClick={handleExportDecision} disabled={exporting} style={ui.secondaryButton}>
                 <ArrowDownTrayIcon style={{ width: 14, height: 14 }} /> {exporting ? "Exporting..." : "Export PDF"}
               </button>
@@ -821,8 +818,6 @@ function DecisionDetail() {
           </aside>
         </div>
       </div>
-
-      <AIResultsPanel results={aiResults} onClose={() => setAiResults(null)} />
     </div>
   );
 }

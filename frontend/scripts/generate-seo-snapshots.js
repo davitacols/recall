@@ -714,8 +714,11 @@ function main() {
   }
 
   const template = fs.readFileSync(templatePath, "utf8");
+  // Keep build/index.html as the neutral SPA shell. Overwriting the root entrypoint
+  // makes the deployed app boot path too fragile, so snapshots stay on secondary public routes.
+  const snapshotConfigs = pageConfigs.filter((config) => config.route !== "/");
 
-  pageConfigs.forEach((config) => {
+  snapshotConfigs.forEach((config) => {
     writeRouteFile(config.route, buildPageHtml(template, config));
   });
 
@@ -723,7 +726,7 @@ function main() {
     writeRouteFile(config.route, buildRedirectHtml(template, config));
   });
 
-  console.log(`Generated SEO snapshots for ${pageConfigs.length + redirectConfigs.length} routes.`);
+  console.log(`Generated SEO snapshots for ${snapshotConfigs.length + redirectConfigs.length} routes.`);
 }
 
 main();

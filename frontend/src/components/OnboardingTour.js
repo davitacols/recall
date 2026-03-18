@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { XMarkIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 
 export default function OnboardingTour() {
   const [step, setStep] = useState(0);
   const [show, setShow] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { darkMode } = useTheme();
 
   const bgPrimary = darkMode ? 'bg-stone-900' : 'bg-white';
@@ -16,43 +18,44 @@ export default function OnboardingTour() {
 
   const steps = [
     {
-      title: 'Welcome to Recall',
-      description: 'A unified knowledge platform where everything is connected. Let\'s take a quick tour.',
-      action: null,
+      title: 'Welcome to Knoledgr',
+      description: 'A unified knowledge platform where conversations, decisions, and execution stay connected. Let\'s take a quick tour.',
     },
     {
       title: 'Knowledge Hub',
       description: 'Search across all content, explore the knowledge graph, and discover connections.',
-      action: () => navigate('/knowledge/graph'),
     },
     {
       title: 'Collaborate',
       description: 'Start conversations, make decisions, and schedule meetings - all linked together.',
-      action: () => navigate('/conversations'),
     },
     {
       title: 'Execute',
       description: 'Manage projects, track tasks, run sprints, and achieve goals.',
-      action: () => navigate('/projects'),
     },
     {
       title: 'AI-Powered Context',
       description: 'Every item shows related content, expert users, and smart suggestions automatically.',
-      action: null,
     },
   ];
 
   useEffect(() => {
-    const hasSeenTour = localStorage.getItem('onboarding_completed');
-    if (!hasSeenTour) {
-      setShow(true);
+    if (!user) {
+      setShow(false);
+      return;
     }
-  }, []);
+    const hasSeenTour = localStorage.getItem('onboarding_completed');
+    if (!hasSeenTour && !user.onboarding_completed) {
+      setShow(true);
+      setStep(0);
+    } else {
+      setShow(false);
+    }
+  }, [user]);
 
   const handleNext = () => {
     if (step < steps.length - 1) {
-      if (steps[step].action) steps[step].action();
-      setStep(step + 1);
+      setStep((current) => current + 1);
     } else {
       handleComplete();
     }
@@ -61,6 +64,7 @@ export default function OnboardingTour() {
   const handleComplete = () => {
     localStorage.setItem('onboarding_completed', 'true');
     setShow(false);
+    navigate(user ? '/dashboard' : '/', { replace: true });
   };
 
   if (!show) return null;

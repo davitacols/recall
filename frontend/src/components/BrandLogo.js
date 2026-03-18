@@ -1,36 +1,23 @@
 import React, { useId } from "react";
 
 const tones = {
-  warm: {
-    shellStart: "#fffdf8",
-    shellEnd: "#e9e2d6",
-    shellStroke: "rgba(46, 38, 30, 0.12)",
-    core: "#1f1a17",
-    nodeA: "#2e63d0",
-    nodeB: "#6e95e7",
-    halo: "rgba(94, 143, 232, 0.18)",
-    text: "#1f1a17",
-  },
-  dark: {
-    shellStart: "#2b241f",
-    shellEnd: "#15110f",
-    shellStroke: "rgba(240, 230, 214, 0.14)",
-    core: "#f5efe6",
-    nodeA: "#9ab9ff",
-    nodeB: "#d0deff",
-    halo: "rgba(154, 185, 255, 0.2)",
-    text: "var(--app-text, #f5efe6)",
-  },
-  light: {
-    shellStart: "#31487a",
-    shellEnd: "#18243f",
-    shellStroke: "rgba(228, 236, 255, 0.22)",
-    core: "#f7f4ee",
-    nodeA: "#9bbaff",
-    nodeB: "#d7e3ff",
-    halo: "rgba(155, 186, 255, 0.24)",
-    text: "#f7f4ee",
-  },
+  warm: { text: "#171513" },
+  dark: { text: "var(--app-text, #f5ede1)" },
+  light: { text: "#f7f2e8" },
+};
+
+const mark = {
+  shellStart: "#1f2b3e",
+  shellMid: "#162131",
+  shellEnd: "#0f1726",
+  shellStroke: "rgba(246, 236, 219, 0.14)",
+  core: "#f7efe4",
+  nodeA: "#7eb7ff",
+  nodeB: "#d9a25e",
+  orbitA: "rgba(126, 183, 255, 0.28)",
+  orbitB: "rgba(217, 162, 94, 0.22)",
+  haloCool: "rgba(120, 191, 255, 0.34)",
+  haloWarm: "rgba(217, 162, 94, 0.22)",
 };
 
 function getSizeTokens(size) {
@@ -39,40 +26,49 @@ function getSizeTokens(size) {
   return { mark: 28, text: 20, gap: 10 };
 }
 
-function BrandMark({ token, color, idBase }) {
-  const gradientId = `${idBase}-grad`;
-  const haloId = `${idBase}-halo`;
+function BrandMark({ token, idBase }) {
+  const gradientId = `${idBase}-tile`;
+  const coolHaloId = `${idBase}-cool`;
+  const warmHaloId = `${idBase}-warm`;
 
   return (
     <svg
       aria-hidden="true"
       width={token.mark}
       height={token.mark}
-      viewBox="0 0 44 44"
+      viewBox="0 0 48 48"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       style={{ flexShrink: 0, display: "block" }}
     >
       <defs>
-        <linearGradient id={gradientId} x1="6" y1="5" x2="35" y2="39" gradientUnits="userSpaceOnUse">
-          <stop stopColor={color.shellStart} />
-          <stop offset="1" stopColor={color.shellEnd} />
+        <linearGradient id={gradientId} x1="10" y1="6" x2="38" y2="44" gradientUnits="userSpaceOnUse">
+          <stop stopColor={mark.shellStart} />
+          <stop offset="0.58" stopColor={mark.shellMid} />
+          <stop offset="1" stopColor={mark.shellEnd} />
         </linearGradient>
-        <radialGradient id={haloId} cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(31 13) rotate(90) scale(20)">
-          <stop stopColor={color.halo} />
+        <radialGradient id={coolHaloId} cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(34 14) rotate(90) scale(14)">
+          <stop stopColor={mark.haloCool} />
+          <stop offset="1" stopColor="transparent" />
+        </radialGradient>
+        <radialGradient id={warmHaloId} cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(16 36) rotate(90) scale(14)">
+          <stop stopColor={mark.haloWarm} />
           <stop offset="1" stopColor="transparent" />
         </radialGradient>
       </defs>
 
-      <rect x="3" y="3" width="38" height="38" rx="13" fill={`url(#${gradientId})`} />
-      <rect x="3" y="3" width="38" height="38" rx="13" stroke={color.shellStroke} />
-      <circle cx="28" cy="18" r="14" fill={`url(#${haloId})`} />
-      <path d="M14.5 10.5V33.5" stroke={color.core} strokeWidth="4.5" strokeLinecap="round" />
-      <path d="M29.5 11.5L18.5 22L30.5 33" stroke={color.core} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M17.8 22H24.2" stroke={color.nodeA} strokeWidth="3.2" strokeLinecap="round" />
-      <circle cx="29.5" cy="11.5" r="3.3" fill={color.nodeA} />
-      <circle cx="18.5" cy="22" r="3.3" fill={color.core} />
-      <circle cx="30.5" cy="33" r="3.3" fill={color.nodeB} />
+      <rect x="4" y="4" width="40" height="40" rx="15" fill={`url(#${gradientId})`} />
+      <rect x="4" y="4" width="40" height="40" rx="15" stroke={mark.shellStroke} />
+      <path d="M12.5 17.2C17.1 12.7 22.5 11.6 30.2 13.8" stroke={mark.orbitA} strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M20.8 24C25.6 25.9 29.1 29.5 31.5 34.9" stroke={mark.orbitB} strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="34" cy="14" r="14" fill={`url(#${coolHaloId})`} />
+      <circle cx="16" cy="36" r="14" fill={`url(#${warmHaloId})`} />
+      <path d="M16.5 12.5V35.5" stroke={mark.core} strokeWidth="4.6" strokeLinecap="round" />
+      <path d="M30.5 13.5L20.8 24L31.5 35" stroke={mark.core} strokeWidth="4.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20.8 24H26" stroke={mark.nodeA} strokeWidth="3.3" strokeLinecap="round" />
+      <circle cx="30.5" cy="13.5" r="3.4" fill={mark.nodeA} />
+      <circle cx="20.8" cy="24" r="3.4" fill={mark.core} />
+      <circle cx="31.5" cy="35" r="3.4" fill={mark.nodeB} />
     </svg>
   );
 }
@@ -101,17 +97,16 @@ export default function BrandLogo({
         ...style,
       }}
     >
-      <BrandMark token={token} color={color} idBase={idBase} />
+      <BrandMark token={token} idBase={idBase} />
       {showText ? (
         <span
           style={{
             fontSize: token.text,
             fontWeight: textWeight,
             lineHeight: 0.94,
-            letterSpacing: "-0.045em",
+            letterSpacing: "-0.055em",
             color: color.text,
-            fontFamily:
-              'var(--font-primary, "Sora"), var(--font-display, "Fraunces"), sans-serif',
+            fontFamily: '"Space Grotesk", "Manrope", "Segoe UI", sans-serif',
           }}
         >
           {label}
@@ -125,13 +120,13 @@ export default function BrandLogo({
       <a
         href={downloadUrl}
         download={downloadName}
-        title={title || "Download brand logo"}
+        title={title || "Download Knoledgr logo"}
         style={{
           display: "inline-flex",
           textDecoration: "none",
           cursor: "pointer",
         }}
-        aria-label={title || "Download brand logo"}
+        aria-label={title || "Download Knoledgr logo"}
       >
         {content}
       </a>

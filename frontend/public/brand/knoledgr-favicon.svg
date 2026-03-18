@@ -1,0 +1,22 @@
+<svg width="64" height="64" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="favicon-shell" x1="10" y1="6" x2="38" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2B3E" />
+      <stop offset="0.58" stop-color="#162131" />
+      <stop offset="1" stop-color="#0F1726" />
+    </linearGradient>
+    <radialGradient id="favicon-cool" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(34 14) rotate(90) scale(14)">
+      <stop stop-color="#7CBFFF" stop-opacity="0.34" />
+      <stop offset="1" stop-color="transparent" />
+    </radialGradient>
+  </defs>
+  <rect x="4" y="4" width="40" height="40" rx="15" fill="url(#favicon-shell)" />
+  <rect x="4" y="4" width="40" height="40" rx="15" stroke="rgba(246, 236, 219, 0.14)" />
+  <circle cx="34" cy="14" r="14" fill="url(#favicon-cool)" />
+  <path d="M16.5 12.5V35.5" stroke="#F7EFE4" stroke-width="4.6" stroke-linecap="round" />
+  <path d="M30.5 13.5L20.8 24L31.5 35" stroke="#F7EFE4" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M20.8 24H26" stroke="#7EB7FF" stroke-width="3.3" stroke-linecap="round" />
+  <circle cx="30.5" cy="13.5" r="3.4" fill="#7EB7FF" />
+  <circle cx="20.8" cy="24" r="3.4" fill="#F7EFE4" />
+  <circle cx="31.5" cy="35" r="3.4" fill="#D9A25E" />
+</svg>

@@ -1,27 +1,29 @@
 <svg width="512" height="512" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="app-shell" x1="18" y1="10" x2="132" y2="146" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#1C3655" />
-      <stop offset="0.56" stop-color="#102238" />
-      <stop offset="1" stop-color="#08111A" />
+    <linearGradient id="app-shell" x1="20" y1="12" x2="132" y2="150" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#233247" />
+      <stop offset="0.58" stop-color="#162131" />
+      <stop offset="1" stop-color="#0F1726" />
     </linearGradient>
-    <radialGradient id="app-spot-a" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(118 44) rotate(90) scale(62)">
-      <stop stop-color="#46C8FF" stop-opacity="0.42" />
-      <stop offset="1" stop-color="#46C8FF" stop-opacity="0" />
+    <radialGradient id="app-cool" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(116 42) rotate(90) scale(54)">
+      <stop stop-color="#7CBFFF" stop-opacity="0.34" />
+      <stop offset="1" stop-color="#7CBFFF" stop-opacity="0" />
     </radialGradient>
-    <radialGradient id="app-spot-b" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(40 28) rotate(90) scale(88)">
-      <stop stop-color="#2C79FF" stop-opacity="0.36" />
-      <stop offset="1" stop-color="#2C79FF" stop-opacity="0" />
+    <radialGradient id="app-warm" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(52 126) rotate(90) scale(52)">
+      <stop stop-color="#D9A25E" stop-opacity="0.24" />
+      <stop offset="1" stop-color="#D9A25E" stop-opacity="0" />
     </radialGradient>
   </defs>
-  <rect x="10" y="10" width="140" height="140" rx="44" fill="url(#app-shell)" />
-  <rect x="10" y="10" width="140" height="140" rx="44" stroke="rgba(145, 210, 255, 0.28)" stroke-width="2" />
-  <circle cx="118" cy="44" r="62" fill="url(#app-spot-a)" />
-  <circle cx="40" cy="28" r="88" fill="url(#app-spot-b)" />
-  <path d="M54 40V118" stroke="#F1F8FF" stroke-width="16" stroke-linecap="round" />
-  <path d="M110 44L70 80L114 116" stroke="#F1F8FF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M66 80H88" stroke="#63BFFF" stroke-width="12" stroke-linecap="round" />
-  <circle cx="110" cy="44" r="12" fill="#63BFFF" />
-  <circle cx="70" cy="80" r="12" fill="#F1F8FF" />
-  <circle cx="114" cy="116" r="12" fill="#52E7FF" />
+  <rect x="10" y="10" width="140" height="140" rx="46" fill="url(#app-shell)" />
+  <rect x="10" y="10" width="140" height="140" rx="46" stroke="rgba(246, 236, 219, 0.14)" stroke-width="2" />
+  <path d="M34 60C50 42 70 38 95 48" stroke="rgba(126, 183, 255, 0.26)" stroke-width="4" stroke-linecap="round" />
+  <path d="M70 82C86 90 98 103 106 120" stroke="rgba(217, 162, 94, 0.22)" stroke-width="4" stroke-linecap="round" />
+  <circle cx="116" cy="42" r="54" fill="url(#app-cool)" />
+  <circle cx="52" cy="126" r="52" fill="url(#app-warm)" />
+  <path d="M58 42V118" stroke="#F7EFE4" stroke-width="16" stroke-linecap="round" />
+  <path d="M108 46L72 80L112 116" stroke="#F7EFE4" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M72 80H90" stroke="#7EB7FF" stroke-width="12" stroke-linecap="round" />
+  <circle cx="108" cy="46" r="12" fill="#7EB7FF" />
+  <circle cx="72" cy="80" r="12" fill="#F7EFE4" />
+  <circle cx="112" cy="116" r="12" fill="#D9A25E" />
 </svg>

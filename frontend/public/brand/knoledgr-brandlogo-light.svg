@@ -1,26 +1,26 @@
 <svg width="428" height="96" viewBox="0 0 428 96" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="logo-shell" x1="10" y1="6" x2="38" y2="44" gradientUnits="userSpaceOnUse">
+    <linearGradient id="logo-shell-light" x1="10" y1="6" x2="38" y2="44" gradientUnits="userSpaceOnUse">
       <stop stop-color="#1F2B3E" />
       <stop offset="0.58" stop-color="#162131" />
       <stop offset="1" stop-color="#0F1726" />
     </linearGradient>
-    <radialGradient id="logo-cool" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(34 14) rotate(90) scale(14)">
+    <radialGradient id="logo-cool-light" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(34 14) rotate(90) scale(14)">
       <stop stop-color="#7CBFFF" stop-opacity="0.34" />
       <stop offset="1" stop-color="transparent" />
     </radialGradient>
-    <radialGradient id="logo-warm" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(16 36) rotate(90) scale(14)">
+    <radialGradient id="logo-warm-light" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(16 36) rotate(90) scale(14)">
       <stop stop-color="#D9A25E" stop-opacity="0.22" />
       <stop offset="1" stop-color="transparent" />
     </radialGradient>
   </defs>
   <g transform="translate(16 20)">
-    <rect x="4" y="4" width="40" height="40" rx="15" fill="url(#logo-shell)" />
+    <rect x="4" y="4" width="40" height="40" rx="15" fill="url(#logo-shell-light)" />
     <rect x="4" y="4" width="40" height="40" rx="15" stroke="rgba(246, 236, 219, 0.14)" />
     <path d="M12.5 17.2C17.1 12.7 22.5 11.6 30.2 13.8" stroke="rgba(126, 183, 255, 0.28)" stroke-width="1.4" stroke-linecap="round" />
     <path d="M20.8 24C25.6 25.9 29.1 29.5 31.5 34.9" stroke="rgba(217, 162, 94, 0.22)" stroke-width="1.4" stroke-linecap="round" />
-    <circle cx="34" cy="14" r="14" fill="url(#logo-cool)" />
-    <circle cx="16" cy="36" r="14" fill="url(#logo-warm)" />
+    <circle cx="34" cy="14" r="14" fill="url(#logo-cool-light)" />
+    <circle cx="16" cy="36" r="14" fill="url(#logo-warm-light)" />
     <path d="M16.5 12.5V35.5" stroke="#F7EFE4" stroke-width="4.6" stroke-linecap="round" />
     <path d="M30.5 13.5L20.8 24L31.5 35" stroke="#F7EFE4" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" />
     <path d="M20.8 24H26" stroke="#7EB7FF" stroke-width="3.3" stroke-linecap="round" />
@@ -28,7 +28,7 @@
     <circle cx="20.8" cy="24" r="3.4" fill="#F7EFE4" />
     <circle cx="31.5" cy="35" r="3.4" fill="#D9A25E" />
   </g>
-  <text x="82" y="58" fill="#171513" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="38" font-weight="700" letter-spacing="-2.2">
+  <text x="82" y="58" fill="#F7EFE4" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="38" font-weight="700" letter-spacing="-2.2">
     Knoledgr
   </text>
 </svg>

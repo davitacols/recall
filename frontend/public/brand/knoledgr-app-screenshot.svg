@@ -1,0 +1,82 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shot-bg" x1="110" y1="40" x2="1170" y2="684" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F2E8" />
+      <stop offset="0.54" stop-color="#F1E7D8" />
+      <stop offset="1" stop-color="#E8DAC4" />
+    </linearGradient>
+    <linearGradient id="shot-nav" x1="52" y1="72" x2="262" y2="690" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#222F42" />
+      <stop offset="0.58" stop-color="#172233" />
+      <stop offset="1" stop-color="#101827" />
+    </linearGradient>
+    <linearGradient id="shot-card" x1="918" y1="182" x2="1114" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#233247" />
+      <stop offset="1" stop-color="#0F1726" />
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" rx="30" fill="url(#shot-bg)" />
+  <rect x="32" y="32" width="1216" height="656" rx="28" fill="rgba(255,255,255,0.48)" stroke="rgba(23, 21, 19, 0.08)" />
+  <rect x="56" y="56" width="228" height="608" rx="26" fill="url(#shot-nav)" />
+  <rect x="90" y="94" width="42" height="42" rx="14" fill="#F7EFE4" />
+  <path d="M102 104V126" stroke="#172233" stroke-width="5" stroke-linecap="round" />
+  <path d="M120 105L107 115L121 126" stroke="#172233" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M107 115H113" stroke="#7EB7FF" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="120" cy="105" r="3.5" fill="#7EB7FF" />
+  <circle cx="107" cy="115" r="3.5" fill="#172233" />
+  <circle cx="121" cy="126" r="3.5" fill="#D9A25E" />
+  <text x="144" y="122" fill="#F7EFE4" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="30" font-weight="700" letter-spacing="-1.4">
+    Knoledgr
+  </text>
+  <rect x="90" y="172" width="160" height="44" rx="16" fill="rgba(255,255,255,0.08)" />
+  <rect x="90" y="232" width="132" height="14" rx="7" fill="rgba(255,255,255,0.64)" />
+  <rect x="90" y="266" width="154" height="14" rx="7" fill="rgba(255,255,255,0.24)" />
+  <rect x="90" y="300" width="144" height="14" rx="7" fill="rgba(255,255,255,0.24)" />
+  <rect x="90" y="334" width="120" height="14" rx="7" fill="rgba(255,255,255,0.24)" />
+  <rect x="90" y="430" width="160" height="152" rx="22" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.08)" />
+  <circle cx="126" cy="472" r="10" fill="#7EB7FF" />
+  <circle cx="174" cy="510" r="10" fill="#F7EFE4" />
+  <circle cx="224" cy="468" r="10" fill="#D9A25E" />
+  <path d="M126 472C142 454 162 450 184 462C202 472 214 476 224 468" stroke="rgba(247, 239, 228, 0.24)" stroke-width="3" stroke-linecap="round" />
+  <rect x="318" y="72" width="892" height="74" rx="24" fill="rgba(255,255,255,0.58)" stroke="rgba(23, 21, 19, 0.08)" />
+  <text x="354" y="116" fill="#171513" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="34" font-weight="700" letter-spacing="-1.6">
+    Mission control for team memory
+  </text>
+  <rect x="336" y="182" width="264" height="208" rx="26" fill="rgba(255,255,255,0.68)" stroke="rgba(23, 21, 19, 0.08)" />
+  <text x="366" y="226" fill="#171513" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="28" font-weight="700" letter-spacing="-1.2">
+    Decision timeline
+  </text>
+  <rect x="366" y="252" width="198" height="14" rx="7" fill="rgba(23, 21, 19, 0.12)" />
+  <rect x="366" y="284" width="168" height="14" rx="7" fill="rgba(23, 21, 19, 0.08)" />
+  <rect x="366" y="328" width="198" height="42" rx="16" fill="rgba(126, 183, 255, 0.14)" stroke="rgba(126, 183, 255, 0.2)" />
+  <rect x="628" y="182" width="264" height="208" rx="26" fill="rgba(255,255,255,0.68)" stroke="rgba(23, 21, 19, 0.08)" />
+  <text x="658" y="226" fill="#171513" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="28" font-weight="700" letter-spacing="-1.2">
+    Linked work
+  </text>
+  <path d="M690 318C724 286 764 274 814 284" stroke="rgba(23, 21, 19, 0.18)" stroke-width="4" stroke-linecap="round" />
+  <path d="M704 248C734 224 770 218 810 228C848 238 876 260 890 286" stroke="rgba(126, 183, 255, 0.3)" stroke-width="4" stroke-linecap="round" />
+  <circle cx="704" cy="248" r="14" fill="#7EB7FF" />
+  <circle cx="770" cy="222" r="10" fill="#9ECCFF" />
+  <circle cx="822" cy="300" r="16" fill="#172233" />
+  <circle cx="822" cy="300" r="7" fill="#F7EFE4" />
+  <circle cx="890" cy="286" r="12" fill="#D9A25E" />
+  <circle cx="690" cy="318" r="10" fill="#F7EFE4" />
+  <rect x="920" y="182" width="258" height="472" rx="26" fill="url(#shot-card)" stroke="rgba(246, 236, 219, 0.12)" />
+  <text x="952" y="226" fill="#F7EFE4" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="30" font-weight="700" letter-spacing="-1.2">
+    Ask Knoledgr
+  </text>
+  <rect x="952" y="258" width="194" height="12" rx="6" fill="rgba(247, 239, 228, 0.6)" />
+  <rect x="952" y="288" width="164" height="12" rx="6" fill="rgba(247, 239, 228, 0.22)" />
+  <rect x="952" y="338" width="194" height="116" rx="24" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" />
+  <rect x="952" y="482" width="194" height="126" rx="24" fill="rgba(126, 183, 255, 0.12)" stroke="rgba(126, 183, 255, 0.16)" />
+  <rect x="336" y="420" width="556" height="234" rx="26" fill="rgba(255,255,255,0.68)" stroke="rgba(23, 21, 19, 0.08)" />
+  <text x="368" y="466" fill="#171513" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="28" font-weight="700" letter-spacing="-1.2">
+    Weekly brief
+  </text>
+  <rect x="368" y="496" width="468" height="14" rx="7" fill="rgba(23, 21, 19, 0.12)" />
+  <rect x="368" y="526" width="420" height="14" rx="7" fill="rgba(23, 21, 19, 0.08)" />
+  <rect x="368" y="574" width="146" height="44" rx="16" fill="#172233" />
+  <text x="398" y="602" fill="#F7EFE4" font-family="IBM Plex Mono, monospace" font-size="18" font-weight="500">
+    open board
+  </text>
+</svg>

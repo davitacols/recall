@@ -1,0 +1,27 @@
+<svg width="180" height="180" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="touch-bg" x1="12" y1="12" x2="148" y2="148" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F2E8" />
+      <stop offset="1" stop-color="#E9DBC7" />
+    </linearGradient>
+    <linearGradient id="touch-shell" x1="20" y1="12" x2="132" y2="150" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#233247" />
+      <stop offset="0.58" stop-color="#162131" />
+      <stop offset="1" stop-color="#0F1726" />
+    </linearGradient>
+    <radialGradient id="touch-cool" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(116 42) rotate(90) scale(54)">
+      <stop stop-color="#7CBFFF" stop-opacity="0.34" />
+      <stop offset="1" stop-color="#7CBFFF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="160" height="160" rx="42" fill="url(#touch-bg)" />
+  <rect x="18" y="18" width="124" height="124" rx="40" fill="url(#touch-shell)" />
+  <rect x="18" y="18" width="124" height="124" rx="40" stroke="rgba(246, 236, 219, 0.14)" stroke-width="2" />
+  <circle cx="116" cy="42" r="54" fill="url(#touch-cool)" />
+  <path d="M58 42V118" stroke="#F7EFE4" stroke-width="16" stroke-linecap="round" />
+  <path d="M108 46L72 80L112 116" stroke="#F7EFE4" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M72 80H90" stroke="#7EB7FF" stroke-width="12" stroke-linecap="round" />
+  <circle cx="108" cy="46" r="12" fill="#7EB7FF" />
+  <circle cx="72" cy="80" r="12" fill="#F7EFE4" />
+  <circle cx="112" cy="116" r="12" fill="#D9A25E" />
+</svg>

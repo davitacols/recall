@@ -1,57 +1,74 @@
 <svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="social-bg" x1="86" y1="42" x2="1074" y2="572" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#08111A" />
-      <stop offset="0.5" stop-color="#0E1B2B" />
-      <stop offset="1" stop-color="#11263D" />
+    <linearGradient id="social-bg" x1="88" y1="38" x2="1096" y2="598" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F2E8" />
+      <stop offset="0.52" stop-color="#F1E7D8" />
+      <stop offset="1" stop-color="#E9DBC7" />
     </linearGradient>
-    <radialGradient id="social-aurora-a" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(956 152) rotate(90) scale(220 312)">
-      <stop stop-color="#45D1FF" stop-opacity="0.34" />
-      <stop offset="1" stop-color="#45D1FF" stop-opacity="0" />
+    <radialGradient id="social-cool" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(956 110) rotate(90) scale(210 320)">
+      <stop stop-color="#8EC6FF" stop-opacity="0.34" />
+      <stop offset="1" stop-color="#8EC6FF" stop-opacity="0" />
     </radialGradient>
-    <radialGradient id="social-aurora-b" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(284 116) rotate(90) scale(260 350)">
-      <stop stop-color="#2E7BF5" stop-opacity="0.34" />
-      <stop offset="1" stop-color="#2E7BF5" stop-opacity="0" />
+    <radialGradient id="social-warm" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(262 518) rotate(90) scale(220 300)">
+      <stop stop-color="#D8A35F" stop-opacity="0.2" />
+      <stop offset="1" stop-color="#D8A35F" stop-opacity="0" />
     </radialGradient>
+    <linearGradient id="social-panel" x1="772" y1="144" x2="1092" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#243246" />
+      <stop offset="0.58" stop-color="#152131" />
+      <stop offset="1" stop-color="#0F1726" />
+    </linearGradient>
     <linearGradient id="social-mark" x1="0" y1="0" x2="76" y2="88" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#17304A" />
-      <stop offset="1" stop-color="#0C1726" />
+      <stop stop-color="#1F2B3E" />
+      <stop offset="0.58" stop-color="#162131" />
+      <stop offset="1" stop-color="#0F1726" />
     </linearGradient>
   </defs>
   <rect width="1200" height="630" rx="36" fill="url(#social-bg)" />
-  <circle cx="956" cy="152" r="220" fill="url(#social-aurora-a)" />
-  <circle cx="284" cy="116" r="260" fill="url(#social-aurora-b)" />
-  <rect x="78" y="78" width="1044" height="474" rx="32" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" />
-  <rect x="116" y="126" width="82" height="82" rx="26" fill="url(#social-mark)" stroke="rgba(123, 198, 255, 0.22)" />
-  <path d="M144 142V192" stroke="#EEF6FF" stroke-width="10" stroke-linecap="round" />
-  <path d="M178 144L154 167L180 192" stroke="#EEF6FF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M153 167H167" stroke="#63BFFF" stroke-width="8" stroke-linecap="round" />
-  <circle cx="178" cy="144" r="7" fill="#63BFFF" />
-  <circle cx="154" cy="167" r="7" fill="#EEF6FF" />
-  <circle cx="180" cy="192" r="7" fill="#52E7FF" />
-  <text x="226" y="182" fill="#F5FAFF" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="58" font-weight="700" letter-spacing="-2.6">
+  <circle cx="956" cy="110" r="210" fill="url(#social-cool)" />
+  <circle cx="262" cy="518" r="220" fill="url(#social-warm)" />
+  <path d="M54 122H1146" stroke="rgba(23, 21, 19, 0.07)" />
+  <path d="M54 206H1146" stroke="rgba(23, 21, 19, 0.06)" />
+  <path d="M54 290H1146" stroke="rgba(23, 21, 19, 0.05)" />
+  <rect x="48" y="48" width="1104" height="534" rx="34" fill="rgba(255,255,255,0.46)" stroke="rgba(23, 21, 19, 0.08)" />
+  <rect x="96" y="102" width="82" height="82" rx="28" fill="url(#social-mark)" stroke="rgba(246, 236, 219, 0.14)" />
+  <path d="M112 132C122 122 132 120 147 124" stroke="rgba(126, 183, 255, 0.24)" stroke-width="2.4" stroke-linecap="round" />
+  <path d="M130 152C140 156 148 163 153 175" stroke="rgba(217, 162, 94, 0.2)" stroke-width="2.4" stroke-linecap="round" />
+  <path d="M124 120V166" stroke="#F7EFE4" stroke-width="10" stroke-linecap="round" />
+  <path d="M153 122L132 143L155 166" stroke="#F7EFE4" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M132 143H143" stroke="#7EB7FF" stroke-width="7" stroke-linecap="round" />
+  <circle cx="153" cy="122" r="7" fill="#7EB7FF" />
+  <circle cx="132" cy="143" r="7" fill="#F7EFE4" />
+  <circle cx="155" cy="166" r="7" fill="#D9A25E" />
+  <text x="204" y="160" fill="#171513" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="54" font-weight="700" letter-spacing="-2.4">
     Knoledgr
   </text>
-  <text x="118" y="284" fill="#F5FAFF" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="78" font-weight="700" letter-spacing="-3.8">
-    Context that stays attached
+  <text x="98" y="258" fill="#171513" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="78" font-weight="700" letter-spacing="-3.6">
+    Decision memory
   </text>
-  <text x="118" y="358" fill="#F5FAFF" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="78" font-weight="700" letter-spacing="-3.8">
-    to decisions, docs, and work.
+  <text x="98" y="330" fill="#171513" font-family="Space Grotesk, Manrope, Segoe UI, sans-serif" font-size="78" font-weight="700" letter-spacing="-3.6">
+    with the work still attached.
   </text>
-  <text x="118" y="432" fill="#9FC8E7" font-family="Manrope, Segoe UI, sans-serif" font-size="28" font-weight="600">
-    Searchable team memory for decisions, conversations, projects, and grounded AI answers.
+  <text x="98" y="398" fill="#4D5563" font-family="Manrope, Segoe UI, sans-serif" font-size="28" font-weight="600">
+    Searchable team context for conversations, decisions, documents, and execution.
   </text>
-  <rect x="118" y="470" width="204" height="52" rx="18" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" />
-  <text x="144" y="503" fill="#F5FAFF" font-family="IBM Plex Mono, monospace" font-size="20" font-weight="500">
+  <rect x="98" y="446" width="204" height="54" rx="18" fill="#172233" />
+  <text x="128" y="480" fill="#F7EFE4" font-family="IBM Plex Mono, monospace" font-size="20" font-weight="500">
     knoledgr.com
   </text>
-  <rect x="782" y="154" width="246" height="256" rx="28" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" />
-  <path d="M826 346C872 294 928 274 994 284" stroke="rgba(255,255,255,0.24)" stroke-width="4" stroke-linecap="round" />
-  <path d="M842 214C874 188 912 182 956 194C998 205 1036 230 1066 262" stroke="rgba(99,197,255,0.3)" stroke-width="4" stroke-linecap="round" />
-  <circle cx="842" cy="214" r="14" fill="#2E7BF5" />
-  <circle cx="912" cy="188" r="10" fill="#7FC8FF" />
-  <circle cx="966" cy="290" r="16" fill="#F4FAFF" />
-  <circle cx="1036" cy="230" r="12" fill="#52E7FF" />
-  <circle cx="1066" cy="262" r="10" fill="#7FC8FF" />
-  <circle cx="826" cy="346" r="10" fill="#F4FAFF" />
+  <rect x="748" y="132" width="360" height="370" rx="34" fill="url(#social-panel)" stroke="rgba(246, 236, 219, 0.12)" />
+  <rect x="778" y="168" width="84" height="12" rx="6" fill="rgba(247, 239, 228, 0.66)" />
+  <rect x="878" y="168" width="92" height="12" rx="6" fill="rgba(126, 183, 255, 0.26)" />
+  <rect x="780" y="206" width="126" height="124" rx="20" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" />
+  <rect x="926" y="206" width="154" height="54" rx="18" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" />
+  <rect x="926" y="276" width="154" height="54" rx="18" fill="rgba(126, 183, 255, 0.12)" stroke="rgba(126, 183, 255, 0.16)" />
+  <rect x="780" y="352" width="300" height="118" rx="24" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" />
+  <path d="M818 298C868 252 928 238 1004 252" stroke="rgba(247, 239, 228, 0.28)" stroke-width="4" stroke-linecap="round" />
+  <path d="M832 224C870 194 914 188 962 202C1010 214 1048 242 1070 278" stroke="rgba(126, 183, 255, 0.32)" stroke-width="4" stroke-linecap="round" />
+  <circle cx="832" cy="224" r="14" fill="#7EB7FF" />
+  <circle cx="916" cy="194" r="10" fill="#9ECCFF" />
+  <circle cx="974" cy="300" r="16" fill="#F7EFE4" />
+  <circle cx="1048" cy="242" r="12" fill="#D9A25E" />
+  <circle cx="1070" cy="278" r="10" fill="#9ECCFF" />
+  <circle cx="818" cy="298" r="10" fill="#F7EFE4" />
 </svg>

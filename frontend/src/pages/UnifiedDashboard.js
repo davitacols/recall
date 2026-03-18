@@ -490,10 +490,16 @@ function primaryButton(palette) {
     textDecoration: "none",
     borderRadius: 999,
     padding: "10px 14px",
+    minHeight: 40,
     fontSize: 12,
     fontWeight: 800,
+    lineHeight: 1.2,
     background: palette.ctaGradient,
     color: palette.buttonText,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    whiteSpace: "nowrap",
   };
 }
 
@@ -502,11 +508,17 @@ function secondaryButton(palette) {
     textDecoration: "none",
     borderRadius: 999,
     padding: "10px 14px",
+    minHeight: 40,
     fontSize: 12,
     fontWeight: 800,
+    lineHeight: 1.2,
     border: `1px solid ${palette.border}`,
     background: palette.cardAlt,
     color: palette.text,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    whiteSpace: "nowrap",
   };
 }
 

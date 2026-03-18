@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
+import { useAuth } from "../hooks/useAuth";
 import "./Homepage.css";
 
 const heroWords = ["searchable.", "traceable.", "remembered.", "shared."];
@@ -80,6 +81,8 @@ const signalCards = [
 
 export default function Homepage() {
   const [heroWordIndex, setHeroWordIndex] = useState(0);
+  const { user } = useAuth();
+  const appEntryHref = user ? "/dashboard" : "/login";
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -96,9 +99,9 @@ export default function Homepage() {
 
       <header className="hp-header">
         <div className="hp-container hp-header-row">
-          <Link to="/" className="hp-brand-link" aria-label="Knoledgr homepage">
-            <BrandLogo tone="warm" size="lg" />
-          </Link>
+            <Link to="/" className="hp-brand-link" aria-label="Knoledgr homepage">
+              <BrandLogo tone="warm" size="lg" />
+            </Link>
 
           <div className="hp-header-actions">
             <Link to="/docs" className="hp-btn hp-btn-ghost">
@@ -107,8 +110,8 @@ export default function Homepage() {
             <a href="#preview" className="hp-btn hp-btn-ghost">
               Preview the workspace
             </a>
-            <Link to="/login" className="hp-btn hp-btn-primary">
-              Start free
+            <Link to={appEntryHref} className="hp-btn hp-btn-primary">
+              {user ? "Open app" : "Start free"}
             </Link>
           </div>
         </div>
@@ -147,8 +150,8 @@ export default function Homepage() {
               </p>
 
               <div className="hp-actions">
-                <Link to="/login" className="hp-btn hp-btn-primary hp-btn-lg">
-                  Start your workspace
+                <Link to={appEntryHref} className="hp-btn hp-btn-primary hp-btn-lg">
+                  {user ? "Open the app" : "Start your workspace"}
                 </Link>
                 <a href="#modules" className="hp-btn hp-btn-ghost hp-btn-lg">
                   See the product surface
@@ -274,8 +277,8 @@ export default function Homepage() {
             <p>Ready to stop re-deciding what your team already learned?</p>
             <h2>Start a workspace that remembers.</h2>
             <div className="hp-actions">
-              <Link to="/login" className="hp-btn hp-btn-primary hp-btn-lg">
-                Get started free
+              <Link to={appEntryHref} className="hp-btn hp-btn-primary hp-btn-lg">
+                {user ? "Open the app" : "Get started free"}
               </Link>
               <a href="#preview" className="hp-btn hp-btn-line hp-btn-lg">
                 Preview the experience

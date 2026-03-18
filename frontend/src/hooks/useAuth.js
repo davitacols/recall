@@ -48,7 +48,11 @@ function LoadingScreen() {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => readStoredUser());
+  const [user, setUser] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY));
+    return hasToken ? readStoredUser() : null;
+  });
   const [loading, setLoading] = useState(() => {
     if (typeof window === 'undefined') return true;
     const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY));
@@ -57,14 +61,16 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true;
-    const storedUser = readStoredUser();
     const token = localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+    const storedUser = token ? readStoredUser() : null;
 
     if (storedUser) {
       setUser(storedUser);
     }
 
     if (!token) {
+      localStorage.removeItem(USER_STORAGE_KEY);
+      setUser(null);
       setLoading(false);
       return undefined;
     }

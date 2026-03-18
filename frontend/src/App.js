@@ -110,8 +110,7 @@ function ProtectedRoute({ children, adminOnly = false }) {
 }
 
 function PublicHomeRoute() {
-  const { user } = useAuth();
-  return user ? <Navigate to="/dashboard" replace /> : <Homepage />;
+  return <Homepage />;
 }
 
 function AppLayoutRoute() {

@@ -65,8 +65,9 @@ function LoadingScreen() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     if (typeof window === 'undefined') return null;
+    const isPublicRoute = isPublicBootstrapPath(window.location.pathname);
     const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY));
-    return hasToken ? readStoredUser() : null;
+    return hasToken && !isPublicRoute ? readStoredUser() : null;
   });
   const [loading, setLoading] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -81,7 +82,7 @@ export function AuthProvider({ children }) {
     const storedUser = token ? readStoredUser() : null;
     const isPublicRoute = isPublicBootstrapPath(window.location.pathname);
 
-    if (storedUser) {
+    if (storedUser && !isPublicRoute) {
       setUser(storedUser);
     }
 

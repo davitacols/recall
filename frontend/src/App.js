@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { CommandPalette } from "./components/CommandPalette";
@@ -145,6 +145,22 @@ const PUBLIC_ROUTES = [
   { path: "/invite/:token", element: <AcceptInvite /> },
 ];
 
+const PUBLIC_ROUTE_PATHS = new Set([
+  "/",
+  "/home",
+  "/docs",
+  "/privacy",
+  "/terms",
+  "/security-annex",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+]);
+
+function isPublicPath(pathname) {
+  return PUBLIC_ROUTE_PATHS.has(pathname) || pathname.startsWith("/invite/");
+}
+
 const APP_ROUTES = [
   { index: true, element: <Navigate to="/dashboard" replace /> },
   { path: "/dashboard", element: <UnifiedDashboard /> },
@@ -244,9 +260,11 @@ function renderRoute(route, idx) {
 
 function AppContent() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showSearch, setShowSearch] = useState(false);
   const { user } = useAuth();
+  const isPublicPage = isPublicPath(location.pathname);
 
   const commandRouteMap = useMemo(
     () => ({
@@ -288,18 +306,18 @@ function AppContent() {
   return (
     <>
       <SeoManager />
-      <OnboardingTour />
-      <SmartSearch />
-      <NLPCommandBar />
+      {!isPublicPage ? <OnboardingTour /> : null}
+      {!isPublicPage ? <SmartSearch /> : null}
+      {!isPublicPage ? <NLPCommandBar /> : null}
       {!isOnline ? (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white p-2 text-center z-50">
           You are offline. Some features may be limited.
         </div>
       ) : null}
-      <CommandPalette />
-      <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
-      {user ? <MobileNav onSearchOpen={() => setShowSearch(true)} /> : null}
-      {user ? (
+      {!isPublicPage ? <CommandPalette /> : null}
+      {!isPublicPage ? <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} /> : null}
+      {user && !isPublicPage ? <MobileNav onSearchOpen={() => setShowSearch(true)} /> : null}
+      {user && !isPublicPage ? (
         <CommandBar
           onCommand={(cmd) => {
             const destination = commandRouteMap[cmd];

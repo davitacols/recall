@@ -87,7 +87,7 @@ export default function Homepage() {
   }, []);
 
   return (
-    <div className="hp">
+    <div className="hp" data-theme="light">
       <div className="hp-texture" />
       <div className="hp-glow hp-glow-a" />
       <div className="hp-glow hp-glow-b" />

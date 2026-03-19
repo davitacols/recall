@@ -1,416 +1,618 @@
-﻿import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../utils/ThemeAndAccessibility';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  ArrowPathIcon,
+  ArrowTopRightOnSquareIcon,
+  BuildingOffice2Icon,
+  ChartBarIcon,
+  CheckCircleIcon,
+  CreditCardIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
+const PLAN_ORDER = { free: 0, starter: 1, professional: 2, enterprise: 3 };
+const FEATURES = [
+  ["projects", "Projects and issue tracking"],
+  ["basic_sprints", "Sprint workflows"],
+  ["advanced_analytics", "Advanced analytics"],
+  ["decision_twin", "Decision Twin"],
+  ["decision_debt_ledger", "Decision Debt Ledger"],
+  ["api_access", "API access"],
+  ["priority_support", "Priority support"],
+  ["sso_saml", "SSO / SAML"],
+  ["custom_integrations", "Custom integrations"],
+];
+const PLAN_COPY = {
+  free: "Best for very small teams validating the workflow and keeping the decision trail lightweight.",
+  starter: "Adds room for a growing team that wants more seats and storage without enterprise overhead.",
+  professional: "Unlocks the full decision-grade operating layer: analytics, Decision Twin, debt tracking, and API access.",
+  enterprise: "For governance, procurement, identity rollout, and custom deployment support.",
+};
+const PLAN_HIGHLIGHTS = {
+  free: ["Small team validation", "Basic sprint workflows", "Light storage footprint"],
+  starter: ["Growing team seats", "More storage runway", "Operational basics without procurement"],
+  professional: ["Decision-grade workflows", "Analytics and AI operating layer", "API and priority support"],
+  enterprise: ["Identity and governance", "Custom rollout support", "Enterprise security and procurement"],
+};
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+function formatMoney(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function formatDate(value) {
+  if (!value) return "N/A";
+  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function comparePlans(left, right) {
+  return (PLAN_ORDER[left?.name] || 0) - (PLAN_ORDER[right?.name] || 0);
+}
+
+function isLocalBillingEnvironment() {
+  if (typeof window === "undefined") return false;
+  return process.env.NODE_ENV !== "production" || ["localhost", "127.0.0.1"].includes(window.location.hostname);
+}
+
+function planSupports(plan, featureKey) {
+  return Boolean(plan?.features?.[featureKey]);
+}
+
+function Banner({ palette, tone, text }) {
+  const tones = {
+    success: { bg: "rgba(47,127,95,0.12)", color: palette.success },
+    warn: { bg: "rgba(168,116,57,0.14)", color: palette.warn },
+    danger: { bg: "rgba(200,86,93,0.14)", color: palette.danger },
+    info: { bg: palette.accentSoft, color: palette.accent },
+  };
+  const selected = tones[tone] || tones.info;
+  return (
+    <div style={{ borderRadius: 16, padding: "12px 14px", background: selected.bg, color: selected.color, fontSize: 13, lineHeight: 1.55 }}>
+      {text}
+    </div>
+  );
+}
+
+function UsageMeter({ palette, label, value, helper, progress }) {
+  return (
+    <div style={{ borderRadius: 20, padding: 16, border: `1px solid ${palette.border}`, background: palette.cardAlt, display: "grid", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+        <p style={{ margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+          {label}
+        </p>
+        <p style={{ margin: 0, fontSize: 18, lineHeight: 1, letterSpacing: "-0.03em", color: palette.text, fontWeight: 800 }}>
+          {value}
+        </p>
+      </div>
+      <div style={{ height: 10, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
+        <div style={{ width: `${Math.min(Math.max(Number(progress || 0), 0), 100)}%`, height: "100%", borderRadius: 999, background: palette.ctaGradient }} />
+      </div>
+      <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
+        {helper}
+      </p>
+    </div>
+  );
+}
+
+function UpgradeCue({ palette, icon: Icon, title, body }) {
+  return (
+    <article style={{ borderRadius: 20, padding: 16, border: `1px solid ${palette.border}`, background: palette.cardAlt, display: "grid", gap: 10 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 14, display: "grid", placeItems: "center", background: palette.accentSoft, color: palette.accent }}>
+        <Icon style={{ width: 18, height: 18 }} />
+      </div>
+      <div style={{ display: "grid", gap: 4 }}>
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: palette.text }}>{title}</p>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{body}</p>
+      </div>
+    </article>
+  );
+}
+
+function PlanCard({ palette, ui, plan, currentPlanName, actionState, handlePlanAction }) {
+  const isCurrent = plan.name === currentPlanName;
+  const isBusy = actionState.loading && actionState.plan === plan.name;
+  const currentRank = PLAN_ORDER[currentPlanName] || 0;
+  const isUpgrade = (PLAN_ORDER[plan.name] || 0) > currentRank;
+  const isRecommended = plan.name === "professional";
+
+  return (
+    <article
+      style={{
+        borderRadius: 24,
+        padding: 18,
+        display: "grid",
+        gap: 14,
+        border: `1px solid ${isRecommended ? palette.accent : palette.border}`,
+        background: isRecommended ? palette.card : palette.cardAlt,
+        boxShadow: isRecommended ? "var(--ui-shadow-sm)" : "none",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+            {plan.name}
+          </p>
+          <h3 style={{ margin: 0, fontSize: 28, lineHeight: 0.95, letterSpacing: "-0.05em", color: palette.text, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif' }}>
+            {plan.display_name}
+          </h3>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {isRecommended ? (
+            <span style={{ borderRadius: 999, padding: "6px 10px", background: palette.accentSoft, color: palette.accent, fontSize: 11, fontWeight: 800 }}>
+              Recommended
+            </span>
+          ) : null}
+          {isCurrent ? (
+            <span style={{ borderRadius: 999, padding: "6px 10px", background: "rgba(47,127,95,0.12)", color: palette.success, fontSize: 11, fontWeight: 800 }}>
+              Current
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <span style={{ fontSize: 38, fontWeight: 800, color: palette.text }}>{formatMoney(plan.price_per_user)}</span>
+        <span style={{ fontSize: 13, color: palette.muted }}>/member/mo</span>
+      </div>
+
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>
+        {PLAN_COPY[plan.name] || "Plan details unavailable."}
+      </p>
+
+      <div style={{ display: "grid", gap: 8 }}>
+        {(PLAN_HIGHLIGHTS[plan.name] || []).map((item) => (
+          <div key={item} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: palette.text }}>
+            <CheckCircleIcon style={{ width: 14, height: 14, color: palette.success, flexShrink: 0 }} />
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gap: 6, fontSize: 12, color: palette.muted }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <UserGroupIcon style={{ width: 14, height: 14, color: palette.info }} />
+          <span>{plan.max_users ? `Up to ${plan.max_users} users` : "Unlimited users"}</span>
+        </div>
+        <div>{plan.storage_gb}GB storage</div>
+        <div>{(plan.features_included || []).length} enabled capabilities</div>
+      </div>
+
+      <button
+        className="ui-btn-polish ui-focus-ring"
+        onClick={() => handlePlanAction(plan)}
+        disabled={isCurrent || isBusy}
+        style={{
+          ...(plan.name === "professional" ? ui.primaryButton : ui.secondaryButton),
+          justifyContent: "center",
+          opacity: isCurrent || isBusy ? 0.7 : 1,
+        }}
+      >
+        {isBusy ? (
+          <ArrowPathIcon style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
+        ) : isUpgrade ? (
+          <SparklesIcon style={{ width: 14, height: 14 }} />
+        ) : (
+          <ArrowTopRightOnSquareIcon style={{ width: 14, height: 14 }} />
+        )}
+        {isCurrent
+          ? "Current plan"
+          : plan.name === "enterprise"
+            ? "Talk to sales"
+            : plan.name === "free"
+              ? "Move to Free"
+              : isUpgrade
+                ? `Upgrade to ${plan.display_name}`
+                : `Switch to ${plan.display_name}`}
+      </button>
+    </article>
+  );
+}
 
 export default function Subscription() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [conversion, setConversion] = useState(null);
+  const [stripeStatus, setStripeStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState(null);
+  const [error, setError] = useState("");
+  const [actionState, setActionState] = useState({ loading: false, plan: "", error: "" });
+  const [billingBusy, setBillingBusy] = useState(false);
 
-  const bgPrimary = darkMode ? 'bg-stone-950' : 'bg-gray-50';
-  const bgSecondary = darkMode ? 'bg-stone-900' : 'bg-white';
-  const borderColor = darkMode ? 'border-stone-800' : 'border-gray-200';
-  const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
-  const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      setNotice({ tone: "success", text: "Checkout completed. Billing will refresh shortly." });
+    }
+    if (searchParams.get("canceled") === "true") {
+      setNotice({ tone: "warn", text: "Checkout was canceled. The current plan did not change." });
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('token');
-    try {
-      const [subRes, plansRes, invRes, conversionRes] = await Promise.all([
-        fetch(`${API_BASE}/api/organizations/subscription/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/api/organizations/plans/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/api/organizations/invoices/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/api/organizations/subscription/conversion/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
-      
-      if (subRes.ok) {
-        const subData = await subRes.json();
-        console.log('Subscription data:', subData);
-        setSubscription(subData);
-      }
-      setPlans(await plansRes.json());
-      setInvoices(await invRes.json());
-      if (conversionRes.ok) {
-        setConversion(await conversionRes.json());
-      } else {
-        setConversion(null);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    setError("");
+    const [subRes, planRes, invoiceRes, conversionRes, stripeRes] = await Promise.allSettled([
+      api.get("/api/organizations/subscription/"),
+      api.get("/api/organizations/plans/"),
+      api.get("/api/organizations/invoices/"),
+      api.get("/api/organizations/subscription/conversion/"),
+      api.get("/api/organizations/stripe/status/"),
+    ]);
+
+    if (subRes.status === "fulfilled") setSubscription(subRes.value.data || null);
+    else setError(subRes.reason?.response?.data?.error || "Unable to load subscription.");
+
+    if (planRes.status === "fulfilled") setPlans([...(planRes.value.data || [])].sort(comparePlans));
+    else setPlans([]);
+
+    setInvoices(invoiceRes.status === "fulfilled" ? invoiceRes.value.data || [] : []);
+    setConversion(conversionRes.status === "fulfilled" ? conversionRes.value.data || null : null);
+    setStripeStatus(stripeRes.status === "fulfilled" ? stripeRes.value.data || null : null);
+    setLoading(false);
   };
 
-  const handleUpgrade = async (plan) => {
-    const token = localStorage.getItem('token');
-    try {
-      if (plan.name === 'free') {
-        const downgradeRes = await fetch(`${API_BASE}/api/organizations/subscription/upgrade/`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            plan_id: plan.id
-          })
-        });
-        const downgradeData = await downgradeRes.json();
-        if (!downgradeRes.ok) {
-          alert('Error: ' + (downgradeData.error || 'Failed to switch plan'));
-          return;
-        }
-        await fetchData();
-        return;
-      }
+  const switchPlanDirect = async (plan) => {
+    await api.post("/api/organizations/subscription/upgrade/", { plan_id: plan.id });
+    await fetchData();
+  };
 
-      const res = await fetch(`${API_BASE}/api/organizations/stripe/checkout/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+  const handlePlanAction = async (plan) => {
+    if (!subscription || actionState.loading || plan.name === subscription.plan.name) return;
+    if (plan.name === "enterprise") {
+      navigate("/enterprise");
+      return;
+    }
+
+    const currentRank = PLAN_ORDER[subscription.plan.name] || 0;
+    const nextRank = PLAN_ORDER[plan.name] || 0;
+    const directSwitch = plan.name === "free" || nextRank <= currentRank;
+    setActionState({ loading: true, plan: plan.name, error: "" });
+
+    try {
+      if (directSwitch) {
+        await switchPlanDirect(plan);
+        setNotice({ tone: "success", text: `${plan.display_name} is now active for this workspace.` });
+      } else {
+        const response = await api.post("/api/organizations/stripe/checkout/", {
           plan: plan.name,
           success_url: `${window.location.origin}/subscription?success=true`,
-          cancel_url: `${window.location.origin}/subscription?canceled=true`
-        })
-      });
-      const data = await res.json();
-      console.log('Stripe response:', data);
-      if (data.url) {
-        window.location.href = data.url; // Redirect to Stripe Checkout
-      } else {
-        alert('Error: ' + (data.error || 'Failed to create checkout session'));
+          cancel_url: `${window.location.origin}/subscription?canceled=true`,
+        });
+        if (!response?.data?.url) throw new Error("Billing checkout is unavailable.");
+        window.location.assign(response.data.url);
+        return;
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error creating checkout session');
+    } catch (actionError) {
+      const message = actionError?.response?.data?.error || actionError?.message || "Unable to change the plan right now.";
+      if (!directSwitch && isLocalBillingEnvironment()) {
+        try {
+          await switchPlanDirect(plan);
+          setNotice({
+            tone: "info",
+            text: `${plan.display_name} was applied directly because Stripe checkout is not configured in this environment.`,
+          });
+          setActionState({ loading: false, plan: "", error: "" });
+          return;
+        } catch (fallbackError) {
+          setActionState({
+            loading: false,
+            plan: "",
+            error: fallbackError?.response?.data?.error || message,
+          });
+          return;
+        }
+      }
+      setActionState({ loading: false, plan: "", error: message });
+      return;
+    }
+
+    setActionState({ loading: false, plan: "", error: "" });
+  };
+
+  const handleBillingPortal = async () => {
+    setBillingBusy(true);
+    try {
+      const response = await api.post("/api/organizations/stripe/portal/", {});
+      if (!response?.data?.url) throw new Error("Billing portal is unavailable.");
+      window.location.assign(response.data.url);
+    } catch (portalError) {
+      setNotice({
+        tone: "warn",
+        text: portalError?.response?.data?.error || portalError?.message || "Unable to open billing management.",
+      });
+    } finally {
+      setBillingBusy(false);
     }
   };
 
-  if (loading) return <div className={`min-h-screen ${bgPrimary} p-8`}><div className={textPrimary}>Loading...</div></div>;
-  if (!subscription) return <div className={`min-h-screen ${bgPrimary} p-8`}><div className={textPrimary}>No subscription found</div></div>;
+  if (loading) {
+    return (
+      <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ height: 180, borderRadius: 24, background: palette.card, border: `1px solid ${palette.border}` }} />
+        <div style={{ height: 360, borderRadius: 24, background: palette.card, border: `1px solid ${palette.border}` }} />
+      </div>
+    );
+  }
+
+  if (!subscription) {
+    return (
+      <WorkspaceEmptyState
+        palette={palette}
+        title="Pricing is unavailable"
+        description={error || "The workspace subscription could not be loaded."}
+        action={<button className="ui-btn-polish ui-focus-ring" onClick={fetchData} style={ui.primaryButton}>Retry</button>}
+      />
+    );
+  }
+
+  const currentPlan = subscription.plan;
+  const currentUsers = Number(subscription.user_count || 0);
+  const seatSummary = subscription.seat_summary || {};
+  const seatLimit = seatSummary.seat_limit;
+  const reservedSeats = seatSummary.reserved_seats ?? currentUsers;
+  const pendingInvites = seatSummary.pending_invitations ?? 0;
+  const monthlyRunRate = Number(currentPlan.price_per_user || 0) * currentUsers;
+  const storageUsedGb = Number(subscription.storage_used_mb || 0) / 1024;
+  const storageProgress = Math.min(Number(subscription.storage_percentage || 0), 100);
+  const hasBillingPortal = Boolean(subscription?.billing?.portal_enabled || stripeStatus?.has_subscription);
+  const recommendedPlan = plans.find((plan) => plan.name === conversion?.recommended_plan) || plans.find((plan) => plan.name === "professional");
+  const matrixColumns = `minmax(0,1.5fr) repeat(${Math.max(plans.length, 1)}, minmax(78px, 0.7fr))`;
+  const topNudges = (conversion?.nudges || []).slice(0, 3);
 
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className={`text-4xl font-bold ${textPrimary} mb-3`}>Subscription & Billing</h1>
-          <p className={`text-lg ${textSecondary}`}>Choose the perfect plan for your team</p>
-        </div>
-
-        {conversion && (
-          <div className={`${bgSecondary} border ${borderColor} rounded-2xl p-6 mb-8`}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className={`text-xs uppercase tracking-wider font-semibold ${textSecondary}`}>Launch Readiness</p>
-                <h2 className={`text-xl font-bold ${textPrimary} mt-1`}>
-                  {conversion.phase === 'trial'
-                    ? `Trial in progress: ${conversion.trial?.days_left || 0} day(s) left`
-                    : conversion.phase === 'free_or_starter'
-                      ? 'Free/Starter plan in use'
-                      : 'Paid plan active'}
-                </h2>
-                <p className={`text-sm ${textSecondary} mt-1`}>
-                  Activation milestones: {conversion.activation?.completed_milestones || 0} / {conversion.activation?.total_milestones || 5}
-                </p>
-              </div>
-              <button
-                onClick={() => navigate('/projects')}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
-              >
-                Continue setup
-              </button>
+    <div style={{ display: "grid", gap: 16 }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Pricing & Upgrade"
+        title="Pricing that matches your team's operating depth."
+        description="Move from lightweight workspace validation into a full decision-grade operating layer without losing sight of seats, storage, and the upgrade moments happening inside the product."
+        stats={[
+          { label: "Current Plan", value: currentPlan.display_name, helper: subscription.status === "trial" ? `${subscription.trial_days_left || 0} trial day(s) left` : String(subscription.status || "").toUpperCase(), tone: palette.accent },
+          { label: "Reserved Seats", value: seatLimit ? `${reservedSeats}/${seatLimit}` : reservedSeats, helper: `${currentUsers} active, ${pendingInvites} pending invites`, tone: palette.text },
+          { label: "Run Rate", value: formatMoney(monthlyRunRate), helper: `${formatMoney(currentPlan.price_per_user)} per active member`, tone: palette.success },
+          { label: "Storage", value: `${storageUsedGb.toFixed(1)}GB`, helper: `of ${currentPlan.storage_gb}GB used`, tone: palette.info },
+        ]}
+        aside={
+          <div style={{ borderRadius: 24, padding: 18, border: `1px solid ${palette.border}`, background: palette.card, display: "grid", gap: 12 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: palette.muted }}>
+                Recommended Next Move
+              </p>
+              <h3 style={{ margin: 0, fontSize: 24, lineHeight: 1.02, letterSpacing: "-0.05em", color: palette.text, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif' }}>
+                {recommendedPlan?.display_name || "Review plans"}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+                {recommendedPlan ? PLAN_COPY[recommendedPlan.name] : "Upgrade cues become clearer once the team starts using projects, sprints, and decision workflows."}
+              </p>
             </div>
-            {(conversion.nudges || []).length > 0 && (
-              <ul className={`mt-4 space-y-2 text-sm ${textSecondary}`}>
-                {(conversion.nudges || []).map((nudge, idx) => (
-                  <li key={`${nudge}-${idx}`}>- {nudge}</li>
+            {topNudges.length ? (
+              <div style={{ display: "grid", gap: 8 }}>
+                {topNudges.map((nudge) => (
+                  <div key={nudge} style={{ borderRadius: 16, padding: "10px 12px", border: `1px solid ${palette.border}`, background: palette.cardAlt, fontSize: 12, lineHeight: 1.55, color: palette.text }}>
+                    {nudge}
+                  </div>
                 ))}
-              </ul>
-            )}
+              </div>
+            ) : null}
           </div>
-        )}
+        }
+        actions={
+          <>
+            {hasBillingPortal ? (
+              <button className="ui-btn-polish ui-focus-ring" onClick={handleBillingPortal} disabled={billingBusy} style={ui.primaryButton}>
+                <CreditCardIcon style={{ width: 14, height: 14 }} />
+                {billingBusy ? "Opening..." : "Manage Billing"}
+              </button>
+            ) : null}
+            <Link className="ui-btn-polish ui-focus-ring" to="/enterprise" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
+              <BuildingOffice2Icon style={{ width: 14, height: 14 }} />
+              Enterprise
+            </Link>
+            <button className="ui-btn-polish ui-focus-ring" onClick={fetchData} style={ui.secondaryButton}>
+              <ArrowPathIcon style={{ width: 14, height: 14 }} />
+              Refresh
+            </button>
+          </>
+        }
+      />
 
-        {/* Current Plan - Modern Card */}
-        {subscription && (
-          <div className={`${bgSecondary} border ${borderColor} rounded-2xl p-8 mb-12 shadow-lg`}>
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className={`text-2xl font-bold ${textPrimary}`}>{subscription.plan.display_name}</h2>
-                  <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${
-                    subscription.status === 'active' ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white' :
-                    subscription.status === 'trial' ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white' :
-                    'bg-gradient-to-r from-red-500 to-pink-500 text-white'
-                  }`}>
-                    {subscription.status === 'trial' ? `Trial - ${Math.ceil((new Date(subscription.trial_end) - new Date()) / (1000 * 60 * 60 * 24))} days left` : subscription.status.toUpperCase()}
-                  </span>
-                </div>
-                <p className={`text-xl ${textSecondary}`}>${subscription.plan.price_per_user} per user/month</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className={`p-6 rounded-xl ${darkMode ? 'bg-gradient-to-br from-stone-800 to-stone-900' : 'bg-gradient-to-br from-blue-50 to-indigo-50'} border ${borderColor}`}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${textSecondary}`}>Team Members</p>
-                    <p className={`text-3xl font-bold ${textPrimary}`}>
-                      {subscription.user_count}
-                    </p>
-                  </div>
-                </div>
-                <p className={`text-sm ${textSecondary}`}>of {subscription.plan.max_users || 'unlimited'} members</p>
-              </div>
-
-              <div className={`p-6 rounded-xl ${darkMode ? 'bg-gradient-to-br from-stone-800 to-stone-900' : 'bg-gradient-to-br from-purple-50 to-pink-50'} border ${borderColor}`}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${textSecondary}`}>Storage</p>
-                    <p className={`text-3xl font-bold ${textPrimary}`}>
-                      {(subscription.storage_used_mb / 1024).toFixed(1)}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <p className={`text-sm ${textSecondary}`}>of {subscription.plan.storage_gb} GB</p>
-                  <div className={`w-full h-2 rounded-full overflow-hidden ${darkMode ? 'bg-stone-700' : 'bg-gray-200'}`}>
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        subscription.storage_percentage > 90 ? 'bg-gradient-to-r from-red-500 to-pink-500' : 
-                        subscription.storage_percentage > 70 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' : 
-                        'bg-gradient-to-r from-blue-500 to-cyan-500'
-                      }`}
-                      style={{ width: `${Math.min(subscription.storage_percentage, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className={`p-6 rounded-xl ${darkMode ? 'bg-gradient-to-br from-stone-800 to-stone-900' : 'bg-gradient-to-br from-green-50 to-emerald-50'} border ${borderColor}`}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${textSecondary}`}>Monthly Cost</p>
-                    <p className={`text-3xl font-bold ${textPrimary}`}>
-                      ${(parseFloat(subscription.plan.price_per_user) * subscription.user_count).toFixed(0)}
-                    </p>
-                  </div>
-                </div>
-                <p className={`text-sm ${textSecondary}`}>billed monthly</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Plans - Modern Cards */}
-        <div className="mb-12">
-          <h2 className={`text-2xl font-bold ${textPrimary} mb-8 text-center`}>Choose Your Plan</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {plans.map((plan, idx) => {
-              const isCurrentPlan = subscription?.plan.name === plan.name;
-              const isProfessional = plan.name === 'professional';
-              return (
-                <div key={plan.id} className={`relative ${bgSecondary} rounded-2xl p-8 transition-all duration-300 ${
-                  isProfessional ? 'border-2 border-blue-500 shadow-2xl scale-105 -mt-4' : `border ${borderColor} hover:shadow-xl hover:scale-105`
-                }`}>
-                  {isProfessional && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                      <span className="px-4 py-1.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm font-bold rounded-full shadow-lg">
-                        MOST POPULAR
-                      </span>
-                    </div>
-                  )}
-                  {isCurrentPlan && (
-                    <div className="absolute top-6 right-6">
-                      <span className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full">
-                        CURRENT
-                      </span>
-                    </div>
-                  )}
-                  
-                  <div className="text-center mb-6">
-                    <h3 className={`text-2xl font-bold ${textPrimary} mb-2`}>{plan.display_name}</h3>
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className={`text-5xl font-bold ${textPrimary}`}>${plan.price_per_user}</span>
-                      <span className={`${textSecondary} text-lg`}>/user/mo</span>
-                    </div>
-                  </div>
-
-                  <ul className={`space-y-4 mb-8 ${textSecondary}`}>
-                    <li className="flex items-start gap-3">
-                      <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                      <span>{plan.max_users ? `Up to ${plan.max_users} team members` : 'Unlimited team members'}</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                      <span>{plan.storage_gb}GB cloud storage</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                      <span>{plan.is_free ? 'Core features for small teams' : 'All core features'}</span>
-                    </li>
-                    {plan.features_included?.includes('decision_twin') && (
-                      <>
-                        <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                          <span>Decision Twin scenarios</span>
-                        </li>
-                        <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                          <span>Decision Debt Ledger</span>
-                        </li>
-                      </>
-                    )}
-                    {plan.features_included?.includes('advanced_analytics') && (
-                      <>
-                        <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                          <span>Advanced analytics</span>
-                        </li>
-                      </>
-                    )}
-                    {plan.features_included?.includes('priority_support') && (
-                      <>
-                        <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                          <span>Priority support</span>
-                        </li>
-                      </>
-                    )}
-                    {plan.features_included?.includes('api_access') && (
-                      <>
-                        <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                          <span>API access</span>
-                        </li>
-                      </>
-                    )}
-                    {plan.features_included?.includes('sso_saml') && (
-                      <>
-                        <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                          <span>SSO/SAML</span>
-                        </li>
-                        <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                          <span>Dedicated support</span>
-                        </li>
-                        <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                          <span>Custom integrations</span>
-                        </li>
-                        <li className="flex items-start gap-3">
-                          <span className="text-green-500 text-xl flex-shrink-0">âœ“</span>
-                          <span>Phone support</span>
-                        </li>
-                      </>
-                    )}
-                  </ul>
-
-                  {!isCurrentPlan ? (
-                    <button
-                      onClick={() => handleUpgrade(plan)}
-                      className={`w-full py-3 rounded-xl font-bold text-white transition-all duration-300 ${
-                        isProfessional 
-                          ? 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-lg hover:shadow-xl' 
-                          : 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800'
-                      }`}
-                    >
-                      {plan.is_free ? 'Switch to Free' : `Upgrade to ${plan.display_name}`}
-                    </button>
-                  ) : (
-                    <div className={`w-full py-3 rounded-xl font-bold text-center border-2 ${borderColor} ${textSecondary}`}>
-                      Current Plan
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+      <WorkspaceToolbar palette={palette}>
+        <div style={{ display: "grid", gap: 10 }}>
+          {notice ? <Banner palette={palette} tone={notice.tone} text={notice.text} /> : null}
+          {actionState.error ? <Banner palette={palette} tone="danger" text={actionState.error} /> : null}
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>
+              Upgrade nudges now come from actual usage: members, invites, storage, sprint workflows, and decision tooling.
+            </p>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/projects")} style={ui.secondaryButton}>
+              <SparklesIcon style={{ width: 14, height: 14 }} />
+              Continue Setup
+            </button>
           </div>
         </div>
+      </WorkspaceToolbar>
 
-        {/* Billing History */}
-        {invoices.length > 0 && (
-          <div>
-            <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Billing History</h2>
-            <div className={`${bgSecondary} border ${borderColor} rounded-2xl overflow-hidden shadow-lg`}>
-              <table className="w-full">
-                <thead className={`${darkMode ? 'bg-stone-800' : 'bg-gray-50'}`}>
-                  <tr>
-                    <th className={`text-left p-4 ${textSecondary} text-sm font-semibold`}>Date</th>
-                    <th className={`text-left p-4 ${textSecondary} text-sm font-semibold`}>Amount</th>
-                    <th className={`text-left p-4 ${textSecondary} text-sm font-semibold`}>Status</th>
-                    <th className={`text-left p-4 ${textSecondary} text-sm font-semibold`}>Invoice</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map(inv => (
-                    <tr key={inv.id} className={`border-t ${borderColor} hover:${darkMode ? 'bg-stone-800' : 'bg-gray-50'} transition-colors`}>
-                      <td className={`p-4 ${textPrimary}`}>{new Date(inv.period_start).toLocaleDateString()}</td>
-                      <td className={`p-4 ${textPrimary} font-semibold`}>${inv.amount}</td>
-                      <td className={`p-4`}>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          inv.status === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                        }`}>
-                          {inv.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className={`p-4`}>
-                        {inv.invoice_pdf && (
-                          <a href={inv.invoice_pdf} className="text-blue-500 hover:text-blue-600 font-medium text-sm">
-                            Download
-                          </a>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(320px,0.8fr)", gap: 14 }}>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Usage Runway"
+          title="Watch seat and storage pressure before it becomes friction"
+          description="The strongest upgrade cues are the ones teams can feel in their day-to-day workflow. Show them clearly."
+        >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+            <UsageMeter
+              palette={palette}
+              label="Seat usage"
+              value={seatLimit ? `${reservedSeats}/${seatLimit}` : `${reservedSeats}`}
+              helper={seatLimit ? `${currentUsers} active members and ${pendingInvites} pending invitations reserving seats.` : "Unlimited seats on the current plan."}
+              progress={seatLimit ? Number(seatSummary.occupancy_percentage || 0) : 100}
+            />
+            <UsageMeter
+              palette={palette}
+              label="Storage usage"
+              value={`${storageUsedGb.toFixed(1)}GB`}
+              helper={`Current plan includes ${currentPlan.storage_gb}GB of workspace storage.`}
+              progress={storageProgress}
+            />
           </div>
-        )}
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Upgrade Moments"
+          title="What usually triggers a plan change"
+          description="These signals map the billing story to real product behavior instead of generic pricing copy."
+        >
+          <div style={{ display: "grid", gap: 10 }}>
+            <UpgradeCue
+              palette={palette}
+              icon={UserGroupIcon}
+              title="Team expansion"
+              body={seatLimit ? `Reserved seats are at ${reservedSeats}/${seatLimit}. Pending invites now count toward capacity.` : "Unlimited seats keep invite pressure low on this plan."}
+            />
+            <UpgradeCue
+              palette={palette}
+              icon={ChartBarIcon}
+              title="Decision-grade operations"
+              body="Professional becomes the natural step once analytics, Decision Twin, and decision debt signals matter to delivery."
+            />
+            <UpgradeCue
+              palette={palette}
+              icon={ShieldCheckIcon}
+              title="Governance and rollout"
+              body="Enterprise is the path when security review, SSO, procurement, or custom deployment expectations appear."
+            />
+          </div>
+        </WorkspacePanel>
+      </div>
+
+      <WorkspacePanel
+        palette={palette}
+        eyebrow="Plan Lineup"
+        title="Choose the billing posture that matches the workspace"
+        description="Self-serve plans handle direct switching and checkout. Enterprise routes into a dedicated rollout surface."
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 12 }}>
+          {plans.map((plan) => (
+            <PlanCard
+              key={plan.id}
+              palette={palette}
+              ui={ui}
+              plan={plan}
+              currentPlanName={currentPlan.name}
+              actionState={actionState}
+              handlePlanAction={handlePlanAction}
+            />
+          ))}
+        </div>
+      </WorkspacePanel>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(320px,0.85fr)", gap: 14 }}>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Capability Matrix"
+          title="Where the plans actually diverge"
+          description="Use a tighter view of the capabilities that genuinely influence an upgrade decision."
+        >
+          <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: matrixColumns, gap: 8, alignItems: "center", padding: "0 10px", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>
+              <span>Capability</span>
+              {plans.map((plan) => (
+                <span key={`label-${plan.id}`} style={{ textAlign: "center" }}>
+                  {plan.display_name}
+                </span>
+              ))}
+            </div>
+            {FEATURES.map(([key, label]) => (
+              <div key={key} style={{ display: "grid", gridTemplateColumns: matrixColumns, gap: 8, alignItems: "center", borderRadius: 16, padding: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                <span style={{ fontSize: 12, lineHeight: 1.5, color: palette.text }}>{label}</span>
+                {plans.map((plan) => (
+                  <span key={`${key}-${plan.id}`} style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: planSupports(plan, key) ? palette.success : palette.muted }}>
+                    {planSupports(plan, key) ? "Included" : "-"}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Billing History"
+          title="Recent invoices"
+          description="Keep billing review close to the pricing decisions instead of buried in a separate admin trail."
+        >
+          {invoices.length === 0 ? (
+            <WorkspaceEmptyState
+              palette={palette}
+              title="No invoices yet"
+              description="Invoices appear once the workspace moves onto a paid billing cycle."
+            />
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {invoices.map((invoice) => (
+                <article
+                  key={invoice.id}
+                  style={{
+                    borderRadius: 18,
+                    padding: 14,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.cardAlt,
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ display: "grid", gap: 4 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>
+                        {formatDate(invoice.period_start)} to {formatDate(invoice.period_end)}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                        Due {formatDate(invoice.due_date)}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: palette.text }}>{formatMoney(invoice.amount)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: invoice.status === "paid" ? palette.success : palette.warn }}>
+                      {String(invoice.status || "open").toUpperCase()}
+                    </span>
+                    {invoice.invoice_pdf ? (
+                      <a href={invoice.invoice_pdf} target="_blank" rel="noreferrer" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
+                        <ArrowTopRightOnSquareIcon style={{ width: 14, height: 14 }} />
+                        Open PDF
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: 12, color: palette.muted }}>No PDF yet</span>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </WorkspacePanel>
       </div>
     </div>
   );
 }
-
-
-

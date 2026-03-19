@@ -1,72 +1,118 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
-import { useToast } from '../components/Toast';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowPathIcon,
+  ClipboardDocumentIcon,
+  EnvelopeIcon,
+  LinkIcon,
+  UserPlusIcon,
+} from "@heroicons/react/24/outline";
+import UpgradeNotice from "../components/UpgradeNotice";
+import { useToast } from "../components/Toast";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import api from "../services/api";
+import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
-function StaffInvitations() {
+const ROLE_OPTIONS = [
+  { value: "contributor", label: "Contributor" },
+  { value: "manager", label: "Manager" },
+  { value: "admin", label: "Admin" },
+];
+
+export default function StaffInvitations() {
   const { addToast } = useToast();
+  const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+
   const [invitations, setInvitations] = useState([]);
+  const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('contributor');
-  const [generatedLink, setGeneratedLink] = useState('');
-  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("contributor");
+  const [generatedLink, setGeneratedLink] = useState("");
   const [resendingId, setResendingId] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [limitNotice, setLimitNotice] = useState(null);
 
   useEffect(() => {
-    loadInvitations();
+    loadData();
   }, []);
 
-  const loadInvitations = async () => {
+  const loadData = async () => {
+    setLoading(true);
+    const [invitesRes, subscriptionRes] = await Promise.allSettled([
+      api.get("/api/organizations/invitations/"),
+      api.get("/api/organizations/subscription/"),
+    ]);
+
+    if (invitesRes.status === "fulfilled") {
+      setInvitations(Array.isArray(invitesRes.value.data) ? invitesRes.value.data : []);
+    } else {
+      addToast("Failed to load invitations", "error");
+      setInvitations([]);
+    }
+
+    if (subscriptionRes.status === "fulfilled") {
+      setSubscription(subscriptionRes.value.data || null);
+      setLimitNotice(null);
+    } else {
+      setSubscription(null);
+    }
+    setLoading(false);
+  };
+
+  const copyText = async (value, successMessage = "Copied to clipboard") => {
     try {
-      setLoading(true);
-      const response = await api.get('/api/organizations/invitations/');
-      setInvitations(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      console.error('Failed to load invitations:', err);
-      addToast('Failed to load invitations', 'error');
-    } finally {
-      setLoading(false);
+      await navigator.clipboard.writeText(value);
+      addToast(successMessage, "success");
+    } catch {
+      addToast("Copy failed", "error");
     }
   };
 
   const generateInviteLink = async () => {
     if (!inviteEmail.trim()) {
-      addToast('Email is required', 'error');
+      addToast("Email is required", "error");
       return;
     }
 
+    setSending(true);
     try {
-      const response = await api.post('/api/organizations/invitations/send/', {
-        email: inviteEmail,
-        role: inviteRole
+      const response = await api.post("/api/organizations/invitations/send/", {
+        email: inviteEmail.trim(),
+        role: inviteRole,
       });
 
-      console.log('Invite response:', response.data);
-      setGeneratedLink(response.data.invite_link);
-      setShowLinkModal(true);
-      setInviteEmail('');
-      setInviteRole('contributor');
-      loadInvitations();
-      addToast('Invitation sent successfully', 'success');
-    } catch (err) {
-      addToast(err.response?.data?.error || 'Failed to send invitation', 'error');
+      setGeneratedLink(response.data?.invite_link || "");
+      setInviteEmail("");
+      setInviteRole("contributor");
+      setLimitNotice(null);
+      await loadData();
+      addToast("Invitation sent successfully", "success");
+    } catch (error) {
+      const payload = error?.response?.data || null;
+      if (error?.response?.status === 402 && payload) {
+        setLimitNotice(payload);
+        addToast(payload.error || "Seat limit reached", "warning");
+      } else {
+        addToast(payload?.error || "Failed to send invitation", "error");
+      }
+    } finally {
+      setSending(false);
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedLink);
-    addToast('Link copied to clipboard!', 'success');
-  };
-
   const revokeInvitation = async (invitationId) => {
-    if (!window.confirm('Are you sure you want to revoke this invitation?')) return;
+    if (!window.confirm("Are you sure you want to revoke this invitation?")) return;
 
     try {
       await api.delete(`/api/organizations/invitations/${invitationId}/revoke/`);
-      addToast('Invitation revoked', 'success');
-      loadInvitations();
-    } catch (err) {
-      addToast('Failed to revoke invitation', 'error');
+      addToast("Invitation revoked", "success");
+      await loadData();
+    } catch {
+      addToast("Failed to revoke invitation", "error");
     }
   };
 
@@ -74,198 +120,232 @@ function StaffInvitations() {
     try {
       setResendingId(invitationId);
       await api.post(`/api/organizations/invitations/${invitationId}/resend/`);
-      addToast('Invitation resent', 'success');
-      loadInvitations();
-    } catch (err) {
-      addToast(err.response?.data?.error || 'Failed to resend invitation', 'error');
+      addToast("Invitation resent", "success");
+      await loadData();
+    } catch (error) {
+      addToast(error?.response?.data?.error || "Failed to resend invitation", "error");
     } finally {
       setResendingId(null);
     }
   };
 
-  const getRoleColor = (role) => {
-    const colors = {
-      admin: 'bg-red-600',
-      manager: 'bg-blue-600',
-      contributor: 'bg-green-600'
-    };
-    return colors[role] || 'bg-gray-600';
-  };
-
-  const getStatusColor = (isValid) => {
-    return isValid ? 'text-green-600' : 'text-red-600';
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+      <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ height: 180, borderRadius: 24, background: palette.card, border: `1px solid ${palette.border}` }} />
+        <div style={{ height: 340, borderRadius: 24, background: palette.card, border: `1px solid ${palette.border}` }} />
       </div>
     );
   }
 
+  const seatSummary = subscription?.seat_summary || null;
+  const currentPlan = subscription?.plan?.display_name || subscription?.plan?.name || "Workspace";
+  const remainingSeatsLabel = seatSummary?.seat_limit ? String(seatSummary.remaining_seats) : "Unlimited";
+  const nearSeatLimit = Boolean(seatSummary?.seat_limit && seatSummary.remaining_seats <= 1);
+  const activeNotice = limitNotice || (nearSeatLimit
+    ? {
+        current_plan: subscription?.plan?.name || currentPlan,
+        required_plan: seatSummary?.seat_limit === 3 ? "starter" : "professional",
+        error: "Your workspace is close to its seat limit. Upgrade before inviting the next teammate.",
+      }
+    : null);
+
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 md:mb-8 uppercase tracking-wide">Staff Invitations</h1>
+    <div style={{ display: "grid", gap: 16 }}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Invitations & Seats"
+        title="Invite teammates with seat pressure visible."
+        description="Bring people into the workspace, keep pending invites organized, and know exactly when the current plan is about to run out of room."
+        actions={
+          <>
+            <button className="ui-btn-polish ui-focus-ring" onClick={generateInviteLink} disabled={sending} style={ui.primaryButton}>
+              <UserPlusIcon style={{ width: 14, height: 14 }} />
+              {sending ? "Sending..." : "Send invite"}
+            </button>
+            <Link className="ui-btn-polish ui-focus-ring" to="/subscription" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
+              <LinkIcon style={{ width: 14, height: 14 }} />
+              Pricing & Upgrade
+            </Link>
+          </>
+        }
+        stats={[
+          { label: "Current Plan", value: currentPlan, helper: "Seat capacity now follows the billing plan.", tone: palette.text },
+          { label: "Active Members", value: seatSummary?.active_users ?? 0, helper: seatSummary?.seat_limit ? `${seatSummary.seat_limit} total seats` : "Unlimited seats", tone: palette.accent },
+          { label: "Pending Invites", value: invitations.length, helper: "Pending invites reserve room in the workspace.", tone: palette.warn },
+          { label: "Seats Left", value: remainingSeatsLabel, helper: seatSummary?.seat_limit ? "Before the next upgrade prompt" : "No seat cap", tone: palette.success },
+        ]}
+        aside={activeNotice ? (
+          <UpgradeNotice
+            palette={palette}
+            title="Seat pressure is part of the invite flow now."
+            description={activeNotice.error}
+            currentPlan={activeNotice.current_plan}
+            requiredPlan={activeNotice.required_plan}
+            ctaTo="/subscription"
+            ctaLabel="Open pricing"
+          />
+        ) : null}
+      />
 
-      {/* Generate Invitation */}
-      <div className="bg-white border-2 border-gray-900 p-4 md:p-8 mb-6 md:mb-8">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 uppercase tracking-wide">Generate Invitation Link</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 md:mb-6">
-          <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">Email Address</label>
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="colleague@company.com"
-              className="w-full p-3 border-2 border-gray-300 focus:outline-none focus:border-gray-900"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">Role</label>
-            <select
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
-              className="w-full p-3 border-2 border-gray-300 focus:outline-none focus:border-gray-900"
-            >
-              <option value="contributor">Contributor</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-        </div>
-
-        <button
-          onClick={generateInviteLink}
-          className="w-full md:w-auto px-6 md:px-8 py-3 md:py-4 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs md:text-sm tracking-wide"
-        >
-          Generate Link
-        </button>
-
-        <div className="mt-6 p-4 bg-gray-50 border border-gray-200">
-          <h3 className="text-sm font-bold text-gray-900 mb-2 uppercase">How it works:</h3>
-          <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-            <li>Enter the staff member's email address</li>
-            <li>Select their role (Contributor, Manager, or Admin)</li>
-            <li>Click "Generate Invitation Link"</li>
-            <li>Copy and share the link with them</li>
-            <li>They'll use the link to create their account</li>
-          </ol>
-        </div>
-      </div>
-
-      {/* Pending Invitations */}
-      <div className="bg-white border-2 border-gray-900 p-4 md:p-8">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 uppercase tracking-wide">
-          Pending Invitations ({invitations.length})
-        </h2>
-
-        {invitations.length === 0 ? (
-          <p className="text-gray-600">No pending invitations</p>
-        ) : (
-          <div className="space-y-4">
-            {invitations.map((invitation) => (
-              <div key={invitation.id} className="p-4 bg-gray-50 border border-gray-200">
-                <div className="mb-3">
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className="font-bold text-gray-900">{invitation.email}</span>
-                    <span className={`px-3 py-1 ${getRoleColor(invitation.role)} text-white text-xs font-bold uppercase`}>
-                      {invitation.role}
-                    </span>
-                    <span className={`text-xs font-bold uppercase ${getStatusColor(invitation.is_valid)}`}>
-                      {invitation.is_valid ? 'Active' : 'Expired'}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    Invited by {invitation.invited_by} on {new Date(invitation.created_at).toLocaleDateString()}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Expires: {new Date(invitation.expires_at).toLocaleDateString()}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-3 border-t border-gray-200">
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(invitation.invite_link);
-                      addToast('Link copied!', 'success');
-                    }}
-                    className="px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-xs"
-                  >
-                    Copy Link
-                  </button>
-                  <button
-                    onClick={() => resendInvitation(invitation.id)}
-                    disabled={resendingId === invitation.id}
-                    className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-bold uppercase text-xs disabled:opacity-60"
-                  >
-                    {resendingId === invitation.id ? 'Resending...' : 'Resend'}
-                  </button>
-                  <button
-                    onClick={() => revokeInvitation(invitation.id)}
-                    className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-bold uppercase text-xs"
-                  >
-                    Revoke
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Link Modal */}
-      {showLinkModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-2 border-gray-900 w-full max-w-2xl p-8 rounded-lg shadow-2xl">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase tracking-wide">
-              Invitation Link Generated
-            </h2>
-
-            <div className="mb-6">
-              <label className="block text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">
-                Share this link:
-              </label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={generatedLink}
-                  readOnly
-                  className="flex-1 p-3 border-2 border-gray-300 bg-gray-50 font-mono text-sm"
-                />
-                <button
-                  onClick={copyToClipboard}
-                  className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 font-bold uppercase text-sm whitespace-nowrap"
-                >
-                  Copy
+      <WorkspaceToolbar palette={palette}>
+        <div style={{ display: "grid", gap: 10 }}>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>
+            Pending invitations reserve seats so admins do not accidentally overbook the workspace and discover the limit later during onboarding.
+          </p>
+          {generatedLink ? (
+            <div style={{ borderRadius: 18, padding: 14, border: `1px solid ${palette.border}`, background: palette.cardAlt, display: "grid", gap: 10 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+                Latest Invite Link
+              </p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <code style={{ flex: "1 1 420px", margin: 0, padding: "10px 12px", borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text, fontSize: 12, wordBreak: "break-all" }}>
+                  {generatedLink}
+                </code>
+                <button className="ui-btn-polish ui-focus-ring" onClick={() => copyText(generatedLink, "Invitation link copied")} style={ui.secondaryButton}>
+                  <ClipboardDocumentIcon style={{ width: 14, height: 14 }} />
+                  Copy link
                 </button>
               </div>
             </div>
+          ) : null}
+        </div>
+      </WorkspaceToolbar>
 
-            <div className="p-4 bg-yellow-50 border-2 border-yellow-600 mb-6">
-              <p className="text-sm text-yellow-900 font-bold mb-2">⚠️ Important:</p>
-              <ul className="text-sm text-yellow-900 space-y-1 list-disc list-inside">
-                <li>This link expires in 7 days</li>
-                <li>It can only be used once</li>
-                <li>Share it securely with the intended recipient</li>
-                <li>They'll need to create a password when accepting</li>
-              </ul>
-            </div>
-
-            <button
-              onClick={() => setShowLinkModal(false)}
-              className="w-full px-6 py-3 border-2 border-gray-900 text-gray-900 hover:bg-gray-100 font-bold uppercase text-sm"
-            >
-              Close
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.25fr) minmax(320px,0.9fr)", gap: 14 }}>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Create Invite"
+          title="Generate a new invitation"
+          description="Send a direct invite link and reserve room for that teammate at the same time."
+        >
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.4fr) minmax(180px,0.6fr) auto", gap: 10, alignItems: "end" }}>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, color: palette.muted }}>
+              Email address
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                placeholder="teammate@company.com"
+                style={ui.input}
+              />
+            </label>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, color: palette.muted }}>
+              Role
+              <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value)} style={ui.input}>
+                {ROLE_OPTIONS.map((role) => (
+                  <option key={role.value} value={role.value}>
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="ui-btn-polish ui-focus-ring" onClick={generateInviteLink} disabled={sending} style={{ ...ui.primaryButton, justifyContent: "center" }}>
+              <EnvelopeIcon style={{ width: 14, height: 14 }} />
+              {sending ? "Sending..." : "Invite"}
             </button>
           </div>
-        </div>
-      )}
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Seat Posture"
+          title="Capacity overview"
+          description="Use seat capacity like an operating signal, not an afterthought."
+        >
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ borderRadius: 18, padding: 14, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+                Reserved seats
+              </p>
+              <p style={{ margin: "6px 0 4px", fontSize: 28, lineHeight: 1, letterSpacing: "-0.05em", color: palette.text, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif' }}>
+                {seatSummary?.reserved_seats ?? invitations.length}
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                Active members plus pending invitations currently holding room.
+              </p>
+            </div>
+            <div style={{ borderRadius: 18, padding: 14, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, color: palette.muted }}>
+                <span>Seat usage</span>
+                <span>
+                  {seatSummary?.seat_limit ? `${seatSummary.reserved_seats}/${seatSummary.seat_limit}` : "Unlimited"}
+                </span>
+              </div>
+              <div style={{ marginTop: 10, height: 10, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
+                <div
+                  style={{
+                    width: `${Math.min(Number(seatSummary?.occupancy_percentage || 0), 100)}%`,
+                    height: "100%",
+                    borderRadius: 999,
+                    background: palette.ctaGradient,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </WorkspacePanel>
+      </div>
+
+      <WorkspacePanel
+        palette={palette}
+        eyebrow="Pending Queue"
+        title={`Outstanding invitations (${invitations.length})`}
+        description="Copy, resend, or revoke invite links without losing sight of the seat capacity they are consuming."
+      >
+        {invitations.length === 0 ? (
+          <WorkspaceEmptyState
+            palette={palette}
+            title="No pending invitations"
+            description="Once an invite is sent, it will appear here until accepted or revoked."
+          />
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {invitations.map((invitation) => (
+              <article
+                key={invitation.id}
+                style={{
+                  borderRadius: 20,
+                  padding: 16,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.cardAlt,
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{invitation.email}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                      {String(invitation.role || "contributor").toUpperCase()} · Invited by {invitation.invited_by || "Admin"}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                      Expires {new Date(invitation.expires_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span style={{ borderRadius: 999, padding: "7px 10px", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: invitation.is_valid ? palette.success : palette.warn, background: palette.card, border: `1px solid ${palette.border}` }}>
+                    {invitation.is_valid ? "Active" : "Expired"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button className="ui-btn-polish ui-focus-ring" onClick={() => copyText(invitation.invite_link, "Invitation link copied")} style={ui.secondaryButton}>
+                    <ClipboardDocumentIcon style={{ width: 14, height: 14 }} />
+                    Copy link
+                  </button>
+                  <button className="ui-btn-polish ui-focus-ring" onClick={() => resendInvitation(invitation.id)} disabled={resendingId === invitation.id} style={ui.secondaryButton}>
+                    <ArrowPathIcon style={{ width: 14, height: 14 }} />
+                    {resendingId === invitation.id ? "Resending..." : "Resend"}
+                  </button>
+                  <button className="ui-btn-polish ui-focus-ring" onClick={() => revokeInvitation(invitation.id)} style={{ ...ui.secondaryButton, color: palette.danger }}>
+                    Revoke
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </WorkspacePanel>
     </div>
   );
 }
-
-export default StaffInvitations;

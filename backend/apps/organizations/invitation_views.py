@@ -7,7 +7,12 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 import logging
 from .models import Invitation, Organization, User
-from .subscription_entitlements import ensure_default_plans, get_or_create_subscription
+from .subscription_entitlements import (
+    build_seat_limit_payload,
+    ensure_default_plans,
+    get_or_create_subscription,
+    get_subscription_seat_summary,
+)
 from apps.users.auth_utils import (
     check_rate_limit,
     validate_email,
@@ -80,6 +85,21 @@ def invite_user(request):
             {'error': 'User already exists in this organization'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    subscription = get_or_create_subscription(request.user.organization)
+    seat_summary = get_subscription_seat_summary(
+        subscription,
+        pending_invite_email_to_ignore=email,
+    )
+    if not seat_summary['can_add_user']:
+        return Response(
+            build_seat_limit_payload(
+                subscription,
+                seat_summary=seat_summary,
+                requested_seats=seat_summary['reserved_seats'] + 1,
+            ),
+            status=status.HTTP_402_PAYMENT_REQUIRED,
+        )
     
     # Create or update invitation
     invitation, created = Invitation.objects.update_or_create(
@@ -112,7 +132,8 @@ def invite_user(request):
         'invite_link': invite_link,
         'email_sent': email_sent,
         'email': invitation.email,
-        'role': _normalize_invite_role(invitation.role)
+        'role': _normalize_invite_role(invitation.role),
+        'seat_summary': seat_summary,
     }, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
@@ -173,6 +194,22 @@ def accept_invitation(request, token):
         ).first()
         if existing_user and existing_user.is_active:
             return Response({'error': 'User already exists in this organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+        subscription = get_or_create_subscription(invitation.organization)
+        active_user_count = invitation.organization.users.filter(is_active=True).count()
+        if subscription.plan.max_users is not None and active_user_count >= subscription.plan.max_users:
+            seat_summary = get_subscription_seat_summary(
+                subscription,
+                pending_invite_email_to_ignore=invitation.email,
+            )
+            return Response(
+                build_seat_limit_payload(
+                    subscription,
+                    seat_summary=seat_summary,
+                    requested_seats=active_user_count + 1,
+                ),
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
 
         if existing_user:
             # Re-activate existing inactive account instead of failing invitation acceptance.

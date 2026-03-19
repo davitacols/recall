@@ -2,15 +2,26 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from django.conf import settings
 from django.utils import timezone
 from .subscription_models import Plan, Subscription, Invoice, UsageLog
 from .subscription_entitlements import (
     FEATURE_MIN_PLAN,
     PLAN_ORDER,
+    build_seat_limit_payload,
     ensure_default_plans,
     get_or_create_subscription,
+    get_subscription_seat_summary,
     subscription_supports_feature,
 )
+
+
+def _checkout_support_by_plan():
+    return {
+        'starter': bool(getattr(settings, 'STRIPE_STARTER_PRICE_ID', '')),
+        'professional': bool(getattr(settings, 'STRIPE_PROFESSIONAL_PRICE_ID', '')),
+        'enterprise': bool(getattr(settings, 'STRIPE_ENTERPRISE_PRICE_ID', '')),
+    }
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -18,6 +29,7 @@ def plans_list(request):
     ensure_default_plans()
     plans = list(Plan.objects.filter(is_active=True))
     plans.sort(key=lambda plan: PLAN_ORDER.get(plan.name, 999))
+    checkout_support = _checkout_support_by_plan()
     data = [{
         'id': p.id,
         'name': p.name,
@@ -28,6 +40,7 @@ def plans_list(request):
         'features': p.features,
         'features_included': [k for k, enabled in (p.features or {}).items() if enabled],
         'is_free': p.name == 'free',
+        'checkout_supported': checkout_support.get(p.name, False),
     } for p in plans]
     return Response(data)
 
@@ -37,7 +50,8 @@ def subscription_detail(request):
     try:
         ensure_default_plans()
         sub = get_or_create_subscription(request.user.organization)
-        sub.user_count = request.user.organization.users.filter(is_active=True).count()
+        seat_summary = get_subscription_seat_summary(sub)
+        sub.user_count = seat_summary['active_users']
         sub.save(update_fields=['user_count', 'updated_at'])
         return Response({
             'id': sub.id,
@@ -58,8 +72,15 @@ def subscription_detail(request):
             'is_trial': sub.is_trial,
             'trial_end': sub.trial_end,
             'current_period_end': sub.current_period_end,
-            'can_add_user': sub.can_add_user,
-            'can_upload': sub.can_upload
+            'can_add_user': seat_summary['can_add_user'],
+            'can_upload': sub.can_upload,
+            'seat_summary': seat_summary,
+            'billing': {
+                'provider': 'stripe',
+                'checkout_supported': _checkout_support_by_plan(),
+                'portal_enabled': bool(sub.stripe_customer_id),
+                'has_payment_profile': bool(sub.stripe_customer_id),
+            },
         })
     except Subscription.DoesNotExist:
         return Response({'error': 'No subscription found'}, status=status.HTTP_404_NOT_FOUND)
@@ -150,10 +171,15 @@ def check_limits(request):
         sub = get_or_create_subscription(request.user.organization)
         
         if action == 'add_user':
-            if not sub.can_add_user:
+            seat_summary = get_subscription_seat_summary(sub)
+            if not seat_summary['can_add_user']:
+                payload = build_seat_limit_payload(sub, seat_summary=seat_summary)
                 return Response({
                     'allowed': False,
-                    'message': f'User limit reached ({sub.plan.max_users} users). Upgrade to add more.'
+                    'message': payload['error'],
+                    'current_plan': payload['current_plan'],
+                    'required_plan': payload['required_plan'],
+                    'seat_summary': payload['seat_summary'],
                 })
         
         elif action == 'upload_file':

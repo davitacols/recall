@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import UpgradeNotice from "../components/UpgradeNotice";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import api from "../services/api";
 import { getProjectPalette } from "../utils/projectUi";
@@ -534,12 +535,15 @@ function SprintDetail() {
             </p>
           )}
           {decisionTwinUpgrade && (
-            <p style={{ margin: 0, fontSize: 12, color: "var(--ui-warn)" }}>
-              Current plan: {decisionTwinUpgrade.current_plan}. Required: {decisionTwinUpgrade.required_plan}.{" "}
-              <Link to="/subscription" style={{ color: "var(--ui-warn)", fontWeight: 700 }}>
-                Upgrade plan
-              </Link>
-            </p>
+            <UpgradeNotice
+              palette={palette}
+              title="Decision Twin is plan-gated."
+              description="Move this sprint onto a higher plan to unlock guarded scenario selection, counterfactual comparisons, and auto-apply support."
+              currentPlan={decisionTwinUpgrade.current_plan}
+              requiredPlan={decisionTwinUpgrade.required_plan}
+              ctaTo="/subscription"
+              ctaLabel="Open pricing"
+            />
           )}
 
           {decisionTwinMessage && (

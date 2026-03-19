@@ -12,6 +12,9 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_checkout_session(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
+
     plan_name = request.data.get('plan')
     plan_id = request.data.get('plan_id')
     if not plan_name and plan_id:
@@ -57,6 +60,9 @@ def create_checkout_session(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_portal_session(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
+
     try:
         subscription = get_or_create_subscription(request.user.organization)
         if not subscription.stripe_customer_id:

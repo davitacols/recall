@@ -11,6 +11,11 @@ from django.utils import timezone
 from datetime import timedelta
 import logging
 from .models import Organization, User
+from .subscription_entitlements import (
+    build_seat_limit_payload,
+    get_or_create_subscription,
+    get_subscription_seat_summary,
+)
 from apps.conversations.models import UserPreferences, Badge
 from apps.notifications.models import Notification
 from apps.users.auth_utils import check_rate_limit
@@ -466,6 +471,21 @@ def invite_member(request):
             {'error': 'User already exists in this organization'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    subscription = get_or_create_subscription(request.user.organization)
+    seat_summary = get_subscription_seat_summary(
+        subscription,
+        pending_invite_email_to_ignore=email,
+    )
+    if not seat_summary['can_add_user']:
+        return Response(
+            build_seat_limit_payload(
+                subscription,
+                seat_summary=seat_summary,
+                requested_seats=seat_summary['reserved_seats'] + 1,
+            ),
+            status=status.HTTP_402_PAYMENT_REQUIRED,
+        )
     
     from apps.organizations.models import Invitation
     
@@ -505,6 +525,7 @@ def invite_member(request):
         'email': email,
         'invite_link': invite_link,
         'email_sent': email_sent,
+        'seat_summary': seat_summary,
     }, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])

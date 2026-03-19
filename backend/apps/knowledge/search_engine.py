@@ -1,154 +1,268 @@
+from datetime import datetime
+
 from django.db.models import Q
-from django.utils import timezone
-from datetime import datetime, timedelta
+
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
+
 try:
-    from apps.business.models import Task, Meeting
+    from apps.business.models import Goal, Meeting, Task
     from apps.business.document_models import Document
-except Exception:
-    Task = None
+except Exception:  # pragma: no cover - optional in some test environments
+    Goal = None
     Meeting = None
+    Task = None
     Document = None
+
+
+TYPE_CONFIG = {
+    'conversation': {
+        'bucket': 'conversations',
+        'model': Conversation,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'content'),
+        'date_field': 'created_at',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(item.content),
+            'type': 'conversation',
+            'post_type': item.post_type,
+            'author': item.author.username if item.author else '',
+            'status_label': item.status_label,
+            'created_at': _iso(item.created_at),
+            'url': f'/conversations/{item.id}',
+        },
+    },
+    'decision': {
+        'bucket': 'decisions',
+        'model': Decision,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'description', 'rationale', 'plain_language_summary'),
+        'date_field': 'created_at',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(' '.join(filter(None, [item.description, item.rationale, item.plain_language_summary]))),
+            'type': 'decision',
+            'status': item.status,
+            'impact_level': item.impact_level,
+            'author': item.decision_maker.username if item.decision_maker else '',
+            'created_at': _iso(item.created_at),
+            'url': f'/decisions/{item.id}',
+        },
+    },
+    'goal': {
+        'bucket': 'goals',
+        'model': Goal,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'description'),
+        'date_field': 'created_at',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(item.description),
+            'type': 'goal',
+            'status': item.status,
+            'progress': item.progress,
+            'created_at': _iso(item.created_at),
+            'url': f'/business/goals/{item.id}',
+        },
+    },
+    'task': {
+        'bucket': 'tasks',
+        'model': Task,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'description'),
+        'date_field': 'created_at',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(item.description),
+            'type': 'task',
+            'status': item.status,
+            'priority': item.priority,
+            'created_at': _iso(item.created_at),
+            'url': '/business/tasks',
+        },
+    },
+    'meeting': {
+        'bucket': 'meetings',
+        'model': Meeting,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'description', 'notes'),
+        'date_field': 'created_at',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(' '.join(filter(None, [item.description, item.notes]))),
+            'type': 'meeting',
+            'created_at': _iso(item.created_at),
+            'meeting_date': _iso(item.meeting_date),
+            'url': f'/business/meetings/{item.id}',
+        },
+    },
+    'document': {
+        'bucket': 'documents',
+        'model': Document,
+        'org_filter': 'organization_id',
+        'order_by': '-updated_at',
+        'search_fields': ('title', 'description', 'content'),
+        'date_field': 'updated_at',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(item.description or item.content),
+            'type': 'document',
+            'document_type': item.document_type,
+            'created_at': _iso(item.created_at),
+            'updated_at': _iso(item.updated_at),
+            'url': f'/business/documents/{item.id}',
+        },
+    },
+}
+
+
+def _iso(value):
+    return value.isoformat() if value else None
+
+
+def _truncate(text, limit=220):
+    text = (text or '').strip()
+    if len(text) <= limit:
+        return text
+    return f'{text[:limit].rstrip()}...'
+
+
+def _parse_iso(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+    except Exception:
+        return None
+
+
+def _requested_types(filters):
+    requested = filters.get('types') or []
+    if isinstance(requested, str):
+        requested = [part.strip().lower() for part in requested.split(',')]
+    requested = {item.strip().lower() for item in requested if str(item).strip()}
+    valid = {item for item in requested if item in TYPE_CONFIG and TYPE_CONFIG[item]['model'] is not None}
+    return valid
+
+
+def _build_query(search_fields, query):
+    conditions = Q()
+    for field in search_fields:
+        conditions |= Q(**{f'{field}__icontains': query})
+    return conditions
+
 
 class EnhancedSearchEngine:
     def search(self, query, organization_id, filters=None, limit=10):
         filters = filters or {}
+        date_from = _parse_iso(filters.get('date_from'))
+        date_to = _parse_iso(filters.get('date_to'))
+        requested_types = _requested_types(filters)
+        allowed_types = requested_types or {
+            item_type for item_type, config in TYPE_CONFIG.items() if config['model'] is not None
+        }
+
         results = {
             'conversations': [],
             'decisions': [],
+            'goals': [],
             'tasks': [],
             'meetings': [],
             'documents': [],
-            'total': 0,
         }
-        
-        # Build base queries
-        conv_q = Q(organization_id=organization_id)
-        dec_q = Q(conversation__organization_id=organization_id)
-        
-        # Text search
-        if query:
-            conv_q &= (Q(title__icontains=query) | Q(content__icontains=query))
-            dec_q &= (Q(title__icontains=query) | Q(conversation__content__icontains=query))
-        
-        # Date filters
-        if filters.get('date_from'):
-            date_from = datetime.fromisoformat(filters['date_from'].replace('Z', '+00:00'))
-            conv_q &= Q(created_at__gte=date_from)
-            dec_q &= Q(created_at__gte=date_from)
-            
-        if filters.get('date_to'):
-            date_to = datetime.fromisoformat(filters['date_to'].replace('Z', '+00:00'))
-            conv_q &= Q(created_at__lte=date_to)
-            dec_q &= Q(created_at__lte=date_to)
-        
-        # Type filter
-        if filters.get('post_type'):
-            conv_q &= Q(post_type=filters['post_type'])
-        
-        # Author filter
-        if filters.get('author'):
-            conv_q &= Q(author__username__icontains=filters['author'])
-            dec_q &= Q(conversation__author__username__icontains=filters['author'])
-        
-        # Status filter
-        if filters.get('status'):
-            conv_q &= Q(status_label=filters['status'])
-            dec_q &= Q(status=filters['status'])
-        
-        # Execute searches
-        conversations = Conversation.objects.filter(conv_q).select_related('author').order_by('-created_at')[:limit]
-        decisions = Decision.objects.filter(dec_q).select_related('conversation__author').order_by('-created_at')[:limit]
-        
-        results['conversations'] = [{
-            'id': c.id,
-            'title': c.title,
-            'content': c.content[:200] + '...' if len(c.content) > 200 else c.content,
-            'type': 'conversation',
-            'post_type': c.post_type,
-            'author': c.author.username,
-            'created_at': c.created_at.isoformat(),
-            'status_label': c.status_label
-        } for c in conversations]
-        
-        results['decisions'] = [{
-            'id': d.id,
-            'title': d.title,
-            'description': d.description[:200] + '...' if len(d.description) > 200 else d.description,
-            'type': 'decision',
-            'status': d.status,
-            'impact_level': d.impact_level,
-            'author': d.conversation.author.username if d.conversation and d.conversation.author else '',
-            'created_at': d.created_at.isoformat()
-        } for d in decisions]
 
-        if Task is not None:
-            task_q = Q(organization_id=organization_id)
-            if query:
-                task_q &= (Q(title__icontains=query) | Q(description__icontains=query))
-            tasks = Task.objects.filter(task_q).order_by('-created_at')[:limit]
-            results['tasks'] = [{
-                'id': t.id,
-                'title': t.title,
-                'content': (t.description or '')[:200] + '...' if len(t.description or '') > 200 else (t.description or ''),
-                'type': 'task',
-                'status': getattr(t, 'status', ''),
-                'created_at': t.created_at.isoformat(),
-            } for t in tasks]
+        for item_type, config in TYPE_CONFIG.items():
+            model = config['model']
+            if model is None or item_type not in allowed_types:
+                continue
 
-        if Meeting is not None:
-            meeting_q = Q(organization_id=organization_id)
+            filters_q = Q(**{config['org_filter']: organization_id})
             if query:
-                meeting_q &= (Q(title__icontains=query) | Q(description__icontains=query))
-            meetings = Meeting.objects.filter(meeting_q).order_by('-created_at')[:limit]
-            results['meetings'] = [{
-                'id': m.id,
-                'title': m.title,
-                'content': (m.description or '')[:200] + '...' if len(m.description or '') > 200 else (m.description or ''),
-                'type': 'meeting',
-                'created_at': m.created_at.isoformat(),
-            } for m in meetings]
+                filters_q &= _build_query(config['search_fields'], query)
 
-        if Document is not None:
-            doc_q = Q(organization_id=organization_id)
-            if query:
-                doc_q &= (Q(title__icontains=query) | Q(content__icontains=query) | Q(description__icontains=query))
-            documents = Document.objects.filter(doc_q).order_by('-created_at')[:limit]
-            results['documents'] = [{
-                'id': d.id,
-                'title': d.title,
-                'content': (d.description or d.content or '')[:200] + '...' if len((d.description or d.content or '')) > 200 else (d.description or d.content or ''),
-                'type': 'document',
-                'created_at': d.created_at.isoformat(),
-            } for d in documents]
-        
-        results['total'] = (
-            len(results['conversations']) +
-            len(results['decisions']) +
-            len(results['tasks']) +
-            len(results['meetings']) +
-            len(results['documents'])
-        )
+            if date_from:
+                filters_q &= Q(**{f"{config['date_field']}__gte": date_from})
+            if date_to:
+                filters_q &= Q(**{f"{config['date_field']}__lte": date_to})
+
+            if filters.get('author'):
+                author_query = str(filters['author']).strip()
+                if item_type == 'conversation':
+                    filters_q &= Q(author__username__icontains=author_query)
+                elif item_type == 'decision':
+                    filters_q &= Q(decision_maker__username__icontains=author_query)
+
+            if filters.get('status'):
+                status_query = str(filters['status']).strip()
+                if item_type == 'conversation':
+                    filters_q &= Q(status_label=status_query)
+                elif item_type in {'decision', 'goal', 'task'}:
+                    filters_q &= Q(status=status_query)
+
+            queryset = model.objects.filter(filters_q).order_by(config['order_by'])[:limit]
+            results[config['bucket']] = [config['serialize'](item) for item in queryset]
+
+        results['total'] = sum(len(value) for value in results.values() if isinstance(value, list))
         return results
-    
-    def get_suggestions(self, query, organization_id, limit=5):
-        """Get search suggestions based on partial query"""
+
+    def get_suggestions(self, query, organization_id, limit=8):
         if len(query) < 2:
             return []
-            
-        suggestions = set()
-        
-        # Get title suggestions
-        conversations = Conversation.objects.filter(
+
+        suggestions = []
+        seen = set()
+        lowered = query.lower()
+
+        def add_suggestion(value):
+            label = (value or '').strip()
+            if not label:
+                return
+            normalized = label.lower()
+            if normalized in seen or lowered not in normalized:
+                return
+            seen.add(normalized)
+            suggestions.append(label)
+
+        conversation_titles = Conversation.objects.filter(
             organization_id=organization_id,
-            title__icontains=query
+            title__icontains=query,
         ).values_list('title', flat=True)[:limit]
-        
-        for title in conversations:
-            suggestions.add(title)
-            
-        return list(suggestions)[:limit]
+        for title in conversation_titles:
+            add_suggestion(title)
+
+        for keyword_list in Conversation.objects.filter(
+            organization_id=organization_id,
+            ai_processed=True,
+        ).values_list('ai_keywords', flat=True)[: max(limit * 3, 12)]:
+            for keyword in keyword_list or []:
+                add_suggestion(keyword)
+
+        for item_type in ['decision', 'goal', 'task', 'meeting', 'document']:
+            config = TYPE_CONFIG.get(item_type)
+            model = config['model'] if config else None
+            if model is None:
+                continue
+            titles = model.objects.filter(
+                **{config['org_filter']: organization_id},
+                title__icontains=query,
+            ).values_list('title', flat=True)[:limit]
+            for title in titles:
+                add_suggestion(title)
+
+        return suggestions[:limit]
+
 
 def get_search_engine():
     return EnhancedSearchEngine()

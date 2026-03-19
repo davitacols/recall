@@ -1,14 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  AdjustmentsHorizontalIcon,
   ArrowPathIcon,
   ArrowRightIcon,
   CalendarIcon,
   ChatBubbleLeftIcon,
   ClipboardDocumentListIcon,
   DocumentTextIcon,
+  FlagIcon,
   MagnifyingGlassIcon,
   Squares2X2Icon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import {
   WorkspaceEmptyState,
@@ -20,21 +23,33 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
 
-const TYPE_ORDER = ["decision", "conversation", "document", "meeting", "task", "other"];
+const TYPE_ORDER = ["decision", "conversation", "goal", "document", "meeting", "task", "other"];
 
 export default function KnowledgeGraph() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
 
-  const [graphData, setGraphData] = useState({ nodes: [], edges: [] });
+  const [graphData, setGraphData] = useState({ nodes: [], edges: [], summary: {} });
   const [loading, setLoading] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const [graphQuery, setGraphQuery] = useState(searchParams.get("q") || "");
+  const [activeTypes, setActiveTypes] = useState(() => {
+    const raw = searchParams.get("types");
+    return raw ? raw.split(",").map((item) => item.trim()).filter(Boolean) : [];
+  });
+  const [includeIsolated, setIncludeIsolated] = useState(searchParams.get("include_isolated") !== "false");
 
   useEffect(() => {
-    fetchGraph();
-  }, []);
+    const nextQuery = searchParams.get("q") || "";
+    const nextTypes = (searchParams.get("types") || "").split(",").map((item) => item.trim()).filter(Boolean);
+    setGraphQuery(nextQuery);
+    setActiveTypes(nextTypes);
+    setIncludeIsolated(searchParams.get("include_isolated") !== "false");
+    fetchGraph(searchParams);
+  }, [searchParams]);
 
   useEffect(() => {
     const nodes = graphData.nodes || [];
@@ -42,27 +57,70 @@ export default function KnowledgeGraph() {
       setSelectedNodeId(null);
       return;
     }
-    if (!selectedNodeId || !nodes.some((node) => node.id === selectedNodeId)) {
-      setSelectedNodeId(nodes[0].id);
+    const focusedNode = graphData.summary?.focus_node;
+    if (focusedNode && nodes.some((node) => node.id === focusedNode)) {
+      setSelectedNodeId(focusedNode);
+      return;
     }
-  }, [graphData.nodes, selectedNodeId]);
+    if (!selectedNodeId || !nodes.some((node) => node.id === selectedNodeId)) {
+      const matchedNode = nodes.find((node) => node.matched);
+      setSelectedNodeId((matchedNode || nodes[0]).id);
+    }
+  }, [graphData.nodes, graphData.summary, selectedNodeId]);
 
-  const fetchGraph = async () => {
+  const fetchGraph = async (paramsSource = searchParams) => {
+    setLoading(true);
     try {
-      const res = await api.get("/api/knowledge/graph/");
-      setGraphData(res?.data || { nodes: [], edges: [] });
+      const params = {};
+      const query = paramsSource.get("q");
+      const types = paramsSource.get("types");
+      const focusType = paramsSource.get("focus_type");
+      const focusId = paramsSource.get("focus_id");
+      const include = paramsSource.get("include_isolated");
+      if (query) params.q = query;
+      if (types) params.types = types;
+      if (focusType) params.focus_type = focusType;
+      if (focusId) params.focus_id = focusId;
+      if (include) params.include_isolated = include;
+      const response = await api.get("/api/knowledge/graph/", { params });
+      setGraphData(response?.data || { nodes: [], edges: [], summary: {} });
     } catch (error) {
       console.error("Error:", error);
-      setGraphData({ nodes: [], edges: [] });
+      setGraphData({ nodes: [], edges: [], summary: {} });
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyFilters = ({ keepFocus = false } = {}) => {
+    const next = new URLSearchParams();
+    const trimmed = graphQuery.trim();
+    if (trimmed) next.set("q", trimmed);
+    if (activeTypes.length) next.set("types", activeTypes.join(","));
+    if (!includeIsolated) next.set("include_isolated", "false");
+    if (keepFocus) {
+      const focusType = searchParams.get("focus_type");
+      const focusId = searchParams.get("focus_id");
+      if (focusType && focusId) {
+        next.set("focus_type", focusType);
+        next.set("focus_id", focusId);
+      }
+    }
+    setSearchParams(next);
+  };
+
+  const clearFilters = () => {
+    setGraphQuery("");
+    setActiveTypes([]);
+    setIncludeIsolated(true);
+    setSearchParams({});
   };
 
   const getNodeColor = (type) => {
     const colors = {
       conversation: palette.info,
       decision: palette.accent,
+      goal: darkMode ? "#86efac" : "#15803d",
       task: palette.success,
       meeting: palette.warn,
       document: darkMode ? "#d9cfbf" : "#6e655b",
@@ -75,6 +133,7 @@ export default function KnowledgeGraph() {
     const labels = {
       conversation: "Conversation",
       decision: "Decision",
+      goal: "Goal",
       task: "Task",
       meeting: "Meeting",
       document: "Document",
@@ -87,6 +146,7 @@ export default function KnowledgeGraph() {
     const icons = {
       conversation: ChatBubbleLeftIcon,
       decision: DocumentTextIcon,
+      goal: FlagIcon,
       task: ClipboardDocumentListIcon,
       meeting: CalendarIcon,
       document: DocumentTextIcon,
@@ -100,6 +160,7 @@ export default function KnowledgeGraph() {
     const routes = {
       conversation: `/conversations/${id}`,
       decision: `/decisions/${id}`,
+      goal: `/business/goals/${id}`,
       task: "/business/tasks",
       meeting: `/business/meetings/${id}`,
       document: `/business/documents/${id}`,
@@ -223,9 +284,9 @@ export default function KnowledgeGraph() {
       }}
     >
       <p style={{ ...asideEyebrow, color: palette.muted }}>Graph Readout</p>
-      <h3 style={{ ...asideTitle, color: palette.text }}>See how context actually clusters.</h3>
+      <h3 style={{ ...asideTitle, color: palette.text }}>See how cross-team context actually clusters.</h3>
       <p style={{ ...asideBody, color: palette.muted }}>
-        Use the graph to move between decisions, conversations, meetings, tasks, and documents without losing the trail.
+        Use the graph to move between decisions, conversations, goals, meetings, tasks, and documents without losing the trail.
       </p>
       <div style={asideMetricRail}>
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
@@ -235,6 +296,10 @@ export default function KnowledgeGraph() {
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
           <p style={{ ...asideMetricLabel, color: palette.muted }}>Density</p>
           <p style={{ ...asideMetricValue, color: palette.text }}>{edgeDensity}</p>
+        </div>
+        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+          <p style={{ ...asideMetricLabel, color: palette.muted }}>Matches</p>
+          <p style={{ ...asideMetricValue, color: palette.text }}>{graphData.summary?.matched_nodes || 0}</p>
         </div>
       </div>
     </div>
@@ -270,7 +335,7 @@ export default function KnowledgeGraph() {
         darkMode={darkMode}
         eyebrow="Knowledge"
         title="Knowledge Graph"
-        description="Explore how conversations, decisions, meetings, documents, and tasks connect so the reasoning behind work stays visible."
+        description="Explore how conversations, decisions, goals, meetings, documents, and tasks connect so the reasoning behind work stays visible."
         stats={heroStats}
         aside={graphAside}
         actions={
@@ -281,6 +346,11 @@ export default function KnowledgeGraph() {
             <button className="ui-btn-polish ui-focus-ring" onClick={fetchGraph} style={ui.secondaryButton}>
               <ArrowPathIcon style={icon14} /> Refresh Graph
             </button>
+            {(graphQuery.trim() || activeTypes.length || searchParams.get("focus_type")) ? (
+              <button className="ui-btn-polish ui-focus-ring" onClick={clearFilters} style={ui.secondaryButton}>
+                <XMarkIcon style={icon14} /> Clear Filters
+              </button>
+            ) : null}
           </>
         }
       />
@@ -288,12 +358,79 @@ export default function KnowledgeGraph() {
       <WorkspaceToolbar palette={palette}>
         <div style={toolbarLayout}>
           <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Network Legend</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>Read the graph at a glance</h2>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Network Filters</p>
+            <h2 style={{ ...toolbarTitle, color: palette.text }}>Explore a focused neighborhood</h2>
             <p style={{ ...toolbarCopy, color: palette.muted }}>
-              Colors map to record types. Select a node to inspect its nearby context and jump into the underlying source.
+              Search inside the graph, narrow by record types, and keep or remove isolated nodes before you inspect the nearby context.
             </p>
           </div>
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              applyFilters({ keepFocus: true });
+            }}
+            style={{ display: "grid", gap: 10 }}
+          >
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 8 }}>
+              <div style={{ position: "relative" }}>
+                <MagnifyingGlassIcon style={{ width: 15, height: 15, position: "absolute", left: 12, top: 12, color: palette.muted }} />
+                <input
+                  value={graphQuery}
+                  onChange={(event) => setGraphQuery(event.target.value)}
+                  placeholder="Search visible graph records..."
+                  className="ui-focus-ring"
+                  style={{ ...ui.input, paddingLeft: 34 }}
+                />
+              </div>
+              <button type="submit" className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+                <AdjustmentsHorizontalIcon style={icon14} /> Apply
+              </button>
+              <button type="button" onClick={clearFilters} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+                <XMarkIcon style={icon14} /> Reset
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              {TYPE_ORDER.filter((type) => type !== "other").map((type) => {
+                const active = activeTypes.includes(type);
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() =>
+                      setActiveTypes((current) =>
+                        current.includes(type) ? current.filter((item) => item !== type) : [...current, type]
+                      )
+                    }
+                    className="ui-btn-polish ui-focus-ring"
+                    style={{
+                      borderRadius: 999,
+                      border: `1px solid ${active ? getNodeColor(type) : palette.border}`,
+                      background: active ? (darkMode ? "rgba(96,165,250,0.12)" : "#eef4ff") : palette.cardAlt,
+                      color: active ? palette.text : palette.muted,
+                      padding: "7px 11px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {getNodeLabel(type)}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setIncludeIsolated((current) => !current)}
+                className="ui-btn-polish ui-focus-ring"
+                style={{
+                  ...ui.secondaryButton,
+                  background: includeIsolated ? palette.cardAlt : darkMode ? "rgba(248,113,113,0.12)" : "#fef2f2",
+                }}
+              >
+                {includeIsolated ? "Hide isolated" : "Show isolated"}
+              </button>
+            </div>
+          </form>
 
           <div style={legendRail}>
             {TYPE_ORDER.filter((type) => nodeTypeCounts[type]).map((type) => {
@@ -314,7 +451,7 @@ export default function KnowledgeGraph() {
         <WorkspaceEmptyState
           palette={palette}
           title="No graph connections yet"
-          description="As conversations, decisions, meetings, tasks, and documents accumulate, the graph will start surfacing how they relate."
+          description="As conversations, decisions, goals, meetings, tasks, and documents accumulate, the graph will start surfacing how they relate."
           action={
             <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/knowledge")} style={ui.primaryButton}>
               Go To Knowledge
@@ -371,6 +508,7 @@ export default function KnowledgeGraph() {
 
                   {positionedNodes.map((node) => {
                     const selected = node.id === selectedNodeId;
+                    const matched = Boolean(node.matched);
                     const nodeColor = getNodeColor(node.type || "other");
                     const label = node.label || getNodeLabel(node.type || "other");
                     return (
@@ -388,6 +526,17 @@ export default function KnowledgeGraph() {
                             stroke={nodeColor}
                             strokeOpacity="0.25"
                             strokeWidth="18"
+                          />
+                        ) : null}
+                        {matched && !selected ? (
+                          <circle
+                            cx={node.x}
+                            cy={node.y}
+                            r="35"
+                            fill="none"
+                            stroke={nodeColor}
+                            strokeOpacity="0.18"
+                            strokeWidth="10"
                           />
                         ) : null}
                         <circle
@@ -414,7 +563,7 @@ export default function KnowledgeGraph() {
                           y={node.y + (selected ? 56 : 48)}
                           textAnchor="middle"
                           fill={darkMode ? "#b7ab9b" : "#6e655b"}
-                          style={{ fontSize: 12, fontWeight: selected ? 700 : 600 }}
+                          style={{ fontSize: 12, fontWeight: selected || matched ? 700 : 600 }}
                         >
                           {label.length > 24 ? `${label.slice(0, 24)}...` : label}
                         </text>
@@ -449,6 +598,13 @@ export default function KnowledgeGraph() {
                   </div>
                 </div>
 
+                {selectedNode.preview ? (
+                  <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                    <p style={{ ...inspectorLabel, color: palette.muted }}>Preview</p>
+                    <p style={{ margin: 0, color: palette.text, fontSize: 13, lineHeight: 1.6 }}>{selectedNode.preview}</p>
+                  </div>
+                ) : null}
+
                 <div style={inspectorButtonRail}>
                   <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(getNodeRoute(selectedNode))} style={ui.primaryButton}>
                     Open record
@@ -481,7 +637,7 @@ export default function KnowledgeGraph() {
                               {edge.node.label || getNodeLabel(edge.node.type || "other")}
                             </span>
                             <span style={{ ...connectionMeta, color: palette.muted }}>
-                              {getNodeLabel(edge.node.type || "other")}
+                              {getNodeLabel(edge.node.type || "other")} | {String(edge.type || "relates_to").replace(/_/g, " ")}
                             </span>
                           </span>
                           <ArrowRightIcon style={{ ...icon12, color: palette.muted, flexShrink: 0 }} />

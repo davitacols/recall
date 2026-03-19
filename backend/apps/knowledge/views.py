@@ -15,6 +15,15 @@ from apps.decisions.models import Decision
 from apps.organizations.models import SearchAnalytics
 from apps.users.auth_utils import check_rate_limit
 
+try:
+    from apps.business.models import Goal, Meeting, Task
+    from apps.business.document_models import Document
+except Exception:  # pragma: no cover - optional in some test environments
+    Goal = None
+    Meeting = None
+    Task = None
+    Document = None
+
 
 def _compute_memory_gaps(org):
     recent_conversations = Conversation.objects.filter(
@@ -126,12 +135,29 @@ def search_knowledge(request):
     # Use search engine
     search_engine = get_search_engine()
     results = search_engine.search(query, request.user.organization_id, filters, limit=20)
-    
+
+    result_total = results.get('total', 0)
+    counts = {
+        bucket: len(items)
+        for bucket, items in results.items()
+        if isinstance(items, list)
+    }
+    try:
+        SearchAnalytics.objects.create(
+            user=request.user,
+            organization=request.user.organization,
+            query=query[:255],
+            results_count=result_total,
+        )
+    except Exception:
+        pass
+
     return Response({
         'query': query,
         'filters': filters,
         'results': results,
-        'total': results.get('total', 0)
+        'total': result_total,
+        'counts': counts,
     })
 
 @api_view(['POST'])
@@ -224,17 +250,29 @@ def knowledge_stats(request):
     org = request.user.organization
     
     week_ago = timezone.now() - timedelta(days=7)
-    
+    type_counts = {
+        'conversations': Conversation.objects.filter(organization=org).count(),
+        'decisions': Decision.objects.filter(organization=org).count(),
+        'goals': Goal.objects.filter(organization=org).count() if Goal is not None else 0,
+        'tasks': Task.objects.filter(organization=org).count() if Task is not None else 0,
+        'meetings': Meeting.objects.filter(organization=org).count() if Meeting is not None else 0,
+        'documents': Document.objects.filter(organization=org).count() if Document is not None else 0,
+    }
+    week_counts = {
+        'conversations': Conversation.objects.filter(organization=org, created_at__gte=week_ago).count(),
+        'decisions': Decision.objects.filter(organization=org, created_at__gte=week_ago).count(),
+        'goals': Goal.objects.filter(organization=org, created_at__gte=week_ago).count() if Goal is not None else 0,
+        'tasks': Task.objects.filter(organization=org, created_at__gte=week_ago).count() if Task is not None else 0,
+        'meetings': Meeting.objects.filter(organization=org, created_at__gte=week_ago).count() if Meeting is not None else 0,
+        'documents': Document.objects.filter(organization=org, created_at__gte=week_ago).count() if Document is not None else 0,
+    }
+
     stats = {
-        'total_items': (
-            Conversation.objects.filter(organization=org).count() +
-            Decision.objects.filter(organization=org).count()
-        ),
-        'this_week': (
-            Conversation.objects.filter(organization=org, created_at__gte=week_ago).count() +
-            Decision.objects.filter(organization=org, created_at__gte=week_ago).count()
-        ),
-        'total_searches': SearchAnalytics.objects.filter(organization=org).count()
+        'total_items': sum(type_counts.values()),
+        'this_week': sum(week_counts.values()),
+        'total_searches': SearchAnalytics.objects.filter(organization=org).count(),
+        'type_counts': type_counts,
+        'this_week_by_type': week_counts,
     }
     
     return Response(stats)

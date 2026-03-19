@@ -6,7 +6,7 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 from apps.organizations.models import Organization, User
 from .kanban_views import assign_issue_to_sprint, board_view
 from .ml_endpoints import predict_sprint, sprint_insights, suggest_assignee
-from .models import Board, Column, Component, Issue, Project, Release, Sprint
+from .models import Board, Column, Component, Issue, IssueLabel, Project, Release, Sprint
 from .views_missing_features import check_wip_limit, components, releases, update_release
 
 
@@ -97,6 +97,15 @@ class AgilePermissionIsolationTests(TestCase):
             reporter=self.admin_b,
             status="todo",
         )
+        self.label_a = IssueLabel.objects.create(
+            organization=self.org_a,
+            name="Platform",
+            color="#4F46E5",
+        )
+        self.label_a.issues.add(self.issue_a)
+        self.issue_a.assignee = self.contributor_a
+        self.issue_a.sprint = self.sprint_a
+        self.issue_a.save(update_fields=["assignee", "sprint", "updated_at", "status_changed_at"])
 
     def test_contributor_can_read_releases_but_cannot_create(self):
         get_request = self.factory.get(f"/api/agile/projects/{self.project_a.id}/releases/")
@@ -159,6 +168,20 @@ class AgilePermissionIsolationTests(TestCase):
         force_authenticate(request, user=self.admin_a)
         response = board_view(request, self.board_b.id)
         self.assertEqual(response.status_code, 404)
+
+    def test_board_view_returns_project_metadata_and_issue_shape(self):
+        request = self.factory.get(f"/api/agile/boards/{self.board_a.id}/")
+        force_authenticate(request, user=self.admin_a)
+        response = board_view(request, self.board_a.id)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["project_name"], self.project_a.name)
+        self.assertEqual(len(response.data["columns"]), 1)
+        self.assertEqual(response.data["columns"][0]["issue_count"], 1)
+        self.assertEqual(len(response.data["columns"][0]["issues"]), 1)
+        issue_payload = response.data["columns"][0]["issues"][0]
+        self.assertEqual(issue_payload["id"], self.issue_a.id)
+        self.assertEqual(issue_payload["labels"], ["Platform"])
+        self.assertEqual(issue_payload["sprint"], self.sprint_a.name)
 
     def test_assign_issue_to_sprint_is_org_scoped(self):
         request = self.factory.post(

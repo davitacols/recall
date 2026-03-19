@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db.models import Prefetch
 from django.utils import timezone
 from apps.agile.models import Project, Board, Column, Issue, IssueComment, IssueLabel, Sprint
 
@@ -17,14 +18,24 @@ def board_view(request, board_id):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     try:
-        board = Board.objects.select_related('project').prefetch_related('columns__issues__assignee').get(
+        issue_queryset = (
+            Issue.objects.select_related('assignee', 'sprint')
+            .prefetch_related('labels')
+            .order_by('-created_at')
+        )
+        column_queryset = Column.objects.order_by('order').prefetch_related(
+            Prefetch('issues', queryset=issue_queryset)
+        )
+        board = Board.objects.select_related('project').prefetch_related(
+            Prefetch('columns', queryset=column_queryset)
+        ).get(
             id=board_id,
             organization=org,
         )
         
         column_data = []
-        for col in board.columns.all().order_by('order'):
-            issues = col.issues.all().order_by('-created_at')
+        for col in board.columns.all():
+            issues = list(col.issues.all())
             issue_data = [{
                 'id': issue.id,
                 'key': issue.key,
@@ -42,12 +53,14 @@ def board_view(request, board_id):
                 'id': col.id,
                 'name': col.name,
                 'order': col.order,
+                'issue_count': len(issues),
                 'issues': issue_data
             })
         
         return Response({
             'id': board.id,
             'project_id': board.project.id,
+            'project_name': board.project.name,
             'name': board.name,
             'type': board.board_type,
             'columns': column_data

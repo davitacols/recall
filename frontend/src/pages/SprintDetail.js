@@ -5,6 +5,21 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 import api from "../services/api";
 import { getProjectPalette } from "../utils/projectUi";
 
+function moveSprintIssue(previousSprint, issueId, nextStatus) {
+  if (!previousSprint?.issues) return previousSprint;
+  const nextIssues = previousSprint.issues.map((issue) =>
+    issue.id === issueId ? { ...issue, status: nextStatus } : issue
+  );
+  return {
+    ...previousSprint,
+    issues: nextIssues,
+    issue_count: nextIssues.length,
+    completed: nextIssues.filter((issue) => issue.status === "done").length,
+    in_progress: nextIssues.filter((issue) => issue.status === "in_progress").length,
+    todo: nextIssues.filter((issue) => issue.status === "todo").length,
+  };
+}
+
 function SprintDetail() {
   const { darkMode } = useTheme();
   const { id } = useParams();
@@ -25,6 +40,8 @@ function SprintDetail() {
   const [decisionTwinUpgrade, setDecisionTwinUpgrade] = useState(null);
   const [decisionTwinPolicyHints, setDecisionTwinPolicyHints] = useState([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState("");
+  const [movingIssueId, setMovingIssueId] = useState(null);
+  const [moveError, setMoveError] = useState("");
   const [decisionTwinPolicy, setDecisionTwinPolicy] = useState({
     min_confidence_band: "medium",
     min_probability_delta: 1.0,
@@ -107,13 +124,35 @@ function SprintDetail() {
 
   const handleDrop = async (status) => {
     if (!draggedIssue) return;
-    try {
-      await api.put(`/api/agile/issues/${draggedIssue.id}/`, { status });
+    if (status === draggedIssue.status || movingIssueId === draggedIssue.id) {
       setDraggedIssue(null);
-      fetchData();
+      return;
+    }
+    let previousSprint = null;
+    try {
+      const issueId = draggedIssue.id;
+      previousSprint = sprint;
+      setMoveError("");
+      setMovingIssueId(issueId);
+      setSprint((current) => moveSprintIssue(current, issueId, status));
+      setDraggedIssue(null);
+      await api.put(`/api/agile/issues/${issueId}/`, { status });
+      refreshAutopilot();
     } catch (error) {
       console.error("Failed to update issue:", error);
+      if (previousSprint) {
+        setSprint(previousSprint);
+      }
+      const responseData = error?.response?.data;
+      setMoveError(
+        responseData?.errors?.join(", ") ||
+        responseData?.error ||
+        responseData?.message ||
+        "Failed to move issue."
+      );
       setDraggedIssue(null);
+    } finally {
+      setMovingIssueId(null);
     }
   };
 
@@ -528,6 +567,12 @@ function SprintDetail() {
           </div>
         </section>
 
+        {moveError ? (
+          <section style={{ ...progressCard, background: palette.cardAlt, border: `1px solid ${palette.danger}`, color: palette.danger }}>
+            <p style={{ margin: 0, fontSize: 12 }}>{moveError}</p>
+          </section>
+        ) : null}
+
         <section style={board}>
           {statuses.map((status) => {
             const columnIssues = issues.filter((issue) => issue.status === status);
@@ -547,11 +592,11 @@ function SprintDetail() {
                   {columnIssues.map((issue) => (
                     <div
                       key={issue.id}
-                      draggable
+                      draggable={movingIssueId !== issue.id}
                       onDragStart={() => setDraggedIssue(issue)}
                       onDragEnd={() => setDraggedIssue(null)}
                       onClick={() => navigate(`/issues/${issue.id}`)}
-                      style={issueCard}
+                      style={{ ...issueCard, opacity: movingIssueId === issue.id ? 0.55 : 1 }}
                     >
                       <p style={issueKey}>{issue.key || `ISS-${issue.id}`}</p>
                       <p style={issueTitle}>{issue.title}</p>

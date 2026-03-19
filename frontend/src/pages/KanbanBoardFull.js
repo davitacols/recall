@@ -5,6 +5,59 @@ import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
+const COLUMN_STATUS_MAP = {
+  "to do": "todo",
+  todo: "todo",
+  backlog: "backlog",
+  "in progress": "in_progress",
+  "in review": "in_review",
+  review: "in_review",
+  testing: "testing",
+  done: "done",
+};
+
+function statusForColumn(columnName) {
+  return COLUMN_STATUS_MAP[String(columnName || "").trim().toLowerCase()] || null;
+}
+
+function moveIssueBetweenColumns(previousBoard, issueId, targetColumnId, nextStatus) {
+  if (!previousBoard?.columns?.length) return previousBoard;
+
+  let movedIssue = null;
+  const strippedColumns = previousBoard.columns.map((column) => {
+    const issues = Array.isArray(column.issues) ? column.issues : [];
+    const nextIssues = issues.filter((issue) => {
+      if (issue.id === issueId) {
+        movedIssue = issue;
+        return false;
+      }
+      return true;
+    });
+    return {
+      ...column,
+      issues: nextIssues,
+      issue_count: nextIssues.length,
+    };
+  });
+
+  if (!movedIssue) return previousBoard;
+
+  return {
+    ...previousBoard,
+    columns: strippedColumns.map((column) => {
+      if (column.id !== targetColumnId) {
+        return column;
+      }
+      const nextIssues = [{ ...movedIssue, status: nextStatus }, ...(column.issues || [])];
+      return {
+        ...column,
+        issues: nextIssues,
+        issue_count: nextIssues.length,
+      };
+    }),
+  };
+}
+
 function KanbanBoard() {
   const { boardId } = useParams();
   const navigate = useNavigate();
@@ -16,6 +69,7 @@ function KanbanBoard() {
   const [showCreateIssue, setShowCreateIssue] = useState(false);
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [moveError, setMoveError] = useState("");
+  const [movingIssueId, setMovingIssueId] = useState(null);
 
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -38,19 +92,9 @@ function KanbanBoard() {
 
   const handleDrop = async (column) => {
     if (!draggedIssue || !board?.columns) return;
+    if (movingIssueId === draggedIssue.id) return;
 
-    const statusMap = {
-      "to do": "todo",
-      todo: "todo",
-      backlog: "backlog",
-      "in progress": "in_progress",
-      "in review": "in_review",
-      review: "in_review",
-      testing: "testing",
-      done: "done",
-    };
-
-    const status = statusMap[String(column.name || "").trim().toLowerCase()];
+    const status = statusForColumn(column.name);
     if (!status) {
       setMoveError(`Cannot move to "${column.name}": no status mapping configured.`);
       setDraggedIssue(null);
@@ -62,34 +106,24 @@ function KanbanBoard() {
       return;
     }
 
+    let previousBoard = null;
     try {
       setMoveError("");
+      const issueId = draggedIssue.id;
       const transitionComment = `Moved via board to ${column.name}`;
-
-      // Fresh workflow APIs can enforce transition rules. Validate first when available.
-      try {
-        const validation = await api.post(`/api/agile/issues/${draggedIssue.id}/validate-transition/`, {
-          status,
-          transition_comment: transitionComment,
-        });
-        if (validation?.data && validation.data.valid === false) {
-          const details = validation.data.errors?.join(", ") || validation.data.message || "Invalid workflow transition";
-          setMoveError(details);
-          setDraggedIssue(null);
-          return;
-        }
-      } catch (validationError) {
-        // Ignore validation endpoint issues and attempt the update directly.
-      }
-
-      await api.put(`/api/agile/issues/${draggedIssue.id}/`, {
+      previousBoard = board;
+      setMovingIssueId(issueId);
+      setBoard((current) => moveIssueBetweenColumns(current, issueId, column.id, status));
+      setDraggedIssue(null);
+      await api.put(`/api/agile/issues/${issueId}/`, {
         status,
         transition_comment: transitionComment,
       });
-      setDraggedIssue(null);
-      fetchBoard();
     } catch (error) {
       console.error("Failed to move issue:", error);
+      if (previousBoard) {
+        setBoard(previousBoard);
+      }
       const responseData = error?.response?.data;
       const detail =
         responseData?.errors?.join(", ") ||
@@ -98,6 +132,8 @@ function KanbanBoard() {
         "Failed to move issue.";
       setMoveError(detail);
       setDraggedIssue(null);
+    } finally {
+      setMovingIssueId(null);
     }
   };
 
@@ -181,11 +217,11 @@ function KanbanBoard() {
                 {(column.issues || []).map((issue) => (
                   <article
                     key={issue.id}
-                    draggable
+                    draggable={movingIssueId !== issue.id}
                     onDragStart={() => setDraggedIssue(issue)}
                     onDragEnd={() => setDraggedIssue(null)}
                     onClick={() => navigate(`/issues/${issue.id}`)}
-                    style={issueCard}
+                    style={{ ...issueCard, opacity: movingIssueId === issue.id ? 0.55 : 1 }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                       <div style={{ minWidth: 0 }}>

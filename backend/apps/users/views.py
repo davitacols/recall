@@ -4,8 +4,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model, authenticate
 from django.utils import timezone
+from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
+from django.db import transaction
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
@@ -118,6 +120,52 @@ def _build_auth_payload(user):
             'experience_mode': getattr(user, 'experience_mode', 'standard'),
         }
     }
+
+
+def _default_display_name(email, full_name=''):
+    return (full_name or '').strip() or email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
+
+
+def _create_workspace_account(email, organization_name, *, full_name='', password=None, avatar_url=''):
+    from apps.organizations.models import Organization
+
+    organization_name = (organization_name or '').strip()
+    if len(organization_name) < 2:
+        return None, 'Organization name must be at least 2 characters'
+
+    org_slug = slugify(organization_name)
+    if not org_slug:
+        return None, 'Organization name must include letters or numbers'
+
+    if Organization.objects.filter(slug=org_slug).exists():
+        return None, 'Organization name already exists'
+
+    display_name = _default_display_name(email, full_name)
+    first_name = display_name.split()[0] if display_name else email.split('@')[0]
+
+    with transaction.atomic():
+        org = Organization.objects.create(name=organization_name, slug=org_slug)
+        user = User.objects.create_user(
+            username=generate_unique_org_username(email, org_slug),
+            email=email,
+            password=password,
+            organization=org,
+            full_name=display_name,
+            first_name=first_name,
+            role='admin',
+        )
+
+        update_fields = []
+        if not password:
+            user.set_unusable_password()
+            update_fields.append('password')
+        if avatar_url:
+            user.avatar_url = avatar_url
+            update_fields.append('avatar_url')
+        if update_fields:
+            user.save(update_fields=update_fields)
+
+    return user, None
 
 
 def _resolve_google_user(email, preferred_org_slug=None):
@@ -354,6 +402,8 @@ def login(request):
 def google_login(request):
     credential = (request.data.get('credential') or '').strip()
     preferred_org_slug = (request.data.get('preferred_org_slug') or '').strip().lower()
+    organization_name = (request.data.get('organization') or '').strip()
+    submitted_full_name = (request.data.get('full_name') or '').strip()
 
     if not credential:
         return Response({'error': 'Google credential is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -407,24 +457,48 @@ def google_login(request):
         return Response({'error': 'Google account email is not verified'}, status=status.HTTP_401_UNAUTHORIZED)
 
     user = _resolve_google_user(email=email, preferred_org_slug=preferred_org_slug)
+    created_workspace = False
     if not user:
-        return Response(
-            {'error': 'No workspace account found for this Google email. Ask an admin to invite you first.'},
-            status=status.HTTP_404_NOT_FOUND
+        if not organization_name:
+            return Response(
+                {'error': 'Enter an organization name to create your workspace with Google.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user, creation_error = _create_workspace_account(
+            email=email,
+            organization_name=organization_name,
+            full_name=submitted_full_name or (id_info.get('name') or '').strip(),
+            avatar_url=(id_info.get('picture') or '').strip(),
         )
+        if creation_error:
+            return Response({'error': creation_error}, status=status.HTTP_400_BAD_REQUEST)
+
+        created_workspace = True
+        logger.info(f"New organization created via Google: {organization_name} by {email}")
+        try:
+            send_welcome_email(user)
+        except Exception:
+            logger.exception("Failed to send welcome email to Google user %s", email)
 
     _log_auth_audit(
         organization=user.organization,
         user=user,
-        resource_type='auth_login_google',
+        resource_type='auth_signup_google' if created_workspace else 'auth_login_google',
         details={
             'method': 'google',
             'org_slug': user.organization.slug,
             'google_sub': id_info.get('sub'),
+            'created_workspace': created_workspace,
         },
         request=request,
+        action='create' if created_workspace else 'login',
     )
-    return Response(_build_auth_payload(user))
+    payload = _build_auth_payload(user)
+    payload['created_workspace'] = created_workspace
+    if created_workspace:
+        payload['message'] = 'Organization created successfully'
+    return Response(payload, status=status.HTTP_201_CREATED if created_workspace else status.HTTP_200_OK)
 
 
 @api_view(['GET'])
@@ -786,42 +860,16 @@ def register(request):
         if not all([email, password, organization_name]):
             return Response({'error': 'Email, password, and organization name required'}, 
                            status=status.HTTP_400_BAD_REQUEST)
-        
-        free_email_domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
-                             'aol.com', 'icloud.com', 'mail.com', 'protonmail.com', 
-                             'zoho.com', 'yandex.com']
-        email_domain = email.split('@')[-1].lower()
-        if email_domain in free_email_domains:
-            return Response({'error': 'Please use a company email address'}, 
-                           status=status.HTTP_400_BAD_REQUEST)
-        
-        if len(organization_name) < 2:
-            return Response({'error': 'Organization name must be at least 2 characters'}, 
-                           status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
-            from apps.organizations.models import Organization
-            import re
-            
-            org_slug = re.sub(r'[^a-z0-9-]', '', organization_name.lower().replace(' ', '-'))
-            
-            if Organization.objects.filter(slug=org_slug).exists():
-                return Response({'error': 'Organization name already exists'}, 
-                               status=status.HTTP_400_BAD_REQUEST)
-            
-            org = Organization.objects.create(name=organization_name, slug=org_slug)
-            
-            username = generate_unique_org_username(email, org_slug)
-            display_name = full_name or email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-            user = User.objects.create_user(
-                username=username,
+            user, creation_error = _create_workspace_account(
                 email=email,
+                organization_name=organization_name,
+                full_name=full_name,
                 password=password,
-                organization=org,
-                full_name=display_name,
-                first_name=display_name.split()[0] if display_name else email.split('@')[0],
-                role='admin'
             )
+            if creation_error:
+                return Response({'error': creation_error}, status=status.HTTP_400_BAD_REQUEST)
             
             logger.info(f"New organization created: {organization_name} by {email}")
             try:

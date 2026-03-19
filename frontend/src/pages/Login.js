@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -64,6 +64,12 @@ function Login() {
   );
 
   const setField = (name, value) => setCredentials((prev) => ({ ...prev, [name]: value }));
+  const googleContextRef = useRef({ isLogin, organization: "", full_name: "" });
+  googleContextRef.current = {
+    isLogin,
+    organization: credentials.organization,
+    full_name: credentials.full_name,
+  };
 
   const switchMode = (loginMode) => {
     setIsLogin(loginMode);
@@ -79,8 +85,8 @@ function Login() {
     return null;
   };
 
-  const finalizeAuth = () => {
-    addToast("Welcome back!", "success");
+  const finalizeAuth = (message = "Welcome back!") => {
+    addToast(message, "success");
     navigate("/dashboard", { replace: true });
   };
 
@@ -139,15 +145,17 @@ function Login() {
   };
 
   useEffect(() => {
-    if (!isLogin || inviteToken || !googleClientId) return;
+    if (inviteToken || !googleClientId) return;
 
     let canceled = false;
     let resizeTimer = null;
     let resizeHandler = null;
     const scriptId = "google-gsi-script";
+    const mountId = isLogin ? "google-signin-button" : "google-signup-button";
+    setGoogleReady(false);
 
     const renderGoogleButton = () => {
-      const mountPoint = document.getElementById("google-signin-button");
+      const mountPoint = document.getElementById(mountId);
       if (!mountPoint || !window.google?.accounts?.id) return;
 
       const width = Math.max(250, Math.min(390, (mountPoint.parentElement?.clientWidth || 340) - 8));
@@ -174,11 +182,32 @@ function Login() {
             setError("Google sign-in failed");
             return;
           }
+
+          const googleContext = googleContextRef.current;
+          const googlePayload = { credential };
+          if (!googleContext.isLogin) {
+            const organization = googleContext.organization.trim();
+            if (!organization) {
+              const orgError = "Organization name is required before continuing with Google.";
+              setError(orgError);
+              addToast(orgError, "error");
+              return;
+            }
+            googlePayload.organization = organization;
+            if (googleContext.full_name.trim()) {
+              googlePayload.full_name = googleContext.full_name.trim();
+            }
+          }
+
           setGoogleLoading(true);
-          const result = await googleLogin({ credential });
+          const result = await googleLogin(googlePayload);
           setGoogleLoading(false);
           if (result.success) {
-            finalizeAuth();
+            finalizeAuth(
+              googleContext.isLogin
+                ? "Welcome back!"
+                : result.message || "Workspace created successfully."
+            );
           } else {
             setError(result.error);
             addToast(result.error, "error");
@@ -282,7 +311,7 @@ function Login() {
               <p>
                 {isLogin
                   ? "Access your workspace and continue where your team stopped."
-                  : "Set up your account and activate your team's decision memory."}
+                  : "Set up your account with email or Google and activate your team's decision memory."}
               </p>
             </header>
 
@@ -329,6 +358,7 @@ function Login() {
                     </div>
                     {!googleReady ? <small>Loading Google sign-in...</small> : null}
                     {googleLoading ? <small>Signing in with Google...</small> : null}
+                    <small>Personal and business Google accounts are both supported.</small>
                   </section>
 
                   <div className="auth-divider" aria-hidden="true">
@@ -349,6 +379,34 @@ function Login() {
                     placeholder="Acme Inc"
                   />
                 </Field>
+              ) : null}
+
+              {!isLogin && !inviteToken && googleClientId ? (
+                <>
+                  <section className="auth-google-panel">
+                    <div className="auth-google-head">
+                      <span className="auth-google-badge" aria-hidden="true">
+                        G
+                      </span>
+                      <div>
+                        <h3>Create a workspace with Google</h3>
+                        <p>Use a verified Google account to create your Knoledgr workspace faster.</p>
+                      </div>
+                    </div>
+                    <div className="auth-google-button-frame">
+                      <div id="google-signup-button" className="auth-google-button-host" />
+                    </div>
+                    {!googleReady ? <small>Loading Google sign-up...</small> : null}
+                    {googleLoading ? <small>Creating your workspace...</small> : null}
+                    <small>Personal and business Google accounts are both supported.</small>
+                  </section>
+
+                  <div className="auth-divider" aria-hidden="true">
+                    <span />
+                    <small>or sign up with email</small>
+                    <span />
+                  </div>
+                </>
               ) : null}
 
               {!isLogin ? (
@@ -372,7 +430,7 @@ function Login() {
                   className={inviteToken ? "is-disabled" : ""}
                   value={credentials.username}
                   onChange={(event) => setField("username", event.target.value)}
-                  placeholder="you@company.com"
+                  placeholder="you@example.com"
                 />
               </Field>
 

@@ -217,12 +217,14 @@ export function AuthProvider({ children }) {
       setUser(null);
   };
 
-  const googleLogin = async ({ credential }) => {
+  const googleLogin = async ({ credential, organization, full_name }) => {
     try {
       const preferredOrgSlug = localStorage.getItem(LAST_WORKSPACE_SLUG_KEY);
       const payload = {
         credential,
         ...(preferredOrgSlug ? { preferred_org_slug: preferredOrgSlug } : {}),
+        ...(organization ? { organization } : {}),
+        ...(full_name ? { full_name } : {}),
       };
       const response = await api.post('/api/auth/google/', payload);
       const responseData = response.data.data || response.data;
@@ -247,7 +249,11 @@ export function AuthProvider({ children }) {
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
       setUser(userData);
-      return { success: true };
+      return {
+        success: true,
+        createdWorkspace: Boolean(responseData?.created_workspace),
+        message: responseData?.message || '',
+      };
     } catch (error) {
       return {
         success: false,

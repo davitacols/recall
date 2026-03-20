@@ -15,6 +15,7 @@ from apps.agile.models import Blocker, Sprint
 from apps.organizations.auditlog_models import AuditLog
 from apps.notifications.utils import create_notification
 from apps.users.auth_utils import check_rate_limit
+from .ai_service import AIService
 from .search_engine import get_search_engine
 
 try:
@@ -270,6 +271,23 @@ def _build_answer_text(query, search_data, plan, evidence_contract):
         f'For "{query}", I found {total} matching records across {_summarize_source_mix(search_data)}. '
         f'The strongest matches are {strongest_matches}.{preview_text}{freshness_text}{readiness_text}'
     ).strip()
+
+
+def _generate_llm_copilot_answer(query, query_mode, search_data, plan, evidence_contract, recommended_interventions):
+    try:
+        service = AIService()
+        if not service.is_enabled():
+            return None
+        return service.answer_workspace_question(
+            query=query,
+            search_data=search_data,
+            plan=plan,
+            evidence_contract=evidence_contract,
+            recommended_interventions=recommended_interventions,
+            query_mode=query_mode,
+        )
+    except Exception:
+        return None
 
 
 def _build_evidence_contract(search_data, now):
@@ -1621,6 +1639,7 @@ def agi_copilot(request):
                     'analysis_id': str(uuid4()),
                     'query': query,
                     'answer': 'I interpreted this as a navigation request. Use these links to open the right workspace directly.',
+                    'answer_engine': 'rules',
                     'confidence': confidence,
                     'confidence_band': _confidence_band(confidence),
                     'response_mode': 'navigation',
@@ -1664,8 +1683,19 @@ def agi_copilot(request):
             confidence += 8
         confidence = max(18, min(96, confidence))
         evidence_contract = _build_evidence_contract(search_data, now)
+        llm_answer = _generate_llm_copilot_answer(
+            query=query,
+            query_mode=query_mode,
+            search_data=search_data,
+            plan=plan,
+            evidence_contract=evidence_contract,
+            recommended_interventions=recommended_for_response,
+        )
+        answer_engine = 'anthropic' if llm_answer else 'rules'
 
-        if query_mode == 'answer':
+        if llm_answer:
+            answer_text = llm_answer
+        elif query_mode == 'answer':
             answer_text = _build_answer_text(query, search_data, plan, evidence_contract)
         elif int(search_data.get("total", 0) or 0) == 0:
             answer_text = (
@@ -1706,6 +1736,7 @@ def agi_copilot(request):
             'analysis_id': str(uuid4()),
             'query': query,
             'answer': answer_text,
+            'answer_engine': answer_engine,
             'confidence': confidence,
             'confidence_band': confidence_band,
             'response_mode': response_mode,

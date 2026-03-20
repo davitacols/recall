@@ -152,6 +152,7 @@ export default function AskRecall() {
     return {
       question: payload.query,
       analysisId: payload.analysis_id || '',
+      answerEngine: payload.answer_engine || 'rules',
       answer:
         howTo && (payload?.response_mode === 'navigation' || Number(payload?.evidence_count || 0) === 0)
           ? `${howTo.answer}\n\n${payload?.answer || ''}`.trim()
@@ -210,6 +211,7 @@ export default function AskRecall() {
     return {
       question: q,
       analysisId: '',
+      answerEngine: 'rules',
       answer:
         total > 0
           ? `I found ${total} related organization records, ${recCount} recommendation signals, and generated ${interventions.length} suggested interventions.`
@@ -306,6 +308,7 @@ export default function AskRecall() {
       setResults({
         question: query,
         answer: detail,
+        answerEngine: 'rules',
         confidence: 0,
         confidenceBand: 'low',
         responseMode: 'needs_evidence',
@@ -443,7 +446,7 @@ export default function AskRecall() {
 
   const lowEvidence =
     !!results &&
-    results.responseMode !== 'navigation' &&
+    !['navigation', 'guidance'].includes(results.responseMode) &&
     (results.responseMode === 'needs_evidence' || Number(results.coverageScore || 0) < 45 || Number(results.evidenceCount || 0) === 0);
 
   const canManageAutonomousFixes = ['admin', 'manager'].includes(user?.role);
@@ -691,14 +694,18 @@ export default function AskRecall() {
           <WorkspacePanel
             palette={palette}
             eyebrow="Answer"
-            title="Grounded response"
-            description="Review the answer, evidence coverage, and confidence before acting."
+            title={results.answerEngine === 'anthropic' ? 'LLM-grounded response' : 'Grounded response'}
+            description={
+              results.answerEngine === 'anthropic'
+                ? 'Review the synthesized answer, supporting evidence, and confidence before acting.'
+                : 'Review the answer, evidence coverage, and confidence before acting.'
+            }
           >
             {lowEvidence ? <p style={{ margin: 0, fontSize: 12, color: palette.warn }}>Low evidence: this answer may be incomplete.</p> : null}
-            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>{results.answer}</p>
+            <p style={{ margin: 0, fontSize: 13, color: palette.muted, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{results.answer}</p>
             {!isNavigationIntent ? (
               <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                Coverage <strong style={{ color: palette.text }}>{results.coverageScore}</strong> | Evidence{' '}
+                Engine <strong style={{ color: palette.text }}>{results.answerEngine === 'anthropic' ? 'LLM' : 'Rules'}</strong> | Coverage <strong style={{ color: palette.text }}>{results.coverageScore}</strong> | Evidence{' '}
                 <strong style={{ color: palette.text }}>{results.evidenceCount}</strong> | Types{' '}
                 <strong style={{ color: palette.text }}>{results.sourceTypes.join(', ') || 'none'}</strong>
               </p>

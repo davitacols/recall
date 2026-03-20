@@ -22,7 +22,8 @@ class AGICopilotContractTests(TestCase):
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
     @patch("apps.knowledge.ai_intelligence.get_search_engine")
-    def test_contract_fields_present_in_low_evidence_mode(self, get_search_engine, build_plan, _rate_limit):
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_contract_fields_present_in_low_evidence_mode(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
         search_engine = Mock()
         search_engine.search.return_value = {
             "conversations": [],
@@ -55,7 +56,8 @@ class AGICopilotContractTests(TestCase):
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
     @patch("apps.knowledge.ai_intelligence.get_search_engine")
-    def test_contract_fields_present_in_diagnosis_mode(self, get_search_engine, build_plan, _rate_limit):
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_contract_fields_present_in_diagnosis_mode(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
         search_engine = Mock()
         search_engine.search.return_value = {
             "conversations": [{"id": 11, "title": "Sprint risk", "created_at": "2026-03-03T08:30:00Z"}],
@@ -108,7 +110,8 @@ class AGICopilotContractTests(TestCase):
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
     @patch("apps.knowledge.ai_intelligence.get_search_engine")
-    def test_answer_mode_returns_broader_organization_sources(self, get_search_engine, build_plan, _rate_limit):
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value="The onboarding goal is supported by a matching task and onboarding guide.")
+    def test_answer_mode_returns_broader_organization_sources(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
         search_engine = Mock()
         search_engine.search.return_value = {
             "conversations": [],
@@ -145,6 +148,7 @@ class AGICopilotContractTests(TestCase):
         response = self.client.post("/api/knowledge/ai/copilot/", {"query": "What active goals are related to onboarding?"}, format="json")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertEqual(response.data.get("answer_engine"), "anthropic")
         self.assertIn("goal", response.data.get("source_types"))
         self.assertIn("task", response.data.get("source_types"))
         self.assertIn("document", response.data.get("source_types"))
@@ -165,7 +169,8 @@ class AGICopilotContractTests(TestCase):
     @patch("apps.knowledge.ai_intelligence._execute_interventions")
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
     @patch("apps.knowledge.ai_intelligence.get_search_engine")
-    def test_execute_with_confirmation_returns_execution_payload(self, get_search_engine, build_plan, execute_interventions, _rate_limit):
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_execute_with_confirmation_returns_execution_payload(self, _llm_answer, get_search_engine, build_plan, execute_interventions, _rate_limit):
         search_engine = Mock()
         search_engine.search.return_value = {
             "conversations": [{"id": 11, "title": "Sprint risk", "created_at": "2026-03-03T08:30:00Z"}],
@@ -205,3 +210,13 @@ class AGICopilotContractTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data.get("execution", {}).get("performed"))
         self.assertEqual(response.data.get("execution", {}).get("selected_ids"), ["task:44"])
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    def test_execute_rejected_for_non_diagnosis_query(self, _rate_limit):
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "What active goals are related to onboarding?", "execute": True, "confirm_execute": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("only available for operational diagnosis", response.data.get("error", ""))

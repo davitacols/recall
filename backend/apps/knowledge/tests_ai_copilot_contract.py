@@ -46,6 +46,8 @@ class AGICopilotContractTests(TestCase):
         self.assertEqual(response.data.get("evidence_count"), 0)
         self.assertIn("coverage_score", response.data)
         self.assertIn("missing_evidence", response.data)
+        self.assertIn("citations", response.data)
+        self.assertIn("credibility_summary", response.data)
         self.assertEqual(response.data.get("confidence_band"), "low")
         self.assertTrue(len(response.data.get("recommended_interventions") or []) >= 1)
         first_action = response.data["recommended_interventions"][0]
@@ -154,6 +156,8 @@ class AGICopilotContractTests(TestCase):
         self.assertIn("document", response.data.get("source_types"))
         self.assertEqual(response.data.get("recommended_interventions"), [])
         self.assertEqual((response.data.get("sources") or {}).get("documents")[0]["title"], "Onboarding Guide")
+        self.assertTrue(isinstance(response.data.get("citations"), list))
+        self.assertIn("Grounded in", response.data.get("credibility_summary", ""))
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
@@ -225,6 +229,90 @@ class AGICopilotContractTests(TestCase):
         self.assertIn("issue", response.data.get("source_types"))
         self.assertEqual((response.data.get("sources") or {}).get("sprints")[0]["title"], "Talking Stage Sprint")
         self.assertEqual((response.data.get("sources") or {}).get("projects")[0]["title"], "Justice App")
+        self.assertTrue(any(item.get("type") == "sprint" for item in response.data.get("citations") or []))
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value="The strongest evidence is a blocker, a sprint update, and a reply connected to the launch conversation.")
+    def test_answer_mode_returns_credible_citations_for_extended_sources(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "replies": [
+                {
+                    "id": 31,
+                    "title": "Reply in Launch planning",
+                    "created_at": "2026-03-09T08:30:00Z",
+                    "updated_at": "2026-03-09T09:00:00Z",
+                    "url": "/conversations/12",
+                    "content_preview": "Reply confirms launch dependencies are still open.",
+                    "conversation_title": "Launch planning",
+                }
+            ],
+            "action_items": [],
+            "decisions": [],
+            "goals": [],
+            "milestones": [],
+            "tasks": [],
+            "meetings": [],
+            "documents": [],
+            "projects": [],
+            "sprints": [],
+            "sprint_updates": [
+                {
+                    "id": 32,
+                    "title": "Launch sprint update",
+                    "created_at": "2026-03-10T08:30:00Z",
+                    "url": "/sprints/9",
+                    "content_preview": "Update notes that launch validation is blocked on infra readiness.",
+                    "sprint_name": "Launch Sprint",
+                    "project_name": "Justice App",
+                }
+            ],
+            "issues": [],
+            "blockers": [
+                {
+                    "id": 33,
+                    "title": "Infra validation blocker",
+                    "created_at": "2026-03-11T08:30:00Z",
+                    "url": "/blockers",
+                    "content_preview": "Blocker remains active and is affecting launch readiness.",
+                    "status": "active",
+                    "sprint_name": "Launch Sprint",
+                }
+            ],
+            "people": [
+                {
+                    "id": 34,
+                    "title": "Ada Lovelace",
+                    "last_active": "2026-03-11T08:30:00Z",
+                    "url": "/team",
+                    "content_preview": "Role manager Supports launch validation.",
+                    "role": "manager",
+                }
+            ],
+            "total": 4,
+        }
+        get_search_engine.return_value = search_engine
+        build_plan.return_value = {
+            "status": "watch",
+            "readiness_score": 71.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 1, "high_priority_unassigned_tasks": 0},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "what is blocking the launch sprint right now"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "diagnosis")
+        self.assertTrue(any(item.get("type") == "blocker" for item in response.data.get("citations") or []))
+        self.assertTrue(any(item.get("type") == "reply" for item in response.data.get("citations") or []))
+        self.assertIn("Grounded in", response.data.get("credibility_summary", ""))
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     def test_execute_requires_confirmation(self, _rate_limit):

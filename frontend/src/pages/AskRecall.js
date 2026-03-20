@@ -24,14 +24,20 @@ function toTimestamp(value) {
 function normalizeSources(sources) {
   const configs = [
     { key: 'conversations', type: 'conversation', fallbackHref: (item) => `/conversations/${item.id}`, dateKeys: ['created_at'] },
+    { key: 'replies', type: 'reply', fallbackHref: (item) => item.url || '/conversations', dateKeys: ['updated_at', 'created_at'] },
+    { key: 'action_items', type: 'action_item', fallbackHref: (item) => item.url || '/conversations', dateKeys: ['due_date', 'created_at'] },
     { key: 'decisions', type: 'decision', fallbackHref: (item) => `/decisions/${item.id}`, dateKeys: ['created_at'] },
     { key: 'goals', type: 'goal', fallbackHref: (item) => `/business/goals/${item.id}`, dateKeys: ['created_at'] },
+    { key: 'milestones', type: 'milestone', fallbackHref: (item) => item.url || '/business/goals', dateKeys: ['due_date', 'completed_at', 'created_at'] },
     { key: 'tasks', type: 'task', fallbackHref: () => '/business/tasks', dateKeys: ['created_at'] },
     { key: 'meetings', type: 'meeting', fallbackHref: (item) => `/business/meetings/${item.id}`, dateKeys: ['meeting_date', 'created_at'] },
     { key: 'documents', type: 'document', fallbackHref: (item) => `/business/documents/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
     { key: 'projects', type: 'project', fallbackHref: (item) => `/projects/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
     { key: 'sprints', type: 'sprint', fallbackHref: (item) => `/sprints/${item.id}`, dateKeys: ['start_date', 'created_at'] },
+    { key: 'sprint_updates', type: 'sprint_update', fallbackHref: (item) => item.url || '/sprint', dateKeys: ['created_at'] },
     { key: 'issues', type: 'issue', fallbackHref: (item) => `/issues/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
+    { key: 'blockers', type: 'blocker', fallbackHref: (item) => item.url || '/blockers', dateKeys: ['resolved_at', 'created_at'] },
+    { key: 'people', type: 'person', fallbackHref: (item) => item.url || '/team', dateKeys: ['last_active', 'created_at'] },
   ];
 
   return configs
@@ -40,7 +46,9 @@ function normalizeSources(sources) {
         const rawDate = config.dateKeys.map((key) => item?.[key]).find(Boolean);
         const contextualPreview =
           item.content_preview ||
-          [item.key, item.project_name, item.sprint_name].filter(Boolean).join(' | ');
+          [item.role, item.status, item.key, item.project_name, item.sprint_name, item.conversation_title, item.goal_title]
+            .filter(Boolean)
+            .join(' | ');
         return {
           id: item.id,
           type: config.type,
@@ -160,6 +168,7 @@ export default function AskRecall() {
       question: payload.query,
       analysisId: payload.analysis_id || '',
       answerEngine: payload.answer_engine || 'rules',
+      credibilitySummary: payload.credibility_summary || '',
       answer:
         howTo && (payload?.response_mode === 'navigation' || Number(payload?.evidence_count || 0) === 0)
           ? `${howTo.answer}\n\n${payload?.answer || ''}`.trim()
@@ -189,6 +198,17 @@ export default function AskRecall() {
       counts: payload.counts || {},
       linkedDecisions,
       nextActions,
+      citations:
+        (payload.citations || []).map((item) => ({
+          id: item.id,
+          type: item.type,
+          title: item.title,
+          href: item.url,
+          date: toDisplayDate(item.created_at),
+          preview: item.preview || '',
+          matchedTerms: item.matched_terms || [],
+          directMatch: !!item.direct_match,
+        })) || [],
       sources: normalizeSources(payload.sources),
       execution: payload.execution || { performed: false, result: null },
       generatedAt: payload.generated_at || '',
@@ -219,6 +239,7 @@ export default function AskRecall() {
       question: q,
       analysisId: '',
       answerEngine: 'rules',
+      credibilitySummary: total > 0 ? `Grounded in ${total} matching record${total === 1 ? '' : 's'} from the legacy search path.` : '',
       answer:
         total > 0
           ? `I found ${total} related organization records, ${recCount} recommendation signals, and generated ${interventions.length} suggested interventions.`
@@ -229,14 +250,20 @@ export default function AskRecall() {
       evidenceCount: total,
       sourceTypes: [
         ...(conversations.length > 0 ? ['conversation'] : []),
+        ...((legacySources?.replies || []).length > 0 ? ['reply'] : []),
+        ...((legacySources?.action_items || []).length > 0 ? ['action_item'] : []),
         ...(decisions.length > 0 ? ['decision'] : []),
         ...((legacySources?.goals || []).length > 0 ? ['goal'] : []),
+        ...((legacySources?.milestones || []).length > 0 ? ['milestone'] : []),
         ...((legacySources?.tasks || []).length > 0 ? ['task'] : []),
         ...((legacySources?.meetings || []).length > 0 ? ['meeting'] : []),
         ...((legacySources?.documents || []).length > 0 ? ['document'] : []),
         ...((legacySources?.projects || []).length > 0 ? ['project'] : []),
         ...((legacySources?.sprints || []).length > 0 ? ['sprint'] : []),
+        ...((legacySources?.sprint_updates || []).length > 0 ? ['sprint_update'] : []),
         ...((legacySources?.issues || []).length > 0 ? ['issue'] : []),
+        ...((legacySources?.blockers || []).length > 0 ? ['blocker'] : []),
+        ...((legacySources?.people || []).length > 0 ? ['person'] : []),
       ],
       freshnessDays: null,
       coverageScore: total > 0 ? Math.min(85, 35 + total * 10) : 0,
@@ -256,6 +283,7 @@ export default function AskRecall() {
         date: toDisplayDate(item.created_at),
       })),
       nextActions: [],
+      citations: [],
       sources: normalizeSources(legacySources),
       execution: { performed: false, result: null },
       generatedAt: '',
@@ -321,6 +349,7 @@ export default function AskRecall() {
         answerEngine: 'rules',
         confidence: 0,
         confidenceBand: 'low',
+        credibilitySummary: '',
         responseMode: 'needs_evidence',
         evidenceCount: 0,
         sourceTypes: [],
@@ -333,6 +362,7 @@ export default function AskRecall() {
         counts: {},
         linkedDecisions: [],
         nextActions: [],
+        citations: [],
         sources: [],
         execution: { performed: false, result: null },
         toolLinks: [],
@@ -719,6 +749,48 @@ export default function AskRecall() {
                 <strong style={{ color: palette.text }}>{results.evidenceCount}</strong> | Types{' '}
                 <strong style={{ color: palette.text }}>{results.sourceTypes.join(', ') || 'none'}</strong>
               </p>
+            ) : null}
+            {!!results.credibilitySummary ? (
+              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                {results.credibilitySummary}
+              </p>
+            ) : null}
+            {results.citations?.length ? (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {results.citations.slice(0, 3).map((citation) => (
+                  <a
+                    key={`${citation.type}-${citation.id}`}
+                    href={citation.href}
+                    style={{
+                      textDecoration: 'none',
+                      color: palette.text,
+                      border: `1px solid ${palette.border}`,
+                      borderRadius: 12,
+                      background: palette.cardAlt,
+                      padding: 10,
+                      display: 'grid',
+                      gap: 4,
+                    }}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>
+                      {citation.title}
+                    </span>
+                    <span style={{ fontSize: 11, color: palette.muted }}>
+                      {citation.type} {citation.date ? `| ${citation.date}` : ''}{citation.directMatch ? ' | direct match' : ''}
+                    </span>
+                    {citation.matchedTerms?.length ? (
+                      <span style={{ fontSize: 11, color: palette.muted }}>
+                        Matched terms: {citation.matchedTerms.join(', ')}
+                      </span>
+                    ) : null}
+                    {citation.preview ? (
+                      <span style={{ fontSize: 11, color: palette.muted, lineHeight: 1.5 }}>
+                        {citation.preview}
+                      </span>
+                    ) : null}
+                  </a>
+                ))}
+              </div>
             ) : null}
 
             <div style={{ display: 'grid', gap: 6 }}>

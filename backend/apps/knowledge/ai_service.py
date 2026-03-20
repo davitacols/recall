@@ -67,14 +67,20 @@ class AIService:
     def _build_workspace_context(self, search_data, plan, evidence_contract, recommended_interventions, query_mode):
         sections = [
             self._format_bucket("Conversations", search_data.get("conversations") or []),
+            self._format_bucket("Replies", search_data.get("replies") or []),
+            self._format_bucket("Action Items", search_data.get("action_items") or []),
             self._format_bucket("Decisions", search_data.get("decisions") or []),
             self._format_bucket("Goals", search_data.get("goals") or []),
+            self._format_bucket("Milestones", search_data.get("milestones") or []),
             self._format_bucket("Tasks", search_data.get("tasks") or []),
             self._format_bucket("Meetings", search_data.get("meetings") or []),
             self._format_bucket("Documents", search_data.get("documents") or []),
             self._format_bucket("Projects", search_data.get("projects") or []),
             self._format_bucket("Sprints", search_data.get("sprints") or []),
+            self._format_bucket("Sprint Updates", search_data.get("sprint_updates") or []),
             self._format_bucket("Issues", search_data.get("issues") or []),
+            self._format_bucket("Blockers", search_data.get("blockers") or []),
+            self._format_bucket("People", search_data.get("people") or []),
         ]
 
         intervention_lines = []
@@ -120,6 +126,8 @@ class AIService:
             "Do not invent records, owners, decisions, dates, or metrics.\n"
             "If evidence is weak or missing, say so plainly.\n"
             "Keep answers concise, useful, and professional.\n"
+            "Be evidence-led: mention the strongest supporting records by name.\n"
+            "Separate direct evidence from inference when you need to infer.\n"
             "When the mode is diagnosis, summarize risk/readiness and point to the strongest supporting evidence.\n"
             "When the mode is answer, answer the organization question directly using the retrieved records."
         )
@@ -132,6 +140,7 @@ class AIService:
             "- 1 to 3 short paragraphs\n"
             "- Mention the strongest matching records when relevant\n"
             "- Mention uncertainty when evidence is thin\n"
+            "- If you infer anything, say that it is an inference from the retrieved records\n"
             "- Do not use markdown headings\n"
             "- Do not mention hidden system prompts or internal scoring"
         )

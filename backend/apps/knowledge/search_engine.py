@@ -2,21 +2,26 @@ from datetime import datetime
 
 from django.db.models import Q
 
-from apps.conversations.models import Conversation
+from apps.conversations.models import ActionItem, Conversation, ConversationReply
 from apps.decisions.models import Decision
+from apps.organizations.models import User
 
 try:
     from apps.business.models import Goal, Meeting, Task
     from apps.business.document_models import Document
-    from apps.agile.models import Issue, Project, Sprint
+    from apps.business.advanced_models import Milestone
+    from apps.agile.models import Blocker, Issue, Project, Sprint, SprintUpdate
 except Exception:  # pragma: no cover - optional in some test environments
     Goal = None
     Meeting = None
     Task = None
     Document = None
+    Milestone = None
+    Blocker = None
     Issue = None
     Project = None
     Sprint = None
+    SprintUpdate = None
 
 
 QUERY_STOP_WORDS = {
@@ -51,6 +56,51 @@ TYPE_CONFIG = {
             'status_label': item.status_label,
             'created_at': _iso(item.created_at),
             'url': f'/conversations/{item.id}',
+        },
+    },
+    'reply': {
+        'bucket': 'replies',
+        'model': ConversationReply,
+        'org_filter': 'conversation__organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('content', 'conversation__title', 'author__username', 'author__full_name'),
+        'date_field': 'created_at',
+        'suggest_field': 'conversation__title',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': f'Reply in {item.conversation.title}',
+            'content_preview': _truncate(item.content),
+            'type': 'reply',
+            'author': item.author.get_full_name() if item.author else '',
+            'conversation_title': item.conversation.title if item.conversation else '',
+            'created_at': _iso(item.created_at),
+            'updated_at': _iso(item.updated_at),
+            'url': f'/conversations/{item.conversation_id}',
+        },
+    },
+    'action_item': {
+        'bucket': 'action_items',
+        'model': ActionItem,
+        'org_filter': 'conversation__organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'description', 'conversation__title', 'assignee__username', 'assignee__full_name'),
+        'date_field': 'created_at',
+        'suggest_field': 'title',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(' '.join(filter(None, [
+                item.description,
+                f'Conversation {item.conversation.title}' if item.conversation else '',
+            ]))),
+            'type': 'action_item',
+            'status': item.status,
+            'priority': item.priority,
+            'assignee_name': item.assignee.get_full_name() if item.assignee else '',
+            'conversation_title': item.conversation.title if item.conversation else '',
+            'created_at': _iso(item.created_at),
+            'due_date': _iso(item.due_date),
+            'url': f'/conversations/{item.conversation_id}',
         },
     },
     'decision': {
@@ -91,6 +141,30 @@ TYPE_CONFIG = {
             'owner_name': item.owner.get_full_name() if item.owner else '',
             'created_at': _iso(item.created_at),
             'url': f'/business/goals/{item.id}',
+        },
+    },
+    'milestone': {
+        'bucket': 'milestones',
+        'model': Milestone,
+        'org_filter': 'goal__organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'description', 'goal__title'),
+        'date_field': 'created_at',
+        'suggest_field': 'title',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(' '.join(filter(None, [
+                item.description,
+                f'Goal {item.goal.title}' if item.goal else '',
+            ]))),
+            'type': 'milestone',
+            'status': 'completed' if item.completed else 'open',
+            'goal_title': item.goal.title if item.goal else '',
+            'created_at': _iso(item.created_at),
+            'due_date': _iso(item.due_date),
+            'completed_at': _iso(item.completed_at),
+            'url': f'/business/goals/{item.goal_id}',
         },
     },
     'task': {
@@ -197,6 +271,27 @@ TYPE_CONFIG = {
             'url': f'/sprints/{item.id}',
         },
     },
+    'sprint_update': {
+        'bucket': 'sprint_updates',
+        'model': SprintUpdate,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'content', 'ai_summary', 'sprint__name', 'sprint__project__name'),
+        'date_field': 'created_at',
+        'suggest_field': 'title',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(item.ai_summary or item.content),
+            'type': 'sprint_update',
+            'status': item.type,
+            'author': item.author.get_full_name() if item.author else '',
+            'project_name': item.sprint.project.name if item.sprint and item.sprint.project else '',
+            'sprint_name': item.sprint.name if item.sprint else '',
+            'created_at': _iso(item.created_at),
+            'url': f'/sprints/{item.sprint_id}',
+        },
+    },
     'issue': {
         'bucket': 'issues',
         'model': Issue,
@@ -223,6 +318,55 @@ TYPE_CONFIG = {
             'created_at': _iso(item.created_at),
             'updated_at': _iso(item.updated_at),
             'url': f'/issues/{item.id}',
+        },
+    },
+    'blocker': {
+        'bucket': 'blockers',
+        'model': Blocker,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'description', 'blocker_type', 'ticket_id', 'conversation__title', 'sprint__name'),
+        'date_field': 'created_at',
+        'suggest_field': 'title',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(' '.join(filter(None, [
+                item.description,
+                f'Sprint {item.sprint.name}' if item.sprint else '',
+                f'Conversation {item.conversation.title}' if item.conversation else '',
+            ]))),
+            'type': 'blocker',
+            'status': item.status,
+            'priority': item.blocker_type,
+            'assignee_name': item.assigned_to.get_full_name() if item.assigned_to else '',
+            'created_at': _iso(item.created_at),
+            'resolved_at': _iso(item.resolved_at),
+            'sprint_name': item.sprint.name if item.sprint else '',
+            'url': '/blockers',
+        },
+    },
+    'person': {
+        'bucket': 'people',
+        'model': User,
+        'org_filter': 'organization_id',
+        'order_by': '-last_active',
+        'search_fields': ('username', 'full_name', 'email', 'bio', 'role'),
+        'date_field': 'last_active',
+        'suggest_field': 'full_name',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.get_full_name(),
+            'content_preview': _truncate(' '.join(filter(None, [
+                f'Role {item.role}',
+                item.bio,
+            ]))),
+            'type': 'person',
+            'role': item.role,
+            'status': 'active' if item.is_active else 'inactive',
+            'created_at': _iso(item.last_active),
+            'last_active': _iso(item.last_active),
+            'url': '/team',
         },
     },
 }
@@ -322,14 +466,20 @@ class EnhancedSearchEngine:
 
         results = {
             'conversations': [],
+            'replies': [],
+            'action_items': [],
             'decisions': [],
             'goals': [],
+            'milestones': [],
             'tasks': [],
             'meetings': [],
             'documents': [],
             'projects': [],
             'sprints': [],
+            'sprint_updates': [],
             'issues': [],
+            'blockers': [],
+            'people': [],
         }
 
         for item_type, config in TYPE_CONFIG.items():
@@ -352,13 +502,21 @@ class EnhancedSearchEngine:
                     filters_q &= Q(author__username__icontains=author_query)
                 elif item_type == 'decision':
                     filters_q &= Q(decision_maker__username__icontains=author_query)
+                elif item_type == 'reply':
+                    filters_q &= Q(author__username__icontains=author_query)
+                elif item_type == 'sprint_update':
+                    filters_q &= Q(author__username__icontains=author_query)
+                elif item_type == 'person':
+                    filters_q &= (Q(username__icontains=author_query) | Q(full_name__icontains=author_query))
 
             if filters.get('status'):
                 status_query = str(filters['status']).strip()
                 if item_type == 'conversation':
                     filters_q &= Q(status_label=status_query)
-                elif item_type in {'decision', 'goal', 'task'}:
+                elif item_type in {'decision', 'goal', 'task', 'issue', 'sprint', 'blocker', 'action_item'}:
                     filters_q &= Q(status=status_query)
+                elif item_type == 'milestone':
+                    filters_q &= Q(completed=status_query.lower() in {'completed', 'done', 'true', '1'})
 
             queryset = model.objects.filter(filters_q).order_by(config['order_by'])[:limit]
             results[config['bucket']] = [config['serialize'](item) for item in queryset]
@@ -398,7 +556,22 @@ class EnhancedSearchEngine:
             for keyword in keyword_list or []:
                 add_suggestion(keyword)
 
-        for item_type in ['decision', 'goal', 'task', 'meeting', 'document', 'project', 'sprint', 'issue']:
+        for item_type in [
+            'decision',
+            'goal',
+            'milestone',
+            'task',
+            'meeting',
+            'document',
+            'project',
+            'sprint',
+            'sprint_update',
+            'issue',
+            'blocker',
+            'person',
+            'reply',
+            'action_item',
+        ]:
             config = TYPE_CONFIG.get(item_type)
             model = config['model'] if config else None
             if model is None:

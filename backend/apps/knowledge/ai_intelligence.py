@@ -82,6 +82,20 @@ SOURCE_BUCKET_REGISTRY = [
         'fallback_url': lambda item_id: f'/conversations/{item_id}',
     },
     {
+        'bucket': 'replies',
+        'type': 'reply',
+        'label': 'replies',
+        'date_fields': ('updated_at', 'created_at'),
+        'fallback_url': lambda _item_id: '/conversations',
+    },
+    {
+        'bucket': 'action_items',
+        'type': 'action_item',
+        'label': 'action items',
+        'date_fields': ('due_date', 'created_at'),
+        'fallback_url': lambda _item_id: '/conversations',
+    },
+    {
         'bucket': 'decisions',
         'type': 'decision',
         'label': 'decisions',
@@ -94,6 +108,13 @@ SOURCE_BUCKET_REGISTRY = [
         'label': 'goals',
         'date_fields': ('created_at',),
         'fallback_url': lambda item_id: f'/business/goals/{item_id}',
+    },
+    {
+        'bucket': 'milestones',
+        'type': 'milestone',
+        'label': 'milestones',
+        'date_fields': ('due_date', 'created_at'),
+        'fallback_url': lambda _item_id: '/business/goals',
     },
     {
         'bucket': 'tasks',
@@ -131,11 +152,32 @@ SOURCE_BUCKET_REGISTRY = [
         'fallback_url': lambda item_id: f'/sprints/{item_id}',
     },
     {
+        'bucket': 'sprint_updates',
+        'type': 'sprint_update',
+        'label': 'sprint updates',
+        'date_fields': ('created_at',),
+        'fallback_url': lambda _item_id: '/sprint',
+    },
+    {
         'bucket': 'issues',
         'type': 'issue',
         'label': 'issues',
         'date_fields': ('updated_at', 'created_at'),
         'fallback_url': lambda item_id: f'/issues/{item_id}',
+    },
+    {
+        'bucket': 'blockers',
+        'type': 'blocker',
+        'label': 'blockers',
+        'date_fields': ('resolved_at', 'created_at'),
+        'fallback_url': lambda _item_id: '/blockers',
+    },
+    {
+        'bucket': 'people',
+        'type': 'person',
+        'label': 'people',
+        'date_fields': ('last_active', 'created_at'),
+        'fallback_url': lambda _item_id: '/team',
     },
 ]
 
@@ -214,6 +256,9 @@ def _iter_source_records(search_data, limit_per_bucket=20):
                 'key': item.get('key') or '',
                 'project_name': item.get('project_name') or '',
                 'sprint_name': item.get('sprint_name') or '',
+                'conversation_title': item.get('conversation_title') or '',
+                'goal_title': item.get('goal_title') or '',
+                'role': item.get('role') or '',
                 'created_at': raw_date,
                 '_ts': _parse_source_created_at(raw_date),
             }
@@ -277,7 +322,7 @@ def _build_answer_text(query, search_data, plan, evidence_contract):
     if not records or total == 0:
         return (
             f'For "{query}", I could not find directly related organization records. '
-            'Try using a project, sprint, issue, goal, task, document, conversation, or decision name that should exist in the workspace.'
+            'Try using the name of a project, sprint, issue, blocker, document, decision, conversation, milestone, or teammate that should exist in the workspace.'
         )
 
     query_lower = str(query or '').lower()
@@ -311,6 +356,87 @@ def _copilot_sources_payload(search_data):
     payload = {config['bucket']: search_data.get(config['bucket'], []) for config in SOURCE_BUCKET_REGISTRY}
     payload['total'] = search_data.get('total', 0)
     return payload
+
+
+def _source_match_blob(item):
+    parts = [
+        item.get('title'),
+        item.get('preview'),
+        item.get('status'),
+        item.get('priority'),
+        item.get('owner_name'),
+        item.get('key'),
+        item.get('project_name'),
+        item.get('sprint_name'),
+        item.get('conversation_title'),
+        item.get('goal_title'),
+        item.get('role'),
+    ]
+    return ' '.join(str(part).lower() for part in parts if str(part or '').strip())
+
+
+def _rank_source_citations(search_data, query, limit=5):
+    items = _build_evidence_items(search_data)
+    if not items:
+        return []
+
+    query_terms = _tokenize_for_match(query)
+    scored = []
+    for item in items:
+        blob = _source_match_blob(item)
+        title_terms = _tokenize_for_match(item.get('title'))
+        matched_terms = sorted(term for term in query_terms if term in blob)
+        score = len(matched_terms) * 10
+        score += len(query_terms.intersection(title_terms)) * 6
+        if item.get('preview'):
+            score += 1
+        if item.get('_ts') is not None:
+            score += 2
+        scored.append((score, item, matched_terms))
+
+    scored.sort(key=lambda row: (row[0], row[1].get('_ts') or datetime.min), reverse=True)
+
+    citations = []
+    seen = set()
+    for score, item, matched_terms in scored:
+        key = (item.get('type'), item.get('id'))
+        if key in seen:
+            continue
+        seen.add(key)
+        citations.append({
+            'id': item.get('id'),
+            'type': item.get('type'),
+            'title': item.get('title'),
+            'url': item.get('url'),
+            'created_at': item.get('created_at'),
+            'preview': item.get('preview') or '',
+            'matched_terms': matched_terms,
+            'direct_match': bool(matched_terms),
+            'score': score,
+        })
+        if len(citations) >= limit:
+            break
+    return citations
+
+
+def _build_credibility_summary(evidence_contract, citations):
+    evidence_count = int(evidence_contract.get('evidence_count', 0) or 0)
+    source_types = evidence_contract.get('source_types') or []
+    freshness_days = evidence_contract.get('freshness_days')
+    direct_matches = sum(1 for item in citations if item.get('direct_match'))
+
+    summary = (
+        f'Grounded in {evidence_count} record'
+        f'{"s" if evidence_count != 1 else ""} across {len(source_types)} source type'
+        f'{"s" if len(source_types) != 1 else ""}'
+    )
+    if direct_matches:
+        summary += f', with {direct_matches} direct citation{"s" if direct_matches != 1 else ""}'
+    if freshness_days is not None:
+        summary += f'. Newest matching evidence is {freshness_days} day{"s" if freshness_days != 1 else ""} old.'
+    else:
+        summary += '.'
+    return summary
 
 
 def _generate_llm_copilot_answer(query, query_mode, search_data, plan, evidence_contract, recommended_interventions):
@@ -369,7 +495,7 @@ def _build_evidence_contract(search_data, now):
     missing_evidence = []
     if total == 0:
         missing_evidence.extend([
-            'No related conversations, decisions, goals, tasks, meetings, documents, projects, sprints, or issues matched this query.',
+            'No related indexed knowledge matched this query across conversations, execution records, documents, and team context.',
             'Add or link related artifacts before relying on this answer.',
         ])
     else:
@@ -1688,6 +1814,8 @@ def agi_copilot(request):
                     'freshness_days': None,
                     'coverage_score': 0,
                     'missing_evidence': [],
+                    'citations': [],
+                    'credibility_summary': 'Navigation requests do not use workspace evidence.',
                     'tool_links': tool_links,
                     'risk_status': plan.get('status'),
                     'readiness_score': plan.get('readiness_score'),
@@ -1723,6 +1851,8 @@ def agi_copilot(request):
             confidence += 8
         confidence = max(18, min(96, confidence))
         evidence_contract = _build_evidence_contract(search_data, now)
+        citations = _rank_source_citations(search_data, query)
+        credibility_summary = _build_credibility_summary(evidence_contract, citations)
         llm_answer = _generate_llm_copilot_answer(
             query=query,
             query_mode=query_mode,
@@ -1785,6 +1915,8 @@ def agi_copilot(request):
             'freshness_days': evidence_contract.get('freshness_days'),
             'coverage_score': evidence_contract.get('coverage_score', 0),
             'missing_evidence': evidence_contract.get('missing_evidence', []),
+            'citations': citations,
+            'credibility_summary': credibility_summary,
             'tool_links': [],
             'risk_status': plan.get('status'),
             'readiness_score': plan.get('readiness_score'),

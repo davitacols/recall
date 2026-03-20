@@ -4,10 +4,11 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.business.advanced_models import Milestone
 from apps.business.document_models import Document
 from apps.business.models import Goal, Meeting, Task
-from apps.agile.models import Board, Column, Issue, Project, Sprint
-from apps.conversations.models import Conversation
+from apps.agile.models import Blocker, Board, Column, Issue, Project, Sprint, SprintUpdate
+from apps.conversations.models import ActionItem, Conversation, ConversationReply
 from apps.decisions.models import Decision
 from apps.organizations.models import Organization, User
 
@@ -24,6 +25,15 @@ class KnowledgeApiContractTests(TestCase):
             role="admin",
         )
         self.client.force_authenticate(user=self.user)
+        self.teammate = User.objects.create_user(
+            username="keyword_alpha_specialist",
+            email="keyword-alpha-specialist@example.com",
+            password="pass1234",
+            organization=self.org,
+            role="manager",
+            full_name="Keyword Alpha Specialist",
+            bio="Supports keyword alpha delivery and rollout planning.",
+        )
 
         self.conversation = Conversation.objects.create(
             organization=self.org,
@@ -33,6 +43,19 @@ class KnowledgeApiContractTests(TestCase):
             content="Keyword alpha appears in sprint risk discussion.",
             ai_processed=True,
             ai_keywords=["keyword alpha", "risk"],
+        )
+        self.reply = ConversationReply.objects.create(
+            conversation=self.conversation,
+            author=self.teammate,
+            content="Deep keyword alpha reply context lives in this thread.",
+        )
+        self.action_item = ActionItem.objects.create(
+            conversation=self.conversation,
+            title="Keyword alpha action item",
+            description="Follow up on the keyword alpha rollout risk.",
+            assignee=self.teammate,
+            status="in_progress",
+            priority="high",
         )
         self.decision = Decision.objects.create(
             organization=self.org,
@@ -52,6 +75,11 @@ class KnowledgeApiContractTests(TestCase):
             owner=self.user,
             status="in_progress",
             progress=35,
+        )
+        self.milestone = Milestone.objects.create(
+            goal=self.goal,
+            title="Keyword alpha milestone",
+            description="Milestone coverage for keyword alpha delivery.",
         )
         self.task = Task.objects.create(
             organization=self.org,
@@ -125,6 +153,26 @@ class KnowledgeApiContractTests(TestCase):
             assignee=self.user,
             in_backlog=False,
         )
+        self.blocker = Blocker.objects.create(
+            organization=self.org,
+            conversation=self.conversation,
+            sprint=self.sprint,
+            title="Keyword alpha blocker",
+            description="Blocker coverage for the keyword alpha sprint.",
+            blocker_type="technical",
+            status="active",
+            blocked_by=self.user,
+            assigned_to=self.teammate,
+        )
+        self.sprint_update = SprintUpdate.objects.create(
+            organization=self.org,
+            sprint=self.sprint,
+            author=self.user,
+            type="sprint_update",
+            title="Keyword alpha sprint update",
+            content="This sprint update contains keyword alpha details for the team.",
+            ai_summary="Keyword alpha sprint summary for testing.",
+        )
 
     def test_search_returns_bucketed_payload_with_business_entities(self):
         response = self.client.post("/api/knowledge/search/", {"query": "keyword alpha"}, format="json")
@@ -135,19 +183,41 @@ class KnowledgeApiContractTests(TestCase):
         self.assertIn("total", payload)
         self.assertIsInstance(payload["results"], dict)
 
-        for bucket in ["conversations", "decisions", "goals", "tasks", "meetings", "documents", "projects", "sprints", "issues"]:
+        for bucket in [
+            "conversations",
+            "replies",
+            "action_items",
+            "decisions",
+            "goals",
+            "milestones",
+            "tasks",
+            "meetings",
+            "documents",
+            "projects",
+            "sprints",
+            "sprint_updates",
+            "issues",
+            "blockers",
+            "people",
+        ]:
             self.assertIn(bucket, payload["results"])
             self.assertIsInstance(payload["results"][bucket], list)
 
         self.assertTrue(any(item["id"] == self.conversation.id for item in payload["results"]["conversations"]))
+        self.assertTrue(any(item["id"] == self.reply.id for item in payload["results"]["replies"]))
+        self.assertTrue(any(item["id"] == self.action_item.id for item in payload["results"]["action_items"]))
         self.assertTrue(any(item["id"] == self.decision.id for item in payload["results"]["decisions"]))
         self.assertTrue(any(item["id"] == self.goal.id for item in payload["results"]["goals"]))
+        self.assertTrue(any(item["id"] == self.milestone.id for item in payload["results"]["milestones"]))
         self.assertTrue(any(item["id"] == self.task.id for item in payload["results"]["tasks"]))
         self.assertTrue(any(item["id"] == self.meeting.id for item in payload["results"]["meetings"]))
         self.assertTrue(any(item["id"] == self.document.id for item in payload["results"]["documents"]))
         self.assertTrue(any(item["id"] == self.project.id for item in payload["results"]["projects"]))
         self.assertTrue(any(item["id"] == self.sprint.id for item in payload["results"]["sprints"]))
+        self.assertTrue(any(item["id"] == self.sprint_update.id for item in payload["results"]["sprint_updates"]))
         self.assertTrue(any(item["id"] == self.issue.id for item in payload["results"]["issues"]))
+        self.assertTrue(any(item["id"] == self.blocker.id for item in payload["results"]["blockers"]))
+        self.assertTrue(any(item["id"] == self.teammate.id for item in payload["results"]["people"]))
 
     def test_search_respects_type_filters(self):
         response = self.client.post(
@@ -167,6 +237,12 @@ class KnowledgeApiContractTests(TestCase):
         self.assertEqual(payload["projects"], [])
         self.assertEqual(payload["sprints"], [])
         self.assertEqual(payload["issues"], [])
+        self.assertEqual(payload["replies"], [])
+        self.assertEqual(payload["action_items"], [])
+        self.assertEqual(payload["milestones"], [])
+        self.assertEqual(payload["sprint_updates"], [])
+        self.assertEqual(payload["blockers"], [])
+        self.assertEqual(payload["people"], [])
 
     def test_search_matches_natural_language_sprint_query(self):
         response = self.client.post(
@@ -180,6 +256,23 @@ class KnowledgeApiContractTests(TestCase):
         self.assertTrue(any(item["id"] == self.project.id for item in payload["projects"]))
         self.assertTrue(any(item["id"] == self.sprint.id for item in payload["sprints"]))
         self.assertTrue(any(item["id"] == self.issue.id for item in payload["issues"]))
+
+    def test_search_finds_hidden_reply_and_people_context(self):
+        response = self.client.post(
+            "/api/knowledge/search/",
+            {"query": "deep keyword alpha reply context"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(any(item["id"] == self.reply.id for item in response.data["results"]["replies"]))
+
+        response = self.client.post(
+            "/api/knowledge/search/",
+            {"query": "keyword alpha specialist"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(any(item["id"] == self.teammate.id for item in response.data["results"]["people"]))
 
     def test_timeline_returns_paginated_shape(self):
         response = self.client.get("/api/knowledge/timeline/?days=30&page=1&per_page=10")

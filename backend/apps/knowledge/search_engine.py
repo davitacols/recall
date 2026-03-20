@@ -8,11 +8,28 @@ from apps.decisions.models import Decision
 try:
     from apps.business.models import Goal, Meeting, Task
     from apps.business.document_models import Document
+    from apps.agile.models import Issue, Project, Sprint
 except Exception:  # pragma: no cover - optional in some test environments
     Goal = None
     Meeting = None
     Task = None
     Document = None
+    Issue = None
+    Project = None
+    Sprint = None
+
+
+QUERY_STOP_WORDS = {
+    'a', 'an', 'and', 'app', 'are', 'about', 'at', 'can', 'do', 'does', 'find', 'for', 'from',
+    'how', 'i', 'in', 'is', 'it', 'me', 'of', 'on', 'or', 'project', 'projects', 'show', 'sprint',
+    'sprints', 'task', 'tasks', 'tell', 'the', 'to', 'what', 'where', 'who', 'with',
+}
+
+PHRASE_WINDOW_STOP_WORDS = {
+    'a', 'an', 'and', 'are', 'about', 'at', 'can', 'do', 'does', 'find', 'for', 'from',
+    'how', 'i', 'in', 'is', 'it', 'me', 'of', 'on', 'or', 'show', 'tell', 'the', 'to', 'what',
+    'where', 'who', 'with',
+}
 
 
 TYPE_CONFIG = {
@@ -23,6 +40,7 @@ TYPE_CONFIG = {
         'order_by': '-created_at',
         'search_fields': ('title', 'content'),
         'date_field': 'created_at',
+        'suggest_field': 'title',
         'serialize': lambda item: {
             'id': item.id,
             'title': item.title,
@@ -42,6 +60,7 @@ TYPE_CONFIG = {
         'order_by': '-created_at',
         'search_fields': ('title', 'description', 'rationale', 'plain_language_summary'),
         'date_field': 'created_at',
+        'suggest_field': 'title',
         'serialize': lambda item: {
             'id': item.id,
             'title': item.title,
@@ -61,6 +80,7 @@ TYPE_CONFIG = {
         'order_by': '-created_at',
         'search_fields': ('title', 'description'),
         'date_field': 'created_at',
+        'suggest_field': 'title',
         'serialize': lambda item: {
             'id': item.id,
             'title': item.title,
@@ -80,6 +100,7 @@ TYPE_CONFIG = {
         'order_by': '-created_at',
         'search_fields': ('title', 'description'),
         'date_field': 'created_at',
+        'suggest_field': 'title',
         'serialize': lambda item: {
             'id': item.id,
             'title': item.title,
@@ -99,6 +120,7 @@ TYPE_CONFIG = {
         'order_by': '-created_at',
         'search_fields': ('title', 'description', 'notes'),
         'date_field': 'created_at',
+        'suggest_field': 'title',
         'serialize': lambda item: {
             'id': item.id,
             'title': item.title,
@@ -117,6 +139,7 @@ TYPE_CONFIG = {
         'order_by': '-updated_at',
         'search_fields': ('title', 'description', 'content'),
         'date_field': 'updated_at',
+        'suggest_field': 'title',
         'serialize': lambda item: {
             'id': item.id,
             'title': item.title,
@@ -127,6 +150,79 @@ TYPE_CONFIG = {
             'updated_at': _iso(item.updated_at),
             'updated_by_name': item.updated_by.get_full_name() if item.updated_by else '',
             'url': f'/business/documents/{item.id}',
+        },
+    },
+    'project': {
+        'bucket': 'projects',
+        'model': Project,
+        'org_filter': 'organization_id',
+        'order_by': '-updated_at',
+        'search_fields': ('name', 'key', 'description'),
+        'date_field': 'updated_at',
+        'suggest_field': 'name',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.name,
+            'content_preview': _truncate(' '.join(filter(None, [item.description, f'Project key {item.key}']))),
+            'type': 'project',
+            'key': item.key,
+            'lead_name': item.lead.get_full_name() if item.lead else '',
+            'created_at': _iso(item.created_at),
+            'updated_at': _iso(item.updated_at),
+            'url': f'/projects/{item.id}',
+        },
+    },
+    'sprint': {
+        'bucket': 'sprints',
+        'model': Sprint,
+        'org_filter': 'organization_id',
+        'order_by': '-start_date',
+        'search_fields': ('name', 'goal', 'summary', 'project__name', 'project__key'),
+        'date_field': 'created_at',
+        'suggest_field': 'name',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.name,
+            'content_preview': _truncate(' '.join(filter(None, [
+                item.goal,
+                item.summary,
+                f'Project {item.project.name}' if item.project else '',
+            ]))),
+            'type': 'sprint',
+            'status': item.status,
+            'project_name': item.project.name if item.project else '',
+            'created_at': _iso(item.created_at),
+            'start_date': _iso(item.start_date),
+            'end_date': _iso(item.end_date),
+            'url': f'/sprints/{item.id}',
+        },
+    },
+    'issue': {
+        'bucket': 'issues',
+        'model': Issue,
+        'org_filter': 'organization_id',
+        'order_by': '-updated_at',
+        'search_fields': ('title', 'description', 'key', 'project__name', 'project__key', 'sprint__name'),
+        'date_field': 'updated_at',
+        'suggest_field': 'title',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(' '.join(filter(None, [
+                item.description,
+                item.project.name if item.project else '',
+                item.sprint.name if item.sprint else '',
+            ]))),
+            'type': 'issue',
+            'key': item.key,
+            'status': item.status,
+            'priority': item.priority,
+            'project_name': item.project.name if item.project else '',
+            'sprint_name': item.sprint.name if item.sprint else '',
+            'assignee_name': item.assignee.get_full_name() if item.assignee else '',
+            'created_at': _iso(item.created_at),
+            'updated_at': _iso(item.updated_at),
+            'url': f'/issues/{item.id}',
         },
     },
 }
@@ -152,6 +248,36 @@ def _parse_iso(value):
         return None
 
 
+def _tokenize_query(query):
+    tokens = []
+    for raw in str(query or '').lower().replace('-', ' ').split():
+        cleaned = ''.join(ch for ch in raw if ch.isalnum())
+        if len(cleaned) < 3 or cleaned in QUERY_STOP_WORDS:
+            continue
+        tokens.append(cleaned)
+    return tokens
+
+
+def _build_phrase_windows(query, min_size=2, max_size=3):
+    base_tokens = []
+    for raw in str(query or '').lower().replace('-', ' ').split():
+        cleaned = ''.join(ch for ch in raw if ch.isalnum())
+        if len(cleaned) < 3 or cleaned in PHRASE_WINDOW_STOP_WORDS:
+            continue
+        base_tokens.append(cleaned)
+
+    windows = []
+    seen = set()
+    for size in range(min_size, max_size + 1):
+        for index in range(0, max(0, len(base_tokens) - size + 1)):
+            phrase = ' '.join(base_tokens[index:index + size]).strip()
+            if not phrase or phrase in seen:
+                continue
+            seen.add(phrase)
+            windows.append(phrase)
+    return windows
+
+
 def _requested_types(filters):
     requested = filters.get('types') or []
     if isinstance(requested, str):
@@ -165,7 +291,23 @@ def _build_query(search_fields, query):
     conditions = Q()
     for field in search_fields:
         conditions |= Q(**{f'{field}__icontains': query})
-    return conditions
+
+    for phrase in _build_phrase_windows(query):
+        for field in search_fields:
+            conditions |= Q(**{f'{field}__icontains': phrase})
+
+    tokens = _tokenize_query(query)
+    if not tokens:
+        return conditions
+
+    token_conditions = Q()
+    for token in tokens:
+        token_match = Q()
+        for field in search_fields:
+            token_match |= Q(**{f'{field}__icontains': token})
+        token_conditions &= token_match
+
+    return conditions | token_conditions
 
 
 class EnhancedSearchEngine:
@@ -185,6 +327,9 @@ class EnhancedSearchEngine:
             'tasks': [],
             'meetings': [],
             'documents': [],
+            'projects': [],
+            'sprints': [],
+            'issues': [],
         }
 
         for item_type, config in TYPE_CONFIG.items():
@@ -253,15 +398,16 @@ class EnhancedSearchEngine:
             for keyword in keyword_list or []:
                 add_suggestion(keyword)
 
-        for item_type in ['decision', 'goal', 'task', 'meeting', 'document']:
+        for item_type in ['decision', 'goal', 'task', 'meeting', 'document', 'project', 'sprint', 'issue']:
             config = TYPE_CONFIG.get(item_type)
             model = config['model'] if config else None
             if model is None:
                 continue
+            suggest_field = config.get('suggest_field', 'title')
             titles = model.objects.filter(
                 **{config['org_filter']: organization_id},
-                title__icontains=query,
-            ).values_list('title', flat=True)[:limit]
+                **{f'{suggest_field}__icontains': query},
+            ).values_list(suggest_field, flat=True)[:limit]
             for title in titles:
                 add_suggestion(title)
 

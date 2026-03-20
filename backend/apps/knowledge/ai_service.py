@@ -39,7 +39,20 @@ class AIService:
         lines = [f"{title}:"]
         for idx, item in enumerate(rows[:5], start=1):
             details = []
-            for key in ["status", "priority", "progress", "owner_name", "assignee_name", "created_by_name", "updated_by_name", "document_type"]:
+            for key in [
+                "status",
+                "priority",
+                "progress",
+                "key",
+                "project_name",
+                "sprint_name",
+                "lead_name",
+                "owner_name",
+                "assignee_name",
+                "created_by_name",
+                "updated_by_name",
+                "document_type",
+            ]:
                 value = item.get(key)
                 if value not in [None, "", []]:
                     details.append(f"{key}={value}")
@@ -59,6 +72,9 @@ class AIService:
             self._format_bucket("Tasks", search_data.get("tasks") or []),
             self._format_bucket("Meetings", search_data.get("meetings") or []),
             self._format_bucket("Documents", search_data.get("documents") or []),
+            self._format_bucket("Projects", search_data.get("projects") or []),
+            self._format_bucket("Sprints", search_data.get("sprints") or []),
+            self._format_bucket("Issues", search_data.get("issues") or []),
         ]
 
         intervention_lines = []

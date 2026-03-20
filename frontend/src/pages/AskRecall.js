@@ -29,17 +29,23 @@ function normalizeSources(sources) {
     { key: 'tasks', type: 'task', fallbackHref: () => '/business/tasks', dateKeys: ['created_at'] },
     { key: 'meetings', type: 'meeting', fallbackHref: (item) => `/business/meetings/${item.id}`, dateKeys: ['meeting_date', 'created_at'] },
     { key: 'documents', type: 'document', fallbackHref: (item) => `/business/documents/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
+    { key: 'projects', type: 'project', fallbackHref: (item) => `/projects/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
+    { key: 'sprints', type: 'sprint', fallbackHref: (item) => `/sprints/${item.id}`, dateKeys: ['start_date', 'created_at'] },
+    { key: 'issues', type: 'issue', fallbackHref: (item) => `/issues/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
   ];
 
   return configs
     .flatMap((config) =>
       (sources?.[config.key] || []).map((item) => {
         const rawDate = config.dateKeys.map((key) => item?.[key]).find(Boolean);
+        const contextualPreview =
+          item.content_preview ||
+          [item.key, item.project_name, item.sprint_name].filter(Boolean).join(' | ');
         return {
           id: item.id,
           type: config.type,
           title: item.title || `${config.type.charAt(0).toUpperCase()}${config.type.slice(1)} #${item.id}`,
-          preview: item.content_preview || '',
+          preview: contextualPreview,
           date: toDisplayDate(rawDate),
           href: item.url || config.fallbackHref(item),
           _sortDate: toTimestamp(rawDate),
@@ -119,6 +125,7 @@ export default function AskRecall() {
     'What should leadership resolve in the next 24 hours?',
     'What active goals are related to onboarding?',
     'Summarize recent decisions about API migration.',
+    'Tell me about the Talking Stage sprint in the Justice App project.',
   ];
 
   const mapResponseToViewModel = (payload) => {
@@ -227,6 +234,9 @@ export default function AskRecall() {
         ...((legacySources?.tasks || []).length > 0 ? ['task'] : []),
         ...((legacySources?.meetings || []).length > 0 ? ['meeting'] : []),
         ...((legacySources?.documents || []).length > 0 ? ['document'] : []),
+        ...((legacySources?.projects || []).length > 0 ? ['project'] : []),
+        ...((legacySources?.sprints || []).length > 0 ? ['sprint'] : []),
+        ...((legacySources?.issues || []).length > 0 ? ['issue'] : []),
       ],
       freshnessDays: null,
       coverageScore: total > 0 ? Math.min(85, 35 + total * 10) : 0,

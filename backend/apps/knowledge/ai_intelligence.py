@@ -116,6 +116,27 @@ SOURCE_BUCKET_REGISTRY = [
         'date_fields': ('updated_at', 'created_at'),
         'fallback_url': lambda item_id: f'/business/documents/{item_id}',
     },
+    {
+        'bucket': 'projects',
+        'type': 'project',
+        'label': 'projects',
+        'date_fields': ('updated_at', 'created_at'),
+        'fallback_url': lambda item_id: f'/projects/{item_id}',
+    },
+    {
+        'bucket': 'sprints',
+        'type': 'sprint',
+        'label': 'sprints',
+        'date_fields': ('start_date', 'created_at'),
+        'fallback_url': lambda item_id: f'/sprints/{item_id}',
+    },
+    {
+        'bucket': 'issues',
+        'type': 'issue',
+        'label': 'issues',
+        'date_fields': ('updated_at', 'created_at'),
+        'fallback_url': lambda item_id: f'/issues/{item_id}',
+    },
 ]
 
 
@@ -135,7 +156,7 @@ def _parse_source_created_at(value):
     if not value:
         return None
     if hasattr(value, 'tzinfo'):
-        return value
+        return timezone.make_aware(value, dt_timezone.utc) if timezone.is_naive(value) else value
     try:
         text = str(value).strip()
         if not text:
@@ -143,7 +164,10 @@ def _parse_source_created_at(value):
         # Support ISO timestamps with trailing Z.
         if text.endswith('Z'):
             text = text.replace('Z', '+00:00')
-        return datetime.fromisoformat(text)
+        parsed = datetime.fromisoformat(text)
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, dt_timezone.utc)
+        return parsed
     except Exception:
         return None
 
@@ -179,7 +203,17 @@ def _iter_source_records(search_data, limit_per_bucket=20):
                 'preview': item.get('content_preview') or '',
                 'status': item.get('status') or item.get('post_type') or item.get('document_type') or '',
                 'priority': item.get('priority') or '',
-                'owner_name': item.get('owner_name') or item.get('assignee_name') or item.get('created_by_name') or item.get('updated_by_name') or '',
+                'owner_name': (
+                    item.get('owner_name')
+                    or item.get('assignee_name')
+                    or item.get('created_by_name')
+                    or item.get('updated_by_name')
+                    or item.get('lead_name')
+                    or ''
+                ),
+                'key': item.get('key') or '',
+                'project_name': item.get('project_name') or '',
+                'sprint_name': item.get('sprint_name') or '',
                 'created_at': raw_date,
                 '_ts': _parse_source_created_at(raw_date),
             }
@@ -243,7 +277,7 @@ def _build_answer_text(query, search_data, plan, evidence_contract):
     if not records or total == 0:
         return (
             f'For "{query}", I could not find directly related organization records. '
-            'Try using a project, goal, task, document, conversation, or decision name that should exist in the workspace.'
+            'Try using a project, sprint, issue, goal, task, document, conversation, or decision name that should exist in the workspace.'
         )
 
     query_lower = str(query or '').lower()
@@ -271,6 +305,12 @@ def _build_answer_text(query, search_data, plan, evidence_contract):
         f'For "{query}", I found {total} matching records across {_summarize_source_mix(search_data)}. '
         f'The strongest matches are {strongest_matches}.{preview_text}{freshness_text}{readiness_text}'
     ).strip()
+
+
+def _copilot_sources_payload(search_data):
+    payload = {config['bucket']: search_data.get(config['bucket'], []) for config in SOURCE_BUCKET_REGISTRY}
+    payload['total'] = search_data.get('total', 0)
+    return payload
 
 
 def _generate_llm_copilot_answer(query, query_mode, search_data, plan, evidence_contract, recommended_interventions):
@@ -329,7 +369,7 @@ def _build_evidence_contract(search_data, now):
     missing_evidence = []
     if total == 0:
         missing_evidence.extend([
-            'No related conversations, decisions, goals, tasks, meetings, or documents matched this query.',
+            'No related conversations, decisions, goals, tasks, meetings, documents, projects, sprints, or issues matched this query.',
             'Add or link related artifacts before relying on this answer.',
         ])
     else:
@@ -1653,7 +1693,7 @@ def agi_copilot(request):
                     'readiness_score': plan.get('readiness_score'),
                     'learning_model': plan.get('learning_model', {}),
                     'counts': plan.get('counts', {}),
-                    'sources': {'conversations': [], 'decisions': [], 'goals': [], 'tasks': [], 'meetings': [], 'documents': [], 'total': 0},
+                    'sources': _copilot_sources_payload({}),
                     'recommended_interventions': [],
                     'requires_approval_for_execution': False,
                     'execution': {
@@ -1750,15 +1790,7 @@ def agi_copilot(request):
             'readiness_score': plan.get('readiness_score'),
             'learning_model': plan.get('learning_model', {}),
             'counts': plan.get('counts', {}),
-            'sources': {
-                'conversations': search_data.get('conversations', []),
-                'decisions': search_data.get('decisions', []),
-                'goals': search_data.get('goals', []),
-                'tasks': search_data.get('tasks', []),
-                'meetings': search_data.get('meetings', []),
-                'documents': search_data.get('documents', []),
-                'total': search_data.get('total', 0),
-            },
+            'sources': _copilot_sources_payload(search_data),
             'recommended_interventions': recommended_for_response,
             'requires_approval_for_execution': bool(recommended_for_response),
             'execution': {

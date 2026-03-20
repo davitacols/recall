@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from apps.business.document_models import Document
 from apps.business.models import Goal, Meeting, Task
+from apps.agile.models import Board, Column, Issue, Project, Sprint
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
 from apps.organizations.models import Organization, User
@@ -80,6 +81,50 @@ class KnowledgeApiContractTests(TestCase):
             meeting_id=self.meeting.id,
             task_id=self.task.id,
         )
+        self.project = Project.objects.create(
+            organization=self.org,
+            name="Justice App",
+            key="JAPP",
+            description="Keyword alpha delivery workspace for the justice app team.",
+            lead=self.user,
+        )
+        self.sprint = Sprint.objects.create(
+            organization=self.org,
+            project=self.project,
+            name="Talking Stage Sprint",
+            start_date=timezone.now().date(),
+            end_date=(timezone.now() + timedelta(days=14)).date(),
+            goal="Keyword alpha sprint focused on the talking stage flow.",
+            summary="Justice App sprint summary with keyword alpha context.",
+            status="active",
+        )
+        self.board = Board.objects.create(
+            organization=self.org,
+            project=self.project,
+            name="Justice App Delivery",
+            board_type="scrum",
+        )
+        self.column = Column.objects.create(
+            board=self.board,
+            name="To Do",
+            order=1,
+        )
+        self.issue = Issue.objects.create(
+            organization=self.org,
+            project=self.project,
+            board=self.board,
+            column=self.column,
+            key="JAPP-101",
+            title="Keyword alpha talking stage issue",
+            description="Justice App issue for the talking stage sprint with keyword alpha.",
+            priority="high",
+            status="todo",
+            issue_type="story",
+            sprint=self.sprint,
+            reporter=self.user,
+            assignee=self.user,
+            in_backlog=False,
+        )
 
     def test_search_returns_bucketed_payload_with_business_entities(self):
         response = self.client.post("/api/knowledge/search/", {"query": "keyword alpha"}, format="json")
@@ -90,7 +135,7 @@ class KnowledgeApiContractTests(TestCase):
         self.assertIn("total", payload)
         self.assertIsInstance(payload["results"], dict)
 
-        for bucket in ["conversations", "decisions", "goals", "tasks", "meetings", "documents"]:
+        for bucket in ["conversations", "decisions", "goals", "tasks", "meetings", "documents", "projects", "sprints", "issues"]:
             self.assertIn(bucket, payload["results"])
             self.assertIsInstance(payload["results"][bucket], list)
 
@@ -100,6 +145,9 @@ class KnowledgeApiContractTests(TestCase):
         self.assertTrue(any(item["id"] == self.task.id for item in payload["results"]["tasks"]))
         self.assertTrue(any(item["id"] == self.meeting.id for item in payload["results"]["meetings"]))
         self.assertTrue(any(item["id"] == self.document.id for item in payload["results"]["documents"]))
+        self.assertTrue(any(item["id"] == self.project.id for item in payload["results"]["projects"]))
+        self.assertTrue(any(item["id"] == self.sprint.id for item in payload["results"]["sprints"]))
+        self.assertTrue(any(item["id"] == self.issue.id for item in payload["results"]["issues"]))
 
     def test_search_respects_type_filters(self):
         response = self.client.post(
@@ -116,6 +164,22 @@ class KnowledgeApiContractTests(TestCase):
         self.assertEqual(payload["goals"], [])
         self.assertEqual(payload["tasks"], [])
         self.assertEqual(payload["meetings"], [])
+        self.assertEqual(payload["projects"], [])
+        self.assertEqual(payload["sprints"], [])
+        self.assertEqual(payload["issues"], [])
+
+    def test_search_matches_natural_language_sprint_query(self):
+        response = self.client.post(
+            "/api/knowledge/search/",
+            {"query": "tell me about the talking stage sprint in the justice app project"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.data["results"]
+        self.assertTrue(any(item["id"] == self.project.id for item in payload["projects"]))
+        self.assertTrue(any(item["id"] == self.sprint.id for item in payload["sprints"]))
+        self.assertTrue(any(item["id"] == self.issue.id for item in payload["issues"]))
 
     def test_timeline_returns_paginated_shape(self):
         response = self.client.get("/api/knowledge/timeline/?days=30&page=1&per_page=10")

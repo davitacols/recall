@@ -156,6 +156,77 @@ class AGICopilotContractTests(TestCase):
         self.assertEqual((response.data.get("sources") or {}).get("documents")[0]["title"], "Onboarding Guide")
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value="Talking Stage Sprint is an active sprint in the Justice App project, with one linked high-priority issue.")
+    def test_answer_mode_includes_agile_sources_for_sprint_queries(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "goals": [],
+            "tasks": [],
+            "meetings": [],
+            "documents": [],
+            "projects": [
+                {
+                    "id": 21,
+                    "title": "Justice App",
+                    "key": "JAPP",
+                    "updated_at": "2026-03-07T08:30:00Z",
+                    "url": "/projects/21",
+                }
+            ],
+            "sprints": [
+                {
+                    "id": 22,
+                    "title": "Talking Stage Sprint",
+                    "project_name": "Justice App",
+                    "status": "active",
+                    "created_at": "2026-03-06T08:30:00Z",
+                    "start_date": "2026-03-10",
+                    "url": "/sprints/22",
+                    "content_preview": "Sprint focused on the talking stage flow.",
+                }
+            ],
+            "issues": [
+                {
+                    "id": 23,
+                    "title": "Talking stage intake polish",
+                    "key": "JAPP-101",
+                    "project_name": "Justice App",
+                    "sprint_name": "Talking Stage Sprint",
+                    "updated_at": "2026-03-08T08:30:00Z",
+                    "url": "/issues/23",
+                }
+            ],
+            "total": 3,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 84.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "tell me about the talking stage sprint in the justice app project"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertEqual(response.data.get("answer_engine"), "anthropic")
+        self.assertIn("project", response.data.get("source_types"))
+        self.assertIn("sprint", response.data.get("source_types"))
+        self.assertIn("issue", response.data.get("source_types"))
+        self.assertEqual((response.data.get("sources") or {}).get("sprints")[0]["title"], "Talking Stage Sprint")
+        self.assertEqual((response.data.get("sources") or {}).get("projects")[0]["title"], "Justice App")
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     def test_execute_requires_confirmation(self, _rate_limit):
         response = self.client.post(
             "/api/knowledge/ai/copilot/",

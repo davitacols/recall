@@ -1,0 +1,24 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1920" height="1080" fill="#F8F2E8"/>
+  <image href="../../knoledgr-grid.svg" x="0" y="0" width="1920" height="1080" opacity="0.18"/>
+  <circle cx="1540" cy="180" r="280" fill="#D9A25E" opacity="0.08"/>
+  <circle cx="380" cy="860" r="320" fill="#7EB7FF" opacity="0.08"/>
+  <text x="140" y="166" fill="#6E655B" font-family="Georgia, serif" font-size="24" letter-spacing="4">SHOT 01</text>
+  <text x="140" y="262" fill="#171513" font-family="Georgia, serif" font-size="84" font-weight="700">Work moves fast.</text>
+  <text x="140" y="348" fill="#171513" font-family="Georgia, serif" font-size="84" font-weight="700">Context disappears even faster.</text>
+  <rect x="150" y="470" width="258" height="128" rx="26" fill="#FFFCF8" stroke="#E9DBC7"/>
+  <text x="184" y="520" fill="#171513" font-family="Arial, sans-serif" font-size="22" font-weight="700">Decision</text>
+  <text x="184" y="556" fill="#6E655B" font-family="Arial, sans-serif" font-size="18">Pricing review approved</text>
+  <rect x="500" y="640" width="270" height="128" rx="26" fill="#FFFCF8" stroke="#E9DBC7"/>
+  <text x="534" y="690" fill="#171513" font-family="Arial, sans-serif" font-size="22" font-weight="700">Meeting Note</text>
+  <text x="534" y="726" fill="#6E655B" font-family="Arial, sans-serif" font-size="18">Rollout risks need alignment</text>
+  <rect x="868" y="400" width="254" height="128" rx="26" fill="#FFFCF8" stroke="#E9DBC7"/>
+  <text x="902" y="450" fill="#171513" font-family="Arial, sans-serif" font-size="22" font-weight="700">Issue Update</text>
+  <text x="902" y="486" fill="#6E655B" font-family="Arial, sans-serif" font-size="18">Sprint slipped by two days</text>
+  <rect x="1258" y="614" width="220" height="128" rx="26" fill="#FFFCF8" stroke="#E9DBC7"/>
+  <text x="1292" y="664" fill="#171513" font-family="Arial, sans-serif" font-size="22" font-weight="700">Document</text>
+  <text x="1292" y="700" fill="#6E655B" font-family="Arial, sans-serif" font-size="18">Security annex draft</text>
+  <rect x="1634" y="454" width="150" height="128" rx="26" fill="#FFFCF8" stroke="#E9DBC7"/>
+  <text x="1668" y="504" fill="#171513" font-family="Arial, sans-serif" font-size="22" font-weight="700">Ask</text>
+  <text x="1668" y="540" fill="#6E655B" font-family="Arial, sans-serif" font-size="18">What changed?</text>
+</svg>

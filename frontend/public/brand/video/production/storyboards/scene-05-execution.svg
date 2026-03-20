@@ -1,0 +1,32 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1920" height="1080" fill="#F6F1E8"/>
+  <image href="../../knoledgr-grid.svg" x="0" y="0" width="1920" height="1080" opacity="0.1"/>
+  <text x="140" y="166" fill="#6E655B" font-family="Georgia, serif" font-size="24" letter-spacing="4">SHOT 05</text>
+  <text x="140" y="250" fill="#171513" font-family="Georgia, serif" font-size="74" font-weight="700">Conversations.</text>
+  <text x="140" y="326" fill="#171513" font-family="Georgia, serif" font-size="74" font-weight="700">Documents. Follow-through.</text>
+  <rect x="130" y="440" width="500" height="420" rx="30" fill="#FFFCF8" stroke="#E9DBC7"/>
+  <text x="170" y="492" fill="#6E655B" font-family="Arial, sans-serif" font-size="18" font-weight="700">SPRINT FLOW</text>
+  <rect x="170" y="548" width="126" height="252" rx="20" fill="#F1E9DD"/>
+  <rect x="318" y="548" width="126" height="252" rx="20" fill="#F1E9DD"/>
+  <rect x="466" y="548" width="126" height="252" rx="20" fill="#F1E9DD"/>
+  <text x="198" y="582" fill="#171513" font-family="Arial, sans-serif" font-size="18" font-weight="700">Todo</text>
+  <text x="344" y="582" fill="#171513" font-family="Arial, sans-serif" font-size="18" font-weight="700">Doing</text>
+  <text x="492" y="582" fill="#171513" font-family="Arial, sans-serif" font-size="18" font-weight="700">Done</text>
+  <rect x="186" y="620" width="94" height="64" rx="16" fill="#FFFFFF" stroke="#E9DBC7"/>
+  <rect x="334" y="620" width="94" height="92" rx="16" fill="#FFFFFF" stroke="#7EB7FF"/>
+  <rect x="334" y="730" width="94" height="64" rx="16" fill="#FFFFFF" stroke="#D9A25E"/>
+  <rect x="482" y="620" width="94" height="64" rx="16" fill="#FFFFFF" stroke="#E9DBC7"/>
+  <rect x="680" y="440" width="420" height="200" rx="30" fill="#1D1815" stroke="#3B322B"/>
+  <text x="720" y="492" fill="#B7AB9B" font-family="Arial, sans-serif" font-size="18" font-weight="700">BLOCKER SIGNAL</text>
+  <text x="720" y="552" fill="#F5EFE6" font-family="Georgia, serif" font-size="40" font-weight="700">Security review delaying rollout</text>
+  <text x="720" y="604" fill="#B7AB9B" font-family="Arial, sans-serif" font-size="22">Linked to decision context and sprint flow.</text>
+  <rect x="1140" y="440" width="620" height="420" rx="30" fill="#FFFCF8" stroke="#E9DBC7"/>
+  <text x="1182" y="492" fill="#6E655B" font-family="Arial, sans-serif" font-size="18" font-weight="700">LINKED CONTEXT</text>
+  <rect x="1182" y="536" width="230" height="90" rx="18" fill="#EDF4FF" stroke="#7EB7FF"/>
+  <text x="1210" y="590" fill="#171513" font-family="Arial, sans-serif" font-size="24" font-weight="700">Decision: pricing review</text>
+  <rect x="1436" y="536" width="284" height="90" rx="18" fill="#F9EFE0" stroke="#D9A25E"/>
+  <text x="1464" y="590" fill="#171513" font-family="Arial, sans-serif" font-size="24" font-weight="700">Document: security annex</text>
+  <rect x="1182" y="656" width="538" height="150" rx="22" fill="#FFFFFF" stroke="#E9DBC7"/>
+  <text x="1214" y="708" fill="#171513" font-family="Georgia, serif" font-size="34" font-weight="700">Execution stays grounded in the record.</text>
+  <text x="1214" y="760" fill="#6E655B" font-family="Arial, sans-serif" font-size="22">Teams can see what changed, why it changed, and what still needs attention.</text>
+</svg>

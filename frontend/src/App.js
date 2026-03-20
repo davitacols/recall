@@ -14,10 +14,8 @@ import UnifiedLayout from "./components/UnifiedLayout";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ThemeProvider } from "./utils/ThemeAndAccessibility";
 import AcceptInvite from "./pages/AcceptInvite";
-import AccountSettings from "./pages/AccountSettings";
 import ActivityFeed from "./pages/ActivityFeed";
 import AdvancedSearch from "./pages/AdvancedSearch";
-import Analytics from "./pages/Analytics";
 import APIKeys from "./pages/APIKeys";
 import AskRecall from "./pages/AskRecall";
 import AuditLogs from "./pages/AuditLogs";
@@ -25,15 +23,10 @@ import AutomationRules from "./pages/AutomationRules";
 import Backlog from "./pages/Backlog";
 import BlockerTracker from "./pages/BlockerTracker";
 import Bookmarks from "./pages/Bookmarks";
-import BookmarksAndDrafts from "./pages/BookmarksAndDrafts";
-import BrowserDashboard from "./pages/BusinessDashboard";
-import BurnoutRisk from "./pages/BurnoutRisk";
-import CalendarPlanner from "./pages/CalendarPlanner";
 import Conversations from "./pages/Conversations";
 import ConversationDetail from "./pages/ConversationDetail";
 import CreateConversation from "./pages/CreateConversation";
 import CurrentSprint from "./pages/CurrentSprint";
-import Dashboards from "./pages/Dashboards";
 import DataExport from "./pages/DataExport";
 import Decisions from "./pages/Decisions";
 import DecisionDetail from "./pages/DecisionDetail";
@@ -43,7 +36,6 @@ import Documentation from "./pages/Documentation";
 import Documents from "./pages/Documents";
 import Drafts from "./pages/Drafts";
 import Enterprise from "./pages/Enterprise";
-import FAQ from "./pages/FAQ";
 import Files from "./pages/Files";
 import ForgotPassword from "./pages/ForgotPassword";
 import GoalDetail from "./pages/GoalDetail";
@@ -51,11 +43,9 @@ import Goals from "./pages/Goals";
 import Homepage from "./pages/Homepage";
 import ImportExport from "./pages/ImportExport";
 import Insights from "./pages/Insights";
-import IntegrationManagement from "./pages/IntegrationManagement";
 import Integrations from "./pages/Integrations";
 import IssueDetail from "./pages/IssueDetail";
 import IssueTemplates from "./pages/IssueTemplates";
-import JourneyMaps from "./pages/JourneyMaps";
 import KanbanBoard from "./pages/KanbanBoardFull";
 import Knowledge from "./pages/Knowledge";
 import KnowledgeAnalytics from "./pages/KnowledgeAnalytics";
@@ -65,13 +55,9 @@ import KnowledgeHealthDashboard from "./pages/KnowledgeHealthDashboard";
 import Login from "./pages/Login";
 import MeetingDetail from "./pages/MeetingDetail";
 import Meetings from "./pages/Meetings";
-import Messages from "./pages/Messages";
-import MyDecisions from "./pages/MyDecisions";
-import MyQuestions from "./pages/MyQuestions";
 import NotificationSettings from "./pages/NotificationSettings";
 import Notifications from "./pages/Notifications";
 import Onboarding from "./pages/Onboarding";
-import PersonalReflection from "./pages/PersonalReflection";
 import PrivacyEnterprise from "./pages/PrivacyEnterprise";
 import Profile from "./pages/Profile";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -84,11 +70,9 @@ import Reports from "./pages/Reports";
 import ResetPassword from "./pages/ResetPassword";
 import RetrospectiveDetail from "./pages/RetrospectiveDetail";
 import RetrospectiveMemory from "./pages/RetrospectiveMemory";
-import SampleDecision from "./pages/SampleDecision";
 import SavedFilters from "./pages/SavedFilters";
 import Security from "./pages/Security";
 import SecurityAnnex from "./pages/SecurityAnnex";
-import ServiceDesk from "./pages/ServiceDesk";
 import Settings from "./pages/Settings";
 import SprintDetail from "./pages/SprintDetail";
 import SprintHistory from "./pages/SprintHistory";
@@ -100,7 +84,6 @@ import TeamManagement from "./pages/TeamManagement";
 import Templates from "./pages/Templates";
 import TermsEnterprise from "./pages/TermsEnterprise";
 import UnifiedDashboard from "./pages/UnifiedDashboard";
-import Workflows from "./pages/Workflows";
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
@@ -179,17 +162,17 @@ const APP_ROUTES = [
   { path: "/activity", element: <ActivityFeed /> },
   { path: "/profile", element: <Profile /> },
   { path: "/onboarding", element: <Onboarding /> },
-  { path: "/faq", element: <FAQ /> },
-  { path: "/reflection", element: <PersonalReflection /> },
+  { path: "/faq", element: <Navigate to="/knowledge" replace /> },
+  { path: "/reflection", element: <Navigate to="/knowledge" replace /> },
   { path: "/notifications", element: <Notifications /> },
   { path: "/notification-settings", element: <NotificationSettings /> },
   { path: "/bookmarks", element: <Bookmarks /> },
   { path: "/drafts", element: <Drafts /> },
   { path: "/files", element: <Files /> },
-  { path: "/bookmarks-drafts", element: <BookmarksAndDrafts /> },
-  { path: "/my-decisions", element: <MyDecisions /> },
-  { path: "/my-questions", element: <MyQuestions /> },
-  { path: "/sample-decision", element: <SampleDecision /> },
+  { path: "/bookmarks-drafts", element: <Navigate to="/bookmarks" replace /> },
+  { path: "/my-decisions", element: <Navigate to="/decisions" replace /> },
+  { path: "/my-questions", element: <Navigate to="/knowledge" replace /> },
+  { path: "/sample-decision", element: <Navigate to="/decisions" replace /> },
   { path: "/sprint", element: <CurrentSprint /> },
   { path: "/sprint-history", element: <SprintHistory /> },
   { path: "/sprint-management", element: <SprintManagement /> },
@@ -212,10 +195,10 @@ const APP_ROUTES = [
   { path: "/agile/filters", element: <SavedFilters /> },
   { path: "/issues/:issueId", element: <IssueDetail /> },
   { path: "/issues", element: <Navigate to="/projects" replace /> },
-  { path: "/messages", element: <Messages /> },
-  { path: "/messages/:userId", element: <Messages /> },
-  { path: "/account-settings", element: <AccountSettings /> },
-  { path: "/business", element: <BrowserDashboard /> },
+  { path: "/messages", element: <Navigate to="/notifications" replace /> },
+  { path: "/messages/:userId", element: <Navigate to="/notifications" replace /> },
+  { path: "/account-settings", element: <Navigate to="/profile" replace /> },
+  { path: "/business", element: <Navigate to="/dashboard" replace /> },
   { path: "/business/goals", element: <Goals /> },
   { path: "/business/goals/:id", element: <GoalDetail /> },
   { path: "/business/meetings", element: <Meetings /> },
@@ -224,10 +207,10 @@ const APP_ROUTES = [
   { path: "/business/templates", element: <Templates /> },
   { path: "/business/documents", element: <Documents /> },
   { path: "/business/documents/:id", element: <DocumentDetail /> },
-  { path: "/business/journeys", element: <JourneyMaps /> },
-  { path: "/business/calendar", element: <CalendarPlanner /> },
-  { path: "/business/team-health", element: <BurnoutRisk /> },
-  { path: "/service-desk", element: <ServiceDesk /> },
+  { path: "/business/journeys", element: <Navigate to="/projects" replace /> },
+  { path: "/business/calendar", element: <Navigate to="/business/tasks" replace /> },
+  { path: "/business/team-health", element: <Navigate to="/dashboard" replace /> },
+  { path: "/service-desk", element: <Navigate to="/projects" replace /> },
   { path: "/security", element: <Security /> },
 ];
 
@@ -235,13 +218,13 @@ const ADMIN_ROUTES = [
   { path: "/settings", element: <Settings /> },
   { path: "/invitations", element: <StaffInvitations /> },
   { path: "/integrations", element: <Integrations /> },
-  { path: "/integrations-manage", element: <IntegrationManagement /> },
-  { path: "/analytics", element: <Analytics /> },
+  { path: "/integrations-manage", element: <Navigate to="/integrations" replace /> },
+  { path: "/analytics", element: <Navigate to="/dashboard" replace /> },
   { path: "/team", element: <TeamManagement /> },
   { path: "/automation", element: <AutomationRules /> },
-  { path: "/workflows", element: <Workflows /> },
+  { path: "/workflows", element: <Navigate to="/automation" replace /> },
   { path: "/reports", element: <Reports /> },
-  { path: "/dashboards", element: <Dashboards /> },
+  { path: "/dashboards", element: <Navigate to="/reports" replace /> },
   { path: "/api-keys", element: <APIKeys /> },
   { path: "/audit-logs", element: <AuditLogs /> },
   { path: "/export", element: <DataExport /> },

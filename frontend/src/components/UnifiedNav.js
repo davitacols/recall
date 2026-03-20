@@ -278,10 +278,6 @@ export default function UnifiedNav({
         { name: "Projects", href: "/projects", icon: CubeIcon },
         { name: "Goals", href: "/business/goals", icon: FlagIcon },
         { name: "Tasks", href: "/business/tasks", icon: ClipboardDocumentListIcon },
-        { name: "Journey Maps", href: "/business/journeys", icon: DocumentTextIcon },
-        { name: "Calendar Planner", href: "/business/calendar", icon: CalendarIcon },
-        { name: "Team Health", href: "/business/team-health", icon: ChartBarIcon },
-        { name: "Service Desk", href: "/service-desk", icon: ClipboardDocumentListIcon },
         { name: "Sprints", href: "/sprint-history", icon: RocketLaunchIcon },
       ],
     },
@@ -312,9 +308,7 @@ export default function UnifiedNav({
         if (group.name === "Execute") {
           return {
             ...group,
-            items: group.items.filter((item) =>
-              ["/business/goals", "/business/tasks", "/business/calendar"].includes(item.href)
-            ),
+            items: group.items.filter((item) => ["/projects", "/business/goals", "/business/tasks"].includes(item.href)),
           };
         }
         if (group.name === "Resources") {

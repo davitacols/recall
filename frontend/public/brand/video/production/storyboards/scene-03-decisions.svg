@@ -1,0 +1,20 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1920" height="1080" fill="#14110F"/>
+  <rect x="124" y="110" width="1672" height="860" rx="40" fill="#1D1815" stroke="#3B322B"/>
+  <image href="../../knoledgr-app-screenshot.svg" x="190" y="172" width="1280" height="720" opacity="0.34"/>
+  <rect x="1010" y="210" width="630" height="176" rx="28" fill="#FFFCF8" stroke="#E9DBC7"/>
+  <text x="1052" y="262" fill="#6E655B" font-family="Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="2">DECISION RECORD</text>
+  <text x="1052" y="320" fill="#171513" font-family="Georgia, serif" font-size="44" font-weight="700">Pricing review approved</text>
+  <text x="1052" y="362" fill="#6E655B" font-family="Arial, sans-serif" font-size="22">Rationale, owners, and downstream impact stay attached.</text>
+  <rect x="1010" y="420" width="286" height="172" rx="24" fill="#222631" stroke="#384257"/>
+  <text x="1048" y="468" fill="#B7AB9B" font-family="Arial, sans-serif" font-size="17" font-weight="700">RATIONALE</text>
+  <text x="1048" y="516" fill="#F5EFE6" font-family="Arial, sans-serif" font-size="22">Price change aligns to rollout risk</text>
+  <rect x="1324" y="420" width="316" height="172" rx="24" fill="#221D19" stroke="#3B322B"/>
+  <text x="1362" y="468" fill="#B7AB9B" font-family="Arial, sans-serif" font-size="17" font-weight="700">LINKED CONTEXT</text>
+  <text x="1362" y="516" fill="#F5EFE6" font-family="Arial, sans-serif" font-size="22">Conversation, security review, sprint</text>
+  <rect x="1010" y="626" width="630" height="184" rx="28" fill="#1B263A" stroke="#34517A"/>
+  <text x="1052" y="674" fill="#C8D8FF" font-family="Arial, sans-serif" font-size="17" font-weight="700">ON-SCREEN COPY</text>
+  <text x="1052" y="734" fill="#F5EFE6" font-family="Georgia, serif" font-size="56" font-weight="700">Decisions stay attached</text>
+  <text x="1052" y="796" fill="#F5EFE6" font-family="Georgia, serif" font-size="56" font-weight="700">to the work.</text>
+  <text x="140" y="130" fill="#B7AB9B" font-family="Georgia, serif" font-size="24" letter-spacing="4">SHOT 03</text>
+</svg>

@@ -1,0 +1,23 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1920" height="1080" fill="#172233"/>
+  <image href="../../knoledgr-memory-orbit.svg" x="1044" y="160" width="720" height="720" opacity="0.48"/>
+  <text x="140" y="166" fill="#B7AB9B" font-family="Georgia, serif" font-size="24" letter-spacing="4">SHOT 04</text>
+  <text x="140" y="246" fill="#F5EFE6" font-family="Georgia, serif" font-size="74" font-weight="700">Recover the thread</text>
+  <text x="140" y="324" fill="#F5EFE6" font-family="Georgia, serif" font-size="74" font-weight="700">in seconds.</text>
+  <rect x="140" y="416" width="640" height="110" rx="26" fill="#1D1815" stroke="#384257"/>
+  <text x="180" y="458" fill="#B7AB9B" font-family="Arial, sans-serif" font-size="18" font-weight="700">ASK RECALL</text>
+  <text x="180" y="498" fill="#F5EFE6" font-family="Arial, sans-serif" font-size="26">What changed in the pricing rollout and why?</text>
+  <circle cx="1120" cy="452" r="18" fill="#7EB7FF"/>
+  <circle cx="1308" cy="376" r="18" fill="#D9A25E"/>
+  <circle cx="1416" cy="550" r="18" fill="#7EB7FF"/>
+  <circle cx="1214" cy="660" r="18" fill="#D9A25E"/>
+  <circle cx="1576" cy="480" r="18" fill="#7EB7FF"/>
+  <line x1="1132" y1="448" x2="1294" y2="382" stroke="#7EB7FF" stroke-width="4"/>
+  <line x1="1320" y1="386" x2="1404" y2="540" stroke="#7EB7FF" stroke-width="4"/>
+  <line x1="1400" y1="558" x2="1228" y2="652" stroke="#7EB7FF" stroke-width="4"/>
+  <line x1="1428" y1="548" x2="1562" y2="486" stroke="#7EB7FF" stroke-width="4"/>
+  <rect x="150" y="590" width="720" height="222" rx="28" fill="#FFFCF8" stroke="#E9DBC7"/>
+  <text x="196" y="638" fill="#6E655B" font-family="Arial, sans-serif" font-size="18" font-weight="700">GROUNDED ANSWER</text>
+  <text x="196" y="694" fill="#171513" font-family="Georgia, serif" font-size="40" font-weight="700">Pricing changed after security review</text>
+  <text x="196" y="742" fill="#6E655B" font-family="Arial, sans-serif" font-size="22">Linked sources: decision record, meeting note, sprint blocker.</text>
+</svg>

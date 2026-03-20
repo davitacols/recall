@@ -197,8 +197,7 @@ export default function UnifiedLayout({ children }) {
       }).format(new Date()),
     []
   );
-  const showAskFab =
-    location.pathname === "/" || location.pathname === "/dashboard" || location.pathname === "/business";
+  const showAskFab = location.pathname === "/" || location.pathname === "/dashboard";
 
   const handleSidebarWidthChange = (nextWidth) => {
     const clamped = Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, nextWidth));
@@ -1033,12 +1032,6 @@ function getPageMeta(pathname) {
       description: "Keep the source record close to the work so teams can trace what matters quickly.",
     },
     {
-      prefix: "/service-desk",
-      title: "Service Desk",
-      section: "Execution",
-      description: "Handle requests with context, history, and the next best action in view.",
-    },
-    {
       prefix: "/sprint",
       title: "Sprints",
       section: "Execution",
@@ -1067,18 +1060,6 @@ function getPageMeta(pathname) {
       title: "Notifications",
       section: "Workspace",
       description: "Stay on top of changes that matter without losing signal in the noise.",
-    },
-    {
-      prefix: "/messages",
-      title: "Messages",
-      section: "Workspace",
-      description: "Keep direct communication connected to the rest of your team context.",
-    },
-    {
-      prefix: "/business",
-      title: "Business",
-      section: "Business",
-      description: "Get a broader operating view across goals, meetings, tasks, and supporting memory.",
     },
   ];
 

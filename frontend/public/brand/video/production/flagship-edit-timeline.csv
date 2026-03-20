@@ -1,0 +1,8 @@
+Start,End,Duration,Scene,Visual Focus,On Screen Copy,Voiceover,Primary Assets,Motion Notes
+0:00,0:04,4s,Problem Open,Disconnected fragments over warm grid,"Work moves fast. / Context disappears even faster.","Work moves fast. Context disappears even faster.","knoledgr-grid.svg","Slow outward drift, gentle blur, restrained parallax"
+0:04,0:08,4s,Brand Emergence,Blue orbit lines reconnect fragments,"Search the why behind the work.","Knoledgr keeps the why behind your team's work searchable.","knoledgr-memory-orbit.svg; knoledgr-brandmark.svg","Line draw-on, soft glow pulse, clean crossfade"
+0:08,0:13,5s,Decisions,Decision detail record with linked rationale,"Decisions stay attached to the work.","Decisions, documents, conversations, and follow-through stay connected in one memory system.","knoledgr-app-screenshot.svg","Slow push-in, callout reveals, editorial crop"
+0:13,0:18,5s,Knowledge Graph + Ask Recall,Graph nodes and grounded answer card,"Recover the thread in seconds.","So when priorities shift, a sprint slips, or someone asks what changed","knoledgr-memory-orbit.svg","Connect nodes, answer card slide-up, soft ambient pulse"
+0:18,0:24,6s,Execution Context,Sprint and blocker context with linked signals,"Conversations. Documents. Follow-through.","your team can recover the thread in seconds.","product-inspired execution cards","Layered card parallax, accent sweeps, steady camera drift"
+0:24,0:27,3s,Workspace Payoff,Composed full workspace,"One memory system for the team.","Knoledgr.","knoledgr-app-screenshot.svg","Settle and hold"
+0:27,0:30,3s,Brand Close,Logo lockup over aurora,"Knoledgr / Decision memory for teams","Decision memory for teams.","knoledgr-aurora.svg; knoledgr-brandlogo.svg","Soft fade-up, clean end hold"

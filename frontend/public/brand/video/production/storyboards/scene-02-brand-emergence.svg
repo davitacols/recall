@@ -1,0 +1,19 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1920" height="1080" fill="#172233"/>
+  <image href="../../knoledgr-aurora.svg" x="0" y="0" width="1920" height="1080" opacity="0.9"/>
+  <circle cx="960" cy="540" r="244" stroke="#7EB7FF" stroke-width="2" opacity="0.45"/>
+  <circle cx="960" cy="540" r="360" stroke="#7EB7FF" stroke-width="2" opacity="0.24"/>
+  <line x1="412" y1="278" x2="764" y2="458" stroke="#7EB7FF" stroke-width="4" opacity="0.35"/>
+  <line x1="1430" y1="308" x2="1100" y2="470" stroke="#7EB7FF" stroke-width="4" opacity="0.35"/>
+  <line x1="510" y1="806" x2="820" y2="610" stroke="#7EB7FF" stroke-width="4" opacity="0.35"/>
+  <line x1="1448" y1="776" x2="1100" y2="610" stroke="#7EB7FF" stroke-width="4" opacity="0.35"/>
+  <text x="140" y="166" fill="#B7AB9B" font-family="Georgia, serif" font-size="24" letter-spacing="4">SHOT 02</text>
+  <text x="140" y="236" fill="#F5EFE6" font-family="Georgia, serif" font-size="76" font-weight="700">Search the why</text>
+  <text x="140" y="316" fill="#F5EFE6" font-family="Georgia, serif" font-size="76" font-weight="700">behind the work.</text>
+  <text x="140" y="388" fill="#B7AB9B" font-family="Arial, sans-serif" font-size="28">Memory lines reconnect the record.</text>
+  <image href="../../knoledgr-brandmark.svg" x="820" y="400" width="280" height="280"/>
+  <rect x="318" y="226" width="22" height="22" rx="11" fill="#D9A25E"/>
+  <rect x="1556" y="256" width="22" height="22" rx="11" fill="#7EB7FF"/>
+  <rect x="418" y="760" width="22" height="22" rx="11" fill="#7EB7FF"/>
+  <rect x="1546" y="744" width="22" height="22" rx="11" fill="#D9A25E"/>
+</svg>

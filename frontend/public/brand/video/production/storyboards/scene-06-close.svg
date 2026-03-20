@@ -1,0 +1,8 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1920" height="1080" fill="#F8F2E8"/>
+  <image href="../../knoledgr-aurora.svg" x="0" y="0" width="1920" height="1080" opacity="0.95"/>
+  <text x="140" y="166" fill="#6E655B" font-family="Georgia, serif" font-size="24" letter-spacing="4">SHOT 06</text>
+  <image href="../../knoledgr-brandlogo.svg" x="520" y="330" width="880" height="200"/>
+  <text x="612" y="620" fill="#171513" font-family="Georgia, serif" font-size="84" font-weight="700">Decision memory for teams</text>
+  <text x="736" y="712" fill="#6E655B" font-family="Arial, sans-serif" font-size="28">Start your workspace. Recover the thread.</text>
+</svg>

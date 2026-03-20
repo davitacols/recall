@@ -104,3 +104,104 @@ class AGICopilotContractTests(TestCase):
         first_link = response.data["tool_links"][0]
         self.assertIn("label", first_link)
         self.assertIn("url", first_link)
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    def test_answer_mode_returns_broader_organization_sources(self, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "goals": [
+                {"id": 3, "title": "Onboarding Refresh", "created_at": "2026-03-05T08:30:00Z", "url": "/business/goals/3", "owner_name": "Jane Doe"}
+            ],
+            "tasks": [
+                {"id": 4, "title": "Update onboarding checklist", "created_at": "2026-03-06T08:30:00Z", "url": "/business/tasks", "assignee_name": "Ada Lovelace"}
+            ],
+            "meetings": [],
+            "documents": [
+                {
+                    "id": 5,
+                    "title": "Onboarding Guide",
+                    "created_at": "2026-03-04T08:30:00Z",
+                    "updated_at": "2026-03-07T08:30:00Z",
+                    "url": "/business/documents/5",
+                    "content_preview": "Guide for new hires.",
+                }
+            ],
+            "total": 3,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 88.0,
+            "interventions": [{"id": "i-3", "title": "Escalate blocker", "impact": "high", "confidence": 80, "reason": "Blocker active"}],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "What active goals are related to onboarding?"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertIn("goal", response.data.get("source_types"))
+        self.assertIn("task", response.data.get("source_types"))
+        self.assertIn("document", response.data.get("source_types"))
+        self.assertEqual(response.data.get("recommended_interventions"), [])
+        self.assertEqual((response.data.get("sources") or {}).get("documents")[0]["title"], "Onboarding Guide")
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    def test_execute_requires_confirmation(self, _rate_limit):
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "delivery risk", "execute": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("confirm_execute", response.data.get("error", ""))
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._execute_interventions")
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    def test_execute_with_confirmation_returns_execution_payload(self, get_search_engine, build_plan, execute_interventions, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [{"id": 11, "title": "Sprint risk", "created_at": "2026-03-03T08:30:00Z"}],
+            "decisions": [],
+            "goals": [],
+            "tasks": [],
+            "meetings": [],
+            "documents": [],
+            "total": 1,
+        }
+        get_search_engine.return_value = search_engine
+        build_plan.return_value = {
+            "status": "watch",
+            "readiness_score": 67.0,
+            "interventions": [{"id": "task:44", "title": "Assign owner: Critical task", "impact": "medium", "confidence": 76, "reason": "Unassigned task", "url": "/business/tasks"}],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 1},
+        }
+        execute_interventions.return_value = (
+            {
+                "dry_run": False,
+                "selected": 1,
+                "executed_count": 1,
+                "skipped_count": 0,
+                "executed": [{"id": "task:44", "kind": "task_ownership", "status": "executed"}],
+                "skipped": [],
+                "audit_log_ids": [91],
+            },
+            200,
+        )
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "delivery risk", "execute": True, "confirm_execute": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data.get("execution", {}).get("performed"))
+        self.assertEqual(response.data.get("execution", {}).get("selected_ids"), ["task:44"])

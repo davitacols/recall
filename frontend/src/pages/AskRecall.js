@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { useTheme } from '../utils/ThemeAndAccessibility';
+import { useAuth } from '../hooks/useAuth';
 import BrandedTechnicalIllustration from '../components/BrandedTechnicalIllustration';
 import { WorkspaceHero, WorkspacePanel } from '../components/WorkspaceChrome';
 import { getProjectPalette } from '../utils/projectUi';
@@ -14,25 +15,40 @@ function toDisplayDate(value) {
   });
 }
 
+function toTimestamp(value) {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
 function normalizeSources(sources) {
-  const conversations = sources?.conversations || [];
-  const decisions = sources?.decisions || [];
-  return [
-    ...conversations.map((item) => ({
-      id: item.id,
-      type: 'conversation',
-      title: item.title || `Conversation #${item.id}`,
-      date: toDisplayDate(item.created_at),
-      href: `/conversations/${item.id}`,
-    })),
-    ...decisions.map((item) => ({
-      id: item.id,
-      type: 'decision',
-      title: item.title || `Decision #${item.id}`,
-      date: toDisplayDate(item.created_at),
-      href: `/decisions/${item.id}`,
-    })),
-  ].slice(0, 8);
+  const configs = [
+    { key: 'conversations', type: 'conversation', fallbackHref: (item) => `/conversations/${item.id}`, dateKeys: ['created_at'] },
+    { key: 'decisions', type: 'decision', fallbackHref: (item) => `/decisions/${item.id}`, dateKeys: ['created_at'] },
+    { key: 'goals', type: 'goal', fallbackHref: (item) => `/business/goals/${item.id}`, dateKeys: ['created_at'] },
+    { key: 'tasks', type: 'task', fallbackHref: () => '/business/tasks', dateKeys: ['created_at'] },
+    { key: 'meetings', type: 'meeting', fallbackHref: (item) => `/business/meetings/${item.id}`, dateKeys: ['meeting_date', 'created_at'] },
+    { key: 'documents', type: 'document', fallbackHref: (item) => `/business/documents/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
+  ];
+
+  return configs
+    .flatMap((config) =>
+      (sources?.[config.key] || []).map((item) => {
+        const rawDate = config.dateKeys.map((key) => item?.[key]).find(Boolean);
+        return {
+          id: item.id,
+          type: config.type,
+          title: item.title || `${config.type.charAt(0).toUpperCase()}${config.type.slice(1)} #${item.id}`,
+          preview: item.content_preview || '',
+          date: toDisplayDate(rawDate),
+          href: item.url || config.fallbackHref(item),
+          _sortDate: toTimestamp(rawDate),
+        };
+      })
+    )
+    .sort((left, right) => right._sortDate - left._sortDate)
+    .slice(0, 8)
+    .map(({ _sortDate, ...item }) => item);
 }
 
 function getConfidenceLabel(value) {
@@ -72,6 +88,7 @@ function getContextualHowTo(query) {
 
 export default function AskRecall() {
   const { darkMode } = useTheme();
+  const { user } = useAuth();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
 
   const [query, setQuery] = useState('');
@@ -100,6 +117,8 @@ export default function AskRecall() {
     'What decisions are blocking delivery?',
     'Which high-priority tasks should we reassign now?',
     'What should leadership resolve in the next 24 hours?',
+    'What active goals are related to onboarding?',
+    'Summarize recent decisions about API migration.',
   ];
 
   const mapResponseToViewModel = (payload) => {
@@ -169,9 +188,10 @@ export default function AskRecall() {
   };
 
   const mapLegacyResponseToViewModel = (searchPayload, recommendationsPayload, missionPayload, q) => {
-    const conversations = searchPayload?.results?.conversations || [];
-    const decisions = searchPayload?.results?.decisions || [];
-    const total = Number(searchPayload?.results?.total || 0);
+    const legacySources = searchPayload?.results || {};
+    const conversations = legacySources?.conversations || [];
+    const decisions = legacySources?.decisions || [];
+    const total = Number(legacySources?.total || 0);
     const recCount = (recommendationsPayload?.recommendations || []).length;
     const interventions =
       (missionPayload?.autonomous_actions || []).map((item, idx) => ({
@@ -192,19 +212,23 @@ export default function AskRecall() {
       analysisId: '',
       answer:
         total > 0
-          ? `I found ${total} related records, ${recCount} recommendation signals, and generated ${interventions.length} suggested interventions.`
+          ? `I found ${total} related organization records, ${recCount} recommendation signals, and generated ${interventions.length} suggested interventions.`
           : 'No direct evidence found for this query in current indexed records.',
       confidence: total > 0 ? Math.min(90, 62 + recCount * 4) : 28,
       confidenceBand: getConfidenceLabel(total > 0 ? Math.min(90, 62 + recCount * 4) : 28).toLowerCase(),
-      responseMode: total > 0 ? 'diagnosis' : 'needs_evidence',
+      responseMode: total > 0 ? 'answer' : 'needs_evidence',
       evidenceCount: total,
       sourceTypes: [
         ...(conversations.length > 0 ? ['conversation'] : []),
         ...(decisions.length > 0 ? ['decision'] : []),
+        ...((legacySources?.goals || []).length > 0 ? ['goal'] : []),
+        ...((legacySources?.tasks || []).length > 0 ? ['task'] : []),
+        ...((legacySources?.meetings || []).length > 0 ? ['meeting'] : []),
+        ...((legacySources?.documents || []).length > 0 ? ['document'] : []),
       ],
       freshnessDays: null,
       coverageScore: total > 0 ? Math.min(85, 35 + total * 10) : 0,
-      missingEvidence: total > 0 ? [] : ['No linked conversations or decisions matched this query.'],
+      missingEvidence: total > 0 ? [] : ['No linked organization records matched this query.'],
       toolLinks: [],
       riskStatus: missionPayload?.north_star?.status || 'watch',
       readinessScore: missionPayload?.north_star?.critical_path_score ?? null,
@@ -219,19 +243,20 @@ export default function AskRecall() {
         title: item.title || `Decision #${item.id}`,
         date: toDisplayDate(item.created_at),
       })),
-      nextActions: interventions.slice(0, 3),
-      sources: normalizeSources({ conversations, decisions }),
+      nextActions: [],
+      sources: normalizeSources(legacySources),
       execution: { performed: false, result: null },
       generatedAt: '',
     };
   };
 
-  const queryCopilot = async ({ execute = false } = {}) => {
+  const queryCopilot = async ({ execute = false, confirmExecute = false } = {}) => {
     try {
       const contextualHowTo = getContextualHowTo(query);
       const response = await api.post('/api/knowledge/ai/copilot/', {
         query,
         execute,
+        confirm_execute: execute ? confirmExecute : false,
         max_actions: 3,
         disable_navigation: !!contextualHowTo,
       });
@@ -308,11 +333,21 @@ export default function AskRecall() {
 
   const handleExecute = async () => {
     if (!query.trim() || loading || executing) return;
+    if (!['admin', 'manager'].includes(user?.role)) {
+      setRequestState('error');
+      setRequestMessage('Only admins and managers can run autonomous fixes.');
+      return;
+    }
+    const confirmed = window.confirm(
+      `Run ${results?.nextActions?.length || 0} autonomous fix${(results?.nextActions?.length || 0) === 1 ? '' : 'es'} for this analysis?`
+    );
+    if (!confirmed) return;
+
     setExecuting(true);
     setRequestState('loading');
     setRequestMessage('Executing approved interventions...');
     try {
-      const data = await queryCopilot({ execute: true });
+      const data = await queryCopilot({ execute: true, confirmExecute: true });
       setResults(data);
       setFeedbackVote('');
       setFeedbackOutcome('');
@@ -403,20 +438,22 @@ export default function AskRecall() {
   const normalizedQuery = query.trim().toLowerCase();
   const normalizedResultQuery = String(results?.question || '').trim().toLowerCase();
   const hasCurrentResults = !!results && normalizedQuery.length > 0 && normalizedQuery === normalizedResultQuery;
-  const queryLower = query.toLowerCase();
   const isNavigationIntent =
-    results?.responseMode === 'navigation' ||
-    queryLower.includes('where') ||
-    queryLower.includes('find') ||
-    queryLower.includes('tool') ||
-    queryLower.includes('navigate');
+    results?.responseMode === 'navigation' || results?.responseMode === 'guidance';
 
   const lowEvidence =
     !!results &&
     results.responseMode !== 'navigation' &&
     (results.responseMode === 'needs_evidence' || Number(results.coverageScore || 0) < 45 || Number(results.evidenceCount || 0) === 0);
 
-  const canRunAutonomousFixes = hasCurrentResults && (results?.nextActions?.length || 0) > 0 && !lowEvidence && !isNavigationIntent;
+  const canManageAutonomousFixes = ['admin', 'manager'].includes(user?.role);
+  const hasAutonomousPlan =
+    hasCurrentResults &&
+    results?.responseMode === 'diagnosis' &&
+    (results?.nextActions?.length || 0) > 0 &&
+    !lowEvidence &&
+    !isNavigationIntent;
+  const canRunAutonomousFixes = hasAutonomousPlan && canManageAutonomousFixes;
   const canSubmit = !!query.trim() && !loading && !executing;
   const statusTone =
     requestState === 'error' ? palette.danger : requestState === 'success' ? palette.success : palette.muted;
@@ -449,8 +486,12 @@ export default function AskRecall() {
     {
       label: 'Actions',
       value: results?.nextActions?.length ?? 0,
-      helper: canRunAutonomousFixes ? 'Autonomous fixes are available' : 'Guidance only until confidence improves',
-      tone: canRunAutonomousFixes ? palette.good : palette.accent,
+      helper: hasAutonomousPlan
+        ? canManageAutonomousFixes
+          ? 'Autonomous fixes are available'
+          : 'Autonomous fixes need admin or manager approval'
+        : 'Guidance only until confidence improves',
+      tone: hasAutonomousPlan ? (canManageAutonomousFixes ? palette.good : palette.warn) : palette.accent,
     },
   ];
 
@@ -531,6 +572,11 @@ export default function AskRecall() {
             <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
               Press <strong style={{ color: palette.text }}>Ctrl+Enter</strong> to submit.
             </p>
+            {hasAutonomousPlan && !canManageAutonomousFixes ? (
+              <p style={{ margin: 0, fontSize: 12, color: palette.warn }}>
+                Autonomous fixes are available for this analysis, but only admins and managers can run them.
+              </p>
+            ) : null}
 
             {requestState !== 'idle' ? <p style={{ margin: 0, fontSize: 12, color: statusTone }}>{requestMessage}</p> : null}
           </form>
@@ -720,7 +766,7 @@ export default function AskRecall() {
             </WorkspacePanel>
           ) : null}
 
-          {results.nextActions.length > 0 && !isNavigationIntent && !lowEvidence ? (
+          {results.responseMode === 'diagnosis' && results.nextActions.length > 0 && !isNavigationIntent && !lowEvidence ? (
             <WorkspacePanel
               palette={palette}
               eyebrow="Next Actions"
@@ -764,7 +810,14 @@ export default function AskRecall() {
                       flexWrap: 'wrap',
                     }}
                   >
-                    <span style={{ fontSize: 12 }}>{source.title}</span>
+                    <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+                      <span style={{ fontSize: 12 }}>{source.title}</span>
+                      {source.preview ? (
+                        <span style={{ fontSize: 11, color: palette.muted, lineHeight: 1.5 }}>
+                          {source.preview}
+                        </span>
+                      ) : null}
+                    </div>
                     <span style={{ fontSize: 11, color: palette.muted }}>{source.type} | {source.date}</span>
                   </a>
                 ))}

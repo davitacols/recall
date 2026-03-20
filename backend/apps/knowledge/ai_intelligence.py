@@ -11,12 +11,20 @@ from collections import Counter
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
 from apps.knowledge.unified_models import ContentLink, UnifiedActivity
-from apps.business.models import Task
 from apps.agile.models import Blocker, Sprint
 from apps.organizations.auditlog_models import AuditLog
 from apps.notifications.utils import create_notification
 from apps.users.auth_utils import check_rate_limit
 from .search_engine import get_search_engine
+
+try:
+    from apps.business.models import Goal, Meeting, Task
+    from apps.business.document_models import Document
+except Exception:  # pragma: no cover - optional in some environments
+    Goal = None
+    Meeting = None
+    Task = None
+    Document = None
 
 
 NAVIGATION_TOOL_REGISTRY = [
@@ -64,6 +72,51 @@ NAVIGATION_TOOL_REGISTRY = [
     },
 ]
 
+SOURCE_BUCKET_REGISTRY = [
+    {
+        'bucket': 'conversations',
+        'type': 'conversation',
+        'label': 'conversations',
+        'date_fields': ('created_at',),
+        'fallback_url': lambda item_id: f'/conversations/{item_id}',
+    },
+    {
+        'bucket': 'decisions',
+        'type': 'decision',
+        'label': 'decisions',
+        'date_fields': ('created_at',),
+        'fallback_url': lambda item_id: f'/decisions/{item_id}',
+    },
+    {
+        'bucket': 'goals',
+        'type': 'goal',
+        'label': 'goals',
+        'date_fields': ('created_at',),
+        'fallback_url': lambda item_id: f'/business/goals/{item_id}',
+    },
+    {
+        'bucket': 'tasks',
+        'type': 'task',
+        'label': 'tasks',
+        'date_fields': ('created_at',),
+        'fallback_url': lambda _item_id: '/business/tasks',
+    },
+    {
+        'bucket': 'meetings',
+        'type': 'meeting',
+        'label': 'meetings',
+        'date_fields': ('meeting_date', 'created_at'),
+        'fallback_url': lambda item_id: f'/business/meetings/{item_id}',
+    },
+    {
+        'bucket': 'documents',
+        'type': 'document',
+        'label': 'documents',
+        'date_fields': ('updated_at', 'created_at'),
+        'fallback_url': lambda item_id: f'/business/documents/{item_id}',
+    },
+]
+
 
 def _confidence_band(score):
     try:
@@ -94,24 +147,146 @@ def _parse_source_created_at(value):
         return None
 
 
+def _human_join(parts):
+    cleaned = [str(part).strip() for part in parts if str(part or '').strip()]
+    if not cleaned:
+        return ''
+    if len(cleaned) == 1:
+        return cleaned[0]
+    if len(cleaned) == 2:
+        return f'{cleaned[0]} and {cleaned[1]}'
+    return f'{", ".join(cleaned[:-1])}, and {cleaned[-1]}'
+
+
+def _iter_source_records(search_data, limit_per_bucket=20):
+    for config in SOURCE_BUCKET_REGISTRY:
+        bucket = config['bucket']
+        for item in (search_data.get(bucket) or [])[:limit_per_bucket]:
+            item_id = item.get('id')
+            raw_date = None
+            for field in config['date_fields']:
+                raw_date = item.get(field)
+                if raw_date:
+                    break
+            yield {
+                'id': item_id,
+                'bucket': bucket,
+                'type': config['type'],
+                'label': config['label'],
+                'title': item.get('title') or f'{config["type"].title()} #{item_id}',
+                'url': item.get('url') or config['fallback_url'](item_id),
+                'preview': item.get('content_preview') or '',
+                'status': item.get('status') or item.get('post_type') or item.get('document_type') or '',
+                'priority': item.get('priority') or '',
+                'owner_name': item.get('owner_name') or item.get('assignee_name') or item.get('created_by_name') or item.get('updated_by_name') or '',
+                'created_at': raw_date,
+                '_ts': _parse_source_created_at(raw_date),
+            }
+
+
+def _summarize_source_mix(search_data):
+    parts = []
+    for config in SOURCE_BUCKET_REGISTRY:
+        count = len(search_data.get(config['bucket']) or [])
+        if count:
+            parts.append(f'{count} {config["label"]}')
+    return _human_join(parts)
+
+
+def _detect_copilot_query_mode(query):
+    text = str(query or '').strip().lower()
+    if not text:
+        return 'diagnosis'
+
+    operational_phrases = [
+        'execution risk',
+        'delivery risk',
+        'what should leadership resolve',
+        'highest this week',
+        'blocking delivery',
+        'run autonomous',
+        'autonomous fix',
+        'resolve in the next',
+        'next 24 hours',
+        'reassign now',
+        'unblock',
+    ]
+    operational_tokens = {
+        'risk',
+        'blocker',
+        'blocking',
+        'delivery',
+        'readiness',
+        'intervention',
+        'execute',
+        'autonomous',
+        'fix',
+        'resolve',
+        'reassign',
+        'assign',
+        'escalate',
+    }
+    cleaned_tokens = set(''.join(ch for ch in token if ch.isalnum()) for token in text.replace('-', ' ').split())
+    cleaned_tokens.discard('')
+
+    if any(phrase in text for phrase in operational_phrases):
+        return 'diagnosis'
+    if operational_tokens.intersection(cleaned_tokens):
+        return 'diagnosis'
+    return 'answer'
+
+
+def _build_answer_text(query, search_data, plan, evidence_contract):
+    records = list(_iter_source_records(search_data, limit_per_bucket=6))
+    total = int(search_data.get('total', 0) or 0)
+    if not records or total == 0:
+        return (
+            f'For "{query}", I could not find directly related organization records. '
+            'Try using a project, goal, task, document, conversation, or decision name that should exist in the workspace.'
+        )
+
+    query_lower = str(query or '').lower()
+    ownership_hints = ['who owns', 'owner', 'responsible', 'assignee', 'assigned to']
+    owned_record = next((item for item in records if item.get('owner_name')), None)
+    if owned_record and any(hint in query_lower for hint in ownership_hints):
+        owner_label = 'assignee' if owned_record.get('type') == 'task' else 'owner'
+        return (
+            f'The strongest ownership match for "{query}" is {owned_record["type"]} "{owned_record["title"]}", '
+            f'with {owner_label} {owned_record["owner_name"]}. '
+            f'I found {total} matching records across {_summarize_source_mix(search_data)}.'
+        )
+
+    top_records = records[:3]
+    strongest_matches = _human_join([f'{item["type"]} "{item["title"]}"' for item in top_records])
+    preview = next((item.get('preview') for item in top_records if item.get('preview')), '')
+    preview_text = f' Most relevant context: {preview}' if preview else ''
+    freshness_days = evidence_contract.get('freshness_days')
+    freshness_text = f' Latest matching evidence is {freshness_days} day(s) old.' if freshness_days is not None else ''
+    readiness_text = ''
+    if plan.get('readiness_score') is not None:
+        readiness_text = f' Current organizational readiness is {plan.get("status")} ({plan.get("readiness_score")}).'
+
+    return (
+        f'For "{query}", I found {total} matching records across {_summarize_source_mix(search_data)}. '
+        f'The strongest matches are {strongest_matches}.{preview_text}{freshness_text}{readiness_text}'
+    ).strip()
+
+
 def _build_evidence_contract(search_data, now):
-    conversations = search_data.get('conversations', []) or []
-    decisions = search_data.get('decisions', []) or []
+    records = list(_iter_source_records(search_data, limit_per_bucket=20))
     total = int(search_data.get('total', 0) or 0)
 
     source_types = []
-    if conversations:
-        source_types.append('conversation')
-    if decisions:
-        source_types.append('decision')
+    seen_types = set()
+    for item in records:
+        item_type = item.get('type')
+        if item_type and item_type not in seen_types:
+            seen_types.add(item_type)
+            source_types.append(item_type)
 
     timestamps = []
-    for item in conversations[:20]:
-        dt = _parse_source_created_at(item.get('created_at'))
-        if dt is not None:
-            timestamps.append(dt)
-    for item in decisions[:20]:
-        dt = _parse_source_created_at(item.get('created_at'))
+    for item in records:
+        dt = item.get('_ts')
         if dt is not None:
             timestamps.append(dt)
 
@@ -136,14 +311,12 @@ def _build_evidence_contract(search_data, now):
     missing_evidence = []
     if total == 0:
         missing_evidence.extend([
-            'No linked conversations or decisions matched this query.',
-            'Add or link related artifacts before relying on this diagnosis.',
+            'No related conversations, decisions, goals, tasks, meetings, or documents matched this query.',
+            'Add or link related artifacts before relying on this answer.',
         ])
     else:
-        if 'conversation' not in source_types:
-            missing_evidence.append('No related conversations found; link discussion context for better precision.')
-        if 'decision' not in source_types:
-            missing_evidence.append('No related decisions found; link decision records to reduce ambiguity.')
+        if len(source_types) < 2:
+            missing_evidence.append('Evidence comes from a narrow slice of the workspace; link related records for better confidence.')
         if freshness_days is not None and freshness_days > 30:
             missing_evidence.append('Most evidence is older than 30 days; refresh with recent updates.')
         if total < 2:
@@ -204,27 +377,7 @@ def _build_navigation_links(query, limit=4):
 
 
 def _build_evidence_items(search_data):
-    items = []
-    for convo in search_data.get('conversations', []) or []:
-        created_at = convo.get('created_at')
-        items.append({
-            'id': convo.get('id'),
-            'type': 'conversation',
-            'title': convo.get('title') or f'Conversation #{convo.get("id")}',
-            'url': f'/conversations/{convo.get("id")}',
-            'created_at': created_at,
-            '_ts': _parse_source_created_at(created_at),
-        })
-    for dec in search_data.get('decisions', []) or []:
-        created_at = dec.get('created_at')
-        items.append({
-            'id': dec.get('id'),
-            'type': 'decision',
-            'title': dec.get('title') or f'Decision #{dec.get("id")}',
-            'url': f'/decisions/{dec.get("id")}',
-            'created_at': created_at,
-            '_ts': _parse_source_created_at(created_at),
-        })
+    items = list(_iter_source_records(search_data, limit_per_bucket=20))
     items.sort(key=lambda x: x.get('_ts') or datetime.min, reverse=True)
     return items
 
@@ -1428,7 +1581,10 @@ def agi_copilot(request):
 
     try:
         execute = bool(request.data.get('execute', False))
+        query_mode = _detect_copilot_query_mode(query)
         if execute:
+            if query_mode != 'diagnosis':
+                return Response({'error': 'Execution is only available for operational diagnosis requests'}, status=400)
             if getattr(user, 'role', None) not in ['admin', 'manager']:
                 return Response({'error': 'Only admins/managers can execute interventions'}, status=403)
             if request.data.get('confirm_execute') is not True:
@@ -1478,9 +1634,9 @@ def agi_copilot(request):
                     'readiness_score': plan.get('readiness_score'),
                     'learning_model': plan.get('learning_model', {}),
                     'counts': plan.get('counts', {}),
-                    'sources': {'conversations': [], 'decisions': [], 'total': 0},
+                    'sources': {'conversations': [], 'decisions': [], 'goals': [], 'tasks': [], 'meetings': [], 'documents': [], 'total': 0},
                     'recommended_interventions': [],
-                    'requires_approval_for_execution': True,
+                    'requires_approval_for_execution': False,
                     'execution': {
                         'performed': False,
                         'dry_run': True,
@@ -1498,41 +1654,39 @@ def agi_copilot(request):
         recommended = _rank_interventions(recommended)
         evidence_items = _build_evidence_items(search_data)
         recommended = _attach_intervention_evidence(recommended, evidence_items)
-        intervention_ids = [item['id'] for item in recommended]
+        recommended_for_response = recommended if query_mode == 'diagnosis' else []
+        intervention_ids = [item['id'] for item in recommended_for_response]
 
         confidence = 32
         confidence += min(36, int(search_data.get('total', 0)) * 6)
-        confidence += min(18, len(recommended) * 5)
+        confidence += min(18, len(recommended_for_response) * 5)
         if plan.get('status') == 'critical':
             confidence += 8
         confidence = max(18, min(96, confidence))
         evidence_contract = _build_evidence_contract(search_data, now)
 
-        top_conv = (search_data.get('conversations') or [None])[0]
-        top_dec = (search_data.get('decisions') or [None])[0]
-        evidence = []
-        if top_conv:
-            evidence.append(f'conversation "{top_conv.get("title", "")}"')
-        if top_dec:
-            evidence.append(f'decision "{top_dec.get("title", "")}"')
-        evidence_line = (
-            f"Strongest evidence: {', '.join([item for item in evidence if item])}."
-            if evidence
-            else "Strongest evidence is currently limited; expand linked artifacts for better precision."
-        )
-
-        if int(search_data.get("total", 0) or 0) == 0:
+        if query_mode == 'answer':
+            answer_text = _build_answer_text(query, search_data, plan, evidence_contract)
+        elif int(search_data.get("total", 0) or 0) == 0:
             answer_text = (
                 f'For "{query}", I could not find directly related memory records. '
                 f'Organizational readiness is {plan.get("status")} with score {plan.get("readiness_score")}, '
-                f'and I prepared {len(recommended)} interventions based on current org signals.'
+                f'and I prepared {len(recommended_for_response)} interventions based on current org signals.'
             )
         else:
+            evidence_labels = _human_join(
+                [f'{item["type"]} "{item["title"]}"' for item in _build_evidence_items(search_data)[:2]]
+            )
+            evidence_line = (
+                f'Strongest evidence: {evidence_labels}.'
+                if evidence_labels
+                else 'Strongest evidence is currently limited; expand linked artifacts for better precision.'
+            )
             answer_text = (
                 f'For "{query}", organizational readiness is {plan.get("status")} '
                 f'with score {plan.get("readiness_score")}. '
                 f'I found {search_data.get("total", 0)} related memory records and prepared '
-                f'{len(recommended)} interventions to reduce execution risk. {evidence_line}'
+                f'{len(recommended_for_response)} interventions to reduce execution risk. {evidence_line}'
             )
 
         low_evidence_mode = (
@@ -1546,7 +1700,7 @@ def agi_copilot(request):
                 answer_text = f'{answer_text} Evidence gap: {first_gap}'
 
         confidence_band = _confidence_band(confidence)
-        response_mode = 'needs_evidence' if low_evidence_mode else 'diagnosis'
+        response_mode = 'needs_evidence' if low_evidence_mode else query_mode
 
         response_payload = {
             'analysis_id': str(uuid4()),
@@ -1568,10 +1722,14 @@ def agi_copilot(request):
             'sources': {
                 'conversations': search_data.get('conversations', []),
                 'decisions': search_data.get('decisions', []),
+                'goals': search_data.get('goals', []),
+                'tasks': search_data.get('tasks', []),
+                'meetings': search_data.get('meetings', []),
+                'documents': search_data.get('documents', []),
                 'total': search_data.get('total', 0),
             },
-            'recommended_interventions': recommended,
-            'requires_approval_for_execution': True,
+            'recommended_interventions': recommended_for_response,
+            'requires_approval_for_execution': bool(recommended_for_response),
             'execution': {
                 'performed': False,
                 'dry_run': True,

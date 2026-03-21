@@ -1,10 +1,11 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator, validate_email
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import PartnerInquiry
@@ -36,9 +37,14 @@ def _serialize_partner_inquiry(inquiry):
         "status": inquiry.status,
         "source": inquiry.source,
         "submitted_at": inquiry.submitted_at,
+        "contacted_at": inquiry.contacted_at,
         "organization_name": getattr(inquiry.organization, "name", None),
         "submitted_by": inquiry.submitted_by.get_full_name() if inquiry.submitted_by else None,
     }
+
+
+def _can_manage_partner_inquiries(user):
+    return bool(user and user.is_authenticated and (getattr(user, "is_staff", False) or getattr(user, "is_superuser", False)))
 
 
 @api_view(["GET", "POST"])
@@ -47,8 +53,8 @@ def partner_inquiries(request):
     if request.method == "GET":
         if not request.user or not request.user.is_authenticated:
             return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
-        if getattr(request.user, "role", "") != "admin":
-            return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
+        if not _can_manage_partner_inquiries(request.user):
+            return Response({"error": "Staff access required"}, status=status.HTTP_403_FORBIDDEN)
 
         inquiries = PartnerInquiry.objects.select_related("organization", "submitted_by").order_by("-submitted_at")
 
@@ -158,4 +164,33 @@ def partner_inquiries(request):
             "status": inquiry.status,
         },
         status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["GET", "PUT"])
+@permission_classes([IsAuthenticated])
+def partner_inquiry_detail(request, inquiry_id):
+    if not _can_manage_partner_inquiries(request.user):
+        return Response({"error": "Staff access required"}, status=status.HTTP_403_FORBIDDEN)
+
+    inquiry = get_object_or_404(PartnerInquiry.objects.select_related("organization", "submitted_by"), id=inquiry_id)
+
+    if request.method == "GET":
+        return Response(_serialize_partner_inquiry(inquiry))
+
+    next_status = _clean_text(request.data.get("status"), max_length=20)
+    valid_statuses = {choice[0] for choice in PartnerInquiry.STATUS_CHOICES}
+    if next_status not in valid_statuses:
+        return Response({"error": "Select a valid inquiry status."}, status=status.HTTP_400_BAD_REQUEST)
+
+    inquiry.status = next_status
+    if next_status in {"contacted", "qualified"} and not inquiry.contacted_at:
+        inquiry.contacted_at = timezone.now()
+    inquiry.save(update_fields=["status", "contacted_at"])
+
+    return Response(
+        {
+            "message": "Partner inquiry updated.",
+            "inquiry": _serialize_partner_inquiry(inquiry),
+        }
     )

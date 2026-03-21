@@ -59,6 +59,7 @@ import NotificationSettings from "./pages/NotificationSettings";
 import Notifications from "./pages/Notifications";
 import Onboarding from "./pages/Onboarding";
 import Partners from "./pages/Partners";
+import PartnerInbox from "./pages/PartnerInbox";
 import PrivacyEnterprise from "./pages/PrivacyEnterprise";
 import Profile from "./pages/Profile";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -86,10 +87,11 @@ import Templates from "./pages/Templates";
 import TermsEnterprise from "./pages/TermsEnterprise";
 import UnifiedDashboard from "./pages/UnifiedDashboard";
 
-function ProtectedRoute({ children, adminOnly = false }) {
+function ProtectedRoute({ children, adminOnly = false, staffOnly = false }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (adminOnly && user.role !== "admin") return <Navigate to="/dashboard" replace />;
+  if (staffOnly && !user.is_staff && !user.is_superuser) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -110,6 +112,14 @@ function AppLayoutRoute() {
 function AdminOnlyRoute() {
   return (
     <ProtectedRoute adminOnly={true}>
+      <Outlet />
+    </ProtectedRoute>
+  );
+}
+
+function StaffOnlyRoute() {
+  return (
+    <ProtectedRoute staffOnly={true}>
       <Outlet />
     </ProtectedRoute>
   );
@@ -236,6 +246,10 @@ const ADMIN_ROUTES = [
   { path: "/import-export", element: <ImportExport /> },
 ];
 
+const STAFF_ROUTES = [
+  { path: "/partners/inbox", element: <PartnerInbox /> },
+];
+
 function renderRoute(route, idx) {
   if (route.index) {
     return <Route key={`index-${idx}`} index element={route.element} />;
@@ -318,6 +332,9 @@ function AppContent() {
           {APP_ROUTES.map(renderRoute)}
           <Route element={<AdminOnlyRoute />}>
             {ADMIN_ROUTES.map(renderRoute)}
+          </Route>
+          <Route element={<StaffOnlyRoute />}>
+            {STAFF_ROUTES.map(renderRoute)}
           </Route>
         </Route>
 

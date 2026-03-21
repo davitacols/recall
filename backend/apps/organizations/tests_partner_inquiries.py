@@ -7,10 +7,20 @@ from apps.organizations.models import Organization, PartnerInquiry, User
 class PartnerInquiryTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.staff_client = APIClient()
         self.admin_client = APIClient()
         self.contributor_client = APIClient()
 
         self.org = Organization.objects.create(name="Partner Org", slug="partner-org")
+        self.staff_admin = User.objects.create_user(
+            username="staff_admin",
+            email="staff@partner.test",
+            password="pass1234",
+            organization=self.org,
+            role="admin",
+            full_name="Staff Admin",
+            is_staff=True,
+        )
         self.admin = User.objects.create_user(
             username="partner_admin",
             email="admin@partner.test",
@@ -28,6 +38,7 @@ class PartnerInquiryTests(TestCase):
             full_name="Partner Contributor",
         )
 
+        self.staff_client.force_authenticate(user=self.staff_admin)
         self.admin_client.force_authenticate(user=self.admin)
         self.contributor_client.force_authenticate(user=self.contributor)
 
@@ -83,7 +94,7 @@ class PartnerInquiryTests(TestCase):
         self.assertEqual(PartnerInquiry.objects.count(), 1)
         self.assertIn("already have your partner inquiry", response.data["message"])
 
-    def test_admin_can_list_partner_inquiries(self):
+    def test_staff_admin_can_list_partner_inquiries(self):
         inquiry = PartnerInquiry.objects.create(
             full_name="Jamie Operator",
             work_email="jamie@ops.test",
@@ -94,11 +105,38 @@ class PartnerInquiryTests(TestCase):
             consent_to_contact=True,
         )
 
-        response = self.admin_client.get("/api/organizations/partner-inquiries/")
+        response = self.staff_client.get("/api/organizations/partner-inquiries/")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], inquiry.id)
+
+    def test_staff_admin_can_update_partner_inquiry_status(self):
+        inquiry = PartnerInquiry.objects.create(
+            full_name="Jamie Operator",
+            work_email="jamie@ops.test",
+            company_name="Ops Studio",
+            role_title="Operator",
+            partner_type="fractional",
+            service_summary="We support portfolio companies with operating cadence and decision tracking.",
+            consent_to_contact=True,
+        )
+
+        response = self.staff_client.put(
+            f"/api/organizations/partner-inquiries/{inquiry.id}/",
+            {"status": "contacted"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        inquiry.refresh_from_db()
+        self.assertEqual(inquiry.status, "contacted")
+        self.assertIsNotNone(inquiry.contacted_at)
+
+    def test_workspace_admin_cannot_list_partner_inquiries(self):
+        response = self.admin_client.get("/api/organizations/partner-inquiries/")
+
+        self.assertEqual(response.status_code, 403)
 
     def test_contributor_cannot_list_partner_inquiries(self):
         response = self.contributor_client.get("/api/organizations/partner-inquiries/")

@@ -252,6 +252,8 @@ def accept_invitation(request, token):
                 'email': user.email,
                 'full_name': user.full_name,
                 'role': user.role,
+                'is_staff': bool(user.is_staff),
+                'is_superuser': bool(user.is_superuser),
                 'organization': user.organization.name,
                 'organization_name': user.organization.name,
                 'organization_slug': user.organization.slug,
@@ -404,6 +406,8 @@ def create_organization(request):
             'email': user.email,
             'full_name': user.full_name,
             'role': user.role,
+            'is_staff': bool(user.is_staff),
+            'is_superuser': bool(user.is_superuser),
             'organization': org.name,
             'organization_slug': org.slug,
         }

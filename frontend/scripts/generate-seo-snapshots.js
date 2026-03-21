@@ -246,6 +246,7 @@ function renderLayout({ eyebrow, heading, lead, actions, sections, footerLinks, 
           <nav class="snapshot-nav">
             <a href="/">Home</a>
             <a href="/docs">Documentation</a>
+            <a href="/feedback">Feedback</a>
             <a href="/partners">Partners</a>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
@@ -751,6 +752,71 @@ const pageConfigs = [
         { href: "/privacy", label: "Privacy Notice" },
         { href: "/terms", label: "Terms of Service" },
         { href: "mailto:legal@knoledgr.com", label: "legal@knoledgr.com" },
+      ],
+    }),
+  },
+  {
+    route: "/feedback",
+    title: `Feedback | ${BRAND}`,
+    description:
+      "Share product feedback, bug reports, feature requests, onboarding friction, and documentation gaps with the Knoledgr team.",
+    ogType: "website",
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: `Feedback | ${BRAND}`,
+        description:
+          "Share product feedback, bug reports, feature requests, onboarding friction, and documentation gaps with the Knoledgr team.",
+        url: `${SITE_URL}/feedback`,
+        isPartOf: {
+          "@type": "WebSite",
+          name: BRAND,
+          url: SITE_URL,
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "ContactPage",
+        name: `${BRAND} Feedback`,
+        url: `${SITE_URL}/feedback`,
+        description:
+          "Submit actionable feedback to the Knoledgr team about product quality, friction, bugs, feature requests, docs gaps, and onboarding.",
+      },
+    ],
+    body: renderLayout({
+      eyebrow: "Feedback",
+      heading: "Help shape what Knoledgr improves next",
+      lead:
+        "Use the Knoledgr feedback page to share product friction, bug reports, feature requests, documentation gaps, pricing concerns, onboarding blockers, or strong positive feedback from real use.",
+      actions: [
+        { href: "/feedback", label: "Open feedback form", primary: true },
+        { href: "/docs", label: "Read documentation" },
+      ],
+      sections: [
+        {
+          title: "What to send",
+          bullets: [
+            "Bug reports tied to a specific page, route, or workflow.",
+            "Feature requests that explain the workflow gap, not just the surface change.",
+            "Documentation gaps where examples, screenshots, or clearer guidance would help.",
+            "Positive feedback that highlights what is working well and why it matters.",
+          ],
+        },
+        {
+          title: "What helps the team act quickly",
+          bullets: [
+            "Name the product area, route, or project context involved.",
+            "Describe what you expected to happen and what actually happened.",
+            "Share why the issue matters to the team or the work in progress.",
+          ],
+        },
+      ],
+      footerLinks: [
+        { href: "/", label: "Homepage" },
+        { href: "/docs", label: "Documentation" },
+        { href: "/partners", label: "Partners" },
+        { href: "/privacy", label: "Privacy Notice" },
       ],
     }),
   },

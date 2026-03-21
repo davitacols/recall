@@ -213,6 +213,80 @@ class PartnerInquiry(models.Model):
     def __str__(self):
         return f"{self.company_name} partner inquiry ({self.full_name})"
 
+
+class UserFeedback(models.Model):
+    FEEDBACK_TYPE_CHOICES = [
+        ('general', 'General Product Feedback'),
+        ('bug', 'Bug Report'),
+        ('feature', 'Feature Request'),
+        ('docs', 'Documentation'),
+        ('pricing', 'Pricing Or Upgrade'),
+        ('support', 'Support Or Onboarding'),
+        ('testimonial', 'Testimonial'),
+    ]
+    SENTIMENT_CHOICES = [
+        ('positive', 'Positive'),
+        ('neutral', 'Neutral'),
+        ('friction', 'Needs Improvement'),
+    ]
+    STATUS_CHOICES = [
+        ('new', 'New'),
+        ('reviewing', 'Reviewing'),
+        ('contacted', 'Contacted'),
+        ('resolved', 'Resolved'),
+        ('archived', 'Archived'),
+    ]
+
+    submitted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='feedback_submissions',
+    )
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='owned_feedback_submissions',
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='feedback_submissions',
+    )
+    full_name = models.CharField(max_length=255)
+    email = models.EmailField(db_index=True)
+    company_name = models.CharField(max_length=255, blank=True, db_index=True)
+    role_title = models.CharField(max_length=255, blank=True)
+    feedback_type = models.CharField(max_length=40, choices=FEEDBACK_TYPE_CHOICES, db_index=True)
+    sentiment = models.CharField(max_length=20, choices=SENTIMENT_CHOICES, default='neutral', db_index=True)
+    rating = models.PositiveSmallIntegerField(default=4)
+    current_page = models.CharField(max_length=500, blank=True)
+    message = models.TextField()
+    consent_to_contact = models.BooleanField(default=False)
+    source = models.CharField(max_length=50, default='feedback-page')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new', db_index=True)
+    internal_notes = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    contacted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'user_feedback'
+        ordering = ['-submitted_at']
+        indexes = [
+            models.Index(fields=['status', '-submitted_at']),
+            models.Index(fields=['feedback_type', '-submitted_at']),
+            models.Index(fields=['sentiment', '-submitted_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.full_name} feedback ({self.feedback_type})"
+
+
 class SavedSearch(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_searches')
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)

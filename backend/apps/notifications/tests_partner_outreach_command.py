@@ -17,6 +17,13 @@ class PartnerOutreachCommandTests(SimpleTestCase):
         self.assertIn("525 System", payload["html"])
         self.assertIn("525 System", payload["text"])
 
+    def test_build_partner_outreach_payload_supports_segment_copy(self):
+        payload = build_partner_outreach_payload("Praecipio", segment="atlassian_partner")
+
+        self.assertIn("Praecipio", payload["subject"])
+        self.assertIn("delivery", payload["html"].lower())
+        self.assertIn("jira", payload["html"].lower())
+
     @patch("apps.notifications.management.commands.send_partner_outreach.send_email", return_value=True)
     def test_command_sends_email(self, mock_send_email):
         stdout = StringIO()

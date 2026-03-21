@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Organization, PartnerInquiry, User
+from .models import Organization, PartnerInquiry, User, UserFeedback
 from .enterprise_models import (
     SSOConfig,
     AccountManager,
@@ -45,6 +45,15 @@ class PartnerInquiryAdmin(admin.ModelAdmin):
     list_filter = ['partner_type', 'status', 'source', 'submitted_at']
     search_fields = ['company_name', 'full_name', 'work_email', 'role_title']
     readonly_fields = ['submitted_at', 'submitted_by', 'organization']
+
+
+@admin.register(UserFeedback)
+class UserFeedbackAdmin(admin.ModelAdmin):
+    list_display = ['full_name', 'email', 'company_name', 'feedback_type', 'sentiment', 'rating', 'status', 'owner', 'submitted_at']
+    list_filter = ['feedback_type', 'sentiment', 'status', 'source', 'submitted_at']
+    search_fields = ['full_name', 'email', 'company_name', 'role_title', 'message', 'current_page']
+    readonly_fields = ['submitted_at', 'submitted_by', 'organization']
+
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):

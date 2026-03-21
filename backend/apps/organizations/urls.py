@@ -34,7 +34,7 @@ from .bulk_operations import (
     bulk_delete_documents, bulk_assign_issues, bulk_update_priority
 )
 from .pdf_export import export_document_pdf, export_conversation_pdf, export_decision_pdf, export_bulk_pdf
-from .public_views import partner_inquiries, partner_inquiry_detail
+from .public_views import partner_inquiries, partner_inquiry_detail, user_feedback, user_feedback_detail
 from .ai_enhancements import (
     auto_summarize, smart_suggestions, sentiment_analysis, auto_tag, batch_ai_process, apply_ai_to_item
 )
@@ -43,6 +43,8 @@ from . import subscription_views, stripe_views, ai_views, enterprise_views, impo
 urlpatterns = [
     path('partner-inquiries/', partner_inquiries, name='partner-inquiries'),
     path('partner-inquiries/<int:inquiry_id>/', partner_inquiry_detail, name='partner-inquiry-detail'),
+    path('feedback/', user_feedback, name='user-feedback'),
+    path('feedback/<int:feedback_id>/', user_feedback_detail, name='user-feedback-detail'),
     path('current/', OrganizationDetailView.as_view(), name='current-org'),
     path('me/', OrganizationDetailView.as_view(), name='org-me'),
     path('activity/feed/', activity_feed, name='activity-feed-explicit'),

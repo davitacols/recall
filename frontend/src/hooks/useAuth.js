@@ -11,6 +11,7 @@ const PROFILE_BOOT_TIMEOUT_MS = 5000;
 const PUBLIC_BOOTSTRAP_PATHS = new Set([
   '/',
   '/home',
+  '/feedback',
   '/partners',
   '/privacy',
   '/terms',

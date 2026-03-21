@@ -3,6 +3,7 @@ import axios from 'axios';
 const PUBLIC_PATHS = new Set([
   '/',
   '/home',
+  '/feedback',
   '/partners',
   '/privacy',
   '/terms',

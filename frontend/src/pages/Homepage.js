@@ -266,6 +266,7 @@ export default function Homepage() {
           </div>
           <div className="hp-container hp-legal">
             <Link to="/docs">Documentation</Link>
+            <Link to="/feedback">Feedback</Link>
             <Link to="/partners">Partners</Link>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Terms</Link>

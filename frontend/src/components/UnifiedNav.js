@@ -289,7 +289,10 @@ export default function UnifiedNav({
         { name: "Documents", href: "/business/documents", icon: DocumentTextIcon },
         { name: "Templates", href: "/business/templates", icon: DocumentTextIcon },
         ...(user?.is_staff || user?.is_superuser
-          ? [{ name: "Partner Inbox", href: "/partners/inbox", icon: ClipboardDocumentListIcon }]
+          ? [
+              { name: "Feedback Inbox", href: "/feedback/inbox", icon: ChatBubbleLeftIcon },
+              { name: "Partner Inbox", href: "/partners/inbox", icon: ClipboardDocumentListIcon },
+            ]
           : []),
         ...(user?.role === "admin"
           ? [{ name: "Import/Export", href: "/import-export", icon: DocumentTextIcon }]

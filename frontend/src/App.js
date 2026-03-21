@@ -36,6 +36,8 @@ import Documentation from "./pages/Documentation";
 import Documents from "./pages/Documents";
 import Drafts from "./pages/Drafts";
 import Enterprise from "./pages/Enterprise";
+import Feedback from "./pages/Feedback";
+import FeedbackInbox from "./pages/FeedbackInbox";
 import Files from "./pages/Files";
 import ForgotPassword from "./pages/ForgotPassword";
 import GoalDetail from "./pages/GoalDetail";
@@ -129,6 +131,7 @@ const PUBLIC_ROUTES = [
   { path: "/", element: <PublicHomeRoute /> },
   { path: "/home", element: <Navigate to="/" replace /> },
   { path: "/docs/*", element: <Documentation /> },
+  { path: "/feedback", element: <Feedback /> },
   { path: "/partners", element: <Partners /> },
   { path: "/privacy", element: <PrivacyEnterprise /> },
   { path: "/terms", element: <TermsEnterprise /> },
@@ -143,6 +146,7 @@ const PUBLIC_ROUTES = [
 const PUBLIC_ROUTE_PATHS = new Set([
   "/",
   "/home",
+  "/feedback",
   "/partners",
   "/privacy",
   "/terms",
@@ -246,6 +250,7 @@ const ADMIN_ROUTES = [
 ];
 
 const STAFF_ROUTES = [
+  { path: "/feedback/inbox", element: <FeedbackInbox /> },
   { path: "/partners/inbox", element: <PartnerInbox /> },
 ];
 

@@ -517,6 +517,9 @@ function Login() {
                 {"<"} Back to homepage
               </button>
               <div className="auth-legal">
+                <Link to="/feedback" className="auth-legal-link">
+                  Feedback
+                </Link>
                 <Link to="/privacy" className="auth-legal-link">
                   Privacy
                 </Link>

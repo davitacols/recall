@@ -137,6 +137,29 @@ function resolveMeta(pathname) {
     };
   }
 
+  if (pathname === "/feedback") {
+    const title = `Feedback | ${BRAND}`;
+    const description =
+      "Share product feedback, bug reports, feature requests, onboarding friction, and documentation gaps with the Knoledgr team.";
+    return {
+      title,
+      description,
+      robots: "index,follow",
+      canonicalPath: "/feedback",
+      ogType: "website",
+      structuredData: [
+        webPageSchema(title, description, "/feedback"),
+        {
+          "@context": "https://schema.org",
+          "@type": "ContactPage",
+          name: `${BRAND} Feedback`,
+          url: `${SITE_URL}/feedback`,
+          description,
+        },
+      ],
+    };
+  }
+
   if (pathname === "/privacy") {
     const title = `Privacy Notice | ${BRAND}`;
     const description =

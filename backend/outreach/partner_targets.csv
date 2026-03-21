@@ -1,0 +1,9 @@
+company,email,contact_name,segment,website,source_url,notes
+thoughtbot,hello@thoughtbot.com,,product_agency,https://thoughtbot.com,https://thoughtbot.com/accessibility-statement,"Senior product design and development consultancy with strong process and delivery positioning."
+DockYard,hello@dockyard.com,,product_agency,https://dockyard.com,https://assets.dockyard.com/dockyard_com/dockyard-ethical-product-strategy-evaluation-2023.pdf,"Digital product consultancy working across strategy, design, engineering, and internal workflow modernization."
+Viget,business@viget.com,,product_agency,https://www.viget.com,https://www.viget.com/contact,"Strategy, design, and development agency with explicit digital transformation and operations language."
+STRV,hello@strv.com,,product_agency,https://www.strv.com,https://www.strv.com/new-york,"Digital product partner for startup and growth-stage product teams."
+Praecipio,sales@praecipio.com,,atlassian_partner,https://www.praecipio.com,https://www.praecipio.com/contact,"Atlassian and connected-enterprise consultancy with AI, ITSM, and workflow transformation focus."
+Valiantys,hello.us@valiantys.com,,atlassian_partner,https://www.valiantys.com/en,https://www.valiantys.com/en/contact/,"Atlassian solution partner helping enterprises connect tooling, governance, and delivery."
+ProcessDriven,hello@processdriven.co,,ops_consulting,https://processdriven.co,https://processdriven.co/press,"Systems and operations consultancy for small teams that care about process, delegation, and operational clarity."
+Pioneer Square Labs,hello@psl.com,,venture_studio,https://www.psl.com,https://www.psl.com/corporate,"Startup studio and venture fund supporting company creation, operator support, and portfolio execution."

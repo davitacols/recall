@@ -571,6 +571,7 @@ export default function Partners() {
           <div className="partners-shell partners-footer-links">
             <Link to="/">Home</Link>
             <Link to="/docs">Documentation</Link>
+            <Link to="/feedback">Feedback</Link>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Terms</Link>
             <Link to="/security-annex">Security Annex</Link>

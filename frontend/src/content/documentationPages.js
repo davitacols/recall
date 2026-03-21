@@ -127,6 +127,130 @@ const BASE_DOCUMENTATION_GROUPS = [
         summary: "Track decisions with rationale, alternatives, confidence, implementation notes, and outcome review.",
         readTime: "5 min",
         audience: "Managers, leads, approvers",
+        routes: ["/decisions", "/decision-proposals", "/decisions/:id"],
+        workflow: {
+          eyebrow: "Decision lifecycle",
+          title: "How a Knoledgr decision moves from proposal to learning",
+          description: "The strongest decision records in Knoledgr do not stop at approval. They stay connected through execution, outcome review, and follow-up.",
+          steps: [
+            {
+              title: "Capture the choice",
+              detail: "Create or promote a decision with the problem, chosen direction, rationale, confidence, and alternatives considered.",
+            },
+            {
+              title: "Link downstream work",
+              detail: "Attach the decision to conversations, documents, projects, issues, or pull requests so the why remains visible after the meeting ends.",
+            },
+            {
+              title: "Review the outcome",
+              detail: "Once implemented, record success or failure, review confidence, notes, and structured metrics instead of relying on memory later.",
+            },
+            {
+              title: "Use replay and follow-up",
+              detail: "Run a replay simulation to explore safeguards, then create follow-up tasks when the learning should change future execution.",
+            },
+          ],
+        },
+        visual: {
+          eyebrow: "Surface map",
+          title: "The decision surface is designed around evidence, not just approval",
+          caption: "Knoledgr spreads the lifecycle across queue, detail, replay, and follow-up so teams can understand both the original choice and what happened after implementation.",
+          panels: [
+            {
+              title: "Decision queue",
+              value: "Proposal review and commitment",
+              helper: "Use the proposals queue when ideas need visible review before they become formal decisions.",
+              emphasis: true,
+            },
+            {
+              title: "Decision detail",
+              value: "Rationale, context, and linked records",
+              helper: "The detail page is the operating record for confidence, outcome review, exports, and linked context.",
+            },
+            {
+              title: "Replay simulator",
+              value: "Counterfactual learning",
+              helper: "Replay explores alternate choices and returns recommended safeguards before teams rewrite history in hindsight.",
+            },
+            {
+              title: "Follow-up orchestration",
+              value: "Tasks from failed outcomes",
+              helper: "Outcome review can create traceable follow-up work when implementation did not deliver the intended result.",
+            },
+          ],
+        },
+        examplesEyebrow: "Decision APIs",
+        examplesTitle: "Decision lifecycle API examples",
+        examplesDescription: "These examples mirror the current decision detail flows used in the web app today.",
+        examples: [
+          {
+            title: "Fetch one decision record",
+            method: "GET",
+            endpoint: "/api/decisions/:decisionId/",
+            description: "The decision detail page loads the full operating record, including confidence, code links, outcome notes, and lessons learned.",
+            response: {
+              id: 42,
+              title: "Adopt staged rollout for billing migration",
+              status: "implemented",
+              confidence: 78,
+              confidence_level: "high",
+              alternatives_considered: ["Big-bang rollout", "Delay migration"],
+              outcome_notes: "Reduced incident volume after phased release.",
+              success_metrics: {
+                adoption_rate: 74,
+                incident_count: 1,
+              },
+              was_successful: true,
+              lessons_learned: "A visible fallback plan lowered rollout risk.",
+            },
+          },
+          {
+            title: "Save an outcome review",
+            method: "POST",
+            endpoint: "/api/decisions/:decisionId/outcome-review/",
+            description: "Outcome review is only available after implementation and requires explicit success/failure plus a review confidence score.",
+            request: {
+              was_successful: true,
+              review_confidence: 4,
+              outcome_notes: "Pilot rollout landed without customer-facing disruption.",
+              impact_review_notes: "Support load stayed below forecast.",
+              lessons_learned: "Staged rollout reduced operational stress.",
+              success_metrics: {
+                adoption_rate: 74,
+                incident_count: 1,
+                roi: 18.5,
+              },
+            },
+            response: {
+              id: 42,
+              was_successful: true,
+              review_confidence: 4,
+              message: "Outcome review saved",
+            },
+          },
+          {
+            title: "Run replay simulation for a different choice",
+            method: "POST",
+            endpoint: "/api/decisions/:decisionId/replay-simulator/",
+            description: "Replay lets operators explore alternative framing, risk tolerance, and execution speed before deciding whether to create safeguards.",
+            request: {
+              alternative_title: "Delay the rollout by one sprint",
+              alternative_summary: "Hold release until migration monitoring is stronger.",
+              risk_tolerance: "low",
+              execution_speed: "normal",
+              impact_level: "medium",
+            },
+            response: {
+              scenario: {
+                alternative_title: "Delay the rollout by one sprint",
+              },
+              recommended_safeguards: [
+                "Add a rollback checklist",
+                "Require daily migration telemetry review",
+              ],
+            },
+          },
+        ],
         sections: [
           {
             heading: "What belongs in a decision",
@@ -186,6 +310,133 @@ const BASE_DOCUMENTATION_GROUPS = [
         summary: "Ask grounded questions about your organization and get answers backed by Knoledgr evidence.",
         readTime: "5 min",
         audience: "All users",
+        routes: ["/ask"],
+        workflow: {
+          eyebrow: "Copilot workflow",
+          title: "How Ask Recall turns prompts into grounded answers",
+          description: "Ask Recall is not just a chat box. It classifies the request, searches workspace evidence, scores coverage, and only exposes autonomous execution on diagnosis paths.",
+          steps: [
+            {
+              title: "Ask a concrete organization question",
+              detail: "Use project names, sprint names, issue keys, document titles, or decision names when possible so retrieval has something precise to anchor to.",
+            },
+            {
+              title: "Review evidence before acting",
+              detail: "Look at confidence, evidence count, source types, citations, and missing evidence signals before treating the answer as complete.",
+            },
+            {
+              title: "Use what-if or autonomous fixes when appropriate",
+              detail: "What-if simulation models readiness shifts. Autonomous fixes are reserved for diagnosis results and require admin or manager confirmation.",
+            },
+          ],
+        },
+        visual: {
+          eyebrow: "Surface map",
+          title: "Ask Recall is built around answer quality and operator trust",
+          caption: "The page keeps the prompt, grounded response, evidence, actions, simulation, and feedback loop visible together so teams can judge credibility before acting.",
+          panels: [
+            {
+              title: "Prompt bar",
+              value: "Grounded organization questions",
+              helper: "Ask about projects, sprints, blockers, decisions, documents, meetings, people, and operational state.",
+              emphasis: true,
+            },
+            {
+              title: "Response block",
+              value: "Answer, engine, and confidence",
+              helper: "The answer surface shows whether the result came from the provider-backed path or the rules fallback.",
+            },
+            {
+              title: "Evidence coverage",
+              value: "Citations, source types, and gaps",
+              helper: "Coverage and missing evidence make weak retrieval visible instead of hiding uncertainty.",
+            },
+            {
+              title: "Interventions",
+              value: "Recommended next actions",
+              helper: "Diagnosis prompts can surface prioritized interventions and, when approved, run safe autonomous fixes.",
+            },
+          ],
+        },
+        examplesEyebrow: "Copilot APIs",
+        examplesTitle: "Ask Recall API examples",
+        examplesDescription: "These examples reflect the current web flow used by the Ask Recall page.",
+        examples: [
+          {
+            title: "Run grounded analysis",
+            method: "POST",
+            endpoint: "/api/knowledge/ai/copilot/",
+            description: "The main copilot call supports answer, diagnosis, and navigation modes. Execution is optional and explicitly confirmed.",
+            request: {
+              query: "Tell me about the Talking Stage sprint in the Justice App project.",
+              execute: false,
+              confirm_execute: false,
+              max_actions: 3,
+              disable_navigation: false,
+            },
+            response: {
+              analysis_id: "8b6956bb-1c9d-4f91-8b5f-2aa0c0b1b321",
+              answer_engine: "anthropic",
+              response_mode: "answer",
+              confidence: 81,
+              confidence_band: "high",
+              evidence_count: 6,
+              source_types: ["project", "sprint", "issue"],
+              coverage_score: 78,
+              citations: [
+                { type: "sprint", title: "Talking Stage Sprint" },
+                { type: "project", title: "Justice App" },
+              ],
+              recommended_interventions: [],
+            },
+          },
+          {
+            title: "Model readiness improvement with what-if simulation",
+            method: "POST",
+            endpoint: "/api/knowledge/ai/copilot/what-if/",
+            description: "The simulation endpoint projects readiness changes for decision resolution, blocker clearance, or ownership assignment.",
+            request: {
+              action_type: "clear_blockers",
+              units: 2,
+              horizon_days: 14,
+            },
+            response: {
+              action_type: "clear_blockers",
+              units: 2,
+              horizon_days: 14,
+              baseline: {
+                readiness_score: 68.5,
+                status: "watch",
+              },
+              projected: {
+                readiness_score: 82.5,
+                status: "stable",
+                delta: 14,
+              },
+              assumptions: ["Clear up to 2 active blockers in 14 days."],
+            },
+          },
+          {
+            title: "Submit operator feedback on an answer",
+            method: "POST",
+            endpoint: "/api/knowledge/ai/copilot/feedback/",
+            description: "Feedback helps the team track whether Ask Recall guidance is useful, risky, or low-value in practice.",
+            request: {
+              analysis_id: "8b6956bb-1c9d-4f91-8b5f-2aa0c0b1b321",
+              query: "What decisions are blocking delivery?",
+              feedback: "down",
+              outcome: "Needed more evidence",
+              response_mode: "diagnosis",
+              confidence_band: "medium",
+              evidence_count: 3,
+              coverage_score: 54,
+              has_actions: true,
+            },
+            response: {
+              message: "Feedback recorded",
+            },
+          },
+        ],
         sections: [
           {
             heading: "What Ask Recall does well",
@@ -444,6 +695,96 @@ const BASE_DOCUMENTATION_GROUPS = [
         summary: "Configure policy-level controls for SSO, MFA, integrations, retention, and residency.",
         readTime: "4 min",
         audience: "Security, compliance, enterprise admins",
+        routes: ["/enterprise"],
+        workflow: {
+          eyebrow: "Policy workflow",
+          title: "How teams usually roll out enterprise compliance controls",
+          description: "The enterprise page lets admins move from identity setup to governance rules without splitting policy work across disconnected screens.",
+          steps: [
+            {
+              title: "Confirm identity posture",
+              detail: "Decide whether SSO and MFA are required before tightening downstream app and export controls.",
+            },
+            {
+              title: "Set residency and retention",
+              detail: "Choose the data region and retention horizon that match the organization's operating and legal expectations.",
+            },
+            {
+              title: "Lock integration boundaries",
+              detail: "Use app approval, IP allowlist, and allowed integration lists to narrow the operational footprint before scale increases.",
+            },
+          ],
+        },
+        visual: {
+          eyebrow: "Policy map",
+          title: "Compliance controls are organized around identity, data, and app boundaries",
+          caption: "The enterprise compliance area keeps the most important governance levers visible in one place so admins can reason about tradeoffs before saving policy changes.",
+          panels: [
+            {
+              title: "Identity",
+              value: "Require SSO and MFA",
+              helper: "Use identity requirements when access consistency matters more than open self-service.",
+              emphasis: true,
+            },
+            {
+              title: "Data residency",
+              value: "Region and retention horizon",
+              helper: "Residency and retention settings define where data should live and how long it should remain.",
+            },
+            {
+              title: "App governance",
+              value: "Allowed integrations and approval rules",
+              helper: "Third-party app approval prevents enterprise rollout from becoming an unreviewed connector sprawl.",
+            },
+            {
+              title: "Network controls",
+              value: "IP allowlist",
+              helper: "Use the allowlist when sensitive work must stay behind approved corporate networks.",
+            },
+          ],
+        },
+        examplesEyebrow: "Enterprise APIs",
+        examplesTitle: "Compliance policy API examples",
+        examplesDescription: "These examples reflect the compliance controls currently managed from the Enterprise page.",
+        examples: [
+          {
+            title: "Read current compliance policy",
+            method: "GET",
+            endpoint: "/api/organizations/enterprise/compliance/",
+            description: "The enterprise page loads the persisted policy before showing editable controls.",
+            response: {
+              id: 9,
+              data_residency_region: "eu",
+              require_sso: true,
+              require_mfa: true,
+              audit_export_enabled: true,
+              third_party_app_approval_required: true,
+              retention_days: 365,
+              ip_allowlist: ["203.0.113.10"],
+              allowed_integrations: ["github", "jira", "slack"],
+            },
+          },
+          {
+            title: "Update enterprise compliance policy",
+            method: "PUT",
+            endpoint: "/api/organizations/enterprise/compliance/",
+            description: "Only admins can update the enterprise compliance policy.",
+            request: {
+              data_residency_region: "eu",
+              require_sso: true,
+              require_mfa: true,
+              audit_export_enabled: true,
+              third_party_app_approval_required: true,
+              retention_days: 365,
+              ip_allowlist: ["203.0.113.10", "198.51.100.24"],
+              allowed_integrations: ["github", "jira", "slack"],
+            },
+            response: {
+              message: "Compliance policy updated",
+              id: 9,
+            },
+          },
+        ],
         sections: [
           {
             heading: "What the compliance policy controls",
@@ -471,6 +812,115 @@ const BASE_DOCUMENTATION_GROUPS = [
         summary: "Use enterprise incident automation and escalation rules to turn risk signals into trackable operational response.",
         readTime: "5 min",
         audience: "Enterprise admins, operations leaders",
+        routes: ["/enterprise"],
+        workflow: {
+          eyebrow: "Incident workflow",
+          title: "How enterprise incident automation moves from signal to response",
+          description: "Knoledgr incident ops is meant to convert stale blockers, SLA risk, and delivery pressure into a visible response lane with escalation hooks.",
+          steps: [
+            {
+              title: "Monitor active incident signals",
+              detail: "Review open incidents and the enterprise portfolio report to understand where SLA or delivery pressure is building.",
+            },
+            {
+              title: "Run automation or scheduled checks",
+              detail: "Automation can create incidents from stale blockers or SLA breaches before teams notice the pattern manually.",
+            },
+            {
+              title: "Escalate with tasks or blockers",
+              detail: "Escalation rules can notify admins, create tasks, and create blockers when an incident crosses the configured threshold.",
+            },
+            {
+              title: "Review false positives and rule quality",
+              detail: "The system becomes trustworthy when teams tighten the rules after early noisy runs instead of letting alert fatigue grow.",
+            },
+          ],
+        },
+        visual: {
+          eyebrow: "Response map",
+          title: "Incident Ops combines monitoring, automation, and escalation",
+          caption: "The goal is to make enterprise risk operationally visible, not just measurable. The page keeps the live incident lane close to the rule system that shapes it.",
+          panels: [
+            {
+              title: "Incident center",
+              value: "Open and recent incidents",
+              helper: "Track severity, type, status, and source payload across enterprise monitoring events.",
+              emphasis: true,
+            },
+            {
+              title: "Automation",
+              value: "Blocker and SLA detection",
+              helper: "Incident automation scans stale blockers and breached SLA rules to create new incidents.",
+            },
+            {
+              title: "Escalation rules",
+              value: "Role-aware response paths",
+              helper: "Rules can trigger task creation, blocker creation, and admin notifications when an incident ages or intensifies.",
+            },
+            {
+              title: "Portfolio context",
+              value: "Project risk alongside incidents",
+              helper: "Portfolio metrics help teams understand whether the incident is local noise or part of a broader execution pattern.",
+            },
+          ],
+        },
+        examplesEyebrow: "Incident APIs",
+        examplesTitle: "Incident Ops API examples",
+        examplesDescription: "These examples map directly to the incident automation and escalation workflows on the enterprise page.",
+        examples: [
+          {
+            title: "List current enterprise incidents",
+            method: "GET",
+            endpoint: "/api/organizations/enterprise/incidents/",
+            description: "Use the incident center feed to review open and recent enterprise incidents.",
+            response: [
+              {
+                id: 17,
+                incident_type: "blocker_spike",
+                severity: "high",
+                status: "open",
+                title: "Stale blocker: Payment migration review",
+              },
+            ],
+          },
+          {
+            title: "Run enterprise incident automation",
+            method: "POST",
+            endpoint: "/api/organizations/enterprise/incidents/run-automation/",
+            description: "Admins and managers can trigger automation to create incidents from stale blockers or SLA risk.",
+            response: {
+              created_count: 2,
+              created_incidents: [
+                {
+                  id: 17,
+                  title: "Stale blocker: Payment migration review",
+                  incident_type: "blocker_spike",
+                  severity: "high",
+                },
+              ],
+            },
+          },
+          {
+            title: "Create an escalation rule",
+            method: "POST",
+            endpoint: "/api/organizations/enterprise/incidents/escalation-rules/",
+            description: "Escalation rules determine when incidents create blockers, create tasks, or notify admins.",
+            request: {
+              name: "Critical incident escalation",
+              incident_type: "",
+              min_severity: "high",
+              escalation_delay_minutes: 0,
+              create_task: true,
+              create_blocker: false,
+              notify_admins: true,
+              assign_to_role: "admin",
+            },
+            response: {
+              message: "Escalation rule created",
+              id: 12,
+            },
+          },
+        ],
         sections: [
           {
             heading: "What incident ops covers",

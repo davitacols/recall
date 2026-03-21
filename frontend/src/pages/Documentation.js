@@ -18,6 +18,53 @@ function sectionId(heading) {
   return heading.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+function formatExamplePayload(value) {
+  if (value == null) return "";
+  if (typeof value === "string") return value.trim();
+  return JSON.stringify(value, null, 2);
+}
+
+function ExampleCodeCard({ title, content, palette }) {
+  if (!content) return null;
+  return (
+    <div
+      style={{
+        borderRadius: 16,
+        border: `1px solid ${palette.border}`,
+        background: palette.panel,
+        padding: 14,
+        minWidth: 0,
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          fontSize: 11,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: palette.muted,
+        }}
+      >
+        {title}
+      </p>
+      <pre
+        style={{
+          margin: "10px 0 0",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          overflowX: "auto",
+          fontSize: 12,
+          lineHeight: 1.7,
+          color: palette.text,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+        }}
+      >
+        {content}
+      </pre>
+    </div>
+  );
+}
+
 export default function Documentation() {
   const { darkMode } = useTheme();
   const location = useLocation();
@@ -76,7 +123,25 @@ export default function Documentation() {
     return DOCUMENTATION_GROUPS.map((group) => ({
       ...group,
       pages: group.pages.filter((page) =>
-        [page.title, page.summary, page.audience, ...(page.routes || []), ...(page.sections || []).flatMap((section) => [section.heading, ...(section.paragraphs || []), ...(section.bullets || [])])]
+        [
+          page.title,
+          page.summary,
+          page.audience,
+          ...(page.routes || []),
+          ...(page.workflow?.steps || []).flatMap((step) => [step.title, step.detail]),
+          page.visual?.title || "",
+          page.visual?.caption || "",
+          ...(page.visual?.panels || []).flatMap((panel) => [panel.title, panel.value, panel.helper]),
+          ...(page.examples || []).flatMap((example) => [
+            example.title,
+            example.description,
+            example.method,
+            example.endpoint,
+            formatExamplePayload(example.request),
+            formatExamplePayload(example.response),
+          ]),
+          ...(page.sections || []).flatMap((section) => [section.heading, ...(section.paragraphs || []), ...(section.bullets || [])]),
+        ]
           .join(" ")
           .toLowerCase()
           .includes(needle)
@@ -93,6 +158,12 @@ export default function Documentation() {
   const featuredPages = DOCUMENTATION_PAGES.filter((page) =>
     ["getting-started/overview", "workflows/decisions", "intelligence/ask-recall", "integrations/github", "enterprise/compliance", "reference/api-highlights"].includes(page.slug)
   );
+  const onPageItems = [
+    ...(activePage.workflow ? [{ id: "workflow", label: activePage.workflow.title || "Workflow" }] : []),
+    ...(activePage.visual ? [{ id: "surface-map", label: activePage.visual.title || "Surface map" }] : []),
+    ...activePage.sections.map((section) => ({ id: sectionId(section.heading), label: section.heading })),
+    ...((activePage.examples || []).length ? [{ id: "api-examples", label: activePage.examplesTitle || "API examples" }] : []),
+  ];
 
   const goToPage = (slug) => navigate(slug ? `/docs/${slug}` : "/docs");
 
@@ -233,6 +304,92 @@ export default function Documentation() {
               </div>
             ) : null}
 
+            {activePage.workflow ? (
+              <section
+                id="workflow"
+                style={{
+                  borderRadius: 20,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.panelAlt,
+                  padding: 18,
+                  marginTop: 24,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
+                  {activePage.workflow.eyebrow || "Workflow"}
+                </p>
+                <h3 style={{ margin: "8px 0 0", fontSize: 20, color: palette.text }}>{activePage.workflow.title}</h3>
+                {activePage.workflow.description ? (
+                  <p style={{ margin: "10px 0 0", fontSize: 14, lineHeight: 1.8, color: palette.muted }}>
+                    {activePage.workflow.description}
+                  </p>
+                ) : null}
+                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginTop: 14 }}>
+                  {activePage.workflow.steps.map((step, index) => (
+                    <article
+                      key={`${step.title}-${index}`}
+                      style={{
+                        borderRadius: 18,
+                        border: `1px solid ${palette.border}`,
+                        background: palette.panel,
+                        padding: 14,
+                      }}
+                    >
+                      <p style={{ margin: 0, fontSize: 11, color: palette.accent, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                        Step {index + 1}
+                      </p>
+                      <h4 style={{ margin: "8px 0 0", fontSize: 16, color: palette.text }}>{step.title}</h4>
+                      <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.75, color: palette.muted }}>{step.detail}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {activePage.visual ? (
+              <section
+                id="surface-map"
+                style={{
+                  borderRadius: 20,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.panelAlt,
+                  padding: 18,
+                  marginTop: 24,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
+                  {activePage.visual.eyebrow || "Surface map"}
+                </p>
+                <h3 style={{ margin: "8px 0 0", fontSize: 20, color: palette.text }}>{activePage.visual.title}</h3>
+                {activePage.visual.caption ? (
+                  <p style={{ margin: "10px 0 0", fontSize: 14, lineHeight: 1.8, color: palette.muted }}>{activePage.visual.caption}</p>
+                ) : null}
+                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginTop: 14 }}>
+                  {activePage.visual.panels.map((panel) => (
+                    <article
+                      key={panel.title}
+                      style={{
+                        borderRadius: 18,
+                        border: `1px solid ${palette.border}`,
+                        background: panel.emphasis ? palette.accentSoft : palette.panel,
+                        padding: 14,
+                      }}
+                    >
+                      <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
+                        {panel.title}
+                      </p>
+                      <p style={{ margin: "8px 0 0", fontSize: 18, lineHeight: 1.25, color: palette.text, fontWeight: 700 }}>
+                        {panel.value}
+                      </p>
+                      {panel.helper ? (
+                        <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.7, color: palette.muted }}>{panel.helper}</p>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
             <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
               {activePage.sections.map((section) => (
                 <section key={section.heading} id={sectionId(section.heading)} style={{ borderRadius: 20, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 18 }}>
@@ -255,6 +412,70 @@ export default function Documentation() {
               ))}
             </div>
 
+            {(activePage.examples || []).length ? (
+              <section
+                id="api-examples"
+                style={{
+                  borderRadius: 20,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.panelAlt,
+                  padding: 18,
+                  marginTop: 24,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
+                  {activePage.examplesEyebrow || "API examples"}
+                </p>
+                <h3 style={{ margin: "8px 0 0", fontSize: 20, color: palette.text }}>{activePage.examplesTitle || "Implementation examples"}</h3>
+                {activePage.examplesDescription ? (
+                  <p style={{ margin: "10px 0 0", fontSize: 14, lineHeight: 1.8, color: palette.muted }}>
+                    {activePage.examplesDescription}
+                  </p>
+                ) : null}
+                <div style={{ display: "grid", gap: 14, marginTop: 14 }}>
+                  {activePage.examples.map((example) => (
+                    <article
+                      key={`${example.method}-${example.endpoint}-${example.title}`}
+                      style={{
+                        borderRadius: 18,
+                        border: `1px solid ${palette.border}`,
+                        background: palette.panel,
+                        padding: 16,
+                      }}
+                    >
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <span
+                          style={{
+                            borderRadius: 999,
+                            padding: "6px 10px",
+                            background: palette.accentSoft,
+                            color: palette.accent,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {example.method}
+                        </span>
+                        <code style={{ fontSize: 13, color: palette.text }}>{example.endpoint}</code>
+                      </div>
+                      <h4 style={{ margin: "12px 0 0", fontSize: 17, color: palette.text }}>{example.title}</h4>
+                      {example.description ? (
+                        <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.8, color: palette.muted }}>{example.description}</p>
+                      ) : null}
+                      {(example.request || example.response) ? (
+                        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", marginTop: 14 }}>
+                          <ExampleCodeCard title="Request" content={formatExamplePayload(example.request)} palette={palette} />
+                          <ExampleCodeCard title="Response" content={formatExamplePayload(example.response)} palette={palette} />
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 24 }}>
               {previousPage ? <button type="button" onClick={() => goToPage(previousPage.slug)} style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 14, textAlign: "left", cursor: "pointer" }}><p style={{ margin: 0, fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.12em" }}>Previous</p><strong style={{ color: palette.text }}>{previousPage.title}</strong></button> : <div />}
               {nextPage ? <button type="button" onClick={() => goToPage(nextPage.slug)} style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 14, textAlign: "left", cursor: "pointer" }}><p style={{ margin: 0, fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.12em" }}>Next</p><strong style={{ color: palette.text }}>{nextPage.title}</strong></button> : null}
@@ -265,9 +486,9 @@ export default function Documentation() {
             <aside style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.panel, padding: 16, position: "sticky", top: 20 }}>
             <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>On this page</p>
             <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-              {activePage.sections.map((section) => (
-                <a key={section.heading} href={`#${sectionId(section.heading)}`} style={{ color: palette.link, fontSize: 13, textDecoration: "none" }}>
-                  {section.heading}
+              {onPageItems.map((item) => (
+                <a key={item.id} href={`#${item.id}`} style={{ color: palette.link, fontSize: 13, textDecoration: "none" }}>
+                  {item.label}
                 </a>
               ))}
             </div>

@@ -233,6 +233,102 @@ export const DOCUMENTATION_FEATURE_GROUPS = [
         readTime: "5 min",
         audience: "Approvers, operators, leads",
         routes: ["/decisions/:id"],
+        workflow: {
+          eyebrow: "Operator workflow",
+          title: "How teams use the decision detail page in practice",
+          description: "Decision detail works best when it becomes the operating record after a choice is made, not just the place where approval happened.",
+          steps: [
+            {
+              title: "Open the decision and read the briefing",
+              detail: "Start with the core rationale, confidence, impact level, and linked conversation or context before changing anything else.",
+            },
+            {
+              title: "Review intelligence around the decision",
+              detail: "Use impact trail and drift alert data to understand how the decision is affecting downstream work.",
+            },
+            {
+              title: "Record the outcome honestly",
+              detail: "If the decision has been implemented, complete outcome review with structured metrics and lessons learned.",
+            },
+            {
+              title: "Run replay and create safeguards",
+              detail: "Replay simulation helps the team test alternate framing, then create follow-up tasks if the learning needs operational action.",
+            },
+          ],
+        },
+        visual: {
+          eyebrow: "Detail map",
+          title: "Decision detail balances context, analysis, and action",
+          caption: "The page is intentionally split between the narrative record of the decision and the operational controls that help teams learn from it later.",
+          panels: [
+            {
+              title: "Briefing",
+              value: "Summary, rationale, and status",
+              helper: "The masthead keeps the original decision framing visible before the user drills into outcome or replay tabs.",
+              emphasis: true,
+            },
+            {
+              title: "Context rail",
+              value: "Linked conversations, work, and documents",
+              helper: "Use linked context to see the records that influenced or were influenced by the decision.",
+            },
+            {
+              title: "Outcome review",
+              value: "Success, confidence, and lessons",
+              helper: "Outcome review formalizes what teams usually leave buried in follow-up meetings or private retrospectives.",
+            },
+            {
+              title: "Replay",
+              value: "Counterfactual safeguards",
+              helper: "Replay turns hindsight into structured scenarios and recommended follow-up tasks.",
+            },
+          ],
+        },
+        examplesEyebrow: "Detail page APIs",
+        examplesTitle: "Decision detail implementation examples",
+        examplesDescription: "These examples reflect the current interactions available directly from the decision detail view.",
+        examples: [
+          {
+            title: "Load impact trail for a decision",
+            method: "GET",
+            endpoint: "/api/decisions/:decisionId/impact-trail/?depth=2",
+            description: "The page loads impact trail data alongside drift alerts to show how a decision is affecting the surrounding graph.",
+            response: {
+              nodes: [
+                { id: "decision-42", type: "decision", title: "Adopt staged rollout" },
+                { id: "issue-118", type: "issue", title: "Billing migration rollout checklist" },
+              ],
+              edges: [
+                { source: "decision-42", target: "issue-118", type: "implements" },
+              ],
+            },
+          },
+          {
+            title: "Link a pull request to a decision",
+            method: "POST",
+            endpoint: "/api/decisions/:decisionId/link-pr/",
+            description: "Link pull requests when code delivery should stay attached to the decision record.",
+            request: {
+              pr_url: "https://github.com/knoledgr/product/pull/148",
+            },
+            response: {
+              message: "PR linked",
+            },
+          },
+          {
+            title: "Create follow-up tasks from replay safeguards",
+            method: "POST",
+            endpoint: "/api/decisions/:decisionId/replay-simulator/create-follow-up/",
+            description: "After replay returns safeguards, the UI can turn them into task records without leaving the page.",
+            request: {
+              safeguards: ["Add a rollback checklist", "Require daily telemetry review"],
+              scenario_title: "Delay the rollout by one sprint",
+            },
+            response: {
+              created_count: 2,
+            },
+          },
+        ],
         sections: [
           {
             heading: "What the decision detail page contains",
@@ -266,6 +362,116 @@ export const DOCUMENTATION_FEATURE_GROUPS = [
         readTime: "5 min",
         audience: "Product, engineering, operations",
         routes: ["/projects", "/projects/:projectId", "/projects/:projectId/manage", "/projects/:projectId/roadmap"],
+        workflow: {
+          eyebrow: "Project workflow",
+          title: "How a project moves from workspace creation to active delivery",
+          description: "Projects in Knoledgr are meant to be living execution containers, not static portfolio rows. The project list, detail page, backlog, boards, and sprint routes all build on the same project record.",
+          steps: [
+            {
+              title: "Create the project workspace",
+              detail: "Start with a clear project name and short brief so the project opens with usable context instead of becoming another empty tracking shell.",
+            },
+            {
+              title: "Open the project control room",
+              detail: "Use project detail to review sprints, issue stream, roadmap links, and team context from one place.",
+            },
+            {
+              title: "Add sprint and issue structure",
+              detail: "Create sprints and issues directly from the project page so the delivery system inherits the right board and project ownership automatically.",
+            },
+            {
+              title: "Move into specialized routes",
+              detail: "Use backlog, releases, board views, and sprint detail routes when the team needs deeper planning or active execution control.",
+            },
+          ],
+        },
+        visual: {
+          eyebrow: "Surface map",
+          title: "Projects connect planning, sprint cadence, and issue flow",
+          caption: "The project area is intentionally split between overview, active detail, and deeper routes so teams can start broad and drill down without losing context.",
+          panels: [
+            {
+              title: "Projects list",
+              value: "Workspace inventory and readiness",
+              helper: "The list shows how many project workspaces exist, which ones have leads, and which have documented briefs.",
+              emphasis: true,
+            },
+            {
+              title: "Project detail",
+              value: "Sprints, issues, and roadmap links",
+              helper: "The project detail page acts as the front door into active sprint work, issue creation, and roadmap-adjacent routes.",
+            },
+            {
+              title: "Sprint timeline",
+              value: "Cadence and active delivery",
+              helper: "Sprint creation and timeline review happen inside the project, not in a disconnected planning tool.",
+            },
+            {
+              title: "Execution routes",
+              value: "Backlog, releases, and boards",
+              helper: "Once the project is alive, teams move into backlog, board, and sprint surfaces without losing project framing.",
+            },
+          ],
+        },
+        examplesEyebrow: "Project APIs",
+        examplesTitle: "Project and planning API examples",
+        examplesDescription: "These examples reflect the list and detail flows used by the current project pages.",
+        examples: [
+          {
+            title: "Create a project",
+            method: "POST",
+            endpoint: "/api/agile/projects/",
+            description: "Creating a project generates the project record and a default board behind the scenes.",
+            request: {
+              name: "Justice App",
+              description: "Delivery workspace for the Justice App rollout and maintenance stream.",
+            },
+            response: {
+              id: 14,
+              name: "Justice App",
+              key: "JA",
+              board_id: 31,
+            },
+          },
+          {
+            title: "Create a sprint inside a project",
+            method: "POST",
+            endpoint: "/api/agile/projects/:projectId/sprints/",
+            description: "Project detail uses this endpoint when the team creates a sprint from the project workspace.",
+            request: {
+              name: "Talking Stage Sprint",
+              start_date: "2026-03-17",
+              end_date: "2026-03-31",
+              goal: "Stabilize onboarding conversations and unblock review flow.",
+            },
+            response: {
+              id: 22,
+              name: "Talking Stage Sprint",
+              status: "planned",
+              project_id: 14,
+            },
+          },
+          {
+            title: "Create an issue from project detail",
+            method: "POST",
+            endpoint: "/api/agile/projects/:projectId/issues/",
+            description: "Issues created from the project page inherit the project's board and initial workflow column.",
+            request: {
+              title: "Add reminder handling for onboarding callbacks",
+              description: "Support reminder follow-up for the talking stage workflow.",
+              priority: "high",
+              sprint_id: 22,
+              assignee_id: 7,
+            },
+            response: {
+              id: 118,
+              key: "JA-118",
+              title: "Add reminder handling for onboarding callbacks",
+              status: "todo",
+              priority: "high",
+            },
+          },
+        ],
         sections: [
           {
             heading: "What these project views cover",
@@ -596,6 +802,115 @@ export const DOCUMENTATION_FEATURE_GROUPS = [
         readTime: "5 min",
         audience: "Admins, finance owners, enterprise leads",
         routes: ["/subscription", "/enterprise"],
+        workflow: {
+          eyebrow: "Admin workflow",
+          title: "How admins move from plan fit to enterprise control",
+          description: "Subscription and Enterprise are separate surfaces, but they work best as one administrative workflow: understand plan pressure first, then expand governance only where the operating model needs it.",
+          steps: [
+            {
+              title: "Review plan fit and seat pressure",
+              detail: "Use subscription details, invoices, usage, and conversion signals to see whether the current plan still fits the workspace.",
+            },
+            {
+              title: "Upgrade only when real limits appear",
+              detail: "Seats, storage, enterprise features, or billing maturity should trigger upgrades, not vague future intent.",
+            },
+            {
+              title: "Open the enterprise console",
+              detail: "When the organization needs stronger identity, compliance, marketplace, incident, or SLA controls, move into the enterprise page.",
+            },
+            {
+              title: "Keep governance tied to active work",
+              detail: "Enterprise controls matter most when they stay connected to projects, incidents, partner rollouts, and admin ownership.",
+            },
+          ],
+        },
+        visual: {
+          eyebrow: "Admin map",
+          title: "Subscription and enterprise form one control plane",
+          caption: "Pricing, seats, billing, governance, and incident response are separate concerns, but Knoledgr keeps them close enough that admins can reason across them in one operating flow.",
+          panels: [
+            {
+              title: "Subscription",
+              value: "Plan, billing, and usage",
+              helper: "Use the subscription surface to understand current plan details, invoice history, and upgrade pressure.",
+              emphasis: true,
+            },
+            {
+              title: "Conversion signals",
+              value: "Activation and upgrade readiness",
+              helper: "Conversion insights show whether the workspace has reached the milestone depth that makes a plan upgrade worth it.",
+            },
+            {
+              title: "Enterprise controls",
+              value: "Identity, compliance, and marketplace",
+              helper: "Enterprise extends the admin model when identity, auditability, or rollout governance becomes operationally important.",
+            },
+            {
+              title: "Incident and SLA response",
+              value: "Automation and escalation",
+              helper: "Enterprise incident automation keeps governance tied to live execution risk instead of static policy only.",
+            },
+          ],
+        },
+        examplesEyebrow: "Admin APIs",
+        examplesTitle: "Subscription and enterprise API examples",
+        examplesDescription: "These examples reflect the current billing and enterprise console flows used by admins in the app.",
+        examples: [
+          {
+            title: "Read current subscription state",
+            method: "GET",
+            endpoint: "/api/organizations/subscription/",
+            description: "The subscription page loads plan details, seat summary, storage usage, and billing capabilities.",
+            response: {
+              id: 3,
+              plan: {
+                name: "professional",
+                display_name: "Professional",
+                max_users: 25,
+                storage_gb: 250,
+              },
+              status: "active",
+              user_count: 11,
+              storage_used_mb: 981,
+              seat_summary: {
+                active_users: 11,
+                can_add_user: true,
+              },
+              billing: {
+                provider: "stripe",
+                portal_enabled: true,
+              },
+            },
+          },
+          {
+            title: "Upgrade the current plan",
+            method: "POST",
+            endpoint: "/api/organizations/subscription/upgrade/",
+            description: "Admins can move the organization onto a new plan directly from the subscription surface.",
+            request: {
+              plan_id: 2,
+            },
+            response: {
+              message: "Plan upgraded successfully",
+              plan: "professional",
+            },
+          },
+          {
+            title: "Create a checkout session for a paid plan",
+            method: "POST",
+            endpoint: "/api/organizations/stripe/checkout/",
+            description: "The upgrade flow can hand off to Stripe checkout when a paid plan needs a billing session.",
+            request: {
+              plan_name: "enterprise",
+              success_url: "https://knoledgr.com/subscription?checkout=success",
+              cancel_url: "https://knoledgr.com/subscription?checkout=cancelled",
+            },
+            response: {
+              checkout_url: "https://checkout.stripe.com/c/pay/example",
+            },
+          },
+        ],
         sections: [
           {
             heading: "What these surfaces handle",

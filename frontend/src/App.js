@@ -58,6 +58,7 @@ import Meetings from "./pages/Meetings";
 import NotificationSettings from "./pages/NotificationSettings";
 import Notifications from "./pages/Notifications";
 import Onboarding from "./pages/Onboarding";
+import Partners from "./pages/Partners";
 import PrivacyEnterprise from "./pages/PrivacyEnterprise";
 import Profile from "./pages/Profile";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -118,6 +119,7 @@ const PUBLIC_ROUTES = [
   { path: "/", element: <PublicHomeRoute /> },
   { path: "/home", element: <Navigate to="/" replace /> },
   { path: "/docs", element: <Documentation /> },
+  { path: "/partners", element: <Partners /> },
   { path: "/privacy", element: <PrivacyEnterprise /> },
   { path: "/terms", element: <TermsEnterprise /> },
   { path: "/security-annex", element: <SecurityAnnex /> },
@@ -132,6 +134,7 @@ const PUBLIC_ROUTE_PATHS = new Set([
   "/",
   "/home",
   "/docs",
+  "/partners",
   "/privacy",
   "/terms",
   "/security-annex",

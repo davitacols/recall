@@ -34,12 +34,14 @@ from .bulk_operations import (
     bulk_delete_documents, bulk_assign_issues, bulk_update_priority
 )
 from .pdf_export import export_document_pdf, export_conversation_pdf, export_decision_pdf, export_bulk_pdf
+from .public_views import partner_inquiries
 from .ai_enhancements import (
     auto_summarize, smart_suggestions, sentiment_analysis, auto_tag, batch_ai_process, apply_ai_to_item
 )
 from . import subscription_views, stripe_views, ai_views, enterprise_views, import_export_views
 
 urlpatterns = [
+    path('partner-inquiries/', partner_inquiries, name='partner-inquiries'),
     path('current/', OrganizationDetailView.as_view(), name='current-org'),
     path('me/', OrganizationDetailView.as_view(), name='org-me'),
     path('activity/feed/', activity_feed, name='activity-feed-explicit'),

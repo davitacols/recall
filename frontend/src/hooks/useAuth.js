@@ -12,6 +12,7 @@ const PUBLIC_BOOTSTRAP_PATHS = new Set([
   '/',
   '/home',
   '/docs',
+  '/partners',
   '/privacy',
   '/terms',
   '/security-annex',

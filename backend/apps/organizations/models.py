@@ -151,6 +151,60 @@ class Invitation(models.Model):
             return False
         return True
 
+
+class PartnerInquiry(models.Model):
+    PARTNER_TYPE_CHOICES = [
+        ('agency', 'Agency'),
+        ('fractional', 'Fractional Operator'),
+        ('consultant', 'Consultant'),
+        ('ecosystem', 'Ecosystem Team'),
+    ]
+    STATUS_CHOICES = [
+        ('new', 'New'),
+        ('reviewing', 'Reviewing'),
+        ('contacted', 'Contacted'),
+        ('qualified', 'Qualified'),
+        ('archived', 'Archived'),
+    ]
+
+    submitted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='partner_inquiries',
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='partner_inquiries',
+    )
+    full_name = models.CharField(max_length=255)
+    work_email = models.EmailField(db_index=True)
+    company_name = models.CharField(max_length=255, db_index=True)
+    role_title = models.CharField(max_length=255)
+    website = models.URLField(blank=True)
+    partner_type = models.CharField(max_length=40, choices=PARTNER_TYPE_CHOICES, db_index=True)
+    service_summary = models.TextField()
+    consent_to_contact = models.BooleanField(default=False)
+    source = models.CharField(max_length=50, default='partners-page')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new', db_index=True)
+    submitted_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    contacted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'partner_inquiries'
+        ordering = ['-submitted_at']
+        indexes = [
+            models.Index(fields=['status', '-submitted_at']),
+            models.Index(fields=['partner_type', '-submitted_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.company_name} partner inquiry ({self.full_name})"
+
 class SavedSearch(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_searches')
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)

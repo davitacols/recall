@@ -231,6 +231,7 @@ function renderLayout({ eyebrow, heading, lead, actions, sections, footerLinks, 
           <nav class="snapshot-nav">
             <a href="/">Home</a>
             <a href="/docs">Documentation</a>
+            <a href="/partners">Partners</a>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
             <a href="/security-annex">Security Annex</a>
@@ -324,6 +325,7 @@ const pageConfigs = [
         },
       ],
       footerLinks: [
+        { href: "/partners", label: "Partners" },
         { href: "/privacy", label: "Privacy Notice" },
         { href: "/terms", label: "Terms of Service" },
         { href: "/security-annex", label: "Security Annex" },
@@ -418,9 +420,95 @@ const pageConfigs = [
         },
       ],
       footerLinks: [
+        { href: "/partners", label: "Partners" },
         { href: "/privacy", label: "Privacy Notice" },
         { href: "/terms", label: "Terms of Service" },
         { href: "/security-annex", label: "Security Annex" },
+      ],
+    }),
+  },
+  {
+    route: "/partners",
+    title: `Partners | ${BRAND}`,
+    description:
+      "Partner with Knoledgr as an agency, consultant, operator, or ecosystem team helping clients keep decisions and execution context connected.",
+    ogType: "website",
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: `Partners | ${BRAND}`,
+        description:
+          "Partner with Knoledgr as an agency, consultant, operator, or ecosystem team helping clients keep decisions and execution context connected.",
+        url: `${SITE_URL}/partners`,
+        isPartOf: {
+          "@type": "WebSite",
+          name: BRAND,
+          url: SITE_URL,
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        serviceType: "Partner Program",
+        provider: {
+          "@type": "Organization",
+          name: BRAND,
+          url: SITE_URL,
+        },
+        name: `${BRAND} Partner Program`,
+        areaServed: "Global",
+        url: `${SITE_URL}/partners`,
+        description:
+          "Knoledgr works with agencies, consultants, operators, and ecosystem teams to bring decision memory and execution context into client delivery.",
+      },
+    ],
+    body: renderLayout({
+      eyebrow: "Partner Program",
+      heading: "Bring decision memory into client teams",
+      lead:
+        "Knoledgr partners with agencies, consultants, fractional operators, and ecosystem teams that already help clients clean up execution, documentation, and decision sprawl.",
+      actions: [
+        { href: "/login", label: "Start a partner pilot", primary: true },
+        {
+          href: "mailto:legal@knoledgr.com?subject=Knoledgr%20Partner%20Program",
+          label: "Request partner terms",
+        },
+      ],
+      sections: [
+        {
+          title: "Best-fit partner types",
+          bullets: [
+            "Agencies and delivery studios running product, engineering, or transformation work.",
+            "Fractional CTO, COO, and chief-of-staff operators shaping how teams make and keep decisions.",
+            "Implementation consultants working across Jira, Notion, Confluence, knowledge operations, and workflow cleanup.",
+            "Platform teams, accelerators, and ecosystem operators helping multiple client organizations scale their operating system.",
+          ],
+        },
+        {
+          title: "Where Knoledgr fits",
+          bullets: [
+            "Use Decisions to capture rationale, tradeoffs, approvals, and outcome reviews.",
+            "Use Ask Recall to answer grounded questions from the client's actual history.",
+            "Use the Knowledge Graph to show how conversations, documents, projects, issues, and decisions connect.",
+            "Use projects, issues, sprints, and blockers to keep execution attached to the why behind the work.",
+          ],
+        },
+        {
+          title: "Engagement models",
+          bullets: [
+            "Referral partner for trusted advisors and ecosystem operators who influence tooling and process decisions.",
+            "Implementation partner for agencies and consultants who handle rollout, workspace structure, and knowledge linking.",
+            "Embedded rollout partner for broader operating-model, delivery, and transformation engagements.",
+          ],
+        },
+      ],
+      footerLinks: [
+        { href: "/", label: "Homepage" },
+        { href: "/docs", label: "Documentation" },
+        { href: "/privacy", label: "Privacy Notice" },
+        { href: "/terms", label: "Terms of Service" },
+        { href: "mailto:legal@knoledgr.com", label: "legal@knoledgr.com" },
       ],
     }),
   },
@@ -487,6 +575,7 @@ const pageConfigs = [
         },
       ],
       footerLinks: [
+        { href: "/partners", label: "Partners" },
         { href: "/terms", label: "Terms of Service" },
         { href: "/security-annex", label: "Security Annex" },
         { href: "mailto:privacy@knoledgr.com", label: "privacy@knoledgr.com" },
@@ -556,6 +645,7 @@ const pageConfigs = [
         },
       ],
       footerLinks: [
+        { href: "/partners", label: "Partners" },
         { href: "/privacy", label: "Privacy Notice" },
         { href: "/security-annex", label: "Security Annex" },
         { href: "mailto:legal@knoledgr.com", label: "legal@knoledgr.com" },
@@ -625,6 +715,7 @@ const pageConfigs = [
         },
       ],
       footerLinks: [
+        { href: "/partners", label: "Partners" },
         { href: "/privacy", label: "Privacy Notice" },
         { href: "/terms", label: "Terms of Service" },
         { href: "mailto:security@knoledgr.com", label: "security@knoledgr.com" },

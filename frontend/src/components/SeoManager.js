@@ -96,6 +96,36 @@ function resolveMeta(pathname) {
     };
   }
 
+  if (pathname === "/partners") {
+    const title = `Partners | ${BRAND}`;
+    const description =
+      "Partner with Knoledgr as an agency, consultant, operator, or ecosystem team helping clients keep decisions and execution context connected.";
+    return {
+      title,
+      description,
+      robots: "index,follow",
+      canonicalPath: "/partners",
+      ogType: "website",
+      structuredData: [
+        webPageSchema(title, description, "/partners"),
+        {
+          "@context": "https://schema.org",
+          "@type": "Service",
+          serviceType: "Partner Program",
+          provider: {
+            "@type": "Organization",
+            name: BRAND,
+            url: SITE_URL,
+          },
+          name: `${BRAND} Partner Program`,
+          areaServed: "Global",
+          url: `${SITE_URL}/partners`,
+          description,
+        },
+      ],
+    };
+  }
+
   if (pathname === "/privacy") {
     const title = `Privacy Notice | ${BRAND}`;
     const description =

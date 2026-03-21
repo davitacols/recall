@@ -430,6 +430,94 @@ const docsSnapshotConfigs = [
       "Why UI behavior should be the source of truth before automating against private workflows.",
     ],
   }),
+  createDocsSnapshotConfig({
+    route: "/docs/workspace/dashboard-and-activity",
+    title: "Dashboard and Activity Feed",
+    description: "Use the Knoledgr dashboard and activity feed to monitor current signals, execution movement, and workspace momentum.",
+    lead: "This guide explains how Knoledgr uses dashboard and activity surfaces for orientation before a user dives into detailed work pages.",
+    bullets: [
+      "What the dashboard summarizes and what it should not replace.",
+      "How activity helps teams validate recent change without manual retelling.",
+      "Why these surfaces work best as briefing layers rather than permanent control centers.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/workspace/notifications",
+    title: "Notifications and Alert Settings",
+    description: "Manage notification flow in Knoledgr with alert preferences, digest behavior, and workflow-specific signal control.",
+    lead: "Notifications should help teams act faster, not create another source of noise. This page covers how Knoledgr handles that balance.",
+    bullets: [
+      "What notification categories and settings exist in product.",
+      "How digest and direct-notification behavior differ.",
+      "How to tune alerts without losing important execution or decision signals.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/knowledge/search-workspace",
+    title: "Knowledge Search Workspace",
+    description: "Search across the Knoledgr workspace for conversations, decisions, tasks, meetings, documents, and execution context from one place.",
+    lead: "The knowledge search workspace is the fastest way to investigate a topic when you know the problem but not the exact record name yet.",
+    bullets: [
+      "What the unified search surface covers.",
+      "How source filters and graph handoff improve investigation.",
+      "How better naming and linking improve future retrieval quality.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/delivery/projects-and-planning",
+    title: "Projects and Planning",
+    description: "Use Knoledgr project surfaces for delivery planning, roadmap context, project detail, and execution alignment.",
+    lead: "Project documentation in Knoledgr is about keeping roadmap and delivery movement connected to the reasoning behind it.",
+    bullets: [
+      "What project list, detail, management, and roadmap views do.",
+      "How to use projects as execution containers rather than disconnected tracking records.",
+      "Why linking decisions into projects early improves delivery clarity later.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/delivery/boards-issues-and-filters",
+    title: "Boards, Issues, and Filters",
+    description: "Run board flow and issue detail work in Knoledgr with reusable templates and saved filters for repeatable execution.",
+    lead: "This page explains how issue flow, board movement, and reusable views work together inside Knoledgr.",
+    bullets: [
+      "What board and issue detail surfaces are responsible for.",
+      "How templates and saved filters reduce repetitive setup work.",
+      "How issue flow stays more trustworthy when linked to real context.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/business/document-workspace",
+    title: "Document Workspace",
+    description: "Use the Knoledgr document workspace to manage the library, detail view, comments, snapshots, and linked written context.",
+    lead: "Documents in Knoledgr are meant to stay close to active work and durable memory, not drift into a disconnected archive.",
+    bullets: [
+      "What the document library and detail pages cover.",
+      "How comments and snapshots support live review and long-term recordkeeping.",
+      "Why document quality has direct impact on search and Ask Recall quality.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/admin/settings-security-and-admin-tools",
+    title: "Settings, Security, and Admin Tools",
+    description: "Review Knoledgr admin controls for settings, security, API keys, audit logs, exports, and import workflows.",
+    lead: "Administrative tools in Knoledgr are designed to support governance and operational clarity without splitting admin work into a separate product.",
+    bullets: [
+      "What settings and security surfaces are responsible for.",
+      "How audit, API, and export tools should be used safely.",
+      "Why admin behavior should be documented and reviewed as the workspace grows.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/admin/subscription-and-enterprise",
+    title: "Subscription and Enterprise Console",
+    description: "Manage pricing, seats, enterprise governance, marketplace controls, and escalation workflows in Knoledgr.",
+    lead: "This page explains when to use subscription and enterprise surfaces as Knoledgr usage becomes more governed and operationally complex.",
+    bullets: [
+      "What subscription and upgrade surfaces handle.",
+      "What the enterprise console adds beyond standard admin controls.",
+      "How to think about plan fit, governance needs, and operational maturity together.",
+    ],
+  }),
 ];
 
 const pageConfigs = [

@@ -1,4 +1,6 @@
-export const DOCUMENTATION_GROUPS = [
+import { DOCUMENTATION_FEATURE_GROUPS } from "./documentationFeaturePages";
+
+const BASE_DOCUMENTATION_GROUPS = [
   {
     id: "getting-started",
     title: "Getting Started",
@@ -551,6 +553,8 @@ export const DOCUMENTATION_GROUPS = [
     ],
   },
 ];
+
+export const DOCUMENTATION_GROUPS = [...BASE_DOCUMENTATION_GROUPS, ...DOCUMENTATION_FEATURE_GROUPS];
 
 export const DOCUMENTATION_PAGES = DOCUMENTATION_GROUPS.flatMap((group) =>
   group.pages.map((page, index) => ({

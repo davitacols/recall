@@ -76,7 +76,7 @@ export default function Documentation() {
     return DOCUMENTATION_GROUPS.map((group) => ({
       ...group,
       pages: group.pages.filter((page) =>
-        [page.title, page.summary, page.audience, ...(page.sections || []).flatMap((section) => [section.heading, ...(section.paragraphs || []), ...(section.bullets || [])])]
+        [page.title, page.summary, page.audience, ...(page.routes || []), ...(page.sections || []).flatMap((section) => [section.heading, ...(section.paragraphs || []), ...(section.bullets || [])])]
           .join(" ")
           .toLowerCase()
           .includes(needle)
@@ -200,6 +200,15 @@ export default function Documentation() {
               {activePage.readTime} | {activePage.audience}
             </p>
             <p style={{ margin: "16px 0 0", fontSize: 16, lineHeight: 1.8, color: palette.muted }}>{activePage.summary}</p>
+            {(activePage.routes || []).length ? (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+                {activePage.routes.map((route) => (
+                  <span key={route} style={{ borderRadius: 999, border: `1px solid ${palette.border}`, background: palette.accentSoft, color: palette.text, padding: "7px 10px", fontSize: 12, fontWeight: 700 }}>
+                    {route}
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
             {showingFallback ? (
               <div style={{ marginTop: 18, borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.accentSoft, padding: 14, color: palette.text }}>

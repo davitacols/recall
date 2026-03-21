@@ -11,7 +11,6 @@ const PROFILE_BOOT_TIMEOUT_MS = 5000;
 const PUBLIC_BOOTSTRAP_PATHS = new Set([
   '/',
   '/home',
-  '/docs',
   '/partners',
   '/privacy',
   '/terms',
@@ -22,7 +21,7 @@ const PUBLIC_BOOTSTRAP_PATHS = new Set([
 ]);
 
 function isPublicBootstrapPath(pathname) {
-  return PUBLIC_BOOTSTRAP_PATHS.has(pathname);
+  return pathname === '/docs' || pathname.startsWith('/docs/') || PUBLIC_BOOTSTRAP_PATHS.has(pathname);
 }
 
 function readStoredUser() {

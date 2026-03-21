@@ -1,338 +1,43 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  DOCUMENTATION_GROUPS,
+  DOCUMENTATION_PAGES,
+  findDocumentationPageBySlug,
+} from "../content/documentationPages";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 
-const DOCS = [
-  {
-    id: "foundation",
-    title: "Foundation",
-    pages: [
-      {
-        id: "platform-overview",
-        title: "Platform Overview",
-        intro: "Knoledgr is a knowledge-first collaboration platform. Work execution and institutional memory are designed as one system.",
-        sections: [
-          {
-            heading: "What Makes It Different",
-            bullets: [
-              "Conversations, decisions, agile execution, and business operations are context-linked.",
-              "AI ranking and context retrieval use real usage signals and historical outcomes.",
-              "Outcome reviews and calibration analytics turn execution into reusable intelligence.",
-            ],
-          },
-          {
-            heading: "Core Building Blocks",
-            bullets: [
-              "Conversations: structured discussion records (question/discussion/decision/blocker).",
-              "Decisions: rationale, alternatives, confidence, implementation, outcomes.",
-              "Agile: projects, issues, sprints, blockers, decision impacts.",
-              "Business: goals, meetings, tasks, documents.",
-              "Knowledge layer: content links, unified activity, context panel.",
-            ],
-          },
-        ],
-      },
-      {
-        id: "architecture",
-        title: "Architecture and Data Flow",
-        intro: "Knoledgr uses domain models per module and a shared cross-module memory layer.",
-        sections: [
-          {
-            heading: "Cross-Module Memory Layer",
-            bullets: [
-              "ContentLink: directed link between any supported objects.",
-              "UnifiedActivity: behavior stream used for timeline and recommendation relevance.",
-              "ContextPanel: precomputed related content, experts, risks, and outcome patterns.",
-            ],
-          },
-          {
-            heading: "Knowledge Loop",
-            bullets: [
-              "Capture intent in conversation.",
-              "Commit direction via decision.",
-              "Execute in issues/tasks/projects.",
-              "Review outcomes and store lessons.",
-              "Reuse memory in future recommendations and risk surfaces.",
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "workflows",
-    title: "Workflows",
-    pages: [
-      {
-        id: "conversations",
-        title: "Conversations",
-        intro: "Conversations are the default entry point for collaborative discovery and early risk surfacing.",
-        sections: [
-          {
-            heading: "Operational Guidance",
-            bullets: [
-              "Use explicit titles and rich context to improve search and AI relevance.",
-              "Tag threads with meaningful domain terms.",
-              "Promote high-signal threads into decisions when commitment is needed.",
-            ],
-          },
-        ],
-      },
-      {
-        id: "decisions",
-        title: "Decision Lifecycle",
-        intro: "Decisions track strategic and tactical choices with explainability and outcome accountability.",
-        sections: [
-          {
-            heading: "Lifecycle",
-            bullets: [
-              "proposed -> under_review -> approved -> implemented -> reviewed outcome",
-              "rejected/cancelled states are preserved for institutional learning",
-            ],
-          },
-          {
-            heading: "Outcome Intelligence",
-            bullets: [
-              "Outcome reviews validate success metrics and lessons learned.",
-              "Reliability scoring estimates confidence in the review evidence quality.",
-              "Drift alerts surface signs that a decision path is degrading.",
-              "Calibration analytics compare reviewer confidence to actual outcomes.",
-            ],
-          },
-        ],
-      },
-      {
-        id: "replay",
-        title: "Decision Replay Simulator",
-        intro: "Replay Simulator evaluates alternatives using historical decision outcomes.",
-        sections: [
-          {
-            heading: "Inputs and Outputs",
-            bullets: [
-              "Inputs: alternative summary, risk tolerance, execution speed, impact level.",
-              "Outputs: predicted failure risk, expected impact score, confidence, affected teams.",
-              "Safeguards are generated and can be converted into tasks automatically.",
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "agile",
-    title: "Agile Execution",
-    pages: [
-      {
-        id: "agile-model",
-        title: "Projects, Issues, and Sprints",
-        intro: "Agile models are integrated with decisions and knowledge graph links.",
-        sections: [
-          {
-            heading: "Entities",
-            bullets: [
-              "Project, Board, Column, Issue, Sprint, Blocker, Retrospective.",
-              "DecisionImpact maps explicit decision-to-issue/sprint effect.",
-            ],
-          },
-          {
-            heading: "Issue Workflow",
-            bullets: [
-              "backlog, todo, in_progress, in_review, testing, done",
-              "Issue detail tracks assignee, story points, sprint assignment, and code metadata.",
-            ],
-          },
-        ],
-      },
-      {
-        id: "autopilot",
-        title: "Decision-Coupled Sprint Autopilot",
-        intro: "Autopilot uses delivery and decision signals to forecast sprint success and recommend scope changes.",
-        sections: [
-          {
-            heading: "What It Computes",
-            bullets: [
-              "Goal probability and confidence band.",
-              "Risk signals (pace vs time, blockers, unresolved decisions, WIP pressure).",
-              "Suggested scope swaps (drop/add candidates).",
-              "Decision dependency heatmap per issue.",
-            ],
-          },
-          {
-            heading: "Apply Plan",
-            bullets: [
-              "Moves selected issues out of or into sprint.",
-              "Optionally creates decision follow-up tasks.",
-              "Preserves traceability by linking actions to decision context.",
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "knowledge",
-    title: "Knowledge and AI",
-    pages: [
-      {
-        id: "context-engine",
-        title: "Context Engine",
-        intro: "Context engine computes related artifacts, experts, and risks around any object.",
-        sections: [
-          {
-            heading: "Context Payload",
-            bullets: [
-              "Related conversations, decisions, tasks, documents.",
-              "Expert users and historical similarity.",
-              "Outcome patterns and risk indicators.",
-            ],
-          },
-        ],
-      },
-      {
-        id: "recommendations",
-        title: "Recommendation Ranking",
-        intro: "AI recommendations are weighted by behavior, links, recency decay, and validated outcomes.",
-        sections: [
-          {
-            heading: "Major Ranking Signals",
-            bullets: [
-              "Trending activity and pending decision urgency.",
-              "Linked-from-views strength and viewed-affinity decay.",
-              "Outcome history calibration (bonus/penalty for validated outcomes).",
-              "Source breakdown returned for transparency.",
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "operations",
-    title: "Operations and Admin",
-    pages: [
-      {
-        id: "business-module",
-        title: "Business Module",
-        intro: "Goals, meetings, tasks, and documents align operational planning with decision context.",
-        sections: [
-          {
-            heading: "Cross-Linking",
-            bullets: [
-              "Tasks can link to goals, meetings, conversations, and decisions.",
-              "Documents can anchor long-term knowledge and be linked to execution entities.",
-              "Meeting outputs can become tasks and decision inputs.",
-            ],
-          },
-        ],
-      },
-      {
-        id: "roles-governance",
-        title: "Roles and Governance",
-        intro: "Role-based access controls sensitive operations while preserving team collaboration speed.",
-        sections: [
-          {
-            heading: "Roles",
-            bullets: [
-              "Admin: global management and approval authority.",
-              "Manager: operational leadership controls.",
-              "Contributor: standard execution and collaboration flows.",
-            ],
-          },
-          {
-            heading: "Governance Checklist",
-            bullets: [
-              "Review pending outcomes weekly.",
-              "Track drift and calibration monthly.",
-              "Require decision-task linkage for high-impact changes.",
-              "Resolve unresolved sprint decisions before midpoint.",
-              "Use Enterprise App Marketplace policies for app approvals and launch governance.",
-            ],
-          },
-          {
-            heading: "Enterprise App Marketplace",
-            bullets: [
-              "Install apps in /enterprise under App Marketplace.",
-              "Installed apps appear in header Apps menu.",
-              "App launch targets are backend-driven via launch_path.",
-              "Docs fallback uses https://knoledgr.com/docs.",
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "reference",
-    title: "Reference",
-    pages: [
-      {
-        id: "api-highlights",
-        title: "API Highlights",
-        intro: "High-value endpoints that power major platform workflows.",
-        sections: [
-          {
-            heading: "Decisions",
-            bullets: [
-              "/api/decisions/, /api/decisions/<id>/",
-              "/api/decisions/<id>/outcome-review/",
-              "/api/decisions/outcomes/stats/, /pending/, /drift-alerts/, /calibration/",
-              "/api/decisions/<id>/replay-simulator/",
-              "/api/decisions/<id>/replay-simulator/create-follow-up/",
-            ],
-          },
-          {
-            heading: "Agile and Knowledge",
-            bullets: [
-              "/api/agile/sprints/<id>/detail/",
-              "/api/agile/sprints/<id>/autopilot/, /autopilot/apply/",
-              "/api/knowledge/context/<app.model>/<id>/",
-              "/api/knowledge/search-all/, /graph/, /timeline/",
-              "/api/knowledge/ai/recommendations/",
-            ],
-          },
-          {
-            heading: "Enterprise and Realtime",
-            bullets: [
-              "/api/organizations/enterprise/marketplace/apps/",
-              "/api/organizations/enterprise/portfolio-report/",
-              "/api/health/, /api/health/realtime/",
-              "/api/notifications/, /api/notifications/<id>/read/, /read-all/",
-            ],
-          },
-        ],
-      },
-      {
-        id: "troubleshooting",
-        title: "Troubleshooting",
-        intro: "Use these checks when relevance, context quality, or prediction confidence appears weak.",
-        sections: [
-          {
-            heading: "Diagnostics",
-            bullets: [
-              "Low recommendation quality: verify links, activity freshness, and outcome review coverage.",
-              "Missing context: confirm object relationships and metadata completeness.",
-              "Weak autopilot confidence: reduce unresolved decisions and active blockers.",
-              "Sparse calibration: enforce outcome review discipline post-implementation.",
-              "Realtime notification issues: check /api/health/realtime/ and Redis channel-layer connectivity.",
-            ],
-          },
-        ],
-      },
-    ],
-  },
-];
+const DEFAULT_SLUG = "getting-started/overview";
+
+function docsSlugFromPathname(pathname) {
+  if (pathname === "/docs" || pathname === "/docs/") return "";
+  return pathname.replace(/^\/docs\/?/, "").replace(/\/+$/, "");
+}
+
+function sectionId(heading) {
+  return heading.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
 
 export default function Documentation() {
   const { darkMode } = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [activePageId, setActivePageId] = useState("platform-overview");
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 980);
-  const [isTablet, setIsTablet] = useState(window.innerWidth < 1240);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === "undefined" ? 1440 : window.innerWidth
+  );
+
+  const currentSlug = docsSlugFromPathname(location.pathname);
+  const isDocsHome = currentSlug === "";
+  const activePage = findDocumentationPageBySlug(currentSlug) || findDocumentationPageBySlug(DEFAULT_SLUG);
+  const showingFallback = Boolean(currentSlug && !findDocumentationPageBySlug(currentSlug));
 
   useEffect(() => {
-    const onResize = () => {
-      setIsMobile(window.innerWidth < 980);
-      setIsTablet(window.innerWidth < 1240);
-    };
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [currentSlug]);
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -340,76 +45,239 @@ export default function Documentation() {
   const palette = useMemo(
     () =>
       darkMode
-        ? { page: "#0f0b0d", panel: "var(--app-surface)", panelAlt: "var(--app-surface-alt)", border: "var(--app-border)", text: "var(--app-text)", muted: "var(--app-muted)", link: "#8dc6ff" }
-        : { page: "var(--app-bg)", panel: "var(--app-surface)", panelAlt: "var(--app-surface-alt)", border: "var(--app-border)", text: "var(--app-text)", muted: "var(--app-muted)", link: "var(--app-info)" },
+        ? {
+            page: "#0d0b0c",
+            panel: "rgba(26, 23, 25, 0.92)",
+            panelAlt: "rgba(34, 29, 31, 0.92)",
+            border: "rgba(255,255,255,0.08)",
+            text: "#f7efe6",
+            muted: "#c1b3a3",
+            accent: "#f5b36f",
+            accentSoft: "rgba(245,179,111,0.12)",
+            link: "#9dcbff",
+          }
+        : {
+            page: "#f6f1e8",
+            panel: "rgba(255, 251, 246, 0.94)",
+            panelAlt: "rgba(255,255,255,0.9)",
+            border: "rgba(73, 53, 35, 0.12)",
+            text: "#1e1813",
+            muted: "#635646",
+            accent: "#9c5522",
+            accentSoft: "rgba(156,85,34,0.08)",
+            link: "#1e5da8",
+          },
     [darkMode]
   );
 
-  const flatPages = DOCS.flatMap((group) => group.pages.map((page) => ({ ...page, groupTitle: group.title })));
-  const activePage = flatPages.find((p) => p.id === activePageId) || flatPages[0];
-  const filteredDocs = DOCS.map((group) => ({
-    ...group,
-    pages: group.pages.filter((p) => `${group.title} ${p.title} ${p.intro}`.toLowerCase().includes(query.toLowerCase())),
-  })).filter((group) => group.pages.length > 0);
+  const filteredGroups = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return DOCUMENTATION_GROUPS;
+    return DOCUMENTATION_GROUPS.map((group) => ({
+      ...group,
+      pages: group.pages.filter((page) =>
+        [page.title, page.summary, page.audience, ...(page.sections || []).flatMap((section) => [section.heading, ...(section.paragraphs || []), ...(section.bullets || [])])]
+          .join(" ")
+          .toLowerCase()
+          .includes(needle)
+      ),
+    })).filter((group) => group.pages.length > 0);
+  }, [query]);
+
+  const currentIndex = DOCUMENTATION_PAGES.findIndex((page) => page.slug === activePage.slug);
+  const previousPage = currentIndex > 0 ? DOCUMENTATION_PAGES[currentIndex - 1] : null;
+  const nextPage = currentIndex >= 0 && currentIndex < DOCUMENTATION_PAGES.length - 1 ? DOCUMENTATION_PAGES[currentIndex + 1] : null;
+  const relatedPages = DOCUMENTATION_PAGES.filter((page) => page.groupId === activePage.groupId && page.slug !== activePage.slug).slice(0, 3);
+  const isMobile = viewportWidth < 980;
+  const isTablet = viewportWidth < 1280;
+  const featuredPages = DOCUMENTATION_PAGES.filter((page) =>
+    ["getting-started/overview", "workflows/decisions", "intelligence/ask-recall", "integrations/github", "enterprise/compliance", "reference/api-highlights"].includes(page.slug)
+  );
+
+  const goToPage = (slug) => navigate(slug ? `/docs/${slug}` : "/docs");
 
   return (
-    <div style={{ padding: "clamp(12px,2.2vw,24px)", background: "transparent" }}>
-      <div style={{ borderRadius: 0, minHeight: "calc(100vh - 110px)", border: "none", background: "transparent", display: "grid", gridTemplateColumns: isMobile ? "1fr" : isTablet ? "280px minmax(0,1fr)" : "300px minmax(0,1fr) 230px", overflow: "hidden" }}>
-        <aside style={{ borderRight: `1px solid ${palette.border}`, display: "grid", gridTemplateRows: "auto 1fr" }}>
-          <div style={{ padding: 14, borderBottom: `1px solid ${palette.border}` }}>
-            <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.1em", color: palette.muted }}>KNOLEDGR MANUAL</p>
-            <h1 style={{ margin: "6px 0 0", fontSize: 20, color: palette.text }}>Documentation</h1>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search docs..." style={{ marginTop: 10, width: "100%", borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text, padding: "8px 10px", fontSize: 12 }} />
+    <div style={{ background: palette.page, minHeight: "100vh", padding: "clamp(14px,2vw,24px)" }}>
+      <div style={{ maxWidth: 1480, margin: "0 auto", display: "grid", gap: 16 }}>
+        <section
+          style={{
+            borderRadius: 28,
+            border: `1px solid ${palette.border}`,
+            background: `linear-gradient(135deg, ${palette.panel} 0%, ${palette.panelAlt} 100%)`,
+            padding: "clamp(18px,3vw,30px)",
+            boxShadow: darkMode ? "none" : "0 24px 70px rgba(30, 24, 19, 0.08)",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: palette.muted }}>
+            Knoledgr Documentation
+          </p>
+          <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0,1.3fr) minmax(280px,0.7fr)", marginTop: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ margin: 0, fontSize: "clamp(2rem,4vw,3.4rem)", lineHeight: 1.02, color: palette.text }}>
+                Complete product docs for teams building with context.
+              </h1>
+              <p style={{ margin: "14px 0 0", fontSize: 16, lineHeight: 1.75, color: palette.muted, maxWidth: 820 }}>
+                Browse setup, workflows, AI behavior, execution systems, integrations, enterprise controls, and technical reference. These docs now map to the real Knoledgr routes and product surfaces.
+              </p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
+                <Link to="/" style={{ textDecoration: "none", color: palette.text, border: `1px solid ${palette.border}`, background: palette.panelAlt, borderRadius: 999, padding: "11px 16px", fontWeight: 700 }}>
+                  Homepage
+                </Link>
+                <Link to="/login" style={{ textDecoration: "none", color: "#fff8ef", background: palette.accent, borderRadius: 999, padding: "11px 16px", fontWeight: 700 }}>
+                  Open Knoledgr
+                </Link>
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search docs, workflows, integrations..."
+                style={{ width: "100%", borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text, padding: "13px 14px", fontSize: 14 }}
+              />
+              <div style={{ display: "grid", gap: 8 }}>
+                <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Popular reads</p>
+                {featuredPages.slice(0, 4).map((page) => (
+                  <button
+                    key={page.slug}
+                    type="button"
+                    onClick={() => goToPage(page.slug)}
+                    style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.accentSoft, color: palette.text, padding: "12px 14px", textAlign: "left", cursor: "pointer" }}
+                  >
+                    <strong style={{ display: "block", fontSize: 14 }}>{page.title}</strong>
+                    <span style={{ fontSize: 12, color: palette.muted }}>{page.groupTitle}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <div style={{ overflowY: "auto", padding: 12 }}>
-            {filteredDocs.map((group) => (
-              <div key={group.id} style={{ marginBottom: 12 }}>
-                <p style={{ margin: "0 0 6px", fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{group.title}</p>
-                <div style={{ display: "grid", gap: 4 }}>
-                  {group.pages.map((page) => (
-                    <button key={page.id} onClick={() => setActivePageId(page.id)} style={{ borderRadius: 8, border: `1px solid ${activePage?.id === page.id ? palette.border : "transparent"}`, background: activePage?.id === page.id ? "rgba(255,170,110,0.14)" : "transparent", color: activePage?.id === page.id ? palette.text : palette.muted, textAlign: "left", padding: "7px 8px", fontSize: 12, cursor: "pointer" }}>
-                      {page.title}
+        </section>
+
+        <div
+          style={{
+            display: "grid",
+            gap: 16,
+            gridTemplateColumns: isMobile ? "1fr" : isTablet ? "minmax(250px,300px) minmax(0,1fr)" : "minmax(250px,300px) minmax(0,1fr) minmax(220px,260px)",
+            alignItems: "start",
+          }}
+        >
+          <aside style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.panel, padding: 16, position: "sticky", top: 20, maxHeight: "calc(100vh - 40px)", overflowY: "auto" }}>
+            {filteredGroups.map((group) => (
+              <div key={group.id} style={{ marginBottom: 14 }}>
+                <p style={{ margin: "0 0 8px", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>{group.title}</p>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {group.pages.map((page) => {
+                    const active = page.slug === activePage.slug;
+                    return (
+                      <button
+                        key={page.slug}
+                        type="button"
+                        onClick={() => goToPage(page.slug)}
+                        style={{
+                          borderRadius: 14,
+                          border: `1px solid ${active ? palette.accent : palette.border}`,
+                          background: active ? palette.accentSoft : palette.panelAlt,
+                          color: active ? palette.text : palette.muted,
+                          padding: "10px 12px",
+                          textAlign: "left",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <strong style={{ display: "block", fontSize: 13 }}>{page.title}</strong>
+                        <span style={{ fontSize: 11 }}>{page.readTime}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </aside>
+
+          <main style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.panel, padding: "clamp(18px,3vw,30px)", minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>{activePage.groupTitle}</p>
+            <h2 style={{ margin: "6px 0 0", fontSize: "clamp(1.8rem,3vw,2.8rem)", color: palette.text }}>{activePage.title}</h2>
+            <p style={{ margin: "10px 0 0", fontSize: 14, color: palette.muted }}>
+              {activePage.readTime} | {activePage.audience}
+            </p>
+            <p style={{ margin: "16px 0 0", fontSize: 16, lineHeight: 1.8, color: palette.muted }}>{activePage.summary}</p>
+
+            {showingFallback ? (
+              <div style={{ marginTop: 18, borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.accentSoft, padding: 14, color: palette.text }}>
+                That docs page was not found, so Knoledgr is showing the overview page instead.
+              </div>
+            ) : null}
+
+            {isDocsHome ? (
+              <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 20 }}>
+                {featuredPages.map((page) => (
+                  <button
+                    key={page.slug}
+                    type="button"
+                    onClick={() => goToPage(page.slug)}
+                    style={{ borderRadius: 20, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 16, textAlign: "left", cursor: "pointer" }}
+                  >
+                    <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>{page.groupTitle}</p>
+                    <h3 style={{ margin: "8px 0 6px", fontSize: 18, color: palette.text }}>{page.title}</h3>
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: palette.muted }}>{page.summary}</p>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
+              {activePage.sections.map((section) => (
+                <section key={section.heading} id={sectionId(section.heading)} style={{ borderRadius: 20, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 18 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: palette.text }}>{section.heading}</h3>
+                  {(section.paragraphs || []).map((paragraph) => (
+                    <p key={paragraph} style={{ margin: "12px 0 0", fontSize: 14, lineHeight: 1.8, color: palette.muted }}>
+                      {paragraph}
+                    </p>
+                  ))}
+                  {(section.bullets || []).length ? (
+                    <ul style={{ margin: "12px 0 0", paddingLeft: 18, color: palette.muted, lineHeight: 1.75, fontSize: 14 }}>
+                      {section.bullets.map((bullet) => (
+                        <li key={bullet} style={{ marginBottom: 8 }}>
+                          {bullet}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ))}
+            </div>
+
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 24 }}>
+              {previousPage ? <button type="button" onClick={() => goToPage(previousPage.slug)} style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 14, textAlign: "left", cursor: "pointer" }}><p style={{ margin: 0, fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.12em" }}>Previous</p><strong style={{ color: palette.text }}>{previousPage.title}</strong></button> : <div />}
+              {nextPage ? <button type="button" onClick={() => goToPage(nextPage.slug)} style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 14, textAlign: "left", cursor: "pointer" }}><p style={{ margin: 0, fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.12em" }}>Next</p><strong style={{ color: palette.text }}>{nextPage.title}</strong></button> : null}
+            </div>
+          </main>
+
+          {!isTablet ? (
+            <aside style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.panel, padding: 16, position: "sticky", top: 20 }}>
+            <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>On this page</p>
+            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+              {activePage.sections.map((section) => (
+                <a key={section.heading} href={`#${sectionId(section.heading)}`} style={{ color: palette.link, fontSize: 13, textDecoration: "none" }}>
+                  {section.heading}
+                </a>
+              ))}
+            </div>
+            {relatedPages.length ? (
+              <div style={{ marginTop: 20 }}>
+                <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Related docs</p>
+                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                  {relatedPages.map((page) => (
+                    <button key={page.slug} type="button" onClick={() => goToPage(page.slug)} style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: "10px 12px", color: palette.text, textAlign: "left", cursor: "pointer" }}>
+                      <strong style={{ display: "block", fontSize: 13 }}>{page.title}</strong>
+                      <span style={{ fontSize: 11, color: palette.muted }}>{page.readTime}</span>
                     </button>
                   ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </aside>
-
-        <main style={{ minWidth: 0, overflowY: "auto", padding: "20px clamp(14px,2.4vw,30px)" }}>
-          <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>{activePage.groupTitle}</p>
-          <h2 style={{ margin: "4px 0 10px", fontSize: "clamp(1.55rem,2.8vw,2.3rem)", color: palette.text }}>{activePage.title}</h2>
-          <p style={{ margin: "0 0 14px", fontSize: 14, color: palette.muted, lineHeight: 1.65 }}>{activePage.intro}</p>
-          {activePage.sections.map((section) => (
-            <section key={section.heading} style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 12, marginBottom: 10 }}>
-              <h3 style={{ margin: "0 0 6px", fontSize: 15, color: palette.text }}>{section.heading}</h3>
-              {(section.paragraphs || []).map((paragraph, i) => (
-                <p key={i} style={{ margin: "0 0 7px", fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{paragraph}</p>
-              ))}
-              {(section.bullets || []).length > 0 && (
-                <ul style={{ margin: "8px 0 0", paddingLeft: 18, color: palette.muted, fontSize: 13, lineHeight: 1.55 }}>
-                  {section.bullets.map((bullet, i) => (
-                    <li key={i} style={{ marginBottom: 5 }}>{bullet}</li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          ))}
-        </main>
-
-        {!isTablet ? (
-          <aside style={{ borderLeft: `1px solid ${palette.border}`, padding: 14 }}>
-            <div style={{ position: "sticky", top: 74 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 11, color: palette.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>On This Page</p>
-              <div style={{ display: "grid", gap: 5 }}>
-                {activePage.sections.map((s) => (
-                  <span key={s.heading} style={{ color: palette.link, fontSize: 12 }}>{s.heading}</span>
-                ))}
-              </div>
-            </div>
-          </aside>
-        ) : null}
+            ) : null}
+            </aside>
+          ) : null}
+        </div>
       </div>
     </div>
   );

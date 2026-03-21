@@ -128,7 +128,7 @@ function StaffOnlyRoute() {
 const PUBLIC_ROUTES = [
   { path: "/", element: <PublicHomeRoute /> },
   { path: "/home", element: <Navigate to="/" replace /> },
-  { path: "/docs", element: <Documentation /> },
+  { path: "/docs/*", element: <Documentation /> },
   { path: "/partners", element: <Partners /> },
   { path: "/privacy", element: <PrivacyEnterprise /> },
   { path: "/terms", element: <TermsEnterprise /> },
@@ -143,7 +143,6 @@ const PUBLIC_ROUTES = [
 const PUBLIC_ROUTE_PATHS = new Set([
   "/",
   "/home",
-  "/docs",
   "/partners",
   "/privacy",
   "/terms",
@@ -154,7 +153,7 @@ const PUBLIC_ROUTE_PATHS = new Set([
 ]);
 
 function isPublicPath(pathname) {
-  return PUBLIC_ROUTE_PATHS.has(pathname) || pathname.startsWith("/invite/");
+  return pathname === "/docs" || pathname.startsWith("/docs/") || PUBLIC_ROUTE_PATHS.has(pathname) || pathname.startsWith("/invite/");
 }
 
 const APP_ROUTES = [

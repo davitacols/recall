@@ -3,7 +3,6 @@ import axios from 'axios';
 const PUBLIC_PATHS = new Set([
   '/',
   '/home',
-  '/docs',
   '/partners',
   '/privacy',
   '/terms',
@@ -14,7 +13,7 @@ const PUBLIC_PATHS = new Set([
 ]);
 
 function isPublicPathname(pathname) {
-  return PUBLIC_PATHS.has(pathname);
+  return pathname === '/docs' || pathname.startsWith('/docs/') || PUBLIC_PATHS.has(pathname);
 }
 
 const api = axios.create({

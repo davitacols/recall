@@ -53,6 +53,21 @@ function upsertStructuredData(html, payload) {
   );
 }
 
+function webPageSchema(title, description, pathname) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    description,
+    url: `${SITE_URL}${pathname}`,
+    isPartOf: {
+      "@type": "WebSite",
+      name: BRAND,
+      url: SITE_URL,
+    },
+  };
+}
+
 function upsertSnapshotStyles(html) {
   const styles = [
     "#root [data-seo-snapshot] {",
@@ -250,6 +265,173 @@ ${sectionsHtml}
       </main>`;
 }
 
+function createDocsSnapshotConfig({ route, title, description, lead, bullets, meta }) {
+  const fullTitle = `${title} | Documentation | ${BRAND}`;
+  return {
+    route,
+    title: fullTitle,
+    description,
+    ogType: "article",
+    structuredData: [
+      webPageSchema(fullTitle, description, route),
+      {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        headline: fullTitle,
+        description,
+        url: `${SITE_URL}${route}`,
+        author: { "@type": "Organization", name: BRAND },
+        publisher: {
+          "@type": "Organization",
+          name: BRAND,
+          logo: { "@type": "ImageObject", url: `${SITE_URL}/brand/knoledgr-app-icon.svg` },
+        },
+      },
+    ],
+    body: renderLayout({
+      eyebrow: "Knoledgr Documentation",
+      heading: title,
+      meta,
+      lead,
+      actions: [
+        { href: route, label: "Open this doc", primary: true },
+        { href: "/docs", label: "Documentation hub" },
+      ],
+      sections: [{ title: "What this page covers", bullets }],
+      footerLinks: [
+        { href: "/docs", label: "Documentation" },
+        { href: "/partners", label: "Partners" },
+        { href: "/privacy", label: "Privacy Notice" },
+        { href: "/terms", label: "Terms of Service" },
+      ],
+    }),
+  };
+}
+
+const docsSnapshotConfigs = [
+  createDocsSnapshotConfig({
+    route: "/docs/getting-started/overview",
+    title: "Platform Overview",
+    description: "Learn how Knoledgr connects conversations, decisions, documents, and execution into one searchable team memory system.",
+    lead: "This guide explains the core Knoledgr model: capture the why behind work, link it to execution, and keep that context reusable over time.",
+    bullets: [
+      "How conversations, decisions, documents, projects, issues, and sprints work together.",
+      "Why Knoledgr focuses on institutional memory instead of disconnected workflow records.",
+      "What teams should expect from Ask Recall and the Knowledge Graph in day-to-day use.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/getting-started/workspace-setup",
+    title: "Workspace Setup",
+    description: "Set up your Knoledgr workspace, invite the right people, and establish a clean operating structure from the start.",
+    lead: "Use this page to structure a new workspace around real teams, active work, and durable knowledge habits.",
+    bullets: [
+      "How to seed projects, decisions, and documents without overbuilding the workspace.",
+      "How to invite admins and managers first so ownership is clear.",
+      "What setup choices improve future search, AI answers, and graph quality.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/workflows/decisions",
+    title: "Decisions",
+    description: "Track decisions in Knoledgr with rationale, alternatives, confidence, implementation notes, and outcome review.",
+    lead: "Decision records are where Knoledgr turns discussion into committed direction that teams can revisit later.",
+    bullets: [
+      "What belongs in a strong decision record.",
+      "How to link decisions to conversations, documents, and execution work.",
+      "Why outcome review and drift tracking matter after implementation.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/intelligence/ask-recall",
+    title: "Ask Recall",
+    description: "Use Ask Recall to get grounded answers about your organization from the evidence already stored in Knoledgr.",
+    lead: "Ask Recall works best when teams keep real work linked and named clearly enough to be retrieved with confidence.",
+    bullets: [
+      "What kinds of organization questions Ask Recall can answer well.",
+      "How evidence coverage and confidence shape the output.",
+      "How to ask better questions about projects, decisions, documents, and sprint work.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/intelligence/knowledge-graph",
+    title: "Knowledge Graph",
+    description: "Explore the Knoledgr Knowledge Graph to see how conversations, decisions, documents, and execution work connect.",
+    lead: "The Knowledge Graph helps teams recover surrounding context, not just one isolated record.",
+    bullets: [
+      "What the graph is for and when to use it during investigation or planning.",
+      "How graph quality depends on real links between work artifacts.",
+      "How the graph complements Ask Recall for historical understanding.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/execution/sprints-and-autopilot",
+    title: "Sprints and Autopilot",
+    description: "Understand sprint management, blockers, and decision-coupled Autopilot workflows in Knoledgr.",
+    lead: "Sprint execution in Knoledgr stays attached to blockers, unresolved decisions, and delivery risk instead of treating board state as the whole story.",
+    bullets: [
+      "What sprint detail, blockers, and retrospectives cover.",
+      "What Autopilot evaluates when recommending scope changes.",
+      "How decision dependencies shape sprint confidence and intervention planning.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/integrations/github",
+    title: "GitHub Advanced Sync",
+    description: "Connect GitHub pull requests, commits, and release signals back to Knoledgr decisions and delivery history.",
+    lead: "GitHub Advanced Sync helps engineering teams keep code movement attached to issue, project, and decision context.",
+    bullets: [
+      "How PR and commit metadata support issue and project workflows.",
+      "When GitHub signals are useful as evidence and when human review still matters.",
+      "Why consistent naming and linkage improve code-to-context traceability.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/integrations/jira",
+    title: "Jira Portfolio Bridge",
+    description: "Use the Jira Portfolio Bridge to connect portfolio reporting and dependencies back to Knoledgr execution context.",
+    lead: "This integration is useful for organizations that need formal portfolio views without losing the why behind delivery movement.",
+    bullets: [
+      "Where the bridge helps most across multi-project initiatives.",
+      "How dependency visibility becomes more useful when paired with decision context.",
+      "How to reduce duplicate storytelling across Jira and Knoledgr.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/enterprise/compliance",
+    title: "Enterprise Compliance",
+    description: "Configure enterprise compliance controls in Knoledgr for SSO, MFA, residency, retention, and app governance.",
+    lead: "Enterprise compliance settings let customers enforce policy-level controls inside the operational product surface.",
+    bullets: [
+      "What the compliance policy controls in product.",
+      "How to roll policy changes out safely across an organization.",
+      "When to combine product controls with legal and security review artifacts.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/enterprise/incident-ops",
+    title: "Incident Ops",
+    description: "Use Knoledgr enterprise incident automation and escalation rules to turn risk signals into actionable response workflows.",
+    lead: "Incident Ops is designed for teams that need operational response to be as traceable as the delivery work that created the risk.",
+    bullets: [
+      "What the incident center and automation workflows cover.",
+      "How stale blockers and SLA risk can create incidents automatically.",
+      "How escalation rules create tasks, blockers, and notifications with ownership attached.",
+    ],
+  }),
+  createDocsSnapshotConfig({
+    route: "/docs/reference/api-highlights",
+    title: "API Highlights",
+    description: "Review the major Knoledgr API surfaces for decisions, knowledge, execution, notifications, enterprise, and partner workflows.",
+    lead: "This page orients developers and technical admins to the most important API families behind Knoledgr.",
+    bullets: [
+      "Which endpoint families power decisions, knowledge, agile, and enterprise surfaces.",
+      "How public routes differ from authenticated organization-scoped product APIs.",
+      "Why UI behavior should be the source of truth before automating against private workflows.",
+    ],
+  }),
+];
+
 const pageConfigs = [
   {
     route: "/",
@@ -336,7 +518,7 @@ const pageConfigs = [
     route: "/docs",
     title: `Documentation | ${BRAND}`,
     description:
-      "Explore Knoledgr documentation covering conversations, decisions, agile execution, knowledge graph workflows, and operational guidance.",
+      "Explore Knoledgr documentation covering setup, workflows, AI, execution, integrations, enterprise controls, and technical reference.",
     ogType: "article",
     structuredData: [
       {
@@ -344,7 +526,7 @@ const pageConfigs = [
         "@type": "WebPage",
         name: `Documentation | ${BRAND}`,
         description:
-          "Explore Knoledgr documentation covering conversations, decisions, agile execution, knowledge graph workflows, and operational guidance.",
+          "Explore Knoledgr documentation covering setup, workflows, AI, execution, integrations, enterprise controls, and technical reference.",
         url: `${SITE_URL}/docs`,
         isPartOf: {
           "@type": "WebSite",
@@ -357,7 +539,7 @@ const pageConfigs = [
         "@type": "TechArticle",
         headline: `Documentation | ${BRAND}`,
         description:
-          "Explore Knoledgr documentation covering conversations, decisions, agile execution, knowledge graph workflows, and operational guidance.",
+          "Explore Knoledgr documentation covering setup, workflows, AI, execution, integrations, enterprise controls, and technical reference.",
         url: `${SITE_URL}/docs`,
         author: {
           "@type": "Organization",
@@ -377,47 +559,18 @@ const pageConfigs = [
       eyebrow: "Knoledgr Manual",
       heading: "Documentation",
       lead:
-        "Browse the product foundation, execution workflows, knowledge systems, and reference material behind Knoledgr's decision-memory platform.",
+        "Browse setup, workflows, Ask Recall, the Knowledge Graph, execution systems, integrations, enterprise controls, and technical reference behind Knoledgr.",
       actions: [
         { href: "/docs", label: "Open interactive docs", primary: true },
         { href: "/", label: "Visit homepage" },
       ],
       sections: [
-        {
-          title: "Foundation",
-          bullets: [
-            "Platform overview for conversations, decisions, agile execution, business operations, and the shared memory layer.",
-            "Architecture and data flow notes covering content links, unified activity, and context panels.",
-          ],
-        },
-        {
-          title: "Workflows",
-          bullets: [
-            "Conversation guidance for structured discovery and promotion into decisions.",
-            "Decision lifecycle, outcome intelligence, and replay simulator references.",
-          ],
-        },
-        {
-          title: "Agile execution",
-          bullets: [
-            "Projects, issues, and sprints linked to decisions and knowledge graph context.",
-            "Decision-coupled sprint autopilot coverage for delivery forecasting and scope moves.",
-          ],
-        },
-        {
-          title: "Knowledge and AI",
-          bullets: [
-            "Context engine payloads for related artifacts, experts, and risks.",
-            "Recommendation ranking signals based on activity, links, recency, and validated outcomes.",
-          ],
-        },
-        {
-          title: "Operations and reference",
-          bullets: [
-            "Business module, roles, governance, app marketplace, and troubleshooting guidance.",
-            "High-value API endpoints for decisions, agile workflows, enterprise operations, and realtime notifications.",
-          ],
-        },
+        { title: "Getting started", bullets: ["Platform overview, workspace setup, and first-rollout guidance for new teams."] },
+        { title: "Core workflows", bullets: ["Conversations, decisions, and documents with durable context and outcome discipline."] },
+        { title: "Knowledge and AI", bullets: ["Ask Recall and the Knowledge Graph for grounded retrieval and connected exploration."] },
+        { title: "Execution", bullets: ["Projects, issues, sprints, blockers, and sprint autopilot guidance."] },
+        { title: "Integrations and enterprise", bullets: ["GitHub, Jira, compliance, marketplace apps, and incident operations documentation."] },
+        { title: "Reference", bullets: ["API highlights and troubleshooting guidance for admins and technical teams."] },
       ],
       footerLinks: [
         { href: "/partners", label: "Partners" },
@@ -427,6 +580,7 @@ const pageConfigs = [
       ],
     }),
   },
+  ...docsSnapshotConfigs,
   {
     route: "/partners",
     title: `Partners | ${BRAND}`,

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { findDocumentationPageBySlug } from "../content/documentationPages";
 
 const BRAND = "Knoledgr";
 const SITE_URL = "https://knoledgr.com";
@@ -20,6 +21,11 @@ function webPageSchema(title, description, pathname) {
       url: SITE_URL,
     },
   };
+}
+
+function docsSlugFromPathname(pathname) {
+  if (pathname === "/docs" || pathname === "/docs/") return "";
+  return pathname.replace(/^\/docs\/?/, "").replace(/\/+$/, "");
 }
 
 function resolveMeta(pathname) {
@@ -61,24 +67,29 @@ function resolveMeta(pathname) {
     };
   }
 
-  if (pathname === "/docs") {
-    const title = `Documentation | ${BRAND}`;
-    const description =
-      "Explore Knoledgr documentation covering conversations, decisions, agile execution, knowledge graph workflows, and operational guidance.";
+  if (pathname === "/docs" || pathname.startsWith("/docs/")) {
+    const docsSlug = docsSlugFromPathname(pathname);
+    const docsPage = docsSlug ? findDocumentationPageBySlug(docsSlug) : null;
+    const title = docsPage ? `${docsPage.title} | Documentation | ${BRAND}` : `Documentation | ${BRAND}`;
+    const description = docsPage
+      ? docsPage.summary
+      : "Explore Knoledgr documentation covering setup, workflows, AI, execution, integrations, enterprise controls, and reference guidance.";
+    const canonicalPath = docsPage ? `/docs/${docsPage.slug}` : docsSlug ? "/docs" : "/docs";
+
     return {
       title,
       description,
       robots: "index,follow",
-      canonicalPath: "/docs",
+      canonicalPath,
       ogType: "article",
       structuredData: [
-        webPageSchema(title, description, "/docs"),
+        webPageSchema(title, description, canonicalPath),
         {
           "@context": "https://schema.org",
           "@type": "TechArticle",
           headline: title,
           description,
-          url: `${SITE_URL}/docs`,
+          url: `${SITE_URL}${canonicalPath}`,
           author: {
             "@type": "Organization",
             name: BRAND,

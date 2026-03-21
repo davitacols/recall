@@ -41,7 +41,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 @admin.register(PartnerInquiry)
 class PartnerInquiryAdmin(admin.ModelAdmin):
-    list_display = ['company_name', 'full_name', 'work_email', 'partner_type', 'status', 'source', 'submitted_at']
+    list_display = ['company_name', 'full_name', 'work_email', 'partner_type', 'status', 'owner', 'source', 'submitted_at']
     list_filter = ['partner_type', 'status', 'source', 'submitted_at']
     search_fields = ['company_name', 'full_name', 'work_email', 'role_title']
     readonly_fields = ['submitted_at', 'submitted_by', 'organization']

@@ -132,6 +132,62 @@ class PartnerInquiryTests(TestCase):
         inquiry.refresh_from_db()
         self.assertEqual(inquiry.status, "contacted")
         self.assertIsNotNone(inquiry.contacted_at)
+        self.assertEqual(response.data["inquiry"]["status"], "contacted")
+
+    def test_staff_admin_can_assign_owner_and_save_internal_notes(self):
+        inquiry = PartnerInquiry.objects.create(
+            full_name="Casey Advisor",
+            work_email="casey@advisor.test",
+            company_name="Advisor Studio",
+            role_title="Advisor",
+            partner_type="consultant",
+            service_summary="We help delivery teams improve documentation, handoffs, and operating rhythms.",
+            consent_to_contact=True,
+        )
+
+        response = self.staff_client.put(
+            f"/api/organizations/partner-inquiries/{inquiry.id}/",
+            {
+                "status": "reviewing",
+                "assign_to_me": True,
+                "internal_notes": "Strong fit for agencies working across Jira and delivery cleanup.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        inquiry.refresh_from_db()
+        self.assertEqual(inquiry.status, "reviewing")
+        self.assertEqual(inquiry.owner, self.staff_admin)
+        self.assertEqual(
+            inquiry.internal_notes,
+            "Strong fit for agencies working across Jira and delivery cleanup.",
+        )
+
+    def test_staff_admin_can_clear_owner(self):
+        inquiry = PartnerInquiry.objects.create(
+            full_name="Taylor Founder",
+            work_email="taylor@founder.test",
+            company_name="Founder Ops",
+            role_title="Founder",
+            partner_type="fractional",
+            service_summary="We support founder-led teams that need better decision memory.",
+            consent_to_contact=True,
+            owner=self.staff_admin,
+        )
+
+        response = self.staff_client.put(
+            f"/api/organizations/partner-inquiries/{inquiry.id}/",
+            {
+                "status": "reviewing",
+                "clear_owner": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        inquiry.refresh_from_db()
+        self.assertIsNone(inquiry.owner)
 
     def test_workspace_admin_cannot_list_partner_inquiries(self):
         response = self.admin_client.get("/api/organizations/partner-inquiries/")

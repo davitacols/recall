@@ -35,9 +35,13 @@ def _serialize_partner_inquiry(inquiry):
         "partner_type": inquiry.partner_type,
         "service_summary": inquiry.service_summary,
         "status": inquiry.status,
+        "internal_notes": inquiry.internal_notes,
         "source": inquiry.source,
         "submitted_at": inquiry.submitted_at,
         "contacted_at": inquiry.contacted_at,
+        "owner_id": inquiry.owner_id,
+        "owner_name": inquiry.owner.get_full_name() if inquiry.owner else None,
+        "owner_email": inquiry.owner.email if inquiry.owner else None,
         "organization_name": getattr(inquiry.organization, "name", None),
         "submitted_by": inquiry.submitted_by.get_full_name() if inquiry.submitted_by else None,
     }
@@ -56,7 +60,7 @@ def partner_inquiries(request):
         if not _can_manage_partner_inquiries(request.user):
             return Response({"error": "Staff access required"}, status=status.HTTP_403_FORBIDDEN)
 
-        inquiries = PartnerInquiry.objects.select_related("organization", "submitted_by").order_by("-submitted_at")
+        inquiries = PartnerInquiry.objects.select_related("organization", "submitted_by", "owner").order_by("-submitted_at")
 
         status_filter = _clean_text(request.query_params.get("status"), max_length=20)
         if status_filter:
@@ -173,20 +177,49 @@ def partner_inquiry_detail(request, inquiry_id):
     if not _can_manage_partner_inquiries(request.user):
         return Response({"error": "Staff access required"}, status=status.HTTP_403_FORBIDDEN)
 
-    inquiry = get_object_or_404(PartnerInquiry.objects.select_related("organization", "submitted_by"), id=inquiry_id)
+    inquiry = get_object_or_404(PartnerInquiry.objects.select_related("organization", "submitted_by", "owner"), id=inquiry_id)
 
     if request.method == "GET":
         return Response(_serialize_partner_inquiry(inquiry))
 
-    next_status = _clean_text(request.data.get("status"), max_length=20)
+    update_fields = []
     valid_statuses = {choice[0] for choice in PartnerInquiry.STATUS_CHOICES}
-    if next_status not in valid_statuses:
-        return Response({"error": "Select a valid inquiry status."}, status=status.HTTP_400_BAD_REQUEST)
 
-    inquiry.status = next_status
-    if next_status in {"contacted", "qualified"} and not inquiry.contacted_at:
-        inquiry.contacted_at = timezone.now()
-    inquiry.save(update_fields=["status", "contacted_at"])
+    if "status" in request.data:
+        next_status = _clean_text(request.data.get("status"), max_length=20)
+        if next_status not in valid_statuses:
+            return Response({"error": "Select a valid inquiry status."}, status=status.HTTP_400_BAD_REQUEST)
+        if inquiry.status != next_status:
+            inquiry.status = next_status
+            update_fields.append("status")
+        if next_status in {"contacted", "qualified"} and not inquiry.contacted_at:
+            inquiry.contacted_at = timezone.now()
+            update_fields.append("contacted_at")
+
+    if "internal_notes" in request.data:
+        internal_notes = str(request.data.get("internal_notes") or "").strip()
+        if inquiry.internal_notes != internal_notes:
+            inquiry.internal_notes = internal_notes
+            update_fields.append("internal_notes")
+
+    if request.data.get("assign_to_me") is True:
+        if inquiry.owner_id != request.user.id:
+            inquiry.owner = request.user
+            update_fields.append("owner")
+    elif request.data.get("clear_owner") is True:
+        if inquiry.owner_id is not None:
+            inquiry.owner = None
+            update_fields.append("owner")
+
+    if not update_fields:
+        return Response(
+            {
+                "message": "No changes were needed.",
+                "inquiry": _serialize_partner_inquiry(inquiry),
+            }
+        )
+
+    inquiry.save(update_fields=list(dict.fromkeys(update_fields)))
 
     return Response(
         {

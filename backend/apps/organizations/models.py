@@ -174,6 +174,13 @@ class PartnerInquiry(models.Model):
         blank=True,
         related_name='partner_inquiries',
     )
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='owned_partner_inquiries',
+    )
     organization = models.ForeignKey(
         Organization,
         on_delete=models.SET_NULL,
@@ -191,6 +198,7 @@ class PartnerInquiry(models.Model):
     consent_to_contact = models.BooleanField(default=False)
     source = models.CharField(max_length=50, default='partners-page')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new', db_index=True)
+    internal_notes = models.TextField(blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True, db_index=True)
     contacted_at = models.DateTimeField(null=True, blank=True)
 

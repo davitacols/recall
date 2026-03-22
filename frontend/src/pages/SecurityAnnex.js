@@ -1,137 +1,143 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import PublicPolicyPage from "../components/PublicPolicyPage";
 
-const effectiveDate = "March 18, 2026";
+const effectiveDate = "March 22, 2026";
+
+const summaryCards = [
+  {
+    title: "Control areas",
+    text: "Program governance, identity and access, tenant isolation, secure delivery, monitoring, incident response, resilience, and vendor oversight.",
+  },
+  {
+    title: "How to read this",
+    text: "This annex summarizes representative technical and organizational controls and works alongside customer-specific reviews, exhibits, or security questionnaires.",
+  },
+  {
+    title: "Shared responsibility",
+    text: "Knoledgr secures the platform, while customers remain responsible for their role design, data choices, integrations, and internal usage policies.",
+  },
+];
+
+const sections = [
+  {
+    id: "program",
+    title: "1. Security program governance",
+    paragraphs: [
+      "Knoledgr maintains a security program intended to support product reliability, organization isolation, controlled operations, and incident readiness across the web application, APIs, supporting infrastructure, and related service workflows.",
+      "Security controls, priorities, and operational practices may evolve over time as the product, threat environment, and customer requirements change. Customer-specific commitments can be documented in separate enterprise agreements, questionnaires, or security exhibits.",
+    ],
+  },
+  {
+    id: "identity-access",
+    title: "2. Identity, authentication, and privileged access",
+    bullets: [
+      "Access to administrative, operational, and production systems is intended to follow role-based and least-privilege principles.",
+      "Privileged actions are limited to authorized personnel and are expected to occur through authenticated workflows and reviewed operational procedures.",
+      "Customer organizations are responsible for managing their own workspace roles, invited users, connected identities, and the internal trust decisions they make when granting access.",
+    ],
+  },
+  {
+    id: "encryption-secrets",
+    title: "3. Encryption, transport protection, and secret handling",
+    bullets: [
+      "Knoledgr is designed to use TLS or equivalent protections for data transmitted over public networks.",
+      "Sensitive credentials, tokens, and service secrets are intended to be handled through restricted operational workflows rather than broadly exposed in application logic or user-visible interfaces.",
+      "Storage, credential, and key-handling practices may vary by infrastructure component, provider, and service configuration.",
+    ],
+  },
+  {
+    id: "isolation",
+    title: "4. Tenant isolation and environment separation",
+    paragraphs: [
+      "Product and backend workflows are designed around organization-scoped access patterns so that customer records, collaboration objects, and operational reads stay isolated to the authenticated customer organization except where an intentionally restricted platform-administration function applies.",
+      "Knoledgr also seeks to maintain separation between production operations and non-production work as part of its broader secure delivery practices.",
+    ],
+  },
+  {
+    id: "delivery",
+    title: "5. Secure development and change management",
+    bullets: [
+      "Application updates, infrastructure changes, and operational improvements are expected to move through controlled development and deployment workflows rather than unmanaged direct changes.",
+      "Knoledgr uses code review, issue tracking, testing, and release practices intended to reduce the likelihood of unsafe changes reaching customers.",
+      "Not every security or quality control applies identically to every experimental, preview, or internal workflow, especially when a feature is in early release.",
+    ],
+  },
+  {
+    id: "monitoring",
+    title: "6. Logging, monitoring, and vulnerability management",
+    bullets: [
+      "Knoledgr maintains audit and operational logging intended to support troubleshooting, access review, abuse investigation, and incident response.",
+      "Monitoring and alerting are used to surface abnormal behavior, reliability concerns, and security-relevant signals where operationally appropriate.",
+      "Security issues are reviewed through remediation workflows that take into account severity, exposure, exploitability, and customer impact, with faster handling for higher-risk issues.",
+    ],
+  },
+  {
+    id: "incident-response",
+    title: "7. Incident response and customer communication",
+    paragraphs: [
+      "Knoledgr maintains incident response procedures intended to support triage, investigation, containment, remediation, recovery, and follow-up review.",
+      "Where Knoledgr confirms a security incident affecting customer data and applicable agreements require notice, customers are informed without undue delay and with the level of detail reasonably available at the time.",
+    ],
+  },
+  {
+    id: "resilience",
+    title: "8. Resilience, continuity, and recovery",
+    bullets: [
+      "Service continuity is supported through operational monitoring, controlled deployment practices, and infrastructure configurations intended to reduce the impact of component failures and service interruptions.",
+      "Recovery approaches, retention windows, and backup behavior may depend on the service component, hosting provider, customer plan, or negotiated enterprise commitments.",
+      "Customers should maintain their own business continuity planning for downstream workflows, exported records, and internal dependencies outside the Knoledgr platform.",
+    ],
+  },
+  {
+    id: "vendors",
+    title: "9. Vendor, hosting, and subprocessor oversight",
+    bullets: [
+      "Knoledgr may rely on third-party providers for infrastructure, communications, monitoring, billing, storage, and AI or model functionality.",
+      "Third-party services are selected and managed according to contractual, operational, and security expectations appropriate to the service provided, though customers should understand that third-party dependencies introduce their own availability and risk profiles.",
+      "Enterprise customers may request additional information through security review channels or negotiated procurement processes.",
+    ],
+  },
+  {
+    id: "customer-responsibilities",
+    title: "10. Customer responsibilities and configuration choices",
+    bullets: [
+      "Customers are responsible for selecting what data they put into the service, how they configure roles and sharing, which integrations they connect, and how their personnel use the platform.",
+      "Customers should review whether their own regulatory, contractual, residency, retention, or internal security requirements require additional controls, configuration, or negotiated commitments.",
+      "AI-assisted features, connectors, imports, exports, and administrator tools should be used in line with the customer's own governance standards.",
+    ],
+  },
+  {
+    id: "assurance",
+    title: "11. Assurance materials, reviews, and contact",
+    paragraphs: [
+      "This annex is intended as a public summary, not an exhaustive technical specification. More detailed answers may be provided under NDA, during procurement review, or through enterprise security questionnaires where appropriate.",
+      "Security, assurance, and enterprise review requests can be directed to Knoledgr's security contact.",
+    ],
+    bullets: [
+      "Security and assurance requests: security@knoledgr.com",
+      "Legal and procurement coordination: legal@knoledgr.com",
+      "Privacy and data protection requests: privacy@knoledgr.com",
+    ],
+  },
+];
 
 export default function SecurityAnnex() {
   return (
-    <div style={page}>
-      <div style={container}>
-        <Link to="/" style={backLink}>
-          Back to Home
-        </Link>
-        <h1 style={title}>Knoledgr Security Annex</h1>
-        <p style={meta}>Effective Date: {effectiveDate}</p>
-        <p style={meta}>Last Updated: {effectiveDate}</p>
-
-        <Section title="1. Security Program">
-          Knoledgr maintains a security program designed to protect customer data, preserve organization isolation, and support secure product delivery across the web app, APIs, and supporting infrastructure.
-        </Section>
-
-        <Section title="2. Access Control">
-          Access to production systems is restricted by role, least-privilege principles, and authenticated workflows. Administrative actions are limited to authorized personnel and governed by logged access patterns and internal review.
-        </Section>
-
-        <Section title="3. Encryption">
-          Data is protected in transit using TLS. Platform controls are designed to support secure storage practices, protected credentials, and restricted access to sensitive system components.
-        </Section>
-
-        <Section title="4. Logging and Monitoring">
-          Knoledgr maintains audit and operational logs to support troubleshooting, access review, and incident response. Monitoring and alerting are used to surface abnormal behavior, service degradation, and security-relevant events.
-        </Section>
-
-        <Section title="5. Tenant Isolation">
-          Product and backend workflows are designed around organization-scoped access. Customer records, collaboration objects, and related operational reads are intended to remain isolated to the authenticated customer organization.
-        </Section>
-
-        <Section title="6. Vulnerability Management">
-          Knoledgr reviews security issues through an internal remediation workflow that prioritizes severity, exposure, and customer impact. High-risk issues are handled on an accelerated schedule.
-        </Section>
-
-        <Section title="7. Incident Response">
-          Knoledgr maintains incident response procedures for triage, containment, remediation, and customer communication. Enterprise customers are notified of confirmed incidents affecting Customer Data without undue delay.
-        </Section>
-
-        <Section title="8. Resilience and Continuity">
-          Service continuity is supported through operational monitoring, controlled deployment workflows, and infrastructure practices intended to reduce the impact of component failures or service interruptions.
-        </Section>
-
-        <Section title="9. Vendor and Subprocessor Controls">
-          Third-party providers used for infrastructure, monitoring, communication, or related services are evaluated through contractual and security expectations appropriate to the service provided.
-        </Section>
-
-        <Section title="10. Contact">
-          Security and enterprise assurance requests: <a href="mailto:security@knoledgr.com">security@knoledgr.com</a>
-        </Section>
-
-        <div style={footerLinks}>
-          <Link to="/privacy" style={footerLink}>Privacy Notice</Link>
-          <Link to="/terms" style={footerLink}>Terms of Service</Link>
-        </div>
-      </div>
-    </div>
+    <PublicPolicyPage
+      eyebrow="Security"
+      title="Knoledgr Security Annex"
+      lead="This annex summarizes the technical and organizational safeguards Knoledgr uses to support tenant isolation, secure delivery, operational resilience, and enterprise assurance across the platform."
+      effectiveDate={effectiveDate}
+      updatedDate={effectiveDate}
+      contactLabel="Security Contact"
+      contactEmail="security@knoledgr.com"
+      summaryCards={summaryCards}
+      sections={sections}
+      footerLinks={[
+        { href: "/privacy", label: "Privacy Notice" },
+        { href: "/terms", label: "Terms of Service" },
+        { href: "/feedback", label: "Feedback" },
+      ]}
+    />
   );
 }
-
-function Section({ title, children }) {
-  return (
-    <section style={section}>
-      <h2 style={sectionTitle}>{title}</h2>
-      <p style={copy}>{children}</p>
-    </section>
-  );
-}
-
-const page = {
-  minHeight: "100vh",
-  background: "linear-gradient(180deg, #08111d 0%, #0f172a 100%)",
-  color: "#e5eefb",
-  fontFamily: "'Segoe UI', Tahoma, sans-serif",
-  padding: "28px 16px 40px",
-};
-
-const container = {
-  maxWidth: 920,
-  margin: "0 auto",
-};
-
-const backLink = {
-  display: "inline-flex",
-  textDecoration: "none",
-  border: "1px solid #334155",
-  color: "#cbd5e1",
-  padding: "8px 12px",
-  marginBottom: 14,
-};
-
-const title = {
-  margin: "0 0 6px",
-  fontSize: 34,
-  lineHeight: 1.1,
-};
-
-const meta = {
-  margin: "0 0 4px",
-  color: "#93c5fd",
-  fontSize: 14,
-};
-
-const section = {
-  marginTop: 22,
-  paddingTop: 14,
-  borderTop: "1px solid #1e293b",
-};
-
-const sectionTitle = {
-  margin: "0 0 8px",
-  fontSize: 20,
-  color: "#bfdbfe",
-};
-
-const copy = {
-  margin: 0,
-  lineHeight: 1.68,
-  color: "#dbe7f5",
-};
-
-const footerLinks = {
-  display: "flex",
-  gap: 12,
-  flexWrap: "wrap",
-  marginTop: 28,
-};
-
-const footerLink = {
-  color: "#93c5fd",
-  textDecoration: "none",
-};

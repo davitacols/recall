@@ -163,7 +163,7 @@ function resolveMeta(pathname) {
   if (pathname === "/privacy") {
     const title = `Privacy Notice | ${BRAND}`;
     const description =
-      "Read the Knoledgr enterprise privacy notice, including data categories, subprocessors, retention, and customer privacy support.";
+      "Read the Knoledgr privacy notice covering data categories, sources, uses, disclosures, transfers, retention, AI processing, security, and privacy rights.";
     return {
       title,
       description,
@@ -177,7 +177,7 @@ function resolveMeta(pathname) {
   if (pathname === "/terms") {
     const title = `Terms of Service | ${BRAND}`;
     const description =
-      "Review Knoledgr enterprise terms covering customer data, security obligations, support, confidentiality, and liability structure.";
+      "Review Knoledgr enterprise terms covering access, acceptable use, customer data, subscriptions, confidentiality, security cooperation, suspension, and termination.";
     return {
       title,
       description,
@@ -191,7 +191,7 @@ function resolveMeta(pathname) {
   if (pathname === "/security-annex") {
     const title = `Security Annex | ${BRAND}`;
     const description =
-      "Review the Knoledgr security annex covering access controls, encryption, logging, incident response, resilience, and governance.";
+      "Review the Knoledgr security annex covering program governance, access control, encryption, tenant isolation, secure delivery, monitoring, incident response, resilience, and shared responsibility.";
     return {
       title,
       description,

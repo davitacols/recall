@@ -824,7 +824,7 @@ const pageConfigs = [
     route: "/privacy",
     title: `Privacy Notice | ${BRAND}`,
     description:
-      "Read the Knoledgr enterprise privacy notice, including data categories, subprocessors, retention, and customer privacy support.",
+      "Read the Knoledgr privacy notice covering data categories, sources, uses, disclosures, transfers, retention, AI processing, security, and privacy rights.",
     ogType: "article",
     structuredData: [
       {
@@ -832,7 +832,7 @@ const pageConfigs = [
         "@type": "WebPage",
         name: `Privacy Notice | ${BRAND}`,
         description:
-          "Read the Knoledgr enterprise privacy notice, including data categories, subprocessors, retention, and customer privacy support.",
+          "Read the Knoledgr privacy notice covering data categories, sources, uses, disclosures, transfers, retention, AI processing, security, and privacy rights.",
         url: `${SITE_URL}/privacy`,
         isPartOf: {
           "@type": "WebSite",
@@ -843,10 +843,10 @@ const pageConfigs = [
     ],
     body: renderLayout({
       eyebrow: "Legal",
-      heading: "Knoledgr Enterprise Privacy Notice",
-      meta: "Effective Date: March 4, 2026",
+      heading: "Knoledgr Privacy Notice",
+      meta: "Effective Date: March 22, 2026",
       lead:
-        "This privacy notice explains how Knoledgr handles enterprise account data, customer content, support records, and operational metadata while supporting customer privacy obligations.",
+        "This privacy notice explains how Knoledgr handles personal data across the product, website, support channels, enterprise workflows, and AI-assisted features.",
       actions: [
         { href: "/privacy", label: "Open privacy page", primary: true },
         { href: "/security-annex", label: "Review security annex" },
@@ -855,30 +855,31 @@ const pageConfigs = [
         {
           title: "Scope and roles",
           bullets: [
-            "Applies to Knoledgr enterprise services, support channels, APIs, and integrations.",
-            "Knoledgr generally acts as processor or service provider for customer content and controller for account, billing, and security data.",
+            "Applies to Knoledgr's website, application, documentation, APIs, support channels, feedback and partner forms, and enterprise integrations.",
+            "Knoledgr generally acts as processor or service provider for customer workspace content and as controller for account, billing, security, and commercial relationship data.",
           ],
         },
         {
-          title: "Data categories and purposes",
+          title: "Data categories and sources",
           bullets: [
-            "Processes account identifiers, workspace metadata, user-generated content, logs, support records, integration metadata, and billing records.",
-            "Uses that data to provide the service, secure the platform, support customers, deliver analytics and AI features, and satisfy legal obligations.",
+            "May process account and profile data, workspace content, logs, support records, billing metadata, integration metadata, and AI interaction data.",
+            "Data may come directly from users and customers, from administrators, from connected integrations, and from service providers supporting the platform.",
           ],
         },
         {
-          title: "Transfers, subprocessors, and retention",
+          title: "Use, disclosures, and transfers",
           bullets: [
-            "Enterprise customers may execute a DPA and SCCs where cross-border transfers require them.",
-            "Subprocessors are used for hosting, email, monitoring, support, billing, and AI services under written confidentiality and security terms.",
-            "Customer data is retained and deleted according to contract terms and offboarding procedures, subject to legal retention duties.",
+            "Knoledgr uses personal data to provide the service, secure the platform, support users, operate AI features, and meet legal obligations.",
+            "Disclosures may include subprocessors for infrastructure, communications, billing, monitoring, and AI or model providers where features require provider-side processing.",
+            "Where cross-border transfers require safeguards, Knoledgr may offer contractual protections such as a DPA and Standard Contractual Clauses.",
           ],
         },
         {
-          title: "Security and rights support",
+          title: "Retention, security, and rights",
           bullets: [
-            "Security controls include encryption in transit, access controls, audit logging, least privilege, and vulnerability management.",
-            "Knoledgr supports customers responding to access, deletion, correction, portability, restriction, and objection requests.",
+            "Retention depends on customer instructions, contract terms, legal duties, backups, and security logging needs.",
+            "Security controls may include encryption in transit, role-based access, logging, least privilege, and incident response safeguards.",
+            "Individuals may have rights such as access, correction, deletion, portability, restriction, objection, withdrawal of consent, and certain state-law opt-out rights depending on context.",
           ],
         },
       ],
@@ -894,7 +895,7 @@ const pageConfigs = [
     route: "/terms",
     title: `Terms of Service | ${BRAND}`,
     description:
-      "Review Knoledgr enterprise terms covering customer data, security obligations, support, confidentiality, and liability structure.",
+      "Review Knoledgr enterprise terms covering access, acceptable use, customer data, subscriptions, confidentiality, security cooperation, suspension, and termination.",
     ogType: "article",
     structuredData: [
       {
@@ -902,7 +903,7 @@ const pageConfigs = [
         "@type": "WebPage",
         name: `Terms of Service | ${BRAND}`,
         description:
-          "Review Knoledgr enterprise terms covering customer data, security obligations, support, confidentiality, and liability structure.",
+          "Review Knoledgr enterprise terms covering access, acceptable use, customer data, subscriptions, confidentiality, security cooperation, suspension, and termination.",
         url: `${SITE_URL}/terms`,
         isPartOf: {
           "@type": "WebSite",
@@ -914,41 +915,44 @@ const pageConfigs = [
     body: renderLayout({
       eyebrow: "Legal",
       heading: "Knoledgr Enterprise Terms of Service",
-      meta: "Effective Date: March 4, 2026",
+      meta: "Effective Date: March 22, 2026",
       lead:
-        "These terms outline how enterprise customers use Knoledgr, how customer data is handled, and how security, confidentiality, support, and liability are governed in the enterprise relationship.",
+        "These terms describe how enterprise and commercial customers use Knoledgr, how customer data and access are handled, and how billing, security, confidentiality, suspension, and termination fit together in the service relationship.",
       actions: [
         { href: "/terms", label: "Open terms page", primary: true },
         { href: "/privacy", label: "View privacy notice" },
       ],
       sections: [
         {
-          title: "Agreement structure",
+          title: "Scope, admins, and acceptable use",
           bullets: [
-            "Applies to enterprise use by customer organizations and authorized users.",
-            "Order of precedence is signed Order Form, executed DPA, Security Annex, then the enterprise terms.",
+            "These terms govern commercial and enterprise use by customer organizations and their authorized users, while negotiated order forms and exhibits can supplement or control for that customer relationship.",
+            "Customer administrators manage invites, roles, workspace settings, and internal access decisions inside their organization.",
+            "Customers and users may not misuse the service, violate law, interfere with operations, or attempt unauthorized access to the platform or third-party systems.",
           ],
         },
         {
-          title: "Customer data and transfers",
+          title: "Customer data, subscriptions, and integrations",
           bullets: [
-            "Customers retain rights in customer data, and Knoledgr processes it only as needed to provide the service and follow documented customer instructions.",
-            "The DPA forms part of the enterprise contract, with SCCs and supporting safeguards used where cross-border transfers require them.",
+            "Customers retain rights in customer data, while Knoledgr processes workspace content to provide, secure, and support the service according to the applicable agreement and documented instructions.",
+            "Plan type, billing cadence, seat limits, support levels, and other commercial terms are governed by the customer's subscription or order form.",
+            "Third-party integrations and beta features may be used by the customer, but remain subject to their own availability, configuration, and third-party dependencies.",
           ],
         },
         {
-          title: "Security, support, and incident response",
+          title: "Security, support, and service evolution",
           bullets: [
-            "Security obligations are detailed in the Security Annex, including access management, encryption, incident response, vulnerability management, and logging.",
-            "Service levels, support expectations, and service credits are defined in customer-specific order forms or enterprise exhibits.",
-            "Customers are notified without undue delay after confirmation of a security incident affecting customer data.",
+            "Security and confidentiality obligations are supported by the Security Annex, privacy documentation, and any negotiated customer-specific security exhibits.",
+            "Support expectations, service levels, and service credits are defined by the applicable plan, support exhibit, or enterprise agreement.",
+            "Knoledgr may improve or modify the service over time and aims to provide commercially reasonable notice where a contracted core capability is materially reduced.",
           ],
         },
         {
-          title: "Confidentiality and liability",
+          title: "Exit, liability, and compliance",
           bullets: [
-            "Each party protects confidential information with at least reasonable care and uses it only for contract performance.",
-            "Liability caps, exclusions, indemnities, and audit rights are governed by the signed enterprise agreement.",
+            "Knoledgr may suspend access where reasonably necessary for security, unlawful use, or material breach, especially where immediate action is needed to protect the service or customers.",
+            "Termination, export, retention, deletion, liability caps, indemnities, and negotiated remedies are governed by the customer's subscription terms or signed enterprise agreement.",
+            "Customers remain responsible for using Knoledgr in compliance with applicable law, export controls, sanctions, and their own internal governance obligations.",
           ],
         },
       ],
@@ -964,7 +968,7 @@ const pageConfigs = [
     route: "/security-annex",
     title: `Security Annex | ${BRAND}`,
     description:
-      "Review the Knoledgr security annex covering access controls, encryption, logging, incident response, resilience, and governance.",
+      "Review the Knoledgr security annex covering program governance, access control, encryption, tenant isolation, secure delivery, monitoring, incident response, resilience, and shared responsibility.",
     ogType: "article",
     structuredData: [
       {
@@ -972,7 +976,7 @@ const pageConfigs = [
         "@type": "WebPage",
         name: `Security Annex | ${BRAND}`,
         description:
-          "Review the Knoledgr security annex covering access controls, encryption, logging, incident response, resilience, and governance.",
+          "Review the Knoledgr security annex covering program governance, access control, encryption, tenant isolation, secure delivery, monitoring, incident response, resilience, and shared responsibility.",
         url: `${SITE_URL}/security-annex`,
         isPartOf: {
           "@type": "WebSite",
@@ -984,40 +988,43 @@ const pageConfigs = [
     body: renderLayout({
       eyebrow: "Security",
       heading: "Knoledgr Security Annex",
-      meta: "Effective Date: March 18, 2026",
+      meta: "Effective Date: March 22, 2026",
       lead:
-        "The security annex summarizes the technical and organizational controls Knoledgr uses to support tenant isolation, secure product delivery, operational resilience, and enterprise assurance.",
+        "This annex summarizes the technical and organizational safeguards Knoledgr uses to support tenant isolation, secure delivery, operational resilience, and enterprise assurance across the platform.",
       actions: [
         { href: "/security-annex", label: "Open security annex", primary: true },
         { href: "/terms", label: "View terms" },
       ],
       sections: [
         {
-          title: "Core security controls",
+          title: "Program, access, and transport protection",
           bullets: [
-            "Role-based and least-privilege access management for production systems and administrative actions.",
-            "TLS for data in transit, secure storage practices, protected credentials, and restricted access to sensitive components.",
-            "Audit logging, monitoring, and alerting for troubleshooting, access review, and abnormal behavior detection.",
+            "Knoledgr maintains a security program intended to support product reliability, organization isolation, controlled operations, and incident readiness.",
+            "Administrative and production access is intended to follow role-based and least-privilege principles, with privileged actions limited to authorized personnel.",
+            "The platform is designed to use TLS or equivalent protections for data transmitted over public networks, while sensitive credentials and tokens are expected to be handled through restricted operational workflows.",
           ],
         },
         {
-          title: "Isolation and remediation",
+          title: "Isolation, delivery, and remediation",
           bullets: [
-            "Organization-scoped product and backend workflows are designed to keep customer data isolated.",
-            "Vulnerability management prioritizes severity, exposure, and customer impact, with accelerated handling for high-risk issues.",
+            "Organization-scoped product and backend workflows are designed to keep customer records and operational reads isolated except for intentionally restricted platform-administration functions.",
+            "Application and infrastructure changes are expected to move through controlled development and deployment workflows rather than unmanaged direct changes.",
+            "Security issues are reviewed through remediation workflows that account for severity, exposure, exploitability, and customer impact.",
           ],
         },
         {
-          title: "Incident response and resilience",
+          title: "Monitoring, incident response, and resilience",
           bullets: [
-            "Incident procedures cover triage, containment, remediation, and customer communication.",
-            "Continuity is supported through operational monitoring, controlled deployment workflows, and infrastructure practices that reduce service interruption risk.",
+            "Audit logging, monitoring, and alerting are used to support troubleshooting, access review, abuse investigation, and security-relevant detection where operationally appropriate.",
+            "Incident response procedures are intended to support triage, containment, remediation, recovery, and customer communication when a confirmed incident affects customer data.",
+            "Continuity and recovery approaches depend on the service component, hosting configuration, customer plan, and any negotiated enterprise commitments.",
           ],
         },
         {
-          title: "Vendor controls and contact",
+          title: "Vendor oversight and shared responsibility",
           bullets: [
-            "Third-party providers used for infrastructure, monitoring, communication, or related services are reviewed against contractual and security expectations.",
+            "Third-party providers may support infrastructure, communications, monitoring, billing, storage, and AI or model functionality and are managed according to contractual and operational expectations appropriate to the service provided.",
+            "Customers remain responsible for what data they place into the service, how they configure roles and integrations, and how their personnel use the platform.",
             "Enterprise security and assurance requests can be sent to the Knoledgr security team.",
           ],
         },

@@ -121,7 +121,7 @@ function AdminOnlyRoute() {
 
 function StaffOnlyRoute() {
   return (
-    <ProtectedRoute staffOnly={true}>
+    <ProtectedRoute>
       <Outlet />
     </ProtectedRoute>
   );

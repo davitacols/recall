@@ -605,6 +605,41 @@ const BASE_DOCUMENTATION_GROUPS = [
     title: "Integrations",
     pages: [
       {
+        id: "slack",
+        slug: "integrations/slack",
+        title: "Slack Alert Setup",
+        summary: "Connect Slack so decision, blocker, and sprint signals reach the right channel without extra manual posting.",
+        readTime: "3 min",
+        audience: "Admins, delivery leads, team leads",
+        routes: ["/integrations"],
+        sections: [
+          {
+            heading: "What you need before setup",
+            bullets: [
+              "Slack workspace access that can create or edit an app.",
+              "An incoming webhook URL for the destination channel.",
+              "A clear decision on which signals Knoledgr should send: decisions, blockers, sprint summaries, or a tighter subset.",
+            ],
+          },
+          {
+            heading: "Recommended Slack setup flow",
+            bullets: [
+              "Create the incoming webhook inside Slack and bind it to a channel that should receive Knoledgr updates.",
+              "Paste the webhook URL into the Integrations page, confirm the destination channel, and decide which alert types belong there.",
+              "Save the configuration, enable Slack, and run Test before assuming the channel is wired correctly.",
+            ],
+          },
+          {
+            heading: "Operational guidance",
+            bullets: [
+              "Use a dedicated channel when possible so delivery and decision alerts remain visible.",
+              "Do not over-post every event; teams trust the integration more when the signal stays high.",
+              "If the test passes but no live alerts appear later, re-check the webhook URL and the chosen alert toggles first.",
+            ],
+          },
+        ],
+      },
+      {
         id: "github",
         slug: "integrations/github",
         title: "GitHub Advanced Sync",

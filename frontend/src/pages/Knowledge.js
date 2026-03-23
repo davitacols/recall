@@ -5,7 +5,6 @@ import {
   ArrowTopRightOnSquareIcon,
   BeakerIcon,
   ChartBarIcon,
-  CpuChipIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
   ShareIcon,
@@ -17,7 +16,6 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
 import BM25 from "../utils/bm25";
-import { useAuth } from "../hooks/useAuth";
 
 const QUICK_QUERIES = [
   "architecture tradeoffs",
@@ -141,7 +139,6 @@ function StatCard({ label, value, helper, tone, palette }) {
 export default function Knowledge() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -172,7 +169,6 @@ export default function Knowledge() {
     forgotten: [],
     faq: [],
   });
-  const [trainingState, setTrainingState] = useState({ running: false, error: "", result: null });
 
   const syncSearchParams = (nextQuery, nextTypes) => {
     const params = {};
@@ -271,20 +267,6 @@ export default function Knowledge() {
 
     return () => clearTimeout(timer);
   }, [query]);
-
-  const runDeepTraining = async () => {
-    setTrainingState({ running: true, error: "", result: null });
-    try {
-      const response = await api.post("/api/knowledge/ai/train-deep-model/", {
-        epochs: 3,
-        max_samples: 800,
-      });
-      setTrainingState({ running: false, error: "", result: response.data?.training || null });
-    } catch (trainingError) {
-      const message = trainingError?.response?.data?.error || "Training failed.";
-      setTrainingState({ running: false, error: message, result: null });
-    }
-  };
 
   const toggleSearchType = (typeKey) => {
     setSearchTypes((previous) =>
@@ -534,31 +516,7 @@ export default function Knowledge() {
             <FeatureLink to="/knowledge/graph" icon={ShareIcon} label="Graph" />
             <FeatureLink to="/knowledge/analytics" icon={ChartBarIcon} label="Analytics" />
             <FeatureLink to="/knowledge-health" icon={BeakerIcon} label="Health" />
-            {["admin", "manager"].includes(String(user?.role || "")) ? (
-              <button
-                type="button"
-                onClick={runDeepTraining}
-                disabled={trainingState.running}
-                className="ui-btn-polish"
-                style={{ ...ui.primaryButton, opacity: trainingState.running ? 0.65 : 1 }}
-              >
-                <CpuChipIcon style={{ width: 15, height: 15 }} />
-                {trainingState.running ? "Training..." : "Train Deep Model"}
-              </button>
-            ) : null}
           </div>
-
-          {(trainingState.error || trainingState.result) ? (
-            <div style={{ marginTop: 12, borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 12 }}>
-              {trainingState.error ? (
-                <p style={{ margin: 0, fontSize: 12, color: "var(--app-danger)" }}>{trainingState.error}</p>
-              ) : (
-                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                  Model trained across {Object.keys(trainingState.result?.label_map || {}).length || 0} organization domains. Accuracy: {trainingState.result?.metrics?.accuracy ?? "N/A"}, dataset: {trainingState.result?.dataset_size ?? 0}.
-                </p>
-              )}
-            </div>
-          ) : null}
         </section>
 
         {!searched ? (

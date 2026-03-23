@@ -1039,15 +1039,7 @@ const pageConfigs = [
   },
 ];
 
-const redirectConfigs = [
-  {
-    route: "/home",
-    target: "/",
-    title: `${BRAND} | Decision Memory for Teams`,
-    description:
-      "Knoledgr helps teams capture decisions, documents, and conversations in one knowledge-first workspace that keeps context searchable and reusable.",
-  },
-];
+const redirectConfigs = [];
 
 function buildPageHtml(template, config) {
   const canonicalUrl = `${SITE_URL}${config.route}`;

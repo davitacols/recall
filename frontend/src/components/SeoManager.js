@@ -29,7 +29,7 @@ function docsSlugFromPathname(pathname) {
 }
 
 function resolveMeta(pathname) {
-  if (pathname === "/" || pathname === "/home") {
+  if (pathname === "/") {
     return {
       title: `${BRAND} | Decision Memory for Teams`,
       description:

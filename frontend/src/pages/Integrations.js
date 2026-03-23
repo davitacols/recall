@@ -440,6 +440,7 @@ function SlackConfig({ value, onChange, darkMode }) {
 
 function GitHubConfig({ value, status, onChange, darkMode }) {
   const readiness = status?.webhook_readiness;
+  const observability = status?.webhook_observability;
   const readinessTone =
     readiness?.state === "ready"
       ? darkMode
@@ -471,6 +472,31 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
           <SignalCard
             label="Deployments"
             value={`${status.engineering_summary?.deployments || 0}`}
+            darkMode={darkMode}
+          />
+        </div>
+      ) : null}
+
+      {status?.configured ? (
+        <div className="grid gap-3 md:grid-cols-4">
+          <SignalCard
+            label="Webhook Health"
+            value={(observability?.health || "awaiting_events").replaceAll("_", " ")}
+            darkMode={darkMode}
+          />
+          <SignalCard
+            label="Last Delivery"
+            value={observability?.last_delivery_at ? new Date(observability.last_delivery_at).toLocaleDateString() : "None"}
+            darkMode={darkMode}
+          />
+          <SignalCard
+            label="Last Processed"
+            value={observability?.last_success_at ? new Date(observability.last_success_at).toLocaleDateString() : "None"}
+            darkMode={darkMode}
+          />
+          <SignalCard
+            label="Recent Failures"
+            value={`${observability?.recent_failure_count || 0}`}
             darkMode={darkMode}
           />
         </div>
@@ -529,6 +555,75 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
           <p className="mt-2 break-all text-xs opacity-80">Webhook URL: {readiness.webhook_url}</p>
         ) : null}
       </div>
+      {status?.configured ? (
+        <div
+          className={`rounded-xl border p-4 space-y-3 ${
+            darkMode ? "border-stone-700 bg-stone-800/70" : "border-stone-200 bg-stone-50/60"
+          }`}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Webhook Delivery Monitor</p>
+              <p className={`mt-1 text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                Recent GitHub deliveries are tracked as processed, ignored, or failed so repo health is visible inside Knoledgr.
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <StatusPill label="Processed" value={observability?.recent_processed_count || 0} tone="emerald" darkMode={darkMode} />
+              <StatusPill label="Ignored" value={observability?.recent_ignored_count || 0} tone="amber" darkMode={darkMode} />
+              <StatusPill label="Failed" value={observability?.recent_failure_count || 0} tone="rose" darkMode={darkMode} />
+            </div>
+          </div>
+          {observability?.recent_deliveries?.length ? (
+            <div className="space-y-2">
+              {observability.recent_deliveries.slice(0, 5).map((delivery) => (
+                <div
+                  key={delivery.id}
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    darkMode ? "border-stone-700 bg-stone-900 text-stone-200" : "border-stone-200 bg-white text-stone-700"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">
+                        {[delivery.event, delivery.action || null].filter(Boolean).join(" | ")}
+                      </p>
+                      <p className={`mt-1 text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                        {[
+                          delivery.delivery_id ? `Delivery ${delivery.delivery_id}` : null,
+                          delivery.created_at ? new Date(delivery.created_at).toLocaleString() : null,
+                          delivery.repository_owner && delivery.repository_name
+                            ? `${delivery.repository_owner}/${delivery.repository_name}`
+                            : null,
+                        ].filter(Boolean).join(" | ")}
+                      </p>
+                      {delivery.message ? (
+                        <p className={`mt-2 text-xs ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{delivery.message}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <DeliveryStateBadge state={delivery.processing_state} darkMode={darkMode} />
+                      <DeliveryStateBadge
+                        state={delivery.signature_valid ? "signed" : "unsigned"}
+                        darkMode={darkMode}
+                        kind="signature"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              className={`rounded-lg border border-dashed px-3 py-4 text-sm ${
+                darkMode ? "border-stone-600 text-stone-400" : "border-stone-300 text-stone-500"
+              }`}
+            >
+              No webhook deliveries yet. Once GitHub starts sending events, Knoledgr will show the last processed and failed deliveries here.
+            </div>
+          )}
+        </div>
+      ) : null}
       {status?.recent_activity?.length ? (
         <div
           className={`rounded-xl border p-4 space-y-3 ${
@@ -555,6 +650,39 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
       ) : null}
       <GitHubDecisionLinker enabled={value.enabled} darkMode={darkMode} />
     </div>
+  );
+}
+
+function StatusPill({ label, value, tone, darkMode }) {
+  const styles = {
+    emerald: darkMode ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-200 bg-emerald-50 text-emerald-800",
+    amber: darkMode ? "border-amber-500/40 bg-amber-500/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800",
+    rose: darkMode ? "border-rose-500/40 bg-rose-500/10 text-rose-200" : "border-rose-200 bg-rose-50 text-rose-800",
+  };
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${styles[tone]}`}>
+      {label}
+      <span>{value}</span>
+    </span>
+  );
+}
+
+function DeliveryStateBadge({ state, darkMode, kind = "state" }) {
+  const stateMap =
+    kind === "signature"
+      ? {
+          signed: darkMode ? "border-sky-500/40 bg-sky-500/10 text-sky-200" : "border-sky-200 bg-sky-50 text-sky-800",
+          unsigned: darkMode ? "border-stone-600 bg-stone-800 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700",
+        }
+      : {
+          processed: darkMode ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-200 bg-emerald-50 text-emerald-800",
+          ignored: darkMode ? "border-amber-500/40 bg-amber-500/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800",
+          failed: darkMode ? "border-rose-500/40 bg-rose-500/10 text-rose-200" : "border-rose-200 bg-rose-50 text-rose-800",
+        };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${stateMap[state] || stateMap.failed}`}>
+      {state.replaceAll("_", " ")}
+    </span>
   );
 }
 

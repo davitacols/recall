@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.agile.models import Issue
@@ -47,7 +47,7 @@ def github_activity(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def github_webhook(request):
     """Compatibility wrapper to the verified public webhook handler."""
     return verified_github_webhook(request)

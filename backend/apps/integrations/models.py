@@ -55,6 +55,38 @@ class GitHubIntegration(models.Model):
     def get_webhook_secret(self):
         return _decrypt_if_needed(self.webhook_secret)
 
+
+class GitHubWebhookDelivery(models.Model):
+    PROCESSING_STATE_CHOICES = [
+        ('processed', 'Processed'),
+        ('ignored', 'Ignored'),
+        ('failed', 'Failed'),
+    ]
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='github_webhook_deliveries')
+    integration = models.ForeignKey(GitHubIntegration, on_delete=models.CASCADE, related_name='webhook_deliveries')
+    event = models.CharField(max_length=50)
+    action = models.CharField(max_length=100, blank=True)
+    delivery_id = models.CharField(max_length=255, blank=True, db_index=True)
+    repository_owner = models.CharField(max_length=100, blank=True)
+    repository_name = models.CharField(max_length=100, blank=True)
+    processing_state = models.CharField(max_length=20, choices=PROCESSING_STATE_CHOICES, default='processed')
+    status_code = models.IntegerField(null=True, blank=True)
+    signature_valid = models.BooleanField(default=False)
+    message = models.TextField(blank=True)
+    summary = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'github_webhook_deliveries'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', '-created_at']),
+            models.Index(fields=['integration', '-created_at']),
+            models.Index(fields=['integration', 'processing_state', '-created_at']),
+        ]
+
+
 class JiraIntegration(models.Model):
     organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='jira')
     site_url = models.URLField()

@@ -73,6 +73,62 @@ def _webhook_readiness_payload(config, request=None):
     }
 
 
+def _serialize_webhook_delivery(delivery):
+    return {
+        "id": delivery.id,
+        "event": delivery.event,
+        "action": delivery.action,
+        "delivery_id": delivery.delivery_id,
+        "processing_state": delivery.processing_state,
+        "status_code": delivery.status_code,
+        "signature_valid": delivery.signature_valid,
+        "message": delivery.message,
+        "repository_owner": delivery.repository_owner,
+        "repository_name": delivery.repository_name,
+        "summary": delivery.summary or {},
+        "created_at": _iso(delivery.created_at),
+    }
+
+
+def get_webhook_observability(config):
+    if not config:
+        return {
+            "health": "not_configured",
+            "last_delivery_at": None,
+            "last_success_at": None,
+            "recent_failure_count": 0,
+            "recent_processed_count": 0,
+            "recent_ignored_count": 0,
+            "recent_deliveries": [],
+        }
+
+    deliveries = list(config.webhook_deliveries.order_by("-created_at")[:8])
+    last_delivery = deliveries[0] if deliveries else None
+    last_success = next((item for item in deliveries if item.processing_state == "processed"), None)
+    recent_failure_count = sum(1 for item in deliveries if item.processing_state == "failed")
+    recent_processed_count = sum(1 for item in deliveries if item.processing_state == "processed")
+    recent_ignored_count = sum(1 for item in deliveries if item.processing_state == "ignored")
+
+    if not deliveries:
+        health = "awaiting_events"
+    elif recent_failure_count and recent_processed_count == 0:
+        health = "failing"
+    elif recent_failure_count:
+        health = "attention"
+    else:
+        health = "healthy"
+
+    return {
+        "health": health,
+        "last_delivery_at": _iso(last_delivery.created_at) if last_delivery else None,
+        "last_success_at": _iso(last_success.created_at) if last_success else None,
+        "recent_failure_count": recent_failure_count,
+        "recent_processed_count": recent_processed_count,
+        "recent_ignored_count": recent_ignored_count,
+        "recent_deliveries": [_serialize_webhook_delivery(item) for item in deliveries],
+    }
+
+
 def _serialize_recent_stored_activity(organization, limit=8):
     items = []
 
@@ -232,6 +288,7 @@ def serialize_github_config(config, request=None, include_remote_activity=False)
             },
             "recent_activity": [],
             "webhook_readiness": _webhook_readiness_payload(None, request=request),
+            "webhook_observability": get_webhook_observability(None),
         }
 
     organization = config.organization
@@ -257,6 +314,7 @@ def serialize_github_config(config, request=None, include_remote_activity=False)
             include_remote=include_remote_activity,
         ),
         "webhook_readiness": _webhook_readiness_payload(config, request=request),
+        "webhook_observability": get_webhook_observability(config),
     }
 
 
@@ -741,4 +799,3 @@ def get_issue_github_timeline(organization, issue):
             reverse=True,
         )[:8],
     }
-

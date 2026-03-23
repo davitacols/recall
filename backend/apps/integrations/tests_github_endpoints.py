@@ -1,3 +1,7 @@
+import hashlib
+import hmac
+import json
+
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -6,13 +10,14 @@ from apps.agile.models import Board, CodeCommit, Column, DecisionIssueLink, Depl
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
 from apps.integrations.models import Commit as IntegrationCommit
-from apps.integrations.models import GitHubIntegration, PullRequest as IntegrationPullRequest
+from apps.integrations.models import GitHubIntegration, GitHubWebhookDelivery, PullRequest as IntegrationPullRequest
 from apps.organizations.models import Organization, User
 
 
 class GitHubEndpointTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.webhook_client = APIClient()
         self.org = Organization.objects.create(name="GitHub QA", slug="github-qa")
         self.user = User.objects.create_user(
             username="github_admin",
@@ -153,6 +158,7 @@ class GitHubEndpointTests(TestCase):
         self.assertEqual(response.data["repo_slug"], "acme/justice-app")
         self.assertTrue(response.data["has_webhook_secret"])
         self.assertEqual(response.data["webhook_readiness"]["state"], "ready")
+        self.assertEqual(response.data["webhook_observability"]["health"], "awaiting_events")
         self.assertEqual(response.data["engineering_summary"]["decision_pull_requests"], 1)
         self.assertEqual(response.data["engineering_summary"]["issue_pull_requests"], 1)
         self.assertEqual(response.data["engineering_summary"]["commits"], 2)
@@ -205,3 +211,76 @@ class GitHubEndpointTests(TestCase):
                 pr_number=88,
             ).exists()
         )
+
+    def test_github_webhook_logs_processed_delivery_and_surfaces_it_in_config(self):
+        payload = {
+            "action": "opened",
+            "repository": {
+                "name": "justice-app",
+                "full_name": "acme/justice-app",
+                "owner": {"login": "acme"},
+            },
+            "pull_request": {
+                "number": 77,
+                "html_url": "https://github.com/acme/justice-app/pull/77",
+                "title": f"DECISION-{self.decision.id}: Ship the GitHub execution timeline",
+                "state": "open",
+                "merged": False,
+                "head": {"ref": f"decision/{self.decision.id}-ship-the-github-execution-timeline"},
+                "user": {"login": "octocat"},
+            },
+        }
+        body = json.dumps(payload)
+        signature = hmac.new(
+            self.integration.get_webhook_secret().encode("utf-8"),
+            body.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+        response = self.webhook_client.post(
+            "/api/integrations/github/webhook/",
+            data=body,
+            content_type="application/json",
+            HTTP_X_GITHUB_EVENT="pull_request",
+            HTTP_X_GITHUB_DELIVERY="delivery-123",
+            HTTP_X_HUB_SIGNATURE_256=f"sha256={signature}",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        delivery = GitHubWebhookDelivery.objects.get()
+        self.assertEqual(delivery.processing_state, "processed")
+        self.assertTrue(delivery.signature_valid)
+        self.assertEqual(delivery.event, "pull_request")
+        self.assertEqual(delivery.delivery_id, "delivery-123")
+
+        config_response = self.client.get("/api/integrations/fresh/github/config/")
+        self.assertEqual(config_response.status_code, 200)
+        self.assertEqual(config_response.data["webhook_observability"]["health"], "healthy")
+        self.assertEqual(config_response.data["webhook_observability"]["recent_processed_count"], 1)
+        self.assertEqual(config_response.data["webhook_observability"]["recent_failure_count"], 0)
+        self.assertEqual(config_response.data["webhook_observability"]["recent_deliveries"][0]["processing_state"], "processed")
+
+    def test_github_webhook_logs_failed_delivery_for_invalid_signature(self):
+        payload = {
+            "repository": {
+                "name": "justice-app",
+                "owner": {"login": "acme"},
+            },
+            "commits": [],
+        }
+        body = json.dumps(payload)
+
+        response = self.webhook_client.post(
+            "/api/integrations/github/webhook/",
+            data=body,
+            content_type="application/json",
+            HTTP_X_GITHUB_EVENT="push",
+            HTTP_X_GITHUB_DELIVERY="delivery-bad",
+            HTTP_X_HUB_SIGNATURE_256="sha256=bad-signature",
+        )
+
+        self.assertEqual(response.status_code, 401)
+        delivery = GitHubWebhookDelivery.objects.get()
+        self.assertEqual(delivery.processing_state, "failed")
+        self.assertFalse(delivery.signature_valid)
+        self.assertEqual(delivery.message, "invalid_signature")

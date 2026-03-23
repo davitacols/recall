@@ -1,6 +1,6 @@
 from django.urls import path
-from . import views, integration_endpoints
-from .github_integration import github_webhook, connect_github, github_commits, github_prs, list_integrations, github_activity
+from . import views, integration_endpoints, github_views
+from .github_integration import connect_github, github_commits, github_prs, list_integrations, github_activity
 
 urlpatterns = [
     # Webhooks
@@ -30,7 +30,7 @@ urlpatterns = [
     path('github/search/<int:decision_id>/', views.search_github_prs, name='search_github_prs'),
     path('github/link/<int:decision_id>/', views.link_github_pr, name='link_github_pr'),
     path('github/', views.github_integration, name='github_integration'),
-    path('github/webhook/', github_webhook, name='github_webhook'),
+    path('github/webhook/', github_views.github_webhook, name='github_webhook'),
     path('github/connect/', connect_github, name='connect_github'),
     path('github/commits/<int:issue_id>/', github_commits, name='github_commits'),
     path('github/prs/<int:issue_id>/', github_prs, name='github_prs'),

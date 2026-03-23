@@ -10,6 +10,7 @@ import json
 import re
 
 from .models import GitHubIntegration, PullRequest, Commit
+from .github_engineering import link_manual_pr_to_decision
 from apps.decisions.models import Decision
 
 @api_view(['POST'])
@@ -30,24 +31,12 @@ def link_pr_to_decision(request, decision_id):
     
     try:
         decision = Decision.objects.get(id=decision_id, organization=request.user.organization)
-        
-        # Create or update PR
-        pr, created = PullRequest.objects.get_or_create(
-            organization=request.user.organization,
-            pr_number=pr_number,
-            defaults={
-                'pr_url': pr_url,
-                'title': f'PR #{pr_number}',
-                'status': 'open',
-                'branch_name': '',
-                'author': '',
-                'created_at': timezone.now()
-            }
+        pr = link_manual_pr_to_decision(
+            decision,
+            pr_url,
+            title=f"PR #{pr_number}",
+            source="github_manual",
         )
-        
-        pr.decision = decision
-        pr.save()
-        
         return Response({'message': 'PR linked successfully', 'pr_id': pr.id})
     except Decision.DoesNotExist:
         return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -153,21 +142,19 @@ def handle_pull_request_event(data):
         
         decision = Decision.objects.get(id=decision_id, organization=integration.organization)
         
-        # Create or update PR
-        pr, created = PullRequest.objects.update_or_create(
-            organization=integration.organization,
-            pr_number=pr_number,
-            defaults={
-                'decision': decision,
-                'pr_url': pr_url,
-                'title': title,
-                'status': 'merged' if merged else state,
-                'branch_name': branch_name,
-                'author': author,
-                'created_at': timezone.now(),
-                'merged_at': timezone.now() if merged else None
-            }
+        pr = link_manual_pr_to_decision(
+            decision,
+            pr_url,
+            title=title,
+            status='merged' if merged else state,
+            author=author,
+            branch_name=branch_name,
+            source="github_webhook",
         )
+        if pr:
+            pr.created_at = timezone.now()
+            pr.merged_at = timezone.now() if merged else pr.merged_at
+            pr.save()
         
         # Auto-update decision status
         if merged and decision.status != 'implemented':

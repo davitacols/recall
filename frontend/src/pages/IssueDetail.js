@@ -85,8 +85,26 @@ function IssueDetail() {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
   const [attachmentCount, setAttachmentCount] = useState(0);
+  const [githubTimeline, setGithubTimeline] = useState(null);
+  const [githubLoading, setGithubLoading] = useState(false);
 
   const resolvedIssueId = issue?.id ? String(issue.id) : String(issueId);
+
+  const fetchGithubTimeline = useCallback(async (targetIssueId) => {
+    if (!targetIssueId) {
+      setGithubTimeline(null);
+      return;
+    }
+    try {
+      setGithubLoading(true);
+      const response = await api.get(`/api/integrations/fresh/github/issues/${targetIssueId}/timeline/`);
+      setGithubTimeline(response.data);
+    } catch (_) {
+      setGithubTimeline(null);
+    } finally {
+      setGithubLoading(false);
+    }
+  }, []);
 
   const fetchIssue = useCallback(async () => {
     try {
@@ -96,6 +114,7 @@ function IssueDetail() {
         navigate(`/issues/${response.data.id}`, { replace: true });
       }
       setIssue(response.data);
+      fetchGithubTimeline(response.data.id);
       setFormData({
         title: response.data.title || "",
         description: response.data.description || "",
@@ -121,7 +140,7 @@ function IssueDetail() {
     } finally {
       setLoading(false);
     }
-  }, [issueId, navigate]);
+  }, [fetchGithubTimeline, issueId, navigate]);
 
   const fetchTeamMembers = useCallback(async () => {
     try {
@@ -702,6 +721,8 @@ function IssueDetail() {
                 />
               )}
 
+              <GitHubTimelineCard timeline={githubTimeline} loading={githubLoading} palette={palette} />
+
               <div style={{ ...moduleCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                 <TimeEstimate issueId={resolvedIssueId} estimate={issue.time_estimate} onUpdate={fetchIssue} />
               </div>
@@ -741,6 +762,117 @@ function InfoRow({ icon: Icon, label, value, palette, valueNode }) {
         <Icon style={icon14} /> {label}
       </p>
       <div style={{ minWidth: 0 }}>{valueNode || <span style={{ ...valueText, color: palette.text }}>{value}</span>}</div>
+    </div>
+  );
+}
+
+function GitHubTimelineCard({ timeline, loading, palette }) {
+  if (loading) {
+    return (
+      <div style={{ ...moduleCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+        <p style={{ ...bodySm, color: palette.muted }}>Loading GitHub timeline...</p>
+      </div>
+    );
+  }
+
+  if (!timeline?.repository?.configured) {
+    return null;
+  }
+
+  const recent = timeline.recent_activity || [];
+  return (
+    <div style={{ ...moduleCard, border: `1px solid ${palette.border}`, background: palette.cardAlt, display: "grid", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <div>
+          <p style={{ ...eyebrowText, color: palette.muted }}>GitHub Timeline</p>
+          <p style={{ ...sectionTitle, color: palette.text, marginTop: 4 }}>
+            {(timeline.implementation_status || "not_started").replaceAll("_", " ")}
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <MiniMetric label="PRs" value={timeline.summary?.pull_requests || 0} palette={palette} />
+          <MiniMetric label="Commits" value={timeline.summary?.commits || 0} palette={palette} />
+          <MiniMetric label="Deploys" value={timeline.summary?.deployments || 0} palette={palette} />
+        </div>
+      </div>
+
+      <div style={{ ...infoRow, border: `1px solid ${palette.border}`, background: palette.card }}>
+        <p style={{ ...infoLabel, color: palette.muted }}>Suggested branch</p>
+        <p style={{ ...infoValue, color: palette.text }}>{timeline.naming?.suggested_branch || "-"}</p>
+      </div>
+
+      {timeline.linked_decisions?.length ? (
+        <div style={{ display: "grid", gap: 8 }}>
+          {timeline.linked_decisions.map((decision) => (
+            <div key={decision.id} style={{ ...infoRow, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <p style={{ ...infoLabel, color: palette.muted }}>Linked decision</p>
+              <p style={{ ...infoValue, color: palette.text }}>
+                {decision.title} ({decision.impact_type?.replaceAll("_", " ")})
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {recent.length ? (
+        <div style={{ display: "grid", gap: 8 }}>
+          {recent.slice(0, 3).map((item, index) => {
+            const content = (
+              <>
+                <p style={{ ...bodySmStrong, color: palette.text }}>{item.title || item.type}</p>
+                <p style={{ ...bodySm, color: palette.muted }}>
+                  {[item.subtitle, item.author, item.timestamp ? new Date(item.timestamp).toLocaleString() : null].filter(Boolean).join(" | ")}
+                </p>
+              </>
+            );
+
+            if (!item.url) {
+              return (
+                <div
+                  key={`${item.type}-${index}`}
+                  style={{
+                    ...moduleCard,
+                    border: `1px solid ${palette.border}`,
+                    background: palette.card,
+                    display: "grid",
+                    gap: 4,
+                  }}
+                >
+                  {content}
+                </div>
+              );
+            }
+
+            return (
+              <a
+                key={`${item.type}-${item.url}`}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  ...moduleCard,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.card,
+                  textDecoration: "none",
+                  display: "grid",
+                  gap: 4,
+                }}
+              >
+                {content}
+              </a>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MiniMetric({ label, value, palette }) {
+  return (
+    <div style={{ ...moduleCard, padding: "10px 12px", border: `1px solid ${palette.border}`, background: palette.card }}>
+      <p style={{ ...eyebrowText, color: palette.muted }}>{label}</p>
+      <p style={{ ...bodyLgStrong, color: palette.text, marginTop: 4 }}>{value}</p>
     </div>
   );
 }
@@ -836,7 +968,13 @@ const valueText = { fontSize: 13, fontWeight: 700, lineHeight: 1.5, wordBreak: "
 const infoStack = { display: "grid", gap: 10 };
 const infoRow = { borderRadius: 16, padding: "12px 14px", display: "grid", gap: 6 };
 const infoLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", gap: 5 };
+const infoValue = { margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.5, wordBreak: "break-word" };
 const bodyText = { margin: 0, fontSize: 14, lineHeight: 1.6 };
+const bodySm = { margin: 0, fontSize: 12, lineHeight: 1.55 };
+const bodySmStrong = { margin: 0, fontSize: 12, fontWeight: 700, lineHeight: 1.55 };
+const bodyLgStrong = { margin: 0, fontSize: 18, fontWeight: 800, lineHeight: 1 };
+const eyebrowText = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
+const sectionTitle = { margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em" };
 const icon14 = { width: 14, height: 14 };
 
 export default IssueDetail;

@@ -47,6 +47,7 @@ export default function Integrations() {
     access_token: "",
     repo_owner: "",
     repo_name: "",
+    webhook_secret: "",
     auto_link_prs: true,
     enabled: false,
   });
@@ -77,9 +78,10 @@ export default function Integrations() {
   useEffect(() => {
     if (!github) return;
     setGithubForm({
-      access_token: github.access_token || "",
+      access_token: "",
       repo_owner: github.repo_owner || "",
       repo_name: github.repo_name || "",
+      webhook_secret: "",
       auto_link_prs: github.auto_link_prs ?? true,
       enabled: Boolean(github.enabled),
     });
@@ -146,7 +148,7 @@ export default function Integrations() {
     try {
       const [s, g, j] = await Promise.all([
         api.get("/api/integrations/slack/"),
-        api.get("/api/integrations/github/"),
+        api.get("/api/integrations/fresh/github/config/"),
         api.get("/api/integrations/jira/"),
       ]);
       setSlack(s.data || null);
@@ -179,7 +181,7 @@ export default function Integrations() {
       if (active === "slack") {
         await api.post("/api/integrations/slack/", slackForm);
       } else if (active === "github") {
-        await api.post("/api/integrations/github/", githubForm);
+        await api.post("/api/integrations/fresh/github/config/", githubForm);
       } else {
         await api.post("/api/integrations/jira/", jiraForm);
       }
@@ -336,7 +338,7 @@ export default function Integrations() {
             <SlackConfig value={slackForm} onChange={setSlackForm} darkMode={darkMode} />
           ) : null}
           {active === "github" ? (
-            <GitHubConfig value={githubForm} onChange={setGithubForm} darkMode={darkMode} />
+            <GitHubConfig value={githubForm} status={github} onChange={setGithubForm} darkMode={darkMode} />
           ) : null}
           {active === "jira" ? (
             <JiraConfig value={jiraForm} onChange={setJiraForm} darkMode={darkMode} />
@@ -436,9 +438,44 @@ function SlackConfig({ value, onChange, darkMode }) {
   );
 }
 
-function GitHubConfig({ value, onChange, darkMode }) {
+function GitHubConfig({ value, status, onChange, darkMode }) {
+  const readiness = status?.webhook_readiness;
+  const readinessTone =
+    readiness?.state === "ready"
+      ? darkMode
+        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+        : "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : readiness?.state === "missing_secret"
+        ? darkMode
+          ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+          : "border-amber-200 bg-amber-50 text-amber-800"
+        : darkMode
+          ? "border-stone-700 bg-stone-800 text-stone-300"
+          : "border-stone-200 bg-stone-50 text-stone-700";
+
   return (
     <div className="space-y-5">
+      {status?.configured ? (
+        <div className="grid gap-3 md:grid-cols-4">
+          <SignalCard label="Repository" value={status.repo_slug || "-"} darkMode={darkMode} />
+          <SignalCard
+            label="Decision PRs"
+            value={`${status.engineering_summary?.decision_pull_requests || 0}`}
+            darkMode={darkMode}
+          />
+          <SignalCard
+            label="Issue PRs"
+            value={`${status.engineering_summary?.issue_pull_requests || 0}`}
+            darkMode={darkMode}
+          />
+          <SignalCard
+            label="Deployments"
+            value={`${status.engineering_summary?.deployments || 0}`}
+            darkMode={darkMode}
+          />
+        </div>
+      ) : null}
+
       <Field label="Access Token" hint="Use a PAT with repo read access." darkMode={darkMode}>
         <TextInput
           darkMode={darkMode}
@@ -466,13 +503,72 @@ function GitHubConfig({ value, onChange, darkMode }) {
           />
         </Field>
       </div>
+      <Field
+        label="Webhook Secret"
+        hint="Use the same secret in GitHub so pull_request and push events can be verified."
+        darkMode={darkMode}
+      >
+        <TextInput
+          darkMode={darkMode}
+          type="password"
+          value={value.webhook_secret}
+          placeholder={status?.has_webhook_secret ? "Webhook secret already configured" : "Add webhook secret"}
+          onChange={(e) => onChange((prev) => ({ ...prev, webhook_secret: e.target.value }))}
+        />
+      </Field>
       <Check
         checked={value.auto_link_prs}
         onChange={(e) => onChange((prev) => ({ ...prev, auto_link_prs: e.target.checked }))}
         label="Auto-link pull requests to decisions"
         darkMode={darkMode}
       />
+      <div className={`rounded-xl border p-4 text-sm ${readinessTone}`}>
+        <p className="font-semibold">{readiness?.label || "Webhook setup"}</p>
+        <p className="mt-1">{readiness?.detail || "Connect the repo to unlock engineering timelines."}</p>
+        {readiness?.webhook_url ? (
+          <p className="mt-2 break-all text-xs opacity-80">Webhook URL: {readiness.webhook_url}</p>
+        ) : null}
+      </div>
+      {status?.recent_activity?.length ? (
+        <div
+          className={`rounded-xl border p-4 space-y-3 ${
+            darkMode ? "border-stone-700 bg-stone-800/70" : "border-stone-200 bg-stone-50/60"
+          }`}
+        >
+          <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Recent Engineering Activity</p>
+          <div className="space-y-2">
+            {status.recent_activity.slice(0, 4).map((item, index) => (
+              <div
+                key={`${item.type}-${item.url || index}`}
+                className={`rounded-lg border px-3 py-2 text-sm ${
+                  darkMode ? "border-stone-700 bg-stone-900 text-stone-200" : "border-stone-200 bg-white text-stone-700"
+                }`}
+              >
+                <p className="font-medium">{item.title || item.type}</p>
+                <p className={`mt-1 text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                  {[item.subtitle, item.author, item.timestamp ? new Date(item.timestamp).toLocaleString() : null].filter(Boolean).join(" | ")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <GitHubDecisionLinker enabled={value.enabled} darkMode={darkMode} />
+    </div>
+  );
+}
+
+function SignalCard({ label, value, darkMode }) {
+  return (
+    <div
+      className={`rounded-xl border px-4 py-3 ${
+        darkMode ? "border-stone-700 bg-stone-800/70" : "border-stone-200 bg-stone-50/60"
+      }`}
+    >
+      <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+        {label}
+      </p>
+      <p className={`mt-2 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
     </div>
   );
 }

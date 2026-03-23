@@ -2,9 +2,15 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-import requests
-
+from apps.agile.models import Issue
+from apps.integrations.github_engineering import (
+    get_issue_github_timeline,
+    get_recent_github_activity,
+    save_github_config,
+    serialize_github_config,
+)
 from apps.integrations.models import GitHubIntegration
+from apps.integrations.github_views import github_webhook as verified_github_webhook
 from apps.users.auth_utils import check_rate_limit
 
 
@@ -37,55 +43,14 @@ def github_activity(request):
     github = GitHubIntegration.objects.filter(organization=request.user.organization).first()
     if not github:
         return Response([])
-
-    activity = []
-    headers = {"Authorization": f"token {github.get_access_token()}"}
-
-    try:
-        commits_url = f"https://api.github.com/repos/{github.repo_owner}/{github.repo_name}/commits"
-        commits_resp = requests.get(commits_url, headers=headers, params={"per_page": 5}, timeout=5)
-        if commits_resp.status_code == 200:
-            commits = commits_resp.json()
-            for commit in commits:
-                activity.append(
-                    {
-                        "type": "commit",
-                        "message": commit.get("commit", {}).get("message", "").split("\n")[0],
-                        "author": commit.get("commit", {}).get("author", {}).get("name", ""),
-                        "date": commit.get("commit", {}).get("author", {}).get("date"),
-                        "url": commit.get("html_url"),
-                    }
-                )
-    except Exception:
-        pass
-
-    try:
-        prs_url = f"https://api.github.com/repos/{github.repo_owner}/{github.repo_name}/pulls"
-        prs_resp = requests.get(prs_url, headers=headers, params={"per_page": 5, "state": "all"}, timeout=5)
-        if prs_resp.status_code == 200:
-            prs = prs_resp.json()
-            for pr in prs:
-                activity.append(
-                    {
-                        "type": "pr",
-                        "title": pr.get("title", ""),
-                        "author": pr.get("user", {}).get("login", ""),
-                        "date": pr.get("created_at"),
-                        "url": pr.get("html_url"),
-                    }
-                )
-    except Exception:
-        pass
-
-    activity.sort(key=lambda x: x.get("date") or "", reverse=True)
-    return Response(activity[:10])
+    return Response(get_recent_github_activity(request.user.organization, config=github, limit=10, include_remote=True))
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def github_webhook(request):
-    """Placeholder webhook endpoint (non-public route should enforce auth)."""
-    return Response({"status": "received"})
+    """Compatibility wrapper to the verified public webhook handler."""
+    return verified_github_webhook(request)
 
 
 @api_view(["POST"])
@@ -107,27 +72,33 @@ def connect_github(request):
     if not repo_owner or not repo_name:
         return Response({"error": "Invalid repo URL format. Use: owner/repo"}, status=400)
 
-    GitHubIntegration.objects.update_or_create(
-        organization=request.user.organization,
-        defaults={
+    config = save_github_config(
+        request.user.organization,
+        {
             "access_token": github_token,
             "repo_owner": repo_owner,
             "repo_name": repo_name,
             "enabled": True,
         },
     )
-    return Response({"status": "GitHub connected", "repo": f"{repo_owner}/{repo_name}"})
+    return Response({"status": "GitHub connected", "github": serialize_github_config(config, request=request)})
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def github_commits(request, issue_id):
     """Get commits linked to an issue."""
-    return Response({"commits": []})
+    issue = Issue.objects.filter(id=issue_id, organization=request.user.organization).first()
+    if not issue:
+        return Response({"error": "Issue not found"}, status=404)
+    return Response({"commits": get_issue_github_timeline(request.user.organization, issue)["commits"]})
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def github_prs(request, issue_id):
     """Get PRs linked to an issue."""
-    return Response({"prs": []})
+    issue = Issue.objects.filter(id=issue_id, organization=request.user.organization).first()
+    if not issue:
+        return Response({"error": "Issue not found"}, status=404)
+    return Response({"prs": get_issue_github_timeline(request.user.organization, issue)["pull_requests"]})

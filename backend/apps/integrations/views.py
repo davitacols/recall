@@ -1,12 +1,16 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
-from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 import requests
 
+from apps.integrations.github_engineering import (
+    link_manual_pr_to_decision,
+    save_github_config,
+    serialize_github_config,
+)
 from apps.integrations.models import GitHubIntegration, JiraIntegration, SlackIntegration
 from apps.integrations.utils import post_to_slack
 from apps.users.auth_utils import check_rate_limit, validate_email
@@ -60,37 +64,20 @@ def slack_integration(request):
 @permission_classes([IsAuthenticated])
 def github_integration(request):
     if request.method == "GET":
-        try:
-            github = GitHubIntegration.objects.get(organization=request.user.organization)
-            return Response(
-                {
-                    "enabled": github.enabled,
-                    "repo_owner": github.repo_owner,
-                    "repo_name": github.repo_name,
-                    "auto_link_prs": github.auto_link_prs,
-                }
-            )
-        except GitHubIntegration.DoesNotExist:
-            return Response({"enabled": False})
+        github = GitHubIntegration.objects.filter(organization=request.user.organization).first()
+        return Response(serialize_github_config(github, request=request))
 
-    access_token = (request.data.get("access_token") or "").strip()
-    repo_owner = (request.data.get("repo_owner") or "").strip()
-    repo_name = (request.data.get("repo_name") or "").strip()
-    if not all([access_token, repo_owner, repo_name]):
-        return Response({"error": "access_token, repo_owner and repo_name are required"}, status=400)
+    try:
+        github = save_github_config(request.user.organization, request.data)
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=400)
 
-    GitHubIntegration.objects.update_or_create(
-        organization=request.user.organization,
-        defaults={
-            "access_token": access_token,
-            "repo_owner": repo_owner,
-            "repo_name": repo_name,
-            "enabled": request.data.get("enabled", True),
-            "auto_link_prs": request.data.get("auto_link_prs", True),
-        },
+    return Response(
+        {
+            "message": "GitHub connected",
+            "github": serialize_github_config(github, request=request),
+        }
     )
-
-    return Response({"message": "GitHub connected"})
 
 
 @api_view(["GET", "POST"])
@@ -225,19 +212,15 @@ def link_github_pr(request, decision_id):
         except ValidationError:
             return Response({"error": "Invalid pr_url"}, status=400)
 
-        if not decision.code_links:
-            decision.code_links = []
-
-        decision.code_links.append(
+        linked_pr = link_manual_pr_to_decision(decision, pr_url, source="integration_linker")
+        decision.refresh_from_db(fields=["code_links"])
+        return Response(
             {
-                "type": "github_pr",
-                "url": pr_url,
-                "linked_at": timezone.now().isoformat(),
+                "message": "PR linked",
+                "code_links": decision.code_links,
+                "pull_request_id": linked_pr.id if linked_pr else None,
             }
         )
-
-        decision.save()
-        return Response({"message": "PR linked", "code_links": decision.code_links})
     except Decision.DoesNotExist:
         return Response({"error": "Decision not found"}, status=404)
 

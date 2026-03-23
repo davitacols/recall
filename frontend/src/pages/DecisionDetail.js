@@ -47,6 +47,8 @@ function DecisionDetail() {
   const [replayResult, setReplayResult] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [contextRefreshKey, setContextRefreshKey] = useState(0);
+  const [githubTimeline, setGithubTimeline] = useState(null);
+  const [githubLoading, setGithubLoading] = useState(false);
   const [replayForm, setReplayForm] = useState({
     alternative_title: "",
     alternative_summary: "",
@@ -118,9 +120,23 @@ function DecisionDetail() {
     }
   };
 
+  const fetchDecisionGithub = async () => {
+    try {
+      setGithubLoading(true);
+      const res = await api.get(`/api/integrations/fresh/github/decisions/${id}/timeline/`);
+      setGithubTimeline(res.data);
+    } catch (error) {
+      console.error("Failed to fetch decision GitHub timeline:", error);
+      setGithubTimeline(null);
+    } finally {
+      setGithubLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchDecision();
     fetchDecisionIntelligence();
+    fetchDecisionGithub();
   }, [id]);
 
   useEffect(() => {
@@ -139,6 +155,7 @@ function DecisionDetail() {
       setPrUrl("");
       setShowLinkPR(false);
       fetchDecision();
+      fetchDecisionGithub();
     } catch (error) {
       console.error("Failed to link PR:", error);
       alert("Failed to link PR");
@@ -469,24 +486,11 @@ function DecisionDetail() {
                     </div>
                   </form>
                 )}
-
-                {decision.code_links?.length ? (
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {decision.code_links.map((link, index) => (
-                      <a key={index} href={link.url} target="_blank" rel="noreferrer" style={{ ...innerCard, border: `1px solid ${palette.border}`, display: "grid", gridTemplateColumns: "auto 1fr", gap: 8, textDecoration: "none", color: palette.text }}>
-                        <LinkIcon style={{ width: 16, height: 16, color: palette.muted, marginTop: 1 }} />
-                        <div>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{link.title || `PR #${link.number || ""}`}</p>
-                          <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>{link.url}</p>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center" }}>
-                    No linked PRs
-                  </div>
-                )}
+                <DecisionEngineeringSection
+                  timeline={githubTimeline}
+                  loading={githubLoading}
+                  palette={palette}
+                />
               </div>
             )}
 
@@ -870,6 +874,164 @@ function InfoRow({ label, value, palette }) {
     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, marginBottom: 6 }}>
       <span style={{ color: palette?.muted || "var(--app-muted)" }}>{label}</span>
       <span style={{ color: palette?.text || "var(--app-text)", fontWeight: 700 }}>{value}</span>
+    </div>
+  );
+}
+
+function DecisionEngineeringSection({ timeline, loading, palette }) {
+  if (loading) {
+    return (
+      <div style={{ ...innerCard, border: `1px solid ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center" }}>
+        Loading engineering timeline...
+      </div>
+    );
+  }
+
+  if (!timeline?.repository?.configured) {
+    return (
+      <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, display: "grid", gap: 6 }}>
+        <span>GitHub is not configured for this workspace yet.</span>
+        <span>Connect the repository in Integrations to unlock pull request, commit, and deployment timelines.</span>
+      </div>
+    );
+  }
+
+  const summary = timeline.summary || {};
+  const linkedIssues = timeline.linked_issues || [];
+  const pullRequests = timeline.pull_requests || [];
+  const commits = timeline.commits || [];
+  const deployments = timeline.deployments || [];
+  const manualLinks = timeline.manual_links || [];
+
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 }}>
+        <SummaryCard label="Status" value={(timeline.implementation_status || "not_started").replaceAll("_", " ")} palette={palette} />
+        <SummaryCard label="Pull Requests" value={`${summary.decision_pull_requests || 0} direct / ${summary.issue_pull_requests || 0} issue`} palette={palette} />
+        <SummaryCard label="Commits" value={`${summary.commits || 0}`} palette={palette} />
+        <SummaryCard label="Deployments" value={`${summary.deployments || 0}`} palette={palette} />
+      </div>
+
+      <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+        <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Repository Readiness</p>
+        <InfoRow label="Repository" value={timeline.repository?.repo_slug || "-"} palette={palette} />
+        <InfoRow label="Webhook" value={timeline.repository?.webhook_readiness?.label || "Not configured"} palette={palette} />
+        <InfoRow label="Suggested branch" value={timeline.naming?.suggested_branch || "-"} palette={palette} />
+        <InfoRow label="Suggested PR title" value={timeline.naming?.suggested_pr_title || "-"} palette={palette} />
+      </div>
+
+      {linkedIssues.length ? (
+        <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Linked Execution Work</p>
+          <div style={{ display: "grid", gap: 8 }}>
+            {linkedIssues.map((issue) => (
+              <div key={issue.id} style={{ ...innerCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{issue.key}: {issue.title}</p>
+                    <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>
+                      {[issue.project_name, issue.sprint_name, issue.branch_name || "No branch yet"].filter(Boolean).join(" | ")}
+                    </p>
+                  </div>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      borderRadius: 999,
+                      padding: "6px 10px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: "capitalize",
+                      background: palette.accentSoft,
+                      color: palette.link,
+                      border: `1px solid ${palette.accent}`,
+                    }}
+                  >
+                    {issue.status?.replaceAll("_", " ")}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <EngineeringList title="Pull Requests" items={pullRequests} palette={palette} emptyText="No pull requests linked yet." />
+      <EngineeringList title="Commits" items={commits} palette={palette} emptyText="No commits linked yet." />
+      <EngineeringList title="Deployments" items={deployments} palette={palette} emptyText="No deployments tracked yet." />
+
+      {manualLinks.length ? (
+        <EngineeringList title="Other Linked Evidence" items={manualLinks} palette={palette} emptyText="" />
+      ) : null}
+    </div>
+  );
+}
+
+function SummaryCard({ label, value, palette }) {
+  return (
+    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+      <p style={{ margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: palette.muted, fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: "6px 0 0", fontSize: 14, color: palette.text, fontWeight: 700, textTransform: "capitalize" }}>{value}</p>
+    </div>
+  );
+}
+
+function EngineeringList({ title, items, palette, emptyText }) {
+  return (
+    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+      <p style={{ margin: "0 0 8px", fontSize: 13, color: palette.text, fontWeight: 700 }}>{title}</p>
+      {items?.length ? (
+        <div style={{ display: "grid", gap: 8 }}>
+          {items.map((item, index) => {
+            const href = item.url;
+            const content = (
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 8 }}>
+                <LinkIcon style={{ width: 16, height: 16, color: palette.muted, marginTop: 2 }} />
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>
+                    {item.title || item.environment || item.short_hash || item.type || "Linked item"}
+                  </p>
+                  <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>
+                    {[
+                      item.status,
+                      item.subtitle,
+                      item.author,
+                      item.branch,
+                      item.environment,
+                      item.short_hash,
+                      item.deployed_by,
+                    ].filter(Boolean).join(" | ")}
+                  </p>
+                </div>
+              </div>
+            );
+
+            if (!href) {
+              return (
+                <div key={`${title}-${index}`} style={{ ...innerCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+                  {content}
+                </div>
+              );
+            }
+
+            return (
+              <a
+                key={`${title}-${href}-${index}`}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                style={{ ...innerCard, border: `1px solid ${palette.border}`, background: palette.card, textDecoration: "none" }}
+              >
+                {content}
+              </a>
+            );
+          })}
+        </div>
+      ) : emptyText ? (
+        <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center" }}>
+          {emptyText}
+        </div>
+      ) : null}
     </div>
   );
 }

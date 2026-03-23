@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
 from django.views.decorators.csrf import csrf_exempt
 from .models import Decision
+from apps.integrations.github_engineering import link_manual_pr_to_decision
 from apps.organizations.activity import log_activity
 from apps.knowledge.unified_models import UnifiedActivity
 
@@ -1436,27 +1437,7 @@ def link_pr(request, decision_id):
         if not pr_url:
             return Response({'error': 'PR URL required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        if not decision.code_links:
-            decision.code_links = []
-        
-        import re
-        match = re.search(r'github\.com/([^/]+)/([^/]+)/pull/(\d+)', pr_url)
-        if match:
-            owner, repo, pr_number = match.groups()
-            decision.code_links.append({
-                'type': 'github_pr',
-                'url': pr_url,
-                'title': f'{owner}/{repo}#{pr_number}',
-                'number': int(pr_number)
-            })
-        else:
-            decision.code_links.append({
-                'type': 'link',
-                'url': pr_url,
-                'title': pr_url
-            })
-        
-        decision.save()
+        link_manual_pr_to_decision(decision, pr_url, source='decision_detail')
         return Response({'message': 'PR linked successfully'}, status=status.HTTP_201_CREATED)
     except Decision.DoesNotExist:
         return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)

@@ -7,11 +7,12 @@ from apps.decisions.models import Decision
 from apps.organizations.models import User
 
 try:
-    from apps.business.models import Goal, Meeting, Task
+    from apps.business.models import CalendarConnection, Goal, Meeting, Task
     from apps.business.document_models import Document
     from apps.business.advanced_models import Milestone
     from apps.agile.models import Blocker, Issue, Project, Sprint, SprintUpdate
 except Exception:  # pragma: no cover - optional in some test environments
+    CalendarConnection = None
     Goal = None
     Meeting = None
     Task = None
@@ -22,6 +23,21 @@ except Exception:  # pragma: no cover - optional in some test environments
     Project = None
     Sprint = None
     SprintUpdate = None
+
+try:
+    from apps.integrations.models import (
+        Commit as IntegrationCommit,
+        GitHubIntegration,
+        JiraIntegration,
+        PullRequest as IntegrationPullRequest,
+        SlackIntegration,
+    )
+except Exception:  # pragma: no cover - optional in some test environments
+    IntegrationCommit = None
+    GitHubIntegration = None
+    JiraIntegration = None
+    IntegrationPullRequest = None
+    SlackIntegration = None
 
 
 QUERY_STOP_WORDS = {
@@ -34,6 +50,11 @@ PHRASE_WINDOW_STOP_WORDS = {
     'a', 'an', 'and', 'are', 'about', 'at', 'can', 'do', 'does', 'find', 'for', 'from',
     'how', 'i', 'in', 'is', 'it', 'me', 'of', 'on', 'or', 'show', 'tell', 'the', 'to', 'what',
     'where', 'who', 'with',
+}
+
+CONNECTOR_KEYWORDS = {
+    'integration', 'integrations', 'connector', 'connectors', 'connected', 'connection', 'connections',
+    'sync', 'synchronized', 'linked', 'workspace', 'systems',
 }
 
 
@@ -369,6 +390,193 @@ TYPE_CONFIG = {
             'url': '/team',
         },
     },
+    'github_integration': {
+        'bucket': 'github_integrations',
+        'model': GitHubIntegration,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('repo_owner', 'repo_name'),
+        'date_field': 'created_at',
+        'suggest_field': 'repo_name',
+        'broad_match_terms': CONNECTOR_KEYWORDS | {'github', 'repo', 'repository', 'repositories'},
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': f'GitHub: {item.repo_owner}/{item.repo_name}',
+            'content_preview': _truncate(
+                ' '.join(
+                    filter(
+                        None,
+                        [
+                            'Connected GitHub repository',
+                            f'Repo {item.repo_owner}/{item.repo_name}',
+                            f'Auto link PRs {"enabled" if item.auto_link_prs else "disabled"}',
+                        ],
+                    )
+                )
+            ),
+            'type': 'github_integration',
+            'status': 'enabled' if item.enabled else 'disabled',
+            'created_at': _iso(item.created_at),
+            'url': '/integrations',
+        },
+    },
+    'jira_integration': {
+        'bucket': 'jira_integrations',
+        'model': JiraIntegration,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('site_url', 'email'),
+        'date_field': 'created_at',
+        'suggest_field': 'site_url',
+        'broad_match_terms': CONNECTOR_KEYWORDS | {'jira', 'atlassian', 'ticket', 'tickets'},
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': f'Jira: {item.site_url}',
+            'content_preview': _truncate(
+                ' '.join(
+                    filter(
+                        None,
+                        [
+                            'Connected Jira workspace',
+                            f'Admin {item.email}',
+                            f'Issue sync {"enabled" if item.auto_sync_issues else "disabled"}',
+                        ],
+                    )
+                )
+            ),
+            'type': 'jira_integration',
+            'status': 'enabled' if item.enabled else 'disabled',
+            'created_at': _iso(item.created_at),
+            'url': '/integrations',
+        },
+    },
+    'slack_integration': {
+        'bucket': 'slack_integrations',
+        'model': SlackIntegration,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('channel',),
+        'date_field': 'created_at',
+        'suggest_field': 'channel',
+        'broad_match_terms': CONNECTOR_KEYWORDS | {'slack', 'channel', 'alerts', 'notifications'},
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': f'Slack: {item.channel}',
+            'content_preview': _truncate(
+                ' '.join(
+                    filter(
+                        None,
+                        [
+                            'Connected Slack channel',
+                            f'Decision posts {"on" if item.post_decisions else "off"}',
+                            f'Blocker posts {"on" if item.post_blockers else "off"}',
+                            f'Sprint summaries {"on" if item.post_sprint_summary else "off"}',
+                        ],
+                    )
+                )
+            ),
+            'type': 'slack_integration',
+            'status': 'enabled' if item.enabled else 'disabled',
+            'created_at': _iso(item.created_at),
+            'url': '/integrations',
+        },
+    },
+    'calendar_connection': {
+        'bucket': 'calendar_connections',
+        'model': CalendarConnection,
+        'org_filter': 'organization_id',
+        'order_by': '-updated_at',
+        'search_fields': ('provider', 'external_calendar_id', 'user__username', 'user__full_name'),
+        'date_field': 'updated_at',
+        'suggest_field': 'provider',
+        'broad_match_terms': CONNECTOR_KEYWORDS | {'calendar', 'google', 'outlook', 'schedule', 'scheduling', 'availability'},
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': f'{item.provider.title()} calendar for {item.user.get_full_name() or item.user.username}',
+            'content_preview': _truncate(
+                ' '.join(
+                    filter(
+                        None,
+                        [
+                            'External calendar connection',
+                            f'Calendar {item.external_calendar_id}' if item.external_calendar_id else '',
+                            f'Connected {"yes" if item.is_connected else "no"}',
+                        ],
+                    )
+                )
+            ),
+            'type': 'calendar_connection',
+            'status': 'connected' if item.is_connected else 'disconnected',
+            'created_at': _iso(item.created_at),
+            'updated_at': _iso(item.updated_at),
+            'last_synced_at': _iso(item.last_synced_at),
+            'url': '/business/calendar',
+        },
+    },
+    'pull_request': {
+        'bucket': 'pull_requests',
+        'model': IntegrationPullRequest,
+        'org_filter': 'organization_id',
+        'order_by': '-created_at',
+        'search_fields': ('title', 'branch_name', 'author', 'decision__title', 'pr_url'),
+        'date_field': 'created_at',
+        'suggest_field': 'title',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': item.title,
+            'content_preview': _truncate(
+                ' '.join(
+                    filter(
+                        None,
+                        [
+                            f'PR #{item.pr_number}',
+                            f'Branch {item.branch_name}',
+                            f'Decision {item.decision.title}' if item.decision else '',
+                        ],
+                    )
+                )
+            ),
+            'type': 'pull_request',
+            'status': item.status,
+            'author': item.author,
+            'created_at': _iso(item.created_at),
+            'merged_at': _iso(item.merged_at),
+            'closed_at': _iso(item.closed_at),
+            'url': item.pr_url,
+        },
+    },
+    'commit': {
+        'bucket': 'commits',
+        'model': IntegrationCommit,
+        'org_filter': 'organization_id',
+        'order_by': '-committed_at',
+        'search_fields': ('message', 'author', 'sha', 'decision__title', 'pull_request__title'),
+        'date_field': 'committed_at',
+        'suggest_field': 'message',
+        'serialize': lambda item: {
+            'id': item.id,
+            'title': f'{item.sha[:7]} {item.message[:80]}'.strip(),
+            'content_preview': _truncate(
+                ' '.join(
+                    filter(
+                        None,
+                        [
+                            item.message,
+                            f'Author {item.author}',
+                            f'PR {item.pull_request.title}' if item.pull_request else '',
+                            f'Decision {item.decision.title}' if item.decision else '',
+                        ],
+                    )
+                )
+            ),
+            'type': 'commit',
+            'status': 'recorded',
+            'author': item.author,
+            'created_at': _iso(item.committed_at),
+            'committed_at': _iso(item.committed_at),
+            'url': item.commit_url,
+        },
+    },
 }
 
 
@@ -454,6 +662,32 @@ def _build_query(search_fields, query):
     return conditions | token_conditions
 
 
+def _query_matches_terms(query, match_terms):
+    text = str(query or '').lower()
+    if not text or not match_terms:
+        return False
+
+    tokens = set(_tokenize_query(query))
+    raw_tokens = {
+        ''.join(ch for ch in part.lower() if ch.isalnum())
+        for part in str(query or '').replace('-', ' ').split()
+    }
+    raw_tokens.discard('')
+
+    for term in match_terms:
+        normalized = str(term or '').strip().lower()
+        if not normalized:
+            continue
+        if ' ' in normalized:
+            if normalized in text:
+                return True
+            continue
+        compact = ''.join(ch for ch in normalized if ch.isalnum())
+        if compact and (compact in tokens or compact in raw_tokens):
+            return True
+    return False
+
+
 class EnhancedSearchEngine:
     def search(self, query, organization_id, filters=None, limit=10):
         filters = filters or {}
@@ -464,23 +698,11 @@ class EnhancedSearchEngine:
             item_type for item_type, config in TYPE_CONFIG.items() if config['model'] is not None
         }
 
-        results = {
-            'conversations': [],
-            'replies': [],
-            'action_items': [],
-            'decisions': [],
-            'goals': [],
-            'milestones': [],
-            'tasks': [],
-            'meetings': [],
-            'documents': [],
-            'projects': [],
-            'sprints': [],
-            'sprint_updates': [],
-            'issues': [],
-            'blockers': [],
-            'people': [],
-        }
+        results = {}
+        for config in TYPE_CONFIG.values():
+            bucket = config['bucket']
+            if bucket not in results:
+                results[bucket] = []
 
         for item_type, config in TYPE_CONFIG.items():
             model = config['model']
@@ -489,7 +711,9 @@ class EnhancedSearchEngine:
 
             filters_q = Q(**{config['org_filter']: organization_id})
             if query:
-                filters_q &= _build_query(config['search_fields'], query)
+                broad_match_terms = config.get('broad_match_terms') or set()
+                if not (broad_match_terms and _query_matches_terms(query, broad_match_terms)):
+                    filters_q &= _build_query(config['search_fields'], query)
 
             if date_from:
                 filters_q &= Q(**{f"{config['date_field']}__gte": date_from})
@@ -556,23 +780,7 @@ class EnhancedSearchEngine:
             for keyword in keyword_list or []:
                 add_suggestion(keyword)
 
-        for item_type in [
-            'decision',
-            'goal',
-            'milestone',
-            'task',
-            'meeting',
-            'document',
-            'project',
-            'sprint',
-            'sprint_update',
-            'issue',
-            'blocker',
-            'person',
-            'reply',
-            'action_item',
-        ]:
-            config = TYPE_CONFIG.get(item_type)
+        for item_type, config in TYPE_CONFIG.items():
             model = config['model'] if config else None
             if model is None:
                 continue

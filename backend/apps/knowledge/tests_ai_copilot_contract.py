@@ -46,10 +46,15 @@ class AGICopilotContractTests(TestCase):
         self.assertEqual(response.data.get("evidence_count"), 0)
         self.assertIn("coverage_score", response.data)
         self.assertIn("missing_evidence", response.data)
+        self.assertIn("evidence_breakdown", response.data)
         self.assertIn("citations", response.data)
         self.assertIn("credibility_summary", response.data)
+        self.assertIn("answer_foundation", response.data)
+        self.assertIn("follow_up_questions", response.data)
         self.assertEqual(response.data.get("confidence_band"), "low")
         self.assertTrue(len(response.data.get("recommended_interventions") or []) >= 1)
+        self.assertTrue(len(response.data.get("answer_foundation") or []) >= 1)
+        self.assertTrue(len(response.data.get("follow_up_questions") or []) >= 1)
         first_action = response.data["recommended_interventions"][0]
         self.assertIn("priority_score", first_action)
         self.assertIn("effort_hours", first_action)
@@ -84,6 +89,9 @@ class AGICopilotContractTests(TestCase):
         self.assertIn("conversation", response.data.get("source_types"))
         self.assertIn("decision", response.data.get("source_types"))
         self.assertIn(response.data.get("confidence_band"), ["medium", "high"])
+        self.assertTrue(len(response.data.get("evidence_breakdown") or []) >= 1)
+        self.assertTrue(len(response.data.get("answer_foundation") or []) >= 1)
+        self.assertTrue(len(response.data.get("follow_up_questions") or []) >= 1)
         first_action = (response.data.get("recommended_interventions") or [{}])[0]
         self.assertIn("priority_score", first_action)
         self.assertIn("effort_hours", first_action)
@@ -105,6 +113,8 @@ class AGICopilotContractTests(TestCase):
         self.assertEqual(response.data.get("response_mode"), "navigation")
         self.assertTrue(isinstance(response.data.get("tool_links"), list))
         self.assertTrue(len(response.data.get("tool_links") or []) >= 1)
+        self.assertTrue(isinstance(response.data.get("answer_foundation"), list))
+        self.assertTrue(isinstance(response.data.get("follow_up_questions"), list))
         first_link = response.data["tool_links"][0]
         self.assertIn("label", first_link)
         self.assertIn("url", first_link)
@@ -158,6 +168,8 @@ class AGICopilotContractTests(TestCase):
         self.assertEqual((response.data.get("sources") or {}).get("documents")[0]["title"], "Onboarding Guide")
         self.assertTrue(isinstance(response.data.get("citations"), list))
         self.assertIn("Grounded in", response.data.get("credibility_summary", ""))
+        self.assertTrue(len(response.data.get("answer_foundation") or []) >= 1)
+        self.assertTrue(len(response.data.get("follow_up_questions") or []) >= 1)
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
@@ -230,6 +242,9 @@ class AGICopilotContractTests(TestCase):
         self.assertEqual((response.data.get("sources") or {}).get("sprints")[0]["title"], "Talking Stage Sprint")
         self.assertEqual((response.data.get("sources") or {}).get("projects")[0]["title"], "Justice App")
         self.assertTrue(any(item.get("type") == "sprint" for item in response.data.get("citations") or []))
+        self.assertTrue(any(item.get("type") == "sprint" for item in response.data.get("evidence_breakdown") or []))
+        self.assertTrue(any("Talking Stage Sprint" in item for item in response.data.get("answer_foundation") or []))
+        self.assertTrue(len(response.data.get("follow_up_questions") or []) >= 1)
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
@@ -313,6 +328,117 @@ class AGICopilotContractTests(TestCase):
         self.assertTrue(any(item.get("type") == "blocker" for item in response.data.get("citations") or []))
         self.assertTrue(any(item.get("type") == "reply" for item in response.data.get("citations") or []))
         self.assertIn("Grounded in", response.data.get("credibility_summary", ""))
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value="GitHub, Jira, Slack, and a connected Google calendar are available in this workspace.")
+    def test_answer_mode_returns_connected_system_sources(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "replies": [],
+            "action_items": [],
+            "decisions": [],
+            "goals": [],
+            "milestones": [],
+            "tasks": [],
+            "meetings": [],
+            "documents": [],
+            "projects": [],
+            "sprints": [],
+            "sprint_updates": [],
+            "issues": [],
+            "blockers": [],
+            "people": [],
+            "github_integrations": [
+                {
+                    "id": 41,
+                    "title": "GitHub: justice-org/justice-app",
+                    "created_at": "2026-03-10T08:30:00Z",
+                    "url": "/integrations",
+                    "content_preview": "Connected GitHub repository Repo justice-org/justice-app Auto link PRs enabled",
+                    "status": "enabled",
+                }
+            ],
+            "jira_integrations": [
+                {
+                    "id": 42,
+                    "title": "Jira: https://justice.atlassian.net",
+                    "created_at": "2026-03-10T08:30:00Z",
+                    "url": "/integrations",
+                    "content_preview": "Connected Jira workspace Admin ops@justice.example.com Issue sync enabled",
+                    "status": "enabled",
+                }
+            ],
+            "slack_integrations": [
+                {
+                    "id": 43,
+                    "title": "Slack: #justice-alerts",
+                    "created_at": "2026-03-10T08:30:00Z",
+                    "url": "/integrations",
+                    "content_preview": "Connected Slack channel Decision posts on Blocker posts on",
+                    "status": "enabled",
+                }
+            ],
+            "calendar_connections": [
+                {
+                    "id": 44,
+                    "title": "Google calendar for Ada Lovelace",
+                    "created_at": "2026-03-10T08:30:00Z",
+                    "updated_at": "2026-03-11T08:30:00Z",
+                    "last_synced_at": "2026-03-12T08:30:00Z",
+                    "url": "/business/calendar",
+                    "content_preview": "External calendar connection Calendar justice-primary Connected yes",
+                    "status": "connected",
+                }
+            ],
+            "pull_requests": [
+                {
+                    "id": 45,
+                    "title": "Justice rollout PR",
+                    "created_at": "2026-03-12T08:30:00Z",
+                    "url": "https://github.com/justice-org/justice-app/pull/45",
+                    "content_preview": "PR #45 Branch feature/justice-rollout",
+                    "status": "open",
+                }
+            ],
+            "commits": [
+                {
+                    "id": 46,
+                    "title": "abc1234 Justice rollout fix",
+                    "committed_at": "2026-03-12T09:30:00Z",
+                    "url": "https://github.com/justice-org/justice-app/commit/abc1234",
+                    "content_preview": "Justice rollout commit",
+                    "status": "recorded",
+                }
+            ],
+            "total": 6,
+        }
+        get_search_engine.return_value = search_engine
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 89.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "which integrations are connected to this workspace"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertIn("github_integration", response.data.get("source_types"))
+        self.assertIn("jira_integration", response.data.get("source_types"))
+        self.assertIn("slack_integration", response.data.get("source_types"))
+        self.assertIn("calendar_connection", response.data.get("source_types"))
+        self.assertTrue(any(item.get("type") == "github_integration" for item in response.data.get("citations") or []))
+        self.assertTrue(any(item.get("type") == "github_integration" for item in response.data.get("evidence_breakdown") or []))
+        self.assertTrue(any("GitHub" in item for item in response.data.get("answer_foundation") or []))
+        self.assertTrue(any(item.get("title") == "Justice rollout PR" for item in (response.data.get("sources") or {}).get("pull_requests", [])))
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     def test_execute_requires_confirmation(self, _rate_limit):

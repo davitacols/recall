@@ -179,6 +179,48 @@ SOURCE_BUCKET_REGISTRY = [
         'date_fields': ('last_active', 'created_at'),
         'fallback_url': lambda _item_id: '/team',
     },
+    {
+        'bucket': 'github_integrations',
+        'type': 'github_integration',
+        'label': 'GitHub integrations',
+        'date_fields': ('created_at',),
+        'fallback_url': lambda _item_id: '/integrations',
+    },
+    {
+        'bucket': 'jira_integrations',
+        'type': 'jira_integration',
+        'label': 'Jira integrations',
+        'date_fields': ('created_at',),
+        'fallback_url': lambda _item_id: '/integrations',
+    },
+    {
+        'bucket': 'slack_integrations',
+        'type': 'slack_integration',
+        'label': 'Slack integrations',
+        'date_fields': ('created_at',),
+        'fallback_url': lambda _item_id: '/integrations',
+    },
+    {
+        'bucket': 'calendar_connections',
+        'type': 'calendar_connection',
+        'label': 'calendar connections',
+        'date_fields': ('last_synced_at', 'updated_at', 'created_at'),
+        'fallback_url': lambda _item_id: '/business/calendar',
+    },
+    {
+        'bucket': 'pull_requests',
+        'type': 'pull_request',
+        'label': 'pull requests',
+        'date_fields': ('merged_at', 'closed_at', 'created_at'),
+        'fallback_url': lambda _item_id: '/integrations',
+    },
+    {
+        'bucket': 'commits',
+        'type': 'commit',
+        'label': 'commits',
+        'date_fields': ('committed_at', 'created_at'),
+        'fallback_url': lambda _item_id: '/integrations',
+    },
 ]
 
 
@@ -437,6 +479,103 @@ def _build_credibility_summary(evidence_contract, citations):
     else:
         summary += '.'
     return summary
+
+
+def _pluralize_source_type(type_name, count):
+    base = str(type_name or '').replace('_', ' ').strip()
+    if not base:
+        return 'records'
+    if count == 1:
+        return base
+    if base == 'reply':
+        return 'replies'
+    if base == 'person':
+        return 'people'
+    if base.endswith('s'):
+        return base
+    return f'{base}s'
+
+
+def _build_evidence_breakdown(search_data, limit=4):
+    breakdown = []
+    for config in SOURCE_BUCKET_REGISTRY:
+        count = len(search_data.get(config['bucket']) or [])
+        if count <= 0:
+            continue
+        breakdown.append({
+            'type': config['type'],
+            'label': _pluralize_source_type(config['type'], count),
+            'count': count,
+        })
+    breakdown.sort(key=lambda item: (-item['count'], item['label']))
+    return breakdown[:limit]
+
+
+def _build_answer_foundation(query_mode, evidence_contract, citations, evidence_breakdown, recommended_interventions, plan):
+    lines = []
+    if citations:
+        strongest = _human_join([f'{item.get("type")} "{item.get("title")}"' for item in citations[:3]])
+        if strongest:
+            lines.append(f'Strongest supporting records were {strongest}.')
+    if evidence_breakdown:
+        coverage_mix = _human_join([f'{item["count"]} {item["label"]}' for item in evidence_breakdown[:3]])
+        lines.append(f'Evidence came from {coverage_mix}.')
+    freshness_days = evidence_contract.get('freshness_days')
+    if freshness_days is not None:
+        lines.append(f'Newest matching evidence is {freshness_days} day{"s" if freshness_days != 1 else ""} old.')
+    if query_mode == 'diagnosis' and recommended_interventions:
+        lines.append(
+            f'Recommended interventions were prioritized against the current {plan.get("status")} readiness signal '
+            f'({plan.get("readiness_score")}).'
+        )
+    missing_evidence = evidence_contract.get('missing_evidence') or []
+    if missing_evidence:
+        lines.append(f'Confidence is limited because {missing_evidence[0].rstrip(".")}.')
+    elif evidence_contract.get('coverage_score', 0) >= 70:
+        lines.append('Confidence is stronger because the evidence spans multiple linked parts of the workspace.')
+    return lines[:4]
+
+
+def _build_follow_up_questions(query, query_mode, search_data, citations, evidence_contract, plan, recommended_interventions):
+    suggestions = []
+    seen = set()
+
+    def add(question):
+        text = str(question or '').strip()
+        normalized = text.lower()
+        if not text or normalized in seen or normalized == str(query or '').strip().lower():
+            return
+        seen.add(normalized)
+        suggestions.append(text)
+
+    top_citation = citations[0] if citations else None
+    focus_title = (top_citation or {}).get('title') or 'this topic'
+    citation_types = {item.get('type') for item in citations or []}
+    counts = plan.get('counts') or {}
+    missing_evidence = evidence_contract.get('missing_evidence') or []
+
+    if citation_types.intersection({'project', 'sprint', 'issue', 'blocker', 'task'}):
+        add(f'What is blocking {focus_title} right now?')
+        add(f'Who owns the next actions related to {focus_title}?')
+    if citation_types.intersection({'decision', 'conversation', 'document', 'meeting'}):
+        add(f'What decisions or discussions are linked to {focus_title}?')
+        add(f'What changed most recently around {focus_title}?')
+    if query_mode == 'diagnosis':
+        if counts.get('active_blockers'):
+            add('Which blocker should leadership resolve first?')
+        if counts.get('unresolved_decisions'):
+            add('Which unresolved decision is affecting readiness the most?')
+        if recommended_interventions:
+            add('Which suggested intervention would improve readiness fastest?')
+    else:
+        add(f'Summarize the newest records related to {focus_title}.')
+        add(f'What documents or conversations support {focus_title}?')
+    if missing_evidence:
+        add('Which linked records are still missing from this answer?')
+    if not suggestions:
+        add('What should I ask next to improve confidence in this answer?')
+        add('Which records are most directly related to this topic?')
+    return suggestions[:4]
 
 
 def _generate_llm_copilot_answer(query, query_mode, search_data, plan, evidence_contract, recommended_interventions):
@@ -1814,8 +1953,11 @@ def agi_copilot(request):
                     'freshness_days': None,
                     'coverage_score': 0,
                     'missing_evidence': [],
+                    'evidence_breakdown': [],
                     'citations': [],
                     'credibility_summary': 'Navigation requests do not use workspace evidence.',
+                    'answer_foundation': ['This request was treated as navigation, so Ask Recall did not retrieve workspace evidence.'],
+                    'follow_up_questions': [],
                     'tool_links': tool_links,
                     'risk_status': plan.get('status'),
                     'readiness_score': plan.get('readiness_score'),
@@ -1853,6 +1995,24 @@ def agi_copilot(request):
         evidence_contract = _build_evidence_contract(search_data, now)
         citations = _rank_source_citations(search_data, query)
         credibility_summary = _build_credibility_summary(evidence_contract, citations)
+        evidence_breakdown = _build_evidence_breakdown(search_data)
+        answer_foundation = _build_answer_foundation(
+            query_mode=query_mode,
+            evidence_contract=evidence_contract,
+            citations=citations,
+            evidence_breakdown=evidence_breakdown,
+            recommended_interventions=recommended_for_response,
+            plan=plan,
+        )
+        follow_up_questions = _build_follow_up_questions(
+            query=query,
+            query_mode=query_mode,
+            search_data=search_data,
+            citations=citations,
+            evidence_contract=evidence_contract,
+            plan=plan,
+            recommended_interventions=recommended_for_response,
+        )
         llm_answer = _generate_llm_copilot_answer(
             query=query,
             query_mode=query_mode,
@@ -1915,8 +2075,11 @@ def agi_copilot(request):
             'freshness_days': evidence_contract.get('freshness_days'),
             'coverage_score': evidence_contract.get('coverage_score', 0),
             'missing_evidence': evidence_contract.get('missing_evidence', []),
+            'evidence_breakdown': evidence_breakdown,
             'citations': citations,
             'credibility_summary': credibility_summary,
+            'answer_foundation': answer_foundation,
+            'follow_up_questions': follow_up_questions,
             'tool_links': [],
             'risk_status': plan.get('status'),
             'readiness_score': plan.get('readiness_score'),

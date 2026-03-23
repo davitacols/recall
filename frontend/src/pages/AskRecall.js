@@ -38,17 +38,36 @@ function normalizeSources(sources) {
     { key: 'issues', type: 'issue', fallbackHref: (item) => `/issues/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
     { key: 'blockers', type: 'blocker', fallbackHref: (item) => item.url || '/blockers', dateKeys: ['resolved_at', 'created_at'] },
     { key: 'people', type: 'person', fallbackHref: (item) => item.url || '/team', dateKeys: ['last_active', 'created_at'] },
+    { key: 'github_integrations', type: 'github_integration', fallbackHref: (item) => item.url || '/integrations', dateKeys: ['created_at'] },
+    { key: 'jira_integrations', type: 'jira_integration', fallbackHref: (item) => item.url || '/integrations', dateKeys: ['created_at'] },
+    { key: 'slack_integrations', type: 'slack_integration', fallbackHref: (item) => item.url || '/integrations', dateKeys: ['created_at'] },
+    { key: 'calendar_connections', type: 'calendar_connection', fallbackHref: (item) => item.url || '/business/calendar', dateKeys: ['last_synced_at', 'updated_at', 'created_at'] },
+    { key: 'pull_requests', type: 'pull_request', fallbackHref: (item) => item.url || '/integrations', dateKeys: ['merged_at', 'closed_at', 'created_at'] },
+    { key: 'commits', type: 'commit', fallbackHref: (item) => item.url || '/integrations', dateKeys: ['committed_at', 'created_at'] },
   ];
 
   return configs
     .flatMap((config) =>
       (sources?.[config.key] || []).map((item) => {
         const rawDate = config.dateKeys.map((key) => item?.[key]).find(Boolean);
-        const contextualPreview =
-          item.content_preview ||
-          [item.role, item.status, item.key, item.project_name, item.sprint_name, item.conversation_title, item.goal_title]
-            .filter(Boolean)
-            .join(' | ');
+          const contextualPreview =
+            item.content_preview ||
+            [
+              item.role,
+              item.status,
+              item.key,
+              item.project_name,
+              item.sprint_name,
+              item.conversation_title,
+              item.goal_title,
+              item.repo_name,
+              item.repo_owner,
+              item.channel,
+              item.provider,
+              item.author,
+            ]
+              .filter(Boolean)
+              .join(' | ');
         return {
           id: item.id,
           type: config.type,
@@ -76,6 +95,26 @@ function titleCase(value) {
   const text = String(value || '').toLowerCase();
   if (!text) return '';
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function formatEvidenceTypeLabel(value, count = 1) {
+  const base = String(value || '')
+    .replace(/_/g, ' ')
+    .trim();
+  if (!base) return 'records';
+  if (count === 1) return base;
+  if (base === 'reply') return 'replies';
+  if (base === 'person') return 'people';
+  if (base.endsWith('s')) return base;
+  return `${base}s`;
+}
+
+function describeFreshness(days) {
+  const value = Number(days);
+  if (!Number.isFinite(value)) return '';
+  if (value <= 0) return 'Updated today';
+  if (value === 1) return 'Newest evidence is 1 day old';
+  return `Newest evidence is ${value} days old`;
 }
 
 function getContextualHowTo(query) {
@@ -134,6 +173,7 @@ export default function AskRecall() {
     'What active goals are related to onboarding?',
     'Summarize recent decisions about API migration.',
     'Tell me about the Talking Stage sprint in the Justice App project.',
+    'Which integrations are connected to this workspace?',
   ];
 
   const mapResponseToViewModel = (payload) => {
@@ -183,6 +223,14 @@ export default function AskRecall() {
       freshnessDays: payload.freshness_days ?? null,
       coverageScore: payload.coverage_score ?? 0,
       missingEvidence: payload.missing_evidence || [],
+      evidenceBreakdown:
+        (payload.evidence_breakdown || []).map((item) => ({
+          type: item.type,
+          label: item.label || formatEvidenceTypeLabel(item.type, item.count),
+          count: Number(item.count || 0),
+        })) || [],
+      answerFoundation: payload.answer_foundation || [],
+      followUpQuestions: payload.follow_up_questions || [],
       toolLinks: [
         ...((payload.tool_links || []).map((item) => ({
           id: item.id,
@@ -221,6 +269,8 @@ export default function AskRecall() {
     const decisions = legacySources?.decisions || [];
     const total = Number(legacySources?.total || 0);
     const recCount = (recommendationsPayload?.recommendations || []).length;
+    const normalizedLegacySources = normalizeSources(legacySources);
+    const primaryLegacySubject = normalizedLegacySources[0]?.title || 'this topic';
     const interventions =
       (missionPayload?.autonomous_actions || []).map((item, idx) => ({
         id: item.id || `legacy-${idx}`,
@@ -264,10 +314,63 @@ export default function AskRecall() {
         ...((legacySources?.issues || []).length > 0 ? ['issue'] : []),
         ...((legacySources?.blockers || []).length > 0 ? ['blocker'] : []),
         ...((legacySources?.people || []).length > 0 ? ['person'] : []),
+        ...((legacySources?.github_integrations || []).length > 0 ? ['github_integration'] : []),
+        ...((legacySources?.jira_integrations || []).length > 0 ? ['jira_integration'] : []),
+        ...((legacySources?.slack_integrations || []).length > 0 ? ['slack_integration'] : []),
+        ...((legacySources?.calendar_connections || []).length > 0 ? ['calendar_connection'] : []),
+        ...((legacySources?.pull_requests || []).length > 0 ? ['pull_request'] : []),
+        ...((legacySources?.commits || []).length > 0 ? ['commit'] : []),
       ],
       freshnessDays: null,
       coverageScore: total > 0 ? Math.min(85, 35 + total * 10) : 0,
       missingEvidence: total > 0 ? [] : ['No linked organization records matched this query.'],
+      evidenceBreakdown: [
+        { type: 'conversation', count: conversations.length },
+        { type: 'reply', count: (legacySources?.replies || []).length },
+        { type: 'action_item', count: (legacySources?.action_items || []).length },
+        { type: 'decision', count: decisions.length },
+        { type: 'goal', count: (legacySources?.goals || []).length },
+        { type: 'milestone', count: (legacySources?.milestones || []).length },
+        { type: 'task', count: (legacySources?.tasks || []).length },
+        { type: 'meeting', count: (legacySources?.meetings || []).length },
+        { type: 'document', count: (legacySources?.documents || []).length },
+        { type: 'project', count: (legacySources?.projects || []).length },
+        { type: 'sprint', count: (legacySources?.sprints || []).length },
+        { type: 'sprint_update', count: (legacySources?.sprint_updates || []).length },
+        { type: 'issue', count: (legacySources?.issues || []).length },
+        { type: 'blocker', count: (legacySources?.blockers || []).length },
+        { type: 'person', count: (legacySources?.people || []).length },
+        { type: 'github_integration', count: (legacySources?.github_integrations || []).length },
+        { type: 'jira_integration', count: (legacySources?.jira_integrations || []).length },
+        { type: 'slack_integration', count: (legacySources?.slack_integrations || []).length },
+        { type: 'calendar_connection', count: (legacySources?.calendar_connections || []).length },
+        { type: 'pull_request', count: (legacySources?.pull_requests || []).length },
+        { type: 'commit', count: (legacySources?.commits || []).length },
+      ]
+        .filter((item) => item.count > 0)
+        .sort((left, right) => right.count - left.count)
+        .slice(0, 4)
+        .map((item) => ({
+          ...item,
+          label: formatEvidenceTypeLabel(item.type, item.count),
+        })),
+      answerFoundation:
+        total > 0
+          ? [
+              `Ask Recall found ${total} matching record${total === 1 ? '' : 's'} through the legacy search path.`,
+              `Strongest legacy evidence centers on ${primaryLegacySubject}.`,
+            ]
+          : ['Ask Recall could not find matching indexed records through the legacy search path.'],
+      followUpQuestions:
+        total > 0
+          ? [
+              `What changed most recently around ${primaryLegacySubject}?`,
+              `What decisions or tasks are linked to ${primaryLegacySubject}?`,
+            ]
+          : [
+              'Which project, sprint, issue, document, or decision name should I search for?',
+              'What recent conversation or document should be linked to answer this question?',
+            ],
       toolLinks: [],
       riskStatus: missionPayload?.north_star?.status || 'watch',
       readinessScore: missionPayload?.north_star?.critical_path_score ?? null,
@@ -284,17 +387,24 @@ export default function AskRecall() {
       })),
       nextActions: [],
       citations: [],
-      sources: normalizeSources(legacySources),
+      sources: normalizedLegacySources,
       execution: { performed: false, result: null },
       generatedAt: '',
     };
   };
 
-  const queryCopilot = async ({ execute = false, confirmExecute = false } = {}) => {
+  const resetFeedbackControls = () => {
+    setFeedbackVote('');
+    setFeedbackOutcome('');
+    setFeedbackMessage('');
+  };
+
+  const queryCopilot = async ({ execute = false, confirmExecute = false, question = query } = {}) => {
+    const activeQuestion = String(question || '').trim();
     try {
-      const contextualHowTo = getContextualHowTo(query);
+      const contextualHowTo = getContextualHowTo(activeQuestion);
       const response = await api.post('/api/knowledge/ai/copilot/', {
-        query,
+        query: activeQuestion,
         execute,
         confirm_execute: execute ? confirmExecute : false,
         max_actions: 3,
@@ -305,7 +415,7 @@ export default function AskRecall() {
       const status = error?.response?.status;
       if (status === 404 || status === 405 || status === 500) {
         const [searchRes, recsRes, missionRes] = await Promise.allSettled([
-          api.post('/api/knowledge/search/', { query }),
+          api.post('/api/knowledge/search/', { query: activeQuestion }),
           api.get('/api/knowledge/ai/recommendations/'),
           api.get('/api/knowledge/ai/mission-control/'),
         ]);
@@ -316,26 +426,25 @@ export default function AskRecall() {
             : { results: { conversations: [], decisions: [], total: 0 } };
         const recsData = recsRes.status === 'fulfilled' ? recsRes.value.data : { recommendations: [] };
         const missionData = missionRes.status === 'fulfilled' ? missionRes.value.data : {};
-        return mapLegacyResponseToViewModel(searchData, recsData, missionData, query);
+        return mapLegacyResponseToViewModel(searchData, recsData, missionData, activeQuestion);
       }
       throw error;
     }
   };
 
-  const handleSearch = async (event) => {
-    event.preventDefault();
-    if (!query.trim() || loading || executing) return;
+  const runAnalysis = async (question) => {
+    const activeQuestion = String(question || '').trim();
+    if (!activeQuestion || loading || executing) return;
 
+    setQuery(activeQuestion);
     setLoading(true);
     setRequestState('loading');
     setRequestMessage('Analyzing organization state...');
 
     try {
-      const data = await queryCopilot({ execute: false });
+      const data = await queryCopilot({ execute: false, question: activeQuestion });
       setResults(data);
-      setFeedbackVote('');
-      setFeedbackOutcome('');
-      setFeedbackMessage('');
+      resetFeedbackControls();
       setRequestState('success');
       setRequestMessage('Analysis complete.');
     } catch (error) {
@@ -344,7 +453,7 @@ export default function AskRecall() {
         error?.response?.data?.error ||
         'AGI copilot is temporarily unavailable. Please try again.';
       setResults({
-        question: query,
+        question: activeQuestion,
         answer: detail,
         answerEngine: 'rules',
         confidence: 0,
@@ -356,6 +465,9 @@ export default function AskRecall() {
         freshnessDays: null,
         coverageScore: 0,
         missingEvidence: ['Unable to evaluate evidence right now.'],
+        evidenceBreakdown: [],
+        answerFoundation: ['Ask Recall could not complete this request right now.'],
+        followUpQuestions: ['Try the same question again in a moment.'],
         riskStatus: 'unknown',
         readinessScore: null,
         learningModel: {},
@@ -372,6 +484,11 @@ export default function AskRecall() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = async (event) => {
+    event.preventDefault();
+    await runAnalysis(query);
   };
 
   const handleExecute = async () => {
@@ -392,9 +509,7 @@ export default function AskRecall() {
     try {
       const data = await queryCopilot({ execute: true, confirmExecute: true });
       setResults(data);
-      setFeedbackVote('');
-      setFeedbackOutcome('');
-      setFeedbackMessage('');
+      resetFeedbackControls();
       setRequestState('success');
       setRequestMessage('Execution completed.');
     } catch (error) {
@@ -502,6 +617,8 @@ export default function AskRecall() {
     requestState === 'error' ? palette.danger : requestState === 'success' ? palette.success : palette.muted;
   const confidenceWidth = `${Math.max(0, Math.min(100, Number(results?.confidence || 0)))}%`;
   const confidenceLabel = titleCase(results?.confidenceBand || getConfidenceLabel(results?.confidence));
+  const sourceTypeSummary =
+    (results?.sourceTypes || []).map((item) => formatEvidenceTypeLabel(item)).join(', ') || 'none';
 
   const quickToolLinks =
     results?.toolLinks?.length
@@ -523,7 +640,7 @@ export default function AskRecall() {
     {
       label: 'Evidence',
       value: results?.evidenceCount ?? 0,
-      helper: results ? `${results?.sourceTypes?.join(', ') || 'No source types'}` : 'No evidence sources yet',
+      helper: results ? sourceTypeSummary || 'No source types' : 'No evidence sources yet',
       tone: lowEvidence ? palette.warn : palette.info,
     },
     {
@@ -549,7 +666,7 @@ export default function AskRecall() {
         stats={heroStats}
         actions={
           <>
-            <button type="button" onClick={() => setQuery('Where is execution risk highest this week?')} style={buttonGhost(palette)}>
+            <button type="button" onClick={() => runAnalysis('Where is execution risk highest this week?')} style={buttonGhost(palette)}>
               Use sample prompt
             </button>
             <button
@@ -667,7 +784,7 @@ export default function AskRecall() {
         >
           <div style={{ display: 'grid', gap: 8 }}>
             {suggestedQuestions.map((item) => (
-              <button key={item} type="button" onClick={() => setQuery(item)} style={{ ...buttonGhost(palette), textAlign: 'left' }}>
+              <button key={item} type="button" onClick={() => runAnalysis(item)} style={{ ...buttonGhost(palette), textAlign: 'left' }}>
                 {item}
               </button>
             ))}
@@ -747,13 +864,46 @@ export default function AskRecall() {
               <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
                 Engine <strong style={{ color: palette.text }}>{results.answerEngine === 'anthropic' ? 'LLM' : 'Rules'}</strong> | Coverage <strong style={{ color: palette.text }}>{results.coverageScore}</strong> | Evidence{' '}
                 <strong style={{ color: palette.text }}>{results.evidenceCount}</strong> | Types{' '}
-                <strong style={{ color: palette.text }}>{results.sourceTypes.join(', ') || 'none'}</strong>
+                <strong style={{ color: palette.text }}>{sourceTypeSummary}</strong>
               </p>
             ) : null}
             {!!results.credibilitySummary ? (
               <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
                 {results.credibilitySummary}
               </p>
+            ) : null}
+            {!isNavigationIntent && ((results.evidenceBreakdown || []).length > 0 || results.freshnessDays !== null) ? (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(results.evidenceBreakdown || []).map((item) => (
+                  <span
+                    key={`${item.type}-${item.count}`}
+                    style={{
+                      border: `1px solid ${palette.border}`,
+                      borderRadius: 999,
+                      padding: '5px 10px',
+                      fontSize: 11,
+                      color: palette.text,
+                      background: palette.cardAlt,
+                    }}
+                  >
+                    {item.count} {item.label}
+                  </span>
+                ))}
+                {results.freshnessDays !== null ? (
+                  <span
+                    style={{
+                      border: `1px solid ${palette.border}`,
+                      borderRadius: 999,
+                      padding: '5px 10px',
+                      fontSize: 11,
+                      color: palette.muted,
+                      background: palette.cardAlt,
+                    }}
+                  >
+                    {describeFreshness(results.freshnessDays)}
+                  </span>
+                ) : null}
+              </div>
             ) : null}
             {results.citations?.length ? (
               <div style={{ display: 'grid', gap: 8 }}>
@@ -825,6 +975,45 @@ export default function AskRecall() {
             ) : null}
           </WorkspacePanel>
 
+          {!isNavigationIntent && (results.answerFoundation?.length > 0 || results.missingEvidence?.length > 0) ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Trust"
+              title="Why this answer"
+              description="See what Ask Recall relied on and what still limits confidence."
+            >
+              {results.answerFoundation?.length ? (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {results.answerFoundation.map((item) => (
+                    <div
+                      key={item}
+                      style={{
+                        border: `1px solid ${palette.border}`,
+                        borderRadius: 14,
+                        background: palette.cardAlt,
+                        padding: 12,
+                        fontSize: 12,
+                        color: palette.text,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {results.missingEvidence?.length ? (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {results.missingEvidence.map((item) => (
+                    <p key={item} style={{ margin: 0, fontSize: 12, color: palette.warn }}>
+                      {item}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+            </WorkspacePanel>
+          ) : null}
+
           {!isNavigationIntent ? (
             <WorkspacePanel
               palette={palette}
@@ -839,6 +1028,28 @@ export default function AskRecall() {
                 </strong>
                 {results.readinessScore !== null ? ` | Readiness ${results.readinessScore}` : ''}
               </p>
+            </WorkspacePanel>
+          ) : null}
+
+          {!isNavigationIntent && results.followUpQuestions?.length ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Ask Next"
+              title="Suggested follow-ups"
+              description="Use these next questions to deepen the answer or close evidence gaps."
+            >
+              <div style={{ display: 'grid', gap: 8 }}>
+                {results.followUpQuestions.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => runAnalysis(item)}
+                    style={{ ...buttonGhost(palette), textAlign: 'left' }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
             </WorkspacePanel>
           ) : null}
 

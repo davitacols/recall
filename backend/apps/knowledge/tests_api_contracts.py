@@ -6,10 +6,12 @@ from rest_framework.test import APIClient
 
 from apps.business.advanced_models import Milestone
 from apps.business.document_models import Document
-from apps.business.models import Goal, Meeting, Task
+from apps.business.models import CalendarConnection, Goal, Meeting, Task
 from apps.agile.models import Blocker, Board, Column, Issue, Project, Sprint, SprintUpdate
 from apps.conversations.models import ActionItem, Conversation, ConversationReply
 from apps.decisions.models import Decision
+from apps.integrations.models import Commit as IntegrationCommit
+from apps.integrations.models import GitHubIntegration, JiraIntegration, PullRequest as IntegrationPullRequest, SlackIntegration
 from apps.organizations.models import Organization, User
 
 
@@ -173,6 +175,62 @@ class KnowledgeApiContractTests(TestCase):
             content="This sprint update contains keyword alpha details for the team.",
             ai_summary="Keyword alpha sprint summary for testing.",
         )
+        self.github_integration = GitHubIntegration.objects.create(
+            organization=self.org,
+            access_token="ghp_test_keyword_alpha_token",
+            repo_owner="keyword-alpha-org",
+            repo_name="keyword-alpha-repo",
+            enabled=True,
+            auto_link_prs=True,
+        )
+        self.jira_integration = JiraIntegration.objects.create(
+            organization=self.org,
+            site_url="https://keyword-alpha.atlassian.net",
+            email="keyword-alpha-admin@example.com",
+            api_token="jira_test_keyword_alpha_token",
+            enabled=True,
+            auto_sync_issues=True,
+        )
+        self.slack_integration = SlackIntegration.objects.create(
+            organization=self.org,
+            webhook_url="https://hooks.slack.com/services/T000/B000/keywordalpha",
+            channel="#keyword-alpha-alerts",
+            enabled=True,
+            post_decisions=True,
+            post_blockers=True,
+            post_sprint_summary=True,
+        )
+        self.calendar_connection = CalendarConnection.objects.create(
+            organization=self.org,
+            user=self.user,
+            provider="google",
+            is_connected=True,
+            external_calendar_id="keyword-alpha-primary",
+            metadata={"calendar_id": "keyword-alpha-primary"},
+            last_synced_at=timezone.now(),
+        )
+        self.integration_pr = IntegrationPullRequest.objects.create(
+            organization=self.org,
+            decision=self.decision,
+            pr_number=27,
+            pr_url="https://github.com/keyword-alpha-org/keyword-alpha-repo/pull/27",
+            title="Keyword alpha talking stage rollout",
+            status="open",
+            branch_name="feature/keyword-alpha-talking-stage",
+            author="octocat",
+            created_at=timezone.now(),
+            commits_count=2,
+        )
+        self.integration_commit = IntegrationCommit.objects.create(
+            organization=self.org,
+            decision=self.decision,
+            pull_request=self.integration_pr,
+            sha="a" * 40,
+            message="Keyword alpha commit for talking stage rollout",
+            author="octocat",
+            commit_url="https://github.com/keyword-alpha-org/keyword-alpha-repo/commit/" + ("a" * 40),
+            committed_at=timezone.now(),
+        )
 
     def test_search_returns_bucketed_payload_with_business_entities(self):
         response = self.client.post("/api/knowledge/search/", {"query": "keyword alpha"}, format="json")
@@ -199,6 +257,12 @@ class KnowledgeApiContractTests(TestCase):
             "issues",
             "blockers",
             "people",
+            "github_integrations",
+            "jira_integrations",
+            "slack_integrations",
+            "calendar_connections",
+            "pull_requests",
+            "commits",
         ]:
             self.assertIn(bucket, payload["results"])
             self.assertIsInstance(payload["results"][bucket], list)
@@ -218,6 +282,12 @@ class KnowledgeApiContractTests(TestCase):
         self.assertTrue(any(item["id"] == self.issue.id for item in payload["results"]["issues"]))
         self.assertTrue(any(item["id"] == self.blocker.id for item in payload["results"]["blockers"]))
         self.assertTrue(any(item["id"] == self.teammate.id for item in payload["results"]["people"]))
+        self.assertTrue(any(item["id"] == self.github_integration.id for item in payload["results"]["github_integrations"]))
+        self.assertTrue(any(item["id"] == self.jira_integration.id for item in payload["results"]["jira_integrations"]))
+        self.assertTrue(any(item["id"] == self.slack_integration.id for item in payload["results"]["slack_integrations"]))
+        self.assertTrue(any(item["id"] == self.calendar_connection.id for item in payload["results"]["calendar_connections"]))
+        self.assertTrue(any(item["id"] == self.integration_pr.id for item in payload["results"]["pull_requests"]))
+        self.assertTrue(any(item["id"] == self.integration_commit.id for item in payload["results"]["commits"]))
 
     def test_search_respects_type_filters(self):
         response = self.client.post(
@@ -243,6 +313,12 @@ class KnowledgeApiContractTests(TestCase):
         self.assertEqual(payload["sprint_updates"], [])
         self.assertEqual(payload["blockers"], [])
         self.assertEqual(payload["people"], [])
+        self.assertEqual(payload["github_integrations"], [])
+        self.assertEqual(payload["jira_integrations"], [])
+        self.assertEqual(payload["slack_integrations"], [])
+        self.assertEqual(payload["calendar_connections"], [])
+        self.assertEqual(payload["pull_requests"], [])
+        self.assertEqual(payload["commits"], [])
 
     def test_search_matches_natural_language_sprint_query(self):
         response = self.client.post(
@@ -313,3 +389,16 @@ class KnowledgeApiContractTests(TestCase):
         self.assertEqual(response.status_code, 200)
         suggestions = response.data.get("suggestions", [])
         self.assertTrue(any("keyword alpha" in suggestion.lower() for suggestion in suggestions))
+
+    def test_search_returns_connected_system_sources_for_connector_queries(self):
+        response = self.client.post(
+            "/api/knowledge/search/",
+            {"query": "which integrations are connected to this workspace"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.data["results"]
+        self.assertTrue(any(item["id"] == self.github_integration.id for item in payload["github_integrations"]))
+        self.assertTrue(any(item["id"] == self.jira_integration.id for item in payload["jira_integrations"]))
+        self.assertTrue(any(item["id"] == self.slack_integration.id for item in payload["slack_integrations"]))
+        self.assertTrue(any(item["id"] == self.calendar_connection.id for item in payload["calendar_connections"]))

@@ -40,6 +40,88 @@ function buildNextAction(fieldChecklist, fallback) {
   return fallback;
 }
 
+function buildTestGuidance(providerKey, passed, form, status, errorText = "") {
+  if (providerKey === "slack") {
+    return passed
+      ? {
+          state: "success",
+          title: "Slack test reached the integration",
+          detail: "Confirm the message landed in the expected Slack channel, then keep the alert scope tight so the signal stays useful.",
+          tips: [
+            "Look for the test post in the destination channel immediately after running Test.",
+            "If it reached the wrong place, adjust the selected channel or webhook source before enabling more alert types.",
+            "After the test passes, try one live decision or blocker event and confirm the format looks right in Slack.",
+          ],
+        }
+      : {
+          state: "error",
+          title: "Slack test did not complete",
+          detail: errorText || "Slack could not validate the current webhook configuration.",
+          tips: [
+            "Re-copy the Incoming Webhook URL from Slack and paste it again without extra spaces.",
+            "Make sure the Slack app still has an active webhook for the channel you want to use.",
+            "Keep one or two alert types enabled first, then retest before widening the signal set.",
+          ],
+        };
+  }
+
+  if (providerKey === "github") {
+    const processedCount = status?.webhook_observability?.recent_processed_count || 0;
+    return passed
+      ? {
+          state: "success",
+          title: "GitHub connection test passed",
+          detail:
+            processedCount > 0
+              ? "Repository credentials are working and Knoledgr is already receiving real webhook traffic."
+              : "Repository credentials are working. The next step is making sure the webhook is configured and starts delivering events.",
+          tips: processedCount > 0
+            ? [
+                "Open the webhook delivery monitor and confirm the latest events show as processed.",
+                "Use DECISION-123, RECALL-123, or #123 in PR titles or commits so code work links back automatically.",
+                "If a later delivery fails, inspect the signature and event details before relying on the timeline.",
+              ]
+            : [
+                "Open GitHub webhook settings and paste the payload URL, content type, events, and secret from Knoledgr.",
+                "Trigger a test delivery or push a small commit so the delivery monitor has something real to inspect.",
+                "If deliveries appear but stay failed, compare the saved webhook secret in GitHub with the one in Knoledgr.",
+              ],
+        }
+      : {
+          state: "error",
+          title: "GitHub connection test failed",
+          detail: errorText || "Knoledgr could not validate the current GitHub repository credentials.",
+          tips: [
+            "Check that the access token has repository read access and belongs to an account that can see the repo.",
+            "Verify the repository owner and repository name exactly match GitHub.",
+            "If the repo is correct but tests still fail, generate a fresh token and paste it again before retesting.",
+          ],
+        };
+  }
+
+  return passed
+    ? {
+        state: "success",
+        title: "Jira connection test passed",
+        detail: "Jira authentication succeeded. The next step is validating one real issue flow so the integration is trustworthy in daily use.",
+        tips: [
+          "Open one real issue and confirm Jira data can refresh without errors.",
+          "Decide whether auto-sync should stay on or off before more teams depend on the integration.",
+          "If this workspace spans multiple Jira projects, validate the highest-risk project first.",
+        ],
+      }
+    : {
+        state: "error",
+        title: "Jira connection test failed",
+        detail: errorText || "Knoledgr could not authenticate against the Jira site with the current credentials.",
+        tips: [
+          "Make sure the site URL is the root Atlassian URL, not a deep issue link.",
+          "Use an Atlassian API token, not a password, and make sure it belongs to the same account as the email.",
+          "Paste a fresh token if the current one may have been revoked or created in a different Atlassian account.",
+        ],
+      };
+}
+
 function buildIntegrationGuide(providerKey, form, status) {
   const repoConfigured = hasText(form.repo_owner) && hasText(form.repo_name);
   const githubReadiness = status?.webhook_readiness;
@@ -520,6 +602,7 @@ export default function Integrations() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [flash, setFlash] = useState(null);
+  const [testResults, setTestResults] = useState({});
 
   const [slack, setSlack] = useState(null);
   const [github, setGithub] = useState(null);
@@ -589,6 +672,7 @@ export default function Integrations() {
   }, [jira]);
 
   const byKey = { slack, github, jira };
+  const formByKey = { slack: slackForm, github: githubForm, jira: jiraForm };
   const connectedCount = useMemo(
     () => Object.values(byKey).filter((item) => Boolean(item?.enabled)).length,
     [slack, github, jira]
@@ -600,6 +684,24 @@ export default function Integrations() {
     () => buildIntegrationGuide(active, activeForm, activeData),
     [active, activeData, activeForm]
   );
+  const activeTestResult = testResults[active] || null;
+  const providerSummaries = useMemo(
+    () =>
+      PROVIDERS.map((provider) => {
+        const guide = buildIntegrationGuide(provider.key, formByKey[provider.key], byKey[provider.key] || {});
+        return {
+          ...provider,
+          connected: Boolean(byKey[provider.key]?.enabled),
+          completedSteps: guide.steps.filter((step) => step.done).length,
+          totalSteps: guide.steps.length,
+          nextAction: guide.nextAction?.title || "Continue setup",
+          statusLabel: guide.statusLabel || (byKey[provider.key]?.enabled ? "Connected" : "Setup in progress"),
+          lastTest: testResults[provider.key] || null,
+        };
+      }),
+    [slackForm, githubForm, jiraForm, slack, github, jira, testResults]
+  );
+  const activeSummary = providerSummaries.find((provider) => provider.key === active) || null;
   const tone = useMemo(
     () =>
       darkMode
@@ -662,8 +764,24 @@ export default function Integrations() {
     try {
       await api.post(`/api/integrations/test/${active}/`);
       setFlash({ type: "success", text: `${activeProvider?.name} test passed.` });
-    } catch {
-      setFlash({ type: "error", text: `${activeProvider?.name} test failed.` });
+      setTestResults((prev) => ({
+        ...prev,
+        [active]: buildTestGuidance(active, true, activeForm, activeData),
+      }));
+    } catch (error) {
+      const detail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "";
+      setFlash({
+        type: "error",
+        text: detail ? `${activeProvider?.name} test failed: ${detail}` : `${activeProvider?.name} test failed.`,
+      });
+      setTestResults((prev) => ({
+        ...prev,
+        [active]: buildTestGuidance(active, false, activeForm, activeData, detail),
+      }));
     } finally {
       setTesting(false);
     }
@@ -713,138 +831,366 @@ export default function Integrations() {
 
   return (
     <div className="space-y-6">
-      <section className={tone.hero}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className={tone.heroEyebrow}>Integrations Hub</p>
-            <h1 className={tone.heroTitle}>Connect Your Workspace Stack</h1>
-            <p className={tone.heroText}>
-              Centralize comms, delivery, and code tooling so decisions and execution stay synchronized.
-            </p>
+      <section className={`${tone.hero} overflow-hidden`}>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+          <div className="space-y-5">
+            <div>
+              <p className={tone.heroEyebrow}>Integrations Hub</p>
+              <h1 className={tone.heroTitle}>Run integrations like an operating layer</h1>
+              <p className={tone.heroText}>
+                Connect Slack, GitHub, and Jira with a setup flow that keeps credentials, verification, rollout guidance, and delivery health in one place.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Stat label="Providers" value={`${PROVIDERS.length}`} tone={tone} />
+              <Stat label="Connected" value={`${connectedCount}`} tone={tone} />
+              <Stat label="Ready Steps" value={`${providerSummaries.reduce((sum, provider) => sum + provider.completedSteps, 0)}`} tone={tone} />
+            </div>
+            <div className="grid gap-3 lg:grid-cols-3">
+              {providerSummaries.map((provider) => (
+                <button
+                  key={provider.key}
+                  type="button"
+                  onClick={() => setActive(provider.key)}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    provider.key === active
+                      ? darkMode
+                        ? "border-emerald-500 bg-emerald-500/10"
+                        : "border-stone-900 bg-white shadow-[0_16px_40px_rgba(28,25,23,0.08)]"
+                      : darkMode
+                        ? "border-stone-700 bg-stone-900/70 hover:border-stone-500"
+                        : "border-white/70 bg-white/80 hover:border-stone-300"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{provider.name}</p>
+                      <p className={`mt-1 text-xs uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                        {provider.category}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        provider.connected
+                          ? darkMode
+                            ? "bg-emerald-500/20 text-emerald-200"
+                            : "bg-emerald-100 text-emerald-700"
+                          : darkMode
+                            ? "bg-stone-800 text-stone-300"
+                            : "bg-stone-100 text-stone-600"
+                      }`}
+                    >
+                      {provider.connected ? "Live" : "Needs setup"}
+                    </span>
+                  </div>
+                  <p className={`mt-3 text-sm ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{provider.desc}</p>
+                  <div className={`mt-4 h-2 overflow-hidden rounded-full ${darkMode ? "bg-stone-800" : "bg-stone-200"}`}>
+                    <div
+                      className={`h-full rounded-full ${
+                        provider.connected ? "bg-emerald-500" : darkMode ? "bg-stone-500" : "bg-stone-400"
+                      }`}
+                      style={{ width: `${(provider.completedSteps / provider.totalSteps) * 100}%` }}
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <p className={`text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                      {provider.completedSteps}/{provider.totalSteps} steps ready
+                    </p>
+                    <p className={`text-xs font-medium ${darkMode ? "text-stone-300" : "text-stone-700"}`}>
+                      {provider.lastTest ? provider.lastTest.title : provider.nextAction}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <Stat label="Providers" value={`${PROVIDERS.length}`} tone={tone} />
-            <Stat label="Connected" value={`${connectedCount}`} tone={tone} />
-            <Stat label="Not Connected" value={`${PROVIDERS.length - connectedCount}`} tone={tone} />
+
+          <div
+            className={`rounded-[28px] border p-5 ${
+              darkMode
+                ? "border-stone-700 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_transparent_55%),linear-gradient(180deg,rgba(28,25,23,0.95),rgba(17,24,39,0.92))]"
+                : "border-white/70 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.22),_transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(255,251,235,0.9))] shadow-[0_24px_60px_rgba(28,25,23,0.08)]"
+            }`}
+          >
+            <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+              Operator Focus
+            </p>
+            <h2 className={`mt-3 text-2xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
+              {activeProvider?.name} integration cockpit
+            </h2>
+            <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
+              {activeGuide.nextAction?.detail || activeProvider?.desc}
+            </p>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <SignalCard
+                label="Connection State"
+                value={activeSummary?.connected ? "Connected" : "Setup in progress"}
+                darkMode={darkMode}
+              />
+              <SignalCard
+                label="Setup Progress"
+                value={`${activeSummary?.completedSteps || 0}/${activeSummary?.totalSteps || 0} steps`}
+                darkMode={darkMode}
+              />
+              <SignalCard
+                label="Latest Test"
+                value={activeTestResult ? activeTestResult.title : "Not run yet"}
+                darkMode={darkMode}
+              />
+              <SignalCard
+                label="Next Move"
+                value={activeGuide.nextAction?.title || "Review setup"}
+                darkMode={darkMode}
+              />
+            </div>
+
+            <div className="mt-5 space-y-2">
+              <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                Active rollout notes
+              </p>
+              {[
+                activeGuide.nextAction?.detail || "Use the assistant to finish the next missing step.",
+                activeTestResult?.detail || "Run Test after saving to turn configuration into validated setup.",
+                activeGuide.verification?.[0] || "Verify at least one real workflow before calling the integration ready.",
+              ].map((note) => (
+                <div
+                  key={note}
+                  className={`rounded-xl border px-3 py-3 text-sm ${
+                    darkMode ? "border-stone-700 bg-stone-900/80 text-stone-200" : "border-stone-200 bg-white/90 text-stone-700"
+                  }`}
+                >
+                  {note}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {flash ? (
         <div
-          className={`rounded-xl border px-4 py-3 text-sm ${
+          className={`rounded-2xl border px-4 py-3 text-sm ${
             flash.type === "success"
-              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-              : "bg-rose-50 border-rose-200 text-rose-700"
+              ? darkMode
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                : "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : darkMode
+                ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
+                : "bg-rose-50 border-rose-200 text-rose-700"
           }`}
         >
           {flash.text}
         </div>
       ) : null}
 
-      <section className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className={tone.shellAside}>
-          <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Providers</p>
-          <div className="space-y-2">
-            {PROVIDERS.map((provider) => {
-              const connected = Boolean(byKey[provider.key]?.enabled);
-              const isActive = provider.key === active;
-              return (
-                <button
-                  key={provider.key}
-                  onClick={() => setActive(provider.key)}
-                  className={`w-full rounded-xl border p-3 text-left transition ${
-                    isActive
-                      ? darkMode
-                        ? "border-emerald-500 bg-emerald-600 text-white"
-                        : "border-stone-900 bg-stone-900 text-white"
-                      : darkMode
-                      ? "border-stone-700 bg-stone-900 hover:border-stone-500"
-                      : "border-stone-200 bg-white hover:border-stone-300"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className={`text-sm font-semibold ${isActive ? "text-white" : tone.text}`}>
-                        {provider.name}
+      <section className="grid gap-4 2xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="space-y-4">
+          <div className={tone.shellAside}>
+            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Provider Atlas</p>
+            <div className="space-y-3">
+              {providerSummaries.map((provider) => {
+                const isActive = provider.key === active;
+                return (
+                  <button
+                    key={provider.key}
+                    type="button"
+                    onClick={() => setActive(provider.key)}
+                    className={`w-full rounded-2xl border p-4 text-left transition ${
+                      isActive
+                        ? darkMode
+                          ? "border-emerald-500 bg-emerald-500/10"
+                          : "border-stone-900 bg-stone-900 text-white"
+                        : darkMode
+                          ? "border-stone-700 bg-stone-900 hover:border-stone-500"
+                          : "border-stone-200 bg-white hover:border-stone-300"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className={`text-sm font-semibold ${isActive && !darkMode ? "text-white" : darkMode ? "text-stone-100" : "text-stone-900"}`}>
+                          {provider.name}
+                        </p>
+                        <p className={`mt-1 text-[11px] uppercase tracking-[0.14em] ${isActive && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                          {provider.category}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          provider.connected
+                            ? isActive && !darkMode
+                              ? "bg-white/15 text-white"
+                              : darkMode
+                                ? "bg-emerald-500/20 text-emerald-200"
+                                : "bg-emerald-100 text-emerald-700"
+                            : isActive && !darkMode
+                              ? "bg-white/10 text-stone-100"
+                              : darkMode
+                                ? "bg-stone-800 text-stone-300"
+                                : "bg-stone-100 text-stone-600"
+                        }`}
+                      >
+                        {provider.connected ? "Live" : "Setup"}
+                      </span>
+                    </div>
+                    <p className={`mt-3 text-sm ${isActive && !darkMode ? "text-stone-100" : darkMode ? "text-stone-300" : "text-stone-600"}`}>
+                      {provider.desc}
+                    </p>
+                    <div className={`mt-4 h-2 overflow-hidden rounded-full ${darkMode ? "bg-stone-800" : isActive && !darkMode ? "bg-white/15" : "bg-stone-200"}`}>
+                      <div
+                        className={`h-full rounded-full ${provider.connected ? "bg-emerald-500" : isActive && !darkMode ? "bg-white" : darkMode ? "bg-stone-500" : "bg-stone-400"}`}
+                        style={{ width: `${(provider.completedSteps / provider.totalSteps) * 100}%` }}
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className={`text-xs ${isActive && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                        {provider.completedSteps}/{provider.totalSteps} steps ready
                       </p>
-                      <p className={`mt-1 text-xs ${isActive ? "text-stone-100" : tone.muted}`}>
-                        {provider.desc}
+                      <p className={`text-xs font-medium ${isActive && !darkMode ? "text-white" : darkMode ? "text-stone-200" : "text-stone-700"}`}>
+                        {provider.lastTest ? (provider.lastTest.state === "success" ? "Test passed" : "Needs attention") : "Not tested"}
                       </p>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        connected
-                          ? isActive
-                            ? "bg-emerald-500 text-white"
-                            : "bg-emerald-100 text-emerald-700"
-                          : isActive
-                          ? "bg-stone-700 text-stone-200"
-                          : "bg-stone-100 text-stone-600"
-                      }`}
-                    >
-                      {connected ? "Connected" : "Not connected"}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={tone.shellAside}>
+            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Rollout Playbook</p>
+            <div className="space-y-2">
+              {[
+                "Save credentials or URLs before running the first validation test.",
+                "Use the assistant to finish the next missing step instead of filling everything blindly.",
+                "Enable a provider only after the test passes and one real workflow looks correct.",
+              ].map((note) => (
+                <div
+                  key={note}
+                  className={`rounded-xl border px-3 py-3 text-sm ${
+                    darkMode ? "border-stone-700 bg-stone-900 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700"
+                  }`}
+                >
+                  {note}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className={tone.shellAside}>
+            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Current Signal</p>
+            <div className="grid gap-3">
+              <SignalCard
+                label="Active Provider"
+                value={activeProvider?.name || "-"}
+                darkMode={darkMode}
+              />
+              <SignalCard
+                label="Status"
+                value={activeSummary?.statusLabel || "Review setup"}
+                darkMode={darkMode}
+              />
+              <SignalCard
+                label="Latest Test"
+                value={activeTestResult ? activeTestResult.title : "Not run yet"}
+                darkMode={darkMode}
+              />
+            </div>
           </div>
         </aside>
 
-        <main className={tone.shellMain}>
-          <div className={`flex flex-wrap items-center justify-between gap-3 border-b pb-4 ${darkMode ? "border-stone-700" : "border-stone-200"}`}>
-            <div>
-              <p className={`text-xs uppercase tracking-widest ${tone.muted}`}>{activeProvider?.category}</p>
-              <h2 className={`mt-1 text-xl font-bold ${tone.text}`}>{activeProvider?.name}</h2>
-              <p className={`mt-1 text-sm ${tone.subtext}`}>{activeProvider?.desc}</p>
+        <div className="space-y-4">
+          <section className={tone.shellMain}>
+            <div
+              className={`rounded-[24px] border p-5 ${
+                darkMode
+                  ? "border-stone-700 bg-[linear-gradient(135deg,rgba(31,41,55,0.75),rgba(17,24,39,0.88))]"
+                  : "border-stone-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(250,245,237,0.96))]"
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className={`text-xs uppercase tracking-widest ${tone.muted}`}>{activeProvider?.category}</p>
+                  <h2 className={`mt-1 text-2xl font-black ${tone.text}`}>{activeProvider?.name} control room</h2>
+                  <p className={`mt-2 max-w-3xl text-sm leading-6 ${tone.subtext}`}>{activeProvider?.desc}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleEnabled}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold border ${
+                      activeData?.enabled
+                        ? darkMode
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                          : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        : darkMode
+                          ? "border-stone-600 bg-stone-900 text-stone-200"
+                          : "border-stone-300 bg-white text-stone-700"
+                    }`}
+                  >
+                    {activeData?.enabled ? "Disable" : "Enable"}
+                  </button>
+                  <button onClick={handleTest} disabled={testing} className={tone.testBtn}>
+                    {testing ? "Testing..." : "Test"}
+                  </button>
+                  <button onClick={handleSave} disabled={saving} className={tone.saveBtn}>
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-4">
+                <SignalCard
+                  label="Setup Progress"
+                  value={`${activeSummary?.completedSteps || 0}/${activeSummary?.totalSteps || 0} steps`}
+                  darkMode={darkMode}
+                />
+                <SignalCard
+                  label="Connection"
+                  value={activeSummary?.connected ? "Connected" : "Not connected"}
+                  darkMode={darkMode}
+                />
+                <SignalCard
+                  label="Latest Test"
+                  value={activeTestResult ? activeTestResult.title : "Not run yet"}
+                  darkMode={darkMode}
+                />
+                <SignalCard
+                  label="Next Step"
+                  value={activeGuide.nextAction?.title || "Review setup"}
+                  darkMode={darkMode}
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleEnabled}
-                className={`rounded-lg px-3 py-2 text-xs font-semibold border ${
-                  activeData?.enabled
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : darkMode
-                    ? "border-stone-600 bg-stone-800 text-stone-200"
-                    : "border-stone-300 bg-stone-50 text-stone-700"
-                }`}
-              >
-                {activeData?.enabled ? "Disable" : "Enable"}
-              </button>
-              <button
-                onClick={handleTest}
-                disabled={testing}
-                className={tone.testBtn}
-              >
-                {testing ? "Testing..." : "Test"}
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className={tone.saveBtn}
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-            </div>
-          </div>
+          </section>
 
           <IntegrationAssistant
             providerName={activeProvider?.name}
             guide={activeGuide}
             darkMode={darkMode}
+            testResult={activeTestResult}
           />
 
-          {active === "slack" ? (
-            <SlackConfig value={slackForm} onChange={setSlackForm} darkMode={darkMode} />
-          ) : null}
-          {active === "github" ? (
-            <GitHubConfig value={githubForm} status={github} onChange={setGithubForm} darkMode={darkMode} />
-          ) : null}
-          {active === "jira" ? (
-            <JiraConfig value={jiraForm} onChange={setJiraForm} darkMode={darkMode} />
-          ) : null}
-        </main>
+          <section className={tone.shellMain}>
+            <div className={`flex flex-wrap items-end justify-between gap-4 border-b pb-4 ${darkMode ? "border-stone-700" : "border-stone-200"}`}>
+              <div>
+                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${tone.muted}`}>Connection Settings</p>
+                <h3 className={`mt-1 text-lg font-bold ${tone.text}`}>Configure {activeProvider?.name}</h3>
+              </div>
+              <p className={`max-w-xl text-sm ${tone.subtext}`}>
+                Paste the provider details, save the setup, run a test, then enable the integration only after the assistant and live workflow both look healthy.
+              </p>
+            </div>
+
+            {active === "slack" ? (
+              <SlackConfig value={slackForm} onChange={setSlackForm} darkMode={darkMode} />
+            ) : null}
+            {active === "github" ? (
+              <GitHubConfig value={githubForm} status={github} onChange={setGithubForm} darkMode={darkMode} />
+            ) : null}
+            {active === "jira" ? (
+              <JiraConfig value={jiraForm} onChange={setJiraForm} darkMode={darkMode} />
+            ) : null}
+          </section>
+        </div>
       </section>
     </div>
   );
@@ -882,6 +1228,65 @@ function TextInput({ darkMode, ...props }) {
   );
 }
 
+function ClipboardInput({ darkMode, onPasteValue, pasteLabel = "Paste", ...props }) {
+  const [clipboardState, setClipboardState] = useState("");
+
+  const handlePaste = async () => {
+    if (!navigator?.clipboard?.readText) {
+      setClipboardState("unsupported");
+      return;
+    }
+    try {
+      const pasted = await navigator.clipboard.readText();
+      if (!pasted) {
+        setClipboardState("empty");
+        return;
+      }
+      onPasteValue?.(pasted.trim());
+      setClipboardState("pasted");
+      window.setTimeout(() => {
+        setClipboardState((current) => (current === "pasted" ? "" : current));
+      }, 1500);
+    } catch {
+      setClipboardState("error");
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <TextInput darkMode={darkMode} {...props} />
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={handlePaste}
+          className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${
+            darkMode
+              ? "border-stone-600 bg-stone-900 text-stone-200 hover:border-stone-400"
+              : "border-stone-300 bg-white text-stone-700 hover:border-stone-500"
+          }`}
+        >
+          {clipboardState === "pasted" ? "Pasted" : pasteLabel}
+        </button>
+        {clipboardState === "unsupported" ? (
+          <span className={`text-[11px] ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
+            Clipboard paste is unavailable in this browser.
+          </span>
+        ) : null}
+        {clipboardState === "empty" ? (
+          <span className={`text-[11px] ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
+            Clipboard is empty.
+          </span>
+        ) : null}
+        {clipboardState === "error" ? (
+          <span className={`text-[11px] ${darkMode ? "text-rose-300" : "text-rose-700"}`}>
+            Could not read the clipboard.
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function Check({ checked, onChange, label, darkMode }) {
   return (
     <label
@@ -899,21 +1304,25 @@ function SlackConfig({ value, onChange, darkMode }) {
   return (
     <div className="space-y-5">
       <Field label="Webhook URL" hint="Create an incoming webhook in your Slack app settings." darkMode={darkMode}>
-        <TextInput
+        <ClipboardInput
           id="slack-webhook-url"
           darkMode={darkMode}
           type="url"
           value={value.webhook_url}
           placeholder="https://hooks.slack.com/services/..."
+          pasteLabel="Paste webhook"
+          onPasteValue={(pasted) => onChange((prev) => ({ ...prev, webhook_url: pasted }))}
           onChange={(e) => onChange((prev) => ({ ...prev, webhook_url: e.target.value }))}
         />
       </Field>
       <Field label="Channel" darkMode={darkMode}>
-        <TextInput
+        <ClipboardInput
           id="slack-channel"
           darkMode={darkMode}
           value={value.channel}
           placeholder="#general"
+          pasteLabel="Paste channel"
+          onPasteValue={(pasted) => onChange((prev) => ({ ...prev, channel: pasted }))}
           onChange={(e) => onChange((prev) => ({ ...prev, channel: e.target.value }))}
         />
       </Field>
@@ -1006,31 +1415,37 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
       ) : null}
 
       <Field label="Access Token" hint="Use a PAT with repo read access." darkMode={darkMode}>
-        <TextInput
+        <ClipboardInput
           id="github-access-token"
           darkMode={darkMode}
           type="password"
           value={value.access_token}
           placeholder="ghp_..."
+          pasteLabel="Paste token"
+          onPasteValue={(pasted) => onChange((prev) => ({ ...prev, access_token: pasted }))}
           onChange={(e) => onChange((prev) => ({ ...prev, access_token: e.target.value }))}
         />
       </Field>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Repository Owner" darkMode={darkMode}>
-          <TextInput
+          <ClipboardInput
             id="github-repo-owner"
             darkMode={darkMode}
             value={value.repo_owner}
             placeholder="org-or-user"
+            pasteLabel="Paste owner"
+            onPasteValue={(pasted) => onChange((prev) => ({ ...prev, repo_owner: pasted }))}
             onChange={(e) => onChange((prev) => ({ ...prev, repo_owner: e.target.value }))}
           />
         </Field>
         <Field label="Repository Name" darkMode={darkMode}>
-          <TextInput
+          <ClipboardInput
             id="github-repo-name"
             darkMode={darkMode}
             value={value.repo_name}
             placeholder="repo-name"
+            pasteLabel="Paste repo"
+            onPasteValue={(pasted) => onChange((prev) => ({ ...prev, repo_name: pasted }))}
             onChange={(e) => onChange((prev) => ({ ...prev, repo_name: e.target.value }))}
           />
         </Field>
@@ -1040,12 +1455,14 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
         hint="Use the same secret in GitHub so pull_request and push events can be verified."
         darkMode={darkMode}
       >
-        <TextInput
+        <ClipboardInput
           id="github-webhook-secret"
           darkMode={darkMode}
           type="password"
           value={value.webhook_secret}
           placeholder={status?.has_webhook_secret ? "Webhook secret already configured" : "Add webhook secret"}
+          pasteLabel="Paste secret"
+          onPasteValue={(pasted) => onChange((prev) => ({ ...prev, webhook_secret: pasted }))}
           onChange={(e) => onChange((prev) => ({ ...prev, webhook_secret: e.target.value }))}
         />
       </Field>
@@ -1208,7 +1625,7 @@ function SignalCard({ label, value, darkMode }) {
   );
 }
 
-function IntegrationAssistant({ providerName, guide, darkMode }) {
+function IntegrationAssistant({ providerName, guide, darkMode, testResult }) {
   const completedSteps = guide.steps.filter((step) => step.done).length;
   const complete = completedSteps === guide.steps.length;
   const statusTone = complete
@@ -1269,6 +1686,7 @@ function IntegrationAssistant({ providerName, guide, darkMode }) {
           {guide.nextAction ? (
             <NextActionCard nextAction={guide.nextAction} darkMode={darkMode} />
           ) : null}
+          {testResult ? <TestResultCard testResult={testResult} darkMode={darkMode} /> : null}
           {guide.statusLabel ? (
             <div
               className={`rounded-xl border px-4 py-3 text-sm ${
@@ -1360,6 +1778,35 @@ function NextActionCard({ nextAction, darkMode }) {
         >
           Jump to field
         </a>
+      ) : null}
+    </div>
+  );
+}
+
+function TestResultCard({ testResult, darkMode }) {
+  const tone =
+    testResult.state === "success"
+      ? darkMode
+        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+        : "border-emerald-200 bg-emerald-50/80 text-emerald-800"
+      : darkMode
+        ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
+        : "border-rose-200 bg-rose-50/80 text-rose-800";
+
+  return (
+    <div className={`rounded-xl border px-4 py-4 ${tone}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">Latest Test Result</p>
+      <p className={`mt-2 text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{testResult.title}</p>
+      <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-700"}`}>{testResult.detail}</p>
+      {testResult.tips?.length ? (
+        <div className="mt-3 space-y-2">
+          {testResult.tips.map((tip) => (
+            <div key={tip} className="flex items-start gap-2">
+              <span className={`mt-1 inline-flex h-2.5 w-2.5 rounded-full ${darkMode ? "bg-current/70" : "bg-current/60"}`} />
+              <p className={`text-sm leading-6 ${darkMode ? "text-stone-200" : "text-stone-700"}`}>{tip}</p>
+            </div>
+          ))}
+        </div>
       ) : null}
     </div>
   );
@@ -1570,33 +2017,39 @@ function JiraConfig({ value, onChange, darkMode }) {
   return (
     <div className="space-y-5">
       <Field label="Site URL" hint="Example: https://your-team.atlassian.net" darkMode={darkMode}>
-        <TextInput
+        <ClipboardInput
           id="jira-site-url"
           darkMode={darkMode}
           type="url"
           value={value.site_url}
           placeholder="https://your-team.atlassian.net"
+          pasteLabel="Paste site URL"
+          onPasteValue={(pasted) => onChange((prev) => ({ ...prev, site_url: pasted }))}
           onChange={(e) => onChange((prev) => ({ ...prev, site_url: e.target.value }))}
         />
       </Field>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Jira Email" darkMode={darkMode}>
-          <TextInput
+          <ClipboardInput
             id="jira-email"
             darkMode={darkMode}
             type="email"
             value={value.email}
             placeholder="name@company.com"
+            pasteLabel="Paste email"
+            onPasteValue={(pasted) => onChange((prev) => ({ ...prev, email: pasted }))}
             onChange={(e) => onChange((prev) => ({ ...prev, email: e.target.value }))}
           />
         </Field>
         <Field label="API Token" darkMode={darkMode}>
-          <TextInput
+          <ClipboardInput
             id="jira-api-token"
             darkMode={darkMode}
             type="password"
             value={value.api_token}
             placeholder="Atlassian API token"
+            pasteLabel="Paste token"
+            onPasteValue={(pasted) => onChange((prev) => ({ ...prev, api_token: pasted }))}
             onChange={(e) => onChange((prev) => ({ ...prev, api_token: e.target.value }))}
           />
         </Field>

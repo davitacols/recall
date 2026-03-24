@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  ArrowPathIcon,
   ChatBubbleLeftIcon,
   ClipboardDocumentListIcon,
   ClockIcon,
   DocumentCheckIcon,
   DocumentTextIcon,
   ExclamationTriangleIcon,
+  LinkIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
@@ -15,6 +17,39 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 function formatLinkStrength(value) {
   if (typeof value !== "number") return null;
   return `${Math.round(value * 100)}% relevant`;
+}
+
+function formatLinkTypeLabel(value) {
+  if (!value) return "Relates to";
+  return value.replace(/_/g, " ");
+}
+
+function getContextCacheKey(contentType, objectId) {
+  return `context_${contentType}_${objectId}`;
+}
+
+function getContextItemUrl(item) {
+  if (item?.url) return item.url;
+  switch (item?.content_type || item?.type) {
+    case "conversations.conversation":
+    case "conversation":
+      return `/conversations/${item.id}`;
+    case "decisions.decision":
+    case "decision":
+      return `/decisions/${item.id}`;
+    case "business.document":
+    case "document":
+      return `/business/documents/${item.id}`;
+    case "business.task":
+    case "task":
+      return "/business/tasks";
+    default:
+      return "";
+  }
+}
+
+function getSuggestionKey(item) {
+  return `${item?.content_type || item?.type || "item"}:${item?.id}`;
 }
 
 function EmptyPanel({ bgSecondary, borderColor, textPrimary, textSecondary }) {
@@ -33,21 +68,26 @@ export default function ContextPanel({ contentType, objectId, refreshKey = 0 }) 
   const [context, setContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [localRefreshKey, setLocalRefreshKey] = useState(0);
+  const [linkingSuggestionKey, setLinkingSuggestionKey] = useState("");
+  const [autoLinking, setAutoLinking] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const bgSecondary = darkMode ? "bg-stone-900" : "bg-white";
   const borderColor = darkMode ? "border-stone-800" : "border-gray-200";
   const textPrimary = darkMode ? "text-stone-100" : "text-gray-900";
   const textSecondary = darkMode ? "text-stone-400" : "text-gray-600";
   const hoverBg = darkMode ? "hover:bg-stone-800" : "hover:bg-gray-50";
+  const cacheKey = getContextCacheKey(contentType, objectId);
 
   useEffect(() => {
     let active = true;
 
     const fetchContext = async () => {
-      const cacheKey = `context_${contentType}_${objectId}`;
       setLoading(true);
+      const shouldBypassCache = refreshKey > 0 || localRefreshKey > 0;
 
-      if (refreshKey > 0) {
+      if (shouldBypassCache) {
         sessionStorage.removeItem(cacheKey);
       } else {
         const cached = sessionStorage.getItem(cacheKey);
@@ -71,6 +111,7 @@ export default function ContextPanel({ contentType, objectId, refreshKey = 0 }) 
         const response = await api.get(`/api/knowledge/context/${contentType}/${objectId}/`);
         if (!active) return;
         setContext(response.data);
+        setActionError("");
         sessionStorage.setItem(
           cacheKey,
           JSON.stringify({
@@ -93,7 +134,56 @@ export default function ContextPanel({ contentType, objectId, refreshKey = 0 }) 
     return () => {
       active = false;
     };
-  }, [contentType, objectId, refreshKey]);
+  }, [cacheKey, contentType, objectId, refreshKey, localRefreshKey]);
+
+  const invalidateContextCache = (items = []) => {
+    sessionStorage.removeItem(cacheKey);
+    items.forEach((item) => {
+      if (!item?.content_type || !item?.id) return;
+      sessionStorage.removeItem(getContextCacheKey(item.content_type, item.id));
+    });
+  };
+
+  const refreshContext = (items = []) => {
+    invalidateContextCache(items);
+    setLocalRefreshKey((current) => current + 1);
+  };
+
+  const handleLinkSuggestion = async (suggestion) => {
+    const suggestionKey = getSuggestionKey(suggestion);
+    setActionError("");
+    setLinkingSuggestionKey(suggestionKey);
+    try {
+      await api.post("/api/knowledge/link/", {
+        source_type: contentType,
+        source_id: Number(objectId),
+        target_type: suggestion.content_type,
+        target_id: Number(suggestion.id),
+        link_type: suggestion.recommended_link_type || "relates_to",
+      });
+      refreshContext([suggestion]);
+    } catch (error) {
+      setActionError(error?.response?.data?.error || "Unable to create the suggested link right now.");
+    } finally {
+      setLinkingSuggestionKey("");
+    }
+  };
+
+  const handleAutoLinkStrongest = async () => {
+    setActionError("");
+    setAutoLinking(true);
+    try {
+      const response = await api.post(
+        `/api/knowledge/context/${contentType}/${objectId}/apply-suggestions/`,
+        { limit: 3 }
+      );
+      refreshContext(response.data?.applied_links || []);
+    } catch (error) {
+      setActionError(error?.response?.data?.error || "Unable to apply suggested links right now.");
+    } finally {
+      setAutoLinking(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -122,6 +212,7 @@ export default function ContextPanel({ contentType, objectId, refreshKey = 0 }) 
     context.related_decisions?.length ||
     context.related_tasks?.length ||
     context.related_documents?.length ||
+    context.suggested_links?.length ||
     context.expert_users?.length ||
     context.similar_past_items?.length;
 
@@ -161,6 +252,116 @@ export default function ContextPanel({ contentType, objectId, refreshKey = 0 }) 
               textPrimary={textPrimary}
               textSecondary={textSecondary}
             />
+          ) : null}
+
+          {context.suggested_links?.length > 0 ? (
+            <div className={`${bgSecondary} border ${borderColor} rounded-lg p-4`}>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <LinkIcon className="w-5 h-5 text-indigo-500" />
+                  <div>
+                    <h3 className={`font-semibold ${textPrimary}`}>Suggested Links</h3>
+                    <p className={`text-xs ${textSecondary}`}>
+                      Knoledgr found adjacent records that should probably live in this context trail.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleAutoLinkStrongest}
+                  disabled={autoLinking}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    darkMode
+                      ? "border-stone-700 bg-stone-800 text-stone-100 hover:bg-stone-700"
+                      : "border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  <ArrowPathIcon className={`w-4 h-4 ${autoLinking ? "animate-spin" : ""}`} />
+                  {autoLinking ? "Linking..." : "Auto-link strongest"}
+                </button>
+              </div>
+
+              {actionError ? (
+                <div
+                  className={`mb-3 rounded-lg border px-3 py-2 text-xs ${
+                    darkMode
+                      ? "border-red-800 bg-red-950/50 text-red-200"
+                      : "border-red-200 bg-red-50 text-red-700"
+                  }`}
+                >
+                  {actionError}
+                </div>
+              ) : null}
+
+              <div className="space-y-3">
+                {context.suggested_links.map((suggestion) => {
+                  const suggestionKey = getSuggestionKey(suggestion);
+                  const suggestionUrl = getContextItemUrl(suggestion);
+                  const suggestionStrength = formatLinkStrength(suggestion.strength);
+                  const isLinking = linkingSuggestionKey === suggestionKey;
+
+                  return (
+                    <div
+                      key={suggestionKey}
+                      className={`rounded-lg border p-3 ${
+                        darkMode ? "border-stone-800 bg-stone-950/40" : "border-gray-200 bg-gray-50/80"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {suggestionUrl ? (
+                              <Link to={suggestionUrl} className={`text-sm font-medium ${textPrimary} hover:underline`}>
+                                {suggestion.title}
+                              </Link>
+                            ) : (
+                              <div className={`text-sm font-medium ${textPrimary}`}>{suggestion.title}</div>
+                            )}
+                            {suggestion.is_direct_reference ? (
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                                  darkMode ? "bg-emerald-900/40 text-emerald-200" : "bg-emerald-100 text-emerald-700"
+                                }`}
+                              >
+                                Direct
+                              </span>
+                            ) : null}
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                                darkMode ? "bg-stone-800 text-stone-300" : "bg-white text-gray-600"
+                              }`}
+                            >
+                              {formatLinkTypeLabel(suggestion.recommended_link_type)}
+                            </span>
+                          </div>
+
+                          {suggestion.preview ? (
+                            <p className={`mt-2 text-xs leading-5 ${textSecondary}`}>{suggestion.preview}</p>
+                          ) : null}
+
+                          <div className={`mt-2 flex flex-wrap gap-2 text-[11px] ${textSecondary}`}>
+                            <span>{suggestion.reason}</span>
+                            {suggestionStrength ? <span>{suggestionStrength}</span> : null}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleLinkSuggestion(suggestion)}
+                          disabled={isLinking || autoLinking}
+                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                            darkMode
+                              ? "bg-indigo-500 text-white hover:bg-indigo-400"
+                              : "bg-indigo-600 text-white hover:bg-indigo-500"
+                          } disabled:cursor-not-allowed disabled:opacity-60`}
+                        >
+                          <LinkIcon className="w-3.5 h-3.5" />
+                          {isLinking ? "Linking..." : "Link"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           ) : null}
 
           {context.related_conversations?.length > 0 ? (

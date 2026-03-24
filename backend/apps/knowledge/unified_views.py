@@ -17,6 +17,16 @@ def _invalidate_context_cache(organization_id, content_type_name, object_id):
     cache.delete(_context_cache_key(content_type_name, object_id, organization_id))
 
 
+def _resolve_content_object(organization, content_type_name, object_id):
+    app_label, model = content_type_name.split('.')
+    content_type = ContentType.objects.get(app_label=app_label, model=model)
+    model_class = content_type.model_class()
+    return model_class.objects.get(
+        id=object_id,
+        organization=organization,
+    )
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_context_panel(request, content_type_name, object_id):
@@ -28,19 +38,15 @@ def get_context_panel(request, content_type_name, object_id):
         return Response(cached_data)
     
     try:
-        # Get content type
-        app_label, model = content_type_name.split('.')
-        content_type = ContentType.objects.get(app_label=app_label, model=model)
-        model_class = content_type.model_class()
-        
-        # Get object
-        content_object = model_class.objects.get(
-            id=object_id,
-            organization=request.user.organization
+        content_object = _resolve_content_object(
+            request.user.organization,
+            content_type_name,
+            object_id,
         )
         
         # Get context
         context = ContextEngine.get_context(content_object, request.user.organization)
+        suggested_links = ContextEngine.get_link_suggestions(content_object, request.user.organization)
         
         similar_items = context.similar_past_items or []
         reviewed = [item for item in similar_items if item.get('was_successful') is not None]
@@ -55,6 +61,7 @@ def get_context_panel(request, content_type_name, object_id):
             'related_documents': context.related_documents,
             'expert_users': context.expert_users,
             'similar_past_items': similar_items,
+            'suggested_links': suggested_links,
             'success_rate': context.success_rate,
             'risk_indicators': context.risk_indicators,
             'outcome_patterns': {
@@ -69,6 +76,52 @@ def get_context_panel(request, content_type_name, object_id):
         cache.set(cache_key, result, 3600)
         
         return Response(result)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def apply_link_suggestions(request, content_type_name, object_id):
+    """Apply strong context suggestions as auto-generated links."""
+    try:
+        content_object = _resolve_content_object(
+            request.user.organization,
+            content_type_name,
+            object_id,
+        )
+        try:
+            limit = int(request.data.get('limit', 3))
+        except (TypeError, ValueError):
+            limit = 3
+        limit = max(1, min(limit, 8))
+
+        applied = ContextEngine.apply_link_suggestions(
+            content_object,
+            request.user.organization,
+            limit=limit,
+        )
+
+        _invalidate_context_cache(request.user.organization.id, content_type_name, object_id)
+        ContextEngine.compute_context(content_object, request.user.organization)
+
+        for suggestion in applied:
+            target_type = suggestion.get('content_type')
+            target_id = suggestion.get('id')
+            if not target_type or not target_id:
+                continue
+            _invalidate_context_cache(request.user.organization.id, target_type, target_id)
+            try:
+                target_object = _resolve_content_object(request.user.organization, target_type, target_id)
+                ContextEngine.compute_context(target_object, request.user.organization)
+            except Exception:
+                continue
+
+        return Response({
+            'applied_count': len(applied),
+            'applied_links': applied,
+            'message': 'Suggested links applied.' if applied else 'No strong suggestions were available.',
+        })
     except Exception as e:
         return Response({'error': str(e)}, status=400)
 

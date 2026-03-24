@@ -1,12 +1,24 @@
+import logging
+import re
+
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q, Count
-from apps.knowledge.unified_models import ContentLink, ContextPanel
+from django.db.models import Count, Q
+
+from apps.business.document_models import Document
+from apps.business.models import Meeting, Task
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
-from apps.business.models import Task, Meeting
-import logging
+from apps.knowledge.unified_models import ContentLink, ContextPanel
 
 logger = logging.getLogger(__name__)
+
+STOP_WORDS = {
+    'about', 'after', 'again', 'against', 'also', 'because', 'before', 'being',
+    'between', 'could', 'first', 'from', 'have', 'into', 'needs', 'other',
+    'should', 'since', 'still', 'than', 'that', 'their', 'there', 'these',
+    'this', 'those', 'through', 'under', 'using', 'very', 'what', 'when',
+    'where', 'which', 'while', 'with', 'would',
+}
 
 class ContextEngine:
     """Central engine for computing and retrieving context across modules"""
@@ -105,6 +117,91 @@ class ContextEngine:
         context.save()
         
         return context
+
+    @staticmethod
+    def get_link_suggestions(content_object, organization, limit=6):
+        """Return suggested links for a content object."""
+        existing_links = ContextEngine._get_existing_link_targets(content_object, organization)
+        source_terms = ContextEngine._extract_search_terms(content_object)
+        suggestions = {}
+
+        for candidate in ContextEngine._get_structured_candidates(content_object, organization):
+            ContextEngine._register_suggestion(
+                suggestions,
+                content_object,
+                candidate['target'],
+                candidate['strength'],
+                candidate['reason'],
+                existing_links,
+                is_direct_reference=candidate.get('is_direct_reference', False),
+            )
+
+        if source_terms:
+            for model_class in (Conversation, Decision, Task, Document):
+                for candidate in ContextEngine._search_candidate_objects(
+                    model_class,
+                    organization,
+                    source_terms,
+                    content_object,
+                ):
+                    similarity = ContextEngine._score_similarity_candidate(
+                        content_object,
+                        candidate,
+                        source_terms,
+                    )
+                    if not similarity:
+                        continue
+                    strength, reason = similarity
+                    ContextEngine._register_suggestion(
+                        suggestions,
+                        content_object,
+                        candidate,
+                        strength,
+                        reason,
+                        existing_links,
+                        is_direct_reference=False,
+                    )
+
+        ordered = sorted(
+            suggestions.values(),
+            key=lambda item: (
+                not item.get('is_direct_reference', False),
+                -item.get('strength', 0),
+                item.get('title', '').lower(),
+            ),
+        )
+        return ordered[:limit]
+
+    @staticmethod
+    def apply_link_suggestions(content_object, organization, limit=3, min_strength=0.72):
+        """Apply the strongest suggested links as auto-generated links."""
+        applied = []
+        suggestions = ContextEngine.get_link_suggestions(
+            content_object,
+            organization,
+            limit=max(limit * 2, limit),
+        )
+
+        for suggestion in suggestions:
+            if suggestion.get('strength', 0) < min_strength:
+                continue
+            target = ContextEngine._resolve_suggestion_target(suggestion, organization)
+            if not target:
+                continue
+
+            ContextEngine._create_link(
+                content_object,
+                target,
+                organization,
+                link_type=suggestion.get('recommended_link_type', 'relates_to'),
+                strength=suggestion.get('strength', 0.7),
+                auto_generated=True,
+            )
+            applied.append(suggestion)
+            if len(applied) >= limit:
+                break
+
+        return applied
     
     @staticmethod
     def _find_experts(content_object, organization):
@@ -182,72 +279,15 @@ class ContextEngine:
     @staticmethod
     def auto_link_content(content_object, organization):
         """Automatically create links to related content using AI"""
-        content_type = ContentType.objects.get_for_model(content_object)
-        
-        # Get keywords and title for matching
-        keywords = []
-        title_words = []
-        
-        if hasattr(content_object, 'ai_keywords') and content_object.ai_keywords:
-            keywords = content_object.ai_keywords
-        
-        if hasattr(content_object, 'title'):
-            title_words = [w.lower() for w in content_object.title.split() if len(w) > 3]
-        
-        if not keywords and not title_words:
-            return
-        
-        # Find related conversations
         try:
-            from django.db.models import Q
-            query = Q(organization=organization)
-            
-            if keywords:
-                query &= Q(ai_keywords__overlap=keywords)
-            elif title_words:
-                for word in title_words[:3]:  # Top 3 words
-                    query |= Q(title__icontains=word) | Q(content__icontains=word)
-            
-            conversations = Conversation.objects.filter(query).exclude(
-                id=content_object.id if isinstance(content_object, Conversation) else None
-            )[:5]
-            
-            for conv in conversations:
-                # Calculate strength based on keyword overlap
-                strength = 0.7
-                if keywords and conv.ai_keywords:
-                    overlap = len(set(keywords) & set(conv.ai_keywords))
-                    strength = min(0.5 + (overlap * 0.15), 1.0)
-                
-                ContextEngine._create_link(
-                    content_object, conv, organization,
-                    link_type='relates_to',
-                    strength=strength,
-                    auto_generated=True
-                )
+            ContextEngine.apply_link_suggestions(
+                content_object,
+                organization,
+                limit=4,
+                min_strength=0.68,
+            )
         except Exception as e:
-            logger.error(f"Error auto-linking conversations: {e}")
-        
-        # Find related decisions by title similarity
-        try:
-            query = Q(organization=organization)
-            if title_words:
-                for word in title_words[:3]:
-                    query |= Q(title__icontains=word) | Q(description__icontains=word)
-            
-            decisions = Decision.objects.filter(query).exclude(
-                id=content_object.id if isinstance(content_object, Decision) else None
-            )[:5]
-            
-            for decision in decisions:
-                ContextEngine._create_link(
-                    content_object, decision, organization,
-                    link_type='relates_to',
-                    strength=0.6,
-                    auto_generated=True
-                )
-        except Exception as e:
-            logger.error(f"Error auto-linking decisions: {e}")
+            logger.error(f"Error auto-linking content: {e}")
     
     @staticmethod
     def _create_link(source, target, organization, link_type='relates_to', strength=1.0, auto_generated=False):
@@ -267,6 +307,316 @@ class ContextEngine:
                 'is_auto_generated': auto_generated
             }
         )
+
+    @staticmethod
+    def _get_existing_link_targets(content_object, organization):
+        content_type = ContentType.objects.get_for_model(content_object)
+        links = ContentLink.objects.filter(
+            organization=organization,
+        ).filter(
+            Q(source_content_type=content_type, source_object_id=content_object.id) |
+            Q(target_content_type=content_type, target_object_id=content_object.id)
+        ).select_related('source_content_type', 'target_content_type')
+
+        existing = set()
+        for link in links:
+            if link.source_content_type_id == content_type.id and link.source_object_id == content_object.id:
+                if link.target_object:
+                    existing.add((ContextEngine._content_type_name(link.target_object), link.target_object_id))
+            else:
+                if link.source_object:
+                    existing.add((ContextEngine._content_type_name(link.source_object), link.source_object_id))
+        return existing
+
+    @staticmethod
+    def _get_structured_candidates(content_object, organization):
+        candidates = []
+
+        def add_candidate(target, reason, strength=0.9, is_direct_reference=True):
+            if not target:
+                return
+            candidates.append({
+                'target': target,
+                'reason': reason,
+                'strength': strength,
+                'is_direct_reference': is_direct_reference,
+            })
+
+        if getattr(content_object, 'conversation_id', None):
+            add_candidate(
+                getattr(content_object, 'conversation', None),
+                'Directly references its source conversation.',
+                strength=0.98,
+            )
+
+        if getattr(content_object, 'decision_id', None):
+            add_candidate(
+                getattr(content_object, 'decision', None),
+                'Already connected through a direct decision reference.',
+                strength=0.97,
+            )
+
+        if isinstance(content_object, Conversation):
+            for decision in Decision.objects.filter(
+                organization=organization,
+                conversation=content_object,
+            )[:4]:
+                add_candidate(decision, 'Derived from this conversation.', strength=0.96)
+            for task in Task.objects.filter(
+                organization=organization,
+                conversation=content_object,
+            )[:4]:
+                add_candidate(task, 'Task already references this conversation.', strength=0.94)
+
+        if isinstance(content_object, Decision):
+            tasks = list(Task.objects.filter(
+                organization=organization,
+                decision=content_object,
+            )[:4])
+            for task in tasks:
+                add_candidate(task, 'Task already references this decision.', strength=0.95)
+            task_ids = [task.id for task in tasks]
+            if task_ids:
+                for document in Document.objects.filter(
+                    organization=organization,
+                    task_id__in=task_ids,
+                )[:4]:
+                    add_candidate(
+                        document,
+                        'Document belongs to a task already tied to this decision.',
+                        strength=0.82,
+                        is_direct_reference=False,
+                    )
+
+        if isinstance(content_object, Task):
+            for document in Document.objects.filter(
+                organization=organization,
+                task_id=content_object.id,
+            )[:4]:
+                add_candidate(document, 'Document is already attached to this task.', strength=0.95)
+
+        if isinstance(content_object, Document) and content_object.task_id:
+            task = Task.objects.filter(
+                organization=organization,
+                id=content_object.task_id,
+            ).select_related('decision', 'conversation').first()
+            if task:
+                add_candidate(task, 'Document is already attached to this task.', strength=0.98)
+                if task.decision_id:
+                    add_candidate(
+                        task.decision,
+                        'Attached task already traces back to this decision.',
+                        strength=0.84,
+                        is_direct_reference=False,
+                    )
+                if task.conversation_id:
+                    add_candidate(
+                        task.conversation,
+                        'Attached task already traces back to this conversation.',
+                        strength=0.81,
+                        is_direct_reference=False,
+                    )
+
+        return candidates
+
+    @staticmethod
+    def _register_suggestion(
+        suggestions,
+        source_object,
+        target_object,
+        strength,
+        reason,
+        existing_links,
+        is_direct_reference=False,
+    ):
+        if not target_object or not ContextEngine._is_supported_object(target_object):
+            return
+
+        target_content_type = ContextEngine._content_type_name(target_object)
+        suggestion_key = (target_content_type, target_object.id)
+        source_key = (ContextEngine._content_type_name(source_object), source_object.id)
+
+        if suggestion_key == source_key or suggestion_key in existing_links:
+            return
+
+        suggestion = {
+            'id': target_object.id,
+            'content_type': target_content_type,
+            'type': ContextEngine._object_kind(target_object),
+            'title': getattr(target_object, 'title', str(target_object)),
+            'preview': ContextEngine._build_preview_text(target_object),
+            'strength': round(min(max(float(strength), 0.0), 1.0), 2),
+            'reason': reason,
+            'recommended_link_type': ContextEngine._recommended_link_type(source_object, target_object),
+            'url': ContextEngine._object_url(target_object),
+            'is_direct_reference': is_direct_reference,
+        }
+
+        existing = suggestions.get(suggestion_key)
+        if not existing or suggestion['strength'] > existing.get('strength', 0):
+            suggestions[suggestion_key] = suggestion
+
+    @staticmethod
+    def _score_similarity_candidate(source_object, target_object, source_terms):
+        if not ContextEngine._is_supported_object(target_object):
+            return None
+
+        target_terms = set(ContextEngine._extract_search_terms(target_object))
+        overlap = [term for term in source_terms if term in target_terms][:3]
+        source_title = (getattr(source_object, 'title', '') or '').strip().lower()
+        target_title = (getattr(target_object, 'title', '') or '').strip().lower()
+        title_phrase_match = bool(
+            source_title and target_title and (
+                source_title in target_title or target_title in source_title
+            )
+        )
+
+        if not overlap and not title_phrase_match:
+            return None
+
+        strength = 0.43 + min(len(overlap) * 0.12, 0.33)
+        if title_phrase_match:
+            strength += 0.08
+        if ContextEngine._recommended_link_type(source_object, target_object) == 'implements':
+            strength += 0.04
+
+        if overlap:
+            reason = f"Shares key terms: {', '.join(overlap)}."
+        else:
+            reason = 'Similar title language suggests related context.'
+
+        return min(round(strength, 2), 0.88), reason
+
+    @staticmethod
+    def _search_candidate_objects(model_class, organization, source_terms, content_object):
+        query = Q()
+        field_names = ContextEngine._searchable_fields(model_class)
+        for term in list(source_terms)[:6]:
+            for field_name in field_names:
+                query |= Q(**{f'{field_name}__icontains': term})
+
+        if not query.children:
+            return []
+
+        queryset = model_class.objects.filter(organization=organization).filter(query)
+        if isinstance(content_object, model_class):
+            queryset = queryset.exclude(id=content_object.id)
+
+        order_field = '-updated_at' if ContextEngine._has_field(model_class, 'updated_at') else '-created_at'
+        return list(queryset.order_by(order_field)[:12])
+
+    @staticmethod
+    def _searchable_fields(model_class):
+        candidate_fields = ('title', 'description', 'content', 'rationale', 'ai_summary', 'context_reason')
+        return [field_name for field_name in candidate_fields if ContextEngine._has_field(model_class, field_name)]
+
+    @staticmethod
+    def _has_field(model_class, field_name):
+        return any(field.name == field_name for field in model_class._meta.fields)
+
+    @staticmethod
+    def _extract_search_terms(content_object):
+        terms = []
+        seen = set()
+
+        def add_term(term):
+            cleaned = (term or '').strip().lower()
+            if len(cleaned) < 4 or cleaned in STOP_WORDS or cleaned in seen:
+                return
+            seen.add(cleaned)
+            terms.append(cleaned)
+
+        keywords = getattr(content_object, 'ai_keywords', None) or []
+        for keyword in keywords:
+            add_term(str(keyword))
+
+        text_fragments = [
+            getattr(content_object, 'title', ''),
+            getattr(content_object, 'description', ''),
+            getattr(content_object, 'content', ''),
+            getattr(content_object, 'rationale', ''),
+            getattr(content_object, 'ai_summary', ''),
+            getattr(content_object, 'context_reason', ''),
+            getattr(content_object, 'why_this_matters', ''),
+            getattr(content_object, 'plain_language_summary', ''),
+        ]
+        for token in re.findall(r'[a-z0-9]{4,}', ' '.join(fragment for fragment in text_fragments if fragment).lower()):
+            add_term(token)
+
+        return terms[:12]
+
+    @staticmethod
+    def _build_preview_text(content_object):
+        for attribute in (
+            'plain_language_summary',
+            'description',
+            'ai_summary',
+            'rationale',
+            'content',
+            'context_reason',
+            'why_this_matters',
+        ):
+            value = (getattr(content_object, attribute, '') or '').strip()
+            if not value:
+                continue
+            return f"{value[:157]}..." if len(value) > 160 else value
+        return ''
+
+    @staticmethod
+    def _recommended_link_type(source_object, target_object):
+        source_type = ContextEngine._content_type_name(source_object)
+        target_type = ContextEngine._content_type_name(target_object)
+        pair = {source_type, target_type}
+
+        if source_type == 'conversations.conversation' and target_type == 'decisions.decision':
+            return 'derived_from'
+        if pair == {'decisions.decision', 'business.task'}:
+            return 'implements'
+        if pair == {'decisions.decision', 'business.document'}:
+            return 'references'
+        if pair == {'business.task', 'business.document'}:
+            return 'references'
+        return 'relates_to'
+
+    @staticmethod
+    def _resolve_suggestion_target(suggestion, organization):
+        content_type_name = suggestion.get('content_type')
+        target_id = suggestion.get('id')
+        if not content_type_name or not target_id:
+            return None
+
+        app_label, model = content_type_name.split('.')
+        content_type = ContentType.objects.get(app_label=app_label, model=model)
+        model_class = content_type.model_class()
+        return model_class.objects.filter(
+            id=target_id,
+            organization=organization,
+        ).first()
+
+    @staticmethod
+    def _is_supported_object(content_object):
+        return isinstance(content_object, (Conversation, Decision, Task, Document))
+
+    @staticmethod
+    def _content_type_name(content_object):
+        content_type = ContentType.objects.get_for_model(content_object)
+        return f'{content_type.app_label}.{content_type.model}'
+
+    @staticmethod
+    def _object_kind(content_object):
+        return content_object.__class__.__name__.lower()
+
+    @staticmethod
+    def _object_url(content_object):
+        if isinstance(content_object, Conversation):
+            return f'/conversations/{content_object.id}'
+        if isinstance(content_object, Decision):
+            return f'/decisions/{content_object.id}'
+        if isinstance(content_object, Document):
+            return f'/business/documents/{content_object.id}'
+        if isinstance(content_object, Task):
+            return '/business/tasks'
+        return ''
     
     @staticmethod
     def get_unified_timeline(organization, user=None, days=7):

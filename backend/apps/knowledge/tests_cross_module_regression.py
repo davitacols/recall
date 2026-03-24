@@ -1,10 +1,13 @@
 from django.test import TestCase
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from rest_framework.test import APIClient
 
 from apps.business.document_models import Document
 from apps.business.models import Task
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
+from apps.knowledge.unified_models import ContentLink
 from apps.organizations.models import Organization, User
 
 
@@ -108,3 +111,55 @@ class KnowledgeCrossModuleRegressionTests(TestCase):
         self.assertTrue(any(item.get("id") == self.decision.id for item in payload.get("decisions", [])))
         self.assertTrue(any(item.get("id") == self.task.id for item in payload.get("tasks", [])))
         self.assertTrue(any(item.get("id") == self.document.id for item in payload.get("documents", [])))
+
+    def test_context_panel_suggests_and_applies_direct_links(self):
+        self.task.conversation = self.conversation
+        self.task.save(update_fields=["conversation"])
+        self.document.task_id = self.task.id
+        self.document.save(update_fields=["task_id"])
+        task_content_type = ContentType.objects.get_for_model(Task)
+        ContentLink.objects.filter(
+            organization=self.org,
+        ).filter(
+            Q(source_content_type=task_content_type, source_object_id=self.task.id) |
+            Q(target_content_type=task_content_type, target_object_id=self.task.id)
+        ).delete()
+
+        context_response = self.client.get(f"/api/knowledge/context/business.task/{self.task.id}/")
+        self.assertEqual(context_response.status_code, 200)
+
+        suggested_links = context_response.data.get("suggested_links", [])
+        suggested_types = {(item.get("content_type"), item.get("id")) for item in suggested_links}
+        self.assertIn(("decisions.decision", self.decision.id), suggested_types)
+        self.assertIn(("conversations.conversation", self.conversation.id), suggested_types)
+        self.assertIn(("business.document", self.document.id), suggested_types)
+
+        decision_suggestion = next(
+            item
+            for item in suggested_links
+            if item.get("content_type") == "decisions.decision" and item.get("id") == self.decision.id
+        )
+        self.assertTrue(decision_suggestion.get("is_direct_reference"))
+        self.assertEqual(decision_suggestion.get("recommended_link_type"), "implements")
+
+        apply_response = self.client.post(
+            f"/api/knowledge/context/business.task/{self.task.id}/apply-suggestions/",
+            {"limit": 3},
+            format="json",
+        )
+        self.assertEqual(apply_response.status_code, 200)
+        self.assertGreaterEqual(apply_response.data.get("applied_count", 0), 1)
+
+        self.assertTrue(
+            ContentLink.objects.filter(
+                organization=self.org,
+                source_object_id=self.task.id,
+                target_object_id=self.decision.id,
+                is_auto_generated=True,
+            ).exists()
+        )
+
+        context_after = self.client.get(f"/api/knowledge/context/business.task/{self.task.id}/")
+        self.assertEqual(context_after.status_code, 200)
+        related_decisions = context_after.data.get("related_decisions", [])
+        self.assertTrue(any(item.get("id") == self.decision.id for item in related_decisions))

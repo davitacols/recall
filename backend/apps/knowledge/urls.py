@@ -49,6 +49,7 @@ urlpatterns = [
     
     # Unified platform endpoints
     path('context/<str:content_type_name>/<int:object_id>/', unified_views.get_context_panel, name='context_panel'),
+    path('context/<str:content_type_name>/<int:object_id>/apply-suggestions/', unified_views.apply_link_suggestions, name='apply_link_suggestions'),
     path('link/', unified_views.create_link, name='create_link'),
     path('timeline/', unified_views.get_unified_timeline, name='timeline'),
     path('search-all/', unified_views.search_everything, name='search_all'),

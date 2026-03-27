@@ -215,6 +215,38 @@ export default function AskRecall() {
     'Which integrations are connected to this workspace?',
   ];
 
+  const suggestedQuestionGroups = [
+    {
+      label: 'Execution',
+      description: 'Scan delivery risk, bottlenecks, and immediate follow-through.',
+      tone: 'warn',
+      items: [
+        'Where is execution risk highest this week?',
+        'What decisions are blocking delivery?',
+        'Which high-priority tasks should we reassign now?',
+      ],
+    },
+    {
+      label: 'Memory',
+      description: 'Use organizational memory to recover context and prior decisions.',
+      tone: 'info',
+      items: [
+        'Summarize recent decisions about API migration.',
+        'What active goals are related to onboarding?',
+      ],
+    },
+    {
+      label: 'Projects',
+      description: 'Ask about live projects, sprint work, and implementation context.',
+      tone: 'success',
+      items: [
+        'Tell me about the Talking Stage sprint in the Justice App project.',
+        'Which integrations are connected to this workspace?',
+        'What should leadership resolve in the next 24 hours?',
+      ],
+    },
+  ];
+
   const mapResponseToViewModel = (payload) => {
     const howTo = getContextualHowTo(payload?.query);
     const decisions = payload?.sources?.decisions || [];
@@ -658,7 +690,7 @@ export default function AskRecall() {
       lastAutoRunRef.current = location.search;
       runAnalysis(seededQuery);
     }
-  }, [location.search]);
+  }, [location.search, location.key]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const normalizedResultQuery = String(results?.question || '').trim().toLowerCase();
@@ -680,8 +712,6 @@ export default function AskRecall() {
     !isNavigationIntent;
   const canRunAutonomousFixes = hasAutonomousPlan && canManageAutonomousFixes;
   const canSubmit = !!query.trim() && !loading && !executing;
-  const statusTone =
-    requestState === 'error' ? palette.danger : requestState === 'success' ? palette.success : palette.muted;
   const confidenceWidth = `${Math.max(0, Math.min(100, Number(results?.confidence || 0)))}%`;
   const confidenceLabel = titleCase(results?.confidenceBand || getConfidenceLabel(results?.confidence));
   const sourceTypeSummary =
@@ -702,7 +732,7 @@ export default function AskRecall() {
       label: 'Readiness',
       value: results?.readinessScore ?? '--',
       helper: results ? 'Current readiness signal from the latest answer' : 'Run a question to generate readiness guidance',
-      tone: results?.riskStatus === 'critical' ? palette.danger : results?.riskStatus === 'watch' ? palette.warn : palette.good,
+      tone: results?.riskStatus === 'critical' ? palette.danger : results?.riskStatus === 'watch' ? palette.warn : palette.success,
     },
     {
       label: 'Evidence',
@@ -718,7 +748,7 @@ export default function AskRecall() {
           ? 'Autonomous fixes are available'
           : 'Autonomous fixes need admin or manager approval'
         : 'Guidance only until confidence improves',
-      tone: hasAutonomousPlan ? (canManageAutonomousFixes ? palette.good : palette.warn) : palette.accent,
+      tone: hasAutonomousPlan ? (canManageAutonomousFixes ? palette.success : palette.warn) : palette.accent,
     },
   ];
 
@@ -729,7 +759,7 @@ export default function AskRecall() {
         darkMode={darkMode}
         eyebrow="Organizational Copilot"
         title="Ask Recall"
-        description="Diagnose risk, recommend interventions, and run safe autonomous fixes grounded in your team's actual history."
+        description="Ask grounded questions, inspect the evidence trail, and move from diagnosis to safe action without leaving Knoledgr."
         stats={heroStats}
         actions={
           <>
@@ -754,150 +784,286 @@ export default function AskRecall() {
         aside={<BrandedTechnicalIllustration darkMode={darkMode} compact />}
       />
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-        <WorkspacePanel
-          palette={palette}
-          eyebrow="Query"
-          title="Ask a grounded question"
-          description="Describe the organizational problem and submit with Ctrl+Enter."
-        >
-          <form onSubmit={handleSearch} style={{ display: 'grid', gap: 10 }}>
-            <textarea
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                if (!loading && !executing) {
-                  setRequestState('idle');
-                  setRequestMessage('');
-                }
-              }}
-              onKeyDown={(e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                  e.preventDefault();
-                  if (canSubmit) e.currentTarget.form?.requestSubmit();
-                }
-              }}
-              placeholder="Describe the organizational problem to solve..."
-              rows={4}
-              style={{ ...inputStyle(palette), minHeight: 108, resize: 'vertical' }}
-            />
+      <section style={splitSection()}>
+        <div style={laneStyle('1.45 1 660px')}>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Prompt Studio"
+            title="Ask a grounded question"
+            description="Describe the situation, ask a question, then let Ask Recall read across conversations, decisions, docs, delivery, and connected systems."
+            action={
+              <span style={pillStyle(palette, loading ? 'info' : hasCurrentResults ? 'success' : 'default')}>
+                {loading ? 'Refreshing workspace memory' : hasCurrentResults ? 'Answer ready' : 'Grounded mode'}
+              </span>
+            }
+          >
+            <form onSubmit={handleSearch} style={{ display: 'grid', gap: 12 }}>
+              <textarea
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  if (!loading && !executing) {
+                    setRequestState('idle');
+                    setRequestMessage('');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    if (canSubmit) e.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                placeholder="Ask about a project, decision, sprint, integration, or organizational pattern..."
+                rows={6}
+                style={{
+                  ...inputStyle(palette),
+                  minHeight: 156,
+                  resize: 'vertical',
+                  lineHeight: 1.65,
+                  background: darkMode
+                    ? 'linear-gradient(180deg, rgba(34, 29, 25, 0.94), rgba(27, 22, 19, 0.94))'
+                    : 'linear-gradient(180deg, rgba(255, 252, 248, 0.98), rgba(247, 241, 232, 0.98))',
+                }}
+              />
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="submit" disabled={!canSubmit} style={buttonFilled(palette, !canSubmit)}>
-                {loading ? 'Thinking...' : 'Ask Recall'}
-              </button>
-              <button
-                type="button"
-                onClick={handleExecute}
-                disabled={executing || loading || !canRunAutonomousFixes}
-                style={buttonGhost(palette, executing || loading || !canRunAutonomousFixes)}
-              >
-                {executing ? 'Executing...' : 'Run Autonomous Fixes'}
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="submit" disabled={!canSubmit} style={buttonFilled(palette, !canSubmit)}>
+                    {loading ? 'Thinking...' : 'Ask Recall'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExecute}
+                    disabled={executing || loading || !canRunAutonomousFixes}
+                    style={buttonGhost(palette, executing || loading || !canRunAutonomousFixes)}
+                  >
+                    {executing ? 'Executing...' : 'Run Autonomous Fixes'}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={pillStyle(palette, 'default')}>Ctrl+Enter to submit</span>
+                  <span style={pillStyle(palette, hasAutonomousPlan ? (canManageAutonomousFixes ? 'success' : 'warn') : 'default')}>
+                    {hasAutonomousPlan
+                      ? canManageAutonomousFixes
+                        ? 'Autonomous plan available'
+                        : 'Plan available for manager approval'
+                      : 'Guidance mode'}
+                  </span>
+                </div>
+              </div>
+
+              {hasAutonomousPlan && !canManageAutonomousFixes ? (
+                <div style={noteStyle(palette, 'warn')}>
+                  Autonomous fixes are available for this analysis, but only admins and managers can run them.
+                </div>
+              ) : null}
+
+              {requestState !== 'idle' ? (
+                <div style={noteStyle(palette, requestState === 'error' ? 'danger' : requestState === 'success' ? 'success' : 'info')}>
+                  {requestMessage}
+                </div>
+              ) : null}
+            </form>
+
+            {!results && !loading ? (
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ display: 'grid', gap: 2 }}>
+                    <strong style={{ fontSize: 13, color: palette.text }}>Prompt ideas</strong>
+                    <span style={{ fontSize: 12, color: palette.muted }}>
+                      Start with a natural-language question and Ask Recall will ground the answer in workspace evidence.
+                    </span>
+                  </div>
+                  <span style={pillStyle(palette, 'info')}>{suggestedQuestions.length} starter prompts</span>
+                </div>
+
+                <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                  {suggestedQuestionGroups.map((group) => (
+                    <article key={group.label} style={microCardStyle(palette, group.tone)}>
+                      <div style={{ display: 'grid', gap: 4 }}>
+                        <span style={pillStyle(palette, group.tone)}>{group.label}</span>
+                        <strong style={{ fontSize: 13, color: palette.text }}>{group.description}</strong>
+                      </div>
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {group.items.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => runAnalysis(item)}
+                            style={{
+                              ...buttonGhost(palette),
+                              textAlign: 'left',
+                              padding: '10px 12px',
+                              lineHeight: 1.45,
+                            }}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </WorkspacePanel>
+        </div>
+
+        <div style={laneStyle('0.9 1 320px')}>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Copilot Rail"
+            title="Live operating signals"
+            description="Keep the important trust and execution signals visible while you ask, review, and act."
+          >
+            <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
+              {heroStats.map((stat) => (
+                <article key={`${stat.label}-${stat.value}`} style={microCardStyle(palette, stat.tone)}>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>
+                    {stat.label}
+                  </span>
+                  <strong style={{ fontSize: 26, lineHeight: 1, color: stat.tone || palette.text }}>{stat.value}</strong>
+                  <span style={{ fontSize: 12, lineHeight: 1.55, color: palette.muted }}>{stat.helper}</span>
+                </article>
+              ))}
             </div>
 
-            <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-              Press <strong style={{ color: palette.text }}>Ctrl+Enter</strong> to submit.
-            </p>
-            {hasAutonomousPlan && !canManageAutonomousFixes ? (
-              <p style={{ margin: 0, fontSize: 12, color: palette.warn }}>
-                Autonomous fixes are available for this analysis, but only admins and managers can run them.
-              </p>
+            {results ? (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <span style={pillStyle(palette, 'default')}>{titleCase(results.responseMode || 'answer')}</span>
+                <span style={pillStyle(palette, results.answerEngine === 'anthropic' ? 'info' : 'default')}>
+                  {results.answerEngine === 'anthropic' ? 'LLM synthesis' : 'Rules engine'}
+                </span>
+                <span style={pillStyle(palette, lowEvidence ? 'warn' : 'success')}>Coverage {results.coverageScore}</span>
+                {results.freshnessDays !== null ? <span style={pillStyle(palette, 'info')}>{describeFreshness(results.freshnessDays)}</span> : null}
+              </div>
+            ) : (
+              <div style={noteStyle(palette, 'default')}>
+                Ask Recall works best when you ask with project names, sprint names, decision titles, documents, or concrete delivery questions.
+              </div>
+            )}
+          </WorkspacePanel>
+
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="What-if"
+            title="Simulation Controls"
+            description="Model the effect of resolving decisions, clearing blockers, or assigning high-priority work."
+          >
+            <div style={{ display: 'grid', gap: 8 }}>
+              <select value={whatIfAction} onChange={(e) => setWhatIfAction(e.target.value)} style={inputCompact(palette)}>
+                <option value="resolve_decisions">Resolve decisions</option>
+                <option value="clear_blockers">Clear blockers</option>
+                <option value="assign_high_priority_tasks">Assign high-priority tasks</option>
+              </select>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                <input type="number" min={1} max={10} value={whatIfUnits} onChange={(e) => setWhatIfUnits(e.target.value)} style={inputCompact(palette)} />
+                <input type="number" min={1} max={120} value={whatIfHorizon} onChange={(e) => setWhatIfHorizon(e.target.value)} style={inputCompact(palette)} />
+              </div>
+              <button type="button" onClick={runWhatIf} disabled={whatIfLoading} style={buttonGhost(palette, whatIfLoading)}>
+                {whatIfLoading ? 'Simulating...' : 'Run simulation'}
+              </button>
+            </div>
+            {!!whatIfError ? <div style={noteStyle(palette, 'warn')}>{whatIfError}</div> : null}
+            {whatIfResult ? (
+              <div style={microCardStyle(palette, (whatIfResult.projected?.delta || 0) >= 0 ? 'success' : 'warn')}>
+                <strong style={{ fontSize: 13, color: palette.text }}>Projected readiness shift</strong>
+                <p style={{ margin: 0, fontSize: 12, color: palette.muted, lineHeight: 1.55 }}>
+                  Baseline {whatIfResult.baseline?.readiness_score} ({whatIfResult.baseline?.status}) to projected{' '}
+                  <strong style={{ color: palette.text }}>{whatIfResult.projected?.readiness_score}</strong> ({whatIfResult.projected?.status}) with a delta of{' '}
+                  <strong style={{ color: (whatIfResult.projected?.delta || 0) >= 0 ? palette.success : palette.danger }}>
+                    {(whatIfResult.projected?.delta || 0) >= 0 ? '+' : ''}
+                    {whatIfResult.projected?.delta}
+                  </strong>
+                  .
+                </p>
+              </div>
             ) : null}
+          </WorkspacePanel>
 
-            {requestState !== 'idle' ? <p style={{ margin: 0, fontSize: 12, color: statusTone }}>{requestMessage}</p> : null}
-          </form>
-        </WorkspacePanel>
+          {feedbackSummary ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Feedback Loop"
+              title={`Copilot Feedback (${feedbackSummary.window_days || 30} days)`}
+              description="Track how people are responding to Ask Recall guidance and rate this answer when you are done."
+            >
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+                  <article style={microCardStyle(palette, 'info')}>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>Total</span>
+                    <strong style={{ fontSize: 24, color: palette.text }}>{feedbackSummary.total_feedback || 0}</strong>
+                    <span style={{ fontSize: 12, color: palette.muted }}>Signals in the current feedback window</span>
+                  </article>
+                  <article style={microCardStyle(palette, 'success')}>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>Positive rate</span>
+                    <strong style={{ fontSize: 24, color: palette.text }}>{feedbackSummary.positive_rate ?? '--'}%</strong>
+                    <span style={{ fontSize: 12, color: palette.muted }}>
+                      Up {feedbackSummary.upvotes || 0} / Down {feedbackSummary.downvotes || 0}
+                    </span>
+                  </article>
+                </div>
 
-        <WorkspacePanel
-          palette={palette}
-          eyebrow="What-if"
-          title="Simulation Controls"
-          description="Model the effect of resolving decisions, clearing blockers, or assigning high-priority work."
-        >
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <select value={whatIfAction} onChange={(e) => setWhatIfAction(e.target.value)} style={inputCompact(palette)}>
-              <option value="resolve_decisions">Resolve decisions</option>
-              <option value="clear_blockers">Clear blockers</option>
-              <option value="assign_high_priority_tasks">Assign high-priority tasks</option>
-            </select>
-            <input type="number" min={1} max={10} value={whatIfUnits} onChange={(e) => setWhatIfUnits(e.target.value)} style={{ ...inputCompact(palette), width: 78 }} />
-            <input type="number" min={1} max={120} value={whatIfHorizon} onChange={(e) => setWhatIfHorizon(e.target.value)} style={{ ...inputCompact(palette), width: 88 }} />
-            <button type="button" onClick={runWhatIf} disabled={whatIfLoading} style={buttonGhost(palette, whatIfLoading)}>
-              {whatIfLoading ? 'Simulating...' : 'Run'}
-            </button>
-          </div>
-          {!!whatIfError ? <p style={{ margin: 0, fontSize: 12, color: palette.warn }}>{whatIfError}</p> : null}
-          {whatIfResult ? (
-            <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-              Baseline {whatIfResult.baseline?.readiness_score} ({whatIfResult.baseline?.status}) -> Projected{' '}
-              <strong style={{ color: palette.text }}>{whatIfResult.projected?.readiness_score}</strong> ({whatIfResult.projected?.status}), delta{' '}
-              <strong style={{ color: (whatIfResult.projected?.delta || 0) >= 0 ? palette.success : palette.danger }}>
-                {(whatIfResult.projected?.delta || 0) >= 0 ? '+' : ''}
-                {whatIfResult.projected?.delta}
-              </strong>
-              .
-            </p>
+                {feedbackTrend.length > 0 ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
+                    {feedbackTrend.map((point) => {
+                      const total = Number(point.total || 0);
+                      const up = Number(point.upvotes || 0);
+                      const ratio = total > 0 ? Math.max(0.1, up / total) : 0.5;
+                      return (
+                        <div
+                          key={point.date}
+                          title={`${point.date}: ${up}/${total}`}
+                          style={{
+                            height: 30,
+                            border: `1px solid ${palette.border}`,
+                            borderRadius: 10,
+                            background: `linear-gradient(180deg, ${palette.success} ${Math.round(ratio * 100)}%, ${palette.warn} ${Math.round(ratio * 100)}%)`,
+                            opacity: total > 0 ? 1 : 0.3,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {results ? (
+                  <>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button type="button" onClick={() => setFeedbackVote('up')} style={feedbackVote === 'up' ? buttonFilled(palette) : buttonGhost(palette)}>
+                        Helpful
+                      </button>
+                      <button type="button" onClick={() => setFeedbackVote('down')} style={feedbackVote === 'down' ? buttonFilled(palette) : buttonGhost(palette)}>
+                        Not Helpful
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8 }}>
+                      <select value={feedbackOutcome} onChange={(e) => setFeedbackOutcome(e.target.value)} style={inputCompact(palette)}>
+                        <option value="">Outcome</option>
+                        <option value="improved">Improved</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="worse">Worse</option>
+                      </select>
+                      <button type="button" onClick={submitFeedback} disabled={!feedbackVote || feedbackSubmitting} style={buttonGhost(palette, !feedbackVote || feedbackSubmitting)}>
+                        {feedbackSubmitting ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                    {!!feedbackMessage ? (
+                      <div style={noteStyle(palette, feedbackMessage.includes('Thanks') ? 'success' : 'warn')}>{feedbackMessage}</div>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            </WorkspacePanel>
           ) : null}
-        </WorkspacePanel>
+        </div>
       </section>
 
-      {!results && !loading ? (
-        <WorkspacePanel
-          palette={palette}
-          eyebrow="Suggestions"
-          title="Suggested Prompts"
-          description="Start with one of these questions to explore the copilot."
-        >
-          <div style={{ display: 'grid', gap: 8 }}>
-            {suggestedQuestions.map((item) => (
-              <button key={item} type="button" onClick={() => runAnalysis(item)} style={{ ...buttonGhost(palette), textAlign: 'left' }}>
-                {item}
-              </button>
-            ))}
-          </div>
-        </WorkspacePanel>
-      ) : null}
-
-      {feedbackSummary ? (
-        <WorkspacePanel
-          palette={palette}
-          eyebrow="Feedback Loop"
-          title={`Copilot Feedback (${feedbackSummary.window_days || 30} days)`}
-          description="Track how people are responding to Ask Recall guidance."
-        >
-          <p style={{ margin: 0, fontSize: 12, color: palette.text }}>
-            Total {feedbackSummary.total_feedback || 0} | Positive {feedbackSummary.positive_rate ?? '--'}% | Up {feedbackSummary.upvotes || 0} | Down {feedbackSummary.downvotes || 0}
-          </p>
-          {feedbackTrend.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
-              {feedbackTrend.map((point) => {
-                const total = Number(point.total || 0);
-                const up = Number(point.upvotes || 0);
-                const ratio = total > 0 ? Math.max(0.1, up / total) : 0.5;
-                return (
-                  <div
-                    key={point.date}
-                    title={`${point.date}: ${up}/${total}`}
-                    style={{
-                      height: 24,
-                      border: `1px solid ${palette.border}`,
-                      borderRadius: 8,
-                      background: `linear-gradient(180deg, ${palette.success} ${Math.round(ratio * 100)}%, ${palette.warn} ${Math.round(ratio * 100)}%)`,
-                      opacity: total > 0 ? 1 : 0.35,
-                    }}
-                  />
-                );
-              })}
-            </div>
-          ) : null}
-        </WorkspacePanel>
-      ) : null}
-
-      {loading ? <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>Analyzing organization state...</p> : null}
+      {loading ? <div style={noteStyle(palette, 'info')}>Analyzing organization state...</div> : null}
 
       {results && !loading ? (
-        <div style={{ display: 'grid', gap: 14 }}>
+        <section style={splitSection()}>
+          <div style={laneStyle('1.45 1 660px')}>
           {isNavigationIntent ? (
             <WorkspacePanel
               palette={palette}
@@ -924,9 +1090,42 @@ export default function AskRecall() {
                 ? 'Review the synthesized answer, supporting evidence, and confidence before acting.'
                 : 'Review the answer, evidence coverage, and confidence before acting.'
             }
+            action={
+              <span style={pillStyle(palette, lowEvidence ? 'warn' : 'success')}>
+                {lowEvidence ? 'Low evidence' : `${results.confidence}% confidence`}
+              </span>
+            }
           >
-            {lowEvidence ? <p style={{ margin: 0, fontSize: 12, color: palette.warn }}>Low evidence: this answer may be incomplete.</p> : null}
-            <p style={{ margin: 0, fontSize: 13, color: palette.muted, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{results.answer}</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={pillStyle(palette, 'default')}>Question: {results.question}</span>
+              {!isNavigationIntent ? (
+                <span style={pillStyle(palette, results.riskStatus === 'critical' ? 'danger' : results.riskStatus === 'watch' ? 'warn' : 'success')}>
+                  Status {results.riskStatus}
+                </span>
+              ) : null}
+              {results.generatedAt ? <span style={pillStyle(palette, 'default')}>Updated {toDisplayDate(results.generatedAt)}</span> : null}
+            </div>
+
+            {lowEvidence ? <div style={noteStyle(palette, 'warn')}>Low evidence: this answer may be incomplete.</div> : null}
+
+            <div
+              style={{
+                border: `1px solid ${palette.border}`,
+                borderRadius: 20,
+                padding: '18px 18px 16px',
+                background: darkMode
+                  ? 'linear-gradient(180deg, rgba(34, 29, 25, 0.92), rgba(24, 20, 17, 0.9))'
+                  : 'linear-gradient(180deg, rgba(255, 252, 248, 0.98), rgba(245, 238, 228, 0.98))',
+                display: 'grid',
+                gap: 12,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 14, color: palette.text, whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>{results.answer}</p>
+              {!!results.credibilitySummary ? (
+                <p style={{ margin: 0, fontSize: 12, color: palette.muted, lineHeight: 1.7 }}>{results.credibilitySummary}</p>
+              ) : null}
+            </div>
+
             {!isNavigationIntent ? (
               <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
                 Engine <strong style={{ color: palette.text }}>{results.answerEngine === 'anthropic' ? 'LLM' : 'Rules'}</strong> | Coverage <strong style={{ color: palette.text }}>{results.coverageScore}</strong> | Evidence{' '}
@@ -934,64 +1133,29 @@ export default function AskRecall() {
                 <strong style={{ color: palette.text }}>{sourceTypeSummary}</strong>
               </p>
             ) : null}
-            {!!results.credibilitySummary ? (
-              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                {results.credibilitySummary}
-              </p>
-            ) : null}
             {!isNavigationIntent && ((results.evidenceBreakdown || []).length > 0 || results.freshnessDays !== null) ? (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {(results.evidenceBreakdown || []).map((item) => (
-                  <span
-                    key={`${item.type}-${item.count}`}
-                    style={{
-                      border: `1px solid ${palette.border}`,
-                      borderRadius: 999,
-                      padding: '5px 10px',
-                      fontSize: 11,
-                      color: palette.text,
-                      background: palette.cardAlt,
-                    }}
-                  >
+                  <span key={`${item.type}-${item.count}`} style={pillStyle(palette, 'default')}>
                     {item.count} {item.label}
                   </span>
                 ))}
-                {results.freshnessDays !== null ? (
-                  <span
-                    style={{
-                      border: `1px solid ${palette.border}`,
-                      borderRadius: 999,
-                      padding: '5px 10px',
-                      fontSize: 11,
-                      color: palette.muted,
-                      background: palette.cardAlt,
-                    }}
-                  >
-                    {describeFreshness(results.freshnessDays)}
-                  </span>
-                ) : null}
+                {results.freshnessDays !== null ? <span style={pillStyle(palette, 'info')}>{describeFreshness(results.freshnessDays)}</span> : null}
               </div>
             ) : null}
             {results.citations?.length ? (
-              <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
                 {results.citations.slice(0, 3).map((citation) => (
                   <a
                     key={`${citation.type}-${citation.id}`}
                     href={citation.href}
                     style={{
+                      ...microCardStyle(palette, citation.directMatch ? 'success' : 'default'),
                       textDecoration: 'none',
                       color: palette.text,
-                      border: `1px solid ${palette.border}`,
-                      borderRadius: 12,
-                      background: palette.cardAlt,
-                      padding: 10,
-                      display: 'grid',
-                      gap: 4,
                     }}
                   >
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>
-                      {citation.title}
-                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{citation.title}</span>
                     <span style={{ fontSize: 11, color: palette.muted }}>
                       {citation.type} {citation.date ? `| ${citation.date}` : ''}{citation.directMatch ? ' | direct match' : ''}
                     </span>
@@ -1017,30 +1181,15 @@ export default function AskRecall() {
                   {results.confidence}% ({confidenceLabel})
                 </strong>
               </div>
-              <div style={{ height: 8, borderRadius: 999, overflow: 'hidden', background: palette.cardAlt }}>
+              <div style={{ height: 10, borderRadius: 999, overflow: 'hidden', background: palette.progressTrack }}>
                 <div style={{ width: confidenceWidth, height: '100%', background: palette.ctaGradient }} />
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <button type="button" onClick={() => setFeedbackVote('up')} style={feedbackVote === 'up' ? buttonFilled(palette) : buttonGhost(palette)}>Helpful</button>
-              <button type="button" onClick={() => setFeedbackVote('down')} style={feedbackVote === 'down' ? buttonFilled(palette) : buttonGhost(palette)}>Not Helpful</button>
-              <select value={feedbackOutcome} onChange={(e) => setFeedbackOutcome(e.target.value)} style={inputCompact(palette)}>
-                <option value="">Outcome</option>
-                <option value="improved">Improved</option>
-                <option value="neutral">Neutral</option>
-                <option value="worse">Worse</option>
-              </select>
-              <button type="button" onClick={submitFeedback} disabled={!feedbackVote || feedbackSubmitting} style={buttonGhost(palette, !feedbackVote || feedbackSubmitting)}>
-                {feedbackSubmitting ? 'Saving...' : 'Submit Feedback'}
-              </button>
-            </div>
-            {!!feedbackMessage ? (
-              <p style={{ margin: 0, fontSize: 12, color: feedbackMessage.includes('Thanks') ? palette.success : palette.warn }}>
-                {feedbackMessage}
-              </p>
-            ) : null}
           </WorkspacePanel>
+
+          </div>
+
+          <div style={laneStyle('0.9 1 320px')}>
 
           {!isNavigationIntent && (results.answerFoundation?.length > 0 || results.missingEvidence?.length > 0) ? (
             <WorkspacePanel
@@ -1191,7 +1340,8 @@ export default function AskRecall() {
               </div>
             </WorkspacePanel>
           ) : null}
-        </div>
+          </div>
+        </section>
       ) : null}
     </div>
   );
@@ -1201,10 +1351,10 @@ function inputStyle(palette) {
   return {
     width: '100%',
     border: `1px solid ${palette.border}`,
-    borderRadius: 10,
+    borderRadius: 18,
     background: palette.cardAlt,
     color: palette.text,
-    padding: '10px 12px',
+    padding: '12px 14px',
     fontSize: 14,
     outline: 'none',
   };
@@ -1213,22 +1363,93 @@ function inputStyle(palette) {
 function inputCompact(palette) {
   return {
     border: `1px solid ${palette.border}`,
-    borderRadius: 10,
+    borderRadius: 14,
     background: palette.cardAlt,
     color: palette.text,
-    padding: '7px 10px',
+    padding: '9px 12px',
     fontSize: 12,
     outline: 'none',
+  };
+}
+
+function splitSection() {
+  return {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 14,
+    alignItems: 'flex-start',
+  };
+}
+
+function laneStyle(flex) {
+  return {
+    flex,
+    minWidth: 0,
+    display: 'grid',
+    gap: 14,
+  };
+}
+
+function toneColor(palette, tone = 'default') {
+  if (tone === 'success') return palette.success;
+  if (tone === 'warn') return palette.warn;
+  if (tone === 'danger') return palette.danger;
+  if (tone === 'info') return palette.info;
+  return palette.text;
+}
+
+function pillStyle(palette, tone = 'default') {
+  const accent = toneColor(palette, tone);
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    border: `1px solid ${tone === 'default' ? palette.border : `${accent}33`}`,
+    borderRadius: 999,
+    padding: '6px 11px',
+    fontSize: 11,
+    fontWeight: 700,
+    lineHeight: 1.2,
+    color: tone === 'default' ? palette.text : accent,
+    background: tone === 'default' ? palette.cardAlt : `${accent}14`,
+  };
+}
+
+function microCardStyle(palette, tone = 'default') {
+  const accent = toneColor(palette, tone);
+  return {
+    border: `1px solid ${tone === 'default' ? palette.border : `${accent}2a`}`,
+    borderRadius: 18,
+    background:
+      tone === 'default'
+        ? palette.cardAlt
+        : `linear-gradient(180deg, ${accent}14, ${accent}08)`,
+    padding: 14,
+    display: 'grid',
+    gap: 8,
+  };
+}
+
+function noteStyle(palette, tone = 'default') {
+  const accent = toneColor(palette, tone);
+  return {
+    border: `1px solid ${tone === 'default' ? palette.border : `${accent}30`}`,
+    borderRadius: 16,
+    padding: '11px 13px',
+    fontSize: 12,
+    lineHeight: 1.6,
+    color: tone === 'default' ? palette.muted : accent,
+    background: tone === 'default' ? palette.cardAlt : `${accent}14`,
   };
 }
 
 function buttonFilled(palette, disabled = false) {
   return {
     border: 'none',
-    borderRadius: 10,
+    borderRadius: 14,
     background: palette.ctaGradient,
     color: palette.buttonText,
-    padding: '8px 12px',
+    padding: '9px 14px',
     fontSize: 12,
     fontWeight: 700,
     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -1239,10 +1460,10 @@ function buttonFilled(palette, disabled = false) {
 function buttonGhost(palette, disabled = false) {
   return {
     border: `1px solid ${palette.border}`,
-    borderRadius: 10,
+    borderRadius: 14,
     background: palette.cardAlt,
     color: palette.text,
-    padding: '8px 12px',
+    padding: '9px 14px',
     fontSize: 12,
     fontWeight: 700,
     cursor: disabled ? 'not-allowed' : 'pointer',

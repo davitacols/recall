@@ -334,6 +334,7 @@ export default function UnifiedDashboard() {
   const dashboardRole = user?.role || "contributor";
   const workspaceName = user?.organization_slug || "workspace";
   const experienceMode = user?.experience_mode || "standard";
+  const canManageOutcomeFlow = ["admin", "manager"].includes(dashboardRole);
   const note = pendingOutcomeMeta.overdue > 0
     ? `${pendingOutcomeMeta.overdue} overdue reviews are still the clearest risk on the board.`
     : driftMeta.critical > 0
@@ -389,6 +390,36 @@ export default function UnifiedDashboard() {
             icon: BoltIcon,
           },
         ],
+        signalPanel: {
+          eyebrow: "Leadership signals",
+          title: "Strategic signal digest",
+          description: "A reading view of the newest context, optimized for direction changes and decision visibility.",
+          actionLabel: "Activity Feed",
+          emptyTitle: "Leadership feed is quiet",
+          emptyDescription: "New decisions, documents, and sprint movement will surface here once the workspace creates fresh context.",
+          emptyActionLabel: "Open Activity Feed",
+        },
+        outcomePanel: {
+          eyebrow: "Follow-through",
+          title: "Outcome review queue",
+          description: "Keep review promises visible so important decisions do not disappear after they are made.",
+          actionLabel: "Open Queue",
+          emptyTitle: "Outcome reviews are under control",
+          emptyDescription: "Nothing is waiting in the review queue right now.",
+        },
+        driftPanel: {
+          eyebrow: "Stability",
+          title: "Decision drift alerts",
+          description: "Watch for decisions drifting away from outcomes, confidence, or context.",
+          actionLabel: "Decision Hub",
+          emptyTitle: "No drift alerts are active",
+          emptyDescription: "The decision set looks stable right now.",
+        },
+        missionPanel: {
+          eyebrow: "Mission Control",
+          title: "Scenario view for the next operating move.",
+          description: "Use the simulation layer to see how backlog, blockers, and operating pressure could shift before you move the team.",
+        },
       },
       manager: {
         badge: "Delivery lens",
@@ -436,6 +467,36 @@ export default function UnifiedDashboard() {
             icon: ExclamationTriangleIcon,
           },
         ],
+        signalPanel: {
+          eyebrow: "Delivery signals",
+          title: "Execution signal digest",
+          description: "A lighter reading view of the newest context moving through planning, implementation, and review.",
+          actionLabel: "Open Activity Feed",
+          emptyTitle: "Execution feed is quiet",
+          emptyDescription: "Sprint moves, decision changes, and working notes will surface here as teams update the workspace.",
+          emptyActionLabel: "Open Activity Feed",
+        },
+        outcomePanel: {
+          eyebrow: "Follow-through",
+          title: "Operational review queue",
+          description: "Watch which decisions still need review so delivery does not outrun learning.",
+          actionLabel: "Review Queue",
+          emptyTitle: "No review backlog is competing right now",
+          emptyDescription: "The follow-through queue is clear enough for delivery to stay focused.",
+        },
+        driftPanel: {
+          eyebrow: "Execution stability",
+          title: "Decision drift alerts",
+          description: "Spot assumption drift before it starts pulling execution away from the original plan.",
+          actionLabel: "Decision Hub",
+          emptyTitle: "No execution drift is active",
+          emptyDescription: "Decision assumptions are not the main pressure on delivery right now.",
+        },
+        missionPanel: {
+          eyebrow: "Mission Control",
+          title: "Delivery simulation for the next move.",
+          description: "Use the simulation layer to test blockers, load, and timing changes before you reshuffle work.",
+        },
       },
       contributor: {
         badge: "Operator lens",
@@ -483,6 +544,36 @@ export default function UnifiedDashboard() {
             icon: SparklesIcon,
           },
         ],
+        signalPanel: {
+          eyebrow: "Recent context",
+          title: "What changed across the workspace",
+          description: "A lighter reading view of the signals, documents, and decisions that may affect your work today.",
+          actionLabel: "Open Activity Feed",
+          emptyTitle: "Recent context is quiet",
+          emptyDescription: "When the team creates new decisions, documents, or sprint movement, they will surface here.",
+          emptyActionLabel: "Open Activity Feed",
+        },
+        outcomePanel: {
+          eyebrow: "Follow-through",
+          title: "Decisions waiting on review",
+          description: "See which decisions still need outcome follow-through so implementation stays traceable.",
+          actionLabel: "Review Decisions",
+          emptyTitle: "No follow-through queue is visible right now",
+          emptyDescription: "There is no visible review backlog competing with your work at the moment.",
+        },
+        driftPanel: {
+          eyebrow: "Context stability",
+          title: "Decision drift alerts",
+          description: "See when a decision starts drifting so the surrounding implementation context still makes sense.",
+          actionLabel: "Inspect Drift",
+          emptyTitle: "No drift alerts are visible",
+          emptyDescription: "The current decision context looks stable enough to work from.",
+        },
+        missionPanel: {
+          eyebrow: "Mission Control",
+          title: "Scenario view for the work around you.",
+          description: "Use the simulation layer to understand how blockers and pressure could affect the work you depend on.",
+        },
       },
     };
     return profileMap[dashboardRole] || profileMap.contributor;
@@ -688,17 +779,17 @@ export default function UnifiedDashboard() {
       <section className="ui-enter" style={{ "--ui-delay": "170ms", display: "grid", gap: 14, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.18fr) minmax(320px,0.82fr)" }}>
         <WorkspacePanel
           palette={palette}
-          eyebrow="Signals"
-          title="Weekly signal digest"
-          description="A lighter reading view for the latest activity moving through Knoledgr."
-          action={<Link className="ui-btn-polish ui-focus-ring" to="/activity" style={secondaryButton(palette)}>Activity Feed</Link>}
+          eyebrow={roleProfile.signalPanel.eyebrow}
+          title={roleProfile.signalPanel.title}
+          description={roleProfile.signalPanel.description}
+          action={<Link className="ui-btn-polish ui-focus-ring" to="/activity" style={secondaryButton(palette)}>{roleProfile.signalPanel.actionLabel}</Link>}
         >
           {timeline.length === 0 ? (
             <WorkspaceEmptyState
               palette={palette}
-              title="Signal queue is quiet"
-              description="Decisions, documents, and sprint moves will appear here as the team creates new context."
-              action={<Link className="ui-btn-polish ui-focus-ring" to="/activity" style={primaryButton(palette)}>Open Activity Feed</Link>}
+              title={roleProfile.signalPanel.emptyTitle}
+              description={roleProfile.signalPanel.emptyDescription}
+              action={<Link className="ui-btn-polish ui-focus-ring" to="/activity" style={primaryButton(palette)}>{roleProfile.signalPanel.emptyActionLabel}</Link>}
             />
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
@@ -752,10 +843,10 @@ export default function UnifiedDashboard() {
         <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
           <WorkspacePanel
             palette={palette}
-            eyebrow="Follow-through"
-            title="Outcome review queue"
-            description="Keep review promises visible so decisions do not disappear after they are made."
-            action={<Link className="ui-btn-polish ui-focus-ring" to="/decisions?outcome=pending" style={secondaryButton(palette)}>Open Queue</Link>}
+            eyebrow={roleProfile.outcomePanel.eyebrow}
+            title={roleProfile.outcomePanel.title}
+            description={roleProfile.outcomePanel.description}
+            action={<Link className="ui-btn-polish ui-focus-ring" to="/decisions?outcome=pending" style={secondaryButton(palette)}>{roleProfile.outcomePanel.actionLabel}</Link>}
           >
             <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
               <SummaryCard label="Pending" value={pendingOutcomeMeta.total} tone={palette.info} palette={palette} />
@@ -775,35 +866,41 @@ export default function UnifiedDashboard() {
                 ))}
               </div>
             ) : (
-              <WorkspaceEmptyState palette={palette} title="Outcome reviews are under control" description="Nothing is waiting in the review queue right now." />
+              <WorkspaceEmptyState palette={palette} title={roleProfile.outcomePanel.emptyTitle} description={roleProfile.outcomePanel.emptyDescription} />
             )}
 
-            <div style={chipRow}>
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                onClick={sendOutcomeReminders}
-                disabled={notifyingOutcomes || pendingOutcomeMeta.overdue === 0}
-                style={{ ...secondaryButton(palette), cursor: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? "not-allowed" : "pointer", opacity: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? 0.6 : 1 }}
-              >
-                {notifyingOutcomes ? "Sending..." : "Send Reminders"}
-              </button>
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                onClick={runFollowUpOrchestrator}
-                disabled={orchestratingOutcomes}
-                style={{ ...primaryButton(palette), border: "none", cursor: orchestratingOutcomes ? "not-allowed" : "pointer", opacity: orchestratingOutcomes ? 0.6 : 1 }}
-              >
-                {orchestratingOutcomes ? "Running..." : "Create Follow-ups"}
-              </button>
-            </div>
+            {canManageOutcomeFlow ? (
+              <div style={chipRow}>
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={sendOutcomeReminders}
+                  disabled={notifyingOutcomes || pendingOutcomeMeta.overdue === 0}
+                  style={{ ...secondaryButton(palette), cursor: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? "not-allowed" : "pointer", opacity: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? 0.6 : 1 }}
+                >
+                  {notifyingOutcomes ? "Sending..." : "Send Reminders"}
+                </button>
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={runFollowUpOrchestrator}
+                  disabled={orchestratingOutcomes}
+                  style={{ ...primaryButton(palette), border: "none", cursor: orchestratingOutcomes ? "not-allowed" : "pointer", opacity: orchestratingOutcomes ? 0.6 : 1 }}
+                >
+                  {orchestratingOutcomes ? "Running..." : "Create Follow-ups"}
+                </button>
+              </div>
+            ) : (
+              <p style={{ ...caption, color: palette.muted }}>
+                Outcome reminder automation is available to workspace admins and managers. Contributors can still inspect the queue and follow the linked decisions.
+              </p>
+            )}
           </WorkspacePanel>
 
           <WorkspacePanel
             palette={palette}
-            eyebrow="Stability"
-            title="Decision drift alerts"
-            description="Watch for decisions drifting away from outcomes, confidence, or context."
-            action={<Link className="ui-btn-polish ui-focus-ring" to="/decisions" style={secondaryButton(palette)}>Decision Hub</Link>}
+            eyebrow={roleProfile.driftPanel.eyebrow}
+            title={roleProfile.driftPanel.title}
+            description={roleProfile.driftPanel.description}
+            action={<Link className="ui-btn-polish ui-focus-ring" to="/decisions" style={secondaryButton(palette)}>{roleProfile.driftPanel.actionLabel}</Link>}
           >
             <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))" }}>
               <SummaryCard label="Alerts" value={driftMeta.total} tone={palette.info} palette={palette} />
@@ -824,7 +921,7 @@ export default function UnifiedDashboard() {
                 ))}
               </div>
             ) : (
-              <WorkspaceEmptyState palette={palette} title="No drift alerts are active" description="The decision set looks stable right now." />
+              <WorkspaceEmptyState palette={palette} title={roleProfile.driftPanel.emptyTitle} description={roleProfile.driftPanel.emptyDescription} />
             )}
           </WorkspacePanel>
         </aside>
@@ -833,10 +930,10 @@ export default function UnifiedDashboard() {
       <section className="ui-enter" style={{ "--ui-delay": "220ms" }}>
         <article className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, background: palette.panel, padding: 14 }}>
           <div style={{ display: "grid", gap: 6, marginBottom: 10 }}>
-            <p style={{ ...microLabel, color: palette.muted }}>Mission Control</p>
-            <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 26 }}>Scenario view for the next operating move.</h2>
+            <p style={{ ...microLabel, color: palette.muted }}>{roleProfile.missionPanel.eyebrow}</p>
+            <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 26 }}>{roleProfile.missionPanel.title}</h2>
             <p style={{ ...caption, color: palette.muted, maxWidth: 720 }}>
-              Use the simulation layer to see how backlog, blockers, and operating pressure could shift before you move the team.
+              {roleProfile.missionPanel.description}
             </p>
           </div>
           <MissionControlPanel />

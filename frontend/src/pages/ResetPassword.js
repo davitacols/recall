@@ -83,28 +83,57 @@ export default function ResetPassword() {
 
   return (
     <div className="authp-shell">
+      <div className="authp-glow authp-glow-a" />
+      <div className="authp-glow authp-glow-b" />
       <div className="authp-grid">
         <aside className="authp-aside">
-          <button type="button" onClick={() => navigate("/")} className="authp-brand">
-            <BrandLogo tone="dark" size="lg" />
-          </button>
+          <div className="authp-top">
+            <button type="button" onClick={() => navigate("/")} className="authp-brand">
+              <BrandLogo tone="warm" size="lg" />
+            </button>
+            <Link to="/docs" className="authp-top-link">
+              Documentation
+            </Link>
+          </div>
 
-          <div>
+          <div className="authp-copy-block">
             <p className="authp-kicker">Credential Update</p>
             <h1 className="authp-headline">Set a new password and continue.</h1>
             <p className="authp-copy">
-              Choose a strong password to restore secure access to your workspace.
+              Choose a stronger credential and step back into the workspace with the team's context still intact.
             </p>
+          </div>
+
+          <div className="authp-media" aria-hidden="true">
+            <div className="authp-media-primary">
+              <img src="/assets/trac12.png" alt="" />
+            </div>
+            <div className="authp-media-grid">
+              <article className="authp-media-card">
+                <img src="/assets/trac5.png" alt="" />
+                <div className="authp-media-copy">
+                  <strong>Protect the record</strong>
+                  <p>Strong credentials keep the operating memory safe as more context accumulates.</p>
+                </div>
+              </article>
+              <article className="authp-media-card">
+                <img src="/assets/trac10.png" alt="" />
+                <div className="authp-media-copy">
+                  <strong>Return with confidence</strong>
+                  <p>Once reset succeeds, you can sign in immediately and keep moving.</p>
+                </div>
+              </article>
+            </div>
           </div>
 
           <div className="authp-list">
             <div className="authp-list-item">
               <strong>Strong password guidance</strong>
-              <span>Requirements update in real time as you type.</span>
+              <span>Requirements update in real time, so you know the credential is ready before submitting.</span>
             </div>
             <div className="authp-list-item">
               <strong>Immediate confirmation</strong>
-              <span>Once reset is successful, you can sign in right away.</span>
+              <span>As soon as the reset completes, the account is ready to sign in again.</span>
             </div>
           </div>
         </aside>
@@ -112,9 +141,23 @@ export default function ResetPassword() {
         <main className="authp-main">
           <section className="authp-card">
             <header>
+              <p className="authp-panel-eyebrow">Reset flow</p>
               <h2 className="authp-title">Set a new password</h2>
               <p className="authp-subtitle">Choose a strong password for your account.</p>
             </header>
+
+            <div className="authp-info-grid">
+              <article className="authp-info-card">
+                <span>Requirement</span>
+                <strong>Strong enough to trust</strong>
+                <p>Use a new credential that is longer, more unique, and harder to guess.</p>
+              </article>
+              <article className="authp-info-card">
+                <span>Outcome</span>
+                <strong>Direct return to sign-in</strong>
+                <p>After resetting, the flow moves you back toward login automatically.</p>
+              </article>
+            </div>
 
             <form onSubmit={handleSubmit} className="authp-form" aria-busy={loading}>
               <label className="authp-field">
@@ -168,9 +211,17 @@ export default function ResetPassword() {
             </form>
 
             <footer className="authp-foot">
-              <Link to="/login" className="authp-link">
-                Back to sign in
-              </Link>
+              <div className="authp-links">
+                <Link to="/login" className="authp-link">
+                  Back to sign in
+                </Link>
+                <Link to="/security-annex" className="authp-link">
+                  Security Annex
+                </Link>
+                <Link to="/privacy" className="authp-link">
+                  Privacy
+                </Link>
+              </div>
             </footer>
           </section>
         </main>

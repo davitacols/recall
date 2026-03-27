@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -7,6 +7,57 @@ import BrandLogo from "../components/BrandLogo";
 import { useToast } from "../components/Toast";
 import { useAuth } from "../hooks/useAuth";
 import "./Login.css";
+
+let googleScriptPromise = null;
+
+function addPreconnectLink(href) {
+  if (typeof document === "undefined") return;
+  if (document.querySelector(`link[rel="preconnect"][href="${href}"]`)) return;
+  const link = document.createElement("link");
+  link.rel = "preconnect";
+  link.href = href;
+  if (!href.includes(window.location.origin)) {
+    link.crossOrigin = "anonymous";
+  }
+  document.head.appendChild(link);
+}
+
+function ensureGoogleIdentityScript() {
+  if (typeof window === "undefined") return Promise.reject(new Error("Window unavailable"));
+  if (window.google?.accounts?.id) return Promise.resolve(window.google.accounts.id);
+  if (googleScriptPromise) return googleScriptPromise;
+
+  addPreconnectLink("https://accounts.google.com");
+  addPreconnectLink("https://www.gstatic.com");
+
+  googleScriptPromise = new Promise((resolve, reject) => {
+    const resolveIfReady = () => {
+      if (window.google?.accounts?.id) {
+        resolve(window.google.accounts.id);
+      } else {
+        reject(new Error("Google Identity Services unavailable"));
+      }
+    };
+
+    const existingScript = document.getElementById("google-gsi-script");
+    if (existingScript) {
+      existingScript.addEventListener("load", resolveIfReady, { once: true });
+      existingScript.addEventListener("error", () => reject(new Error("Failed to load Google script")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "google-gsi-script";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = resolveIfReady;
+    script.onerror = () => reject(new Error("Failed to load Google script"));
+    document.body.appendChild(script);
+  });
+
+  return googleScriptPromise;
+}
 
 function Field({ label, children }) {
   return (
@@ -19,11 +70,27 @@ function Field({ label, children }) {
 
 function useForceLightMode() {
   React.useEffect(() => {
-    const saved = document.documentElement.getAttribute('data-theme');
-    document.documentElement.setAttribute('data-theme', 'light');
-    return () => document.documentElement.setAttribute('data-theme', saved || localStorage.getItem('theme') || 'light');
+    const saved = document.documentElement.getAttribute("data-theme");
+    document.documentElement.setAttribute("data-theme", "light");
+    return () => document.documentElement.setAttribute("data-theme", saved || localStorage.getItem("theme") || "light");
   }, []);
 }
+
+const showcaseFrames = [
+  { label: "Ask Recall", text: "Grounded answers from workspace history.", src: "/assets/trac10.png" },
+  { label: "Knowledge Graph", text: "Connected records across decisions, docs, and work.", src: "/assets/trac3.png" },
+];
+
+const showcaseNotes = [
+  "One entry flow for sign in, sign up, and workspace access.",
+  "Google, password, and Turnstile stay in the same calm surface.",
+  "Recovery and invite pages now follow the same public design system.",
+];
+
+const showcaseOrbitFrames = [
+  { label: "Decisions", src: "/assets/trac12.png", className: "auth-orbit-card-a" },
+  { label: "Docs", src: "/assets/trac5.png", className: "auth-orbit-card-b" },
+];
 
 function Login() {
   useForceLightMode();
@@ -41,6 +108,7 @@ function Login() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [googleReady, setGoogleReady] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleUnavailable, setGoogleUnavailable] = useState(false);
   const [credentials, setCredentials] = useState({
     username: inviteEmail || "",
     password: "",
@@ -71,6 +139,40 @@ function Login() {
     full_name: credentials.full_name,
   };
 
+  const finalizeAuth = useCallback(
+    (message = "Welcome back!") => {
+      addToast(message, "success");
+      navigate("/dashboard", { replace: true });
+    },
+    [addToast, navigate]
+  );
+
+  const authHandlersRef = useRef({ addToast, googleLogin, finalizeAuth });
+  authHandlersRef.current = { addToast, googleLogin, finalizeAuth };
+
+  const renderGoogleButtons = useCallback(() => {
+    if (!window.google?.accounts?.id) return;
+
+    [
+      { id: "google-signin-button", width: 360 },
+      { id: "google-signup-button", width: 360 },
+    ].forEach(({ id, width }) => {
+      const mountPoint = document.getElementById(id);
+      if (!mountPoint) return;
+
+      const computedWidth = Math.max(250, Math.min(width, (mountPoint.parentElement?.clientWidth || width) - 8));
+      mountPoint.innerHTML = "";
+      window.google.accounts.id.renderButton(mountPoint, {
+        theme: "filled_blue",
+        size: "large",
+        shape: "pill",
+        width: computedWidth,
+        text: "continue_with",
+        logo_alignment: "left",
+      });
+    });
+  }, []);
+
   const switchMode = (loginMode) => {
     setIsLogin(loginMode);
     setError("");
@@ -83,11 +185,6 @@ function Login() {
     if (credentials.password !== credentials.confirmPassword) return "Passwords do not match";
     if (passwordChecks.some((check) => !check.valid)) return "Password does not meet the required strength";
     return null;
-  };
-
-  const finalizeAuth = (message = "Welcome back!") => {
-    addToast(message, "success");
-    navigate("/dashboard", { replace: true });
   };
 
   const handleSubmit = async (event) => {
@@ -132,10 +229,7 @@ function Login() {
         token: "",
         organization: "",
       });
-      addToast(
-        inviteToken ? "Account created! Please sign in." : "Organization created! Please sign in.",
-        "success"
-      );
+      addToast(inviteToken ? "Account created! Please sign in." : "Organization created! Please sign in.", "success");
     } else {
       setError(result.error);
       addToast(result.error, "error");
@@ -145,103 +239,89 @@ function Login() {
   };
 
   useEffect(() => {
-    if (inviteToken || !googleClientId) return;
+    if (inviteToken || !googleClientId) return undefined;
 
-    let canceled = false;
-    let resizeTimer = null;
-    let resizeHandler = null;
-    const scriptId = "google-gsi-script";
-    const mountId = isLogin ? "google-signin-button" : "google-signup-button";
-    setGoogleReady(false);
-
-    const renderGoogleButton = () => {
-      const mountPoint = document.getElementById(mountId);
-      if (!mountPoint || !window.google?.accounts?.id) return;
-
-      const width = Math.max(250, Math.min(390, (mountPoint.parentElement?.clientWidth || 340) - 8));
-      mountPoint.innerHTML = "";
-      window.google.accounts.id.renderButton(mountPoint, {
-        theme: "filled_black",
-        size: "large",
-        shape: "rectangular",
-        width,
-        text: "continue_with",
-        logo_alignment: "left",
+    let active = true;
+    let resizeFrame = null;
+    const handleResize = () => {
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => {
+        if (active) renderGoogleButtons();
       });
-      setGoogleReady(true);
     };
 
-    const initializeGoogle = () => {
-      if (canceled || !window.google?.accounts?.id) return;
+    const handleCredential = async (response) => {
+      const credential = response?.credential;
+      if (!credential) {
+        setError("Google sign-in failed");
+        return;
+      }
 
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: async (response) => {
-          const credential = response?.credential;
-          if (!credential) {
-            setError("Google sign-in failed");
-            return;
-          }
+      const googleContext = googleContextRef.current;
+      const googlePayload = { credential };
+      if (!googleContext.isLogin) {
+        const organization = googleContext.organization.trim();
+        if (!organization) {
+          const orgError = "Organization name is required before continuing with Google.";
+          setError(orgError);
+          authHandlersRef.current.addToast(orgError, "error");
+          return;
+        }
+        googlePayload.organization = organization;
+        if (googleContext.full_name.trim()) {
+          googlePayload.full_name = googleContext.full_name.trim();
+        }
+      }
 
-          const googleContext = googleContextRef.current;
-          const googlePayload = { credential };
-          if (!googleContext.isLogin) {
-            const organization = googleContext.organization.trim();
-            if (!organization) {
-              const orgError = "Organization name is required before continuing with Google.";
-              setError(orgError);
-              addToast(orgError, "error");
-              return;
-            }
-            googlePayload.organization = organization;
-            if (googleContext.full_name.trim()) {
-              googlePayload.full_name = googleContext.full_name.trim();
-            }
-          }
-
-          setGoogleLoading(true);
-          const result = await googleLogin(googlePayload);
-          setGoogleLoading(false);
-          if (result.success) {
-            finalizeAuth(
-              googleContext.isLogin
-                ? "Welcome back!"
-                : result.message || "Workspace created successfully."
-            );
-          } else {
-            setError(result.error);
-            addToast(result.error, "error");
-          }
-        },
-      });
-
-      renderGoogleButton();
-      resizeHandler = () => {
-        if (resizeTimer) clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(renderGoogleButton, 120);
-      };
-      window.addEventListener("resize", resizeHandler);
+      setGoogleLoading(true);
+      const result = await authHandlersRef.current.googleLogin(googlePayload);
+      if (!active) return;
+      setGoogleLoading(false);
+      if (result.success) {
+        authHandlersRef.current.finalizeAuth(
+          googleContext.isLogin
+            ? "Welcome back!"
+            : result.message || "Workspace created successfully."
+        );
+      } else {
+        setError(result.error);
+        authHandlersRef.current.addToast(result.error, "error");
+      }
     };
 
-    const script = document.getElementById(scriptId);
-    if (script) {
-      initializeGoogle();
-    } else {
-      const nextScript = document.createElement("script");
-      nextScript.id = scriptId;
-      nextScript.src = "https://accounts.google.com/gsi/client";
-      nextScript.async = true;
-      nextScript.defer = true;
-      nextScript.onload = initializeGoogle;
-      document.body.appendChild(nextScript);
-    }
+    ensureGoogleIdentityScript()
+      .then(() => {
+        if (!active || !window.google?.accounts?.id) return;
+
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleCredential,
+        });
+
+        setGoogleUnavailable(false);
+        setGoogleReady(true);
+        renderGoogleButtons();
+
+        window.addEventListener("resize", handleResize);
+      })
+      .catch(() => {
+        if (!active) return;
+        setGoogleReady(false);
+        setGoogleUnavailable(true);
+      });
 
     return () => {
-      canceled = true;
-      if (resizeTimer) clearTimeout(resizeTimer);
-      if (resizeHandler) window.removeEventListener("resize", resizeHandler);
+      active = false;
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+      window.removeEventListener("resize", handleResize);
     };
-  }, [addToast, googleClientId, googleLogin, inviteToken, isLogin]);
+  }, [googleClientId, inviteToken, renderGoogleButtons]);
+
+  useEffect(() => {
+    if (!googleReady || inviteToken || !googleClientId) return;
+    const timer = window.setTimeout(() => renderGoogleButtons(), 30);
+    return () => window.clearTimeout(timer);
+  }, [googleClientId, googleReady, inviteToken, isLogin, renderGoogleButtons]);
 
   return (
     <div className="auth-shell">
@@ -255,41 +335,70 @@ function Login() {
           transition={{ duration: 0.55 }}
           className="auth-showcase"
         >
-          <button type="button" onClick={() => navigate("/")} className="auth-brand">
-            <BrandLogo tone="warm" size="lg" />
-          </button>
+          <div className="auth-showcase-top">
+            <button type="button" onClick={() => navigate("/")} className="auth-brand">
+              <BrandLogo tone="warm" size="lg" />
+            </button>
+            <Link to="/docs" className="auth-showcase-link">
+              Documentation
+            </Link>
+          </div>
 
-          <div>
+          <div className="auth-showcase-copy">
             <p className="auth-kicker">Decision memory for teams</p>
-            <h1 className="auth-headline">Pick up the thread without re-reading everything.</h1>
+            <h1 className="auth-headline">Access the record without losing the thread.</h1>
             <p className="auth-copy">
-              Sign in to Knoledgr and recover the rationale, documents, and next actions attached to your team's work.
+              Sign in, create a workspace, or join an invite from one cleaner entry point that keeps the product front and center.
             </p>
           </div>
 
-          <div className="auth-showcase-visual" aria-hidden="true">
-            <img
-              src="/brand/knoledgr-app-screenshot.svg"
-              alt=""
-              className="auth-showcase-shot"
-            />
-            <img
-              src="/brand/knoledgr-memory-orbit.svg"
-              alt=""
-              className="auth-showcase-orbit"
-            />
+          <div className="auth-showcase-media" aria-hidden="true">
+            <div className="auth-showcase-scene">
+              <div className="auth-video-frame">
+                <video
+                  className="auth-showcase-video"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  poster="/assets/trac1.png"
+                >
+                  <source src="/assets/Decision_Memory_for_Teams.mp4" type="video/mp4" />
+                </video>
+                <span className="auth-video-badge">Walkthrough</span>
+                <span className="auth-video-corner-brand">Knoledgr</span>
+              </div>
+
+              <div className="auth-orbit-grid">
+                {showcaseOrbitFrames.map((frame) => (
+                  <div key={frame.label} className={`auth-orbit-card ${frame.className}`}>
+                    <img src={frame.src} alt="" />
+                    <span>{frame.label}</span>
+                  </div>
+                ))}
+                <div className="auth-orbit-core" />
+              </div>
+            </div>
+
+            <div className="auth-showcase-grid">
+              {showcaseFrames.map((frame) => (
+                <div key={frame.label} className="auth-frame-card">
+                  <img src={frame.src} alt="" className="auth-frame-image" />
+                  <div className="auth-frame-copy">
+                    <span>{frame.label}</span>
+                    <p>{frame.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="auth-stats">
-            <div className="auth-stat-card">
-              <strong>Org-aware access</strong>
-              <span>One identity, many organizations, zero data collisions.</span>
-            </div>
-            <div className="auth-stat-card">
-              <strong>Verified sessions</strong>
-              <span>Google, password, and Turnstile flow under one secure gateway.</span>
-            </div>
-          </div>
+          <ul className="auth-showcase-notes">
+            {showcaseNotes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
         </motion.aside>
 
         <motion.main
@@ -310,8 +419,8 @@ function Login() {
               </h2>
               <p>
                 {isLogin
-                  ? "Access your workspace and continue where your team stopped."
-                  : "Set up your account with email or Google and activate your team's decision memory."}
+                  ? "Continue where your team stopped, with the context trail still intact."
+                  : "Create an account, name the workspace, and start building the team's shared decision memory."}
               </p>
             </header>
 
@@ -342,146 +451,163 @@ function Login() {
               ) : null}
 
               {isLogin && !inviteToken && googleClientId ? (
-                <>
-                  <section className="auth-google-panel">
-                    <div className="auth-google-head">
-                      <span className="auth-google-badge" aria-hidden="true">
-                        G
-                      </span>
-                      <div>
-                        <h3>Continue with Google</h3>
-                        <p>Fast sign-in with your verified Google account.</p>
-                      </div>
+                <section className="auth-form-cluster auth-google-panel">
+                  <div className="auth-cluster-head">
+                    <div>
+                      <p className="auth-section-label">Fast access</p>
+                      <h3>Continue with Google</h3>
                     </div>
-                    <div className="auth-google-button-frame">
-                      <div id="google-signin-button" className="auth-google-button-host" />
-                    </div>
-                    {!googleReady ? <small>Loading Google sign-in...</small> : null}
-                    {googleLoading ? <small>Signing in with Google...</small> : null}
-                    <small>Personal and business Google accounts are both supported.</small>
-                  </section>
-
-                  <div className="auth-divider" aria-hidden="true">
-                    <span />
-                    <small>or use email</small>
-                    <span />
+                    <span className="auth-google-badge" aria-hidden="true">
+                      G
+                    </span>
                   </div>
-                </>
+                  <p className="auth-cluster-copy">Use a verified Google account to get back into Knoledgr quickly.</p>
+                  <div className="auth-google-meta" aria-hidden="true">
+                    <span>Fastest route</span>
+                    <span>Verified identity</span>
+                  </div>
+                  <div className="auth-google-button-frame">
+                    <div id="google-signin-button" className="auth-google-button-host" />
+                  </div>
+                  {!googleReady ? <small className="auth-google-status">Loading Google sign-in...</small> : null}
+                  {googleLoading ? <small className="auth-google-status">Signing in with Google...</small> : null}
+                  {googleUnavailable ? <small className="auth-google-status">Google sign-in is temporarily unavailable. Use email sign-in below.</small> : null}
+                  <small className="auth-google-status">Personal and business Google accounts are both supported.</small>
+                </section>
               ) : null}
 
               {!isLogin && !inviteToken ? (
-                <Field label="Organization name">
-                  <input
-                    type="text"
-                    required
-                    value={credentials.organization}
-                    onChange={(event) => setField("organization", event.target.value)}
-                    placeholder="Acme Inc"
-                  />
-                </Field>
-              ) : null}
-
-              {!isLogin && !inviteToken && googleClientId ? (
-                <>
-                  <section className="auth-google-panel">
-                    <div className="auth-google-head">
-                      <span className="auth-google-badge" aria-hidden="true">
-                        G
-                      </span>
-                      <div>
-                        <h3>Create a workspace with Google</h3>
-                        <p>Use a verified Google account to create your Knoledgr workspace faster.</p>
-                      </div>
+                <section className="auth-form-cluster">
+                  <div className="auth-cluster-head">
+                    <div>
+                      <p className="auth-section-label">Workspace</p>
+                      <h3>Name the environment</h3>
                     </div>
-                    <div className="auth-google-button-frame">
-                      <div id="google-signup-button" className="auth-google-button-host" />
-                    </div>
-                    {!googleReady ? <small>Loading Google sign-up...</small> : null}
-                    {googleLoading ? <small>Creating your workspace...</small> : null}
-                    <small>Personal and business Google accounts are both supported.</small>
-                  </section>
-
-                  <div className="auth-divider" aria-hidden="true">
-                    <span />
-                    <small>or sign up with email</small>
-                    <span />
                   </div>
-                </>
-              ) : null}
-
-              {!isLogin ? (
-                <Field label="Full name">
-                  <input
-                    type="text"
-                    required
-                    value={credentials.full_name}
-                    onChange={(event) => setField("full_name", event.target.value)}
-                    placeholder="Jane Doe"
-                  />
-                </Field>
-              ) : null}
-
-              <Field label="Email address">
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  disabled={Boolean(inviteToken)}
-                  className={inviteToken ? "is-disabled" : ""}
-                  value={credentials.username}
-                  onChange={(event) => setField("username", event.target.value)}
-                  placeholder="you@example.com"
-                />
-              </Field>
-
-              <Field label="Password">
-                <div className="auth-password-wrap">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    autoComplete={isLogin ? "current-password" : "new-password"}
-                    value={credentials.password}
-                    onChange={(event) => setField("password", event.target.value)}
-                    placeholder="********"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="auth-password-toggle"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? (
-                      <EyeSlashIcon className="auth-eye-icon" />
-                    ) : (
-                      <EyeIcon className="auth-eye-icon" />
-                    )}
-                  </button>
-                </div>
-              </Field>
-
-              {!isLogin ? (
-                <>
-                  <Field label="Confirm password">
+                  <Field label="Organization name">
                     <input
-                      type={showPassword ? "text" : "password"}
+                      type="text"
                       required
-                      autoComplete="new-password"
-                      value={credentials.confirmPassword}
-                      onChange={(event) => setField("confirmPassword", event.target.value)}
-                      placeholder="********"
+                      value={credentials.organization}
+                      onChange={(event) => setField("organization", event.target.value)}
+                      placeholder="Acme Inc"
                     />
                   </Field>
 
-                  <div className="auth-password-guide">
-                    {passwordChecks.map((check) => (
-                      <div key={check.key} className={`auth-rule ${check.valid ? "valid" : ""}`}>
-                        <span />
-                        {check.label}
+                  {googleClientId ? (
+                    <div className="auth-google-panel auth-google-panel-signup">
+                      <div className="auth-cluster-head">
+                        <div>
+                          <p className="auth-section-label">Quick start</p>
+                          <h3>Create with Google</h3>
+                        </div>
+                        <span className="auth-google-badge" aria-hidden="true">
+                          G
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                </>
+                      <p className="auth-cluster-copy">Create a workspace faster with a verified Google identity.</p>
+                      <div className="auth-google-meta" aria-hidden="true">
+                        <span>Workspace setup</span>
+                        <span>Verified identity</span>
+                      </div>
+                      <div className="auth-google-button-frame">
+                        <div id="google-signup-button" className="auth-google-button-host" />
+                      </div>
+                      {!googleReady ? <small className="auth-google-status">Loading Google sign-up...</small> : null}
+                      {googleLoading ? <small className="auth-google-status">Creating your workspace...</small> : null}
+                      {googleUnavailable ? <small className="auth-google-status">Google sign-up is temporarily unavailable. Use email signup below.</small> : null}
+                    </div>
+                  ) : null}
+                </section>
               ) : null}
+
+              <section className="auth-form-cluster">
+                <div className="auth-cluster-head">
+                  <div>
+                    <p className="auth-section-label">Identity</p>
+                    <h3>{isLogin ? "Confirm who is signing in" : "Set up the account owner"}</h3>
+                  </div>
+                </div>
+
+                {!isLogin ? (
+                  <Field label="Full name">
+                    <input
+                      type="text"
+                      required
+                      value={credentials.full_name}
+                      onChange={(event) => setField("full_name", event.target.value)}
+                      placeholder="Jane Doe"
+                    />
+                  </Field>
+                ) : null}
+
+                <Field label="Email address">
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    disabled={Boolean(inviteToken)}
+                    className={inviteToken ? "is-disabled" : ""}
+                    value={credentials.username}
+                    onChange={(event) => setField("username", event.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </Field>
+              </section>
+
+              <section className="auth-form-cluster">
+                <div className="auth-cluster-head">
+                  <div>
+                    <p className="auth-section-label">Security</p>
+                    <h3>{isLogin ? "Use your secure credential" : "Create a strong credential"}</h3>
+                  </div>
+                </div>
+
+                <Field label="Password">
+                  <div className="auth-password-wrap">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      autoComplete={isLogin ? "current-password" : "new-password"}
+                      value={credentials.password}
+                      onChange={(event) => setField("password", event.target.value)}
+                      placeholder="********"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="auth-password-toggle"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeSlashIcon className="auth-eye-icon" /> : <EyeIcon className="auth-eye-icon" />}
+                    </button>
+                  </div>
+                </Field>
+
+                {!isLogin ? (
+                  <>
+                    <Field label="Confirm password">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        autoComplete="new-password"
+                        value={credentials.confirmPassword}
+                        onChange={(event) => setField("confirmPassword", event.target.value)}
+                        placeholder="********"
+                      />
+                    </Field>
+
+                    <div className="auth-password-guide">
+                      {passwordChecks.map((check) => (
+                        <div key={check.key} className={`auth-rule ${check.valid ? "valid" : ""}`}>
+                          <span />
+                          {check.label}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+              </section>
 
               {turnstileEnabled ? (
                 <div className="auth-turnstile-wrap">

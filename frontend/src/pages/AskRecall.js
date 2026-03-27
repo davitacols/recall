@@ -140,12 +140,48 @@ function getContextualHowTo(query) {
   return null;
 }
 
+function buildCachedResultFromHistory(snapshot) {
+  const question = String(snapshot?.query || '').trim();
+  if (!question) return null;
+
+  return {
+    question,
+    analysisId: '',
+    answerEngine: 'history',
+    credibilitySummary: 'Loaded from your recent Ask Recall history while the workspace refreshes the latest grounded answer.',
+    answer: String(snapshot?.answer_preview || 'Refreshing the last Ask Recall answer for this prompt...').trim(),
+    confidence: snapshot?.confidence_band === 'high' ? 82 : snapshot?.confidence_band === 'medium' ? 64 : snapshot?.confidence_band === 'low' ? 36 : 48,
+    confidenceBand: String(snapshot?.confidence_band || 'medium').toLowerCase(),
+    responseMode: String(snapshot?.response_mode || 'answer'),
+    evidenceCount: Number(snapshot?.evidence_count || 0),
+    sourceTypes: [],
+    freshnessDays: null,
+    coverageScore: Number(snapshot?.coverage_score || 0),
+    missingEvidence: [],
+    evidenceBreakdown: [],
+    answerFoundation: ['This preview came from your recent Ask Recall history and will be refreshed automatically.'],
+    followUpQuestions: [],
+    toolLinks: [],
+    riskStatus: 'watch',
+    readinessScore: null,
+    learningModel: {},
+    counts: {},
+    linkedDecisions: [],
+    nextActions: [],
+    citations: [],
+    sources: [],
+    execution: { performed: false, result: null },
+    generatedAt: '',
+  };
+}
+
 export default function AskRecall() {
   const { darkMode } = useTheme();
   const { user } = useAuth();
   const location = useLocation();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const lastAutoRunRef = useRef('');
+  const lastSnapshotRef = useRef('');
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
@@ -600,9 +636,23 @@ export default function AskRecall() {
     const params = new URLSearchParams(location.search);
     const seededQuery = String(params.get('q') || '').trim();
     const shouldAutoRun = params.get('autorun') === '1';
+    const snapshot = location.state?.askRecallSnapshot;
     if (!seededQuery) return;
 
     setQuery((current) => (current === seededQuery ? current : seededQuery));
+
+    if (snapshot && snapshot.query === seededQuery && lastSnapshotRef.current !== location.key) {
+      lastSnapshotRef.current = location.key;
+      const cached = buildCachedResultFromHistory(snapshot);
+      if (cached) {
+        setResults((current) => {
+          const currentQuestion = String(current?.question || '').trim();
+          return currentQuestion === seededQuery ? current : cached;
+        });
+        setRequestState('success');
+        setRequestMessage('Loaded your recent Ask Recall answer. Refreshing with the latest workspace evidence...');
+      }
+    }
 
     if (shouldAutoRun && lastAutoRunRef.current !== location.search) {
       lastAutoRunRef.current = location.search;

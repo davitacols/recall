@@ -67,6 +67,7 @@ class AGICopilotContractTests(TestCase):
         ).order_by("-created_at").first()
         self.assertIsNotNone(log)
         self.assertEqual((log.details or {}).get("query"), "where is risk?")
+        self.assertTrue(bool((log.details or {}).get("answer_preview")))
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")

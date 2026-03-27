@@ -246,6 +246,7 @@ class KnowledgeApiContractTests(TestCase):
             resource_type="agi_copilot_query",
             details={
                 "query": "What changed in Justice App?",
+                "answer_preview": "Justice App changed through a sprint update, a linked issue, and a decision touching the talking stage flow.",
                 "response_mode": "answer",
                 "confidence_band": "medium",
                 "evidence_count": 3,
@@ -374,6 +375,7 @@ class KnowledgeApiContractTests(TestCase):
         self.assertEqual(payload["watched_issues"][0]["id"], self.issue.id)
         self.assertTrue(any(item["id"] == self.conversation.id for item in payload["recent_conversations"]))
         self.assertEqual(payload["recent_ask_recall_queries"][0]["query"], "What changed in Justice App?")
+        self.assertIn("Justice App changed", payload["recent_ask_recall_queries"][0]["answer_preview"])
         self.assertEqual(payload["counts"]["bookmarked_conversations"], 1)
         self.assertEqual(payload["counts"]["relevant_decisions"], 1)
         self.assertEqual(payload["counts"]["recent_ask_recall_queries"], 1)

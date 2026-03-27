@@ -336,6 +336,7 @@ def personal_briefing(request):
         {
             'id': log.id,
             'query': str((log.details or {}).get('query') or '').strip(),
+            'answer_preview': str((log.details or {}).get('answer_preview') or '').strip(),
             'response_mode': str((log.details or {}).get('response_mode') or '').strip(),
             'confidence_band': str((log.details or {}).get('confidence_band') or '').strip(),
             'evidence_count': int((log.details or {}).get('evidence_count') or 0),

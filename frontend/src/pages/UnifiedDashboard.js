@@ -1091,9 +1091,20 @@ export default function UnifiedDashboard() {
                 {recentAskRecallQueries.length ? (
                   <div style={{ display: "grid", gap: 10 }}>
                     {recentAskRecallQueries.slice(0, 4).map((queryItem) => (
-                      <Link key={queryItem.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/ask?q=${encodeURIComponent(queryItem.query)}&autorun=1`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
+                      <Link
+                        key={queryItem.id}
+                        className="ui-card-lift ui-smooth ui-focus-ring"
+                        to={`/ask?q=${encodeURIComponent(queryItem.query)}&autorun=1`}
+                        state={{ askRecallSnapshot: queryItem }}
+                        style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}
+                      >
                         <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
                           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{queryItem.query}</p>
+                          {queryItem.answer_preview ? (
+                            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.text }}>
+                              {queryItem.answer_preview}
+                            </p>
+                          ) : null}
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                             {queryItem.response_mode ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.accent }}>{formatStatusLabel(queryItem.response_mode)}</span> : null}
                             {queryItem.confidence_band ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(queryItem.confidence_band)}</span> : null}

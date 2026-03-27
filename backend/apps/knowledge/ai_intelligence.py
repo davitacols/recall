@@ -593,6 +593,7 @@ def _log_copilot_query(request, org, user, query, response_payload):
                 'evidence_count': response_payload.get('evidence_count'),
                 'coverage_score': response_payload.get('coverage_score'),
                 'answer_engine': response_payload.get('answer_engine'),
+                'answer_preview': str(response_payload.get('answer') or '').strip()[:600],
                 'executed': bool((response_payload.get('execution') or {}).get('performed')),
             },
             request=request,

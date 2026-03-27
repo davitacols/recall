@@ -1,6 +1,8 @@
 from datetime import datetime
+from html import unescape
 
 from django.db.models import Q
+from django.utils.html import strip_tags
 
 from apps.conversations.models import ActionItem, Conversation, ConversationReply
 from apps.decisions.models import Decision
@@ -585,7 +587,8 @@ def _iso(value):
 
 
 def _truncate(text, limit=220):
-    text = (text or '').strip()
+    text = unescape(strip_tags((text or '').replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n')))
+    text = ' '.join(text.split())
     if len(text) <= limit:
         return text
     return f'{text[:limit].rstrip()}...'

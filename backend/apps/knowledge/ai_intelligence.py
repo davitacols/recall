@@ -1,8 +1,11 @@
+from html import unescape
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.html import strip_tags
 from django.core.cache import cache
 from datetime import datetime, timedelta, timezone as dt_timezone
 from uuid import uuid4
@@ -267,6 +270,15 @@ def _human_join(parts):
     return f'{", ".join(cleaned[:-1])}, and {cleaned[-1]}'
 
 
+def _clean_preview_text(value):
+    text = str(value or '')
+    if not text.strip():
+        return ''
+    text = text.replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n')
+    text = unescape(strip_tags(text))
+    return ' '.join(text.split())
+
+
 def _iter_source_records(search_data, limit_per_bucket=20):
     for config in SOURCE_BUCKET_REGISTRY:
         bucket = config['bucket']
@@ -284,7 +296,7 @@ def _iter_source_records(search_data, limit_per_bucket=20):
                 'label': config['label'],
                 'title': item.get('title') or f'{config["type"].title()} #{item_id}',
                 'url': item.get('url') or config['fallback_url'](item_id),
-                'preview': item.get('content_preview') or '',
+                'preview': _clean_preview_text(item.get('content_preview') or ''),
                 'status': item.get('status') or item.get('post_type') or item.get('document_type') or '',
                 'priority': item.get('priority') or '',
                 'owner_name': (

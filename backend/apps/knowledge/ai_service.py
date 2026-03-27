@@ -1,5 +1,8 @@
+from html import unescape
+
 import anthropic
 from django.conf import settings
+from django.utils.html import strip_tags
 
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
@@ -56,13 +59,17 @@ class AIService:
                 value = item.get(key)
                 if value not in [None, "", []]:
                     details.append(f"{key}={value}")
-            preview = (item.get("content_preview") or "").strip().replace("\n", " ")
+            preview = self._clean_preview(item.get("content_preview") or "")
             if len(preview) > 260:
                 preview = f"{preview[:257].rstrip()}..."
             metadata = f" [{' | '.join(details)}]" if details else ""
             preview_text = f" :: {preview}" if preview else ""
             lines.append(f"{idx}. {item.get('title') or 'Untitled'}{metadata}{preview_text}")
         return "\n".join(lines)
+
+    def _clean_preview(self, text):
+        cleaned = unescape(strip_tags(str(text or "").replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")))
+        return " ".join(cleaned.split())
 
     def _build_workspace_context(self, search_data, plan, evidence_contract, recommended_interventions, query_mode):
         sections = [

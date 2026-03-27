@@ -22,6 +22,48 @@ function toTimestamp(value) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+function decodeHtmlEntities(text) {
+  const value = String(text || '');
+  if (!value) return '';
+
+  if (typeof window !== 'undefined' && window.document) {
+    const textarea = window.document.createElement('textarea');
+    textarea.innerHTML = value;
+    return textarea.value;
+  }
+
+  return value
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+}
+
+function sanitizeNarrativeText(value) {
+  const text = String(value || '');
+  if (!text.trim()) return '';
+
+  return decodeHtmlEntities(
+    text
+      .replace(/<\s*br\s*\/?>/gi, '\n')
+      .replace(/<\s*\/(p|div|pre|li|ul|ol|blockquote|h[1-6])\s*>/gi, '\n')
+      .replace(/<\s*li\b[^>]*>/gi, '- ')
+      .replace(/<[^>]+>/g, ' ')
+  )
+    .replace(/\r/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function sanitizePreviewText(value) {
+  return sanitizeNarrativeText(value).replace(/\s*\n+\s*/g, ' ').trim();
+}
+
 function normalizeSources(sources) {
   const configs = [
     { key: 'conversations', type: 'conversation', fallbackHref: (item) => `/conversations/${item.id}`, dateKeys: ['created_at'] },
@@ -51,8 +93,8 @@ function normalizeSources(sources) {
     .flatMap((config) =>
       (sources?.[config.key] || []).map((item) => {
         const rawDate = config.dateKeys.map((key) => item?.[key]).find(Boolean);
-          const contextualPreview =
-            item.content_preview ||
+        const contextualPreview = sanitizePreviewText(
+          item.content_preview ||
             [
               item.role,
               item.status,
@@ -68,7 +110,8 @@ function normalizeSources(sources) {
               item.author,
             ]
               .filter(Boolean)
-              .join(' | ');
+              .join(' | ')
+        );
         return {
           id: item.id,
           type: config.type,
@@ -149,7 +192,7 @@ function buildCachedResultFromHistory(snapshot) {
     analysisId: '',
     answerEngine: 'history',
     credibilitySummary: 'Loaded from your recent Ask Recall history while the workspace refreshes the latest grounded answer.',
-    answer: String(snapshot?.answer_preview || 'Refreshing the last Ask Recall answer for this prompt...').trim(),
+    answer: sanitizeNarrativeText(snapshot?.answer_preview || 'Refreshing the last Ask Recall answer for this prompt...'),
     confidence: snapshot?.confidence_band === 'high' ? 82 : snapshot?.confidence_band === 'medium' ? 64 : snapshot?.confidence_band === 'low' ? 36 : 48,
     confidenceBand: String(snapshot?.confidence_band || 'medium').toLowerCase(),
     responseMode: String(snapshot?.response_mode || 'answer'),
@@ -279,11 +322,11 @@ export default function AskRecall() {
       question: payload.query,
       analysisId: payload.analysis_id || '',
       answerEngine: payload.answer_engine || 'rules',
-      credibilitySummary: payload.credibility_summary || '',
+      credibilitySummary: sanitizeNarrativeText(payload.credibility_summary || ''),
       answer:
         howTo && (payload?.response_mode === 'navigation' || Number(payload?.evidence_count || 0) === 0)
-          ? `${howTo.answer}\n\n${payload?.answer || ''}`.trim()
-          : payload.answer,
+          ? sanitizeNarrativeText(`${howTo.answer}\n\n${payload?.answer || ''}`.trim())
+          : sanitizeNarrativeText(payload.answer),
       confidence: payload.confidence || 0,
       confidenceBand:
         payload.confidence_band || getConfidenceLabel(payload.confidence || 0).toLowerCase(),
@@ -324,7 +367,7 @@ export default function AskRecall() {
           title: item.title,
           href: item.url,
           date: toDisplayDate(item.created_at),
-          preview: item.preview || '',
+          preview: sanitizePreviewText(item.preview || ''),
           matchedTerms: item.matched_terms || [],
           directMatch: !!item.direct_match,
         })) || [],

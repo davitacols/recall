@@ -18,6 +18,7 @@ import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
 import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import api from "../services/api";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 function DecisionDetail() {
   const { id } = useParams();
@@ -320,6 +321,21 @@ function DecisionDetail() {
     ? new Date(decision.decided_at).toLocaleDateString()
     : "Awaiting final approval";
   const linkedConversation = decision.conversation || null;
+  const decisionSummary = createPlainTextPreview(
+    decision.description,
+    "Open the overview tab to document the actual decision statement.",
+    240
+  );
+  const rationaleSummary = createPlainTextPreview(
+    decision.rationale,
+    "Capture the rationale so future reviews can recover why this path was chosen.",
+    220
+  );
+  const reviewPosture = decision.review_completed_at
+    ? `Outcome review completed on ${new Date(decision.review_completed_at).toLocaleDateString()}.`
+    : decision.status === "implemented"
+      ? "Implementation is marked complete, but the outcome review is still open."
+      : "Outcome review will become more meaningful once implementation progresses.";
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
@@ -397,13 +413,13 @@ function DecisionDetail() {
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
                 <div style={{ display: "grid", gap: 6, maxWidth: 760 }}>
                   <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
-                    Decision Brief
+                    Decision Briefing
                   </p>
                   <h2 style={{ margin: 0, fontSize: "clamp(1.24rem,2vw,1.68rem)", color: palette.text }}>
-                    What we are deciding and why it matters
+                    What changed, why it matters, and how reliable the record feels right now
                   </h2>
                   <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: palette.muted }}>
-                    The page now leads with the decision statement and ownership details before the deeper review tools, so it reads like a proper decision record first.
+                    {decisionSummary}
                   </p>
                 </div>
                 <div style={{ display: "grid", gap: 8, minWidth: "min(100%, 220px)" }}>
@@ -419,6 +435,18 @@ function DecisionDetail() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Decision statement</p>
+                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{decisionSummary}</p>
+                </div>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Rationale snapshot</p>
+                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{rationaleSummary}</p>
+                </div>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Review posture</p>
+                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{reviewPosture}</p>
+                </div>
                 {decision.impact_assessment ? (
                   <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Impact Assessment</p>

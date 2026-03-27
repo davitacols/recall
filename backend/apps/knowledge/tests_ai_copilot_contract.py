@@ -108,6 +108,51 @@ class AGICopilotContractTests(TestCase):
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_answer_and_citations_strip_rich_text_html(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [
+                {
+                    "id": 11,
+                    "title": "Garlody Project",
+                    "created_at": "2026-03-22T08:30:00Z",
+                    "url": "/conversations/11",
+                    "content_preview": '<p>We are <strong>still</strong> delegating about the project.</p><pre class="ql-syntax">const setup = true;</pre>',
+                }
+            ],
+            "decisions": [
+                {
+                    "id": 22,
+                    "title": "Garlody Project",
+                    "created_at": "2026-03-22T08:30:00Z",
+                    "url": "/decisions/22",
+                    "content_preview": '<p>Decision summary for <em>Garlody</em>.</p>',
+                }
+            ],
+            "total": 2,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 96.5,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "What changed most recently around Garlody Project?"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("<p>", response.data.get("answer", ""))
+        self.assertNotIn("<pre", response.data.get("answer", ""))
+        first_citation = (response.data.get("citations") or [{}])[0]
+        self.assertNotIn("<p>", first_citation.get("preview", ""))
+        self.assertNotIn("<pre", first_citation.get("preview", ""))
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
     def test_navigation_mode_returns_tool_links(self, build_plan, _rate_limit):
         build_plan.return_value = {
             "status": "stable",

@@ -24,6 +24,7 @@ import QuickLink from "../components/QuickLink";
 import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { createPlainTextPreview, stripRichTextToPlainText } from "../utils/textPreview";
 
 const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette, darkMode }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -641,6 +642,24 @@ function ConversationDetail() {
   const canRedo = isEditingPost && draftFuture.length > 0;
   const isConversationOwner =
     Number(conversation.author?.id || conversation.author_id) === Number(currentUserId);
+  const conversationNarrative = stripRichTextToPlainText(conversation.content || "");
+  const threadSummary = createPlainTextPreview(
+    conversation.content,
+    "This thread is still waiting for a fuller written summary.",
+    220
+  );
+  const threadPulseLabel =
+    replyCount >= 6
+      ? "Active thread with meaningful back-and-forth."
+      : replyCount >= 2
+        ? "Conversation is moving and already has responses."
+        : replyCount === 1
+          ? "Early response is in. Good moment to tighten direction."
+          : "Still quiet. This thread may need a stronger follow-up.";
+  const threadActionReadiness =
+    replyCount + reactionTotal >= 6
+      ? "Enough signal is present to convert this into a tracked decision if the team is aligned."
+      : "Keep the thread moving a little longer before locking it into a decision record.";
 
   return (
     <div style={{ ...page, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
@@ -679,6 +698,56 @@ function ConversationDetail() {
           <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{reactionTotal} reactions</span>
         </div>
       </WorkspaceToolbar>
+
+      <section style={{ ...briefingGrid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1.2fr) repeat(2, minmax(220px, 0.4fr))" }}>
+        <article
+          className="ui-card-lift ui-smooth"
+          style={{
+            ...briefingPrimaryCard,
+            border: `1px solid ${palette.border}`,
+            background: darkMode
+              ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(22,18,15,0.88))"
+              : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+          }}
+        >
+          <div style={{ display: "grid", gap: 8 }}>
+            <p style={{ ...sectionLabel, color: palette.muted }}>Thread Briefing</p>
+            <h2 style={{ margin: 0, fontSize: "clamp(1.18rem,2vw,1.64rem)", lineHeight: 1.08, color: palette.text }}>
+              {threadSummary}
+            </h2>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>
+              {createPlainTextPreview(
+                conversationNarrative,
+                "Open the full thread below to read the conversation in detail.",
+                320
+              )}
+            </p>
+          </div>
+          <div style={briefingBadgeRow}>
+            <span style={{ ...summaryChip, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text }}>
+              {authorName}
+            </span>
+            <span style={{ ...summaryChip, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text }}>
+              Created {createdLabel}
+            </span>
+            <span style={{ ...summaryChip, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text }}>
+              Updated {updatedLabel}
+            </span>
+          </div>
+        </article>
+
+        <article className="ui-card-lift ui-smooth" style={{ ...briefingMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+          <p style={{ ...summaryMetricLabel, color: palette.muted }}>Thread pulse</p>
+          <p style={{ ...summaryMetricValue, color: palette.text }}>{replyCount + reactionTotal}</p>
+          <p style={{ ...summaryMetricBody, color: palette.muted }}>{threadPulseLabel}</p>
+        </article>
+
+        <article className="ui-card-lift ui-smooth" style={{ ...briefingMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+          <p style={{ ...summaryMetricLabel, color: palette.muted }}>Decision readiness</p>
+          <p style={{ ...summaryMetricValue, color: palette.text }}>{replyCount + reactionTotal >= 6 ? "Ready" : "Building"}</p>
+          <p style={{ ...summaryMetricBody, color: palette.muted }}>{threadActionReadiness}</p>
+        </article>
+      </section>
 
       <div className="ui-enter" style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", "--ui-delay": "110ms" }}>
         <div>
@@ -830,7 +899,7 @@ function ConversationDetail() {
           <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "180ms" }}>
             {!isEditingPost && (
               <div style={sectionLabelRow}>
-                <p style={{ ...sectionLabel, color: palette.muted }}>Conversation Content</p>
+                <p style={{ ...sectionLabel, color: palette.muted }}>Full Thread Record</p>
               </div>
             )}
             {isEditingPost ? (
@@ -846,7 +915,9 @@ function ConversationDetail() {
                 </button>
               </>
             ) : (
-              <RichTextRenderer content={conversation.content} darkMode={darkMode} />
+              <div style={{ ...contentShell, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                <RichTextRenderer content={conversation.content} darkMode={darkMode} />
+              </div>
             )}
           </section>
 
@@ -969,6 +1040,14 @@ const eyebrow = { margin: "10px 0 0", fontSize: 11, letterSpacing: "0.13em", fon
 const mastheadTitle = { margin: "7px 0 6px", fontSize: "clamp(1.16rem,2vw,1.68rem)", lineHeight: 1.15 };
 const mastheadSub = { margin: 0, fontSize: 14, lineHeight: 1.45, maxWidth: 760 };
 const grid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
+const briefingGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
+const briefingPrimaryCard = { borderRadius: 22, padding: 18, display: "grid", gap: 14, boxShadow: "var(--ui-shadow-sm)" };
+const briefingMetricCard = { borderRadius: 20, padding: 16, display: "grid", gap: 8, alignContent: "start", boxShadow: "var(--ui-shadow-xs)" };
+const briefingBadgeRow = { display: "flex", gap: 8, flexWrap: "wrap" };
+const summaryChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
+const summaryMetricLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
+const summaryMetricValue = { margin: 0, fontSize: 28, lineHeight: 1, fontWeight: 800 };
+const summaryMetricBody = { margin: 0, fontSize: 12, lineHeight: 1.6 };
 const loadingWrap = { minHeight: 320, display: "grid", placeItems: "center" };
 const spinner = {
   width: 28,
@@ -1074,6 +1153,7 @@ const smallDangerButton = (palette, darkMode) => ({
 });
 const sectionLabelRow = { marginBottom: 8 };
 const sectionLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" };
+const contentShell = { borderRadius: 18, padding: 16 };
 const reactionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
 const reactionButton = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 10, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer" };
 const emptyState = { borderRadius: 10, padding: "24px 14px", textAlign: "center", fontSize: 13, marginBottom: 10 };

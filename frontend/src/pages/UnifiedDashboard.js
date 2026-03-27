@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, BoltIcon, ExclamationTriangleIcon, QueueListIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import MissionControlPanel from "../components/MissionControlPanel";
 import { WorkspaceEmptyState, WorkspacePanel } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
@@ -41,6 +41,118 @@ function SummaryCard({ label, value, tone, palette }) {
       <p style={{ ...microLabel, color: palette.muted }}>{label}</p>
       <p style={{ ...summaryValue, color: tone }}>{value}</p>
     </article>
+  );
+}
+
+function MetricStrip({ label, value, detail, tone, palette }) {
+  return (
+    <article
+      className="ui-card-lift ui-smooth"
+      style={{
+        borderRadius: 18,
+        padding: 14,
+        display: "grid",
+        gap: 6,
+        border: `1px solid ${palette.border}`,
+        background: palette.card,
+      }}
+    >
+      <p style={{ ...microLabel, color: palette.muted }}>{label}</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10 }}>
+        <p style={{ ...summaryValue, color: tone, fontSize: 28 }}>{value}</p>
+        <p style={{ ...caption, color: palette.muted, textAlign: "right" }}>{detail}</p>
+      </div>
+    </article>
+  );
+}
+
+function CommandCard({ title, description, metric, to, palette, darkMode, icon: Icon }) {
+  return (
+    <Link
+      to={to}
+      className="ui-card-lift ui-smooth ui-focus-ring"
+      style={{
+        ...commandCard,
+        color: palette.text,
+        border: `1px solid ${palette.border}`,
+        background: darkMode
+          ? `linear-gradient(180deg, ${palette.cardAlt}, rgba(20,18,16,0.92))`
+          : "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,244,238,0.92))",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <p style={{ ...microLabel, color: palette.muted }}>Action Atlas</p>
+          <h3 style={{ margin: 0, fontSize: 18, lineHeight: 1.08 }}>{title}</h3>
+        </div>
+        <span
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 14,
+            display: "grid",
+            placeItems: "center",
+            border: `1px solid ${palette.border}`,
+            background: palette.panel,
+            color: palette.accent,
+            flexShrink: 0,
+          }}
+        >
+          <Icon style={{ width: 18, height: 18 }} />
+        </span>
+      </div>
+      <p style={{ ...bodyCopy, color: palette.muted }}>{description}</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <span style={{ ...commandMetric, color: palette.text }}>{metric}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800 }}>
+          Open <ArrowRightIcon style={icon14} />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function PriorityCard({ title, value, helper, note, to, tone, palette, icon: Icon }) {
+  return (
+    <Link
+      to={to}
+      className="ui-card-lift ui-smooth ui-focus-ring"
+      style={{
+        ...priorityCard,
+        color: palette.text,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardAlt,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <p style={{ ...microLabel, color: palette.muted }}>{title}</p>
+          <p style={{ ...summaryValue, color: tone }}>{value}</p>
+        </div>
+        <span
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 14,
+            display: "grid",
+            placeItems: "center",
+            background: palette.panel,
+            border: `1px solid ${palette.border}`,
+            color: tone,
+            flexShrink: 0,
+          }}
+        >
+          <Icon style={{ width: 18, height: 18 }} />
+        </span>
+      </div>
+      <p style={{ ...caption, color: palette.muted }}>{helper}</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.5 }}>{note}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800 }}>
+          Review <ArrowRightIcon style={icon14} />
+        </span>
+      </div>
+    </Link>
   );
 }
 
@@ -215,6 +327,8 @@ export default function UnifiedDashboard() {
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   const featuredActivity = timeline[0] || null;
   const signalStream = featuredActivity ? timeline.slice(1, 7) : [];
+  const successRate = Math.round(outcomeStats.success_rate || 0);
+  const reliability = Math.round(outcomeStats.avg_reliability || 0);
   const note = pendingOutcomeMeta.overdue > 0
     ? `${pendingOutcomeMeta.overdue} overdue reviews are still the clearest risk on the board.`
     : driftMeta.critical > 0
@@ -222,6 +336,49 @@ export default function UnifiedDashboard() {
       : sprintBlocked > 0
         ? `${sprintBlocked} blocked sprint items are the main execution drag right now.`
         : "Nothing is spiking right now, so the dashboard can stay calm and scan-first.";
+
+  const commandDeck = [
+    {
+      title: "Projects",
+      description: "Shift from overview into the delivery map with active projects, briefs, and roadmaps.",
+      metric: `${sprintTotal || 0} sprint items in view`,
+      to: "/projects",
+      icon: QueueListIcon,
+    },
+    {
+      title: "Sprint Board",
+      description: "Open the live execution lane with blockers, in-flight work, and completion progress.",
+      metric: currentSprint ? `${sprintProgress}% complete` : "No active sprint",
+      to: "/sprint",
+      icon: BoltIcon,
+    },
+    {
+      title: "Decision Hub",
+      description: "Review proposals, follow-through, and drift before context starts slipping away.",
+      metric: `${pendingOutcomeMeta.total} reviews pending`,
+      to: "/decisions",
+      icon: SparklesIcon,
+    },
+    {
+      title: "Ask Recall",
+      description: "Use grounded organizational memory to answer questions before the day branches out.",
+      metric: `${stats.activity} signals this week`,
+      to: "/ask",
+      icon: ExclamationTriangleIcon,
+    },
+  ];
+
+  const focusItems = [
+    pendingOutcomeMeta.overdue > 0
+      ? `${pendingOutcomeMeta.overdue} overdue outcome reviews need follow-through.`
+      : "Outcome review queue is under control right now.",
+    driftMeta.critical > 0
+      ? `${driftMeta.critical} critical drift alerts need a decision owner today.`
+      : "No critical decision drift is active.",
+    currentSprint
+      ? `${sprintBlocked} blocked and ${sprintInProgress} in progress in ${currentSprint.name}.`
+      : "No active sprint is shaping delivery signals yet.",
+  ];
 
   if (loading) {
     return (
@@ -251,31 +408,67 @@ export default function UnifiedDashboard() {
           background: darkMode ? `linear-gradient(155deg, ${palette.panel}, ${palette.cardAlt})` : "linear-gradient(155deg, rgba(255,252,247,0.98), rgba(245,238,228,0.88))",
         }}
       >
-        <div style={{ display: "grid", gap: 16, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.15fr) minmax(300px,0.85fr)" }}>
+        <div style={{ display: "grid", gap: 16, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.18fr) minmax(320px,0.82fr)" }}>
           <div style={{ display: "grid", gap: 16 }}>
             <div style={{ display: "grid", gap: 8 }}>
               <p style={{ ...microLabel, color: palette.muted }}>Dashboard briefing | {todayLabel}</p>
-              <h1 style={{ ...heroTitle, color: palette.text }}>Team memory, delivery, and follow-through in one calmer board.</h1>
-              <p style={{ ...bodyCopy, color: palette.muted }}>The home screen now highlights the actions that matter first, then gives the rest of the page room to breathe.</p>
+              <h1 style={{ ...heroTitle, color: palette.text }}>Run the day from one grounded operating board.</h1>
+              <p style={{ ...bodyCopy, color: palette.muted, maxWidth: 620 }}>
+                Decisions, sprint movement, and team memory are arranged here in the order an operator actually needs them: what needs attention, where to act, and what changed most recently.
+              </p>
             </div>
 
-            <div style={chipRow}>
-              <Link className="ui-btn-polish ui-focus-ring" to="/projects" style={primaryButton(palette)}>Projects</Link>
-              <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={primaryButton(palette)}>Sprint Board</Link>
-              <Link className="ui-btn-polish ui-focus-ring" to="/decisions" style={secondaryButton(palette)}>Decision Hub</Link>
-              <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={secondaryButton(palette)}>Ask Recall</Link>
+            <article
+              className="ui-card-lift ui-smooth"
+              style={{
+                ...briefingCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? `linear-gradient(160deg, rgba(32,27,23,0.92), rgba(17,15,13,0.98))`
+                  : "linear-gradient(160deg, rgba(255,255,255,0.98), rgba(248,242,233,0.96))",
+              }}
+            >
+              <div style={{ display: "grid", gap: 8 }}>
+                <p style={{ ...microLabel, color: palette.muted }}>Today&apos;s focus</p>
+                <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 30 }}>What deserves the first scan</h2>
+                <p style={{ ...bodyCopy, color: palette.muted, maxWidth: 620 }}>{note}</p>
+              </div>
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+                {focusItems.map((item) => (
+                  <div key={item} style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                    <span style={{ ...focusDot, background: palette.accent }} />
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{item}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(2, minmax(0, 1fr))" }}>
+              {commandDeck.map((card) => (
+                <CommandCard key={card.title} {...card} palette={palette} darkMode={darkMode} />
+              ))}
             </div>
 
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
-              <SummaryCard label="Signals" value={stats.activity} tone={palette.accent} palette={palette} />
-              <SummaryCard label="Reliability" value={`${outcomeStats.avg_reliability || 0}%`} tone={palette.good} palette={palette} />
-              <SummaryCard label="Decision Coverage" value={stats.nodes} tone={palette.info} palette={palette} />
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+              <MetricStrip label="Signals" value={stats.activity} detail="Weekly movement in the memory stream" tone={palette.accent} palette={palette} />
+              <MetricStrip label="Reliability" value={`${reliability}%`} detail="Average outcome confidence from reviewed decisions" tone={palette.good} palette={palette} />
+              <MetricStrip label="Success Rate" value={`${successRate}%`} detail={`${outcomeStats.reviewed_count || 0} reviewed outcomes so far`} tone={palette.info} palette={palette} />
+              <MetricStrip label="Decision Coverage" value={stats.nodes} detail={`${pendingOutcomeMeta.total || 0} items still waiting on follow-through`} tone={palette.text} palette={palette} />
             </div>
           </div>
 
-          <article className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+          <article
+            className="ui-card-lift ui-smooth"
+            style={{
+              ...panelCard,
+              border: `1px solid ${palette.border}`,
+              background: darkMode
+                ? `linear-gradient(180deg, ${palette.card}, rgba(19,17,15,0.95))`
+                : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,238,229,0.92))",
+            }}
+          >
             <div style={{ display: "grid", gap: 6 }}>
-              <p style={{ ...microLabel, color: palette.muted }}>Current Sprint</p>
+              <p style={{ ...microLabel, color: palette.muted }}>Execution lane</p>
               <h2 style={{ margin: 0, fontSize: 20, lineHeight: 1.05, color: palette.text }}>{currentSprint?.name || "No active sprint"}</h2>
               <p style={{ ...bodyCopy, color: palette.muted }}>
                 {currentSprint
@@ -293,10 +486,32 @@ export default function UnifiedDashboard() {
                   <SummaryCard label="Progress" value={`${sprintProgress}%`} tone={palette.text} palette={palette} />
                   <SummaryCard label="Blocked" value={sprintBlocked} tone={sprintBlocked > 0 ? palette.warn : palette.good} palette={palette} />
                 </div>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                  <SummaryCard label="In Progress" value={sprintInProgress} tone={palette.accent} palette={palette} />
+                  <SummaryCard label="Completed" value={sprintCompleted} tone={palette.good} palette={palette} />
+                </div>
               </>
             ) : (
               <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>Open Sprint Board</Link>
             )}
+
+            <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
+
+            <div style={{ display: "grid", gap: 10 }}>
+              <p style={{ ...microLabel, color: palette.muted }}>Operator pulse</p>
+              <div style={{ display: "grid", gap: 10 }}>
+                {[
+                  { label: "Decision reliability", value: `${reliability}%`, tone: palette.good },
+                  { label: "Follow-through pressure", value: `${pendingOutcomeMeta.overdue} overdue`, tone: pendingOutcomeMeta.overdue ? palette.warn : palette.good },
+                  { label: "Critical drift", value: `${driftMeta.critical}`, tone: driftMeta.critical ? palette.accent : palette.info },
+                ].map((item) => (
+                  <div key={item.label} style={{ ...pulseRow, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text }}>{item.label}</p>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: item.tone }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </article>
         </div>
       </section>
@@ -304,30 +519,43 @@ export default function UnifiedDashboard() {
       <section className="ui-enter" style={{ ...shellCard, "--ui-delay": "120ms", border: `1px solid ${palette.border}`, background: palette.card }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
           <div style={{ display: "grid", gap: 6 }}>
-            <p style={{ ...microLabel, color: palette.muted }}>Today&apos;s operating picture</p>
-            <h2 style={{ ...sectionTitle, color: palette.text }}>Three queues that deserve the first scan.</h2>
+            <p style={{ ...microLabel, color: palette.muted }}>Priority queues</p>
+            <h2 style={{ ...sectionTitle, color: palette.text }}>What should move before new work starts.</h2>
           </div>
           <p style={{ ...caption, color: palette.muted, maxWidth: 440 }}>{note}</p>
         </div>
 
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-          {[
-            { title: "Outcome Reviews", value: `${pendingOutcomeMeta.overdue} overdue`, helper: `${pendingOutcomeMeta.total} waiting for follow-through`, to: "/decisions?outcome=pending", tone: pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good },
-            { title: "Decision Drift", value: `${driftMeta.critical} critical`, helper: `${driftMeta.high} high-severity alerts`, to: "/decisions", tone: driftMeta.critical > 0 ? palette.accent : palette.info },
-            { title: "Sprint Risk", value: `${sprintBlocked} blocked`, helper: `${sprintInProgress} items in progress`, to: "/sprint", tone: sprintBlocked > 0 ? palette.warn : palette.good },
-          ].map((card) => (
-            <Link
-              key={card.title}
-              to={card.to}
-              className="ui-card-lift ui-smooth ui-focus-ring"
-              style={{ ...panelCard, textDecoration: "none", border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}
-            >
-              <p style={{ ...microLabel, color: palette.muted }}>{card.title}</p>
-              <p style={{ ...summaryValue, color: card.tone }}>{card.value}</p>
-              <p style={{ ...caption, color: palette.muted }}>{card.helper}</p>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800 }}>Open <ArrowRightIcon style={icon14} /></span>
-            </Link>
-          ))}
+          <PriorityCard
+            title="Outcome Reviews"
+            value={`${pendingOutcomeMeta.overdue} overdue`}
+            helper={`${pendingOutcomeMeta.total} reviews are still open in the queue.`}
+            note={pendingOutcomeMeta.overdue > 0 ? "Nudge owners before this slips another day." : "Follow-through looks stable right now."}
+            to="/decisions?outcome=pending"
+            tone={pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good}
+            palette={palette}
+            icon={QueueListIcon}
+          />
+          <PriorityCard
+            title="Decision Drift"
+            value={`${driftMeta.critical} critical`}
+            helper={`${driftMeta.high} additional high-severity alerts are in the stack.`}
+            note={driftMeta.critical > 0 ? "Revisit assumptions before more execution compounds." : "Decision set is currently stable."}
+            to="/decisions"
+            tone={driftMeta.critical > 0 ? palette.accent : palette.info}
+            palette={palette}
+            icon={SparklesIcon}
+          />
+          <PriorityCard
+            title="Sprint Risk"
+            value={`${sprintBlocked} blocked`}
+            helper={`${sprintInProgress} work items are actively moving through delivery.`}
+            note={sprintBlocked > 0 ? "Clear blockers before planning more scope." : "Delivery lane is moving without visible blockage."}
+            to="/sprint"
+            tone={sprintBlocked > 0 ? palette.warn : palette.good}
+            palette={palette}
+            icon={BoltIcon}
+          />
         </div>
       </section>
 
@@ -478,6 +706,13 @@ export default function UnifiedDashboard() {
 
       <section className="ui-enter" style={{ "--ui-delay": "220ms" }}>
         <article className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, background: palette.panel, padding: 14 }}>
+          <div style={{ display: "grid", gap: 6, marginBottom: 10 }}>
+            <p style={{ ...microLabel, color: palette.muted }}>Mission Control</p>
+            <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 26 }}>Scenario view for the next operating move.</h2>
+            <p style={{ ...caption, color: palette.muted, maxWidth: 720 }}>
+              Use the simulation layer to see how backlog, blockers, and operating pressure could shift before you move the team.
+            </p>
+          </div>
           <MissionControlPanel />
         </article>
       </section>
@@ -525,6 +760,7 @@ function secondaryButton(palette) {
 const pageStyle = { position: "relative", padding: "clamp(14px, 2.4vw, 26px)", display: "grid", gap: 14 };
 const shellCard = { borderRadius: 26, padding: 18, display: "grid", gap: 16, boxShadow: "var(--ui-shadow-sm)" };
 const panelCard = { borderRadius: 22, padding: 16, display: "grid", gap: 12, boxShadow: "var(--ui-shadow-sm)" };
+const briefingCard = { borderRadius: 24, padding: 18, display: "grid", gap: 14, boxShadow: "var(--ui-shadow-sm)" };
 const heroTitle = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: "clamp(1.9rem, 2.8vw, 3.15rem)", lineHeight: 0.98, letterSpacing: "-0.05em", maxWidth: "14ch" };
 const sectionTitle = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: 28, lineHeight: 1.02, letterSpacing: "-0.05em" };
 const bodyCopy = { margin: 0, fontSize: 13, lineHeight: 1.65 };
@@ -533,8 +769,15 @@ const microLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0
 const summaryValue = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: 24, lineHeight: 1, letterSpacing: "-0.05em" };
 const chipRow = { display: "flex", gap: 10, flexWrap: "wrap" };
 const featureCard = { borderRadius: 22, padding: 18, display: "grid", gap: 10, textDecoration: "none", boxShadow: "var(--ui-shadow-sm)" };
+const commandCard = { borderRadius: 22, padding: 16, display: "grid", gap: 12, textDecoration: "none", boxShadow: "var(--ui-shadow-sm)" };
+const priorityCard = { borderRadius: 22, padding: 16, display: "grid", gap: 10, textDecoration: "none", boxShadow: "var(--ui-shadow-sm)" };
 const listCard = { borderRadius: 16, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, textDecoration: "none" };
 const typeChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "5px 9px", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", background: "var(--ui-panel)" };
+const commandMetric = { margin: 0, fontSize: 12, fontWeight: 700, lineHeight: 1.45 };
+const focusCard = { borderRadius: 18, padding: 14, display: "flex", alignItems: "flex-start", gap: 10 };
+const focusDot = { width: 8, height: 8, borderRadius: 999, marginTop: 6, flexShrink: 0 };
+const railDivider = { width: "100%", margin: "4px 0" };
+const pulseRow = { borderRadius: 16, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };
 const loadingWrap = { padding: "clamp(16px, 3vw, 28px)", minHeight: "50vh", display: "grid", placeItems: "center" };
 const loadingCard = { width: "min(520px, 100%)", borderRadius: 22, padding: 18, boxShadow: "0 18px 40px rgba(0,0,0,0.16)" };
 const loadingTop = { display: "flex", alignItems: "center", gap: 12 };

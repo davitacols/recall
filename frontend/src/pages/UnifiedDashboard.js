@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRightIcon, BoltIcon, ExclamationTriangleIcon, QueueListIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import MissionControlPanel from "../components/MissionControlPanel";
 import { WorkspaceEmptyState, WorkspacePanel } from "../components/WorkspaceChrome";
+import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { buildApiUrl } from "../utils/apiBase";
 import { getProjectPalette } from "../utils/projectUi";
@@ -158,6 +159,7 @@ function PriorityCard({ title, value, helper, note, to, tone, palette, icon: Ico
 
 export default function UnifiedDashboard() {
   const { darkMode } = useTheme();
+  const { user } = useAuth();
   const [timeline, setTimeline] = useState([]);
   const [stats, setStats] = useState({ activity: 0, nodes: 0, links: 0, rate: 0 });
   const [outcomeStats, setOutcomeStats] = useState({
@@ -329,6 +331,9 @@ export default function UnifiedDashboard() {
   const signalStream = featuredActivity ? timeline.slice(1, 7) : [];
   const successRate = Math.round(outcomeStats.success_rate || 0);
   const reliability = Math.round(outcomeStats.avg_reliability || 0);
+  const dashboardRole = user?.role || "contributor";
+  const workspaceName = user?.organization_slug || "workspace";
+  const experienceMode = user?.experience_mode || "standard";
   const note = pendingOutcomeMeta.overdue > 0
     ? `${pendingOutcomeMeta.overdue} overdue reviews are still the clearest risk on the board.`
     : driftMeta.critical > 0
@@ -336,49 +341,165 @@ export default function UnifiedDashboard() {
       : sprintBlocked > 0
         ? `${sprintBlocked} blocked sprint items are the main execution drag right now.`
         : "Nothing is spiking right now, so the dashboard can stay calm and scan-first.";
-
-  const commandDeck = [
-    {
-      title: "Projects",
-      description: "Shift from overview into the delivery map with active projects, briefs, and roadmaps.",
-      metric: `${sprintTotal || 0} sprint items in view`,
-      to: "/projects",
-      icon: QueueListIcon,
-    },
-    {
-      title: "Sprint Board",
-      description: "Open the live execution lane with blockers, in-flight work, and completion progress.",
-      metric: currentSprint ? `${sprintProgress}% complete` : "No active sprint",
-      to: "/sprint",
-      icon: BoltIcon,
-    },
-    {
-      title: "Decision Hub",
-      description: "Review proposals, follow-through, and drift before context starts slipping away.",
-      metric: `${pendingOutcomeMeta.total} reviews pending`,
-      to: "/decisions",
-      icon: SparklesIcon,
-    },
-    {
-      title: "Ask Recall",
-      description: "Use grounded organizational memory to answer questions before the day branches out.",
-      metric: `${stats.activity} signals this week`,
-      to: "/ask",
-      icon: ExclamationTriangleIcon,
-    },
-  ];
-
-  const focusItems = [
-    pendingOutcomeMeta.overdue > 0
-      ? `${pendingOutcomeMeta.overdue} overdue outcome reviews need follow-through.`
-      : "Outcome review queue is under control right now.",
-    driftMeta.critical > 0
-      ? `${driftMeta.critical} critical drift alerts need a decision owner today.`
-      : "No critical decision drift is active.",
-    currentSprint
-      ? `${sprintBlocked} blocked and ${sprintInProgress} in progress in ${currentSprint.name}.`
-      : "No active sprint is shaping delivery signals yet.",
-  ];
+  const roleProfile = useMemo(() => {
+    const profileMap = {
+      admin: {
+        badge: "Leadership lens",
+        title: "Run the workspace from one grounded operating board.",
+        description: "Leadership should see delivery risk, decision follow-through, and team memory in the same first scan so priorities stay aligned.",
+        focusTitle: "What leadership should scan first",
+        focusItems: [
+          pendingOutcomeMeta.overdue > 0
+            ? `${pendingOutcomeMeta.overdue} overdue outcome reviews need follow-through.`
+            : "Outcome review queue is under control right now.",
+          driftMeta.critical > 0
+            ? `${driftMeta.critical} critical drift alerts need a decision owner today.`
+            : "No critical decision drift is active.",
+          currentSprint
+            ? `${sprintBlocked} blocked and ${sprintInProgress} in progress in ${currentSprint.name}.`
+            : "No active sprint is shaping delivery signals yet.",
+        ],
+        commandDeck: [
+          {
+            title: "Decision Hub",
+            description: "Review proposals, follow-through, and drift before context starts slipping away.",
+            metric: `${pendingOutcomeMeta.total} reviews pending`,
+            to: "/decisions",
+            icon: SparklesIcon,
+          },
+          {
+            title: "Ask Recall",
+            description: "Use grounded organizational memory to answer strategic questions before the day branches out.",
+            metric: `${stats.activity} signals this week`,
+            to: "/ask",
+            icon: ExclamationTriangleIcon,
+          },
+          {
+            title: "Projects",
+            description: "Shift from overview into the delivery map with active projects, briefs, and roadmaps.",
+            metric: `${sprintTotal || 0} sprint items in view`,
+            to: "/projects",
+            icon: QueueListIcon,
+          },
+          {
+            title: "Sprint Board",
+            description: "Open the live execution lane with blockers, in-flight work, and completion progress.",
+            metric: currentSprint ? `${sprintProgress}% complete` : "No active sprint",
+            to: "/sprint",
+            icon: BoltIcon,
+          },
+        ],
+      },
+      manager: {
+        badge: "Delivery lens",
+        title: "Keep execution, drift, and follow-through in one command view.",
+        description: "Delivery managers need the day arranged around movement, bottlenecks, and decisions that can still change the outcome.",
+        focusTitle: "What delivery should scan first",
+        focusItems: [
+          currentSprint
+            ? `${sprintBlocked} blocked and ${sprintInProgress} in progress in ${currentSprint.name}.`
+            : "No active sprint is shaping delivery signals yet.",
+          pendingOutcomeMeta.overdue > 0
+            ? `${pendingOutcomeMeta.overdue} overdue outcome reviews could leave implementation unclosed.`
+            : "Outcome follow-through is not the main risk today.",
+          driftMeta.high > 0
+            ? `${driftMeta.high} high-severity drift alerts could affect delivery assumptions.`
+            : "No high-severity drift is competing with delivery right now.",
+        ],
+        commandDeck: [
+          {
+            title: "Sprint Board",
+            description: "Open the live execution lane with blockers, in-flight work, and completion progress.",
+            metric: currentSprint ? `${sprintProgress}% complete` : "No active sprint",
+            to: "/sprint",
+            icon: BoltIcon,
+          },
+          {
+            title: "Projects",
+            description: "Shift from overview into the delivery map with active projects, briefs, and roadmaps.",
+            metric: `${sprintTotal || 0} sprint items in view`,
+            to: "/projects",
+            icon: QueueListIcon,
+          },
+          {
+            title: "Decision Hub",
+            description: "Review decision follow-through and implementation pressure before teams diverge.",
+            metric: `${driftMeta.total} drift alerts`,
+            to: "/decisions",
+            icon: SparklesIcon,
+          },
+          {
+            title: "Ask Recall",
+            description: "Use grounded organizational memory to clarify ownership, reasoning, and current context.",
+            metric: `${stats.activity} signals this week`,
+            to: "/ask",
+            icon: ExclamationTriangleIcon,
+          },
+        ],
+      },
+      contributor: {
+        badge: "Operator lens",
+        title: "See the work, the context, and the next move in one place.",
+        description: "Individual contributors should get a calmer view of what changed, where the work is moving, and which decisions matter around them.",
+        focusTitle: "What to scan before you dive in",
+        focusItems: [
+          currentSprint
+            ? `${sprintInProgress} items are moving in ${currentSprint.name}, with ${sprintBlocked} blocked.`
+            : "No sprint lane is active, so project and decision context matter most.",
+          featuredActivity
+            ? `${featuredActivity.title} is the freshest signal in the workspace.`
+            : "The signal stream is calm right now.",
+          pendingOutcomeMeta.total > 0
+            ? `${pendingOutcomeMeta.total} decisions are still waiting on follow-through.`
+            : "No follow-through backlog is competing for attention right now.",
+        ],
+        commandDeck: [
+          {
+            title: "Sprint Board",
+            description: "Open the live execution lane with blockers, in-flight work, and completion progress.",
+            metric: currentSprint ? `${sprintProgress}% complete` : "No active sprint",
+            to: "/sprint",
+            icon: BoltIcon,
+          },
+          {
+            title: "Ask Recall",
+            description: "Use grounded organizational memory to answer what happened, why it matters, and what is linked.",
+            metric: `${stats.activity} signals this week`,
+            to: "/ask",
+            icon: ExclamationTriangleIcon,
+          },
+          {
+            title: "Projects",
+            description: "Shift from overview into the delivery map with active projects, briefs, and roadmaps.",
+            metric: `${sprintTotal || 0} sprint items in view`,
+            to: "/projects",
+            icon: QueueListIcon,
+          },
+          {
+            title: "Decision Hub",
+            description: "Review the decisions that shape implementation and learn what changed recently.",
+            metric: `${pendingOutcomeMeta.total} reviews pending`,
+            to: "/decisions",
+            icon: SparklesIcon,
+          },
+        ],
+      },
+    };
+    return profileMap[dashboardRole] || profileMap.contributor;
+  }, [
+    currentSprint,
+    dashboardRole,
+    driftMeta.high,
+    driftMeta.total,
+    featuredActivity,
+    pendingOutcomeMeta.overdue,
+    pendingOutcomeMeta.total,
+    sprintBlocked,
+    sprintInProgress,
+    sprintProgress,
+    sprintTotal,
+    stats.activity,
+  ]);
 
   if (loading) {
     return (
@@ -412,9 +533,9 @@ export default function UnifiedDashboard() {
           <div style={{ display: "grid", gap: 16 }}>
             <div style={{ display: "grid", gap: 8 }}>
               <p style={{ ...microLabel, color: palette.muted }}>Dashboard briefing | {todayLabel}</p>
-              <h1 style={{ ...heroTitle, color: palette.text }}>Run the day from one grounded operating board.</h1>
+              <h1 style={{ ...heroTitle, color: palette.text }}>{roleProfile.title}</h1>
               <p style={{ ...bodyCopy, color: palette.muted, maxWidth: 620 }}>
-                Decisions, sprint movement, and team memory are arranged here in the order an operator actually needs them: what needs attention, where to act, and what changed most recently.
+                {roleProfile.description}
               </p>
             </div>
 
@@ -429,12 +550,17 @@ export default function UnifiedDashboard() {
               }}
             >
               <div style={{ display: "grid", gap: 8 }}>
-                <p style={{ ...microLabel, color: palette.muted }}>Today&apos;s focus</p>
-                <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 30 }}>What deserves the first scan</h2>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <p style={{ ...microLabel, color: palette.muted }}>Today&apos;s focus</p>
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
+                    {roleProfile.badge} | {workspaceName} | {experienceMode}
+                  </span>
+                </div>
+                <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 30 }}>{roleProfile.focusTitle}</h2>
                 <p style={{ ...bodyCopy, color: palette.muted, maxWidth: 620 }}>{note}</p>
               </div>
               <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-                {focusItems.map((item) => (
+                {roleProfile.focusItems.map((item) => (
                   <div key={item} style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
                     <span style={{ ...focusDot, background: palette.accent }} />
                     <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{item}</p>
@@ -444,7 +570,7 @@ export default function UnifiedDashboard() {
             </article>
 
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(2, minmax(0, 1fr))" }}>
-              {commandDeck.map((card) => (
+              {roleProfile.commandDeck.map((card) => (
                 <CommandCard key={card.title} {...card} palette={palette} darkMode={darkMode} />
               ))}
             </div>
@@ -776,6 +902,7 @@ const typeChip = { display: "inline-flex", alignItems: "center", borderRadius: 9
 const commandMetric = { margin: 0, fontSize: 12, fontWeight: 700, lineHeight: 1.45 };
 const focusCard = { borderRadius: 18, padding: 14, display: "flex", alignItems: "flex-start", gap: 10 };
 const focusDot = { width: 8, height: 8, borderRadius: 999, marginTop: 6, flexShrink: 0 };
+const roleChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "6px 10px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", background: "var(--ui-panel)" };
 const railDivider = { width: "100%", margin: "4px 0" };
 const pulseRow = { borderRadius: 16, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };
 const loadingWrap = { padding: "clamp(16px, 3vw, 28px)", minHeight: "50vh", display: "grid", placeItems: "center" };

@@ -10,8 +10,9 @@ import json
 from .models import KnowledgeEntry
 from .deep_learning import DeepKnowledgeTrainer
 from .search_engine import get_search_engine
-from apps.conversations.models import Conversation, ConversationReply
+from apps.conversations.models import Bookmark, Conversation, ConversationReply
 from apps.decisions.models import Decision
+from apps.organizations.auditlog_models import AuditLog
 from apps.organizations.models import SearchAnalytics
 from apps.users.auth_utils import check_rate_limit
 
@@ -23,6 +24,11 @@ except Exception:  # pragma: no cover - optional in some test environments
     Meeting = None
     Task = None
     Document = None
+
+try:
+    from apps.agile.models import Issue
+except Exception:  # pragma: no cover - optional in some test environments
+    Issue = None
 
 
 def _compute_memory_gaps(org):
@@ -218,6 +224,151 @@ def recent_decisions(request):
         })
     
     return Response(decisions_data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def personal_briefing(request):
+    org = request.user.organization
+    user = request.user
+
+    assigned_tasks = []
+    if Task:
+        task_queryset = (
+            Task.objects.filter(organization=org, assigned_to=user)
+            .select_related('goal', 'decision', 'conversation')
+            .order_by('due_date', '-created_at')[:6]
+        )
+        assigned_tasks = [
+            {
+                'id': task.id,
+                'title': task.title,
+                'status': task.status,
+                'priority': task.priority,
+                'due_date': task.due_date,
+                'goal_title': task.goal.title if task.goal else None,
+                'decision_title': task.decision.title if task.decision else None,
+                'conversation_title': task.conversation.title if task.conversation else None,
+            }
+            for task in task_queryset
+        ]
+
+    bookmarks = (
+        Bookmark.objects.filter(user=user)
+        .select_related('conversation')
+        .order_by('-created_at')[:5]
+    )
+    bookmarked_conversations = [
+        {
+            'id': bookmark.id,
+            'note': bookmark.note,
+            'created_at': bookmark.created_at,
+            'conversation_id': bookmark.conversation_id,
+            'conversation_title': bookmark.conversation.title if bookmark.conversation else None,
+            'conversation_type': bookmark.conversation.post_type if bookmark.conversation else None,
+            'conversation_status': bookmark.conversation.status_label if bookmark.conversation else None,
+        }
+        for bookmark in bookmarks
+    ]
+
+    relevant_decisions = [
+        {
+            'id': decision.id,
+            'title': decision.title,
+            'status': decision.status,
+            'impact_level': decision.impact_level,
+            'conversation_title': decision.conversation.title if decision.conversation else None,
+            'decision_maker_name': decision.decision_maker.get_full_name() if decision.decision_maker else None,
+            'created_at': decision.created_at,
+        }
+        for decision in Decision.objects.filter(organization=org)
+        .filter(
+            Q(decision_maker=user)
+            | Q(stakeholders=user)
+            | Q(conversation__author=user)
+            | Q(conversation__replies__author=user)
+        )
+        .select_related('conversation', 'decision_maker')
+        .distinct()
+        .order_by('-created_at')[:5]
+    ]
+
+    watched_issues = []
+    if Issue:
+        watched_queryset = (
+            Issue.objects.filter(organization=org, watchers=user)
+            .select_related('project', 'assignee', 'sprint')
+            .order_by('-updated_at', '-created_at')[:5]
+        )
+        watched_issues = [
+            {
+                'id': issue.id,
+                'key': issue.key,
+                'title': issue.title,
+                'status': issue.status,
+                'priority': issue.priority,
+                'project_name': issue.project.name if issue.project else None,
+                'sprint_name': issue.sprint.name if issue.sprint else None,
+                'assignee_name': issue.assignee.get_full_name() if issue.assignee else None,
+                'updated_at': issue.updated_at,
+            }
+            for issue in watched_queryset
+        ]
+
+    recent_conversations_queryset = (
+        Conversation.objects.filter(organization=org)
+        .filter(Q(author=user) | Q(replies__author=user) | Q(mentioned_users=user))
+        .distinct()
+        .order_by('-updated_at', '-created_at')[:5]
+    )
+    recent_conversations = [
+        {
+            'id': conversation.id,
+            'title': conversation.title,
+            'post_type': conversation.post_type,
+            'status_label': conversation.status_label,
+            'created_at': conversation.created_at,
+        }
+        for conversation in recent_conversations_queryset
+    ]
+
+    recent_ask_recall_queries = [
+        {
+            'id': log.id,
+            'query': str((log.details or {}).get('query') or '').strip(),
+            'response_mode': str((log.details or {}).get('response_mode') or '').strip(),
+            'confidence_band': str((log.details or {}).get('confidence_band') or '').strip(),
+            'evidence_count': int((log.details or {}).get('evidence_count') or 0),
+            'coverage_score': float((log.details or {}).get('coverage_score') or 0),
+            'created_at': log.created_at,
+        }
+        for log in AuditLog.objects.filter(
+            organization=org,
+            user=user,
+            resource_type='agi_copilot_query',
+        ).order_by('-created_at')[:5]
+        if str((log.details or {}).get('query') or '').strip()
+    ]
+
+    assigned_open = len([task for task in assigned_tasks if task.get('status') != 'done'])
+
+    return Response({
+        'assigned_tasks': assigned_tasks,
+        'bookmarked_conversations': bookmarked_conversations,
+        'relevant_decisions': relevant_decisions,
+        'watched_issues': watched_issues,
+        'recent_conversations': recent_conversations,
+        'recent_ask_recall_queries': recent_ask_recall_queries,
+        'counts': {
+            'assigned_tasks': len(assigned_tasks),
+            'assigned_open_tasks': assigned_open,
+            'bookmarked_conversations': len(bookmarked_conversations),
+            'relevant_decisions': len(relevant_decisions),
+            'watched_issues': len(watched_issues),
+            'recent_conversations': len(recent_conversations),
+            'recent_ask_recall_queries': len(recent_ask_recall_queries),
+        },
+    })
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

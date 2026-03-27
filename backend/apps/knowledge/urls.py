@@ -70,6 +70,7 @@ urlpatterns = [
     path('trending_topics/', views.trending_topics, name='trending_topics'),
     path('trending/', views.trending_topics, name='trending_topics_alias'),
     path('stats/', views.knowledge_stats, name='knowledge_stats'),
+    path('dashboard/personal-briefing/', views.personal_briefing, name='personal_briefing'),
     path('memory-score/', views.memory_score, name='memory_score'),
     path('onboarding/', views.onboarding_package, name='onboarding_package'),
     path('before-you-ask/', views.before_you_ask, name='before_you_ask'),

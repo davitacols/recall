@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { useAuth } from '../hooks/useAuth';
@@ -142,7 +143,9 @@ function getContextualHowTo(query) {
 export default function AskRecall() {
   const { darkMode } = useTheme();
   const { user } = useAuth();
+  const location = useLocation();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const lastAutoRunRef = useRef('');
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
@@ -592,6 +595,20 @@ export default function AskRecall() {
   useEffect(() => {
     loadFeedbackSummary();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const seededQuery = String(params.get('q') || '').trim();
+    const shouldAutoRun = params.get('autorun') === '1';
+    if (!seededQuery) return;
+
+    setQuery((current) => (current === seededQuery ? current : seededQuery));
+
+    if (shouldAutoRun && lastAutoRunRef.current !== location.search) {
+      lastAutoRunRef.current = location.search;
+      runAnalysis(seededQuery);
+    }
+  }, [location.search]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const normalizedResultQuery = String(results?.question || '').trim().toLowerCase();

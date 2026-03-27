@@ -578,6 +578,29 @@ def _build_follow_up_questions(query, query_mode, search_data, citations, eviden
     return suggestions[:4]
 
 
+def _log_copilot_query(request, org, user, query, response_payload):
+    try:
+        AuditLog.log(
+            organization=org,
+            user=user,
+            action='update',
+            resource_type='agi_copilot_query',
+            details={
+                'analysis_id': response_payload.get('analysis_id'),
+                'query': str(query or '').strip()[:500],
+                'response_mode': response_payload.get('response_mode'),
+                'confidence_band': response_payload.get('confidence_band'),
+                'evidence_count': response_payload.get('evidence_count'),
+                'coverage_score': response_payload.get('coverage_score'),
+                'answer_engine': response_payload.get('answer_engine'),
+                'executed': bool((response_payload.get('execution') or {}).get('performed')),
+            },
+            request=request,
+        )
+    except Exception:
+        pass
+
+
 def _generate_llm_copilot_answer(query, query_mode, search_data, plan, evidence_contract, recommended_interventions):
     try:
         service = AIService()
@@ -1940,7 +1963,7 @@ def agi_copilot(request):
                 navigation_intent = None
             else:
                 confidence = 82 if tool_links else 64
-                return Response({
+                response_payload = {
                     'analysis_id': str(uuid4()),
                     'query': query,
                     'answer': 'I interpreted this as a navigation request. Use these links to open the right workspace directly.',
@@ -1972,7 +1995,9 @@ def agi_copilot(request):
                         'result': None,
                     },
                     'generated_at': now.isoformat(),
-                })
+                }
+                _log_copilot_query(request, org, user, query, response_payload)
+                return Response(response_payload)
 
         search_engine = get_search_engine()
         search_data = search_engine.search(query, org.id, filters={}, limit=6)
@@ -2115,6 +2140,7 @@ def agi_copilot(request):
                 'result': execution_result,
             }
 
+        _log_copilot_query(request, org, user, query, response_payload)
         return Response(response_payload)
     except Exception as exc:
         return Response({'error': 'agi_copilot_failed', 'detail': str(exc)}, status=500)

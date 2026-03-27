@@ -8,10 +8,11 @@ from apps.business.advanced_models import Milestone
 from apps.business.document_models import Document
 from apps.business.models import CalendarConnection, Goal, Meeting, Task
 from apps.agile.models import Blocker, Board, Column, Issue, Project, Sprint, SprintUpdate
-from apps.conversations.models import ActionItem, Conversation, ConversationReply
+from apps.conversations.models import ActionItem, Bookmark, Conversation, ConversationReply
 from apps.decisions.models import Decision
 from apps.integrations.models import Commit as IntegrationCommit
 from apps.integrations.models import GitHubIntegration, JiraIntegration, PullRequest as IntegrationPullRequest, SlackIntegration
+from apps.organizations.auditlog_models import AuditLog
 from apps.organizations.models import Organization, User
 
 
@@ -89,6 +90,7 @@ class KnowledgeApiContractTests(TestCase):
             description="Task description with keyword alpha",
             status="todo",
             priority="medium",
+            assigned_to=self.user,
             goal=self.goal,
             decision=self.decision,
         )
@@ -155,6 +157,7 @@ class KnowledgeApiContractTests(TestCase):
             assignee=self.user,
             in_backlog=False,
         )
+        self.issue.watchers.add(self.user)
         self.blocker = Blocker.objects.create(
             organization=self.org,
             conversation=self.conversation,
@@ -230,6 +233,25 @@ class KnowledgeApiContractTests(TestCase):
             author="octocat",
             commit_url="https://github.com/keyword-alpha-org/keyword-alpha-repo/commit/" + ("a" * 40),
             committed_at=timezone.now(),
+        )
+        self.bookmark = Bookmark.objects.create(
+            user=self.user,
+            conversation=self.conversation,
+            note="Keep this risk sync handy.",
+        )
+        self.ask_recall_log = AuditLog.log(
+            organization=self.org,
+            user=self.user,
+            action="update",
+            resource_type="agi_copilot_query",
+            details={
+                "query": "What changed in Justice App?",
+                "response_mode": "answer",
+                "confidence_band": "medium",
+                "evidence_count": 3,
+                "coverage_score": 78.0,
+                "answer_engine": "rules",
+            },
         )
 
     def test_search_returns_bucketed_payload_with_business_entities(self):
@@ -332,6 +354,29 @@ class KnowledgeApiContractTests(TestCase):
         self.assertTrue(any(item["id"] == self.project.id for item in payload["projects"]))
         self.assertTrue(any(item["id"] == self.sprint.id for item in payload["sprints"]))
         self.assertTrue(any(item["id"] == self.issue.id for item in payload["issues"]))
+
+    def test_personal_briefing_returns_user_lane_payload(self):
+        response = self.client.get("/api/knowledge/dashboard/personal-briefing/")
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.data
+        self.assertIn("assigned_tasks", payload)
+        self.assertIn("bookmarked_conversations", payload)
+        self.assertIn("relevant_decisions", payload)
+        self.assertIn("watched_issues", payload)
+        self.assertIn("recent_conversations", payload)
+        self.assertIn("recent_ask_recall_queries", payload)
+        self.assertIn("counts", payload)
+
+        self.assertEqual(payload["assigned_tasks"][0]["id"], self.task.id)
+        self.assertEqual(payload["bookmarked_conversations"][0]["conversation_id"], self.conversation.id)
+        self.assertEqual(payload["relevant_decisions"][0]["id"], self.decision.id)
+        self.assertEqual(payload["watched_issues"][0]["id"], self.issue.id)
+        self.assertTrue(any(item["id"] == self.conversation.id for item in payload["recent_conversations"]))
+        self.assertEqual(payload["recent_ask_recall_queries"][0]["query"], "What changed in Justice App?")
+        self.assertEqual(payload["counts"]["bookmarked_conversations"], 1)
+        self.assertEqual(payload["counts"]["relevant_decisions"], 1)
+        self.assertEqual(payload["counts"]["recent_ask_recall_queries"], 1)
 
     def test_search_finds_hidden_reply_and_people_context(self):
         response = self.client.post(

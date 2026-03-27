@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowPathIcon,
   ArrowRightIcon,
@@ -21,10 +21,13 @@ import {
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
+import { useAuth } from "../hooks/useAuth";
 
 function Decisions() {
   const { darkMode } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -45,6 +48,17 @@ function Decisions() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextQuery = params.get("q") || "";
+    const nextSort = params.get("sort");
+    const nextStatus = params.get("status");
+
+    setQuery(nextQuery);
+    setSortBy(nextSort === "oldest" || nextSort === "title" ? nextSort : "recent");
+    setFilter(nextStatus || "all");
+  }, [location.search]);
 
   const fetchDecisions = async () => {
     try {
@@ -100,13 +114,30 @@ function Decisions() {
     ? { bg: "rgba(245,239,230,0.05)", border: "rgba(245,239,230,0.18)", text: "#d8cdbf" }
     : { bg: "rgba(31,26,23,0.05)", border: "rgba(58,47,38,0.12)", text: "#5b5148" };
 
+  const decisionRouteParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const mineOnly = decisionRouteParams.get("mine") === "1";
+  const queueMode = decisionRouteParams.get("queue") || "";
+  const currentUserNames = useMemo(() => {
+    const fullName =
+      user?.full_name ||
+      [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim() ||
+      "";
+    return [fullName, user?.username, user?.email]
+      .filter(Boolean)
+      .map((value) => String(value).trim().toLowerCase())
+      .filter(Boolean);
+  }, [user]);
+
   const filteredDecisions = useMemo(() => {
     const loweredQuery = query.trim().toLowerCase();
     const filtered = decisions.filter((decision) => {
+      const ownerName = String(decision.decision_maker_name || decision.decision_maker || "").trim().toLowerCase();
+      const matchesMine = !mineOnly || currentUserNames.includes(ownerName);
+      const matchesQueue = queueMode !== "review" ? true : ["proposed", "under_review"].includes(decision.status);
       const matchesFilter = filter === "all" ? true : decision.status === filter;
       const haystack = `${decision.title || ""} ${decision.description || ""} ${decision.decision_maker_name || ""}`.toLowerCase();
       const matchesQuery = loweredQuery ? haystack.includes(loweredQuery) : true;
-      return matchesFilter && matchesQuery;
+      return matchesMine && matchesQueue && matchesFilter && matchesQuery;
     });
 
     const sorted = [...filtered];
@@ -114,7 +145,7 @@ function Decisions() {
     if (sortBy === "oldest") sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     if (sortBy === "title") sorted.sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
     return sorted;
-  }, [decisions, filter, query, sortBy]);
+  }, [currentUserNames, decisions, filter, mineOnly, query, queueMode, sortBy]);
 
   const statusCounts = decisions.reduce((acc, decision) => {
     acc[decision.status] = (acc[decision.status] || 0) + 1;
@@ -130,6 +161,8 @@ function Decisions() {
   }).length;
   const visibleRatio = decisions.length ? Math.round((filteredDecisions.length / decisions.length) * 100) : 0;
   const implementedCount = statusCounts.implemented || 0;
+  const queueChipLabel = queueMode === "review" ? "My review queue" : mineOnly ? "My decisions" : null;
+  const hasRouteFocus = Boolean(location.search);
 
   const decisionStats = [
     {
@@ -250,6 +283,16 @@ function Decisions() {
           </div>
 
           <div style={toolbarMetaRail}>
+            {queueChipLabel ? (
+              <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.accent }}>
+                {queueChipLabel}
+              </span>
+            ) : null}
+            {hasRouteFocus ? (
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...ui.secondaryButton, paddingInline: 12 }}>
+                Clear focus
+              </button>
+            ) : null}
             <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
               {filteredDecisions.length} visible
             </span>

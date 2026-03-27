@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from apps.organizations.auditlog_models import AuditLog
 from apps.organizations.models import Organization, User
 
 
@@ -59,6 +60,13 @@ class AGICopilotContractTests(TestCase):
         self.assertIn("priority_score", first_action)
         self.assertIn("effort_hours", first_action)
         self.assertIn("expected_risk_reduction", first_action)
+        log = AuditLog.objects.filter(
+            organization=self.org,
+            user=self.user,
+            resource_type="agi_copilot_query",
+        ).order_by("-created_at").first()
+        self.assertIsNotNone(log)
+        self.assertEqual((log.details or {}).get("query"), "where is risk?")
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")

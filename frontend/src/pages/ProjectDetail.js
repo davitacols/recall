@@ -19,6 +19,7 @@ import {
   WorkspacePanel,
   WorkspaceToolbar,
 } from "../components/WorkspaceChrome";
+import { createPlainTextPreview, hasMeaningfulText } from "../utils/textPreview";
 
 export default function ProjectDetail() {
   const { projectId } = useParams();
@@ -139,6 +140,26 @@ export default function ProjectDetail() {
   const currentBoard = boards[0] || null;
   const activeSprintCount = sprints.filter((sprint) => sprint.status === "active").length;
   const completionRate = project.issue_count ? Math.round(((project.completed_issues || 0) / project.issue_count) * 100) : 0;
+  const projectSummary = createPlainTextPreview(
+    project.description,
+    "Add a stronger project brief so roadmap, sprint, and issue work inherit the same context.",
+    240
+  );
+  const documentedIssues = issues.filter((issue) => hasMeaningfulText(issue.description)).length;
+  const issueCoverage = issues.length ? Math.round((documentedIssues / issues.length) * 100) : 0;
+  const readySprints = sprints.filter((sprint) => hasMeaningfulText(sprint.goal)).length;
+  const sprintCoverage = sprints.length ? Math.round((readySprints / sprints.length) * 100) : 0;
+  const projectReadinessLabel =
+    !project.description
+      ? "Needs a stronger project brief before the workspace can carry context cleanly."
+      : completionRate >= 60
+        ? "Execution is moving with visible momentum and a clearer completion signal."
+        : activeSprintCount
+          ? "Sprint rhythm is active and still building toward stronger completion."
+          : "Project structure exists, but the sprint cadence still needs more visible momentum.";
+  const projectRoutingLabel = currentBoard
+    ? "A connected board is already in place, so this page can act as the project control room."
+    : "The project is structured, but a board route would make execution easier to navigate.";
   const tabs = [
     { key: "sprints", label: "Sprints", count: sprints.length },
     { key: "issues", label: "Issues", count: issues.length },
@@ -194,6 +215,56 @@ export default function ProjectDetail() {
           </div>
         </WorkspaceToolbar>
 
+        <section style={{ ...briefingGrid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1.15fr) repeat(2, minmax(220px, 0.425fr))" }}>
+          <article
+            className="ui-card-lift ui-smooth"
+            style={{
+              ...briefingPrimary,
+              border: `1px solid ${palette.border}`,
+              background: darkMode
+                ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
+                : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+            }}
+          >
+            <div style={{ display: "grid", gap: 8 }}>
+              <p style={{ ...briefingEyebrow, color: palette.muted }}>Project Briefing</p>
+              <h2 style={{ margin: 0, fontSize: "clamp(1.18rem,2vw,1.68rem)", lineHeight: 1.05, color: palette.text }}>
+                {projectSummary}
+              </h2>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>
+                {projectReadinessLabel}
+              </p>
+            </div>
+            <div style={briefingMetaRail}>
+              <span style={{ ...briefingChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {project.key || "PRJ"}
+              </span>
+              <span style={{ ...briefingChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {teamMembers.length} team members
+              </span>
+              <span style={{ ...briefingChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {boards.length} boards
+              </span>
+            </div>
+          </article>
+
+          <article className="ui-card-lift ui-smooth" style={{ ...briefingMetric, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <p style={{ ...metricHeading, color: palette.muted }}>Issue coverage</p>
+            <p style={{ ...metricFigure, color: palette.text }}>{issueCoverage}%</p>
+            <p style={{ ...metricNarrative, color: palette.muted }}>
+              {documentedIssues} of {issues.length} issues already have written detail that can survive handoffs.
+            </p>
+          </article>
+
+          <article className="ui-card-lift ui-smooth" style={{ ...briefingMetric, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <p style={{ ...metricHeading, color: palette.muted }}>Routing posture</p>
+            <p style={{ ...metricFigure, color: palette.text }}>{currentBoard ? "Ready" : "Partial"}</p>
+            <p style={{ ...metricNarrative, color: palette.muted }}>
+              {projectRoutingLabel} Sprint goals are documented across {sprintCoverage}% of the sprint record.
+            </p>
+          </article>
+        </section>
+
         <div style={{ display: "grid", gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 320px", gap: 14, alignItems: "start" }}>
           <div style={{ display: "grid", gap: 14 }}>
             {activeTab === "sprints" ? (
@@ -203,7 +274,7 @@ export default function ProjectDetail() {
             ) : null}
             {activeTab === "issues" ? (
               <WorkspacePanel palette={palette} eyebrow="Execution Queue" title="Issue Stream" description="Review the work queue with clearer priority and state rhythm." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> Create Issue</button>}>
-                {issues.length === 0 ? <WorkspaceEmptyState palette={palette} title="No issues in the queue yet" description="Create an issue to start turning the project plan into executable work." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}>New Issue</button>} /> : <div style={{ display: "grid", gap: 12 }}>{issues.slice(0, 24).map((issue) => <Link key={issue.id} className="ui-card-lift ui-smooth" to={`/issues/${issue.id}`} style={{ borderRadius: 22, padding: 18, display: "grid", gap: 10, textDecoration: "none", border: `1px solid ${palette.border}`, background: palette.cardAlt }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}><div style={{ minWidth: 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: palette.text }}>{issue.title}</p><p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} · {(issue.priority || "medium").toUpperCase()}</p></div><span style={{ borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 700, textTransform: "capitalize", border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>{issue.status || "todo"}</span></div><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{issue.description || "No issue description has been added yet."}</p></Link>)}</div>}
+                {issues.length === 0 ? <WorkspaceEmptyState palette={palette} title="No issues in the queue yet" description="Create an issue to start turning the project plan into executable work." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}>New Issue</button>} /> : <div style={{ display: "grid", gap: 12 }}>{issues.slice(0, 24).map((issue) => <Link key={issue.id} className="ui-card-lift ui-smooth" to={`/issues/${issue.id}`} style={{ borderRadius: 22, padding: 18, display: "grid", gap: 10, textDecoration: "none", border: `1px solid ${palette.border}`, background: palette.cardAlt }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}><div style={{ minWidth: 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: palette.text }}>{issue.title}</p><p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} | {(issue.priority || "medium").toUpperCase()}</p></div><span style={{ borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 700, textTransform: "capitalize", border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>{issue.status || "todo"}</span></div><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{createPlainTextPreview(issue.description, "No issue description has been added yet.", 160)}</p></Link>)}</div>}
               </WorkspacePanel>
             ) : null}
             {activeTab === "roadmap" ? (
@@ -287,3 +358,70 @@ const fieldLabel = (palette) => ({
   textTransform: "uppercase",
   color: palette.muted,
 });
+
+const briefingGrid = {
+  display: "grid",
+  gap: 14,
+};
+
+const briefingPrimary = {
+  borderRadius: 24,
+  padding: 18,
+  display: "grid",
+  gap: 14,
+  boxShadow: "var(--ui-shadow-sm)",
+};
+
+const briefingEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const briefingMetaRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const briefingChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const briefingMetric = {
+  borderRadius: 20,
+  padding: 16,
+  display: "grid",
+  gap: 8,
+  alignContent: "start",
+  boxShadow: "var(--ui-shadow-xs)",
+};
+
+const metricHeading = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const metricFigure = {
+  margin: 0,
+  fontSize: 28,
+  lineHeight: 1,
+  fontWeight: 800,
+};
+
+const metricNarrative = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.6,
+};

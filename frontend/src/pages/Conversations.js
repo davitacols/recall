@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  ArrowRightIcon,
   ArrowPathIcon,
   CalendarIcon,
   ChatBubbleLeftRightIcon,
+  ClockIcon,
   ClipboardDocumentListIcon,
   DocumentCheckIcon,
   MagnifyingGlassIcon,
@@ -17,6 +19,9 @@ import { useToast } from "../components/Toast";
 import { getAvatarUrl } from "../utils/avatarUtils";
 import { ListSkeleton } from "../components/Skeleton";
 import { NoData, NoResults } from "../components/EmptyState";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { createPlainTextPreview, hasMeaningfulText } from "../utils/textPreview";
 
 function Conversations() {
   const navigate = useNavigate();
@@ -45,50 +50,66 @@ function Conversations() {
   }, [conversations, searchQuery, filterType, sortBy]);
 
   const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            panel: "var(--app-surface)",
-            panelAlt: "var(--app-surface-alt)",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "var(--app-muted)",
-            accent: "#34d399",
-            accentSoft: "rgba(52,211,153,0.16)",
-          }
-        : {
-            panel: "var(--app-surface)",
-            panelAlt: "var(--app-surface-alt)",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "var(--app-muted)",
-            accent: "var(--app-accent)",
-            accentSoft: "rgba(59,130,246,0.1)",
-          },
+    () => getProjectPalette(darkMode),
     [darkMode]
+  );
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
+  const preparedConversations = useMemo(
+    () =>
+      conversations.map((conversation) => {
+        const replies = conversation.reply_count || 0;
+        const views = conversation.view_count || 0;
+        const summary = createPlainTextPreview(
+          conversation.content || conversation.description || conversation.question,
+          "Open the thread to add more context and make the reasoning easier to recover later.",
+          180
+        );
+        const createdDate = conversation.created_at ? new Date(conversation.created_at) : null;
+        const createdLabel = createdDate
+          ? createdDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          : "Recently";
+        const needsFollowUp = replies === 0 || !hasMeaningfulText(conversation.content || conversation.description);
+        const momentumLabel =
+          replies >= 5 ? "High discussion" : replies >= 2 ? "Active discussion" : replies === 1 ? "Early response" : "Needs response";
+        return {
+          ...conversation,
+          summary,
+          replies,
+          views,
+          createdLabel,
+          needsFollowUp,
+          momentumLabel,
+        };
+      }),
+    [conversations]
   );
 
   const typeCounts = useMemo(() => {
-    const counts = { all: conversations.length };
-    conversations.forEach((item) => {
+    const counts = { all: preparedConversations.length };
+    preparedConversations.forEach((item) => {
       const key = item.post_type || "discussion";
       counts[key] = (counts[key] || 0) + 1;
     });
     return counts;
-  }, [conversations]);
+  }, [preparedConversations]);
 
   const thisWeekCount = useMemo(() => {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    return conversations.filter((conversation) => new Date(conversation.created_at) > weekAgo).length;
-  }, [conversations]);
+    return preparedConversations.filter((conversation) => new Date(conversation.created_at) > weekAgo).length;
+  }, [preparedConversations]);
 
-  const averageReplies = conversations.length
+  const averageReplies = preparedConversations.length
     ? Math.round(
-        conversations.reduce((total, conversation) => total + (conversation.reply_count || 0), 0) /
-          conversations.length
+        preparedConversations.reduce((total, conversation) => total + (conversation.reply_count || 0), 0) /
+          preparedConversations.length
       )
     : 0;
+  const latestConversation = preparedConversations[0] || null;
+  const followUpCount = preparedConversations.filter((conversation) => conversation.needsFollowUp).length;
+  const documentedThreads = preparedConversations.filter((conversation) =>
+    hasMeaningfulText(conversation.content || conversation.description)
+  ).length;
 
   const linkedFeatures = [
     { label: "Knowledge Search", to: "/knowledge", icon: MagnifyingGlassIcon, helper: "Find prior context before posting" },
@@ -128,12 +149,13 @@ function Conversations() {
   };
 
   const applyFiltersAndSort = () => {
-    let result = [...conversations];
+    let result = [...preparedConversations];
     if (searchQuery) {
       result = result.filter(
         (conversation) =>
           (conversation.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (conversation.content || "").toLowerCase().includes(searchQuery.toLowerCase())
+          (conversation.content || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (conversation.summary || "").toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (filterType !== "all") {
@@ -148,41 +170,88 @@ function Conversations() {
     }
     setFilteredConversations(result);
   };
+  const needsFollowUpItems = filteredConversations.filter((conversation) => conversation.needsFollowUp);
+  const stableThreads = filteredConversations.filter((conversation) => !conversation.needsFollowUp);
 
   if (loading) return <ListSkeleton count={6} />;
 
   return (
     <div style={page}>
-      <section
-        className="ui-enter"
-        style={{
-          ...hero,
-          border: `1px solid ${palette.border}`,
-          background: `linear-gradient(150deg, ${palette.accentSoft}, ${palette.panelAlt})`,
-        }}
-      >
-        <div>
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: palette.muted }}>
-            CONVERSATION OPERATIONS
-          </p>
-          <h1 style={{ margin: "7px 0 8px", color: palette.text, fontSize: "clamp(1.2rem,2vw,1.75rem)" }}>
-            Discussion Control Center
-          </h1>
-          <p style={{ margin: 0, color: palette.muted, fontSize: 14, lineHeight: 1.5 }}>
-            Redefined flow for capturing discussions, linking features, and pushing context into decisions and execution.
-          </p>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="Conversation Workspace"
+        title="Conversations"
+        description="Scan which threads need response, which ones already have enough signal, and move discussion into decisions or execution without losing context."
+        stats={[
+          { label: "Threads", value: preparedConversations.length, helper: "Visible discussion records." },
+          { label: "Needs follow-up", value: followUpCount, helper: "Threads missing response or context." },
+          { label: "Documented", value: documentedThreads, helper: "Threads with written context in place." },
+          { label: "This week", value: thisWeekCount, helper: "New conversations added recently." },
+        ]}
+        aside={
+          <div
+            style={{
+              ...spotlightCard,
+              border: `1px solid ${palette.border}`,
+              background: darkMode
+                ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
+                : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+            }}
+          >
+            <p style={{ ...spotlightEyebrow, color: palette.muted }}>Latest thread</p>
+            <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+              {latestConversation?.title || "No conversations yet"}
+            </h3>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+              {latestConversation?.summary || "Start a thread to capture questions, decisions, blockers, and discussion context."}
+            </p>
+            {latestConversation ? (
+              <div style={spotlightMeta}>
+                <span style={{ ...spotlightChip, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text }}>
+                  <ClockIcon style={icon14} /> {latestConversation.createdLabel}
+                </span>
+                <span style={{ ...spotlightChip, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text }}>
+                  {latestConversation.momentumLabel}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        }
+        actions={
+          <>
+            <button className="ui-btn-polish ui-focus-ring" onClick={loadConversations} style={ui.secondaryButton}>
+              <ArrowPathIcon style={icon14} /> Refresh
+            </button>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={ui.primaryButton}>
+              <PlusIcon style={icon14} /> New Conversation
+            </button>
+          </>
+        }
+      />
+
+      <WorkspaceToolbar palette={palette}>
+        <div style={toolbarLayout}>
+          <div style={toolbarIntro}>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Discussion Flow</p>
+            <h2 style={{ ...toolbarTitle, color: palette.text }}>Keep the list centered on response pressure, not just chronology</h2>
+            <p style={{ ...toolbarCopy, color: palette.muted }}>
+              Threads with no reply or weak context now surface first, while the rest of the discussion atlas stays easier to scan and route onward.
+            </p>
+          </div>
+          <div style={toolbarChipRail}>
+            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {averageReplies} avg replies
+            </span>
+            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {filteredConversations.length} visible
+            </span>
+            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {typeCounts[filterType] || 0} in current type
+            </span>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: isMobile ? "start" : "end" }}>
-          <button className="ui-btn-polish ui-focus-ring" onClick={loadConversations} style={secondaryAction}>
-            <ArrowPathIcon style={icon14} />
-            Refresh
-          </button>
-          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={primaryAction}>
-            <PlusIcon style={icon14} />
-            New Conversation
-          </button>
-        </div>
-      </section>
+      </WorkspaceToolbar>
 
       <section className="ui-enter" style={{ ...featureRail, gridTemplateColumns: isMobile ? "1fr" : featureRail.gridTemplateColumns }}>
         {linkedFeatures.map((feature) => {
@@ -260,92 +329,161 @@ function Conversations() {
           <NoData type="conversations" onCreate={() => navigate("/conversations/new")} />
         )
       ) : (
-        <section className="ui-enter" style={listWrap}>
-          {filteredConversations.map((conversation) => (
-            <article
-              key={conversation.id}
-              className="ui-card-lift ui-smooth"
-              onClick={() => navigate(`/conversations/${conversation.id}`)}
-              style={{ ...conversationCard, gridTemplateColumns: isMobile ? "1fr" : conversationCard.gridTemplateColumns, border: `1px solid ${palette.border}`, background: palette.panel }}
-            >
-              <div>
-                <div style={cardTopRow}>
-                  <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
-                    {conversation.post_type || "discussion"}
-                  </span>
-                  {conversation.is_closed ? <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.muted }}>Closed</span> : null}
-                </div>
-                <h3 style={{ margin: "8px 0 6px", color: palette.text, fontSize: 16 }}>
+        <div style={{ display: "grid", gap: 18 }}>
+          {needsFollowUpItems.length ? (
+            <ConversationSection
+              title="Needs response"
+              description="These threads either lack replies or still need stronger written context."
+              items={needsFollowUpItems}
+              navigate={navigate}
+              palette={palette}
+              isMobile={isMobile}
+              deleteConversation={deleteConversation}
+            />
+          ) : null}
+
+          <ConversationSection
+            title={needsFollowUpItems.length ? "Conversation atlas" : "All conversations"}
+            description={
+              needsFollowUpItems.length
+                ? "The rest of the discussion workspace already has enough signal to route into decisions, tasks, or deeper review."
+                : "Use the conversation atlas to move from thread to decision, execution, and context recovery."
+            }
+            items={needsFollowUpItems.length ? stableThreads : filteredConversations}
+            navigate={navigate}
+            palette={palette}
+            isMobile={isMobile}
+            deleteConversation={deleteConversation}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConversationSection({ title, description, items, navigate, palette, isMobile, deleteConversation }) {
+  if (!items.length) {
+    return null;
+  }
+
+  return (
+    <section style={{ display: "grid", gap: 12 }}>
+      <div style={sectionIntro}>
+        <div>
+          <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Conversation Section</p>
+          <h2 style={{ ...sectionTitle, color: palette.text }}>{title}</h2>
+        </div>
+        <p style={{ ...sectionCopy, color: palette.muted }}>{description}</p>
+      </div>
+
+      <section className="ui-enter" style={listWrap}>
+        {items.map((conversation) => (
+          <article
+            key={conversation.id}
+            className="ui-card-lift ui-smooth"
+            onClick={() => navigate(`/conversations/${conversation.id}`)}
+            style={{
+              ...conversationCard,
+              gridTemplateColumns: isMobile ? "1fr" : conversationCard.gridTemplateColumns,
+              border: `1px solid ${palette.border}`,
+              background: palette.panel,
+            }}
+          >
+            <div style={{ display: "grid", gap: 12 }}>
+              <div style={cardTopRow}>
+                <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
+                  {conversation.post_type || "discussion"}
+                </span>
+                <span style={{ ...typeBadge, border: `1px solid ${conversation.needsFollowUp ? palette.accent : palette.border}`, color: conversation.needsFollowUp ? palette.link : palette.muted, background: conversation.needsFollowUp ? palette.accentSoft : "transparent" }}>
+                  {conversation.momentumLabel}
+                </span>
+                {conversation.is_closed ? <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.muted }}>Closed</span> : null}
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                <h3 style={{ margin: 0, color: palette.text, fontSize: 18, lineHeight: 1.15 }}>
                   {conversation.title || conversation.question || "Untitled"}
                 </h3>
-                <p style={{ margin: 0, color: palette.muted, fontSize: 13, lineHeight: 1.45, display: "-webkit-box", overflow: "hidden", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                  {conversation.content || conversation.description || "No description"}
-                </p>
-                <div style={{ ...metaRow, color: palette.muted }}>
-                  <span>{new Date(conversation.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                  <span>{conversation.reply_count || 0} replies</span>
-                  <span>{conversation.view_count || 0} views</span>
+                <p style={{ ...conversationSummary, color: palette.muted }}>{conversation.summary}</p>
+              </div>
+
+              <div style={threadMetrics}>
+                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                  <p style={{ ...metricLabel, color: palette.muted }}>Updated</p>
+                  <p style={{ ...metricValue, color: palette.text }}>{conversation.createdLabel}</p>
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      navigate(`/decisions/new?conversation_id=${conversation.id}`);
-                    }}
-                    className="ui-btn-polish ui-focus-ring"
-                    style={linkFeatureButton}
-                  >
-                    <DocumentCheckIcon style={icon14} />
-                    Link Decision
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      navigate(`/business/tasks?conversation_id=${conversation.id}`);
-                    }}
-                    className="ui-btn-polish ui-focus-ring"
-                    style={linkFeatureButton}
-                  >
-                    <ClipboardDocumentListIcon style={icon14} />
-                    Link Task
-                  </button>
+                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                  <p style={{ ...metricLabel, color: palette.muted }}>Replies</p>
+                  <p style={{ ...metricValue, color: palette.text }}>{conversation.replies}</p>
+                </div>
+                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                  <p style={{ ...metricLabel, color: palette.muted }}>Views</p>
+                  <p style={{ ...metricValue, color: palette.text }}>{conversation.views}</p>
                 </div>
               </div>
 
-              <div style={{ ...sideRail, flexDirection: isMobile ? "row" : "column" }}>
-                <div style={authorAvatarWrap}>
-                  {(() => {
-                    const avatarUrl = getAvatarUrl(conversation.author_avatar || conversation.author?.avatar);
-                    const initial = (conversation.author || conversation.author_name || "U").charAt(0).toUpperCase();
-                    return avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt={conversation.author || "Author"}
-                        style={authorAvatarImage}
-                        onError={(event) => {
-                          event.target.style.display = "none";
-                          event.target.parentElement.innerHTML = `<span style="color:var(--app-button-text);font-size:13px;font-weight:700;">${initial}</span>`;
-                        }}
-                      />
-                    ) : (
-                      <span style={avatarInitial}>{initial}</span>
-                    );
-                  })()}
-                </div>
-                <p style={{ margin: 0, fontSize: 11, color: palette.muted, maxWidth: 88, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {conversation.author || conversation.author_name || "Unknown"}
-                </p>
-                <button className="ui-btn-polish ui-focus-ring" onClick={(event) => deleteConversation(conversation.id, event)} style={deleteButton}>
-                  <TrashIcon style={icon14} />
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/decisions/new?conversation_id=${conversation.id}`);
+                  }}
+                  className="ui-btn-polish ui-focus-ring"
+                  style={linkFeatureButton}
+                >
+                  <DocumentCheckIcon style={icon14} />
+                  Link Decision
                 </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/business/tasks?conversation_id=${conversation.id}`);
+                  }}
+                  className="ui-btn-polish ui-focus-ring"
+                  style={linkFeatureButton}
+                >
+                  <ClipboardDocumentListIcon style={icon14} />
+                  Link Task
+                </button>
+                <span style={{ ...openThreadLink, color: palette.accent }}>
+                  Open thread <ArrowRightIcon style={icon14} />
+                </span>
               </div>
-            </article>
-          ))}
-        </section>
-      )}
-    </div>
+            </div>
+
+            <div style={{ ...sideRail, flexDirection: isMobile ? "row" : "column" }}>
+              <div style={authorAvatarWrap}>
+                {(() => {
+                  const avatarUrl = getAvatarUrl(conversation.author_avatar || conversation.author?.avatar);
+                  const initial = (conversation.author || conversation.author_name || "U").charAt(0).toUpperCase();
+                  return avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={conversation.author || "Author"}
+                      style={authorAvatarImage}
+                      onError={(event) => {
+                        event.target.style.display = "none";
+                        event.target.parentElement.innerHTML = `<span style="color:var(--app-button-text);font-size:13px;font-weight:700;">${initial}</span>`;
+                      }}
+                    />
+                  ) : (
+                    <span style={avatarInitial}>{initial}</span>
+                  );
+                })()}
+              </div>
+              <p style={{ margin: 0, fontSize: 11, color: palette.muted, maxWidth: 88, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {conversation.author || conversation.author_name || "Unknown"}
+              </p>
+              <button className="ui-btn-polish ui-focus-ring" onClick={(event) => deleteConversation(conversation.id, event)} style={deleteButton}>
+                <TrashIcon style={icon14} />
+              </button>
+            </div>
+          </article>
+        ))}
+      </section>
+    </section>
   );
 }
 
@@ -361,42 +499,7 @@ function StatCard({ label, value, palette }) {
 const page = {
   width: "100%",
   display: "grid",
-  gap: 12,
-};
-
-const hero = {
-  borderRadius: 16,
-  padding: "clamp(16px,2.8vw,24px)",
-  display: "grid",
-  gap: 10,
-};
-
-const primaryAction = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  border: "none",
-  borderRadius: 10,
-  padding: "10px 13px",
-  background: "var(--app-gradient-primary)",
-  color: "var(--app-button-text)",
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const secondaryAction = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 10,
-  border: "1px solid var(--app-border)",
-  padding: "10px 13px",
-  background: "transparent",
-  color: "var(--app-text)",
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
+  gap: 16,
 };
 
 const featureRail = {
@@ -481,8 +584,8 @@ const listWrap = {
 };
 
 const conversationCard = {
-  borderRadius: 12,
-  padding: 12,
+  borderRadius: 22,
+  padding: 18,
   display: "grid",
   gridTemplateColumns: "minmax(0,1fr) auto",
   gap: 12,
@@ -526,6 +629,44 @@ const linkFeatureButton = {
   cursor: "pointer",
 };
 
+const conversationSummary = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.6,
+  display: "-webkit-box",
+  overflow: "hidden",
+  WebkitLineClamp: 3,
+  WebkitBoxOrient: "vertical",
+};
+
+const threadMetrics = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))",
+  gap: 8,
+};
+
+const metricTile = {
+  borderRadius: 16,
+  padding: "10px 12px",
+  display: "grid",
+  gap: 4,
+};
+
+const metricLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const metricValue = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 700,
+  lineHeight: 1.4,
+};
+
 const sideRail = {
   display: "flex",
   alignItems: "center",
@@ -564,6 +705,115 @@ const deleteButton = {
   display: "grid",
   placeItems: "center",
   cursor: "pointer",
+};
+
+const toolbarLayout = {
+  display: "grid",
+  gap: 14,
+};
+
+const toolbarIntro = {
+  display: "grid",
+  gap: 4,
+};
+
+const toolbarEyebrow = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const toolbarTitle = {
+  margin: 0,
+  fontSize: 24,
+  lineHeight: 1.04,
+};
+
+const toolbarCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.65,
+  maxWidth: 760,
+};
+
+const toolbarChipRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const toolbarChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const spotlightCard = {
+  minWidth: 240,
+  borderRadius: 24,
+  padding: 16,
+  display: "grid",
+  gap: 10,
+};
+
+const spotlightEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const spotlightMeta = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const spotlightChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const sectionIntro = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  alignItems: "end",
+  flexWrap: "wrap",
+};
+
+const sectionTitle = {
+  margin: "4px 0 0",
+  fontSize: 26,
+  lineHeight: 1.03,
+};
+
+const sectionCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.65,
+  maxWidth: 620,
+};
+
+const openThreadLink = {
+  marginLeft: "auto",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 const icon16 = { width: 16, height: 16 };

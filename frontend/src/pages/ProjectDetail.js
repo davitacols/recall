@@ -201,6 +201,45 @@ export default function ProjectDetail() {
   const projectRoutingLabel = currentBoard
     ? "A connected board is already in place, so this page can act as the project control room."
     : "The project is structured, but a board route would make execution easier to navigate.";
+  const projectHeroAside = (
+    <div
+      style={{
+        display: "grid",
+        gap: 10,
+        padding: 14,
+        borderRadius: 24,
+        border: `1px solid ${palette.border}`,
+        background: palette.card,
+        boxShadow: "var(--ui-shadow-sm)",
+      }}
+    >
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <div
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 22,
+            background: palette.ctaGradient,
+            color: palette.buttonText,
+            display: "grid",
+            placeItems: "center",
+            fontSize: 24,
+            fontWeight: 800,
+            letterSpacing: "-0.05em",
+            boxShadow: "var(--ui-shadow-sm)",
+            flexShrink: 0,
+          }}
+        >
+          {project.key?.slice(0, 2) || "PR"}
+        </div>
+        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", flex: "1 1 260px" }}>
+          <InfoTile label="Project key" value={project.key || "Untitled"} palette={palette} />
+          <InfoTile label="Project lead" value={project.lead_name || "Unassigned"} palette={palette} />
+          <InfoTile label="Team members" value={`${teamMembers.length}`} palette={palette} />
+        </div>
+      </div>
+    </div>
+  );
   const tabs = [
     { key: "sprints", label: "Sprints", count: sprints.length },
     { key: "issues", label: "Issues", count: issues.length },
@@ -217,14 +256,20 @@ export default function ProjectDetail() {
           eyebrow="Execution Workspace"
           title={project.name}
           description={project.description || "Plan sprints, shape the issue queue, and keep delivery context in one calmer workspace."}
-          stats={[
-            { label: "Issue coverage", value: `${project.issue_count || 0}`, helper: "Tracked items inside this project." },
-            { label: "Completion", value: `${completionRate}%`, helper: "Share of issues already completed." },
-            { label: "Active sprints", value: `${activeSprintCount}`, helper: "Current sprint rhythm." },
-            { label: "Boards", value: `${boards.length}`, helper: "Connected execution boards." },
-          ]}
-          aside={<div style={{ display: "grid", gap: 12, justifyItems: "end" }}><div style={{ width: 112, height: 112, borderRadius: 28, background: palette.ctaGradient, color: palette.buttonText, display: "grid", placeItems: "center", fontSize: 28, fontWeight: 800, letterSpacing: "-0.05em", boxShadow: "var(--ui-shadow-sm)" }}>{project.key?.slice(0, 2) || "PR"}</div><div style={{ display: "grid", gap: 8 }}><InfoTile label="Project key" value={project.key || "Untitled"} palette={palette} /><InfoTile label="Project lead" value={project.lead_name || "Unassigned"} palette={palette} /><InfoTile label="Team members" value={`${teamMembers.length}`} palette={palette} /></div></div>}
-          actions={<><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Sprint</button><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.secondaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Issue</button><button className="ui-btn-polish ui-focus-ring" onClick={openEditProject} style={ui.secondaryButton}><UserGroupIcon style={{ width: 14, height: 14 }} /> {project.lead_name ? "Edit Project" : "Assign lead"}</button></>}
+          aside={projectHeroAside}
+          actions={
+            <>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}>
+                <PlusIcon style={{ width: 14, height: 14 }} /> New Sprint
+              </button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.secondaryButton}>
+                <PlusIcon style={{ width: 14, height: 14 }} /> New Issue
+              </button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={openEditProject} style={ui.secondaryButton}>
+                <UserGroupIcon style={{ width: 14, height: 14 }} /> {project.lead_name ? "Edit Project" : "Assign lead"}
+              </button>
+            </>
+          }
         />
 
         <WorkspaceToolbar palette={palette}>

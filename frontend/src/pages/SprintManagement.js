@@ -4,6 +4,8 @@ import { CalendarIcon, ExclamationTriangleIcon, PlusIcon } from "@heroicons/reac
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 export default function SprintManagement() {
   const { darkMode } = useTheme();
@@ -147,81 +149,206 @@ export default function SprintManagement() {
     );
   }
 
+  const totalSprints = sprints.length;
+  const activeSprintCount = sprints.filter((sprint) => sprint.status === "active").length;
+  const completedSprintCount = sprints.filter((sprint) => sprint.status === "completed").length;
+  const upcomingSprintCount = sprints.filter((sprint) => sprint.status === "planned").length;
+  const totalBlocked = sprints.reduce((sum, sprint) => sum + (sprint.blocked_count || 0), 0);
+  const totalCompleted = sprints.reduce((sum, sprint) => sum + (sprint.completed_count || 0), 0);
+  const totalDecisions = sprints.reduce((sum, sprint) => sum + (sprint.decisions_made || 0), 0);
+  const sprintPulse =
+    currentSprint
+      ? currentSprint.blocked_count > 0
+        ? `${currentSprint.blocked_count} blocker${currentSprint.blocked_count === 1 ? "" : "s"} are shaping this sprint's execution posture.`
+        : "The active sprint is moving without open blockers at the moment."
+      : totalSprints === 0
+        ? "No sprint cycles have been started yet."
+        : "There is no active sprint right now, but prior sprint history is available for review.";
+
   return (
     <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
-        <section
-          style={{
-            ...hero,
-            border: "none",
-            background: "transparent",
-          }}
-        >
-          <div>
-            <p style={{ ...eyebrow, color: palette.muted }}>SPRINT OPERATIONS</p>
-            <h1 style={{ ...title, color: palette.text }}>Sprint Management</h1>
-            <p style={{ ...subtitle, color: palette.muted }}>Plan, track, and adapt sprint execution with live context.</p>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Sprint Operations"
+          title="Manage sprint cycles with clearer delivery context"
+          description="Plan new sprint windows, track the active cycle, and review execution health across every sprint the team has run."
+          stats={[
+            { label: "Total sprints", value: totalSprints, helper: "All sprint cycles tracked in this workspace." },
+            { label: "Active", value: activeSprintCount, helper: "Sprint cycles currently in motion." },
+            { label: "Completed work", value: totalCompleted, helper: "Issues marked complete across sprint history." },
+            { label: "Decisions", value: totalDecisions, helper: "Decision events recorded across sprint cycles." },
+          ]}
+          aside={
+            <div
+              style={{
+                ...spotlightCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
+                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              }}
+            >
+              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Sprint pulse</p>
+              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+                {currentSprint ? currentSprint.name : "No live sprint"}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{sprintPulse}</p>
+            </div>
+          }
+          actions={
+            <button onClick={() => setShowCreate(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+              <PlusIcon style={icon14} /> New Sprint
+            </button>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={toolbarLayout}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Operations guide</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Keep active cycles visible, watch blockers early, and review how each sprint actually landed</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>
+                Sprint management should read like an execution timeline, not an admin table. Use the sections below to scan the current cycle, blockers, and prior sprint history.
+              </p>
+            </div>
+            <div style={toolbarChipRail}>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {blockers.length} active blockers
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {upcomingSprintCount} planned
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {completedSprintCount} completed cycles
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {totalBlocked} total blocked items
+              </span>
+            </div>
           </div>
-          <button onClick={() => setShowCreate(true)} style={ui.primaryButton}><PlusIcon style={icon14} /> New Sprint</button>
-        </section>
+        </WorkspaceToolbar>
 
-        {currentSprint && (
-          <section style={{ ...activeCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-            <div style={sectionHeader}>
-              <div>
-                <h2 style={{ ...h2, color: palette.text }}>{currentSprint.name}</h2>
-                <p style={{ ...muted, color: palette.muted }}>{currentSprint.goal || "No sprint goal"}</p>
+        <div style={ui.responsiveSplit}>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Current cycle"
+            title={currentSprint ? currentSprint.name : "No active sprint"}
+            description={
+              currentSprint
+                ? createPlainTextPreview(currentSprint.goal, "No sprint goal yet.", 180)
+                : "Start a sprint to bring delivery, blockers, and follow-through into the active cycle."
+            }
+            minHeight={260}
+          >
+            {currentSprint ? (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                  <p style={{ ...muted, color: palette.muted }}>
+                    <CalendarIcon style={icon14} /> {new Date(currentSprint.start_date).toLocaleDateString()} - {new Date(currentSprint.end_date).toLocaleDateString()}
+                  </p>
+                  <span style={{ ...statusBadge, border: `1px solid ${palette.success}`, background: palette.accentSoft, color: palette.success }}>
+                    Active
+                  </span>
+                </div>
+                <div style={miniStats}>
+                  <Metric value={currentSprint.completed_count || 0} label="Completed" />
+                  <Metric value={currentSprint.blocked_count || 0} label="Blocked" />
+                  <Metric value={currentSprint.decisions_made || 0} label="Decisions" />
+                </div>
+              </>
+            ) : (
+              <WorkspaceEmptyState
+                palette={palette}
+                title="No active sprint"
+                description="Create a new sprint or review prior cycles until the next execution window begins."
+              />
+            )}
+          </WorkspacePanel>
+
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Blocker watch"
+            title={`Active blockers${blockers.length ? ` (${blockers.length})` : ""}`}
+            description="Surface the blockers currently shaping sprint delivery before they turn into drift."
+            minHeight={260}
+          >
+            {blockers.length === 0 ? (
+              <WorkspaceEmptyState
+                palette={palette}
+                title="No active blockers"
+                description="The blocker lane is currently clear across sprint operations."
+              />
+            ) : (
+              <div style={list}>
+                {blockers.map((blocker) => (
+                  <article key={blocker.id} style={{ ...blockerCard, background: palette.cardAlt, border: `1px solid ${palette.border}`, borderLeft: `3px solid ${palette.danger}` }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <ExclamationTriangleIcon style={{ ...icon18, color: palette.danger }} />
+                      <p style={{ ...itemTitle, color: palette.text }}>{blocker.title}</p>
+                    </div>
+                    <p style={{ ...muted, color: palette.muted }}>
+                      {createPlainTextPreview(blocker.description || "", "No blocker description added yet.", 140)}
+                    </p>
+                  </article>
+                ))}
               </div>
-              <span style={activePill}>Active</span>
-            </div>
-            <p style={{ ...muted, color: palette.muted, marginTop: 6 }}>
-              {new Date(currentSprint.start_date).toLocaleDateString()} - {new Date(currentSprint.end_date).toLocaleDateString()}
-            </p>
-            <div style={miniStats}>
-              <Metric value={currentSprint.completed_count || 0} label="Completed" />
-              <Metric value={currentSprint.blocked_count || 0} label="Blocked" />
-              <Metric value={currentSprint.decisions_made || 0} label="Decisions" />
-            </div>
-          </section>
-        )}
+            )}
+          </WorkspacePanel>
+        </div>
 
-        {blockers.length > 0 && (
-          <section style={{ marginBottom: 12 }}>
-            <h2 style={{ ...h2, color: palette.text, marginBottom: 8 }}>
-              <ExclamationTriangleIcon style={{ ...icon18, color: palette.danger }} /> Blockers ({blockers.length})
-            </h2>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Sprint atlas"
+          title="All sprint cycles"
+          description="Open a sprint to inspect its execution detail, issue flow, and delivery decisions."
+        >
+          {sprints.length === 0 ? (
+            <WorkspaceEmptyState
+              palette={palette}
+              title="No sprint history yet"
+              description="Create the first sprint to start building your execution history."
+            />
+          ) : (
             <div style={list}>
-              {blockers.map((blocker) => (
-                <article key={blocker.id} style={{ ...blockerCard, background: palette.card, border: `1px solid ${palette.border}`, borderLeft: `3px solid ${palette.danger}` }}>
-                  <p style={{ ...itemTitle, color: palette.text }}>{blocker.title}</p>
-                  <p style={{ ...muted, color: palette.muted }}>{blocker.description}</p>
+              {sprints.map((sprint) => (
+                <article
+                  key={sprint.id}
+                  className="ui-card-lift ui-smooth"
+                  onClick={() => navigate(`/sprints/${sprint.id}`)}
+                  style={{ ...rowCard, background: palette.cardAlt, border: `1px solid ${palette.border}` }}
+                >
+                  <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ ...itemTitle, color: palette.text }}>{sprint.name}</p>
+                        <p style={{ ...muted, color: palette.muted }}>
+                          <CalendarIcon style={icon14} /> {new Date(sprint.start_date).toLocaleDateString()} - {new Date(sprint.end_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span style={{ ...statusPill, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>{sprint.status}</span>
+                    </div>
+                    <p style={{ ...sprintGoalPreview, color: palette.muted }}>
+                      {createPlainTextPreview(sprint.goal, "No sprint goal recorded.", 180)}
+                    </p>
+                    <div style={metaRail}>
+                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                        {sprint.completed_count || 0} completed
+                      </span>
+                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                        {sprint.blocked_count || 0} blocked
+                      </span>
+                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                        {sprint.decisions_made || 0} decisions
+                      </span>
+                    </div>
+                  </div>
                 </article>
               ))}
             </div>
-          </section>
-        )}
-
-        <section>
-          <h2 style={{ ...h2, color: palette.text, marginBottom: 8 }}>All Sprints</h2>
-          <div style={list}>
-            {sprints.map((sprint) => (
-              <article
-                key={sprint.id}
-                onClick={() => navigate(`/sprints/${sprint.id}`)}
-                style={{ ...rowCard, background: palette.card, border: `1px solid ${palette.border}` }}
-              >
-                <div>
-                  <p style={{ ...itemTitle, color: palette.text }}>{sprint.name}</p>
-                  <p style={{ ...muted, color: palette.muted }}>
-                    <CalendarIcon style={icon14} /> {new Date(sprint.start_date).toLocaleDateString()} - {new Date(sprint.end_date).toLocaleDateString()}
-                  </p>
-                  {sprint.goal && <p style={{ ...muted, color: palette.muted, marginTop: 4 }}>{sprint.goal}</p>}
-                </div>
-                <span style={statusPill}>{sprint.status}</span>
-              </article>
-            ))}
-          </div>
-        </section>
+          )}
+        </WorkspacePanel>
 
         {showCreate && (
           <div style={overlay}>
@@ -257,24 +384,29 @@ function Metric({ value, label }) {
 }
 
 const spinner = { width: 30, height: 30, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const hero = { borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 12 };
-const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.14em", fontWeight: 700 };
-const title = { margin: "7px 0 6px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", letterSpacing: "-0.02em" };
-const subtitle = { margin: 0, fontSize: 14 };
-const h2 = { margin: 0, fontSize: 19, display: "flex", alignItems: "center", gap: 7 };
 const muted = { margin: 0, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 };
-const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };
-const activeCard = { borderRadius: 14, padding: 14, marginBottom: 12 };
-const activePill = { border: "1px solid var(--ui-good)", background: "rgba(73,191,143,0.14)", color: "var(--ui-good)", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 700 };
+const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
+const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarLayout = { display: "grid", gap: 14 };
+const toolbarIntro = { display: "grid", gap: 4 };
+const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
+const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
+const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
+const statusBadge = { borderRadius: 999, padding: "5px 11px", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" };
 const miniStats = { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8 };
 const metricCard = { borderRadius: 10, padding: 10, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)" };
 const metricValue = { margin: 0, fontSize: 24, fontWeight: 800, color: "var(--ui-text)" };
 const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "var(--ui-muted)" };
 const list = { display: "grid", gap: 8 };
 const blockerCard = { borderRadius: 12, padding: 12 };
-const rowCard = { borderRadius: 12, padding: 12, cursor: "pointer", display: "flex", justifyContent: "space-between", gap: 10 };
+const rowCard = { borderRadius: 22, padding: 16, cursor: "pointer" };
 const itemTitle = { margin: 0, fontSize: 15, fontWeight: 700 };
-const statusPill = { border: "1px solid var(--ui-border)", borderRadius: 999, padding: "4px 8px", height: "fit-content", fontSize: 11, textTransform: "capitalize", color: "var(--ui-muted)", fontWeight: 700 };
+const sprintGoalPreview = { margin: 0, fontSize: 13, lineHeight: 1.65 };
+const metaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const metaChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "7px 11px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
+const statusPill = { borderRadius: 999, padding: "5px 10px", height: "fit-content", fontSize: 11, textTransform: "capitalize", fontWeight: 800 };
 const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", display: "grid", placeItems: "center", zIndex: 110, padding: 16 };
 const modalCard = { width: "min(560px,100%)", borderRadius: 14, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };

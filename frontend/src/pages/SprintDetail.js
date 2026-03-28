@@ -2,9 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import UpgradeNotice from "../components/UpgradeNotice";
+import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import api from "../services/api";
-import { getProjectPalette } from "../utils/projectUi";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 function moveSprintIssue(previousSprint, issueId, nextStatus) {
   if (!previousSprint?.issues) return previousSprint;
@@ -52,6 +54,7 @@ function SprintDetail() {
   });
 
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
 
   useEffect(() => {
     fetchData();
@@ -302,6 +305,13 @@ function SprintDetail() {
 
   const issues = sprint.issues || [];
   const progress = sprint.issue_count > 0 ? Math.round(((sprint.completed || 0) / sprint.issue_count) * 100) : 0;
+  const blockerCount = sprint.blocked ?? sprint.blocked_count ?? 0;
+  const sprintPulse =
+    blockerCount > 0
+      ? `${blockerCount} blocker${blockerCount === 1 ? "" : "s"} are shaping this sprint's delivery posture.`
+      : progress >= 70
+        ? "Sprint is moving well and the execution lanes are mostly clear."
+        : "Work is active across the sprint and still has room to tighten its flow.";
   const statuses = ["backlog", "todo", "in_progress", "in_review", "testing", "done"];
   const scenarioOptions = (decisionTwin?.scenarios && decisionTwin.scenarios.length > 0)
     ? decisionTwin.scenarios
@@ -318,20 +328,76 @@ function SprintDetail() {
           <ArrowLeftIcon style={icon14} /> Back
         </button>
 
-        <section style={{ ...hero, background: "transparent", border: "none" }}>
-          <div>
-            <p style={{ ...eyebrow, color: palette.muted }}>SPRINT DETAIL</p>
-            <h1 style={{ ...title, color: palette.text }}>{sprint.name}</h1>
-            <p style={{ ...sub, color: palette.muted }}>
-              {sprint.start_date} - {sprint.end_date} | {sprint.project_name}
-            </p>
-            {sprint.goal && <p style={{ ...sub, marginTop: 8, color: palette.muted }}>Goal: {sprint.goal}</p>}
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Sprint Detail"
+          title={sprint.name}
+          description={
+            sprint.goal
+              ? createPlainTextPreview(sprint.goal, "", 240)
+              : `Track how ${sprint.project_name || "this project"} is moving through the current sprint and adjust execution before drift compounds.`
+          }
+          stats={[
+            { label: "Completion", value: `${progress}%`, helper: "Share of sprint work marked done." },
+            { label: "Issues", value: sprint.issue_count || 0, helper: "Tracked work items inside this sprint." },
+            { label: "In progress", value: sprint.in_progress || 0, helper: "Items currently moving through delivery." },
+            { label: "Blocked", value: blockerCount, helper: "Known blockers affecting sprint flow." },
+          ]}
+          aside={
+            <div
+              style={{
+                ...spotlightCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
+                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              }}
+            >
+              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Sprint window</p>
+              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+                {sprint.start_date} - {sprint.end_date}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+                {sprint.project_name ? `${sprint.project_name}. ` : ""}{sprintPulse}
+              </p>
+            </div>
+          }
+          actions={
+            <>
+              <span style={statusPill}>{progress}% complete</span>
+              <Link to="/sprint-management" className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
+                Sprint Management
+              </Link>
+            </>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={toolbarLayout}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Execution guide</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Move work through the sprint while watching autopilot and decision-twin pressure</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>
+                Use the issue lanes for day-to-day execution, and the planning intelligence sections below to see how scope changes could improve delivery.
+              </p>
+            </div>
+            <div style={toolbarChipRail}>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {sprint.todo || 0} to do
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {sprint.completed || 0} done
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {blockerCount} blockers
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {issues.length} total issues
+              </span>
+            </div>
           </div>
-          <div style={topRight}>
-            <span style={statusPill}>{progress}% complete</span>
-            <Link to="/sprint-management" style={secondaryButton}>Sprint Management</Link>
-          </div>
-        </section>
+        </WorkspaceToolbar>
 
         <section style={statsGrid}>
           <Metric label="Total" value={sprint.issue_count || 0} />
@@ -600,11 +666,26 @@ function SprintDetail() {
                       onDragStart={() => setDraggedIssue(issue)}
                       onDragEnd={() => setDraggedIssue(null)}
                       onClick={() => navigate(`/issues/${issue.id}`)}
-                      style={{ ...issueCard, opacity: movingIssueId === issue.id ? 0.55 : 1 }}
+                      style={{
+                        ...issueCard,
+                        opacity: movingIssueId === issue.id ? 0.55 : 1,
+                        border: `1px solid ${palette.border}`,
+                        background: palette.cardAlt,
+                      }}
                     >
-                      <p style={issueKey}>{issue.key || `ISS-${issue.id}`}</p>
-                      <p style={issueTitle}>{issue.title}</p>
-                      <p style={issueMeta}>{issue.assignee_name || issue.assignee || "Unassigned"}</p>
+                      <p style={{ ...issueKey, color: palette.muted }}>{issue.key || `ISS-${issue.id}`}</p>
+                      <p style={{ ...issueTitle, color: palette.text }}>{issue.title}</p>
+                      <p style={{ ...issuePreview, color: palette.muted }}>
+                        {createPlainTextPreview(issue.description || issue.summary || "", "No issue brief added yet.", 120)}
+                      </p>
+                      <div style={issueMetaRail}>
+                        <span style={{ ...issueMetaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                          {issue.assignee_name || issue.assignee || "Unassigned"}
+                        </span>
+                        <span style={{ ...issueMetaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                          {issue.priority || "medium"}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -629,13 +710,17 @@ function Metric({ label, value }) {
 const container = { maxWidth: 1320, margin: "0 auto", padding: 20 };
 const spinner = { width: 30, height: 30, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--ui-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
-const hero = { borderRadius: 16, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" };
-const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
-const title = { margin: "8px 0 5px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", letterSpacing: "-0.02em" };
-const sub = { margin: 0, fontSize: 13 };
-const topRight = { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" };
 const statusPill = { borderRadius: 999, border: "1px solid var(--ui-good)", background: "rgba(73,191,143,0.14)", color: "var(--ui-good)", fontSize: 11, fontWeight: 700, padding: "5px 10px" };
 const secondaryButton = { border: "1px solid var(--ui-border)", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, color: "var(--ui-muted)", background: "transparent", textDecoration: "none" };
+const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
+const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarLayout = { display: "grid", gap: 14 };
+const toolbarIntro = { display: "grid", gap: 4 };
+const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
+const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
+const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
 const metricCard = { borderRadius: 12, padding: 12, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)" };
 const metricValue = { margin: 0, fontSize: 26, fontWeight: 800, color: "var(--ui-text)" };
@@ -648,10 +733,12 @@ const column = { borderRadius: 12, padding: 10, minHeight: 420 };
 const columnHead = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
 const countBadge = { minWidth: 22, height: 22, borderRadius: 999, border: "1px solid var(--ui-border)", color: "var(--ui-muted)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
 const dropZone = { display: "grid", gap: 8 };
-const issueCard = { borderRadius: 10, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)", padding: 10, cursor: "pointer" };
-const issueKey = { margin: 0, fontSize: 11, color: "var(--ui-muted)", fontWeight: 700 };
-const issueTitle = { margin: "5px 0", fontSize: 13, color: "var(--ui-text)", fontWeight: 600, lineHeight: 1.35 };
-const issueMeta = { margin: 0, fontSize: 11, color: "var(--ui-muted)" };
+const issueCard = { borderRadius: 16, padding: 10, cursor: "pointer", display: "grid", gap: 8 };
+const issueKey = { margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" };
+const issueTitle = { margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.35 };
+const issuePreview = { margin: 0, fontSize: 11, lineHeight: 1.55 };
+const issueMetaRail = { display: "flex", gap: 6, flexWrap: "wrap" };
+const issueMetaChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "6px 8px", fontSize: 10, fontWeight: 700, textTransform: "capitalize" };
 const icon14 = { width: 14, height: 14 };
 
 function buildPolicyAdjustmentHints(violations, policy) {

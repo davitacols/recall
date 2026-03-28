@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 function Releases() {
   const { projectId } = useParams();
@@ -65,27 +67,88 @@ function Releases() {
     );
   }
 
+  const releasedCount = releases.filter((release) => release.status === "released").length;
+  const upcomingCount = releases.filter((release) => release.status === "unreleased").length;
+  const archivedCount = releases.filter((release) => release.status === "archived").length;
+  const nextRelease = releases.find((release) => release.status === "unreleased") || null;
+  const releasePulse =
+    releases.length === 0
+      ? "No release train has been defined for this project yet."
+      : nextRelease
+        ? `The next release in view is ${nextRelease.name}${nextRelease.release_date ? ` on ${new Date(nextRelease.release_date).toLocaleDateString()}` : ""}.`
+        : "All visible releases are either shipped or archived.";
+
   return (
     <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
-        <div style={header}>
-          <div>
-            <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", color: palette.muted, fontWeight: 700 }}>ROADMAP</p>
-            <h1 style={{ margin: "6px 0 0", fontSize: "clamp(1.24rem,2.25vw,1.84rem)", color: palette.text }}>Releases</h1>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Roadmap"
+          title="Releases"
+          description="Track what is shipping, what is upcoming, and how the project is staging delivery across release windows."
+          stats={[
+            { label: "Total releases", value: releases.length, helper: "Release records tied to this project." },
+            { label: "Upcoming", value: upcomingCount, helper: "Releases still waiting to ship." },
+            { label: "Released", value: releasedCount, helper: "Releases already shipped." },
+            { label: "Archived", value: archivedCount, helper: "Older release records parked for reference." },
+          ]}
+          aside={
+            <div
+              style={{
+                ...spotlightCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
+                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              }}
+            >
+              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Release pulse</p>
+              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+                {nextRelease ? nextRelease.name : "No upcoming release"}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{releasePulse}</p>
+            </div>
+          }
+          actions={
+            <button onClick={() => setShowForm(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+              <PlusIcon style={icon14} />
+              New Release
+            </button>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={toolbarLayout}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Planning guide</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Use release records as the shipping layer above sprint work and issue flow</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>
+                Releases should make the roadmap tangible. Capture the target window, keep the status current, and use the description as the shipping brief.
+              </p>
+            </div>
+            <div style={toolbarChipRail}>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {upcomingCount} upcoming
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {releasedCount} shipped
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {archivedCount} archived
+              </span>
+            </div>
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            style={ui.primaryButton}
-          >
-            <PlusIcon style={icon14} />
-            New Release
-          </button>
-        </div>
+        </WorkspaceToolbar>
 
         {showForm && (
-          <div style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.card, marginBottom: 10 }}>
-            <h2 style={{ margin: 0, fontSize: 18, color: palette.text }}>Create Release</h2>
-            <form onSubmit={handleSubmit} style={{ marginTop: 10, display: "grid", gap: 8 }}>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="New release"
+            title="Create release"
+            description="Capture the shipping brief, version, and target window for this release."
+          >
+            <form onSubmit={handleSubmit} style={{ display: "grid", gap: 8 }}>
               <div style={ui.twoCol}>
                 <input
                   type="text"
@@ -117,52 +180,71 @@ function Releases() {
                 style={{ ...ui.input, minHeight: 90 }}
               />
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-                <button type="submit" style={ui.primaryButton}>
-                  Create
-                </button>
                 <button type="button" onClick={() => setShowForm(false)} style={ui.secondaryButton}>
                   Cancel
                 </button>
+                <button type="submit" className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+                  Create
+                </button>
               </div>
             </form>
-          </div>
+          </WorkspacePanel>
         )}
 
-        <div style={{ display: "grid", gap: 8 }}>
-          {releases.map(release => (
-            <div key={release.id} style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.card }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 24, color: palette.text }}>{release.name}</h3>
-                  <p style={{ margin: "4px 0 0", color: palette.muted }}>Version {release.version}</p>
-                </div>
-                <select
-                  value={release.status}
-                  onChange={(e) => updateStatus(release.id, e.target.value)}
-                  style={{
-                    ...ui.input,
-                    width: 130,
-                    padding: "6px 8px",
-                    color: release.status === "released" ? "#15803d" : release.status === "archived" ? palette.muted : "#b45309",
-                  }}
-                >
-                  <option value="unreleased">Unreleased</option>
-                  <option value="released">Released</option>
-                  <option value="archived">Archived</option>
-                </select>
-              </div>
-              {release.description && <p style={{ color: palette.text, margin: "8px 0 0" }}>{release.description}</p>}
-              {release.release_date && (
-                <p style={{ margin: "8px 0 0", fontSize: 12, color: palette.muted }}>Release Date: {new Date(release.release_date).toLocaleDateString()}</p>
-              )}
-            </div>
-          ))}
-          {releases.length === 0 && (
-            <div style={{ ...empty, border: `1px dashed ${palette.border}`, color: palette.muted }}>
-              No releases yet. Create one to get started.
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Release atlas"
+          title="Shipping windows"
+          description="Update release status as delivery moves from planned to shipped to archived."
+        >
+          {releases.length === 0 ? (
+            <WorkspaceEmptyState
+              palette={palette}
+              title="No releases yet"
+              description="Create the first release to start shaping the shipping roadmap for this project."
+            />
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              {releases.map((release) => (
+                <article key={release.id} style={{ ...panel, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
+                      <h3 style={{ margin: 0, fontSize: 24, color: palette.text }}>{release.name}</h3>
+                      <p style={{ margin: 0, color: palette.muted }}>Version {release.version}</p>
+                    </div>
+                    <select
+                      value={release.status}
+                      onChange={(e) => updateStatus(release.id, e.target.value)}
+                      style={{
+                        ...ui.input,
+                        width: 140,
+                        padding: "6px 8px",
+                        color: release.status === "released" ? palette.success : release.status === "archived" ? palette.muted : palette.warn,
+                      }}
+                    >
+                      <option value="unreleased">Unreleased</option>
+                      <option value="released">Released</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                  </div>
+                  <p style={{ color: palette.muted, margin: "8px 0 0", fontSize: 13, lineHeight: 1.65 }}>
+                    {createPlainTextPreview(release.description || "", "No release brief recorded yet.", 180)}
+                  </p>
+                  <div style={metaRail}>
+                    <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                      {release.status}
+                    </span>
+                    {release.release_date ? (
+                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                        {new Date(release.release_date).toLocaleDateString()}
+                      </span>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
             </div>
           )}
-        </div>
+        </WorkspacePanel>
       </div>
     </div>
   );
@@ -170,8 +252,17 @@ function Releases() {
 
 export default Releases;
 
-const header = { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 12 };
-const panel = { borderRadius: 0, padding: 12 };
-const empty = { borderRadius: 0, textAlign: "center", padding: "18px 12px" };
+const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
+const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarLayout = { display: "grid", gap: 14 };
+const toolbarIntro = { display: "grid", gap: 4 };
+const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
+const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
+const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
+const panel = { borderRadius: 22, padding: 14 };
+const metaRail = { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 };
+const metaChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "7px 11px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
 const icon14 = { width: 14, height: 14 };
 const spinner = { width: 28, height: 28, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };

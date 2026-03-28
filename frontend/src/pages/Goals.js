@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FlagIcon, PlusIcon } from "@heroicons/react/24/outline";
+import api from "../services/api";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 export default function Goals() {
   const navigate = useNavigate();
@@ -28,16 +31,8 @@ export default function Goals() {
 
   const fetchGoals = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/goals/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        console.error("API Error:", res.status, await res.text());
-        setGoals([]);
-        return;
-      }
-      setGoals(await res.json());
+      const response = await api.get("/api/business/goals/");
+      setGoals(response.data || []);
     } catch (error) {
       console.error("Error fetching goals:", error);
       setGoals([]);
@@ -49,15 +44,7 @@ export default function Goals() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const token = localStorage.getItem("token");
-      await fetch(`${process.env.REACT_APP_API_URL}/api/business/goals/`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      await api.post("/api/business/goals/", formData);
       setShowModal(false);
       setFormData({ title: "", description: "", target_date: "", status: "not_started", conversation_id: "", decision_id: "" });
       fetchGoals();
@@ -68,7 +55,14 @@ export default function Goals() {
 
   const doneCount = goals.filter((goal) => goal.status === "completed").length;
   const inProgressCount = goals.filter((goal) => goal.status === "in_progress").length;
+  const onHoldCount = goals.filter((goal) => goal.status === "on_hold").length;
   const avgProgress = goals.length ? Math.round(goals.reduce((sum, goal) => sum + (goal.progress || 0), 0) / goals.length) : 0;
+  const goalPulse =
+    goals.length === 0
+      ? "No business goals have been defined yet."
+      : doneCount > 0
+        ? `${doneCount} goal${doneCount === 1 ? "" : "s"} are complete, while the remaining goals still shape the operating agenda.`
+        : `${inProgressCount} goal${inProgressCount === 1 ? "" : "s"} are actively moving and average progress is ${avgProgress}%.`;
 
   if (loading) {
     return (
@@ -87,14 +81,64 @@ export default function Goals() {
   return (
     <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
-        <section style={{ borderRadius: 0, border: "none", background: "transparent", padding: 0, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>BUSINESS GOALS</p>
-            <h1 style={{ margin: "8px 0 4px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", color: palette.text, letterSpacing: "-0.02em" }}>Goals</h1>
-            <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track delivery outcomes and strategic milestones.</p>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Business Goals"
+          title="Goals"
+          description="Track delivery outcomes, strategic milestones, and the higher-level work the team is trying to accomplish."
+          stats={[
+            { label: "Total", value: goals.length, helper: "Goals tracked in this workspace." },
+            { label: "In progress", value: inProgressCount, helper: "Goals currently moving." },
+            { label: "Completed", value: doneCount, helper: "Goals already achieved." },
+            { label: "Avg progress", value: `${avgProgress}%`, helper: "Average progress across all goals." },
+          ]}
+          aside={
+            <div
+              style={{
+                ...spotlightCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
+                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              }}
+            >
+              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Goal pulse</p>
+              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+                {goals.length === 0 ? "No goals yet" : `${goals.length} goals in play`}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{goalPulse}</p>
+            </div>
+          }
+          actions={
+            <button onClick={() => setShowModal(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+              <PlusIcon style={{ width: 14, height: 14 }} /> New Goal
+            </button>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={toolbarLayout}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Planning guide</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Use goals as the operating layer above tasks and projects</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>
+                Goals work best when they stay concise, measurable, and linked to the work that actually moves them forward.
+              </p>
+            </div>
+            <div style={toolbarChipRail}>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {doneCount} completed
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {inProgressCount} active
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {onHoldCount} on hold
+              </span>
+            </div>
           </div>
-          <button onClick={() => setShowModal(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Goal</button>
-        </section>
+        </WorkspaceToolbar>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8, marginBottom: 12 }}>
           <Metric label="Total" value={goals.length} palette={palette} />
@@ -103,38 +147,61 @@ export default function Goals() {
           <Metric label="Avg Progress" value={`${avgProgress}%`} palette={palette} />
         </section>
 
-        {goals.length === 0 ? (
-          <div style={{ borderRadius: 0, border: `1px dashed ${palette.border}`, background: palette.card, padding: "20px 14px", textAlign: "center", color: palette.muted, fontSize: 13 }}>
-            No goals yet. Create one to start tracking progress.
-          </div>
-        ) : (
-          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 10 }}>
-            {goals.map((goal) => (
-              <article key={goal.id} onClick={() => navigate(`/business/goals/${goal.id}`)} style={{ borderRadius: 0, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, cursor: "pointer" }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <FlagIcon style={{ width: 16, height: 16, color: statusColor(goal.status, palette) }} />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{goal.title}</p>
-                    <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.4 }}>{goal.description || "No description"}</p>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Goal atlas"
+          title="Strategic milestones"
+          description="Open a goal to see progress, linked work, and the detail behind the milestone."
+        >
+          {goals.length === 0 ? (
+            <WorkspaceEmptyState
+              palette={palette}
+              title="No goals yet"
+              description="Create the first goal to start tracking the business outcomes your projects and tasks should support."
+            />
+          ) : (
+            <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 12 }}>
+              {goals.map((goal) => (
+                <article
+                  key={goal.id}
+                  className="ui-card-lift ui-smooth"
+                  onClick={() => navigate(`/business/goals/${goal.id}`)}
+                  style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16, cursor: "pointer", display: "grid", gap: 12 }}
+                >
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <FlagIcon style={{ width: 16, height: 16, color: statusColor(goal.status, palette), marginTop: 2 }} />
+                    <div style={{ minWidth: 0, flex: 1, display: "grid", gap: 6 }}>
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: palette.text }}>{goal.title}</p>
+                      <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.55 }}>
+                        {createPlainTextPreview(goal.description || "", "No description yet.", 150)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div style={{ marginTop: 10 }}>
                   <div style={{ width: "100%", height: 7, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
                     <div style={{ width: `${goal.progress || 0}%`, height: "100%", background: `linear-gradient(90deg,${palette.success},${palette.info})` }} />
                   </div>
-                </div>
-                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
-                  <span style={{ color: palette.muted, textTransform: "capitalize" }}>{(goal.status || "not_started").replace("_", " ")}</span>
-                  <span style={{ color: palette.text, fontWeight: 700 }}>{goal.progress || 0}%</span>
-                </div>
-              </article>
-            ))}
-          </section>
-        )}
+                  <div style={metaRail}>
+                    <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                      {(goal.status || "not_started").replace("_", " ")}
+                    </span>
+                    <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                      {goal.progress || 0}%
+                    </span>
+                    {goal.target_date ? (
+                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                        {new Date(goal.target_date).toLocaleDateString()}
+                      </span>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </section>
+          )}
+        </WorkspacePanel>
 
         {showModal && (
           <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
-            <div style={{ width: "min(560px,100%)", borderRadius: 0, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
+            <div style={{ width: "min(560px,100%)", borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
               <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>Create Goal</h2>
               <form onSubmit={handleSubmit} style={{ marginTop: 12, display: "grid", gap: 8 }}>
                 <input required placeholder="Goal title" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} style={ui.input} />
@@ -163,12 +230,24 @@ export default function Goals() {
 
 function Metric({ label, value, palette }) {
   return (
-    <article style={{ borderRadius: 0, padding: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+    <article style={{ borderRadius: 18, padding: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
       <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: palette.text }}>{value}</p>
       <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{label}</p>
     </article>
   );
 }
+
+const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
+const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarLayout = { display: "grid", gap: 14 };
+const toolbarIntro = { display: "grid", gap: 4 };
+const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
+const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
+const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
+const metaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const metaChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "7px 11px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
 
 function statusColor(status, palette) {
   if (status === "completed") return palette.success;

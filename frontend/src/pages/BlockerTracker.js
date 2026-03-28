@@ -12,8 +12,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { Link, useLocation } from "react-router-dom";
 import api from "../services/api";
+import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 const TYPE_OPTIONS = ["all", "technical", "dependency", "decision", "resource", "external"];
 
@@ -162,33 +164,75 @@ function Blockers() {
     );
   }
 
+  const blockerPulse =
+    stats.total === 0
+      ? "The blocker lane is clear right now."
+      : stats.critical > 0
+        ? `${stats.critical} blocker${stats.critical === 1 ? "" : "s"} have been open for 7 or more days and likely need escalation.`
+        : `${stats.total} active blocker${stats.total === 1 ? "" : "s"} are being tracked across current sprint work.`;
+
   return (
     <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
-        <section
-          className="ui-enter"
-          style={{
-            borderRadius: 18,
-            border: `1px solid ${palette.border}`,
-            background: darkMode
-              ? "radial-gradient(circle at 8% 15%, rgba(248,113,113,0.24), rgba(18,18,18,0.25) 52%), linear-gradient(140deg, rgba(90,174,231,0.2), rgba(73,191,143,0.16))"
-              : "radial-gradient(circle at 8% 15%, rgba(185,28,28,0.12), rgba(47,128,184,0.12) 54%), linear-gradient(140deg, rgba(159,214,246,0.45), rgba(173,230,214,0.35))",
-            padding: 16,
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: palette.muted }}>RISK BOARD</p>
-              <h1 style={{ margin: "8px 0 5px", fontSize: "clamp(1.24rem,2.25vw,1.88rem)", color: palette.text }}>Blocker Tracker</h1>
-              <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Track active delivery risks and clear blockers before they stall the sprint.</p>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Risk Board"
+          title="Blocker Tracker"
+          description="Track active delivery risks, keep blocker ownership visible, and clear issues before they stall the sprint."
+          stats={[
+            { label: "Active blockers", value: stats.total, helper: "Open blockers currently tracked." },
+            { label: "Open 7+ days", value: stats.critical, helper: "Long-running blockers that may need escalation." },
+            { label: "Technical", value: stats.technical, helper: "Technical blockers inside the current risk mix." },
+            { label: "Avg days open", value: stats.avgDays, helper: "Average blocker age across the tracker." },
+          ]}
+          aside={
+            <div
+              style={{
+                ...spotlightCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
+                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              }}
+            >
+              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Risk pulse</p>
+              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+                {stats.total === 0 ? "Clear lane" : `${stats.total} risks open`}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{blockerPulse}</p>
             </div>
-            <button onClick={() => setShowCreateModal(true)} className="ui-btn-polish" style={ui.primaryButton}>
+          }
+          actions={
+            <button onClick={() => setShowCreateModal(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
               <PlusIcon style={{ width: 15, height: 15 }} />
               Report Blocker
             </button>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={toolbarLayout}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Operations guide</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Keep blockers visible, filter by sprint, and resolve risk before it turns into delivery drift</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>
+                This board works best as the shared escalation lane for sprint work. Use filters to narrow the view, then resolve or report blockers without leaving the execution layer.
+              </p>
+            </div>
+            <div style={toolbarChipRail}>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {selectedSprint ? "Sprint filtered" : "All sprints"}
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                Type: {selectedType === "all" ? "all" : selectedType}
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {filteredBlockers.length} visible
+              </span>
+            </div>
           </div>
-        </section>
+        </WorkspaceToolbar>
 
         {errorMsg && (
           <div style={{ marginBottom: 10, borderRadius: 10, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger, padding: "8px 10px", fontSize: 12 }}>
@@ -340,7 +384,7 @@ function Blockers() {
                           </div>
                           <h3 style={{ margin: 0, fontSize: 16, color: palette.text }}>{blocker.title || "Untitled blocker"}</h3>
                           <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted, lineHeight: 1.5 }}>
-                            {blocker.description || "No description provided."}
+                            {createPlainTextPreview(blocker.description || "", "No description provided.", 180)}
                           </p>
                           <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11, color: palette.muted }}>
                             <span>Sprint: <strong style={{ color: palette.text }}>{blocker.sprint_name || "Unassigned"}</strong></span>
@@ -448,6 +492,16 @@ function MetricCard({ label, value, palette, compact = false }) {
     </article>
   );
 }
+
+const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
+const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarLayout = { display: "grid", gap: 14 };
+const toolbarIntro = { display: "grid", gap: 4 };
+const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
+const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
+const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
 
 export default Blockers;
 

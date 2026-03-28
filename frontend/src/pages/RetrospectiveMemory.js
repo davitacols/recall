@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import api from "../services/api";
 
 function RetrospectiveMemory() {
@@ -43,62 +44,114 @@ function RetrospectiveMemory() {
     );
   }
 
+  const recurringCount = insights.top_causes?.length || 0;
+  const blockerPatternCount = insights.blocker_patterns?.length || 0;
+  const recommendationCount = insights.recommendations?.length || 0;
+  const highestRisk = insights.top_causes?.[0]?.risk_score || 0;
+  const retrosPulse =
+    recurringCount === 0
+      ? "No recurring retrospective themes have been detected yet."
+      : `${recurringCount} recurring cause${recurringCount === 1 ? "" : "s"} are showing up in sprint reviews and should shape process improvements.`;
+
   return (
     <div style={{ ...ui.container, display: "grid", gap: 12, fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
-      <section
-        style={{
-          border: `1px solid ${palette.border}`,
-          borderRadius: 16,
-          padding: "clamp(16px,2.4vw,24px)",
-          background: `linear-gradient(140deg, ${palette.accentSoft}, ${darkMode ? "rgba(245,158,11,0.12)" : "rgba(254,243,199,0.52)"})`,
-          display: "grid",
-          gridTemplateColumns: "minmax(0,1fr) auto",
-          alignItems: "end",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "grid", gap: 6 }}>
-          <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700, color: palette.muted }}>RCA MEMORY</p>
-          <h1 style={{ margin: 0, fontSize: "clamp(1.12rem,2.1vw,1.58rem)", color: palette.text }}>Retrospectives</h1>
-          <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Not a meeting replacement, a persistent root-cause memory.</p>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        eyebrow="RCA Memory"
+        title="Retrospectives"
+        description="Not a meeting replacement, but a persistent review memory for recurring causes, blocker patterns, and recommended improvements."
+        stats={[
+          { label: "Recurring causes", value: recurringCount, helper: "Themes repeating across sprint reviews." },
+          { label: "Blocker patterns", value: blockerPatternCount, helper: "Recurring blocker types found in retrospectives." },
+          { label: "Actions", value: recommendationCount, helper: "Recommended follow-through items from the memory layer." },
+          { label: "Top risk", value: highestRisk, helper: "Highest current retrospective risk score." },
+        ]}
+        aside={
+          <div
+            style={{
+              ...spotlightCard,
+              border: `1px solid ${palette.border}`,
+              background: darkMode
+                ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
+                : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+            }}
+          >
+            <p style={{ ...spotlightEyebrow, color: palette.muted }}>Review pulse</p>
+            <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+              {recurringCount === 0 ? "No patterns yet" : `${recurringCount} patterns in memory`}
+            </h3>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{retrosPulse}</p>
+          </div>
+        }
+        actions={
+          <Link to="/sprint-history" className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
+            Open Sprint History
+          </Link>
+        }
+      />
+
+      <WorkspaceToolbar palette={palette}>
+        <div style={toolbarLayout}>
+          <div style={toolbarIntro}>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Review guide</p>
+            <h2 style={{ ...toolbarTitle, color: palette.text }}>Use retrospective memory to turn repeated pain into changes the team actually carries forward</h2>
+            <p style={{ ...toolbarCopy, color: palette.muted }}>
+              This surface is best used after sprint review. Scan repeated causes, connect blocker patterns, and translate them into durable operating changes.
+            </p>
+          </div>
+          <div style={toolbarChipRail}>
+            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {recurringCount} recurring causes
+            </span>
+            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {blockerPatternCount} blocker patterns
+            </span>
+            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+              {recommendationCount} actions suggested
+            </span>
+          </div>
         </div>
-        <BrandedTechnicalIllustration darkMode={darkMode} compact />
-      </section>
+      </WorkspaceToolbar>
 
       {insights.top_causes && insights.top_causes.length > 0 ? (
-        <section style={{ border: `1px solid ${palette.warn}`, background: darkMode ? "rgba(245,158,11,0.12)" : "rgba(254,243,199,0.6)", borderRadius: 14, padding: 14 }}>
-          <h2 style={{ marginTop: 0, marginBottom: 6, fontSize: 18, color: palette.text }}>Recurring Root Causes</h2>
-          <p style={{ marginTop: 0, marginBottom: 10, fontSize: 13, color: palette.muted }}>
-            These themes repeat in retrospectives and should be addressed systematically.
-          </p>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Recurring causes"
+          title="Themes repeating across retrospectives"
+          description="These themes are showing up often enough that they should shape process changes, not just meeting notes."
+        >
           <div style={{ display: "grid", gap: 8 }}>
             {insights.top_causes.map((issue, idx) => (
-              <article key={idx} style={{ border: `1px solid ${palette.border}`, background: palette.card, borderRadius: 10, padding: 10 }}>
+              <article key={idx} style={{ border: `1px solid ${palette.border}`, background: palette.cardAlt, borderRadius: 20, padding: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 15, fontWeight: 700, color: palette.text }}>{issue.keyword}</span>
-                  <span style={{ padding: "3px 8px", borderRadius: 999, background: palette.warn, color: "#fff", fontSize: 11, fontWeight: 700 }}>
+                  <span style={{ padding: "4px 10px", borderRadius: 999, background: palette.warn, color: "#fff", fontSize: 11, fontWeight: 700 }}>
                     risk {issue.risk_score}
                   </span>
                 </div>
-                <p style={{ margin: "6px 0 0", fontSize: 12, color: palette.muted }}>
+                <p style={{ margin: "8px 0 0", fontSize: 12, color: palette.muted, lineHeight: 1.55 }}>
                   Mentions: {issue.mentions} | Affected sprints: {issue.affected_sprints} | Recurrence rate: {issue.recurrence_rate}
                 </p>
               </article>
             ))}
           </div>
-        </section>
+        </WorkspacePanel>
       ) : (
-        <section style={{ textAlign: "center", padding: "40px 20px", border: `1px solid ${palette.border}`, borderRadius: 14, background: palette.card }}>
-          <h3 style={{ marginTop: 0, marginBottom: 6, fontSize: 20, color: palette.text }}>No patterns detected yet</h3>
-          <p style={{ margin: 0, fontSize: 14, color: palette.muted }}>
-            Run more retrospectives to detect recurring issues.
-          </p>
-        </section>
+        <WorkspaceEmptyState
+          palette={palette}
+          title="No patterns detected yet"
+          description="Run more retrospectives to detect recurring issues and start building review memory."
+        />
       )}
 
       {insights.blocker_patterns && insights.blocker_patterns.length > 0 ? (
-        <section style={{ border: `1px solid ${palette.border}`, borderRadius: 14, background: palette.card, padding: 14 }}>
-          <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: palette.text }}>Recurring Blocker Patterns</h2>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Blocker patterns"
+          title="Recurring blocker patterns"
+          description="Blocker types that are repeating in review memory and should likely feed process improvement."
+        >
           <div style={{ display: "grid", gap: 7 }}>
             {insights.blocker_patterns.map((item, idx) => (
               <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -109,12 +162,16 @@ function RetrospectiveMemory() {
               </div>
             ))}
           </div>
-        </section>
+        </WorkspacePanel>
       ) : null}
 
       {insights.recommendations && insights.recommendations.length > 0 ? (
-        <section style={{ border: `1px solid ${palette.border}`, borderRadius: 14, background: palette.cardAlt, padding: 14 }}>
-          <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: palette.text }}>Recommended Actions</h2>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Recommended actions"
+          title="Follow-through worth carrying into the next cycle"
+          description="These are the clearest next actions emerging from retrospective memory."
+        >
           <div style={{ display: "grid", gap: 7 }}>
             {insights.recommendations.map((item, idx) => (
               <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -123,10 +180,20 @@ function RetrospectiveMemory() {
               </div>
             ))}
           </div>
-        </section>
+        </WorkspacePanel>
       ) : null}
     </div>
   );
 }
+
+const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
+const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarLayout = { display: "grid", gap: 14 };
+const toolbarIntro = { display: "grid", gap: 4 };
+const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
+const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
+const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
 
 export default RetrospectiveMemory;

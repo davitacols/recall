@@ -149,15 +149,34 @@ export default function ProjectDetail() {
     event.preventDefault();
     setIsSavingProject(true);
     setProjectFormError("");
+    const payload = {
+      name: projectForm.name.trim(),
+      description: projectForm.description,
+      lead_id: projectForm.lead_id || "",
+    };
     try {
-      await api.put(`/api/agile/projects/${projectId}/`, {
-        name: projectForm.name.trim(),
-        description: projectForm.description,
-        lead_id: projectForm.lead_id || "",
-      });
+      await api.patch(`/api/agile/projects/${projectId}/`, payload);
       setShowEditProject(false);
       fetchProject();
     } catch (error) {
+      if (error?.response?.status === 405) {
+        try {
+          await api.put(`/api/agile/projects/${projectId}/`, payload);
+          setShowEditProject(false);
+          fetchProject();
+          return;
+        } catch (fallbackError) {
+          console.error("Failed to update project with PUT fallback:", fallbackError);
+          setProjectFormError(
+            fallbackError?.response?.data?.detail ||
+              fallbackError?.response?.data?.error ||
+              fallbackError?.response?.data?.message ||
+              "Failed to update project"
+          );
+          return;
+        }
+      }
+
       console.error("Failed to update project:", error);
       setProjectFormError(
         error?.response?.data?.detail ||
@@ -201,45 +220,6 @@ export default function ProjectDetail() {
   const projectRoutingLabel = currentBoard
     ? "A connected board is already in place, so this page can act as the project control room."
     : "The project is structured, but a board route would make execution easier to navigate.";
-  const projectHeroAside = (
-    <div
-      style={{
-        display: "grid",
-        gap: 10,
-        padding: 14,
-        borderRadius: 24,
-        border: `1px solid ${palette.border}`,
-        background: palette.card,
-        boxShadow: "var(--ui-shadow-sm)",
-      }}
-    >
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <div
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: 22,
-            background: palette.ctaGradient,
-            color: palette.buttonText,
-            display: "grid",
-            placeItems: "center",
-            fontSize: 24,
-            fontWeight: 800,
-            letterSpacing: "-0.05em",
-            boxShadow: "var(--ui-shadow-sm)",
-            flexShrink: 0,
-          }}
-        >
-          {project.key?.slice(0, 2) || "PR"}
-        </div>
-        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", flex: "1 1 260px" }}>
-          <InfoTile label="Project key" value={project.key || "Untitled"} palette={palette} />
-          <InfoTile label="Project lead" value={project.lead_name || "Unassigned"} palette={palette} />
-          <InfoTile label="Team members" value={`${teamMembers.length}`} palette={palette} />
-        </div>
-      </div>
-    </div>
-  );
   const tabs = [
     { key: "sprints", label: "Sprints", count: sprints.length },
     { key: "issues", label: "Issues", count: issues.length },
@@ -256,7 +236,6 @@ export default function ProjectDetail() {
           eyebrow="Execution Workspace"
           title={project.name}
           description={project.description || "Plan sprints, shape the issue queue, and keep delivery context in one calmer workspace."}
-          aside={projectHeroAside}
           actions={
             <>
               <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}>
@@ -273,16 +252,17 @@ export default function ProjectDetail() {
         />
 
         <WorkspaceToolbar palette={palette}>
-          <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "grid", gap: 6 }}>
               <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: palette.muted }}>Control Room</p>
-              <h2 style={{ margin: 0, fontSize: 28, lineHeight: 1.05, letterSpacing: "-0.04em", fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', color: palette.text }}>Move between planning, execution, and roadmap routes</h2>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: palette.muted }}>The detail view now keeps primary project actions and the active section selector in one place instead of scattering them across isolated rows.</p>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>Jump between execution routes and keep the core project facts visible without stretching the header.</p>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <span style={chipStyle(palette)}>{project.key || "Project"}</span>
               <span style={chipStyle(palette)}>{completionRate}% complete</span>
               <span style={chipStyle(palette)}>{project.lead_name || "No project lead yet"}</span>
+              <span style={chipStyle(palette)}>{teamMembers.length} team members</span>
+              <span style={chipStyle(palette)}>{boards.length} boards</span>
               <span style={chipStyle(palette)}>{activeTab}</span>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -420,10 +400,6 @@ function Modal({ title, onClose, children, palette }) {
 
 function SummaryTile({ icon: Icon, label, value, palette }) {
   return <article style={{ borderRadius: 20, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 14, display: "grid", gap: 10 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>{label}</p><span style={{ width: 34, height: 34, borderRadius: 12, display: "grid", placeItems: "center", background: palette.accentSoft, color: palette.accent }}><Icon style={{ width: 16, height: 16 }} /></span></div><p style={{ margin: 0, fontSize: 26, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.05em", fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', color: palette.text }}>{value}</p></article>;
-}
-
-function InfoTile({ label, value, palette }) {
-  return <div style={{ borderRadius: 18, padding: "12px 14px", border: `1px solid ${palette.border}`, background: palette.card, minWidth: 150 }}><p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>{label}</p><p style={{ margin: "6px 0 0", fontSize: 16, fontWeight: 700, color: palette.text }}>{value}</p></div>;
 }
 
 function InfoRow({ label, value, palette }) {

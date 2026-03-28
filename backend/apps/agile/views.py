@@ -225,7 +225,7 @@ def projects(request):
         except Exception as e:
             return Response({'error': str(e)}, status=400)
 
-@api_view(['GET', 'PUT'])
+@api_view(['GET', 'PUT', 'PATCH'])
 @permission_classes([IsAuthenticated, IsOrgMember])
 def project_detail(request, project_id):
     org = _check_org(request)
@@ -237,7 +237,7 @@ def project_detail(request, project_id):
     except Project.DoesNotExist:
         return Response({'error': 'Project not found'}, status=404)
 
-    if request.method == 'PUT':
+    if request.method in ['PUT', 'PATCH']:
         if getattr(request.user, 'role', '') != 'admin' and project.lead_id != request.user.id:
             return Response({'error': 'Permission denied for this project'}, status=403)
 

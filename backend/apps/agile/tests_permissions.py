@@ -199,6 +199,20 @@ class AgilePermissionIsolationTests(TestCase):
         self.assertEqual(self.project_a.lead_id, self.contributor_a.id)
         self.assertEqual(self.project_a.description, "Updated direction")
 
+    def test_project_detail_patch_updates_lead_for_admin(self):
+        request = self.factory.patch(
+            f"/api/agile/projects/{self.project_a.id}/",
+            {
+                "lead_id": self.contributor_a.id,
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin_a)
+        response = project_detail(request, self.project_a.id)
+        self.assertEqual(response.status_code, 200)
+        self.project_a.refresh_from_db()
+        self.assertEqual(self.project_a.lead_id, self.contributor_a.id)
+
     def test_check_wip_limit_is_org_scoped(self):
         request = self.factory.get(f"/api/agile/columns/{self.column_b.id}/wip-check/")
         force_authenticate(request, user=self.admin_a)

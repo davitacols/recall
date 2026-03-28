@@ -795,6 +795,82 @@ export default function AskRecall() {
     },
   ];
 
+  const feedbackPanel = feedbackSummary ? (
+    <WorkspacePanel
+      palette={palette}
+      eyebrow="Feedback Loop"
+      title={`Copilot Feedback (${feedbackSummary.window_days || 30} days)`}
+      description="Track how people are responding to Ask Recall guidance and rate this answer when you are done."
+    >
+      <div style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+          <article style={microCardStyle(palette, 'info')}>
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>Total</span>
+            <strong style={{ fontSize: 24, color: palette.text }}>{feedbackSummary.total_feedback || 0}</strong>
+            <span style={{ fontSize: 12, color: palette.muted }}>Signals in the current feedback window</span>
+          </article>
+          <article style={microCardStyle(palette, 'success')}>
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>Positive rate</span>
+            <strong style={{ fontSize: 24, color: palette.text }}>{feedbackSummary.positive_rate ?? '--'}%</strong>
+            <span style={{ fontSize: 12, color: palette.muted }}>
+              Up {feedbackSummary.upvotes || 0} / Down {feedbackSummary.downvotes || 0}
+            </span>
+          </article>
+        </div>
+
+        {feedbackTrend.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
+            {feedbackTrend.map((point) => {
+              const total = Number(point.total || 0);
+              const up = Number(point.upvotes || 0);
+              const ratio = total > 0 ? Math.max(0.1, up / total) : 0.5;
+              return (
+                <div
+                  key={point.date}
+                  title={`${point.date}: ${up}/${total}`}
+                  style={{
+                    height: 30,
+                    border: `1px solid ${palette.border}`,
+                    borderRadius: 10,
+                    background: `linear-gradient(180deg, ${palette.success} ${Math.round(ratio * 100)}%, ${palette.warn} ${Math.round(ratio * 100)}%)`,
+                    opacity: total > 0 ? 1 : 0.3,
+                  }}
+                />
+              );
+            })}
+          </div>
+        ) : null}
+
+        {results ? (
+          <>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button type="button" onClick={() => setFeedbackVote('up')} style={feedbackVote === 'up' ? buttonFilled(palette) : buttonGhost(palette)}>
+                Helpful
+              </button>
+              <button type="button" onClick={() => setFeedbackVote('down')} style={feedbackVote === 'down' ? buttonFilled(palette) : buttonGhost(palette)}>
+                Not Helpful
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8 }}>
+              <select value={feedbackOutcome} onChange={(e) => setFeedbackOutcome(e.target.value)} style={inputCompact(palette)}>
+                <option value="">Outcome</option>
+                <option value="improved">Improved</option>
+                <option value="neutral">Neutral</option>
+                <option value="worse">Worse</option>
+              </select>
+              <button type="button" onClick={submitFeedback} disabled={!feedbackVote || feedbackSubmitting} style={buttonGhost(palette, !feedbackVote || feedbackSubmitting)}>
+                {feedbackSubmitting ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+            {!!feedbackMessage ? (
+              <div style={noteStyle(palette, feedbackMessage.includes('Thanks') ? 'success' : 'warn')}>{feedbackMessage}</div>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+    </WorkspacePanel>
+  ) : null;
+
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <WorkspaceHero
@@ -1024,81 +1100,7 @@ export default function AskRecall() {
             ) : null}
           </WorkspacePanel>
 
-          {feedbackSummary ? (
-            <WorkspacePanel
-              palette={palette}
-              eyebrow="Feedback Loop"
-              title={`Copilot Feedback (${feedbackSummary.window_days || 30} days)`}
-              description="Track how people are responding to Ask Recall guidance and rate this answer when you are done."
-            >
-              <div style={{ display: 'grid', gap: 10 }}>
-                <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-                  <article style={microCardStyle(palette, 'info')}>
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>Total</span>
-                    <strong style={{ fontSize: 24, color: palette.text }}>{feedbackSummary.total_feedback || 0}</strong>
-                    <span style={{ fontSize: 12, color: palette.muted }}>Signals in the current feedback window</span>
-                  </article>
-                  <article style={microCardStyle(palette, 'success')}>
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>Positive rate</span>
-                    <strong style={{ fontSize: 24, color: palette.text }}>{feedbackSummary.positive_rate ?? '--'}%</strong>
-                    <span style={{ fontSize: 12, color: palette.muted }}>
-                      Up {feedbackSummary.upvotes || 0} / Down {feedbackSummary.downvotes || 0}
-                    </span>
-                  </article>
-                </div>
-
-                {feedbackTrend.length > 0 ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
-                    {feedbackTrend.map((point) => {
-                      const total = Number(point.total || 0);
-                      const up = Number(point.upvotes || 0);
-                      const ratio = total > 0 ? Math.max(0.1, up / total) : 0.5;
-                      return (
-                        <div
-                          key={point.date}
-                          title={`${point.date}: ${up}/${total}`}
-                          style={{
-                            height: 30,
-                            border: `1px solid ${palette.border}`,
-                            borderRadius: 10,
-                            background: `linear-gradient(180deg, ${palette.success} ${Math.round(ratio * 100)}%, ${palette.warn} ${Math.round(ratio * 100)}%)`,
-                            opacity: total > 0 ? 1 : 0.3,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                ) : null}
-
-                {results ? (
-                  <>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <button type="button" onClick={() => setFeedbackVote('up')} style={feedbackVote === 'up' ? buttonFilled(palette) : buttonGhost(palette)}>
-                        Helpful
-                      </button>
-                      <button type="button" onClick={() => setFeedbackVote('down')} style={feedbackVote === 'down' ? buttonFilled(palette) : buttonGhost(palette)}>
-                        Not Helpful
-                      </button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8 }}>
-                      <select value={feedbackOutcome} onChange={(e) => setFeedbackOutcome(e.target.value)} style={inputCompact(palette)}>
-                        <option value="">Outcome</option>
-                        <option value="improved">Improved</option>
-                        <option value="neutral">Neutral</option>
-                        <option value="worse">Worse</option>
-                      </select>
-                      <button type="button" onClick={submitFeedback} disabled={!feedbackVote || feedbackSubmitting} style={buttonGhost(palette, !feedbackVote || feedbackSubmitting)}>
-                        {feedbackSubmitting ? 'Saving...' : 'Save'}
-                      </button>
-                    </div>
-                    {!!feedbackMessage ? (
-                      <div style={noteStyle(palette, feedbackMessage.includes('Thanks') ? 'success' : 'warn')}>{feedbackMessage}</div>
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
-            </WorkspacePanel>
-          ) : null}
+          {!results ? feedbackPanel : null}
         </div>
       </section>
 
@@ -1290,6 +1292,8 @@ export default function AskRecall() {
             </WorkspacePanel>
           ) : null}
 
+          {results ? feedbackPanel : null}
+
           {!isNavigationIntent && results.followUpQuestions?.length ? (
             <WorkspacePanel
               palette={palette}
@@ -1419,7 +1423,7 @@ function splitSection() {
   return {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: 14,
+    gap: 12,
     alignItems: 'flex-start',
   };
 }
@@ -1429,7 +1433,7 @@ function laneStyle(flex) {
     flex,
     minWidth: 0,
     display: 'grid',
-    gap: 14,
+    gap: 12,
   };
 }
 

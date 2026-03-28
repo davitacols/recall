@@ -9,6 +9,7 @@ import {
   PlusIcon,
   RocketLaunchIcon,
   TrashIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
@@ -38,12 +39,16 @@ export default function ProjectDetail() {
   const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1080);
   const [showCreateSprint, setShowCreateSprint] = useState(false);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
+  const [showEditProject, setShowEditProject] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingSprint, setIsCreatingSprint] = useState(false);
   const [isCreatingIssue, setIsCreatingIssue] = useState(false);
+  const [isSavingProject, setIsSavingProject] = useState(false);
   const [sprintForm, setSprintForm] = useState({ name: "", start_date: "", end_date: "", goal: "" });
   const [issueForm, setIssueForm] = useState({ title: "", description: "", priority: "medium", sprint_id: "", assignee_id: "" });
+  const [projectForm, setProjectForm] = useState({ name: "", description: "", lead_id: "" });
+  const [projectFormError, setProjectFormError] = useState("");
 
   useEffect(() => {
     fetchProject();
@@ -129,6 +134,42 @@ export default function ProjectDetail() {
     }
   };
 
+  const openEditProject = () => {
+    if (!project) return;
+    setProjectForm({
+      name: project.name || "",
+      description: project.description || "",
+      lead_id: project.lead_id ? String(project.lead_id) : "",
+    });
+    setProjectFormError("");
+    setShowEditProject(true);
+  };
+
+  const handleUpdateProject = async (event) => {
+    event.preventDefault();
+    setIsSavingProject(true);
+    setProjectFormError("");
+    try {
+      await api.put(`/api/agile/projects/${projectId}/`, {
+        name: projectForm.name.trim(),
+        description: projectForm.description,
+        lead_id: projectForm.lead_id || "",
+      });
+      setShowEditProject(false);
+      fetchProject();
+    } catch (error) {
+      console.error("Failed to update project:", error);
+      setProjectFormError(
+        error?.response?.data?.detail ||
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to update project"
+      );
+    } finally {
+      setIsSavingProject(false);
+    }
+  };
+
   if (loading) {
     return <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}><div style={{ width: 28, height: 28, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" }} /></div>;
   }
@@ -182,8 +223,8 @@ export default function ProjectDetail() {
             { label: "Active sprints", value: `${activeSprintCount}`, helper: "Current sprint rhythm." },
             { label: "Boards", value: `${boards.length}`, helper: "Connected execution boards." },
           ]}
-          aside={<div style={{ display: "grid", gap: 12, justifyItems: "end" }}><div style={{ width: 112, height: 112, borderRadius: 28, background: palette.ctaGradient, color: palette.buttonText, display: "grid", placeItems: "center", fontSize: 28, fontWeight: 800, letterSpacing: "-0.05em", boxShadow: "var(--ui-shadow-sm)" }}>{project.key?.slice(0, 2) || "PR"}</div><div style={{ display: "grid", gap: 8 }}><InfoTile label="Project key" value={project.key || "Untitled"} palette={palette} /><InfoTile label="Team members" value={`${teamMembers.length}`} palette={palette} /></div></div>}
-          actions={<><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Sprint</button><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.secondaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Issue</button></>}
+          aside={<div style={{ display: "grid", gap: 12, justifyItems: "end" }}><div style={{ width: 112, height: 112, borderRadius: 28, background: palette.ctaGradient, color: palette.buttonText, display: "grid", placeItems: "center", fontSize: 28, fontWeight: 800, letterSpacing: "-0.05em", boxShadow: "var(--ui-shadow-sm)" }}>{project.key?.slice(0, 2) || "PR"}</div><div style={{ display: "grid", gap: 8 }}><InfoTile label="Project key" value={project.key || "Untitled"} palette={palette} /><InfoTile label="Project lead" value={project.lead_name || "Unassigned"} palette={palette} /><InfoTile label="Team members" value={`${teamMembers.length}`} palette={palette} /></div></div>}
+          actions={<><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Sprint</button><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.secondaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> New Issue</button><button className="ui-btn-polish ui-focus-ring" onClick={openEditProject} style={ui.secondaryButton}><UserGroupIcon style={{ width: 14, height: 14 }} /> {project.lead_name ? "Edit Project" : "Assign lead"}</button></>}
         />
 
         <WorkspaceToolbar palette={palette}>
@@ -196,11 +237,13 @@ export default function ProjectDetail() {
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <span style={chipStyle(palette)}>{project.key || "Project"}</span>
               <span style={chipStyle(palette)}>{completionRate}% complete</span>
+              <span style={chipStyle(palette)}>{project.lead_name || "No project lead yet"}</span>
               <span style={chipStyle(palette)}>{activeTab}</span>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/projects")} style={ui.secondaryButton}><ArrowLeftIcon style={{ width: 14, height: 14 }} /> All Projects</button>
               <button className="ui-btn-polish ui-focus-ring" onClick={fetchProject} style={ui.secondaryButton}><ArrowPathIcon style={{ width: 14, height: 14 }} /> Refresh</button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={openEditProject} style={ui.secondaryButton}><UserGroupIcon style={{ width: 14, height: 14 }} /> {project.lead_name ? "Update lead" : "Assign lead"}</button>
               <Link className="ui-btn-polish ui-focus-ring" to={`/projects/${projectId}/backlog`} style={{ ...ui.secondaryButton, textDecoration: "none" }}>Backlog</Link>
               {currentBoard ? <Link className="ui-btn-polish ui-focus-ring" to={`/boards/${currentBoard.id}`} style={{ ...ui.secondaryButton, textDecoration: "none" }}>Kanban Board</Link> : null}
               <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Sprint Center</Link>
@@ -238,6 +281,9 @@ export default function ProjectDetail() {
             <div style={briefingMetaRail}>
               <span style={{ ...briefingChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
                 {project.key || "PRJ"}
+              </span>
+              <span style={{ ...briefingChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {project.lead_name || "Project lead needed"}
               </span>
               <span style={{ ...briefingChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
                 {teamMembers.length} team members
@@ -302,6 +348,7 @@ export default function ProjectDetail() {
               </div>
             </WorkspacePanel>
             <WorkspacePanel palette={palette} eyebrow="Team" title="Staffing Context" description="Member counts and sprint load give the page more operational texture.">
+              <InfoRow label="Project lead" value={project.lead_name || "Unassigned"} palette={palette} />
               <InfoRow label="Team members" value={`${teamMembers.length}`} palette={palette} />
               <InfoRow label="Boards connected" value={`${boards.length}`} palette={palette} />
               <InfoRow label="Active sprints" value={`${activeSprintCount}`} palette={palette} />
@@ -309,6 +356,8 @@ export default function ProjectDetail() {
             </WorkspacePanel>
           </div>
         </div>
+
+        {showEditProject ? <Modal title="Edit Project" onClose={() => setShowEditProject(false)} palette={palette}><form onSubmit={handleUpdateProject} style={{ display: "grid", gap: 14 }}>{projectFormError ? <div style={{ borderRadius: 16, padding: "10px 12px", fontSize: 13, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger }}>{projectFormError}</div> : null}<div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Project name</label><input required value={projectForm.name} onChange={(event) => setProjectForm((current) => ({ ...current, name: event.target.value }))} style={ui.input} placeholder="Project name" /></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Project brief</label><textarea rows={4} value={projectForm.description} onChange={(event) => setProjectForm((current) => ({ ...current, description: event.target.value }))} style={{ ...ui.input, resize: "vertical" }} placeholder="Describe the direction, scope, or execution context" /></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Project lead</label><select value={projectForm.lead_id} onChange={(event) => setProjectForm((current) => ({ ...current, lead_id: event.target.value }))} style={ui.input}><option value="">No project lead assigned</option>{teamMembers.map((member) => <option key={member.id} value={member.id}>{member.full_name || member.username}</option>)}</select></div><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><button type="button" className="ui-btn-polish ui-focus-ring" onClick={() => setShowEditProject(false)} style={ui.secondaryButton}>Cancel</button><button className="ui-btn-polish ui-focus-ring" type="submit" disabled={isSavingProject} style={ui.primaryButton}>{isSavingProject ? "Saving..." : "Save project"}</button></div></form></Modal> : null}
 
         {showCreateSprint ? <Modal title="Create Sprint" onClose={() => setShowCreateSprint(false)} palette={palette}><form onSubmit={handleCreateSprint} style={{ display: "grid", gap: 14 }}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Sprint name</label><input required value={sprintForm.name} onChange={(event) => setSprintForm({ ...sprintForm, name: event.target.value })} style={ui.input} placeholder="Sprint name" /></div><div style={ui.twoCol}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Start date</label><input type="date" required value={sprintForm.start_date} onChange={(event) => setSprintForm({ ...sprintForm, start_date: event.target.value })} style={ui.input} /></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>End date</label><input type="date" required value={sprintForm.end_date} onChange={(event) => setSprintForm({ ...sprintForm, end_date: event.target.value })} style={ui.input} /></div></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Goal</label><textarea rows={4} value={sprintForm.goal} onChange={(event) => setSprintForm({ ...sprintForm, goal: event.target.value })} style={{ ...ui.input, resize: "vertical" }} placeholder="What should this sprint accomplish?" /></div><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><button type="button" className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(false)} style={ui.secondaryButton}>Cancel</button><button className="ui-btn-polish ui-focus-ring" type="submit" style={ui.primaryButton}>{isCreatingSprint ? "Creating..." : "Create Sprint"}</button></div></form></Modal> : null}
 

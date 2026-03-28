@@ -24,11 +24,17 @@ export default function Projects() {
   const { darkMode } = useTheme();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [newProject, setNewProject] = useState({ name: "", description: "" });
+  const [showLeadPicker, setShowLeadPicker] = useState(false);
+  const [newProject, setNewProject] = useState({ name: "", description: "", lead_id: "" });
+  const [leadPickerProject, setLeadPickerProject] = useState(null);
+  const [leadDraft, setLeadDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [savingLead, setSavingLead] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [leadError, setLeadError] = useState("");
 
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -40,7 +46,7 @@ export default function Projects() {
           const hasBrief = hasMeaningfulText(project.description);
           const hasLead = Boolean(project.lead_name);
           const needsAttention = !hasBrief || !hasLead;
-          const statusLabel = !hasLead && !hasBrief ? "Needs owner + brief" : !hasLead ? "Needs owner" : !hasBrief ? "Needs brief" : "Ready";
+          const statusLabel = !hasLead && !hasBrief ? "Needs lead + brief" : !hasLead ? "Needs lead" : !hasBrief ? "Needs brief" : "Ready";
           return {
             ...project,
             hasBrief,
@@ -49,7 +55,7 @@ export default function Projects() {
             statusLabel,
             summary: createPlainTextPreview(
               project.description,
-              "No project brief yet. Open the workspace to add direction, ownership notes, and planning context.",
+              "No project brief yet. Open the workspace to add direction, project lead notes, and planning context.",
               180
             ),
             createdLabel: project.created_at ? new Date(project.created_at).toLocaleDateString() : "Recently added",
@@ -71,7 +77,18 @@ export default function Projects() {
 
   useEffect(() => {
     fetchProjects();
+    fetchTeamMembers();
   }, []);
+
+  const fetchTeamMembers = async () => {
+    try {
+      const response = await api.get("/api/organizations/members/");
+      setTeamMembers(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch team members:", error);
+      setTeamMembers([]);
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -97,9 +114,10 @@ export default function Projects() {
       await api.post("/api/agile/projects/", {
         name: newProject.name.trim(),
         description: newProject.description?.trim() || "",
+        ...(newProject.lead_id ? { lead_id: parseInt(newProject.lead_id, 10) } : {}),
       });
       setShowCreate(false);
-      setNewProject({ name: "", description: "" });
+      setNewProject({ name: "", description: "", lead_id: "" });
       fetchProjects();
     } catch (error) {
       console.error("Failed to create project:", error);
@@ -111,6 +129,39 @@ export default function Projects() {
       );
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openLeadPicker = (project) => {
+    setLeadPickerProject(project);
+    setLeadDraft(project?.lead ? String(project.lead) : "");
+    setLeadError("");
+    setShowLeadPicker(true);
+  };
+
+  const handleSaveLead = async (event) => {
+    event.preventDefault();
+    if (!leadPickerProject) return;
+    setSavingLead(true);
+    setLeadError("");
+    try {
+      await api.put(`/api/agile/projects/${leadPickerProject.id}/`, {
+        lead_id: leadDraft || "",
+      });
+      setShowLeadPicker(false);
+      setLeadPickerProject(null);
+      setLeadDraft("");
+      fetchProjects();
+    } catch (error) {
+      console.error("Failed to update project lead:", error);
+      setLeadError(
+        error?.response?.data?.detail ||
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to update project lead"
+      );
+    } finally {
+      setSavingLead(false);
     }
   };
 
@@ -130,7 +181,7 @@ export default function Projects() {
     {
       label: "Needs shaping",
       value: attentionProjects.length,
-      helper: "Missing owner or brief",
+      helper: "Missing lead or brief",
       tone: palette.info,
     },
   ];
@@ -146,7 +197,7 @@ export default function Projects() {
       }}
     >
       <p style={{ ...asideEyebrow, color: palette.muted }}>Execution Readiness</p>
-      <h3 style={{ ...asideTitle, color: palette.text }}>Projects move faster when ownership and context are obvious.</h3>
+      <h3 style={{ ...asideTitle, color: palette.text }}>Projects move faster when the project lead and context are obvious.</h3>
       <p style={{ ...asideBody, color: palette.muted }}>
         {readyProjects.length} workspaces are ready to run. {attentionProjects.length} still need shaping before handoffs feel clean.
       </p>
@@ -206,7 +257,7 @@ export default function Projects() {
         darkMode={darkMode}
         eyebrow="Execution Workspace"
         title="Projects"
-        description="Organize delivery tracks, roadmaps, and ownership in a calmer project workspace that keeps execution context close."
+        description="Organize delivery tracks, roadmaps, and project lead accountability in a calmer workspace that keeps execution context close."
         stats={heroStats}
         aside={operationsAside}
         actions={
@@ -230,7 +281,7 @@ export default function Projects() {
             <p style={{ ...toolbarEyebrow, color: palette.muted }}>Portfolio View</p>
             <h2 style={{ ...toolbarTitle, color: palette.text }}>See which workspaces are ready to run and which still need shaping</h2>
             <p style={{ ...toolbarCopy, color: palette.muted }}>
-              The portfolio now leads with operating signals first, then drops into the project atlas so you can spot owner gaps and missing briefs before they slow delivery.
+              The portfolio now leads with operating signals first, then drops into the project atlas so you can spot lead gaps and missing briefs before they slow delivery.
             </p>
           </div>
 
@@ -239,7 +290,7 @@ export default function Projects() {
               {readyProjects.length} ready to run
             </span>
             <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              {ownerGaps} missing owners
+              {ownerGaps} missing leads
             </span>
             <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
               {briefGaps} missing briefs
@@ -268,7 +319,7 @@ export default function Projects() {
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: palette.muted }}>
                 {newestProject
                   ? newestProject.summary
-                  : "Create a project to coordinate boards, roadmaps, ownership, and surrounding execution context from one place."}
+                  : "Create a project to coordinate boards, roadmaps, project lead accountability, and surrounding execution context from one place."}
               </p>
             </div>
             <div style={spotlightMetaRail}>
@@ -371,12 +422,86 @@ export default function Projects() {
                 style={{ ...ui.input, resize: "vertical" }}
               />
 
+              <label style={{ ...label, color: palette.muted }}>Project Lead</label>
+              <select
+                value={newProject.lead_id}
+                onChange={(event) => setNewProject({ ...newProject, lead_id: event.target.value })}
+                className="ui-focus-ring"
+                style={ui.input}
+              >
+                <option value="">Assign the creator</option>
+                {teamMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.full_name || member.username || member.email}
+                  </option>
+                ))}
+              </select>
+
               <div style={buttonRow}>
                 <button type="button" onClick={() => setShowCreate(false)} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
                   Cancel
                 </button>
                 <button type="submit" disabled={creating} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
                   {creating ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {showLeadPicker && leadPickerProject ? (
+        <div style={modalOverlay}>
+          <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
+            <div style={modalHeader}>
+              <div>
+                <p style={{ ...modalEyebrow, color: palette.muted }}>Project Ownership</p>
+                <h2 style={{ ...modalTitle, color: palette.text }}>Set Project Owner</h2>
+                <p style={{ ...modalBody, color: palette.muted }}>
+                  Give <strong style={{ color: palette.text }}>{leadPickerProject.name}</strong> a visible project lead so delivery, handoffs, and review accountability stay obvious.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveLead} style={formStack}>
+              {leadError ? (
+                <div style={{ ...errorBox, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger }}>
+                  {leadError}
+                </div>
+              ) : null}
+
+              <label style={{ ...label, color: palette.muted }}>Project Lead</label>
+              <select
+                required
+                value={leadDraft}
+                onChange={(event) => setLeadDraft(event.target.value)}
+                className="ui-focus-ring"
+                style={ui.input}
+              >
+                <option value="">Select a project lead</option>
+                {teamMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.full_name || member.username || member.email}
+                  </option>
+                ))}
+              </select>
+
+              <div style={buttonRow}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLeadPicker(false);
+                    setLeadPickerProject(null);
+                    setLeadDraft("");
+                    setLeadError("");
+                  }}
+                  className="ui-btn-polish ui-focus-ring"
+                  style={ui.secondaryButton}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={savingLead || !leadDraft} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+                  {savingLead ? "Saving..." : "Save project lead"}
                 </button>
               </div>
             </form>
@@ -401,10 +526,11 @@ export default function Projects() {
             <PortfolioSection
               palette={palette}
               title="Needs shaping"
-              description="These workspaces are missing ownership, project context, or both."
+              description="These workspaces are missing a project lead, project context, or both."
               projects={attentionProjects}
               navigate={navigate}
               darkMode={darkMode}
+              onOpenLeadPicker={openLeadPicker}
             />
           ) : null}
 
@@ -419,6 +545,7 @@ export default function Projects() {
             projects={attentionProjects.length ? readyProjects : portfolioProjects}
             navigate={navigate}
             darkMode={darkMode}
+            onOpenLeadPicker={openLeadPicker}
           />
         </div>
       )}
@@ -508,7 +635,7 @@ function PortfolioSignalCard({ palette, icon: Icon, label, value, helper, highli
   );
 }
 
-function PortfolioSection({ palette, title, description, projects, navigate, darkMode }) {
+function PortfolioSection({ palette, title, description, projects, navigate, darkMode, onOpenLeadPicker }) {
   if (!projects.length) {
     return null;
   }
@@ -554,7 +681,7 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
             <div style={projectSummaryGrid}>
               <div style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                 <p style={{ ...summaryLabel, color: palette.muted }}>Lead</p>
-                <p style={{ ...summaryValue, color: palette.text }}>{project.lead_name || "Assign owner"}</p>
+                <p style={{ ...summaryValue, color: palette.text }}>{project.lead_name || "Assign lead"}</p>
               </div>
               <div style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                 <p style={{ ...summaryLabel, color: palette.muted }}>Brief</p>
@@ -576,6 +703,18 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
             </div>
 
             <div style={{ ...projectActions, borderTop: `1px solid ${palette.border}` }}>
+              {!project.hasLead ? (
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenLeadPicker?.(project);
+                  }}
+                  style={miniActionButton(palette)}
+                >
+                  Set lead
+                </button>
+              ) : null}
               <button
                 className="ui-btn-polish ui-focus-ring"
                 onClick={(event) => {

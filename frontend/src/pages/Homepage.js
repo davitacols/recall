@@ -1,29 +1,66 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { LinkIcon, MagnifyingGlassIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import BrandLogo from "../components/BrandLogo";
 import { useAuth } from "../hooks/useAuth";
 import "./Homepage.css";
 
 const heroSignals = [
-  { value: "< 60s", label: "Recover the reasoning behind a change without replaying the whole thread." },
-  { value: "1 record", label: "Keep decisions, docs, conversations, and execution attached to the same source of truth." },
-  { value: "24/7", label: "Ask Recall answers from your workspace history instead of from generic summaries." },
+  {
+    value: "Grounded answers",
+    label: "Ask Recall responds from real workspace history instead of disconnected summaries.",
+    icon: SparklesIcon,
+    className: "hp-signal-row-answer",
+  },
+  {
+    value: "Connected records",
+    label: "Keep decisions, documents, conversations, and execution attached to the same operating record.",
+    icon: LinkIcon,
+    className: "hp-signal-row-records",
+  },
+  {
+    value: "Recoverable context",
+    label: "Find the reasoning behind work changes without replaying every meeting or thread.",
+    icon: MagnifyingGlassIcon,
+    className: "hp-signal-row-context",
+  },
+];
+
+const heroModules = [
+  { name: "Ask Recall", detail: "Grounded answers" },
+  { name: "Decisions", detail: "Durable records" },
+  { name: "Knowledge Graph", detail: "Linked context" },
+];
+
+const heroMediaNotes = [
+  {
+    title: "Decision trail",
+    detail: "Rationale, owners, and review points stay attached to the work itself.",
+  },
+  {
+    title: "Execution context",
+    detail: "Projects, issues, and sprint changes inherit the why behind what moved.",
+  },
+  {
+    title: "Searchable memory",
+    detail: "Teams can recover the record without replaying every thread or meeting.",
+  },
 ];
 
 const workflowPoints = [
   {
     title: "Capture decisions in context",
-    text: "Notes, discussion, rationale, owners, and review points stay close to the actual work.",
+    text: "Capture the rationale, notes, owners, and review points while the decision is still close to the actual work.",
     image: "/assets/trac1.png",
   },
   {
     title: "Connect work to the why",
-    text: "Projects, issues, documents, and follow-up tasks inherit the reasoning behind what changed.",
+    text: "Projects, issues, documents, and follow-up tasks stay connected to the reasoning behind what changed.",
     image: "/assets/trac5.png",
   },
   {
     title: "Recover the record instantly",
-    text: "Ask Recall and the Knowledge Graph help the team find credible answers from real organizational history.",
+    text: "Ask Recall and the Knowledge Graph help the team recover grounded answers from real organizational history.",
     image: "/assets/trac10.png",
   },
 ];
@@ -88,10 +125,18 @@ export default function Homepage() {
           <div className="hp-container hp-hero-grid">
             <div className="hp-hero-copy">
               <p className="hp-kicker">Decision memory for teams</p>
+              <div className="hp-hero-modules" aria-label="Core product surfaces">
+                {heroModules.map((module) => (
+                  <div key={module.name} className="hp-hero-module">
+                    <strong>{module.name}</strong>
+                    <span>{module.detail}</span>
+                  </div>
+                ))}
+              </div>
               <h1 className="hp-title">Keep the why behind the work easy to recover.</h1>
               <p className="hp-subtitle">
-                Knoledgr brings decisions, documents, conversations, and execution into one calm operating record so the team can move
-                faster without losing context every time work changes hands.
+                Knoledgr keeps decisions, conversations, documents, and execution connected in one workspace, so teams can recover the
+                reasoning behind work without digging through scattered tools.
               </p>
 
               <div className="hp-actions">
@@ -105,7 +150,10 @@ export default function Homepage() {
 
               <div className="hp-signal-list">
                 {heroSignals.map((signal) => (
-                  <article key={signal.value} className="hp-signal-row">
+                  <article key={signal.value} className={`hp-signal-row ${signal.className}`}>
+                    <span className="hp-signal-icon" aria-hidden="true">
+                      <signal.icon />
+                    </span>
                     <strong>{signal.value}</strong>
                     <span>{signal.label}</span>
                   </article>
@@ -116,6 +164,14 @@ export default function Homepage() {
             <div className="hp-hero-media">
               <div className="hp-media-scene">
                 <article className="hp-media-card">
+                  <div className="hp-media-shell-bar" aria-hidden="true">
+                    <div className="hp-shell-dots">
+                      <span className="hp-shell-dot" />
+                      <span className="hp-shell-dot" />
+                      <span className="hp-shell-dot" />
+                    </div>
+                    <span className="hp-shell-label">Live workspace view</span>
+                  </div>
                   <div className="hp-video-frame">
                     <video
                       className="hp-video"
@@ -135,9 +191,16 @@ export default function Homepage() {
                     <p className="hp-kicker">One operating record</p>
                     <h2>Capture the decision, connect the work, recover the context.</h2>
                     <p>
-                      The public experience now shows the product more directly, with the real workflow in front instead of stacked marketing
-                      ornament.
+                      Knoledgr keeps the record behind the work intact, so decisions and follow-through remain easy to revisit when plans shift.
                     </p>
+                    <div className="hp-media-note-grid">
+                      {heroMediaNotes.map((note) => (
+                        <article key={note.title} className="hp-media-note">
+                          <strong>{note.title}</strong>
+                          <span>{note.detail}</span>
+                        </article>
+                      ))}
+                    </div>
                   </div>
                 </article>
 
@@ -182,8 +245,8 @@ export default function Homepage() {
               <p className="hp-kicker">Product</p>
               <h2>Built around the surfaces teams actually use.</h2>
               <p>
-                Decisions, Ask Recall, and the Knowledge Graph work together so answers remain grounded, execution stays traceable, and old
-                context does not disappear the moment the sprint changes.
+                Decisions, Ask Recall, and the Knowledge Graph work together so answers stay grounded in workspace history and execution
+                remains traceable as work moves.
               </p>
               <Link to="/login" className="hp-btn hp-btn-secondary">
                 Explore the product

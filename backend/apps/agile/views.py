@@ -189,6 +189,13 @@ def projects(request):
         while Project.objects.filter(key=key).exists():
             key = f"{base_key}{counter}"
             counter += 1
+
+        lead = request.user
+        lead_ref = request.data.get('lead_id', request.data.get('lead'))
+        if lead_ref not in (None, ''):
+            lead = User.objects.filter(id=lead_ref, organization=org).first()
+            if not lead:
+                return Response({'error': 'Lead user not found in organization'}, status=400)
         
         try:
             project = Project.objects.create(
@@ -196,7 +203,7 @@ def projects(request):
                 name=name,
                 key=key,
                 description=serializer.validated_data.get('description', ''),
-                lead=request.user
+                lead=lead
             )
             
             board = Board.objects.create(
@@ -218,7 +225,7 @@ def projects(request):
         except Exception as e:
             return Response({'error': str(e)}, status=400)
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated, IsOrgMember])
 def project_detail(request, project_id):
     org = _check_org(request)
@@ -226,37 +233,65 @@ def project_detail(request, project_id):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     try:
-        project = Project.objects.get(id=project_id, organization=org)
-        boards = project.boards.prefetch_related('columns__issues').all()
-        sprints = project.sprints.all().order_by('-start_date')
-        
-        board_data = [{
-            'id': b.id,
-            'name': b.name,
-            'type': b.board_type,
-            'columns': [{
-                'id': col.id,
-                'name': col.name,
-                'order': col.order,
-                'issue_count': col.issues.count()
-            } for col in b.columns.all()]
-        } for b in boards]
-        
-        sprint_serializer = SprintSerializer(sprints, many=True)
-        
-        return Response({
-            'id': project.id,
-            'name': project.name,
-            'key': project.key,
-            'description': project.description,
-            'lead': project.lead.get_full_name() if project.lead else None,
-            'boards': board_data,
-            'sprints': sprint_serializer.data,
-            'issue_count': project.issues.count(),
-            'sprint_count': project.sprints.count()
-        })
+        project = Project.objects.select_related('lead').get(id=project_id, organization=org)
     except Project.DoesNotExist:
         return Response({'error': 'Project not found'}, status=404)
+
+    if request.method == 'PUT':
+        if getattr(request.user, 'role', '') != 'admin' and project.lead_id != request.user.id:
+            return Response({'error': 'Permission denied for this project'}, status=403)
+
+        if 'name' in request.data:
+            project.name = (request.data.get('name') or '').strip()
+
+        if 'description' in request.data:
+            project.description = request.data.get('description') or ''
+
+        if 'lead_id' in request.data or 'lead' in request.data:
+            lead_ref = request.data.get('lead_id', request.data.get('lead'))
+            if lead_ref in (None, ''):
+                project.lead = None
+            else:
+                lead = User.objects.filter(id=lead_ref, organization=org).first()
+                if not lead:
+                    return Response({'error': 'Lead user not found in organization'}, status=400)
+                project.lead = lead
+
+        if not project.name:
+            return Response({'error': 'Project name is required'}, status=400)
+
+        project.save()
+
+    boards = project.boards.prefetch_related('columns__issues').all()
+    sprints = project.sprints.all().order_by('-start_date')
+
+    board_data = [{
+        'id': b.id,
+        'name': b.name,
+        'type': b.board_type,
+        'columns': [{
+            'id': col.id,
+            'name': col.name,
+            'order': col.order,
+            'issue_count': col.issues.count()
+        } for col in b.columns.all()]
+    } for b in boards]
+
+    sprint_serializer = SprintSerializer(sprints, many=True)
+
+    return Response({
+        'id': project.id,
+        'name': project.name,
+        'key': project.key,
+        'description': project.description,
+        'lead': project.lead.get_full_name() if project.lead else None,
+        'lead_id': project.lead_id,
+        'lead_name': project.lead.get_full_name() if project.lead else None,
+        'boards': board_data,
+        'sprints': sprint_serializer.data,
+        'issue_count': project.issues.count(),
+        'sprint_count': project.sprints.count()
+    })
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated, IsOrgMember, CanDeleteProject])

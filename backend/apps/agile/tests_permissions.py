@@ -7,6 +7,7 @@ from apps.organizations.models import Organization, User
 from .kanban_views import assign_issue_to_sprint, board_view
 from .ml_endpoints import predict_sprint, sprint_insights, suggest_assignee
 from .models import Board, Column, Component, Issue, IssueLabel, Project, Release, Sprint
+from .views import project_detail, projects
 from .views_missing_features import check_wip_limit, components, releases, update_release
 
 
@@ -150,6 +151,53 @@ class AgilePermissionIsolationTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("Lead user not found", str(response.data.get("error", "")))
         self.assertFalse(Component.objects.filter(project=self.project_a, name="Frontend").exists())
+
+    def test_project_create_allows_same_org_lead_selection(self):
+        request = self.factory.post(
+            "/api/agile/projects/",
+            {
+                "name": "Ops Console",
+                "description": "Operational delivery project",
+                "lead_id": self.contributor_a.id,
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin_a)
+        response = projects(request)
+        self.assertEqual(response.status_code, 201)
+
+        created = Project.objects.get(id=response.data["id"])
+        self.assertEqual(created.lead_id, self.contributor_a.id)
+
+    def test_project_create_rejects_cross_org_lead_selection(self):
+        request = self.factory.post(
+            "/api/agile/projects/",
+            {
+                "name": "Ops Console",
+                "lead_id": self.admin_b.id,
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin_a)
+        response = projects(request)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Lead user not found", str(response.data.get("error", "")))
+
+    def test_project_detail_put_updates_lead_for_admin(self):
+        request = self.factory.put(
+            f"/api/agile/projects/{self.project_a.id}/",
+            {
+                "lead_id": self.contributor_a.id,
+                "description": "Updated direction",
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin_a)
+        response = project_detail(request, self.project_a.id)
+        self.assertEqual(response.status_code, 200)
+        self.project_a.refresh_from_db()
+        self.assertEqual(self.project_a.lead_id, self.contributor_a.id)
+        self.assertEqual(self.project_a.description, "Updated direction")
 
     def test_check_wip_limit_is_org_scoped(self):
         request = self.factory.get(f"/api/agile/columns/{self.column_b.id}/wip-check/")

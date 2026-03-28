@@ -123,7 +123,7 @@ function Backlog() {
           stats={[
             { label: "Unplanned", value: backlogCount, helper: "Issues still waiting for sprint routing." },
             { label: "High priority", value: highPriorityCount, helper: "Urgent items asking for shaping." },
-            { label: "Assigned", value: assignedCount, helper: "Backlog work that already has an owner." },
+            { label: "Assigned", value: assignedCount, helper: "Backlog work that already has an assignee." },
             { label: "Sprints", value: sprints.length, helper: `${activeSprintCount} active sprint${activeSprintCount === 1 ? "" : "s"} available for routing.` },
           ]}
           aside={

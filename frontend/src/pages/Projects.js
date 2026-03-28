@@ -71,7 +71,7 @@ export default function Projects() {
   );
   const readyProjects = useMemo(() => portfolioProjects.filter((project) => !project.needsAttention), [portfolioProjects]);
   const attentionProjects = useMemo(() => portfolioProjects.filter((project) => project.needsAttention), [portfolioProjects]);
-  const ownerGaps = useMemo(() => portfolioProjects.filter((project) => !project.hasLead).length, [portfolioProjects]);
+  const leadGaps = useMemo(() => portfolioProjects.filter((project) => !project.hasLead).length, [portfolioProjects]);
   const briefGaps = useMemo(() => portfolioProjects.filter((project) => !project.hasBrief).length, [portfolioProjects]);
   const newestProject = portfolioProjects[0] || null;
 
@@ -203,8 +203,8 @@ export default function Projects() {
       </p>
       <div style={asideMetricGrid}>
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Owner gaps</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{ownerGaps}</p>
+          <p style={{ ...asideMetricLabel, color: palette.muted }}>Lead gaps</p>
+          <p style={{ ...asideMetricValue, color: palette.text }}>{leadGaps}</p>
         </div>
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
           <p style={{ ...asideMetricLabel, color: palette.muted }}>Brief gaps</p>
@@ -290,7 +290,7 @@ export default function Projects() {
               {readyProjects.length} ready to run
             </span>
             <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              {ownerGaps} missing leads
+              {leadGaps} missing leads
             </span>
             <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
               {briefGaps} missing briefs
@@ -361,8 +361,8 @@ export default function Projects() {
             <PortfolioSignalCard
               palette={palette}
               icon={UserGroupIcon}
-              label="Owner gaps"
-              value={ownerGaps}
+              label="Lead gaps"
+              value={leadGaps}
               helper="Projects that still need a visible lead."
             />
             <PortfolioSignalCard

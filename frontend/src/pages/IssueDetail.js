@@ -638,8 +638,8 @@ function IssueDetail() {
             <WorkspacePanel
               palette={palette}
               eyebrow="Context"
-              title="Timeline and ownership"
-              description="Keep the owning people and connected planning surfaces visible without digging through the project."
+              title="Timeline and accountability"
+              description="Keep the assignee, reporter, and connected planning surfaces visible without digging through the project."
             >
               <InfoRow icon={UserCircleIcon} label="Reporter" value={issue.reporter_name || "-"} palette={palette} />
               <InfoRow icon={UserCircleIcon} label="Assignee" value={issue.assignee_name || "Unassigned"} palette={palette} />

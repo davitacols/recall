@@ -179,7 +179,7 @@ function Blockers() {
           darkMode={darkMode}
           eyebrow="Risk Board"
           title="Blocker Tracker"
-          description="Track active delivery risks, keep blocker ownership visible, and clear issues before they stall the sprint."
+          description="Track active delivery risks, keep blocker accountability visible, and clear issues before they stall the sprint."
           stats={[
             { label: "Active blockers", value: stats.total, helper: "Open blockers currently tracked." },
             { label: "Open 7+ days", value: stats.critical, helper: "Long-running blockers that may need escalation." },

@@ -16,6 +16,8 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
 import BM25 from "../utils/bm25";
+import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 const QUICK_QUERIES = [
   "architecture tradeoffs",
@@ -80,7 +82,11 @@ function itemDate(item) {
 }
 
 function itemPreview(item) {
-  return item.content_preview || item.summary || item.content || item.description || "No preview available.";
+  return createPlainTextPreview(
+    item.content_preview || item.summary || item.content || item.description,
+    "No preview available.",
+    200
+  );
 }
 
 function itemRoute(item) {
@@ -322,25 +328,121 @@ export default function Knowledge() {
       (left, right) => Number(right.bm25_score || right.relevance_score || 0) - Number(left.bm25_score || left.relevance_score || 0)
     );
   }, [results, sortMode, typeFilter]);
+  const newestTrending = trending[0] || null;
+  const commandSummary = searched
+    ? `Searching ${searchTypes.length ? searchTypes.length : TYPE_OPTIONS.length} source types for "${query}".`
+    : "Search across conversations, decisions, goals, tasks, meetings, and documents from one command surface.";
 
   return (
     <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Knowledge Command"
+          title="Knowledge"
+          description="Search the organizational memory layer, jump into graph context, and surface missing knowledge before it turns into repeat work."
+          stats={[
+            { label: "Searchable items", value: stats.total_items, helper: "Indexed records across the workspace." },
+            { label: "This week", value: stats.this_week, helper: "New knowledge added recently." },
+            { label: "Memory gaps", value: insights.summary.memory_gaps_count, helper: "Repeated topics still missing durable decisions." },
+            { label: "Search demand", value: stats.total_searches, helper: "Total searches run through the knowledge layer." },
+          ]}
+          aside={
+            <div
+              style={{
+                ...knowledgeSpotlight,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
+                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              }}
+            >
+              <p style={{ ...knowledgeSpotlightEyebrow, color: palette.muted }}>Trending now</p>
+              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+                {newestTrending?.topic || newestTrending?.title || "No trending topic yet"}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+                {newestTrending
+                  ? `Use this as a jump point into the knowledge graph or run it as a search query to recover nearby context.`
+                  : "Run a search or explore the graph to start building a more visible memory layer."}
+              </p>
+              {newestTrending ? (
+                <div style={knowledgeSpotlightMeta}>
+                  <span style={{ ...knowledgeSpotlightChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    {newestTrending.count ? `${newestTrending.count} mentions` : "Trending topic"}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          }
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => navigate("/knowledge/graph")}
+                className="ui-btn-polish"
+                style={ui.secondaryButton}
+              >
+                <Squares2X2Icon style={{ width: 15, height: 15 }} />
+                Explore Graph
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/knowledge/analytics")}
+                className="ui-btn-polish"
+                style={ui.secondaryButton}
+              >
+                <ChartBarIcon style={{ width: 15, height: 15 }} />
+                Analytics
+              </button>
+            </>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={knowledgeToolbarLayout}>
+            <div style={knowledgeToolbarIntro}>
+              <p style={{ ...knowledgeToolbarEyebrow, color: palette.muted }}>Command Surface</p>
+              <h2 style={{ ...knowledgeToolbarTitle, color: palette.text }}>Search first, then pivot into graph, analytics, or health</h2>
+              <p style={{ ...knowledgeToolbarCopy, color: palette.muted }}>{commandSummary}</p>
+            </div>
+            <div style={knowledgeToolbarChipRail}>
+              <span style={{ ...knowledgeToolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {searchTypes.length ? `${searchTypes.length} source filters active` : "All source types"}
+              </span>
+              <span style={{ ...knowledgeToolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {searched ? `${viewResults.length} visible results` : `${trending.length} trending topics`}
+              </span>
+              <span style={{ ...knowledgeToolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {sortMode === "latest" ? "Latest first" : "Relevance first"}
+              </span>
+            </div>
+          </div>
+        </WorkspaceToolbar>
+
         <section
           className="ui-enter"
           style={{
-            borderRadius: 20,
+            ...commandStudio,
             border: `1px solid ${palette.border}`,
-            background: `linear-gradient(150deg, ${palette.card} 10%, ${darkMode ? "rgba(38,27,33,0.92)" : "rgba(244,237,226,0.92)"} 100%)`,
-            padding: 18,
-            marginBottom: 14,
+            background: palette.card,
           }}
         >
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: palette.muted }}>KNOWLEDGE COMMAND</p>
-          <h1 style={{ margin: "8px 0 4px", color: palette.text, fontSize: "clamp(1.18rem,1.95vw,1.72rem)" }}>Unified knowledge retrieval</h1>
-          <p style={{ margin: "0 0 14px", color: palette.muted, fontSize: 13 }}>
-            Search conversations, decisions, goals, meetings, tasks, and documents from one workspace, then move straight into the graph around the records you find.
-          </p>
+          <div style={commandStudioHeader}>
+            <div>
+              <p style={{ ...knowledgeToolbarEyebrow, color: palette.muted, margin: 0 }}>Prompt Studio</p>
+              <h2 style={{ margin: "6px 0 4px", color: palette.text, fontSize: 26, lineHeight: 1.04 }}>Run a grounded workspace query</h2>
+              <p style={{ margin: 0, color: palette.muted, fontSize: 13, lineHeight: 1.65 }}>
+                Search for decisions, blockers, experts, artifacts, or context trails, then branch into graph or downstream records.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <FeatureLink to="/knowledge/graph" icon={ShareIcon} label="Graph" />
+              <FeatureLink to="/knowledge/analytics" icon={ChartBarIcon} label="Analytics" />
+              <FeatureLink to="/knowledge-health" icon={BeakerIcon} label="Health" />
+            </div>
+          </div>
 
           <form
             onSubmit={(event) => {
@@ -348,10 +450,10 @@ export default function Knowledge() {
               runSearch(query);
             }}
             style={{
-              borderRadius: 14,
+              borderRadius: 16,
               border: `1px solid ${palette.border}`,
               background: palette.cardAlt,
-              padding: 8,
+              padding: 10,
               display: "grid",
               gridTemplateColumns: "minmax(0,1fr) auto auto",
               gap: 8,
@@ -512,11 +614,6 @@ export default function Knowledge() {
             ) : null}
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-            <FeatureLink to="/knowledge/graph" icon={ShareIcon} label="Graph" />
-            <FeatureLink to="/knowledge/analytics" icon={ChartBarIcon} label="Analytics" />
-            <FeatureLink to="/knowledge-health" icon={BeakerIcon} label="Health" />
-          </div>
         </section>
 
         {!searched ? (
@@ -555,9 +652,17 @@ export default function Knowledge() {
             ) : null}
 
             {trending.length ? (
-              <section style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, marginBottom: 14 }}>
-                <h2 style={{ margin: "0 0 10px", fontSize: 16, color: palette.text }}>Trending topics</h2>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <section style={{ display: "grid", gap: 12, marginBottom: 14 }}>
+                <div style={sectionIntro}>
+                  <div>
+                    <p style={{ ...knowledgeToolbarEyebrow, color: palette.muted, margin: 0 }}>Discovery</p>
+                    <h2 style={{ ...sectionTitle, color: palette.text }}>Trending topics</h2>
+                  </div>
+                  <p style={{ ...sectionCopy, color: palette.muted }}>
+                    Use trending themes as fast jump points into search and graph exploration.
+                  </p>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
                   {trending.map((topic, index) => {
                     const label = topic.topic || topic.title || "Untitled";
                     return (
@@ -568,19 +673,17 @@ export default function Knowledge() {
                           setQuery(label);
                           runSearch(label);
                         }}
-                        className="ui-btn-polish ui-focus-ring"
+                        className="ui-card-lift ui-smooth"
                         style={{
-                          border: "none",
-                          borderRadius: 999,
-                          padding: "7px 10px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          background: darkMode ? "rgba(96,165,250,0.18)" : "#dbeafe",
-                          color: "var(--app-link)",
+                          ...trendCard,
+                          border: `1px solid ${palette.border}`,
+                          background: palette.card,
                         }}
                       >
-                        {label} {topic.count ? `(${topic.count})` : ""}
+                        <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: palette.text }}>{label}</p>
+                        <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                          {topic.count ? `${topic.count} mentions in current activity.` : "Use as a jump point into the workspace memory layer."}
+                        </p>
                       </button>
                     );
                   })}
@@ -650,15 +753,15 @@ export default function Knowledge() {
             ) : null}
           </>
         ) : (
-          <section style={{ display: "grid", gap: 12 }}>
-            <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
-              <StatCard label="Results" value={resultOverview.total} helper={`Search results for "${query}"`} tone="var(--app-info)" palette={palette} />
-              <StatCard label="Top Source" value={resultOverview.topType} helper="Dominant record type in this result set" tone="var(--app-success)" palette={palette} />
-              <StatCard label="Active Sources" value={resultOverview.activeSources} helper="Source types included in this search" tone="var(--app-warning)" palette={palette} />
-            </section>
+            <section style={{ display: "grid", gap: 12 }}>
+              <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+                <StatCard label="Results" value={resultOverview.total} helper={`Search results for "${query}"`} tone="var(--app-info)" palette={palette} />
+                <StatCard label="Top Source" value={resultOverview.topType} helper="Dominant record type in this result set" tone="var(--app-success)" palette={palette} />
+                <StatCard label="Active Sources" value={resultOverview.activeSources} helper="Source types included in this search" tone="var(--app-warning)" palette={palette} />
+              </section>
 
-            <section style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+              <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                 <div>
                   <h2 style={{ margin: 0, fontSize: 18, color: palette.text }}>{viewResults.length} result{viewResults.length === 1 ? "" : "s"} for "{query}"</h2>
                   <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>
@@ -692,21 +795,22 @@ export default function Knowledge() {
                 </div>
               </div>
 
-              {viewResults.length === 0 ? (
-                <div style={{ borderRadius: 12, border: `1px dashed ${palette.border}`, padding: 18, textAlign: "center", color: palette.muted, fontSize: 13 }}>
-                  No matching records. Try broader terms, remove some source filters, or search the graph instead.
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {viewResults.map((item, index) => {
-                    const route = itemRoute(item);
-                    const type = itemType(item);
-                    return (
-                      <article
-                        key={`${type}_${item.id}_${index}`}
-                        className="ui-card-lift ui-smooth"
-                        style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 14 }}
-                      >
+                {viewResults.length === 0 ? (
+                  <div style={{ borderRadius: 12, border: `1px dashed ${palette.border}`, padding: 18, textAlign: "center", color: palette.muted, fontSize: 13 }}>
+                    No matching records. Try broader terms, remove some source filters, or search the graph instead.
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {viewResults.map((item, index) => {
+                      const route = itemRoute(item);
+                      const type = itemType(item);
+                      const preview = itemPreview(item);
+                      return (
+                        <article
+                          key={`${type}_${item.id}_${index}`}
+                          className="ui-card-lift ui-smooth"
+                          style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16 }}
+                        >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                             <span
@@ -730,10 +834,10 @@ export default function Knowledge() {
                           </span>
                         </div>
 
-                        <h3 style={{ margin: "0 0 6px", color: palette.text, fontSize: 16 }}>{item.title || "Untitled"}</h3>
-                        <p style={{ margin: 0, color: palette.muted, fontSize: 13, lineHeight: 1.6 }}>
-                          {itemPreview(item)}
-                        </p>
+                          <h3 style={{ margin: "0 0 6px", color: palette.text, fontSize: 16 }}>{item.title || "Untitled"}</h3>
+                          <p style={{ margin: 0, color: palette.muted, fontSize: 13, lineHeight: 1.65 }}>
+                            {preview}
+                          </p>
 
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
                           {route ? (
@@ -759,3 +863,128 @@ export default function Knowledge() {
     </div>
   );
 }
+
+const knowledgeSpotlight = {
+  minWidth: 240,
+  borderRadius: 24,
+  padding: 16,
+  display: "grid",
+  gap: 10,
+};
+
+const knowledgeSpotlightEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const knowledgeSpotlightMeta = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const knowledgeSpotlightChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const knowledgeToolbarLayout = {
+  display: "grid",
+  gap: 14,
+};
+
+const knowledgeToolbarIntro = {
+  display: "grid",
+  gap: 4,
+};
+
+const knowledgeToolbarEyebrow = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const knowledgeToolbarTitle = {
+  margin: 0,
+  fontSize: 24,
+  lineHeight: 1.04,
+};
+
+const knowledgeToolbarCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.65,
+  maxWidth: 760,
+};
+
+const knowledgeToolbarChipRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const knowledgeToolbarChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const commandStudio = {
+  borderRadius: 20,
+  padding: 18,
+  marginBottom: 14,
+  display: "grid",
+  gap: 14,
+};
+
+const commandStudioHeader = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  alignItems: "end",
+  flexWrap: "wrap",
+};
+
+const sectionIntro = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  alignItems: "end",
+  flexWrap: "wrap",
+};
+
+const sectionTitle = {
+  margin: "4px 0 0",
+  fontSize: 26,
+  lineHeight: 1.03,
+};
+
+const sectionCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.65,
+  maxWidth: 620,
+};
+
+const trendCard = {
+  borderRadius: 18,
+  padding: 14,
+  textAlign: "left",
+  display: "grid",
+  gap: 6,
+  cursor: "pointer",
+};

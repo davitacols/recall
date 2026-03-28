@@ -22,6 +22,7 @@ import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 function Decisions() {
   const { darkMode } = useTheme();
@@ -163,6 +164,32 @@ function Decisions() {
   const implementedCount = statusCounts.implemented || 0;
   const queueChipLabel = queueMode === "review" ? "My review queue" : mineOnly ? "My decisions" : null;
   const hasRouteFocus = Boolean(location.search);
+  const enrichedDecisions = useMemo(
+    () =>
+      filteredDecisions.map((decision) => ({
+        ...decision,
+        summary: createPlainTextPreview(
+          decision.description,
+          "Open the record to capture the actual decision statement, rationale, and implementation follow-through.",
+          180
+        ),
+        ownerLabel: decision.decision_maker_name || "Unknown",
+        createdLabel: formatDate(decision.created_at),
+      })),
+    [filteredDecisions]
+  );
+  const focusedQueue = useMemo(
+    () => enrichedDecisions.filter((decision) => ["proposed", "under_review"].includes(decision.status)),
+    [enrichedDecisions]
+  );
+  const archivedFlow = useMemo(
+    () => enrichedDecisions.filter((decision) => !["proposed", "under_review"].includes(decision.status)),
+    [enrichedDecisions]
+  );
+  const newestDecision = enrichedDecisions[0] || null;
+  const descriptionCoverage = decisions.length
+    ? Math.round((decisions.filter((decision) => String(decision.description || "").trim()).length / decisions.length) * 100)
+    : 0;
 
   const decisionStats = [
     {
@@ -376,6 +403,65 @@ function Decisions() {
         </div>
       </WorkspaceToolbar>
 
+      {decisions.length ? (
+        <section style={decisionOverviewGrid}>
+          <article
+            className="ui-card-lift ui-smooth"
+            style={{
+              ...decisionSpotlight,
+              border: `1px solid ${palette.border}`,
+              background: darkMode
+                ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
+                : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+            }}
+          >
+            <div style={{ display: "grid", gap: 8 }}>
+              <p style={{ ...cardEyebrow, color: palette.muted, margin: 0 }}>Latest record</p>
+              <h2 style={{ margin: 0, fontSize: "clamp(1.2rem,2vw,1.68rem)", lineHeight: 1.05, color: palette.text }}>
+                {newestDecision?.title || "Decision stream"}
+              </h2>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>
+                {newestDecision?.summary || "Capture the next decision to build the memory layer."}
+              </p>
+            </div>
+            <div style={decisionSpotlightMeta}>
+              {newestDecision ? (
+                <>
+                  <Badge text={statusLabel(newestDecision.status)} tone={statusConfig[newestDecision.status]?.tone || statusConfig.default.tone} />
+                  <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    {newestDecision.ownerLabel}
+                  </span>
+                  <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    {newestDecision.createdLabel}
+                  </span>
+                </>
+              ) : null}
+            </div>
+          </article>
+
+          <div style={decisionSignalGrid}>
+            <SignalCard
+              palette={palette}
+              label="Queue attention"
+              value={reviewQueue}
+              helper="Decisions still moving toward a final call."
+            />
+            <SignalCard
+              palette={palette}
+              label="Description coverage"
+              value={`${descriptionCoverage}%`}
+              helper="Records already carrying a written decision statement."
+            />
+            <SignalCard
+              palette={palette}
+              label="Implemented"
+              value={implementedCount}
+              helper="Records already moved into delivery."
+            />
+          </div>
+        </section>
+      ) : null}
+
       {filteredDecisions.length === 0 ? (
         <WorkspaceEmptyState
           palette={palette}
@@ -400,46 +486,63 @@ function Decisions() {
           }
         />
       ) : viewMode === "grid" ? (
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14 }}>
-          {filteredDecisions.map((decision) => (
-            <DecisionGridCard
-              key={decision.id}
-              decision={decision}
+        <div style={{ display: "grid", gap: 18 }}>
+          {focusedQueue.length ? (
+            <DecisionSection
+              title="Needs attention"
+              description="These records are still in review flow and deserve the first scan."
+              decisions={focusedQueue}
               palette={palette}
-              statusLabel={statusLabel(decision.status)}
-              statusTone={statusConfig[decision.status]?.tone || statusConfig.default.tone}
+              statusLabel={statusLabel}
+              statusConfig={statusConfig}
               impactTone={impactTone}
-              onOpen={() => navigate(`/decisions/${decision.id}`)}
+              onOpen={(id) => navigate(`/decisions/${id}`)}
             />
-          ))}
-        </section>
+          ) : null}
+          <DecisionSection
+            title={focusedQueue.length ? "Decision atlas" : "All decisions"}
+            description={
+              focusedQueue.length
+                ? "The rest of the record is already approved or implemented and can be treated like a calmer historical atlas."
+                : "Every decision record in the current view."
+            }
+            decisions={focusedQueue.length ? archivedFlow : enrichedDecisions}
+            palette={palette}
+            statusLabel={statusLabel}
+            statusConfig={statusConfig}
+            impactTone={impactTone}
+            onOpen={(id) => navigate(`/decisions/${id}`)}
+          />
+        </div>
       ) : (
-        <section style={{ display: "grid", gap: 12 }}>
-          {filteredDecisions.map((decision) => (
-            <WorkspacePanel
-              key={decision.id}
+        <div style={{ display: "grid", gap: 18 }}>
+          {focusedQueue.length ? (
+            <DecisionListSection
+              title="Needs attention"
+              description="The review queue comes first so proposals and under-review records are easier to work through."
+              decisions={focusedQueue}
               palette={palette}
-              title={decision.title || "Untitled decision"}
-              eyebrow="Decision Record"
-              description={decision.description || "No description provided yet."}
-              action={<DecisionActionRail palette={palette} decision={decision} onOpen={() => navigate(`/decisions/${decision.id}`)} />}
-            >
-              <div style={decisionListRow}>
-                <div style={decisionBadgeRail}>
-                  <Badge text={statusLabel(decision.status)} tone={statusConfig[decision.status]?.tone || statusConfig.default.tone} />
-                  <Badge text={(decision.impact_level || "medium").toUpperCase()} tone={impactTone} />
-                  <Badge text={`Owner ${decision.decision_maker_name || "Unknown"}`} tone={{ bg: palette.cardAlt, border: palette.border, text: palette.text }} />
-                </div>
-                <div style={decisionMetaRail}>
-                  <span style={{ color: palette.muted }}>{formatDate(decision.created_at)}</span>
-                  <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(`/decisions/${decision.id}`)} style={decisionLinkButton(palette)}>
-                    Open decision <ArrowRightIcon style={icon12} />
-                  </button>
-                </div>
-              </div>
-            </WorkspacePanel>
-          ))}
-        </section>
+              statusLabel={statusLabel}
+              statusConfig={statusConfig}
+              impactTone={impactTone}
+              onOpen={(id) => navigate(`/decisions/${id}`)}
+            />
+          ) : null}
+          <DecisionListSection
+            title={focusedQueue.length ? "Decision atlas" : "All decisions"}
+            description={
+              focusedQueue.length
+                ? "Approved and implemented records stay visible below the queue as the historical memory layer."
+                : "Browse the current decision memory without an active review split."
+            }
+            decisions={focusedQueue.length ? archivedFlow : enrichedDecisions}
+            palette={palette}
+            statusLabel={statusLabel}
+            statusConfig={statusConfig}
+            impactTone={impactTone}
+            onOpen={(id) => navigate(`/decisions/${id}`)}
+          />
+        </div>
       )}
     </div>
   );
@@ -478,18 +581,100 @@ function DecisionGridCard({ decision, palette, statusLabel, statusTone, impactTo
       </div>
 
       <p style={{ ...cardDescription, color: palette.muted }}>
-        {decision.description || "No description provided yet. Open the record to add rationale, context, and follow-through."}
+        {decision.summary || "No description provided yet. Open the record to add rationale, context, and follow-through."}
       </p>
 
       <div style={{ ...decisionFoot, borderTop: `1px solid ${palette.border}` }}>
         <div>
           <p style={{ ...cardLabel, color: palette.muted }}>Owner</p>
-          <p style={{ ...cardOwner, color: palette.text }}>{decision.decision_maker_name || "Unknown"}</p>
+          <p style={{ ...cardOwner, color: palette.text }}>{decision.ownerLabel || decision.decision_maker_name || "Unknown"}</p>
         </div>
         <span style={{ ...openLink, color: palette.accent }}>
           Open decision <ArrowRightIcon style={icon12} />
         </span>
       </div>
+    </article>
+  );
+}
+
+function DecisionSection({ title, description, decisions, palette, statusLabel, statusConfig, impactTone, onOpen }) {
+  if (!decisions.length) return null;
+  return (
+    <section style={{ display: "grid", gap: 12 }}>
+      <div style={sectionIntro}>
+        <div>
+          <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Decision Section</p>
+          <h2 style={{ ...sectionTitle, color: palette.text }}>{title}</h2>
+        </div>
+        <p style={{ ...sectionCopy, color: palette.muted }}>{description}</p>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14 }}>
+        {decisions.map((decision) => (
+          <DecisionGridCard
+            key={decision.id}
+            decision={decision}
+            palette={palette}
+            statusLabel={statusLabel(decision.status)}
+            statusTone={statusConfig[decision.status]?.tone || statusConfig.default.tone}
+            impactTone={impactTone}
+            onOpen={() => onOpen(decision.id)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DecisionListSection({ title, description, decisions, palette, statusLabel, statusConfig, impactTone, onOpen }) {
+  if (!decisions.length) return null;
+  return (
+    <section style={{ display: "grid", gap: 12 }}>
+      <div style={sectionIntro}>
+        <div>
+          <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Decision Section</p>
+          <h2 style={{ ...sectionTitle, color: palette.text }}>{title}</h2>
+        </div>
+        <p style={{ ...sectionCopy, color: palette.muted }}>{description}</p>
+      </div>
+      <div style={{ display: "grid", gap: 12 }}>
+        {decisions.map((decision) => (
+          <WorkspacePanel
+            key={decision.id}
+            palette={palette}
+            title={decision.title || "Untitled decision"}
+            eyebrow="Decision Record"
+            description={decision.summary || "No description provided yet."}
+            action={<DecisionActionRail palette={palette} decision={decision} onOpen={() => onOpen(decision.id)} />}
+          >
+            <div style={decisionListRow}>
+              <div style={decisionBadgeRail}>
+                <Badge text={statusLabel(decision.status)} tone={statusConfig[decision.status]?.tone || statusConfig.default.tone} />
+                <Badge text={(decision.impact_level || "medium").toUpperCase()} tone={impactTone} />
+                <Badge text={`Owner ${decision.ownerLabel || "Unknown"}`} tone={{ bg: palette.cardAlt, border: palette.border, text: palette.text }} />
+              </div>
+              <div style={decisionMetaRail}>
+                <span style={{ color: palette.muted }}>{decision.createdLabel}</span>
+                <button className="ui-btn-polish ui-focus-ring" onClick={() => onOpen(decision.id)} style={decisionLinkButton(palette)}>
+                  Open decision <ArrowRightIcon style={icon12} />
+                </button>
+              </div>
+            </div>
+          </WorkspacePanel>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SignalCard({ palette, label, value, helper }) {
+  return (
+    <article
+      className="ui-card-lift ui-smooth"
+      style={{ ...signalCard, border: `1px solid ${palette.border}`, background: palette.card }}
+    >
+      <p style={{ ...signalLabel, color: palette.muted }}>{label}</p>
+      <p style={{ ...signalValue, color: palette.text }}>{value}</p>
+      <p style={{ ...signalHelper, color: palette.muted }}>{helper}</p>
     </article>
   );
 }
@@ -592,6 +777,62 @@ const toolbarMetaChip = {
   padding: "8px 12px",
   fontSize: 12,
   fontWeight: 700,
+};
+
+const decisionOverviewGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
+  gap: 14,
+};
+
+const decisionSpotlight = {
+  borderRadius: 24,
+  padding: 18,
+  display: "grid",
+  gap: 14,
+  boxShadow: "var(--ui-shadow-sm)",
+};
+
+const decisionSpotlightMeta = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const decisionSignalGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+  gap: 12,
+};
+
+const signalCard = {
+  borderRadius: 20,
+  padding: 16,
+  display: "grid",
+  gap: 8,
+  alignContent: "start",
+  boxShadow: "var(--ui-shadow-xs)",
+};
+
+const signalLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const signalValue = {
+  margin: 0,
+  fontSize: 28,
+  lineHeight: 1,
+  fontWeight: 800,
+};
+
+const signalHelper = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.6,
 };
 
 const filterRail = {
@@ -788,6 +1029,27 @@ const openLink = {
   gap: 6,
   fontSize: 12,
   fontWeight: 700,
+};
+
+const sectionIntro = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  alignItems: "end",
+  flexWrap: "wrap",
+};
+
+const sectionTitle = {
+  margin: "4px 0 0",
+  fontSize: 26,
+  lineHeight: 1.03,
+};
+
+const sectionCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.65,
+  maxWidth: 620,
 };
 
 const decisionListRow = {

@@ -63,12 +63,6 @@ export default function Projects() {
         }),
     [projects]
   );
-  const projectSummary = useMemo(
-    () => ({
-      total: projects.length,
-    }),
-    [projects]
-  );
   const readyProjects = useMemo(() => portfolioProjects.filter((project) => !project.needsAttention), [portfolioProjects]);
   const attentionProjects = useMemo(() => portfolioProjects.filter((project) => project.needsAttention), [portfolioProjects]);
   const leadGaps = useMemo(() => portfolioProjects.filter((project) => !project.hasLead).length, [portfolioProjects]);
@@ -165,27 +159,6 @@ export default function Projects() {
     }
   };
 
-  const heroStats = [
-    {
-      label: "Workspaces",
-      value: projectSummary.total,
-      helper: "Active project spaces",
-      tone: palette.accent,
-    },
-    {
-      label: "Ready",
-      value: readyProjects.length,
-      helper: "Lead and brief in place",
-      tone: palette.text,
-    },
-    {
-      label: "Needs shaping",
-      value: attentionProjects.length,
-      helper: "Missing lead or brief",
-      tone: palette.info,
-    },
-  ];
-
   const operationsAside = (
     <div
       style={{
@@ -258,7 +231,6 @@ export default function Projects() {
         eyebrow="Execution Workspace"
         title="Projects"
         description="Organize delivery tracks, roadmaps, and project lead accountability in a calmer workspace that keeps execution context close."
-        stats={heroStats}
         aside={operationsAside}
         actions={
           <>

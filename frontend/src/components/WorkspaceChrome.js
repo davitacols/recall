@@ -121,10 +121,10 @@ export function WorkspaceEmptyState({ palette, title, description, action }) {
 
 const hero = {
   position: "relative",
-  padding: "clamp(6px, 1vw, 10px) 0 clamp(8px, 1.2vw, 12px)",
+  padding: "clamp(2px, 0.6vw, 6px) 0 clamp(4px, 0.8vw, 8px)",
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: 16,
+  gap: 14,
   alignItems: "start",
 };
 
@@ -133,7 +133,7 @@ const heroMain = {
   zIndex: 1,
   display: "grid",
   alignContent: "space-between",
-  gap: 14,
+  gap: 10,
   minWidth: 0,
 };
 
@@ -164,7 +164,7 @@ const heroDescription = {
 const heroActions = {
   display: "flex",
   alignItems: "center",
-  gap: 10,
+  gap: 8,
   flexWrap: "wrap",
 };
 
@@ -173,7 +173,7 @@ const heroSide = {
   zIndex: 1,
   display: "grid",
   alignContent: "start",
-  gap: 10,
+  gap: 8,
 };
 
 const asideWrap = {

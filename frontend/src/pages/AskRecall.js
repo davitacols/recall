@@ -770,7 +770,7 @@ export default function AskRecall() {
           { label: 'Decisions', href: '/decisions' },
         ];
 
-  const heroStats = [
+  const signalStats = [
     {
       label: 'Readiness',
       value: results?.readinessScore ?? '--',
@@ -794,6 +794,29 @@ export default function AskRecall() {
       tone: hasAutonomousPlan ? (canManageAutonomousFixes ? palette.success : palette.warn) : palette.accent,
     },
   ];
+
+  const heroAside = (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <BrandedTechnicalIllustration darkMode={darkMode} compact />
+      <div
+        style={{
+          border: `1px solid ${palette.border}`,
+          borderRadius: 20,
+          background: palette.card,
+          padding: '12px 14px',
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+        }}
+      >
+        {signalStats.map((stat) => (
+          <span key={`${stat.label}-${stat.value}`} style={pillStyle(palette, stat.tone === palette.success ? 'success' : stat.tone === palette.warn ? 'warn' : stat.tone === palette.danger ? 'danger' : stat.tone === palette.info ? 'info' : 'default')}>
+            {stat.label} {stat.value}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 
   const feedbackPanel = feedbackSummary ? (
     <WorkspacePanel
@@ -879,7 +902,6 @@ export default function AskRecall() {
         eyebrow="Organizational Copilot"
         title="Ask Recall"
         description="Ask grounded questions, inspect the evidence trail, and move from diagnosis to safe action without leaving Knoledgr."
-        stats={heroStats}
         actions={
           <>
             <button type="button" onClick={() => runAnalysis('Where is execution risk highest this week?')} style={buttonGhost(palette)}>
@@ -900,7 +922,7 @@ export default function AskRecall() {
             </button>
           </>
         }
-        aside={<BrandedTechnicalIllustration darkMode={darkMode} compact />}
+        aside={heroAside}
       />
 
       <section style={splitSection()}>
@@ -1036,7 +1058,7 @@ export default function AskRecall() {
             description="Keep the important trust and execution signals visible while you ask, review, and act."
           >
             <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-              {heroStats.map((stat) => (
+              {signalStats.map((stat) => (
                 <article key={`${stat.label}-${stat.value}`} style={microCardStyle(palette, stat.tone)}>
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>
                     {stat.label}

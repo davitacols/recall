@@ -4,6 +4,7 @@ import { ExclamationTriangleIcon, PlusIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
 
 function CurrentSprint() {
   const { darkMode } = useTheme();
@@ -64,38 +65,92 @@ function CurrentSprint() {
     return (
       <div style={{ minHeight: "100vh" }}>
         <div style={ui.container}>
-          <section style={{ ...hero, background: "transparent", border: "none" }}>
-            <p style={{ ...eyebrow, color: palette.muted }}>SPRINT CENTER</p>
-            <h1 style={{ ...title, color: palette.text }}>No active sprint</h1>
-            <p style={{ ...subtitle, color: palette.muted }}>
-              Start a sprint in a project to track execution, blockers, and outcome velocity.
-            </p>
-            <Link to="/projects" style={ui.primaryButton}>Go to Projects</Link>
-          </section>
+          <WorkspaceHero
+            palette={palette}
+            darkMode={darkMode}
+            eyebrow="Sprint Center"
+            title="No active sprint"
+            description="Start a sprint in a project to track execution, blockers, delivery rhythm, and outcome velocity from one workspace."
+            stats={[
+              { label: "Blockers", value: 0, helper: "No active sprint context yet." },
+              { label: "Completion", value: "0%", helper: "Sprint completion appears once a sprint is active." },
+            ]}
+            actions={<Link to="/projects" className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, textDecoration: "none" }}>Go to Projects</Link>}
+          />
         </div>
       </div>
     );
   }
 
   const completion = sprint.issue_count > 0 ? Math.round(((sprint.completed || 0) / sprint.issue_count) * 100) : 0;
+  const blockerCount = blockers.length;
+  const sprintPulse =
+    blockerCount > 0
+      ? `${blockerCount} active blocker${blockerCount === 1 ? "" : "s"} need attention before flow feels healthy.`
+      : completion >= 70
+        ? "Sprint is moving well and the blocker lane is clear."
+        : "Delivery is active and the sprint still has room to tighten execution.";
 
   return (
     <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
-        <section style={{ ...hero, background: "transparent", border: "none" }}>
-          <div>
-            <p style={{ ...eyebrow, color: palette.muted }}>ACTIVE SPRINT</p>
-            <h1 style={{ ...title, color: palette.text }}>{sprint.name}</h1>
-            <p style={{ ...subtitle, color: palette.muted }}>
-              {sprint.start_date} - {sprint.end_date}
-            </p>
-            {sprint.goal && <p style={{ ...subtitle, color: palette.muted, marginTop: 8 }}>Goal: {sprint.goal}</p>}
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Active Sprint"
+          title={sprint.name}
+          description={sprint.goal || "Keep the current sprint moving, surface blockers early, and track completion from one calmer center."}
+          stats={[
+            { label: "Completion", value: `${completion}%`, helper: "Percent of sprint work completed." },
+            { label: "Issues", value: sprint.issue_count || 0, helper: "Tracked items in this sprint." },
+            { label: "In progress", value: sprint.in_progress || 0, helper: "Work currently moving." },
+            { label: "Blockers", value: blockerCount, helper: "Known blockers attached to the sprint." },
+          ]}
+          aside={
+            <div
+              style={{
+                ...spotlightCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
+                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              }}
+            >
+              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Sprint window</p>
+              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+                {sprint.start_date} - {sprint.end_date}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{sprintPulse}</p>
+            </div>
+          }
+          actions={
+            <>
+              <Link to={`/projects/${sprint.project_id}`} className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Project</Link>
+              <Link to="/sprint-management" className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Manage Sprints</Link>
+            </>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={toolbarLayout}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Delivery pulse</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>See progress and friction before you drop into blockers</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>{sprintPulse}</p>
+            </div>
+            <div style={toolbarChipRail}>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {sprint.todo || 0} to do
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {sprint.completed || 0} completed
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {blockerCount} blockers
+              </span>
+            </div>
           </div>
-          <div style={ctaRow}>
-            <Link to={`/projects/${sprint.project_id}`} style={ui.secondaryButton}>Project</Link>
-            <Link to="/sprint-management" style={ui.secondaryButton}>Manage Sprints</Link>
-          </div>
-        </section>
+        </WorkspaceToolbar>
 
         <section style={statsGrid}>
           <Metric label="Completion" value={`${completion}%`} />
@@ -207,11 +262,6 @@ function Metric({ label, value }) {
 }
 
 const spinner = { width: 30, height: 30, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const hero = { borderRadius: 0, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
-const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
-const title = { margin: "8px 0 5px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", letterSpacing: "-0.02em" };
-const subtitle = { margin: 0, fontSize: 13 };
-const ctaRow = { display: "flex", gap: 8, flexWrap: "wrap" };
 const h2 = { fontSize: 19 };
 const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
 const metricCard = { borderRadius: 0, padding: 12, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)" };
@@ -232,6 +282,15 @@ const formStack = { marginTop: 12, display: "grid", gap: 8 };
 const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
 const icon16 = { width: 16, height: 16 };
 const icon14 = { width: 14, height: 14 };
+const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
+const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarLayout = { display: "grid", gap: 14 };
+const toolbarIntro = { display: "grid", gap: 4 };
+const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
+const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
+const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
 
 export default CurrentSprint;
 

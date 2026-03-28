@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 const COLUMN_STATUS_MAP = {
   "to do": "todo",
@@ -175,76 +177,185 @@ function KanbanBoard() {
     );
   }
 
+  const columns = board.columns || [];
+  const totalIssues = columns.reduce((sum, column) => sum + (column.issue_count || (column.issues || []).length || 0), 0);
+  const activeColumns = columns.filter((column) => (column.issue_count || (column.issues || []).length || 0) > 0).length;
+  const inFlightIssues = columns.reduce(
+    (sum, column) =>
+      ["in progress", "in review", "review", "testing"].includes(String(column.name || "").toLowerCase())
+        ? sum + (column.issue_count || (column.issues || []).length || 0)
+        : sum,
+    0,
+  );
+  const boardPulse = moveError
+    ? "A recent move needs attention before the board flow is fully healthy again."
+    : inFlightIssues > 0
+      ? `${inFlightIssues} issue${inFlightIssues === 1 ? "" : "s"} are currently moving through active execution lanes.`
+      : "Board is configured and ready for work to move through execution.";
+
   return (
     <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
-        <section style={{ ...hero, background: "transparent", border: "none" }}>
-          <div>
-            <button onClick={() => navigate(-1)} style={backButton}>
-              <ArrowLeftIcon style={icon14} /> Back
+        <button onClick={() => navigate(-1)} style={backButton}>
+          <ArrowLeftIcon style={icon14} /> Back
+        </button>
+
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Kanban Board"
+          title={board.name}
+          description={`Run execution from one board view for ${board.project_name || "this project"}, with drag-based status changes and clearer in-flight visibility.`}
+          stats={[
+            { label: "Columns", value: columns.length, helper: "Tracked workflow lanes in this board." },
+            { label: "Issues", value: totalIssues, helper: "All issues currently on the board." },
+            { label: "In flight", value: inFlightIssues, helper: "Issues moving through active execution lanes." },
+            { label: "Active lanes", value: activeColumns, helper: "Columns that currently contain work." },
+          ]}
+          aside={
+            <div
+              style={{
+                ...spotlightCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
+                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              }}
+            >
+              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Board pulse</p>
+              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+                {moveError ? "Move needs attention" : `${totalIssues} items in motion`}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{boardPulse}</p>
+            </div>
+          }
+          actions={
+            <button onClick={() => setShowCreateIssue(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+              <PlusIcon style={icon14} /> New Issue
             </button>
-            <p style={{ ...eyebrow, color: palette.muted }}>KANBAN BOARD</p>
-            <h1 style={{ ...title, color: palette.text }}>{board.name}</h1>
-            <p style={{ ...subtitle, color: palette.muted }}>Project: {board.project_name}</p>
-          </div>
-          <button onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}>
-            <PlusIcon style={icon14} /> New Issue
-          </button>
-        </section>
-        {moveError && (
-          <div style={{ marginBottom: 10, borderRadius: 10, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger, padding: "8px 10px", fontSize: 12 }}>
-            {moveError}
-          </div>
-        )}
+          }
+        />
 
-        <section style={boardLane}>
-          {(board.columns || []).map((column) => (
-            <article key={column.id} style={{ ...columnCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-              <div style={columnHead}>
-                <h2 style={{ margin: 0, fontSize: 13, color: palette.text, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                  {column.name}
-                </h2>
-                <span style={countBadge}>{column.issue_count || (column.issues || []).length || 0}</span>
+        <WorkspaceToolbar palette={palette}>
+          <div style={toolbarLayout}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Board guide</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Drag issues across execution lanes and watch the flow stay grounded in context</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>
+                Use this board as the live execution surface for delivery. Moves are applied immediately and synced back into the project record.
+              </p>
+            </div>
+            <div style={toolbarChipRail}>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                Drag between columns
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {movingIssueId ? "Move in progress" : "Board ready"}
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {columns.length} execution lanes
+              </span>
+            </div>
+            {moveError ? (
+              <div style={{ ...errorBanner, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger }}>
+                {moveError}
               </div>
+            ) : null}
+          </div>
+        </WorkspaceToolbar>
 
-              <div
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => handleDrop(column)}
-                style={issuesWrap}
-              >
-                {(column.issues || []).length === 0 && <div style={empty}>No issues</div>}
-
-                {(column.issues || []).map((issue) => (
-                  <article
-                    key={issue.id}
-                    draggable={movingIssueId !== issue.id}
-                    onDragStart={() => setDraggedIssue(issue)}
-                    onDragEnd={() => setDraggedIssue(null)}
-                    onClick={() => navigate(`/issues/${issue.id}`)}
-                    style={{ ...issueCard, opacity: movingIssueId === issue.id ? 0.55 : 1 }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={issueKey}>{issue.key || `ISS-${issue.id}`}</p>
-                        <p style={issueTitle}>{issue.title}</p>
-                      </div>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteIssue(issue.id);
-                        }}
-                        style={{ ...deleteButton, color: palette.danger }}
-                      >
-                        <TrashIcon style={icon14} />
-                      </button>
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="Execution lanes"
+          title="Board flow"
+          description="Each lane reflects live issue status. Open an issue for detail, or drag it to move execution forward."
+        >
+          {columns.length === 0 ? (
+            <WorkspaceEmptyState
+              palette={palette}
+              title="No columns on this board"
+              description="Create board columns first so work can move through a defined execution flow."
+            />
+          ) : (
+            <section style={boardLane}>
+              {columns.map((column) => (
+                <article key={column.id} style={{ ...columnCard, background: palette.cardAlt, border: `1px solid ${palette.border}` }}>
+                  <div style={columnHead}>
+                    <div style={{ display: "grid", gap: 4 }}>
+                      <h2 style={{ margin: 0, fontSize: 13, color: palette.text, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                        {column.name}
+                      </h2>
+                      <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                        {(column.issue_count || (column.issues || []).length || 0) === 0 ? "Open lane" : "Work currently in this lane"}
+                      </p>
                     </div>
-                    <p style={issueMeta}>{issue.assignee || issue.assignee_name || "Unassigned"}</p>
-                  </article>
-                ))}
-              </div>
-            </article>
-          ))}
-        </section>
+                    <span style={{ ...countBadge, border: `1px solid ${palette.border}`, color: palette.text, background: palette.card }}>
+                      {column.issue_count || (column.issues || []).length || 0}
+                    </span>
+                  </div>
+
+                  <div
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => handleDrop(column)}
+                    style={issuesWrap}
+                  >
+                    {(column.issues || []).length === 0 ? (
+                      <WorkspaceEmptyState
+                        palette={palette}
+                        title="No issues"
+                        description="Drop an issue here when it reaches this execution stage."
+                      />
+                    ) : (
+                      (column.issues || []).map((issue) => (
+                        <article
+                          key={issue.id}
+                          className="ui-card-lift ui-smooth"
+                          draggable={movingIssueId !== issue.id}
+                          onDragStart={() => setDraggedIssue(issue)}
+                          onDragEnd={() => setDraggedIssue(null)}
+                          onClick={() => navigate(`/issues/${issue.id}`)}
+                          style={{
+                            ...issueCard,
+                            opacity: movingIssueId === issue.id ? 0.55 : 1,
+                            border: `1px solid ${palette.border}`,
+                            background: palette.card,
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                            <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
+                              <p style={{ ...issueKey, color: palette.muted }}>{issue.key || `ISS-${issue.id}`}</p>
+                              <p style={{ ...issueTitle, color: palette.text }}>{issue.title}</p>
+                            </div>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteIssue(issue.id);
+                              }}
+                              style={{ ...deleteButton, color: palette.danger }}
+                            >
+                              <TrashIcon style={icon14} />
+                            </button>
+                          </div>
+                          <p style={{ ...issuePreview, color: palette.muted }}>
+                            {createPlainTextPreview(issue.description || issue.summary || "", "No issue brief added yet.", 140)}
+                          </p>
+                          <div style={metaRail}>
+                            <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                              {issue.assignee || issue.assignee_name || "Unassigned"}
+                            </span>
+                            <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                              {issue.priority || "medium"}
+                            </span>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </div>
+                </article>
+              ))}
+            </section>
+          )}
+        </WorkspacePanel>
 
         {showCreateIssue && (
           <div style={overlay}>
@@ -272,21 +383,28 @@ function KanbanBoard() {
 }
 
 const spinner = { width: 30, height: 30, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const hero = { borderRadius: 0, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
 const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--ui-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 8 };
-const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
-const title = { margin: "8px 0 5px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", letterSpacing: "-0.02em" };
-const subtitle = { margin: 0, fontSize: 13 };
-const boardLane = { display: "grid", gridAutoFlow: "column", gridAutoColumns: "minmax(280px, 340px)", gap: 8, overflowX: "auto", overflowY: "hidden", paddingBottom: 4, alignItems: "start" };
-const columnCard = { borderRadius: 0, padding: 10, minHeight: 520, display: "flex", flexDirection: "column", minWidth: 280 };
+const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
+const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarLayout = { display: "grid", gap: 14 };
+const toolbarIntro = { display: "grid", gap: 4 };
+const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
+const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
+const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
+const errorBanner = { borderRadius: 18, padding: "10px 12px", fontSize: 12, fontWeight: 700 };
+const boardLane = { display: "grid", gridAutoFlow: "column", gridAutoColumns: "minmax(300px, 360px)", gap: 12, overflowX: "auto", overflowY: "hidden", paddingBottom: 4, alignItems: "start" };
+const columnCard = { borderRadius: 24, padding: 12, minHeight: 520, display: "flex", flexDirection: "column", minWidth: 300 };
 const columnHead = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
-const countBadge = { minWidth: 22, height: 22, borderRadius: 0, border: "1px solid var(--ui-border)", color: "var(--ui-muted)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 };
+const countBadge = { minWidth: 28, height: 28, borderRadius: 999, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800 };
 const issuesWrap = { display: "grid", gap: 8, alignContent: "start", flex: 1 };
-const empty = { borderRadius: 0, border: "1px dashed var(--ui-border)", padding: "14px 10px", fontSize: 12, color: "var(--ui-muted)", textAlign: "center" };
-const issueCard = { borderRadius: 0, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)", padding: 10, cursor: "pointer" };
-const issueKey = { margin: 0, fontSize: 11, color: "var(--ui-muted)", fontWeight: 700 };
-const issueTitle = { margin: "5px 0", fontSize: 13, color: "var(--ui-text)", fontWeight: 600, lineHeight: 1.35 };
-const issueMeta = { margin: 0, fontSize: 11, color: "var(--ui-muted)" };
+const issueCard = { borderRadius: 20, padding: 12, cursor: "pointer", display: "grid", gap: 10 };
+const issueKey = { margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" };
+const issueTitle = { margin: 0, fontSize: 15, fontWeight: 700, lineHeight: 1.3 };
+const issuePreview = { margin: 0, fontSize: 12, lineHeight: 1.6 };
+const metaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const metaChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "7px 10px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
 const deleteButton = { border: "none", background: "transparent", cursor: "pointer", padding: 2 };
 const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
 const modalCard = { width: "min(520px,100%)", borderRadius: 0, padding: 16 };

@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { createPlainTextPreview } from "../utils/textPreview";
 
 function Backlog() {
   const { projectId } = useParams();
@@ -94,6 +96,17 @@ function Backlog() {
     );
   }
 
+  const backlogCount = backlogIssues.length;
+  const highPriorityCount = backlogIssues.filter((issue) => ["highest", "high"].includes(String(issue.priority || "").toLowerCase())).length;
+  const assignedCount = backlogIssues.filter((issue) => Boolean(issue.assignee_name)).length;
+  const activeSprintCount = sprints.filter((sprint) => String(sprint.status || "").toLowerCase() === "active").length;
+  const backlogPulse =
+    backlogCount === 0
+      ? "Backlog is clear and ready for the next planning cycle."
+      : highPriorityCount > 0
+        ? `${highPriorityCount} high-priority issue${highPriorityCount === 1 ? "" : "s"} should be shaped before the next sprint commit.`
+        : "Backlog is populated and ready to be sorted into the next sprint window.";
+
   return (
     <div style={{ minHeight: "100vh" }}>
       <div style={ui.container}>
@@ -101,81 +114,167 @@ function Backlog() {
           <ArrowLeftIcon style={icon14} /> Back
         </button>
 
-        <section style={{ ...hero, background: "transparent", border: "none" }}>
-          <div>
-            <p style={{ ...eyebrow, color: palette.muted }}>PROJECT BACKLOG</p>
-            <h1 style={{ ...titleStyle, color: palette.text }}>Prioritized Backlog</h1>
-            <p style={{ ...subtitle, color: palette.muted }}>{backlogIssues.length} unplanned issues</p>
+        <WorkspaceHero
+          palette={palette}
+          darkMode={darkMode}
+          eyebrow="Project Backlog"
+          title="Shape the next sprint before work gets noisy"
+          description="Review unplanned work, reorder what matters, and route the strongest candidates into an active sprint without losing context."
+          stats={[
+            { label: "Unplanned", value: backlogCount, helper: "Issues still waiting for sprint routing." },
+            { label: "High priority", value: highPriorityCount, helper: "Urgent items asking for shaping." },
+            { label: "Assigned", value: assignedCount, helper: "Backlog work that already has an owner." },
+            { label: "Sprints", value: sprints.length, helper: `${activeSprintCount} active sprint${activeSprintCount === 1 ? "" : "s"} available for routing.` },
+          ]}
+          aside={
+            <div
+              style={{
+                ...spotlightCard,
+                border: `1px solid ${palette.border}`,
+                background: darkMode
+                  ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
+                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              }}
+            >
+              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Planning pulse</p>
+              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+                {backlogCount === 0 ? "Backlog clear" : `${backlogCount} issues waiting`}
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{backlogPulse}</p>
+            </div>
+          }
+          actions={
+            <button onClick={() => setShowCreate(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+              <PlusIcon style={icon14} /> New Issue
+            </button>
+          }
+        />
+
+        <WorkspaceToolbar palette={palette}>
+          <div style={toolbarLayout}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Planning guide</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Reorder here, then drag straight into the sprint that should carry the work</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>
+                Keep the backlog focused on work that is shaped enough to start. Use the right rail as the routing surface for upcoming sprint commitments.
+              </p>
+            </div>
+            <div style={toolbarChipRail}>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                Drag to reorder
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                Drag right to plan into sprint
+              </span>
+              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                {assignedCount} already owned
+              </span>
+            </div>
           </div>
-          <button onClick={() => setShowCreate(true)} style={ui.primaryButton}>
-            <PlusIcon style={icon14} /> New Issue
-          </button>
-        </section>
+        </WorkspaceToolbar>
 
         <div style={ui.responsiveSplit}>
-          <section style={{ ...leftCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-            <div style={{ overflowX: "auto" }}>
-              <div style={tableHeader}>
-                <span>Issue</span>
-                <span>Type</span>
-                <span>Priority</span>
-                <span>Assignee</span>
-              </div>
-
-              {backlogIssues.length === 0 ? (
-                <div style={empty}>Backlog is empty.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 6 }}>
-                  {backlogIssues.map((issue, index) => (
-                    <article
-                      key={issue.id}
-                      draggable
-                      onDragStart={() => setDraggedIssue(issue)}
-                      onDragEnd={() => setDraggedIssue(null)}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={() => handleReorderDrop(issue)}
-                      onClick={() => navigate(`/issues/${issue.id}`)}
-                      style={row}
-                    >
-                      <div>
-                        <p style={rowKey}>{index + 1}. {issue.key || `ISS-${issue.id}`}</p>
-                        <p style={rowTitle}>{issue.title}</p>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Backlog atlas"
+            title="Unplanned work queue"
+            description="Reorder issues by priority and readiness before assigning them to a sprint."
+            minHeight={480}
+          >
+            {backlogIssues.length === 0 ? (
+              <WorkspaceEmptyState
+                palette={palette}
+                title="Backlog is empty"
+                description="Create the next issue or pull more candidate work into planning."
+              />
+            ) : (
+              <div style={issueList}>
+                {backlogIssues.map((issue, index) => (
+                  <article
+                    key={issue.id}
+                    className="ui-card-lift ui-smooth"
+                    draggable
+                    onDragStart={() => setDraggedIssue(issue)}
+                    onDragEnd={() => setDraggedIssue(null)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => handleReorderDrop(issue)}
+                    onClick={() => navigate(`/issues/${issue.id}`)}
+                    style={{
+                      ...issueCard,
+                      border: `1px solid ${palette.border}`,
+                      background: palette.cardAlt,
+                    }}
+                  >
+                    <div style={issueHead}>
+                      <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
+                        <p style={{ ...issueIndex, color: palette.muted }}>
+                          {index + 1}. {issue.key || `ISS-${issue.id}`}
+                        </p>
+                        <p style={{ ...issueTitle, color: palette.text }}>{issue.title}</p>
                       </div>
-                      <p style={mutedTag}>{issue.issue_type || "task"}</p>
-                      <p style={mutedTag}>{issue.priority || "medium"}</p>
-                      <p style={mutedText}>{issue.assignee_name || "Unassigned"}</p>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
+                      <span style={{ ...priorityBadge, border: `1px solid ${palette.border}`, color: palette.text, background: palette.card }}>
+                        {issue.priority || "medium"}
+                      </span>
+                    </div>
+                    <p style={{ ...issuePreview, color: palette.muted }}>
+                      {createPlainTextPreview(issue.description || issue.summary || "", "No issue brief added yet.", 160)}
+                    </p>
+                    <div style={metaRail}>
+                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                        {issue.issue_type || "task"}
+                      </span>
+                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                        {issue.assignee_name || "Unassigned"}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </WorkspacePanel>
 
-          <aside style={{ ...rightCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-            <h2 style={{ margin: 0, fontSize: 16, color: palette.text }}>Move to Sprint</h2>
-            <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-              {sprints.length === 0 && <div style={empty}>No sprints available.</div>}
-              {sprints.map((sprint) => (
-                <button
-                  key={sprint.id}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setDropTarget(sprint.id);
-                  }}
-                  onDragLeave={() => setDropTarget(null)}
-                  onDrop={() => handleDropToSprint(sprint.id)}
-                  style={{
-                    ...sprintDrop,
-                    border: dropTarget === sprint.id ? "1px solid var(--app-success)" : "1px solid var(--app-border-strong)",
-                    background: dropTarget === sprint.id ? "var(--app-success-soft)" : "transparent",
-                  }}
-                >
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{sprint.name}</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--app-muted)" }}>{sprint.start_date} - {sprint.end_date}</p>
-                </button>
-              ))}
-            </div>
-          </aside>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Sprint routing"
+            title="Move into sprint"
+            description="Drop backlog work onto a sprint when the issue is ready to carry into execution."
+            minHeight={480}
+          >
+            {sprints.length === 0 ? (
+              <WorkspaceEmptyState
+                palette={palette}
+                title="No sprints available"
+                description="Create a sprint in the project first, then route backlog items into it."
+              />
+            ) : (
+              <div style={sprintList}>
+                {sprints.map((sprint) => (
+                  <button
+                    key={sprint.id}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setDropTarget(sprint.id);
+                    }}
+                    onDragLeave={() => setDropTarget(null)}
+                    onDrop={() => handleDropToSprint(sprint.id)}
+                    style={{
+                      ...sprintDrop,
+                      border: dropTarget === sprint.id ? `1px solid ${palette.success}` : `1px solid ${palette.border}`,
+                      background: dropTarget === sprint.id ? palette.accentSoft : palette.cardAlt,
+                    }}
+                  >
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: palette.text }}>{sprint.name}</p>
+                    <p style={{ margin: "6px 0 0", fontSize: 12, color: palette.muted }}>
+                      {sprint.start_date} - {sprint.end_date}
+                    </p>
+                    <p style={{ margin: "8px 0 0", fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
+                      {sprint.goal || "No sprint goal added yet."}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </WorkspacePanel>
         </div>
 
         {showCreate && (
@@ -214,20 +313,26 @@ function Backlog() {
 
 const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
 const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--app-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
-const hero = { borderRadius: 0, padding: 16, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" };
-const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700 };
-const titleStyle = { margin: "8px 0 5px", fontSize: "clamp(1.2rem,2.1vw,1.8rem)", letterSpacing: "-0.02em" };
-const subtitle = { margin: 0, fontSize: 13 };
-const leftCard = { borderRadius: 0, padding: 10 };
-const rightCard = { borderRadius: 0, padding: 10, height: "fit-content" };
-const tableHeader = { minWidth: 620, display: "grid", gridTemplateColumns: "1fr 100px 90px 140px", gap: 8, padding: "8px 10px", fontSize: 11, color: "var(--app-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 };
-const row = { minWidth: 620, display: "grid", gridTemplateColumns: "1fr 100px 90px 140px", gap: 8, alignItems: "center", border: "1px solid rgba(120,120,120,0.32)", borderRadius: 0, padding: "10px", cursor: "pointer", background: "var(--app-surface-alt)" };
-const rowKey = { margin: 0, fontSize: 11, color: "var(--app-muted)", fontWeight: 700 };
-const rowTitle = { margin: "3px 0 0", fontSize: 13, color: "var(--app-text)", fontWeight: 600 };
-const mutedTag = { margin: 0, fontSize: 11, color: "var(--app-muted)", textTransform: "capitalize", fontWeight: 700 };
-const mutedText = { margin: 0, fontSize: 12, color: "var(--app-muted)" };
-const sprintDrop = { borderRadius: 0, padding: 10, textAlign: "left", cursor: "pointer", color: "var(--app-text)" };
-const empty = { borderRadius: 0, border: "1px dashed var(--app-border-strong)", padding: "14px 10px", fontSize: 12, color: "var(--app-muted)", textAlign: "center" };
+const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
+const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarLayout = { display: "grid", gap: 14 };
+const toolbarIntro = { display: "grid", gap: 4 };
+const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
+const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
+const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
+const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
+const issueList = { display: "grid", gap: 12 };
+const issueCard = { borderRadius: 22, padding: 16, display: "grid", gap: 12, cursor: "pointer" };
+const issueHead = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 };
+const issueIndex = { margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" };
+const issueTitle = { margin: 0, fontSize: 16, lineHeight: 1.25, fontWeight: 700 };
+const issuePreview = { margin: 0, fontSize: 13, lineHeight: 1.65 };
+const priorityBadge = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "7px 11px", fontSize: 11, fontWeight: 800, textTransform: "capitalize", whiteSpace: "nowrap" };
+const metaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const metaChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "7px 11px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
+const sprintList = { display: "grid", gap: 10 };
+const sprintDrop = { borderRadius: 20, padding: 14, textAlign: "left", cursor: "pointer", color: "var(--app-text)", display: "grid", gap: 2 };
 const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
 const modalCard = { width: "min(520px,100%)", borderRadius: 0, padding: 16 };
 const formStack = { marginTop: 12, display: "grid", gap: 8 };

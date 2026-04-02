@@ -180,6 +180,7 @@ function Conversations() {
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
+        variant="memory"
         eyebrow="Conversation Workspace"
         title="Conversations"
         description="Scan which threads need response, which ones already have enough signal, and move discussion into decisions or execution without losing context."
@@ -230,7 +231,7 @@ function Conversations() {
         }
       />
 
-      <WorkspaceToolbar palette={palette}>
+      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
         <div style={toolbarLayout}>
           <div style={toolbarIntro}>
             <p style={{ ...toolbarEyebrow, color: palette.muted }}>Discussion Flow</p>
@@ -504,17 +505,17 @@ const page = {
 
 const featureRail = {
   display: "grid",
-  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-  gap: 8,
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 10,
 };
 
 const featureCard = {
-  borderRadius: 12,
+  borderRadius: 18,
   textDecoration: "none",
-  padding: 10,
+  padding: 12,
   display: "grid",
   gridTemplateColumns: "auto minmax(0, 1fr)",
-  gap: 8,
+  gap: 10,
   alignItems: "start",
 };
 
@@ -530,17 +531,17 @@ const featureIconWrap = {
 const statsGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-  gap: 8,
+  gap: 10,
 };
 
 const statCard = {
-  borderRadius: 12,
-  padding: "11px 12px",
+  borderRadius: 18,
+  padding: "13px 14px",
 };
 
 const filterShell = {
-  borderRadius: 12,
-  padding: 10,
+  borderRadius: 22,
+  padding: 14,
   display: "grid",
   gap: 10,
 };
@@ -580,7 +581,7 @@ const sortSelect = {
 
 const listWrap = {
   display: "grid",
-  gap: 8,
+  gap: 12,
 };
 
 const conversationCard = {

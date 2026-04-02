@@ -16,7 +16,7 @@ import RichTextRenderer from "../components/RichTextRenderer";
 import DecisionIllustration from "../components/DecisionIllustration";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
-import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import api from "../services/api";
 import { createPlainTextPreview } from "../utils/textPreview";
 
@@ -301,8 +301,30 @@ function DecisionDetail() {
 
   if (!decision) {
     return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: palette.muted }}>
-        Decision not found
+      <div style={{ minHeight: "100vh" }}>
+        <div style={ui.container}>
+          <WorkspacePanel
+            palette={palette}
+            darkMode={darkMode}
+            variant="memory"
+            eyebrow="Decision"
+            title="Decision not found"
+            description="The decision record may have been removed or is no longer available."
+          >
+            <WorkspaceEmptyState
+              palette={palette}
+              darkMode={darkMode}
+              variant="memory"
+              title="No decision record to show"
+              description="Return to the decision log to open another record."
+              action={
+                <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
+                  Back to decisions
+                </button>
+              }
+            />
+          </WorkspacePanel>
+        </div>
       </div>
     );
   }
@@ -351,6 +373,7 @@ function DecisionDetail() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="memory"
           eyebrow="Decision Record"
           title={decision.title}
           description="Recover the reasoning, confidence, review signals, and downstream impact from one structured decision workspace."
@@ -380,7 +403,7 @@ function DecisionDetail() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
           <div style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Pill text={status} tone="blue" palette={palette} />
@@ -408,7 +431,7 @@ function DecisionDetail() {
         </WorkspaceToolbar>
 
         <div className="ui-enter" style={{ ...mainGrid, gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", gap: 14, "--ui-delay": "180ms" }}>
-          <section className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+          <section className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, ...memoryHeroSurface(darkMode) }}>
             <div style={{ display: "grid", gap: 12, marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${palette.border}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
                 <div style={{ display: "grid", gap: 6, maxWidth: 760 }}>
@@ -423,11 +446,11 @@ function DecisionDetail() {
                   </p>
                 </div>
                 <div style={{ display: "grid", gap: 8, minWidth: "min(100%, 220px)" }}>
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, padding: "10px 12px" }}>
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, padding: "10px 12px", ...memoryInsetSurface(darkMode) }}>
                     <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>Decision date</p>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{decisionDate}</p>
                   </div>
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, padding: "10px 12px" }}>
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, padding: "10px 12px", ...memoryInsetSurface(darkMode) }}>
                     <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>Owner</p>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{decisionMakerName}</p>
                   </div>
@@ -435,26 +458,26 @@ function DecisionDetail() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                   <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Decision statement</p>
                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{decisionSummary}</p>
                 </div>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                   <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Rationale snapshot</p>
                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{rationaleSummary}</p>
                 </div>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                   <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Review posture</p>
                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{reviewPosture}</p>
                 </div>
                 {decision.impact_assessment ? (
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Impact Assessment</p>
                     <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{decision.impact_assessment}</p>
                   </div>
                 ) : null}
                 {decision.tradeoffs ? (
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Tradeoffs</p>
                     <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
                       {Array.isArray(decision.tradeoffs) ? decision.tradeoffs.join(", ") : decision.tradeoffs}
@@ -462,7 +485,7 @@ function DecisionDetail() {
                   </div>
                 ) : null}
                 {linkedConversation ? (
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Source Conversation</p>
                     <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.text }}>
                       {linkedConversation.title || `Conversation #${linkedConversation.id}`}
@@ -507,7 +530,7 @@ function DecisionDetail() {
                 </div>
 
                 {showLinkPR && (
-                  <form onSubmit={handleLinkPR} style={{ ...innerCard, border: `1px solid ${palette.border}`, marginBottom: 8, display: "grid", gap: 8 }}>
+                  <form onSubmit={handleLinkPR} style={{ ...innerCard, border: `1px solid ${palette.border}`, marginBottom: 8, display: "grid", gap: 8, ...memoryInsetSurface(darkMode) }}>
                     <input type="url" value={prUrl} onChange={(event) => setPrUrl(event.target.value)} placeholder="https://github.com/org/repo/pull/123" style={ui.input} />
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
                       <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={!prUrl.trim() || linking} style={ui.primaryButton}>{linking ? "Linking..." : "Link"}</button>
@@ -518,6 +541,7 @@ function DecisionDetail() {
                   timeline={githubTimeline}
                   loading={githubLoading}
                   palette={palette}
+                  darkMode={darkMode}
                 />
               </div>
             )}
@@ -559,7 +583,7 @@ function DecisionDetail() {
 
             {activeTab === "outcome" && (
               <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                   <p style={{ margin: "0 0 4px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Review status</p>
                   <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
                     {decision.review_completed_at
@@ -567,7 +591,7 @@ function DecisionDetail() {
                       : "No outcome review yet"}
                   </p>
                 </div>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                   <p style={{ margin: "0 0 4px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Outcome reliability</p>
                   <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
                     {decision.outcome_reliability?.score ?? 0}% ({decision.outcome_reliability?.band || "low"})
@@ -675,13 +699,13 @@ function DecisionDetail() {
                   <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>Loading impact graph...</p>
                 ) : (
                   <>
-                    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                       <InfoRow label="Nodes" value={`${impactTrail.nodes.length}`} palette={palette} />
                       <InfoRow label="Edges" value={`${impactTrail.edges.length}`} palette={palette} />
                     </div>
                     <div style={{ display: "grid", gap: 6 }}>
                       {(impactTrail.edges || []).slice(0, 8).map((edge, idx) => (
-                        <div key={idx} style={{ borderRadius: 14, border: `1px solid ${palette.border}`, padding: "10px 12px", fontSize: 12, color: palette.muted, background: palette.cardAlt }}>
+                        <div key={idx} style={{ borderRadius: 16, border: `1px solid ${palette.border}`, padding: "10px 12px", fontSize: 12, color: palette.muted, ...memoryInsetSurface(darkMode) }}>
                           <span style={{ color: palette.text }}>{edge.type}</span> ({Number(edge.strength || 0).toFixed(2)})
                         </div>
                       ))}
@@ -772,7 +796,7 @@ function DecisionDetail() {
 
                 {replayResult && (
                   <div style={{ display: "grid", gap: 8 }}>
-                    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                       <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Forecast</p>
                       <InfoRow label="Failure risk" value={`${replayResult.forecast?.predicted_failure_risk_pct ?? 0}%`} palette={palette} />
                       <InfoRow label="Expected impact" value={`${replayResult.forecast?.expected_impact_score ?? 0}/100`} palette={palette} />
@@ -780,7 +804,7 @@ function DecisionDetail() {
                       <InfoRow label="Sample size" value={`${replayResult.based_on?.sample_size ?? 0}`} palette={palette} />
                     </div>
 
-                    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                       <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Teams Most Affected</p>
                       <ul style={{ margin: 0, paddingLeft: 16, color: palette.muted, fontSize: 12 }}>
                         {(replayResult.teams_most_affected || []).map((item, idx) => (
@@ -789,7 +813,7 @@ function DecisionDetail() {
                       </ul>
                     </div>
 
-                    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+                    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                       <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Recommended Safeguards</p>
                       <ul style={{ margin: 0, paddingLeft: 16, color: palette.muted, fontSize: 12 }}>
                         {(replayResult.recommended_safeguards || []).map((item, idx) => (
@@ -816,7 +840,7 @@ function DecisionDetail() {
 
           <aside style={{ display: "grid", gap: 12, alignContent: "start" }}>
             {decision.confidence && (
-              <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
                 <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Confidence</h3>
                 <p style={{ margin: 0, fontSize: 30, fontWeight: 800, color: palette.text }}>{decision.confidence.score || 0}%</p>
                 <div style={{ width: "100%", height: 8, borderRadius: 999, background: palette.progressTrack, overflow: "hidden", marginTop: 6 }}>
@@ -830,20 +854,20 @@ function DecisionDetail() {
               </section>
             )}
 
-            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
               <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Reliability</h3>
               <InfoRow label="Outcome reliability" value={`${decision.outcome_reliability?.score ?? 0}%`} palette={palette} />
               <InfoRow label="Band" value={(decision.outcome_reliability?.band || "low").toUpperCase()} palette={palette} />
             </section>
 
-            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
               <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Details</h3>
               <InfoRow label="Decided" value={decisionDate} palette={palette} />
               <InfoRow label="Deadline" value={decision.implementation_deadline ? new Date(decision.implementation_deadline).toLocaleDateString() : "-"} palette={palette} />
             </section>
 
             {linkedConversation && (
-              <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
                 <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Linked Context</h3>
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.text }}>
                   {linkedConversation.title || `Conversation #${linkedConversation.id}`}
@@ -906,10 +930,10 @@ function InfoRow({ label, value, palette }) {
   );
 }
 
-function DecisionEngineeringSection({ timeline, loading, palette }) {
+function DecisionEngineeringSection({ timeline, loading, palette, darkMode }) {
   if (loading) {
     return (
-      <div style={{ ...innerCard, border: `1px solid ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center" }}>
+      <div style={{ ...innerCard, border: `1px solid ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center", ...memoryInsetSurface(darkMode) }}>
         Loading engineering timeline...
       </div>
     );
@@ -917,7 +941,7 @@ function DecisionEngineeringSection({ timeline, loading, palette }) {
 
   if (!timeline?.repository?.configured) {
     return (
-      <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, display: "grid", gap: 6 }}>
+      <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, display: "grid", gap: 6, ...memoryInsetSurface(darkMode) }}>
         <span>GitHub is not configured for this workspace yet.</span>
         <span>Connect the repository in Integrations to unlock pull request, commit, and deployment timelines.</span>
       </div>
@@ -934,13 +958,13 @@ function DecisionEngineeringSection({ timeline, loading, palette }) {
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 }}>
-        <SummaryCard label="Status" value={(timeline.implementation_status || "not_started").replaceAll("_", " ")} palette={palette} />
-        <SummaryCard label="Pull Requests" value={`${summary.decision_pull_requests || 0} direct / ${summary.issue_pull_requests || 0} issue`} palette={palette} />
-        <SummaryCard label="Commits" value={`${summary.commits || 0}`} palette={palette} />
-        <SummaryCard label="Deployments" value={`${summary.deployments || 0}`} palette={palette} />
+        <SummaryCard label="Status" value={(timeline.implementation_status || "not_started").replaceAll("_", " ")} palette={palette} darkMode={darkMode} />
+        <SummaryCard label="Pull Requests" value={`${summary.decision_pull_requests || 0} direct / ${summary.issue_pull_requests || 0} issue`} palette={palette} darkMode={darkMode} />
+        <SummaryCard label="Commits" value={`${summary.commits || 0}`} palette={palette} darkMode={darkMode} />
+        <SummaryCard label="Deployments" value={`${summary.deployments || 0}`} palette={palette} darkMode={darkMode} />
       </div>
 
-      <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+      <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
         <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Repository Readiness</p>
         <InfoRow label="Repository" value={timeline.repository?.repo_slug || "-"} palette={palette} />
         <InfoRow label="Webhook" value={timeline.repository?.webhook_readiness?.label || "Not configured"} palette={palette} />
@@ -949,11 +973,11 @@ function DecisionEngineeringSection({ timeline, loading, palette }) {
       </div>
 
       {linkedIssues.length ? (
-        <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+        <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
           <p style={{ margin: "0 0 8px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Linked Execution Work</p>
           <div style={{ display: "grid", gap: 8 }}>
             {linkedIssues.map((issue) => (
-              <div key={issue.id} style={{ ...innerCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <div key={issue.id} style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
                   <div>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{issue.key}: {issue.title}</p>
@@ -984,29 +1008,29 @@ function DecisionEngineeringSection({ timeline, loading, palette }) {
         </div>
       ) : null}
 
-      <EngineeringList title="Pull Requests" items={pullRequests} palette={palette} emptyText="No pull requests linked yet." />
-      <EngineeringList title="Commits" items={commits} palette={palette} emptyText="No commits linked yet." />
-      <EngineeringList title="Deployments" items={deployments} palette={palette} emptyText="No deployments tracked yet." />
+      <EngineeringList title="Pull Requests" items={pullRequests} palette={palette} darkMode={darkMode} emptyText="No pull requests linked yet." />
+      <EngineeringList title="Commits" items={commits} palette={palette} darkMode={darkMode} emptyText="No commits linked yet." />
+      <EngineeringList title="Deployments" items={deployments} palette={palette} darkMode={darkMode} emptyText="No deployments tracked yet." />
 
       {manualLinks.length ? (
-        <EngineeringList title="Other Linked Evidence" items={manualLinks} palette={palette} emptyText="" />
+        <EngineeringList title="Other Linked Evidence" items={manualLinks} palette={palette} darkMode={darkMode} emptyText="" />
       ) : null}
     </div>
   );
 }
 
-function SummaryCard({ label, value, palette }) {
+function SummaryCard({ label, value, palette, darkMode }) {
   return (
-    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
       <p style={{ margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: palette.muted, fontWeight: 700 }}>{label}</p>
       <p style={{ margin: "6px 0 0", fontSize: 14, color: palette.text, fontWeight: 700, textTransform: "capitalize" }}>{value}</p>
     </div>
   );
 }
 
-function EngineeringList({ title, items, palette, emptyText }) {
+function EngineeringList({ title, items, palette, darkMode, emptyText }) {
   return (
-    <div style={{ ...innerCard, border: `1px solid ${palette.border}` }}>
+    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
       <p style={{ margin: "0 0 8px", fontSize: 13, color: palette.text, fontWeight: 700 }}>{title}</p>
       {items?.length ? (
         <div style={{ display: "grid", gap: 8 }}>
@@ -1036,7 +1060,7 @@ function EngineeringList({ title, items, palette, emptyText }) {
 
             if (!href) {
               return (
-                <div key={`${title}-${index}`} style={{ ...innerCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+                <div key={`${title}-${index}`} style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
                   {content}
                 </div>
               );
@@ -1048,7 +1072,7 @@ function EngineeringList({ title, items, palette, emptyText }) {
                 href={href}
                 target="_blank"
                 rel="noreferrer"
-                style={{ ...innerCard, border: `1px solid ${palette.border}`, background: palette.card, textDecoration: "none" }}
+                style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode), textDecoration: "none" }}
               >
                 {content}
               </a>
@@ -1056,7 +1080,7 @@ function EngineeringList({ title, items, palette, emptyText }) {
           })}
         </div>
       ) : emptyText ? (
-        <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center" }}>
+        <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center", ...memoryInsetSurface(darkMode) }}>
           {emptyText}
         </div>
       ) : null}
@@ -1074,9 +1098,33 @@ const metricChip = { borderRadius: 18, padding: "14px 14px 12px", boxShadow: "va
 const metricLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 };
 const metricValue = { margin: "6px 0 0", fontSize: 20, fontWeight: 800 };
 const mainGrid = { position: "relative", zIndex: 1, display: "grid" };
-const panelCard = { borderRadius: 24, padding: "clamp(16px,2.2vw,22px)", boxShadow: "var(--ui-shadow-xs)" };
-const innerCard = { borderRadius: 18, padding: 14, background: "var(--app-surface-alt)" };
-const sideCard = { borderRadius: 22, padding: 16, boxShadow: "var(--ui-shadow-xs)" };
+const panelCard = { borderRadius: 28, padding: "clamp(18px,2.4vw,24px)", boxShadow: "var(--ui-shadow-sm)" };
+const innerCard = { borderRadius: 20, padding: 14, background: "var(--app-surface-alt)" };
+const sideCard = { borderRadius: 24, padding: 16, boxShadow: "var(--ui-shadow-xs)" };
+
+function memoryHeroSurface(darkMode) {
+  return {
+    background: darkMode
+      ? "linear-gradient(145deg, rgba(14,25,37,0.98), rgba(10,18,28,0.94))"
+      : "linear-gradient(145deg, rgba(245,250,255,0.98), rgba(230,241,249,0.94))",
+  };
+}
+
+function memoryPanelSurface(darkMode) {
+  return {
+    background: darkMode
+      ? "linear-gradient(180deg, rgba(11,20,30,0.96), rgba(11,24,34,0.92))"
+      : "linear-gradient(180deg, rgba(248,252,255,0.98), rgba(235,244,250,0.94))",
+  };
+}
+
+function memoryInsetSurface(darkMode) {
+  return {
+    background: darkMode
+      ? "linear-gradient(180deg, rgba(19,32,45,0.94), rgba(13,23,34,0.9))"
+      : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,251,0.94))",
+  };
+}
 
 export default DecisionDetail;
 

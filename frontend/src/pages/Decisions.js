@@ -276,6 +276,7 @@ function Decisions() {
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
+        variant="memory"
         eyebrow="Decision Memory"
         title="Decisions"
         description="Capture proposals, approvals, and implementation moves in one place so teams can recover the reasoning behind what changed."
@@ -299,7 +300,7 @@ function Decisions() {
         }
       />
 
-      <WorkspaceToolbar palette={palette}>
+      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
         <div style={toolbarLayout}>
           <div style={toolbarIntro}>
             <p style={{ ...toolbarEyebrow, color: palette.muted }}>Refine The Stream</p>
@@ -465,6 +466,8 @@ function Decisions() {
       {filteredDecisions.length === 0 ? (
         <WorkspaceEmptyState
           palette={palette}
+          darkMode={darkMode}
+          variant="memory"
           title={decisions.length === 0 ? "Start the decision record" : "No decisions match this view"}
           description={
             decisions.length === 0
@@ -522,6 +525,7 @@ function Decisions() {
               description="The review queue comes first so proposals and under-review records are easier to work through."
               decisions={focusedQueue}
               palette={palette}
+              darkMode={darkMode}
               statusLabel={statusLabel}
               statusConfig={statusConfig}
               impactTone={impactTone}
@@ -537,6 +541,7 @@ function Decisions() {
             }
             decisions={focusedQueue.length ? archivedFlow : enrichedDecisions}
             palette={palette}
+            darkMode={darkMode}
             statusLabel={statusLabel}
             statusConfig={statusConfig}
             impactTone={impactTone}
@@ -625,7 +630,7 @@ function DecisionSection({ title, description, decisions, palette, statusLabel, 
   );
 }
 
-function DecisionListSection({ title, description, decisions, palette, statusLabel, statusConfig, impactTone, onOpen }) {
+function DecisionListSection({ title, description, decisions, palette, darkMode, statusLabel, statusConfig, impactTone, onOpen }) {
   if (!decisions.length) return null;
   return (
     <section style={{ display: "grid", gap: 12 }}>
@@ -641,6 +646,8 @@ function DecisionListSection({ title, description, decisions, palette, statusLab
           <WorkspacePanel
             key={decision.id}
             palette={palette}
+            darkMode={darkMode}
+            variant="memory"
             title={decision.title || "Untitled decision"}
             eyebrow="Decision Record"
             description={decision.summary || "No description provided yet."}

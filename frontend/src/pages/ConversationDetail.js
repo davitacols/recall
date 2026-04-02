@@ -23,7 +23,7 @@ import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
 import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { createPlainTextPreview, stripRichTextToPlainText } from "../utils/textPreview";
 
 const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette, darkMode }) => {
@@ -513,6 +513,7 @@ function ConversationDetail() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="memory"
           eyebrow="Conversation Composer"
           title={selectedType ? `Create ${formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}` : "Create New Conversation"}
           description={selectedType ? "Shape the thread with a clearer title, context, and priority before it lands in the shared stream." : "Choose a conversation type to start from a stronger, more intentional template."}
@@ -530,6 +531,8 @@ function ConversationDetail() {
         {!selectedType ? (
           <WorkspacePanel
             palette={palette}
+            darkMode={darkMode}
+            variant="memory"
             eyebrow="Thread Types"
             title="Choose the shape of the conversation"
             description="Each thread type now reads like a deliberate editorial choice instead of a plain utility card."
@@ -558,7 +561,7 @@ function ConversationDetail() {
           </WorkspacePanel>
         ) : (
           <>
-            <WorkspaceToolbar palette={palette}>
+            <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{formData.post_type}</span>
                 <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{formData.priority}</span>
@@ -566,6 +569,8 @@ function ConversationDetail() {
             </WorkspaceToolbar>
             <WorkspacePanel
               palette={palette}
+              darkMode={darkMode}
+              variant="memory"
               eyebrow="Composer"
               title={`Create ${formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}`}
               description="Write the thread with enough context that the team can react, reply, or convert it into a decision later."
@@ -622,7 +627,27 @@ function ConversationDetail() {
   if (!conversation) {
     return (
       <div style={loadingWrap}>
-        <p style={{ color: palette.muted }}>Conversation not found.</p>
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="memory"
+          eyebrow="Conversation"
+          title="Conversation not found"
+          description="The thread may have been deleted or is no longer available."
+        >
+          <WorkspaceEmptyState
+            palette={palette}
+            darkMode={darkMode}
+            variant="memory"
+            title="No thread to load"
+            description="Return to the conversation workspace to open another discussion."
+            action={
+              <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
+                Back to conversations
+              </Link>
+            }
+          />
+        </WorkspacePanel>
       </div>
     );
   }
@@ -667,6 +692,7 @@ function ConversationDetail() {
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
+        variant="memory"
         eyebrow={`Conversation Thread #${id}`}
         title={conversation.title}
         description="Track discussion context, reactions, and decisions from one structured workspace."
@@ -691,7 +717,7 @@ function ConversationDetail() {
         }
       />
 
-      <WorkspaceToolbar palette={palette}>
+      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{conversationType}</span>
           <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{replyCount} replies</span>
@@ -705,9 +731,7 @@ function ConversationDetail() {
           style={{
             ...briefingPrimaryCard,
             border: `1px solid ${palette.border}`,
-            background: darkMode
-              ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(22,18,15,0.88))"
-              : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+            ...memoryHeroSurface(palette, darkMode),
           }}
         >
           <div style={{ display: "grid", gap: 8 }}>
@@ -736,13 +760,13 @@ function ConversationDetail() {
           </div>
         </article>
 
-        <article className="ui-card-lift ui-smooth" style={{ ...briefingMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+        <article className="ui-card-lift ui-smooth" style={{ ...briefingMetricCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}>
           <p style={{ ...summaryMetricLabel, color: palette.muted }}>Thread pulse</p>
           <p style={{ ...summaryMetricValue, color: palette.text }}>{replyCount + reactionTotal}</p>
           <p style={{ ...summaryMetricBody, color: palette.muted }}>{threadPulseLabel}</p>
         </article>
 
-        <article className="ui-card-lift ui-smooth" style={{ ...briefingMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+        <article className="ui-card-lift ui-smooth" style={{ ...briefingMetricCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}>
           <p style={{ ...summaryMetricLabel, color: palette.muted }}>Decision readiness</p>
           <p style={{ ...summaryMetricValue, color: palette.text }}>{replyCount + reactionTotal >= 6 ? "Ready" : "Building"}</p>
           <p style={{ ...summaryMetricBody, color: palette.muted }}>{threadActionReadiness}</p>
@@ -751,7 +775,7 @@ function ConversationDetail() {
 
       <div className="ui-enter" style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", "--ui-delay": "110ms" }}>
         <div>
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: "linear-gradient(135deg,var(--app-surface-alt),var(--app-surface))", border: `1px solid ${palette.border}`, "--ui-delay": "140ms" }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, ...memoryHeroSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "140ms" }}>
             {isEditingPost ? (
               <input
                 value={editTitle}
@@ -795,7 +819,7 @@ function ConversationDetail() {
                   </p>
                 </div>
                 {isEditingPost ? (
-                  <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>
+                  <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, ...memoryInsetSurface(palette, darkMode) }}>
                     Draft mode
                   </span>
                 ) : null}
@@ -886,7 +910,7 @@ function ConversationDetail() {
               </div>
 
               {isEditingPost ? (
-                <div style={{ ...editingHint, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                <div style={{ ...editingHint, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
                   <span style={{ color: palette.text, fontWeight: 700 }}>Draft history is live.</span>
                   <span style={{ color: palette.muted }}>
                     Use Undo/Redo here or <strong style={{ color: palette.text }}>Ctrl/Cmd + Z</strong> and <strong style={{ color: palette.text }}>Ctrl/Cmd + Y</strong>.
@@ -896,7 +920,7 @@ function ConversationDetail() {
             </div>
           </section>
 
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "180ms" }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "180ms" }}>
             {!isEditingPost && (
               <div style={sectionLabelRow}>
                 <p style={{ ...sectionLabel, color: palette.muted }}>Full Thread Record</p>
@@ -915,13 +939,13 @@ function ConversationDetail() {
                 </button>
               </>
             ) : (
-              <div style={{ ...contentShell, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+              <div style={{ ...contentShell, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
                 <RichTextRenderer content={conversation.content} darkMode={darkMode} />
               </div>
             )}
           </section>
 
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
             <div style={sectionLabelRow}>
               <p style={{ ...sectionLabel, color: palette.muted }}>Team Signal</p>
             </div>
@@ -949,13 +973,13 @@ function ConversationDetail() {
             </div>
           </section>
 
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "260ms" }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "260ms" }}>
             <h2 style={{ ...h2, color: palette.text }}>
               <ChatBubbleLeftIcon style={icon18} /> Replies ({replies.length})
             </h2>
 
             {replies.length === 0 ? (
-              <div style={{ ...emptyState, border: `1px solid ${palette.border}`, color: palette.muted }}>
+              <div style={{ ...emptyState, border: `1px solid ${palette.border}`, color: palette.muted, ...memoryInsetSurface(palette, darkMode) }}>
                 No replies yet. Be the first to comment.
               </div>
             ) : (
@@ -974,7 +998,7 @@ function ConversationDetail() {
               </div>
             )}
 
-            <div style={{ ...composer, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+            <div style={{ ...composer, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
               <p style={{ ...metaText, marginBottom: 8, color: palette.text }}>Add a comment</p>
               <form onSubmit={handleSubmitReply}>
                 <MentionTagInput
@@ -993,33 +1017,33 @@ function ConversationDetail() {
         </div>
 
         <div style={isNarrow ? railStackMobile : railStack}>
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "200ms" }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "200ms" }}>
             <h2 style={{ ...h2, color: palette.text, marginBottom: 14 }}>Thread Snapshot</h2>
             <div style={snapshotGrid}>
-              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
                 <p style={{ ...snapshotLabel, color: palette.muted }}>Type</p>
                 <p style={{ ...snapshotValue, color: palette.text }}>{conversationType}</p>
               </div>
-              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
                 <p style={{ ...snapshotLabel, color: palette.muted }}>Replies</p>
                 <p style={{ ...snapshotValue, color: palette.text }}>{replyCount}</p>
               </div>
-              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
                 <p style={{ ...snapshotLabel, color: palette.muted }}>Reactions</p>
                 <p style={{ ...snapshotValue, color: palette.text }}>{reactionTotal}</p>
               </div>
-              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
                 <p style={{ ...snapshotLabel, color: palette.muted }}>Updated</p>
                 <p style={{ ...snapshotValue, color: palette.text }}>{updatedLabel}</p>
               </div>
             </div>
           </section>
 
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
             <AIAssistant content={conversation?.content} contentType="conversation" />
           </section>
 
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, background: palette.panel, border: `1px solid ${palette.border}`, "--ui-delay": "240ms" }}>
+          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "240ms" }}>
             <ContextPanel contentType="conversations.conversation" objectId={id} />
           </section>
         </div>
@@ -1041,8 +1065,8 @@ const mastheadTitle = { margin: "7px 0 6px", fontSize: "clamp(1.16rem,2vw,1.68re
 const mastheadSub = { margin: 0, fontSize: 14, lineHeight: 1.45, maxWidth: 760 };
 const grid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
 const briefingGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
-const briefingPrimaryCard = { borderRadius: 22, padding: 18, display: "grid", gap: 14, boxShadow: "var(--ui-shadow-sm)" };
-const briefingMetricCard = { borderRadius: 20, padding: 16, display: "grid", gap: 8, alignContent: "start", boxShadow: "var(--ui-shadow-xs)" };
+const briefingPrimaryCard = { borderRadius: 28, padding: 22, display: "grid", gap: 16, boxShadow: "var(--ui-shadow-sm)" };
+const briefingMetricCard = { borderRadius: 24, padding: 18, display: "grid", gap: 8, alignContent: "start", boxShadow: "var(--ui-shadow-xs)" };
 const briefingBadgeRow = { display: "flex", gap: 8, flexWrap: "wrap" };
 const summaryChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
 const summaryMetricLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
@@ -1069,7 +1093,7 @@ const backLink = {
 const h1 = { margin: "0 0 8px", fontSize: "clamp(1.18rem,2.05vw,1.72rem)" };
 const h2 = { margin: "0 0 10px", fontSize: 16, display: "flex", alignItems: "center", gap: 7 };
 const sub = { margin: "0 0 12px", fontSize: 14 };
-const card = { borderRadius: 14, padding: 16, marginBottom: 12 };
+const card = { borderRadius: 24, padding: 18, marginBottom: 14, boxShadow: "var(--ui-shadow-sm)" };
 const typeGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 };
 const typeCard = { borderRadius: 14, padding: 16, textAlign: "left", cursor: "pointer" };
 const typeLabel = { margin: "0 0 6px", fontSize: 16, fontWeight: 700 };
@@ -1153,20 +1177,20 @@ const smallDangerButton = (palette, darkMode) => ({
 });
 const sectionLabelRow = { marginBottom: 8 };
 const sectionLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" };
-const contentShell = { borderRadius: 18, padding: 16 };
+const contentShell = { borderRadius: 20, padding: 18 };
 const reactionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
 const reactionButton = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 10, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer" };
-const emptyState = { borderRadius: 10, padding: "24px 14px", textAlign: "center", fontSize: 13, marginBottom: 10 };
+const emptyState = { borderRadius: 18, padding: "24px 16px", textAlign: "center", fontSize: 13, marginBottom: 10 };
 const replyList = { display: "grid", gap: 8, marginBottom: 10 };
-const composer = { borderRadius: 10, padding: 12 };
+const composer = { borderRadius: 18, padding: 14 };
 const railStack = { display: "grid", gap: 12, alignContent: "start", position: "sticky", top: 12 };
 const railStackMobile = { display: "grid", gap: 12, alignContent: "start" };
-const sideCard = { borderRadius: 14, padding: 14 };
+const sideCard = { borderRadius: 22, padding: 16, boxShadow: "var(--ui-shadow-xs)" };
 const snapshotGrid = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 };
-const snapshotItem = { borderRadius: 10, padding: "9px 10px" };
-const snapshotLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" };
+const snapshotItem = { borderRadius: 16, padding: "11px 12px" };
+const snapshotLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
 const snapshotValue = { margin: "5px 0 0", fontSize: 13, fontWeight: 700, textTransform: "capitalize" };
-const replyCard = { borderRadius: 10, padding: 10, marginBottom: 8 };
+const replyCard = { borderRadius: 16, padding: 12, marginBottom: 8 };
 const replyHeader = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 };
 const replyAuthorWrap = { display: "flex", alignItems: "center", gap: 8 };
 const replyActionRow = { display: "flex", gap: 6 };
@@ -1181,5 +1205,29 @@ const inlineAction = (palette) => ({
 const inlineActionDanger = (palette) => ({ ...inlineAction(palette), color: palette.danger });
 const icon18 = { width: 18, height: 18 };
 const icon14 = { width: 14, height: 14 };
+
+function memoryHeroSurface(palette, darkMode) {
+  return {
+    background: darkMode
+      ? "linear-gradient(145deg, rgba(16,27,38,0.98), rgba(10,18,28,0.94))"
+      : "linear-gradient(145deg, rgba(244,250,255,0.98), rgba(229,241,249,0.94))",
+  };
+}
+
+function memoryPanelSurface(palette, darkMode) {
+  return {
+    background: darkMode
+      ? "linear-gradient(180deg, rgba(11,20,30,0.96), rgba(12,24,34,0.92))"
+      : "linear-gradient(180deg, rgba(248,252,255,0.98), rgba(236,245,250,0.94))",
+  };
+}
+
+function memoryInsetSurface(palette, darkMode) {
+  return {
+    background: darkMode
+      ? "linear-gradient(180deg, rgba(20,33,46,0.94), rgba(13,23,34,0.9))"
+      : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,251,0.94))",
+  };
+}
 
 export default ConversationDetail;

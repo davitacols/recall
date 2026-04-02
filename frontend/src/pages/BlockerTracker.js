@@ -177,6 +177,7 @@ function Blockers() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="execution"
           eyebrow="Risk Board"
           title="Blocker Tracker"
           description="Track active delivery risks, keep blocker accountability visible, and clear issues before they stall the sprint."
@@ -211,7 +212,7 @@ function Blockers() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={toolbarLayout}>
             <div style={toolbarIntro}>
               <p style={{ ...toolbarEyebrow, color: palette.muted }}>Operations guide</p>

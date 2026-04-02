@@ -68,6 +68,7 @@ function CurrentSprint() {
           <WorkspaceHero
             palette={palette}
             darkMode={darkMode}
+            variant="execution"
             eyebrow="Sprint Center"
             title="No active sprint"
             description="Start a sprint in a project to track execution, blockers, delivery rhythm, and outcome velocity from one workspace."
@@ -97,6 +98,7 @@ function CurrentSprint() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="execution"
           eyebrow="Active Sprint"
           title={sprint.name}
           description={sprint.goal || "Keep the current sprint moving, surface blockers early, and track completion from one calmer center."}
@@ -131,7 +133,7 @@ function CurrentSprint() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={toolbarLayout}>
             <div style={toolbarIntro}>
               <p style={{ ...toolbarEyebrow, color: palette.muted }}>Delivery pulse</p>

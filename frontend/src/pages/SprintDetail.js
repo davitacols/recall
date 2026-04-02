@@ -331,6 +331,7 @@ function SprintDetail() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="execution"
           eyebrow="Sprint Detail"
           title={sprint.name}
           description={
@@ -373,7 +374,7 @@ function SprintDetail() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={toolbarLayout}>
             <div style={toolbarIntro}>
               <p style={{ ...toolbarEyebrow, color: palette.muted }}>Execution guide</p>

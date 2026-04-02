@@ -58,6 +58,7 @@ function RetrospectiveMemory() {
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
+        variant="execution"
         eyebrow="RCA Memory"
         title="Retrospectives"
         description="Not a meeting replacement, but a persistent review memory for recurring causes, blocker patterns, and recommended improvements."
@@ -91,7 +92,7 @@ function RetrospectiveMemory() {
         }
       />
 
-      <WorkspaceToolbar palette={palette}>
+      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
         <div style={toolbarLayout}>
           <div style={toolbarIntro}>
             <p style={{ ...toolbarEyebrow, color: palette.muted }}>Review guide</p>
@@ -117,6 +118,8 @@ function RetrospectiveMemory() {
       {insights.top_causes && insights.top_causes.length > 0 ? (
         <WorkspacePanel
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           eyebrow="Recurring causes"
           title="Themes repeating across retrospectives"
           description="These themes are showing up often enough that they should shape process changes, not just meeting notes."
@@ -140,6 +143,8 @@ function RetrospectiveMemory() {
       ) : (
         <WorkspaceEmptyState
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           title="No patterns detected yet"
           description="Run more retrospectives to detect recurring issues and start building review memory."
         />
@@ -148,6 +153,8 @@ function RetrospectiveMemory() {
       {insights.blocker_patterns && insights.blocker_patterns.length > 0 ? (
         <WorkspacePanel
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           eyebrow="Blocker patterns"
           title="Recurring blocker patterns"
           description="Blocker types that are repeating in review memory and should likely feed process improvement."
@@ -168,6 +175,8 @@ function RetrospectiveMemory() {
       {insights.recommendations && insights.recommendations.length > 0 ? (
         <WorkspacePanel
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           eyebrow="Recommended actions"
           title="Follow-through worth carrying into the next cycle"
           description="These are the clearest next actions emerging from retrospective memory."

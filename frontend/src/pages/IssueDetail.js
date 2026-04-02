@@ -239,7 +239,7 @@ function IssueDetail() {
           <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(-1)} style={{ ...backButton, color: palette.muted }}>
             <ArrowLeftIcon style={icon14} /> Back
           </button>
-          <WorkspacePanel palette={palette} eyebrow="Issue" title="Issue not found">
+          <WorkspacePanel palette={palette} darkMode={darkMode} variant="execution" eyebrow="Issue" title="Issue not found">
             <p style={{ ...bodyText, color: palette.muted }}>
               The issue could not be loaded or may no longer exist.
             </p>
@@ -403,6 +403,8 @@ function IssueDetail() {
           <main style={mainColumn}>
             <WorkspacePanel
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               eyebrow="Brief"
               title="Issue brief"
               description="Keep the problem statement and implementation notes readable instead of burying them under metadata."
@@ -436,6 +438,8 @@ function IssueDetail() {
 
             <WorkspacePanel
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               eyebrow="Discussion"
               title="Team thread"
               description="Capture blockers, implementation notes, and decision breadcrumbs in one place."
@@ -489,6 +493,8 @@ function IssueDetail() {
 
             <WorkspacePanel
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               eyebrow="Signals"
               title="Execution signals"
               description="Bring together time, files, and decision context without making the issue page feel overloaded."
@@ -510,6 +516,8 @@ function IssueDetail() {
           <aside style={asideColumn}>
             <WorkspacePanel
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               eyebrow="Workflow"
               title="Issue controls"
               description="Update the issue state, assignment, planning context, and estimate from one calmer control surface."
@@ -637,6 +645,8 @@ function IssueDetail() {
 
             <WorkspacePanel
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               eyebrow="Context"
               title="Timeline and accountability"
               description="Keep the assignee, reporter, and connected planning surfaces visible without digging through the project."
@@ -677,6 +687,8 @@ function IssueDetail() {
 
             <WorkspacePanel
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               eyebrow="Engineering"
               title="Code and delivery signals"
               description="Surface pull request, CI, branch, and estimate context when this issue is connected to execution."
@@ -716,6 +728,8 @@ function IssueDetail() {
               ) : (
                 <WorkspaceEmptyState
                   palette={palette}
+                  darkMode={darkMode}
+                  variant="execution"
                   title="No engineering signals yet"
                   description="Link a branch, pull request, CI run, or estimate to make this issue more execution-aware."
                 />

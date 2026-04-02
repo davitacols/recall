@@ -117,6 +117,7 @@ function Backlog() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="execution"
           eyebrow="Project Backlog"
           title="Shape the next sprint before work gets noisy"
           description="Review unplanned work, reorder what matters, and route the strongest candidates into an active sprint without losing context."
@@ -150,7 +151,7 @@ function Backlog() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={toolbarLayout}>
             <div style={toolbarIntro}>
               <p style={{ ...toolbarEyebrow, color: palette.muted }}>Planning guide</p>
@@ -176,6 +177,8 @@ function Backlog() {
         <div style={ui.responsiveSplit}>
           <WorkspacePanel
             palette={palette}
+            darkMode={darkMode}
+            variant="execution"
             eyebrow="Backlog atlas"
             title="Unplanned work queue"
             description="Reorder issues by priority and readiness before assigning them to a sprint."
@@ -184,6 +187,8 @@ function Backlog() {
             {backlogIssues.length === 0 ? (
               <WorkspaceEmptyState
                 palette={palette}
+                darkMode={darkMode}
+                variant="execution"
                 title="Backlog is empty"
                 description="Create the next issue or pull more candidate work into planning."
               />
@@ -235,6 +240,8 @@ function Backlog() {
 
           <WorkspacePanel
             palette={palette}
+            darkMode={darkMode}
+            variant="execution"
             eyebrow="Sprint routing"
             title="Move into sprint"
             description="Drop backlog work onto a sprint when the issue is ready to carry into execution."
@@ -243,6 +250,8 @@ function Backlog() {
             {sprints.length === 0 ? (
               <WorkspaceEmptyState
                 palette={palette}
+                darkMode={darkMode}
+                variant="execution"
                 title="No sprints available"
                 description="Create a sprint in the project first, then route backlog items into it."
               />

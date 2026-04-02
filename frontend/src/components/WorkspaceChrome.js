@@ -3,6 +3,7 @@ import React from "react";
 export function WorkspaceHero({
   palette,
   darkMode,
+  variant = "default",
   eyebrow,
   title,
   description,
@@ -10,15 +11,44 @@ export function WorkspaceHero({
   stats = [],
   aside,
 }) {
+  const execution = variant === "execution";
+
   return (
     <section
       className="ui-enter"
       style={{
         ...hero,
-        background: "transparent",
+        ...(execution ? getExecutionHeroShell(palette, darkMode) : { background: "transparent" }),
       }}
     >
-      <div style={heroMain}>
+      {execution ? (
+        <>
+          <div
+            aria-hidden="true"
+            style={{
+              ...heroAura,
+              background: darkMode
+                ? "radial-gradient(circle, rgba(154, 185, 255, 0.18), transparent 70%)"
+                : "radial-gradient(circle, rgba(46, 99, 208, 0.14), transparent 70%)",
+              top: -120,
+              left: -80,
+            }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              ...heroAura,
+              background: darkMode
+                ? "radial-gradient(circle, rgba(210, 168, 106, 0.14), transparent 70%)"
+                : "radial-gradient(circle, rgba(168, 116, 57, 0.1), transparent 70%)",
+              right: -120,
+              bottom: -110,
+            }}
+          />
+        </>
+      ) : null}
+
+      <div style={{ ...heroMain, gap: execution ? 14 : heroMain.gap }}>
         <div style={{ display: "grid", gap: 8 }}>
           {eyebrow ? <p style={{ ...heroEyebrow, color: palette.muted }}>{eyebrow}</p> : null}
           <h1 style={{ ...heroTitle, color: palette.text }}>{title}</h1>
@@ -28,7 +58,7 @@ export function WorkspaceHero({
       </div>
 
       <div style={heroSide}>
-        {aside ? <div style={asideWrap}>{aside}</div> : null}
+        {aside ? <div style={{ ...asideWrap, justifyContent: execution ? "stretch" : asideWrap.justifyContent }}>{aside}</div> : null}
         {stats.length ? (
           <div style={statsGrid}>
             {stats.map((stat) => (
@@ -36,10 +66,20 @@ export function WorkspaceHero({
                 key={`${stat.label}-${stat.value}`}
                 style={{
                   ...statCard,
+                  ...(execution
+                    ? {
+                        borderRadius: 22,
+                        padding: "16px 16px 14px",
+                      }
+                    : null),
                   border: `1px solid ${palette.border}`,
-                  background: darkMode
-                    ? "linear-gradient(155deg, rgba(33, 28, 24, 0.9), rgba(24, 20, 17, 0.76))"
-                    : "linear-gradient(155deg, rgba(255, 252, 248, 0.96), rgba(246, 239, 229, 0.86))",
+                  background: execution
+                    ? darkMode
+                      ? "linear-gradient(150deg, rgba(35, 29, 25, 0.96), rgba(24, 20, 17, 0.84))"
+                      : "linear-gradient(150deg, rgba(255, 252, 248, 0.98), rgba(245, 239, 229, 0.9))"
+                    : darkMode
+                      ? "linear-gradient(155deg, rgba(33, 28, 24, 0.9), rgba(24, 20, 17, 0.76))"
+                      : "linear-gradient(155deg, rgba(255, 252, 248, 0.96), rgba(246, 239, 229, 0.86))",
                 }}
               >
                 <p style={{ ...statLabel, color: palette.muted }}>{stat.label}</p>
@@ -54,14 +94,21 @@ export function WorkspaceHero({
   );
 }
 
-export function WorkspaceToolbar({ palette, children }) {
+export function WorkspaceToolbar({ palette, variant = "default", darkMode, children }) {
+  const execution = variant === "execution";
+
   return (
     <section
       className="ui-enter"
       style={{
         ...toolbar,
+        ...(execution ? getExecutionToolbarShell(palette, darkMode) : null),
         border: `1px solid ${palette.border}`,
-        background: palette.card,
+        background: execution
+          ? darkMode
+            ? "linear-gradient(150deg, rgba(26, 22, 18, 0.94), rgba(34, 29, 25, 0.86))"
+            : "linear-gradient(150deg, rgba(255, 252, 248, 0.98), rgba(245, 239, 229, 0.9))"
+          : palette.card,
       }}
     >
       {children}
@@ -69,19 +116,36 @@ export function WorkspaceToolbar({ palette, children }) {
   );
 }
 
-export function WorkspacePanel({ palette, title, eyebrow, description, action, children, minHeight }) {
+export function WorkspacePanel({ palette, variant = "default", darkMode, title, eyebrow, description, action, children, minHeight }) {
+  const execution = variant === "execution";
+
   return (
     <section
       className="ui-card-lift ui-smooth"
       style={{
         ...panel,
+        ...(execution ? getExecutionPanelShell(palette, darkMode) : null),
         minHeight,
         border: `1px solid ${palette.border}`,
-        background: palette.card,
+        background: execution
+          ? darkMode
+            ? "linear-gradient(150deg, rgba(24, 20, 18, 0.96), rgba(31, 26, 23, 0.9))"
+            : "linear-gradient(150deg, rgba(255, 252, 248, 0.98), rgba(247, 242, 235, 0.94))"
+          : palette.card,
       }}
     >
       {(title || eyebrow || description || action) && (
-        <div style={panelHead}>
+        <div
+          style={{
+            ...panelHead,
+            ...(execution
+              ? {
+                  paddingBottom: 14,
+                  borderBottom: `1px solid ${palette.border}`,
+                }
+              : null),
+          }}
+        >
           <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
             {eyebrow ? <p style={{ ...panelEyebrow, color: palette.muted }}>{eyebrow}</p> : null}
             {title ? <h2 style={{ ...panelTitle, color: palette.text }}>{title}</h2> : null}
@@ -95,13 +159,20 @@ export function WorkspacePanel({ palette, title, eyebrow, description, action, c
   );
 }
 
-export function WorkspaceEmptyState({ palette, title, description, action }) {
+export function WorkspaceEmptyState({ palette, variant = "default", darkMode, title, description, action }) {
+  const execution = variant === "execution";
+
   return (
     <div
       style={{
         ...emptyState,
+        ...(execution ? getExecutionEmptyShell(palette, darkMode) : null),
         border: `1px dashed ${palette.border}`,
-        background: palette.cardAlt,
+        background: execution
+          ? darkMode
+            ? "linear-gradient(150deg, rgba(31, 26, 23, 0.9), rgba(24, 20, 17, 0.82))"
+            : "linear-gradient(150deg, rgba(255, 252, 248, 0.96), rgba(241, 233, 221, 0.94))"
+          : palette.cardAlt,
         color: palette.muted,
       }}
     >
@@ -179,6 +250,15 @@ const heroSide = {
 const asideWrap = {
   display: "flex",
   justifyContent: "flex-end",
+};
+
+const heroAura = {
+  position: "absolute",
+  width: 280,
+  height: 280,
+  borderRadius: "50%",
+  filter: "blur(18px)",
+  pointerEvents: "none",
 };
 
 const statsGrid = {
@@ -304,3 +384,41 @@ const emptyDescription = {
   position: "relative",
   zIndex: 1,
 };
+
+function getExecutionHeroShell(palette, darkMode) {
+  return {
+    padding: "clamp(20px, 2.8vw, 30px)",
+    borderRadius: 32,
+    border: `1px solid ${palette.border}`,
+    background: darkMode
+      ? "linear-gradient(145deg, rgba(24, 20, 18, 0.96) 0%, rgba(31, 26, 23, 0.94) 56%, rgba(39, 33, 29, 0.9) 100%)"
+      : "linear-gradient(145deg, rgba(255, 252, 248, 0.98) 0%, rgba(247, 242, 235, 0.98) 58%, rgba(241, 233, 221, 0.94) 100%)",
+    boxShadow: "var(--ui-shadow-sm)",
+    overflow: "hidden",
+  };
+}
+
+function getExecutionToolbarShell(palette, darkMode) {
+  return {
+    borderRadius: 28,
+    padding: "18px 20px",
+    boxShadow: "var(--ui-shadow-sm)",
+    backdropFilter: darkMode ? "none" : "blur(10px)",
+  };
+}
+
+function getExecutionPanelShell(palette, darkMode) {
+  return {
+    borderRadius: 28,
+    padding: "20px",
+    boxShadow: "var(--ui-shadow-sm)",
+  };
+}
+
+function getExecutionEmptyShell(palette, darkMode) {
+  return {
+    borderRadius: 22,
+    padding: "32px 20px",
+    boxShadow: "var(--ui-shadow-xs)",
+  };
+}

@@ -203,6 +203,7 @@ function KanbanBoard() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="execution"
           eyebrow="Kanban Board"
           title={board.name}
           description={`Run execution from one board view for ${board.project_name || "this project"}, with drag-based status changes and clearer in-flight visibility.`}
@@ -236,7 +237,7 @@ function KanbanBoard() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={toolbarLayout}>
             <div style={toolbarIntro}>
               <p style={{ ...toolbarEyebrow, color: palette.muted }}>Board guide</p>
@@ -266,6 +267,8 @@ function KanbanBoard() {
 
         <WorkspacePanel
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           eyebrow="Execution lanes"
           title="Board flow"
           description="Each lane reflects live issue status. Open an issue for detail, or drag it to move execution forward."
@@ -273,6 +276,8 @@ function KanbanBoard() {
           {columns.length === 0 ? (
             <WorkspaceEmptyState
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               title="No columns on this board"
               description="Create board columns first so work can move through a defined execution flow."
             />
@@ -302,6 +307,8 @@ function KanbanBoard() {
                     {(column.issues || []).length === 0 ? (
                       <WorkspaceEmptyState
                         palette={palette}
+                        darkMode={darkMode}
+                        variant="execution"
                         title="No issues"
                         description="Drop an issue here when it reaches this execution stage."
                       />

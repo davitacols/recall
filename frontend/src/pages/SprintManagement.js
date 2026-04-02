@@ -171,6 +171,7 @@ export default function SprintManagement() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="execution"
           eyebrow="Sprint Operations"
           title="Manage sprint cycles with clearer delivery context"
           description="Plan new sprint windows, track the active cycle, and review execution health across every sprint the team has run."
@@ -204,7 +205,7 @@ export default function SprintManagement() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={toolbarLayout}>
             <div style={toolbarIntro}>
               <p style={{ ...toolbarEyebrow, color: palette.muted }}>Operations guide</p>
@@ -233,6 +234,8 @@ export default function SprintManagement() {
         <div style={ui.responsiveSplit}>
           <WorkspacePanel
             palette={palette}
+            darkMode={darkMode}
+            variant="execution"
             eyebrow="Current cycle"
             title={currentSprint ? currentSprint.name : "No active sprint"}
             description={
@@ -261,6 +264,8 @@ export default function SprintManagement() {
             ) : (
               <WorkspaceEmptyState
                 palette={palette}
+                darkMode={darkMode}
+                variant="execution"
                 title="No active sprint"
                 description="Create a new sprint or review prior cycles until the next execution window begins."
               />
@@ -269,6 +274,8 @@ export default function SprintManagement() {
 
           <WorkspacePanel
             palette={palette}
+            darkMode={darkMode}
+            variant="execution"
             eyebrow="Blocker watch"
             title={`Active blockers${blockers.length ? ` (${blockers.length})` : ""}`}
             description="Surface the blockers currently shaping sprint delivery before they turn into drift."
@@ -277,6 +284,8 @@ export default function SprintManagement() {
             {blockers.length === 0 ? (
               <WorkspaceEmptyState
                 palette={palette}
+                darkMode={darkMode}
+                variant="execution"
                 title="No active blockers"
                 description="The blocker lane is currently clear across sprint operations."
               />
@@ -300,6 +309,8 @@ export default function SprintManagement() {
 
         <WorkspacePanel
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           eyebrow="Sprint atlas"
           title="All sprint cycles"
           description="Open a sprint to inspect its execution detail, issue flow, and delivery decisions."
@@ -307,6 +318,8 @@ export default function SprintManagement() {
           {sprints.length === 0 ? (
             <WorkspaceEmptyState
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               title="No sprint history yet"
               description="Create the first sprint to start building your execution history."
             />

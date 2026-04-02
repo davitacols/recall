@@ -228,6 +228,7 @@ export default function Projects() {
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
+        variant="execution"
         eyebrow="Execution Workspace"
         title="Projects"
         description="Organize delivery tracks, roadmaps, and project lead accountability in a calmer workspace that keeps execution context close."
@@ -247,7 +248,7 @@ export default function Projects() {
         }
       />
 
-      <WorkspaceToolbar palette={palette}>
+      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
         <div style={toolbarLayout}>
           <div style={toolbarIntro}>
             <p style={{ ...toolbarEyebrow, color: palette.muted }}>Portfolio View</p>
@@ -484,6 +485,8 @@ export default function Projects() {
       {projects.length === 0 ? (
         <WorkspaceEmptyState
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           title="Start your first project workspace"
           description="Create a project to coordinate boards, issue flow, roadmap work, and the surrounding context from one place."
           action={

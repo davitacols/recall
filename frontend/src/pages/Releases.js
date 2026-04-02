@@ -84,6 +84,7 @@ function Releases() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="execution"
           eyebrow="Roadmap"
           title="Releases"
           description="Track what is shipping, what is upcoming, and how the project is staging delivery across release windows."
@@ -118,7 +119,7 @@ function Releases() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={toolbarLayout}>
             <div style={toolbarIntro}>
               <p style={{ ...toolbarEyebrow, color: palette.muted }}>Planning guide</p>
@@ -144,6 +145,8 @@ function Releases() {
         {showForm && (
           <WorkspacePanel
             palette={palette}
+            darkMode={darkMode}
+            variant="execution"
             eyebrow="New release"
             title="Create release"
             description="Capture the shipping brief, version, and target window for this release."
@@ -193,6 +196,8 @@ function Releases() {
 
         <WorkspacePanel
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           eyebrow="Release atlas"
           title="Shipping windows"
           description="Update release status as delivery moves from planned to shipped to archived."
@@ -200,6 +205,8 @@ function Releases() {
           {releases.length === 0 ? (
             <WorkspaceEmptyState
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               title="No releases yet"
               description="Create the first release to start shaping the shipping roadmap for this project."
             />

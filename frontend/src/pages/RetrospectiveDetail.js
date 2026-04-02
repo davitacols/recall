@@ -111,6 +111,7 @@ function Retrospectives() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="execution"
           eyebrow="Retrospective"
           title={sprint.name}
           description="Review what landed well, what needs improvement, and what the team should carry into the next sprint cycle."
@@ -146,7 +147,7 @@ function Retrospectives() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={toolbarLayout}>
             <div style={toolbarIntro}>
               <p style={{ ...toolbarEyebrow, color: palette.muted }}>Review guide</p>

@@ -347,6 +347,7 @@ export default function Reports() {
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
+        variant="execution"
         eyebrow="Delivery Reporting"
         title="Reports and Analytics"
         description="Track sprint progress, velocity, and delivery momentum from a cleaner reporting surface that works even when the underlying agile data is sparse."
@@ -373,7 +374,7 @@ export default function Reports() {
         }
       />
 
-      <WorkspaceToolbar palette={palette}>
+      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <select
             value={selectedProject}
@@ -431,6 +432,8 @@ export default function Reports() {
       {!loading && error ? (
         <WorkspaceEmptyState
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           title="Reporting is unavailable"
           description={error}
           action={
@@ -444,6 +447,8 @@ export default function Reports() {
       {!loading && !error && projects.length === 0 ? (
         <WorkspaceEmptyState
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           title="No agile projects yet"
           description="Create a project first so sprint reports, velocity, and burndown trends have a delivery surface to draw from."
           action={
@@ -494,6 +499,8 @@ export default function Reports() {
           {!selectedSprint && !reportLoading ? (
             <WorkspaceEmptyState
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               title="Select a sprint to open reporting"
               description="The project has loaded, but we still need a sprint selection before we can draw the burndown chart."
             />
@@ -503,6 +510,8 @@ export default function Reports() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 12 }}>
               <WorkspacePanel
                 palette={palette}
+                darkMode={darkMode}
+                variant="execution"
                 eyebrow="Burn"
                 title="Sprint burndown"
                 description="Compare the ideal burndown line with the actual trend so teams can see whether work is clearing at the expected pace."
@@ -512,6 +521,8 @@ export default function Reports() {
                 ) : (
                   <WorkspaceEmptyState
                     palette={palette}
+                    darkMode={darkMode}
+                    variant="execution"
                     title="No burndown data"
                     description="Start a sprint and move work through the board to generate burndown activity."
                   />
@@ -520,6 +531,8 @@ export default function Reports() {
 
               <WorkspacePanel
                 palette={palette}
+                darkMode={darkMode}
+                variant="execution"
                 eyebrow="Throughput"
                 title="Team velocity"
                 description="Review the difference between committed and completed work across recent sprints."
@@ -529,6 +542,8 @@ export default function Reports() {
                 ) : (
                   <WorkspaceEmptyState
                     palette={palette}
+                    darkMode={darkMode}
+                    variant="execution"
                     title="No velocity history"
                     description="Velocity appears here once sprint history is available."
                   />
@@ -539,6 +554,8 @@ export default function Reports() {
 
           <WorkspacePanel
             palette={palette}
+            darkMode={darkMode}
+            variant="execution"
             eyebrow="History"
             title="Sprint history"
             description="Use the latest sprint outcomes to understand consistency, overcommitment, and delivery reliability."
@@ -594,6 +611,8 @@ export default function Reports() {
             ) : (
               <WorkspaceEmptyState
                 palette={palette}
+                darkMode={darkMode}
+                variant="execution"
                 title="No sprint history yet"
                 description="Velocity history will appear here after the team closes a few sprints."
               />

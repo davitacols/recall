@@ -67,6 +67,7 @@ function SprintHistory() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
+          variant="execution"
           eyebrow="Sprint History"
           title="Review delivery cycles as institutional execution memory"
           description="Use sprint history to inspect what completed, what blocked, and how delivery patterns should shape the next planning cycle."
@@ -100,7 +101,7 @@ function SprintHistory() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
+        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={toolbarLayout}>
             <div style={toolbarIntro}>
               <p style={{ ...toolbarEyebrow, color: palette.muted }}>Review guide</p>
@@ -131,6 +132,8 @@ function SprintHistory() {
 
         <WorkspacePanel
           palette={palette}
+          darkMode={darkMode}
+          variant="execution"
           eyebrow="Cycle atlas"
           title="Prior sprint outcomes"
           description="Open a sprint to inspect its detail, flow, blockers, and linked execution context."
@@ -138,6 +141,8 @@ function SprintHistory() {
           {filteredSprints.length === 0 ? (
             <WorkspaceEmptyState
               palette={palette}
+              darkMode={darkMode}
+              variant="execution"
               title="No completed sprints yet"
               description="Sprint history will begin to fill in as the team completes more execution cycles."
             />

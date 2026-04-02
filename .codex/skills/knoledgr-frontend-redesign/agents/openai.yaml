@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knoledgr Frontend"
+  short_description: "Knoledgr frontend redesign guidance"
+  default_prompt: "Use $knoledgr-frontend-redesign to redesign Knoledgr navigation, layout, and page UI starting with the sidebars."

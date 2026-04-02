@@ -251,55 +251,149 @@ export default function UnifiedNav({
   const palette = useMemo(() => getUnifiedNavPalette(darkMode), [darkMode]);
   const workspaceName = formatWorkspaceName(user?.organization_slug);
 
-  const navItemsBase = [
-    { name: "Home", href: "/", icon: HomeIcon },
-    {
-      name: "Knowledge",
-      icon: Squares2X2Icon,
-      items: [
-        { name: "Search", href: "/knowledge", icon: MagnifyingGlassIcon },
-        { name: "Graph", href: "/knowledge/graph", icon: CubeIcon },
-        { name: "Analytics", href: "/knowledge/analytics", icon: ChartBarIcon },
-      ],
-    },
-    {
-      name: "Collaborate",
-      icon: ChatBubbleLeftIcon,
-      items: [
-        { name: "Conversations", href: "/conversations", icon: ChatBubbleLeftIcon },
-        { name: "Decisions", href: "/decisions", icon: DocumentCheckIcon },
-        { name: "Meetings", href: "/business/meetings", icon: CalendarIcon },
-      ],
-    },
-    {
-      name: "Execute",
-      icon: RocketLaunchIcon,
-      items: [
-        { name: "Projects", href: "/projects", icon: CubeIcon },
-        { name: "Goals", href: "/business/goals", icon: FlagIcon },
-        { name: "Tasks", href: "/business/tasks", icon: ClipboardDocumentListIcon },
-        { name: "Sprints", href: "/sprint-history", icon: RocketLaunchIcon },
-      ],
-    },
-    {
-      name: "Resources",
-      icon: DocumentTextIcon,
-      items: [
-        { name: "Docs", href: "/docs", icon: DocumentTextIcon },
-        { name: "Documents", href: "/business/documents", icon: DocumentTextIcon },
-        { name: "Templates", href: "/business/templates", icon: DocumentTextIcon },
-        ...(user?.is_staff || user?.is_superuser
-          ? [
-              { name: "Feedback Inbox", href: "/feedback/inbox", icon: ChatBubbleLeftIcon },
-              { name: "Partner Inbox", href: "/partners/inbox", icon: ClipboardDocumentListIcon },
-            ]
-          : []),
-        ...(user?.role === "admin"
-          ? [{ name: "Import/Export", href: "/import-export", icon: DocumentTextIcon }]
-          : []),
-      ],
-    },
-  ];
+  const navItemsBase = useMemo(
+    () => [
+      {
+        name: "Home",
+        href: "/dashboard",
+        icon: HomeIcon,
+        summary: "Dashboards, priorities, and the workspace pulse",
+      },
+      {
+        name: "Knowledge",
+        icon: Squares2X2Icon,
+        summary: "Search, graph, and analytics for team memory",
+        items: [
+          {
+            name: "Search",
+            href: "/knowledge",
+            icon: MagnifyingGlassIcon,
+            description: "Look up decisions, documents, and captured context",
+          },
+          {
+            name: "Graph",
+            href: "/knowledge/graph",
+            icon: CubeIcon,
+            description: "Trace relationships across people, work, and memory",
+          },
+          {
+            name: "Analytics",
+            href: "/knowledge/analytics",
+            icon: ChartBarIcon,
+            description: "Measure coverage, freshness, and knowledge flow",
+          },
+        ],
+      },
+      {
+        name: "Collaborate",
+        icon: ChatBubbleLeftIcon,
+        summary: "Conversations, decisions, and meetings in motion",
+        items: [
+          {
+            name: "Conversations",
+            href: "/conversations",
+            icon: ChatBubbleLeftIcon,
+            description: "Review discussion threads and linked follow-through",
+          },
+          {
+            name: "Decisions",
+            href: "/decisions",
+            icon: DocumentCheckIcon,
+            description: "Track committed choices, rationale, and owners",
+          },
+          {
+            name: "Meetings",
+            href: "/business/meetings",
+            icon: CalendarIcon,
+            description: "Capture meetings and keep follow-up visible",
+          },
+        ],
+      },
+      {
+        name: "Execute",
+        icon: RocketLaunchIcon,
+        summary: "Projects, goals, tasks, and sprint delivery",
+        items: [
+          {
+            name: "Projects",
+            href: "/projects",
+            icon: CubeIcon,
+            description: "Monitor project health, scope, and execution lanes",
+          },
+          {
+            name: "Goals",
+            href: "/business/goals",
+            icon: FlagIcon,
+            description: "Track outcomes, owners, and performance targets",
+          },
+          {
+            name: "Tasks",
+            href: "/business/tasks",
+            icon: ClipboardDocumentListIcon,
+            description: "Move day-to-day execution and ownership forward",
+          },
+          {
+            name: "Sprints",
+            href: "/sprint-history",
+            icon: RocketLaunchIcon,
+            description: "Inspect sprint progress, rhythm, and delivery health",
+          },
+        ],
+      },
+      {
+        name: "Resources",
+        icon: DocumentTextIcon,
+        summary: "Docs, templates, and operational assets",
+        items: [
+          {
+            name: "Docs",
+            href: "/docs",
+            icon: DocumentTextIcon,
+            description: "Reference product docs, guides, and system notes",
+          },
+          {
+            name: "Documents",
+            href: "/business/documents",
+            icon: DocumentTextIcon,
+            description: "Open working documents, briefs, and deliverables",
+          },
+          {
+            name: "Templates",
+            href: "/business/templates",
+            icon: DocumentTextIcon,
+            description: "Reuse structured working documents and starter assets",
+          },
+          ...(user?.is_staff || user?.is_superuser
+            ? [
+                {
+                  name: "Feedback Inbox",
+                  href: "/feedback/inbox",
+                  icon: ChatBubbleLeftIcon,
+                  description: "Review incoming customer product feedback",
+                },
+                {
+                  name: "Partner Inbox",
+                  href: "/partners/inbox",
+                  icon: ClipboardDocumentListIcon,
+                  description: "Track partner-facing operational conversations",
+                },
+              ]
+            : []),
+          ...(user?.role === "admin"
+            ? [
+                {
+                  name: "Import/Export",
+                  href: "/import-export",
+                  icon: DocumentTextIcon,
+                  description: "Move structured data into and out of the workspace",
+                },
+              ]
+            : []),
+        ],
+      },
+    ],
+    [user?.is_staff, user?.is_superuser, user?.role]
+  );
 
   const navItems = useMemo(() => {
     if (experienceMode !== "simple") {
@@ -327,9 +421,7 @@ export default function UnifiedNav({
 
   const isTopLevelActive = (item) => {
     if (item.href) {
-      return item.href === "/"
-        ? location.pathname === "/"
-        : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
+      return location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
     }
     return item.items?.some(
       (sub) =>
@@ -408,7 +500,11 @@ export default function UnifiedNav({
     if (!openDropdown) return null;
     if (openDropdown === "Apps") {
       return {
+        eyebrow: "Extensions",
         title: "Apps",
+        summary: installedApps.length
+          ? "Launch installed tools and workflow extensions from this rail."
+          : "No apps are installed yet. Open Enterprise to add workspace extensions.",
         items: installedApps.map((app) => {
           const target = getAppLaunchTarget(app);
           return {
@@ -416,6 +512,7 @@ export default function UnifiedNav({
             name: app.name,
             href: target.href,
             external: target.type === "external",
+            description: app.tagline || app.short_description || app.description || "Open installed app",
           };
         }),
         footerLink: { name: "Manage Apps", href: "/enterprise", external: false },
@@ -424,16 +521,134 @@ export default function UnifiedNav({
     const group = navItems.find((item) => item.name === openDropdown && Array.isArray(item.items));
     if (!group) return null;
     return {
+      eyebrow: "Workstream",
       title: group.name,
+      summary: group.summary,
       items: group.items.map((subItem) => ({
         id: subItem.href,
         name: subItem.name,
         href: subItem.href,
         icon: subItem.icon,
         external: false,
+        description: subItem.description,
       })),
     };
   }, [openDropdown, installedApps, navItems]);
+
+  const homeItem = navItems.find((item) => item.name === "Home") || null;
+  const workflowItems = navItems.filter((item) => item.name !== "Home");
+  const appsActive =
+    openDropdown === "Apps" ||
+    location.pathname === "/enterprise" ||
+    location.pathname.startsWith("/enterprise/");
+  const appsItem = {
+    name: "Apps",
+    icon: CubeIcon,
+    summary: installedApps.length
+      ? `${installedApps.length} installed tool${installedApps.length === 1 ? "" : "s"} and extensions`
+      : "Install workspace tools and workflow extensions",
+    items: installedApps,
+    special: "apps",
+  };
+  const activePrimaryItem = appsActive
+    ? appsItem
+    : navItems.find((item) => isTopLevelActive(item)) || homeItem || navItems[0] || null;
+  const workspaceModeLabel = experienceMode === "simple" ? "Simple mode" : "Full workspace";
+
+  const renderTopLevelItem = (item) => {
+    const Icon = item.icon;
+    const hasChildren = Array.isArray(item.items);
+    const isAppsItem = item.special === "apps";
+    const active = isAppsItem ? appsActive : isTopLevelActive(item);
+    const expanded = hasChildren && openDropdown === item.name;
+    const sharedStyle = {
+      ...topButton,
+      color: active ? palette.text : palette.muted,
+      background: active ? `linear-gradient(135deg, ${palette.active}, ${palette.panelAlt})` : "transparent",
+      border: `1px solid ${active ? palette.activeBorder : "transparent"}`,
+      justifyContent: collapsed ? "center" : "flex-start",
+      padding: collapsed ? "10px" : topButton.padding,
+      boxShadow: active ? `0 18px 32px ${palette.accentA}12` : "none",
+    };
+    const labelContent = (
+      <>
+        <span
+          style={{
+            ...iconPill,
+            background: active ? `${palette.accentA}22` : palette.panelAlt,
+            color: active ? palette.text : palette.muted,
+          }}
+        >
+          <Icon style={icon16} />
+        </span>
+        {!collapsed ? (
+          <>
+            <span style={topButtonContent}>
+              <span style={{ ...topButtonLabel, color: palette.text }}>{item.name}</span>
+              {item.summary ? <span style={{ ...topButtonMeta, color: palette.muted }}>{item.summary}</span> : null}
+            </span>
+            {(hasChildren || isAppsItem) && (
+              <span style={topButtonTail}>
+                <span
+                  style={{
+                    ...topButtonCount,
+                    border: `1px solid ${active ? palette.activeBorder : palette.border}`,
+                    background: active ? `${palette.accentA}18` : palette.searchBg,
+                    color: active ? palette.text : palette.muted,
+                  }}
+                >
+                  {item.items.length}
+                </span>
+                <ChevronDownIcon
+                  style={{
+                    ...icon14,
+                    transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 0.15s ease",
+                  }}
+                />
+              </span>
+            )}
+          </>
+        ) : null}
+      </>
+    );
+
+    if (hasChildren || isAppsItem) {
+      return (
+        <button
+          key={item.name}
+          className="ui-btn-polish ui-focus-ring"
+          onClick={() => {
+            if (collapsed) {
+              if (isAppsItem) {
+                navigate("/enterprise");
+                return;
+              }
+              navigate(item.items[0]?.href || "/dashboard");
+              return;
+            }
+            setOpenDropdown(expanded ? null : item.name);
+          }}
+          style={sharedStyle}
+          title={item.name}
+        >
+          {labelContent}
+        </button>
+      );
+    }
+
+    return (
+      <Link
+        key={item.name}
+        to={item.href}
+        className="ui-btn-polish ui-focus-ring"
+        style={sharedStyle}
+        title={item.name}
+      >
+        {labelContent}
+      </Link>
+    );
+  };
 
   if (isMobile) {
     return null;
@@ -450,7 +665,7 @@ export default function UnifiedNav({
         borderRight: `1px solid ${palette.border}`,
         boxShadow: palette.shadow,
         padding: collapsed ? "10px 6px" : sidebar.padding,
-        gridTemplateRows: collapsed ? "auto minmax(0,1fr)" : sidebar.gridTemplateRows,
+        gridTemplateRows: collapsed ? "auto minmax(0,1fr) auto" : sidebar.gridTemplateRows,
         transition: "width 0.2s ease, padding 0.2s ease",
       }}
     >
@@ -458,17 +673,17 @@ export default function UnifiedNav({
       <div style={{ ...sidebarTextureB, background: `radial-gradient(circle, ${palette.accentB}4a, transparent 72%)` }} />
 
       <div
-        style={{
-          ...brandWrap,
-          justifyContent: collapsed ? "center" : "space-between",
-          padding: collapsed ? "6px 0" : brandWrap.padding,
-          border: `1px solid ${palette.border}`,
-          background: palette.searchBg,
-          boxShadow: "none",
-        }}
-      >
+          style={{
+            ...brandWrap,
+            justifyContent: collapsed ? "center" : "space-between",
+            padding: collapsed ? "6px 0" : brandWrap.padding,
+            border: `1px solid ${palette.border}`,
+            background: palette.searchBg,
+            boxShadow: collapsed ? "none" : `0 18px 28px ${palette.accentA}10`,
+          }}
+        >
         {!collapsed ? (
-          <Link to="/" style={brandHome}>
+          <Link to="/dashboard" style={brandHome}>
             <p style={{ ...brandEyebrow, color: palette.muted }}>Workspace</p>
             <p style={{ ...brandTitle, color: palette.text }}>Knoledgr</p>
             <p style={{ ...brandMeta, color: palette.muted }}>{workspaceName}</p>
@@ -489,6 +704,55 @@ export default function UnifiedNav({
           {collapsed ? <ChevronRightIcon style={icon14} /> : <ChevronLeftIcon style={icon14} />}
         </button>
       </div>
+
+      {!collapsed && activePrimaryItem && (
+        <div
+          style={{
+            ...workspaceOverviewCard,
+            background: palette.searchBg,
+            border: `1px solid ${palette.border}`,
+            boxShadow: `0 20px 30px ${palette.accentA}10`,
+          }}
+        >
+          <div style={workspaceOverviewHeader}>
+            <span style={{ ...workspaceOverviewEyebrow, color: palette.muted }}>Command center</span>
+            <span
+              style={{
+                ...workspaceOverviewPill,
+                color: palette.text,
+                border: `1px solid ${palette.border}`,
+                background: palette.panelAlt,
+              }}
+            >
+              {workspaceModeLabel}
+            </span>
+          </div>
+          <p style={{ ...workspaceOverviewTitle, color: palette.text }}>{activePrimaryItem.name}</p>
+          <p style={{ ...workspaceOverviewMeta, color: palette.muted }}>{activePrimaryItem.summary}</p>
+          <div style={workspaceOverviewStats}>
+            <span
+              style={{
+                ...workspaceOverviewPill,
+                color: palette.muted,
+                border: `1px solid ${palette.border}`,
+                background: "transparent",
+              }}
+            >
+              {`${navItems.length} zones`}
+            </span>
+            <span
+              style={{
+                ...workspaceOverviewPill,
+                color: palette.muted,
+                border: `1px solid ${palette.border}`,
+                background: "transparent",
+              }}
+            >
+              {installedApps.length ? `${installedApps.length} apps` : "0 apps"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {!collapsed && (
         <div style={searchWrap} ref={searchRef}>
@@ -569,124 +833,34 @@ export default function UnifiedNav({
         </div>
       )}
 
-      {!collapsed && (
-        <div style={sectionLabelWrap}>
-          <span style={{ ...sectionLabel, color: palette.muted }}>Explore</span>
-        </div>
-      )}
-
       <div style={{ ...navList, padding: collapsed ? 0 : navList.padding }} ref={dropdownRef}>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = isTopLevelActive(item);
+        {!collapsed ? (
+          <div style={sectionLabelWrap}>
+            <span style={{ ...sectionLabel, color: palette.muted }}>Overview</span>
+          </div>
+        ) : null}
+        {homeItem ? renderTopLevelItem(homeItem) : null}
+        {!collapsed ? (
+          <div style={sectionLabelWrap}>
+            <span style={{ ...sectionLabel, color: palette.muted }}>Workstreams</span>
+          </div>
+        ) : null}
+        {workflowItems.map((item) => renderTopLevelItem(item))}
+      </div>
 
-          if (item.items) {
-            const expanded = openDropdown === item.name;
-            return (
-              <div key={item.name} style={{ position: "relative" }}>
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  onClick={() => {
-                    if (collapsed) {
-                      navigate(item.items[0]?.href || "/");
-                      return;
-                    }
-                    setOpenDropdown(expanded ? null : item.name);
-                  }}
-                  style={{
-                    ...topButton,
-                    color: active ? palette.text : palette.muted,
-                    background: active ? palette.active : "transparent",
-                    border: `1px solid ${active ? palette.activeBorder : "transparent"}`,
-                    justifyContent: collapsed ? "center" : "flex-start",
-                    padding: collapsed ? "8px" : topButton.padding,
-                  }}
-                  title={item.name}
-                >
-                  <span style={{ ...iconPill, background: active ? `${palette.accentA}30` : palette.panelAlt }}>
-                    <Icon style={icon16} />
-                  </span>
-                  {!collapsed && <span>{item.name}</span>}
-                  {!collapsed && (
-                    <ChevronDownIcon
-                      style={{
-                        ...icon14,
-                        marginLeft: "auto",
-                        transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 0.15s",
-                      }}
-                    />
-                  )}
-                </button>
-              </div>
-            );
-          }
-
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className="ui-btn-polish ui-focus-ring"
-              style={{
-                ...topButton,
-                color: active ? palette.text : palette.muted,
-                background: active ? palette.active : "transparent",
-                border: `1px solid ${active ? palette.activeBorder : "transparent"}`,
-                justifyContent: collapsed ? "center" : "flex-start",
-                padding: collapsed ? "8px" : topButton.padding,
-              }}
-              title={item.name}
-            >
-              <span style={{ ...iconPill, background: active ? `${palette.accentA}30` : palette.panelAlt }}>
-                <Icon style={icon16} />
-              </span>
-              {!collapsed && <span>{item.name}</span>}
-            </Link>
-          );
-        })}
-
-        <div style={{ position: "relative" }}>
-          <button
-            className="ui-btn-polish ui-focus-ring"
-            onClick={() => {
-              if (collapsed) {
-                navigate("/enterprise");
-                return;
-              }
-              setOpenDropdown(openDropdown === "Apps" ? null : "Apps");
-            }}
-            style={{
-              ...topButton,
-              color: installedApps.length ? palette.text : palette.muted,
-              background: openDropdown === "Apps" ? palette.active : "transparent",
-              border: `1px solid ${openDropdown === "Apps" ? palette.activeBorder : "transparent"}`,
-              justifyContent: collapsed ? "center" : "flex-start",
-              padding: collapsed ? "8px" : topButton.padding,
-            }}
-            title="Apps"
-          >
-            {collapsed ? (
-              <span style={{ ...iconPill, background: palette.panelAlt }}>
-                <CubeIcon style={icon16} />
-              </span>
-            ) : (
-              <span style={{ ...appsGlyph, background: palette.panelAlt }}>Apps</span>
-            )}
-            {!collapsed && (
-              <ChevronDownIcon
-                style={{
-                  ...icon14,
-                  marginLeft: "auto",
-                  transform: openDropdown === "Apps" ? "rotate(180deg)" : "rotate(0deg)",
-                  transition: "transform 0.15s",
-                }}
-              />
-            )}
-          </button>
-          {openDropdown === "Apps" && !collapsed && (
-            null
-          )}
-        </div>
+      <div
+        style={{
+          ...navFooter,
+          borderTop: `1px solid ${palette.border}`,
+          background: collapsed ? "transparent" : "linear-gradient(180deg, transparent, rgba(0,0,0,0.02))",
+        }}
+      >
+        {!collapsed ? (
+          <div style={sectionLabelWrap}>
+            <span style={{ ...sectionLabel, color: palette.muted }}>Extensions</span>
+          </div>
+        ) : null}
+        <div style={navFooterInner}>{renderTopLevelItem(appsItem)}</div>
       </div>
 
       {!collapsed && (
@@ -714,7 +888,25 @@ export default function UnifiedNav({
         }}
       >
         <div style={{ ...subnavHeader, borderBottom: `1px solid ${palette.border}` }}>
-          <p style={subnavTitle}>{activeSubnav.title}</p>
+          <div style={subnavTitleBlock}>
+            <p style={{ ...subnavEyebrow, color: palette.muted }}>{activeSubnav.eyebrow || "Section"}</p>
+            <div style={subnavTitleRow}>
+              <p style={subnavTitle}>{activeSubnav.title}</p>
+              <span
+                style={{
+                  ...subnavCount,
+                  color: palette.muted,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.panelAlt,
+                }}
+              >
+                {activeSubnav.items.length}
+              </span>
+            </div>
+            {activeSubnav.summary ? (
+              <p style={{ ...subnavSummary, color: palette.muted }}>{activeSubnav.summary}</p>
+            ) : null}
+          </div>
           <button
             onClick={() => setOpenDropdown(null)}
             className="ui-btn-polish ui-focus-ring"
@@ -734,23 +926,55 @@ export default function UnifiedNav({
               const subActive =
                 !item.external &&
                 (location.pathname === item.href || (item.href !== "/" && location.pathname.startsWith(`${item.href}/`)));
+              const itemIcon = ItemIcon || CubeIcon;
+              const itemBody = (
+                <>
+                  <span
+                    style={{
+                      ...subnavIconPill,
+                      background: subActive ? `${palette.accentA}20` : palette.panelAlt,
+                      color: subActive ? palette.text : palette.muted,
+                    }}
+                  >
+                    {React.createElement(itemIcon, { style: icon16 })}
+                  </span>
+                  <span style={subnavItemBody}>
+                    <span style={subnavItemLabel}>{item.name}</span>
+                    {item.description ? (
+                      <span style={{ ...subnavItemMeta, color: palette.muted }}>{item.description}</span>
+                    ) : null}
+                  </span>
+                  {item.external ? (
+                    <span
+                      style={{
+                        ...subnavExternalTag,
+                        color: palette.muted,
+                        border: `1px solid ${palette.border}`,
+                        background: palette.panelAlt,
+                      }}
+                    >
+                      External
+                    </span>
+                  ) : null}
+                </>
+              );
               if (item.external) {
                 return (
-                    <a
-                      key={item.id}
-                      href={item.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() => setOpenDropdown(null)}
-                      className="ui-btn-polish ui-focus-ring"
-                      style={{
-                        ...subnavItem,
-                        color: palette.text,
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setOpenDropdown(null)}
+                    className="ui-btn-polish ui-focus-ring"
+                    style={{
+                      ...subnavItem,
+                      color: palette.text,
                       background: "transparent",
                       borderLeft: "3px solid transparent",
                     }}
                   >
-                    <span>{item.name}</span>
+                    {itemBody}
                   </a>
                 );
               }
@@ -767,8 +991,7 @@ export default function UnifiedNav({
                     borderLeft: `3px solid ${subActive ? palette.accentA : "transparent"}`,
                   }}
                 >
-                  {ItemIcon ? <ItemIcon style={icon16} /> : null}
-                  <span>{item.name}</span>
+                  {itemBody}
                 </Link>
               );
             })
@@ -798,7 +1021,7 @@ const sidebar = {
   left: 0,
   bottom: 0,
   display: "grid",
-  gridTemplateRows: "auto auto auto minmax(0,1fr)",
+  gridTemplateRows: "auto auto auto minmax(0,1fr) auto",
   gap: 10,
   padding: "16px 12px",
   zIndex: 70,
@@ -867,6 +1090,59 @@ const brandMeta = {
   lineHeight: 1.45,
 };
 
+const workspaceOverviewCard = {
+  borderRadius: 22,
+  padding: "14px 14px 13px",
+  position: "relative",
+  zIndex: 1,
+  display: "grid",
+  gap: 10,
+};
+
+const workspaceOverviewHeader = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const workspaceOverviewEyebrow = {
+  fontSize: 10,
+  fontWeight: 800,
+  textTransform: "uppercase",
+  letterSpacing: "0.14em",
+};
+
+const workspaceOverviewTitle = {
+  margin: 0,
+  fontSize: 18,
+  lineHeight: 1.05,
+  letterSpacing: "-0.03em",
+  fontWeight: 800,
+};
+
+const workspaceOverviewMeta = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.45,
+};
+
+const workspaceOverviewStats = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const workspaceOverviewPill = {
+  borderRadius: 999,
+  padding: "5px 9px",
+  fontSize: 11,
+  fontWeight: 700,
+  lineHeight: 1,
+};
+
 const sectionLabelWrap = {
   padding: "0 14px",
 };
@@ -890,20 +1166,72 @@ const navList = {
 };
 
 const topButton = {
-  display: "inline-flex",
+  display: "flex",
   alignItems: "center",
   gap: 12,
-  borderRadius: 18,
+  borderRadius: 20,
   fontSize: 13,
   fontWeight: 700,
   textDecoration: "none",
-  padding: "12px 13px",
+  padding: "13px 14px",
   cursor: "pointer",
-  whiteSpace: "nowrap",
   width: "100%",
   textAlign: "left",
   transition: "all 0.18s ease",
   backdropFilter: "blur(8px)",
+  minHeight: 62,
+};
+
+const topButtonContent = {
+  minWidth: 0,
+  display: "grid",
+  gap: 3,
+  flex: 1,
+};
+
+const topButtonLabel = {
+  fontSize: 13,
+  fontWeight: 800,
+  lineHeight: 1.15,
+};
+
+const topButtonMeta = {
+  fontSize: 11,
+  lineHeight: 1.4,
+  whiteSpace: "normal",
+};
+
+const topButtonTail = {
+  display: "flex",
+  alignItems: "center",
+  alignSelf: "flex-start",
+  gap: 8,
+  marginLeft: "auto",
+  paddingTop: 2,
+  flexShrink: 0,
+};
+
+const topButtonCount = {
+  minWidth: 28,
+  height: 24,
+  borderRadius: 999,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "0 8px",
+  fontSize: 11,
+  fontWeight: 800,
+  lineHeight: 1,
+};
+
+const navFooter = {
+  position: "relative",
+  zIndex: 1,
+  paddingTop: 10,
+};
+
+const navFooterInner = {
+  padding: "0 4px 4px",
 };
 
 const subnavSidebar = {
@@ -918,18 +1246,55 @@ const subnavSidebar = {
 
 const subnavHeader = {
   display: "flex",
-  alignItems: "center",
   justifyContent: "space-between",
   gap: 8,
-  padding: "22px 16px 14px",
+  padding: "20px 16px 16px",
+  alignItems: "flex-start",
+};
+
+const subnavTitleBlock = {
+  display: "grid",
+  gap: 6,
+  minWidth: 0,
+  flex: 1,
+};
+
+const subnavEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const subnavTitleRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  minWidth: 0,
+  flexWrap: "wrap",
 };
 
 const subnavTitle = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 16,
   fontWeight: 800,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
+  letterSpacing: "-0.02em",
+  lineHeight: 1.1,
+};
+
+const subnavCount = {
+  borderRadius: 999,
+  padding: "5px 9px",
+  fontSize: 11,
+  fontWeight: 700,
+  lineHeight: 1,
+};
+
+const subnavSummary = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.45,
 };
 
 const subnavClose = {
@@ -961,6 +1326,42 @@ const subnavItem = {
   borderRadius: 16,
 };
 
+const subnavIconPill = {
+  width: 30,
+  height: 30,
+  borderRadius: 12,
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
+};
+
+const subnavItemBody = {
+  minWidth: 0,
+  display: "grid",
+  gap: 3,
+  flex: 1,
+};
+
+const subnavItemLabel = {
+  fontSize: 13,
+  fontWeight: 800,
+  lineHeight: 1.2,
+};
+
+const subnavItemMeta = {
+  fontSize: 11,
+  lineHeight: 1.35,
+};
+
+const subnavExternalTag = {
+  borderRadius: 999,
+  padding: "4px 8px",
+  fontSize: 10,
+  fontWeight: 700,
+  lineHeight: 1,
+  flexShrink: 0,
+};
+
 const subnavFooter = {
   padding: "8px",
 };
@@ -972,20 +1373,12 @@ const subnavEmpty = {
 };
 
 const iconPill = {
-  width: 28,
-  height: 28,
-  borderRadius: 12,
+  width: 32,
+  height: 32,
+  borderRadius: 13,
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
-};
-
-const appsGlyph = {
-  borderRadius: 999,
-  padding: "7px 11px",
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: "0.03em",
 };
 
 const searchWrap = {

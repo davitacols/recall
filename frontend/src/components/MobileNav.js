@@ -3,14 +3,21 @@ import { Link, useLocation } from "react-router-dom";
 import {
   HomeIcon,
   ChatBubbleLeftIcon,
-  DocumentTextIcon,
-  ListBulletIcon,
+  Squares2X2Icon,
+  RocketLaunchIcon,
   Bars3Icon,
   XMarkIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+
+function formatWorkspaceName(orgSlug) {
+  if (!orgSlug) return "Knoledgr";
+  return orgSlug
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 export const MobileNav = ({ onSearchOpen }) => {
   const location = useLocation();
@@ -81,16 +88,89 @@ export const MobileNav = ({ onSearchOpen }) => {
     [darkMode]
   );
 
+  const experienceMode = localStorage.getItem("ui_experience_mode") || "standard";
+  const workspaceName = formatWorkspaceName(user?.organization_slug);
+
   const navItems = [
-    { path: "/", icon: HomeIcon, label: "Home" },
-    { path: "/conversations", icon: ChatBubbleLeftIcon, label: "Chats" },
-    { path: "/decisions", icon: DocumentTextIcon, label: "Decisions" },
-    { path: "/sprint", icon: ListBulletIcon, label: "Sprint" },
+    { path: "/dashboard", icon: HomeIcon, label: "Home", match: ["/dashboard"] },
+    { path: "/knowledge", icon: Squares2X2Icon, label: "Knowledge", match: ["/knowledge"] },
+    {
+      path: "/conversations",
+      icon: ChatBubbleLeftIcon,
+      label: "Collab",
+      match: ["/conversations", "/decisions", "/business/meetings"],
+    },
+    {
+      path: "/projects",
+      icon: RocketLaunchIcon,
+      label: "Execute",
+      match: ["/projects", "/business/goals", "/business/tasks", "/sprint-history", "/sprints", "/sprint"],
+    },
   ];
 
-  const isActive = (path) => {
-    if (path === "/") return location.pathname === "/" || location.pathname === "/dashboard";
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  const menuSections = [
+    {
+      title: "Navigate",
+      items: [
+        {
+          to: "/knowledge",
+          label: "Knowledge",
+          meta: "Search, graph, and analytics for workspace memory",
+          match: ["/knowledge"],
+        },
+        {
+          to: "/conversations",
+          label: "Collaborate",
+          meta: "Conversations, decisions, and meetings in motion",
+          match: ["/conversations", "/decisions", "/business/meetings"],
+        },
+        {
+          to: "/projects",
+          label: "Execute",
+          meta: "Projects, goals, tasks, and sprint delivery",
+          match: ["/projects", "/business/goals", "/business/tasks", "/sprint-history", "/sprints", "/sprint"],
+        },
+        {
+          to: "/docs",
+          label: "Resources",
+          meta: "Docs, templates, and shared operational assets",
+          match: ["/docs", "/business/documents", "/business/templates", "/feedback/inbox", "/partners/inbox", "/import-export"],
+        },
+      ],
+    },
+    {
+      title: "Utilities",
+      items: [
+        {
+          to: "/profile",
+          label: "Profile",
+          meta: "Identity, account details, and personal preferences",
+          match: ["/profile"],
+        },
+        {
+          to: "/settings",
+          label: "Settings",
+          meta: "Theme, workspace preferences, and experience mode",
+          match: ["/settings"],
+        },
+        {
+          to: "/integrations",
+          label: "Integrations",
+          meta: "Connected tools, credentials, and service setup",
+          match: ["/integrations"],
+        },
+        {
+          to: "/enterprise",
+          label: "Apps",
+          meta: "Manage installed apps and workspace extensions",
+          match: ["/enterprise"],
+        },
+      ],
+    },
+  ];
+
+  const isActive = (path, match = [path]) => {
+    return match.some((candidate) => location.pathname === candidate || location.pathname.startsWith(`${candidate}/`));
   };
 
   const handleSwitchWorkspace = async (orgSlug) => {
@@ -111,7 +191,7 @@ export const MobileNav = ({ onSearchOpen }) => {
 
     setMenuOpen(false);
     setWorkspacePassword("");
-    window.location.href = "/";
+    window.location.href = "/dashboard";
   };
 
   const handleRequestWorkspaceCode = async (orgSlug) => {
@@ -140,7 +220,7 @@ export const MobileNav = ({ onSearchOpen }) => {
         <div style={mobileBottomInner}>
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = isActive(item.path);
+            const active = isActive(item.path, item.match);
             return (
               <Link
                 key={item.path}
@@ -198,10 +278,60 @@ export const MobileNav = ({ onSearchOpen }) => {
 
             <div style={menuContent}>
               <nav style={{ ...quickLinks, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
-                <Link to="/profile" style={{ ...quickLink, color: palette.text }}>Profile</Link>
-                <Link to="/settings" style={{ ...quickLink, color: palette.text }}>Settings</Link>
-                <Link to="/projects" style={{ ...quickLink, color: palette.text }}>Projects</Link>
-                <Link to="/integrations" style={{ ...quickLink, color: palette.text }}>Integrations</Link>
+                <div
+                  style={{
+                    ...menuHero,
+                    borderBottom: `1px solid ${palette.border}`,
+                    background: palette.panelAlt,
+                  }}
+                >
+                  <p style={{ ...menuHeroEyebrow, color: palette.muted }}>Workspace</p>
+                  <p style={{ ...menuHeroTitle, color: palette.text }}>{workspaceName}</p>
+                  <p style={{ ...menuHeroMeta, color: palette.muted }}>
+                    {experienceMode === "simple" ? "Simple mode" : "Full workspace"} navigation for knowledge, collaboration, and execution.
+                  </p>
+                </div>
+                <div style={menuSectionStack}>
+                  {menuSections.map((section) => (
+                    <section key={section.title} style={menuSection}>
+                      <p style={{ ...menuSectionTitle, color: palette.muted }}>{section.title}</p>
+                      <div style={menuSectionList}>
+                        {section.items.map((item) => {
+                          const active = isActive(item.to, item.match);
+                          return (
+                            <Link
+                              key={item.to}
+                              to={item.to}
+                              style={{
+                                ...menuLinkCard,
+                                color: palette.text,
+                                border: `1px solid ${active ? palette.active : palette.border}`,
+                                background: active ? palette.navPill : palette.panel,
+                              }}
+                            >
+                              <span style={menuLinkHeader}>
+                                <span style={menuLinkLabel}>{item.label}</span>
+                                {active ? (
+                                  <span
+                                    style={{
+                                      ...menuLinkPill,
+                                      color: palette.active,
+                                      border: `1px solid ${palette.border}`,
+                                      background: palette.surface,
+                                    }}
+                                  >
+                                    Open
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span style={{ ...menuLinkMeta, color: palette.muted }}>{item.meta}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
               </nav>
 
               <section style={{ ...workspaceBlock, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
@@ -384,12 +514,90 @@ const quickLinks = {
   overflow: "hidden",
 };
 
-const quickLink = {
-  textDecoration: "none",
-  padding: "14px 12px",
-  fontSize: 14,
+const menuHero = {
+  padding: "16px 14px 14px",
+  display: "grid",
+  gap: 6,
+};
+
+const menuHeroEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 800,
+  textTransform: "uppercase",
+  letterSpacing: "0.14em",
+};
+
+const menuHeroTitle = {
+  margin: 0,
+  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
+  fontSize: 24,
+  lineHeight: 1,
   fontWeight: 700,
-  borderBottom: "1px solid rgba(148,163,184,0.16)",
+};
+
+const menuHeroMeta = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.45,
+};
+
+const menuSectionStack = {
+  display: "grid",
+  gap: 12,
+  padding: "14px",
+};
+
+const menuSection = {
+  display: "grid",
+  gap: 8,
+};
+
+const menuSectionTitle = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const menuSectionList = {
+  display: "grid",
+  gap: 8,
+};
+
+const menuLinkCard = {
+  textDecoration: "none",
+  borderRadius: 18,
+  padding: "12px 13px",
+  display: "grid",
+  gap: 4,
+};
+
+const menuLinkHeader = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+};
+
+const menuLinkLabel = {
+  fontSize: 14,
+  fontWeight: 800,
+  lineHeight: 1.15,
+};
+
+const menuLinkMeta = {
+  fontSize: 12,
+  lineHeight: 1.4,
+};
+
+const menuLinkPill = {
+  borderRadius: 999,
+  padding: "4px 8px",
+  fontSize: 10,
+  fontWeight: 700,
+  lineHeight: 1,
 };
 
 const workspaceBlock = {

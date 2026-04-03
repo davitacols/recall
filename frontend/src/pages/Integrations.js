@@ -797,17 +797,29 @@ export default function Integrations() {
     setSaving(true);
     setFlash(null);
     try {
+      let response = null;
       if (active === "slack") {
-        await api.post("/api/integrations/slack/", slackForm);
+        response = await api.post("/api/integrations/slack/", slackForm);
       } else if (active === "github") {
-        await api.post("/api/integrations/fresh/github/config/", githubForm);
+        response = await api.post("/api/integrations/fresh/github/config/", githubForm);
+        if (response?.data?.github) {
+          setGithub(response.data.github);
+        }
       } else {
-        await api.post("/api/integrations/jira/", jiraForm);
+        response = await api.post("/api/integrations/jira/", jiraForm);
       }
       await fetchIntegrations();
       setFlash({ type: "success", text: `${activeProvider?.name} settings saved.` });
-    } catch {
-      setFlash({ type: "error", text: `Failed to save ${activeProvider?.name} settings.` });
+    } catch (error) {
+      const detail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "";
+      setFlash({
+        type: "error",
+        text: detail ? `${activeProvider?.name} save failed: ${detail}` : `Failed to save ${activeProvider?.name} settings.`,
+      });
     } finally {
       setSaving(false);
     }

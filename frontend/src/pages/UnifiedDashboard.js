@@ -12,7 +12,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import MissionControlPanel from "../components/MissionControlPanel";
-import { WorkspaceEmptyState, WorkspacePanel } from "../components/WorkspaceChrome";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { buildApiUrl } from "../utils/apiBase";
@@ -56,28 +56,6 @@ function SummaryCard({ label, value, tone, palette }) {
     >
       <p style={{ ...microLabel, color: palette.muted }}>{label}</p>
       <p style={{ ...summaryValue, color: tone }}>{value}</p>
-    </article>
-  );
-}
-
-function MetricStrip({ label, value, detail, tone, palette }) {
-  return (
-    <article
-      className="ui-card-lift ui-smooth"
-      style={{
-        borderRadius: 18,
-        padding: 14,
-        display: "grid",
-        gap: 6,
-        border: `1px solid ${palette.border}`,
-        background: palette.card,
-      }}
-    >
-      <p style={{ ...microLabel, color: palette.muted }}>{label}</p>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10 }}>
-        <p style={{ ...summaryValue, color: tone, fontSize: 28 }}>{value}</p>
-        <p style={{ ...caption, color: palette.muted, textAlign: "right" }}>{detail}</p>
-      </div>
     </article>
   );
 }
@@ -681,6 +659,40 @@ export default function UnifiedDashboard() {
     stats.activity,
   ]);
 
+  const heroStats = [
+    {
+      label: "Signals",
+      value: stats.activity,
+      helper: "Weekly movement in the workspace memory stream",
+      tone: palette.accent,
+    },
+    {
+      label: "Reliability",
+      value: `${reliability}%`,
+      helper: "Average confidence across reviewed decision outcomes",
+      tone: palette.good,
+    },
+    {
+      label: "Success rate",
+      value: `${successRate}%`,
+      helper: `${outcomeStats.reviewed_count || 0} reviewed outcomes so far`,
+      tone: palette.info,
+    },
+    {
+      label: "Coverage",
+      value: stats.nodes,
+      helper: `${pendingOutcomeMeta.total || 0} decisions still waiting on follow-through`,
+      tone: palette.text,
+    },
+  ];
+
+  const dashboardActions = [
+    { label: currentSprint ? "Open Sprint Board" : "Sprint Board", to: "/sprint", primary: false },
+    { label: "Decision Hub", to: "/decisions", primary: false },
+    { label: roleProfile.personalPanel.actionLabel, to: "/business/tasks", primary: false },
+    { label: "Ask Recall", to: "/ask", primary: true },
+  ];
+
   if (loading) {
     return (
       <div style={loadingWrap}>
@@ -700,82 +712,38 @@ export default function UnifiedDashboard() {
 
   return (
     <div style={pageStyle}>
-      <section
-        className="ui-enter"
-        style={{
-          ...shellCard,
-          "--ui-delay": "80ms",
-          border: `1px solid ${palette.border}`,
-          background: darkMode ? `linear-gradient(155deg, ${palette.panel}, ${palette.cardAlt})` : "linear-gradient(155deg, rgba(255,252,247,0.98), rgba(245,238,228,0.88))",
-        }}
-      >
-        <div style={{ display: "grid", gap: 16, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.18fr) minmax(320px,0.82fr)" }}>
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={{ display: "grid", gap: 8 }}>
-              <p style={{ ...microLabel, color: palette.muted }}>Dashboard briefing | {todayLabel}</p>
-              <h1 style={{ ...heroTitle, color: palette.text }}>{roleProfile.title}</h1>
-              <p style={{ ...bodyCopy, color: palette.muted, maxWidth: 620 }}>
-                {roleProfile.description}
-              </p>
-            </div>
-
-            <article
-              className="ui-card-lift ui-smooth"
-              style={{
-                ...briefingCard,
-                border: `1px solid ${palette.border}`,
-                background: darkMode
-                  ? `linear-gradient(160deg, rgba(32,27,23,0.92), rgba(17,15,13,0.98))`
-                  : "linear-gradient(160deg, rgba(255,255,255,0.98), rgba(248,242,233,0.96))",
-              }}
-            >
-              <div style={{ display: "grid", gap: 8 }}>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  <p style={{ ...microLabel, color: palette.muted }}>Today&apos;s focus</p>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
-                    {roleProfile.badge} | {workspaceName} | {experienceMode}
-                  </span>
-                </div>
-                <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 30 }}>{roleProfile.focusTitle}</h2>
-                <p style={{ ...bodyCopy, color: palette.muted, maxWidth: 620 }}>{note}</p>
-              </div>
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-                {roleProfile.focusItems.map((item) => (
-                  <div key={item} style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                    <span style={{ ...focusDot, background: palette.accent }} />
-                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{item}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(2, minmax(0, 1fr))" }}>
-              {roleProfile.commandDeck.map((card) => (
-                <CommandCard key={card.title} {...card} palette={palette} darkMode={darkMode} />
-              ))}
-            </div>
-
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
-              <MetricStrip label="Signals" value={stats.activity} detail="Weekly movement in the memory stream" tone={palette.accent} palette={palette} />
-              <MetricStrip label="Reliability" value={`${reliability}%`} detail="Average outcome confidence from reviewed decisions" tone={palette.good} palette={palette} />
-              <MetricStrip label="Success Rate" value={`${successRate}%`} detail={`${outcomeStats.reviewed_count || 0} reviewed outcomes so far`} tone={palette.info} palette={palette} />
-              <MetricStrip label="Decision Coverage" value={stats.nodes} detail={`${pendingOutcomeMeta.total || 0} items still waiting on follow-through`} tone={palette.text} palette={palette} />
-            </div>
-          </div>
-
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        variant="execution"
+        eyebrow={`Dashboard briefing | ${todayLabel}`}
+        title={roleProfile.title}
+        description={roleProfile.description}
+        stats={heroStats}
+        actions={dashboardActions.map((action) => (
+          <Link
+            key={action.label}
+            className="ui-btn-polish ui-focus-ring"
+            to={action.to}
+            style={action.primary ? primaryButton(palette) : secondaryButton(palette)}
+          >
+            {action.label}
+          </Link>
+        ))}
+        aside={(
           <article
             className="ui-card-lift ui-smooth"
             style={{
               ...panelCard,
               border: `1px solid ${palette.border}`,
               background: darkMode
-                ? `linear-gradient(180deg, ${palette.card}, rgba(19,17,15,0.95))`
-                : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,238,229,0.92))",
+                ? "linear-gradient(180deg, rgba(31, 25, 21, 0.96), rgba(21, 18, 15, 0.92))"
+                : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,239,229,0.94))",
             }}
           >
             <div style={{ display: "grid", gap: 6 }}>
               <p style={{ ...microLabel, color: palette.muted }}>Execution lane</p>
-              <h2 style={{ margin: 0, fontSize: 20, lineHeight: 1.05, color: palette.text }}>{currentSprint?.name || "No active sprint"}</h2>
+              <h2 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>{currentSprint?.name || "No active sprint"}</h2>
               <p style={{ ...bodyCopy, color: palette.muted }}>
                 {currentSprint
                   ? `${sprintCompleted} of ${sprintTotal} items are complete, with ${sprintBlocked} blocked and ${sprintInProgress} actively moving.`
@@ -819,55 +787,104 @@ export default function UnifiedDashboard() {
               </div>
             </div>
           </article>
-        </div>
-      </section>
+        )}
+      />
 
-      <section className="ui-enter" style={{ ...shellCard, "--ui-delay": "120ms", border: `1px solid ${palette.border}`, background: palette.card }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "grid", gap: 6 }}>
-            <p style={{ ...microLabel, color: palette.muted }}>Priority queues</p>
-            <h2 style={{ ...sectionTitle, color: palette.text }}>What should move before new work starts.</h2>
+      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+              <p style={{ ...microLabel, color: palette.muted }}>Today&apos;s focus</p>
+              <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 30 }}>{roleProfile.focusTitle}</h2>
+              <p style={{ ...bodyCopy, color: palette.muted, maxWidth: 760 }}>{note}</p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: isNarrow ? "flex-start" : "flex-end" }}>
+              <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
+                {roleProfile.badge} | {workspaceName}
+              </span>
+              <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                Mode | {experienceMode}
+              </span>
+            </div>
           </div>
-          <p style={{ ...caption, color: palette.muted, maxWidth: 440 }}>{note}</p>
-        </div>
 
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-          <PriorityCard
-            title="Outcome Reviews"
-            value={`${pendingOutcomeMeta.overdue} overdue`}
-            helper={`${pendingOutcomeMeta.total} reviews are still open in the queue.`}
-            note={pendingOutcomeMeta.overdue > 0 ? "Nudge owners before this slips another day." : "Follow-through looks stable right now."}
-            to="/decisions?outcome=pending"
-            tone={pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good}
-            palette={palette}
-            icon={QueueListIcon}
-          />
-          <PriorityCard
-            title="Decision Drift"
-            value={`${driftMeta.critical} critical`}
-            helper={`${driftMeta.high} additional high-severity alerts are in the stack.`}
-            note={driftMeta.critical > 0 ? "Revisit assumptions before more execution compounds." : "Decision set is currently stable."}
-            to="/decisions"
-            tone={driftMeta.critical > 0 ? palette.accent : palette.info}
-            palette={palette}
-            icon={SparklesIcon}
-          />
-          <PriorityCard
-            title="Sprint Risk"
-            value={`${sprintBlocked} blocked`}
-            helper={`${sprintInProgress} work items are actively moving through delivery.`}
-            note={sprintBlocked > 0 ? "Clear blockers before planning more scope." : "Delivery lane is moving without visible blockage."}
-            to="/sprint"
-            tone={sprintBlocked > 0 ? palette.warn : palette.good}
-            palette={palette}
-            icon={BoltIcon}
-          />
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+            {roleProfile.focusItems.map((item) => (
+              <div key={item} style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                <span style={{ ...focusDot, background: palette.accent }} />
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{item}</p>
+              </div>
+            ))}
+          </div>
         </div>
+      </WorkspaceToolbar>
+
+      <section className="ui-enter" style={{ "--ui-delay": "120ms", display: "grid", gap: 14, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.12fr) minmax(320px,0.88fr)" }}>
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="execution"
+          eyebrow="Command deck"
+          title="What your role should drive next."
+          description={note}
+        >
+          <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(2, minmax(0, 1fr))" }}>
+            {roleProfile.commandDeck.map((card) => (
+              <CommandCard key={card.title} {...card} palette={palette} darkMode={darkMode} />
+            ))}
+          </div>
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="execution"
+          eyebrow="Priority queues"
+          title="Move these before new work starts."
+          description="These are the pressure points most likely to degrade delivery if they wait."
+        >
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+              <PriorityCard
+                title="Outcome Reviews"
+                value={`${pendingOutcomeMeta.overdue} overdue`}
+                helper={`${pendingOutcomeMeta.total} reviews are still open in the queue.`}
+                note={pendingOutcomeMeta.overdue > 0 ? "Nudge owners before this slips another day." : "Follow-through looks stable right now."}
+                to="/decisions?outcome=pending"
+                tone={pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good}
+                palette={palette}
+                icon={QueueListIcon}
+              />
+              <PriorityCard
+                title="Decision Drift"
+                value={`${driftMeta.critical} critical`}
+                helper={`${driftMeta.high} additional high-severity alerts are in the stack.`}
+                note={driftMeta.critical > 0 ? "Revisit assumptions before more execution compounds." : "Decision set is currently stable."}
+                to="/decisions"
+                tone={driftMeta.critical > 0 ? palette.accent : palette.info}
+                palette={palette}
+                icon={SparklesIcon}
+              />
+              <PriorityCard
+                title="Sprint Risk"
+                value={`${sprintBlocked} blocked`}
+                helper={`${sprintInProgress} work items are actively moving through delivery.`}
+                note={sprintBlocked > 0 ? "Clear blockers before planning more scope." : "Delivery lane is moving without visible blockage."}
+                to="/sprint"
+                tone={sprintBlocked > 0 ? palette.warn : palette.good}
+                palette={palette}
+                icon={BoltIcon}
+              />
+            </div>
+          </div>
+        </WorkspacePanel>
       </section>
 
       <section className="ui-enter" style={{ "--ui-delay": "145ms" }}>
         <WorkspacePanel
           palette={palette}
+          darkMode={darkMode}
+          variant="memory"
           eyebrow={roleProfile.personalPanel.eyebrow}
           title={roleProfile.personalPanel.title}
           description={roleProfile.personalPanel.description}
@@ -885,6 +902,8 @@ export default function UnifiedDashboard() {
           {personalLaneQuiet ? (
             <WorkspaceEmptyState
               palette={palette}
+              darkMode={darkMode}
+              variant="memory"
               title={roleProfile.personalPanel.emptyTitle}
               description={roleProfile.personalPanel.emptyDescription}
               action={<Link className="ui-btn-polish ui-focus-ring" to="/business/tasks" style={primaryButton(palette)}>{roleProfile.personalPanel.actionLabel}</Link>}
@@ -945,7 +964,7 @@ export default function UnifiedDashboard() {
                     {watchedIssues.slice(0, 4).map((issue) => (
                       <Link key={issue.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/issues/${issue.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
                         <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{issue.key ? `${issue.key} · ${issue.title}` : issue.title}</p>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{issue.key ? `${issue.key} | ${issue.title}` : issue.title}</p>
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                             <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.info }}>{formatStatusLabel(issue.status)}</span>
                             {issue.project_name ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{issue.project_name}</span> : null}
@@ -1137,6 +1156,8 @@ export default function UnifiedDashboard() {
       <section className="ui-enter" style={{ "--ui-delay": "170ms", display: "grid", gap: 14, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.18fr) minmax(320px,0.82fr)" }}>
         <WorkspacePanel
           palette={palette}
+          darkMode={darkMode}
+          variant="memory"
           eyebrow={roleProfile.signalPanel.eyebrow}
           title={roleProfile.signalPanel.title}
           description={roleProfile.signalPanel.description}
@@ -1145,6 +1166,8 @@ export default function UnifiedDashboard() {
           {timeline.length === 0 ? (
             <WorkspaceEmptyState
               palette={palette}
+              darkMode={darkMode}
+              variant="memory"
               title={roleProfile.signalPanel.emptyTitle}
               description={roleProfile.signalPanel.emptyDescription}
               action={<Link className="ui-btn-polish ui-focus-ring" to="/activity" style={primaryButton(palette)}>{roleProfile.signalPanel.emptyActionLabel}</Link>}
@@ -1201,6 +1224,8 @@ export default function UnifiedDashboard() {
         <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
           <WorkspacePanel
             palette={palette}
+            darkMode={darkMode}
+            variant="execution"
             eyebrow={roleProfile.outcomePanel.eyebrow}
             title={roleProfile.outcomePanel.title}
             description={roleProfile.outcomePanel.description}
@@ -1224,7 +1249,7 @@ export default function UnifiedDashboard() {
                 ))}
               </div>
             ) : (
-              <WorkspaceEmptyState palette={palette} title={roleProfile.outcomePanel.emptyTitle} description={roleProfile.outcomePanel.emptyDescription} />
+              <WorkspaceEmptyState palette={palette} darkMode={darkMode} variant="execution" title={roleProfile.outcomePanel.emptyTitle} description={roleProfile.outcomePanel.emptyDescription} />
             )}
 
             {canManageOutcomeFlow ? (
@@ -1255,6 +1280,8 @@ export default function UnifiedDashboard() {
 
           <WorkspacePanel
             palette={palette}
+            darkMode={darkMode}
+            variant="execution"
             eyebrow={roleProfile.driftPanel.eyebrow}
             title={roleProfile.driftPanel.title}
             description={roleProfile.driftPanel.description}
@@ -1279,23 +1306,23 @@ export default function UnifiedDashboard() {
                 ))}
               </div>
             ) : (
-              <WorkspaceEmptyState palette={palette} title={roleProfile.driftPanel.emptyTitle} description={roleProfile.driftPanel.emptyDescription} />
+              <WorkspaceEmptyState palette={palette} darkMode={darkMode} variant="execution" title={roleProfile.driftPanel.emptyTitle} description={roleProfile.driftPanel.emptyDescription} />
             )}
           </WorkspacePanel>
         </aside>
       </section>
 
       <section className="ui-enter" style={{ "--ui-delay": "220ms" }}>
-        <article className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, background: palette.panel, padding: 14 }}>
-          <div style={{ display: "grid", gap: 6, marginBottom: 10 }}>
-            <p style={{ ...microLabel, color: palette.muted }}>{roleProfile.missionPanel.eyebrow}</p>
-            <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 26 }}>{roleProfile.missionPanel.title}</h2>
-            <p style={{ ...caption, color: palette.muted, maxWidth: 720 }}>
-              {roleProfile.missionPanel.description}
-            </p>
-          </div>
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="execution"
+          eyebrow={roleProfile.missionPanel.eyebrow}
+          title={roleProfile.missionPanel.title}
+          description={roleProfile.missionPanel.description}
+        >
           <MissionControlPanel />
-        </article>
+        </WorkspacePanel>
       </section>
     </div>
   );
@@ -1339,10 +1366,7 @@ function secondaryButton(palette) {
 }
 
 const pageStyle = { position: "relative", padding: "clamp(14px, 2.4vw, 26px)", display: "grid", gap: 14 };
-const shellCard = { borderRadius: 26, padding: 18, display: "grid", gap: 16, boxShadow: "var(--ui-shadow-sm)" };
 const panelCard = { borderRadius: 22, padding: 16, display: "grid", gap: 12, boxShadow: "var(--ui-shadow-sm)" };
-const briefingCard = { borderRadius: 24, padding: 18, display: "grid", gap: 14, boxShadow: "var(--ui-shadow-sm)" };
-const heroTitle = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: "clamp(1.9rem, 2.8vw, 3.15rem)", lineHeight: 0.98, letterSpacing: "-0.05em", maxWidth: "14ch" };
 const sectionTitle = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: 28, lineHeight: 1.02, letterSpacing: "-0.05em" };
 const bodyCopy = { margin: 0, fontSize: 13, lineHeight: 1.65 };
 const caption = { margin: 0, fontSize: 12, lineHeight: 1.6 };

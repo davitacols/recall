@@ -12,7 +12,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import MissionControlPanel from "../components/MissionControlPanel";
-import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel } from "../components/WorkspaceChrome";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { buildApiUrl } from "../utils/apiBase";
@@ -75,15 +75,15 @@ function CommandCard({ title, description, metric, to, palette, darkMode, icon: 
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-        <div style={{ display: "grid", gap: 6 }}>
-          <p style={{ ...microLabel, color: palette.muted }}>Action Atlas</p>
-          <h3 style={{ margin: 0, fontSize: 18, lineHeight: 1.08 }}>{title}</h3>
+        <div style={{ display: "grid", gap: 4 }}>
+          <h3 style={{ margin: 0, fontSize: 16, lineHeight: 1.1 }}>{title}</h3>
+          <p style={{ ...commandMetric, color: palette.text }}>{metric}</p>
         </div>
         <span
           style={{
-            width: 38,
-            height: 38,
-            borderRadius: 14,
+            width: 34,
+            height: 34,
+            borderRadius: 12,
             display: "grid",
             placeItems: "center",
             border: `1px solid ${palette.border}`,
@@ -95,13 +95,10 @@ function CommandCard({ title, description, metric, to, palette, darkMode, icon: 
           <Icon style={{ width: 18, height: 18 }} />
         </span>
       </div>
-      <p style={{ ...bodyCopy, color: palette.muted }}>{description}</p>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-        <span style={{ ...commandMetric, color: palette.text }}>{metric}</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800 }}>
-          Open <ArrowRightIcon style={icon14} />
-        </span>
-      </div>
+      <p style={{ ...caption, color: palette.muted }}>{description}</p>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800 }}>
+        Open <ArrowRightIcon style={icon14} />
+      </span>
     </Link>
   );
 }
@@ -155,13 +152,6 @@ export default function UnifiedDashboard() {
   const { user } = useAuth();
   const [timeline, setTimeline] = useState([]);
   const [stats, setStats] = useState({ activity: 0, nodes: 0, links: 0, rate: 0 });
-  const [outcomeStats, setOutcomeStats] = useState({
-    reviewed_count: 0,
-    success_count: 0,
-    failure_count: 0,
-    success_rate: 0,
-    avg_reliability: 0,
-  });
   const [pendingOutcomeReviews, setPendingOutcomeReviews] = useState([]);
   const [pendingOutcomeMeta, setPendingOutcomeMeta] = useState({ total: 0, overdue: 0 });
   const [notifyingOutcomes, setNotifyingOutcomes] = useState(false);
@@ -241,10 +231,9 @@ export default function UnifiedDashboard() {
     try {
       const token = localStorage.getItem("access_token") || localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const [timelineRes, statsRes, outcomesRes, pendingRes, driftRes, sprintRes, personalRes] = await Promise.all([
+      const [timelineRes, statsRes, pendingRes, driftRes, sprintRes, personalRes] = await Promise.all([
         fetch(buildApiUrl(`/api/knowledge/timeline/?days=7&page=${page}&per_page=10`), { headers }),
         fetch(buildApiUrl("/api/knowledge/ai/success-rates/"), { headers }),
-        fetch(buildApiUrl("/api/decisions/outcomes/stats/"), { headers }),
         fetch(buildApiUrl("/api/decisions/outcomes/pending/?overdue_only=false"), { headers }),
         fetch(buildApiUrl("/api/decisions/outcomes/drift-alerts/"), { headers }),
         fetch(buildApiUrl("/api/agile/current-sprint/"), { headers }),
@@ -257,19 +246,11 @@ export default function UnifiedDashboard() {
       setHasMore(timelineData.pagination?.has_next || false);
 
       const statsData = unwrapPayload(await readJsonSafe(statsRes, {}), {});
-      const outcomesData = unwrapPayload(await readJsonSafe(outcomesRes, {}), {});
       const pendingData = unwrapPayload(await readJsonSafe(pendingRes, { items: [] }), { items: [] });
       const driftData = unwrapPayload(await readJsonSafe(driftRes, { items: [] }), { items: [] });
       const sprintData = unwrapPayload(await readJsonSafe(sprintRes, null), null);
       const personalData = unwrapPayload(await readJsonSafe(personalRes, {}), {});
 
-      setOutcomeStats({
-        reviewed_count: outcomesData.reviewed_count || 0,
-        success_count: outcomesData.success_count || 0,
-        failure_count: outcomesData.failure_count || 0,
-        success_rate: outcomesData.success_rate || 0,
-        avg_reliability: outcomesData.avg_reliability || 0,
-      });
       setPendingOutcomeReviews(pendingData.items || []);
       setPendingOutcomeMeta({ total: pendingData.total || 0, overdue: pendingData.overdue || 0 });
       setDriftAlerts(driftData.items || []);
@@ -358,8 +339,6 @@ export default function UnifiedDashboard() {
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   const featuredActivity = timeline[0] || null;
   const signalStream = featuredActivity ? timeline.slice(1, 7) : [];
-  const successRate = Math.round(outcomeStats.success_rate || 0);
-  const reliability = Math.round(outcomeStats.avg_reliability || 0);
   const assignedTasks = personalBriefing.assigned_tasks || [];
   const bookmarkedConversations = personalBriefing.bookmarked_conversations || [];
   const relevantDecisions = personalBriefing.relevant_decisions || [];
@@ -661,37 +640,36 @@ export default function UnifiedDashboard() {
 
   const heroStats = [
     {
-      label: "Signals",
-      value: stats.activity,
-      helper: "Weekly movement in the workspace memory stream",
-      tone: palette.accent,
+      label: "Sprint lane",
+      value: currentSprint ? `${sprintProgress}%` : "Idle",
+      helper: currentSprint
+        ? `${sprintBlocked} blocked and ${sprintInProgress} active in ${currentSprint.name}`
+        : "Activate a sprint to surface live delivery signals",
+      tone: sprintBlocked > 0 ? palette.warn : palette.accent,
     },
     {
-      label: "Reliability",
-      value: `${reliability}%`,
-      helper: "Average confidence across reviewed decision outcomes",
-      tone: palette.good,
+      label: "Follow-through",
+      value: pendingOutcomeMeta.total,
+      helper: pendingOutcomeMeta.overdue > 0
+        ? `${pendingOutcomeMeta.overdue} reviews are overdue`
+        : "No overdue reviews are stacking up",
+      tone: pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good,
     },
     {
-      label: "Success rate",
-      value: `${successRate}%`,
-      helper: `${outcomeStats.reviewed_count || 0} reviewed outcomes so far`,
-      tone: palette.info,
-    },
-    {
-      label: "Coverage",
-      value: stats.nodes,
-      helper: `${pendingOutcomeMeta.total || 0} decisions still waiting on follow-through`,
-      tone: palette.text,
+      label: "Context drift",
+      value: driftMeta.total,
+      helper: driftMeta.critical > 0
+        ? `${driftMeta.critical} critical alerts need a decision owner`
+        : "No critical drift is active right now",
+      tone: driftMeta.critical > 0 ? palette.accent : palette.info,
     },
   ];
 
-  const dashboardActions = [
-    { label: currentSprint ? "Open Sprint Board" : "Sprint Board", to: "/sprint", primary: false },
-    { label: "Decision Hub", to: "/decisions", primary: false },
-    { label: roleProfile.personalPanel.actionLabel, to: "/business/tasks", primary: false },
-    { label: "Ask Recall", to: "/ask", primary: true },
-  ];
+  const dashboardActions = roleProfile.commandDeck.slice(0, 3).map((card, index) => ({
+    label: card.title,
+    to: card.to,
+    primary: index === 0,
+  }));
 
   if (loading) {
     return (
@@ -741,140 +719,129 @@ export default function UnifiedDashboard() {
                 : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,239,229,0.94))",
             }}
           >
-            <div style={{ display: "grid", gap: 6 }}>
-              <p style={{ ...microLabel, color: palette.muted }}>Execution lane</p>
-              <h2 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>{currentSprint?.name || "No active sprint"}</h2>
-              <p style={{ ...bodyCopy, color: palette.muted }}>
-                {currentSprint
-                  ? `${sprintCompleted} of ${sprintTotal} items are complete, with ${sprintBlocked} blocked and ${sprintInProgress} actively moving.`
-                  : "Start or activate a sprint to surface delivery signals from this home screen."}
-              </p>
-            </div>
-
-            {currentSprint ? (
-              <>
-                <div style={{ width: "100%", height: 10, borderRadius: 999, overflow: "hidden", background: palette.border }}>
-                  <div style={{ width: `${sprintProgress}%`, height: "100%", borderRadius: 999, background: palette.ctaGradient }} />
-                </div>
-                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                  <SummaryCard label="Progress" value={`${sprintProgress}%`} tone={palette.text} palette={palette} />
-                  <SummaryCard label="Blocked" value={sprintBlocked} tone={sprintBlocked > 0 ? palette.warn : palette.good} palette={palette} />
-                </div>
-                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                  <SummaryCard label="In Progress" value={sprintInProgress} tone={palette.accent} palette={palette} />
-                  <SummaryCard label="Completed" value={sprintCompleted} tone={palette.good} palette={palette} />
-                </div>
-              </>
-            ) : (
-              <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>Open Sprint Board</Link>
-            )}
-
-            <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
-
-            <div style={{ display: "grid", gap: 10 }}>
-              <p style={{ ...microLabel, color: palette.muted }}>Operator pulse</p>
-              <div style={{ display: "grid", gap: 10 }}>
-                {[
-                  { label: "Decision reliability", value: `${reliability}%`, tone: palette.good },
-                  { label: "Follow-through pressure", value: `${pendingOutcomeMeta.overdue} overdue`, tone: pendingOutcomeMeta.overdue ? palette.warn : palette.good },
-                  { label: "Critical drift", value: `${driftMeta.critical}`, tone: driftMeta.critical ? palette.accent : palette.info },
-                ].map((item) => (
-                  <div key={item.label} style={{ ...pulseRow, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: palette.text }}>{item.label}</p>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: item.tone }}>{item.value}</span>
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <p style={{ ...microLabel, color: palette.muted }}>Execution lane</p>
+                    <h2 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>{currentSprint?.name || "No active sprint"}</h2>
                   </div>
-                ))}
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
+                    {roleProfile.badge}
+                  </span>
+                </div>
+                <p style={{ ...bodyCopy, color: palette.muted }}>
+                  {currentSprint
+                    ? `${sprintCompleted} of ${sprintTotal} items are complete, with ${sprintBlocked} blocked and ${sprintInProgress} actively moving.`
+                    : "Start or activate a sprint to surface delivery signals from this home screen."}
+                </p>
+                <p style={{ ...caption, color: palette.text }}>{note}</p>
               </div>
-            </div>
-          </article>
+
+              {currentSprint ? (
+                <>
+                  <div style={{ width: "100%", height: 10, borderRadius: 999, overflow: "hidden", background: palette.border }}>
+                    <div style={{ width: `${sprintProgress}%`, height: "100%", borderRadius: 999, background: palette.ctaGradient }} />
+                  </div>
+                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                    <SummaryCard label="Blocked" value={sprintBlocked} tone={sprintBlocked > 0 ? palette.warn : palette.good} palette={palette} />
+                    <SummaryCard label="In Progress" value={sprintInProgress} tone={palette.accent} palette={palette} />
+                  </div>
+                  <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>Open Sprint Board</Link>
+                </>
+              ) : (
+                <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>Plan Sprint Work</Link>
+              )}
+            </article>
         )}
       />
 
-      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
-        <div style={{ display: "grid", gap: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-              <p style={{ ...microLabel, color: palette.muted }}>Today&apos;s focus</p>
-              <h2 style={{ ...sectionTitle, color: palette.text, fontSize: 30 }}>{roleProfile.focusTitle}</h2>
-              <p style={{ ...bodyCopy, color: palette.muted, maxWidth: 760 }}>{note}</p>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: isNarrow ? "flex-start" : "flex-end" }}>
-              <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
-                {roleProfile.badge} | {workspaceName}
-              </span>
-              <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                Mode | {experienceMode}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-            {roleProfile.focusItems.map((item) => (
-              <div key={item} style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                <span style={{ ...focusDot, background: palette.accent }} />
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{item}</p>
+      <section className="ui-enter" style={{ "--ui-delay": "120ms" }}>
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="execution"
+          eyebrow="Focus board"
+          title={roleProfile.focusTitle}
+          description="Keep the next move obvious without opening half the workspace."
+        >
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
+                  {roleProfile.badge}
+                </span>
+                <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                  {workspaceName}
+                </span>
+                <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                  Mode | {experienceMode}
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-      </WorkspaceToolbar>
+              <p style={{ ...caption, color: palette.muted, maxWidth: 420 }}>{note}</p>
+            </div>
 
-      <section className="ui-enter" style={{ "--ui-delay": "120ms", display: "grid", gap: 14, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.12fr) minmax(320px,0.88fr)" }}>
-        <WorkspacePanel
-          palette={palette}
-          darkMode={darkMode}
-          variant="execution"
-          eyebrow="Command deck"
-          title="What your role should drive next."
-          description={note}
-        >
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(2, minmax(0, 1fr))" }}>
-            {roleProfile.commandDeck.map((card) => (
-              <CommandCard key={card.title} {...card} palette={palette} darkMode={darkMode} />
-            ))}
-          </div>
-        </WorkspacePanel>
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+              {roleProfile.focusItems.map((item) => (
+                <div key={item} style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                  <span style={{ ...focusDot, background: palette.accent }} />
+                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{item}</p>
+                </div>
+              ))}
+            </div>
 
-        <WorkspacePanel
-          palette={palette}
-          darkMode={darkMode}
-          variant="execution"
-          eyebrow="Priority queues"
-          title="Move these before new work starts."
-          description="These are the pressure points most likely to degrade delivery if they wait."
-        >
-          <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-              <PriorityCard
-                title="Outcome Reviews"
-                value={`${pendingOutcomeMeta.overdue} overdue`}
-                helper={`${pendingOutcomeMeta.total} reviews are still open in the queue.`}
-                note={pendingOutcomeMeta.overdue > 0 ? "Nudge owners before this slips another day." : "Follow-through looks stable right now."}
-                to="/decisions?outcome=pending"
-                tone={pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good}
-                palette={palette}
-                icon={QueueListIcon}
-              />
-              <PriorityCard
-                title="Decision Drift"
-                value={`${driftMeta.critical} critical`}
-                helper={`${driftMeta.high} additional high-severity alerts are in the stack.`}
-                note={driftMeta.critical > 0 ? "Revisit assumptions before more execution compounds." : "Decision set is currently stable."}
-                to="/decisions"
-                tone={driftMeta.critical > 0 ? palette.accent : palette.info}
-                palette={palette}
-                icon={SparklesIcon}
-              />
-              <PriorityCard
-                title="Sprint Risk"
-                value={`${sprintBlocked} blocked`}
-                helper={`${sprintInProgress} work items are actively moving through delivery.`}
-                note={sprintBlocked > 0 ? "Clear blockers before planning more scope." : "Delivery lane is moving without visible blockage."}
-                to="/sprint"
-                tone={sprintBlocked > 0 ? palette.warn : palette.good}
-                palette={palette}
-                icon={BoltIcon}
-              />
+            <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
+
+            <div style={{ display: "grid", gap: 14, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.12fr) minmax(300px,0.88fr)" }}>
+              <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <p style={{ ...microLabel, color: palette.muted }}>Priority queues</p>
+                  <p style={{ ...caption, color: palette.muted, margin: 0 }}>Start with the pressure points most likely to slow execution or disconnect context.</p>
+                </div>
+                <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+                  <PriorityCard
+                    title="Outcome Reviews"
+                    value={`${pendingOutcomeMeta.overdue} overdue`}
+                    helper={`${pendingOutcomeMeta.total} reviews are still open in the queue.`}
+                    note={pendingOutcomeMeta.overdue > 0 ? "Nudge owners before this slips another day." : "Follow-through looks stable right now."}
+                    to="/decisions?outcome=pending"
+                    tone={pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good}
+                    palette={palette}
+                    icon={QueueListIcon}
+                  />
+                  <PriorityCard
+                    title="Decision Drift"
+                    value={`${driftMeta.critical} critical`}
+                    helper={`${driftMeta.high} additional high-severity alerts are in the stack.`}
+                    note={driftMeta.critical > 0 ? "Revisit assumptions before more execution compounds." : "Decision set is currently stable."}
+                    to="/decisions"
+                    tone={driftMeta.critical > 0 ? palette.accent : palette.info}
+                    palette={palette}
+                    icon={SparklesIcon}
+                  />
+                  <PriorityCard
+                    title="Sprint Risk"
+                    value={`${sprintBlocked} blocked`}
+                    helper={`${sprintInProgress} work items are actively moving through delivery.`}
+                    note={sprintBlocked > 0 ? "Clear blockers before planning more scope." : "Delivery lane is moving without visible blockage."}
+                    to="/sprint"
+                    tone={sprintBlocked > 0 ? palette.warn : palette.good}
+                    palette={palette}
+                    icon={BoltIcon}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <p style={{ ...microLabel, color: palette.muted }}>Quick routes</p>
+                  <p style={{ ...caption, color: palette.muted, margin: 0 }}>Jump into the right workspace without rereading the whole board.</p>
+                </div>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {roleProfile.commandDeck.map((card) => (
+                    <CommandCard key={card.title} {...card} palette={palette} darkMode={darkMode} />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </WorkspacePanel>
@@ -1385,7 +1352,6 @@ const focusCard = { borderRadius: 18, padding: 14, display: "flex", alignItems: 
 const focusDot = { width: 8, height: 8, borderRadius: 999, marginTop: 6, flexShrink: 0 };
 const roleChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "6px 10px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", background: "var(--ui-panel)" };
 const railDivider = { width: "100%", margin: "4px 0" };
-const pulseRow = { borderRadius: 16, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };
 const loadingWrap = { padding: "clamp(16px, 3vw, 28px)", minHeight: "50vh", display: "grid", placeItems: "center" };
 const loadingCard = { width: "min(520px, 100%)", borderRadius: 22, padding: 18, boxShadow: "0 18px 40px rgba(0,0,0,0.16)" };
 const loadingTop = { display: "flex", alignItems: "center", gap: 12 };

@@ -1400,6 +1400,7 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
   const hasToken = Boolean(status?.configured) || hasText(value.access_token);
   const hasRepoTarget = Boolean(repoSlug);
   const hasSecret = Boolean(status?.has_webhook_secret) || hasText(value.webhook_secret);
+  const hasWebhookReady = Boolean(webhookUrl);
   const hasDeliveries = Boolean(observability?.last_delivery_at || deliveries.length);
   const processedCount = observability?.recent_processed_count || 0;
   const ignoredCount = observability?.recent_ignored_count || 0;
@@ -1445,9 +1446,11 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
         ? `${processedCount} recent GitHub deliveries have already been processed by Knoledgr.`
         : hasDeliveries
           ? "GitHub is sending traffic, but the latest deliveries still need review."
-          : "Copy the payload URL below into GitHub, subscribe to push and pull_request, then send one delivery.",
-      state: processedCount ? "Live" : hasDeliveries ? "Check deliveries" : "Waiting on GitHub",
-      tone: processedCount ? "emerald" : hasDeliveries ? "amber" : "slate",
+          : hasWebhookReady
+            ? "Payload URL is ready. Add it in GitHub, subscribe to push and pull_request, then send one delivery."
+            : "Save the repository and webhook secret first so Knoledgr can reveal the payload URL.",
+      state: processedCount ? "Live" : hasDeliveries ? "Check deliveries" : hasWebhookReady ? "Ready in GitHub" : "Save first",
+      tone: processedCount ? "emerald" : hasDeliveries ? "amber" : hasWebhookReady ? "sky" : "slate",
     },
   ];
 

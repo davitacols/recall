@@ -4,6 +4,7 @@ from django.test import TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from apps.organizations.models import Organization, User
+from .agile_fresh import project_detail as fresh_project_detail
 from .kanban_views import assign_issue_to_sprint, board_view
 from .ml_endpoints import predict_sprint, sprint_insights, suggest_assignee
 from .models import Board, Column, Component, Issue, IssueLabel, Project, Release, Sprint
@@ -212,6 +213,37 @@ class AgilePermissionIsolationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.project_a.refresh_from_db()
         self.assertEqual(self.project_a.lead_id, self.contributor_a.id)
+
+    def test_fresh_project_detail_patch_updates_lead_for_admin(self):
+        request = self.factory.patch(
+            f"/api/agile/projects/{self.project_a.id}/",
+            {
+                "lead_id": self.contributor_a.id,
+                "description": "Fresh route update",
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin_a)
+        response = fresh_project_detail(request, self.project_a.id)
+        self.assertEqual(response.status_code, 200)
+        self.project_a.refresh_from_db()
+        self.assertEqual(self.project_a.lead_id, self.contributor_a.id)
+        self.assertEqual(self.project_a.description, "Fresh route update")
+        self.assertEqual(response.data["lead_id"], self.contributor_a.id)
+        self.assertEqual(response.data["lead_name"], self.contributor_a.get_full_name())
+
+    def test_fresh_project_detail_rejects_cross_org_lead_selection(self):
+        request = self.factory.patch(
+            f"/api/agile/projects/{self.project_a.id}/",
+            {
+                "lead_id": self.admin_b.id,
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin_a)
+        response = fresh_project_detail(request, self.project_a.id)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Lead user not found", str(response.data.get("error", "")))
 
     def test_check_wip_limit_is_org_scoped(self):
         request = self.factory.get(f"/api/agile/columns/{self.column_b.id}/wip-check/")

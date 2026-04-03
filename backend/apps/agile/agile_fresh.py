@@ -211,7 +211,7 @@ def delete_project(request, project_id):
     except Project.DoesNotExist:
         return Response({'error': 'Project not found'}, status=404)
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def project_detail(request, project_id):
     """Get project details with sprints and stats"""
@@ -219,42 +219,75 @@ def project_detail(request, project_id):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     try:
-        project = Project.objects.get(id=project_id, organization=request.user.organization)
+        project = Project.objects.select_related('lead').get(id=project_id, organization=request.user.organization)
         _track_view_activity(
             request,
             project,
             project.name,
             project.description,
         )
-        sprints = project.sprints.all().order_by('-start_date')
-        
-        return Response({
-            'id': project.id,
-            'name': project.name,
-            'key': project.key,
-            'description': project.description,
-            'lead': project.lead.get_full_name() if project.lead else None,
-            'issue_count': project.issues.count(),
-            'completed_issues': project.issues.filter(status='done').count(),
-            'active_issues': project.issues.filter(status__in=['todo', 'in_progress']).count(),
-            'boards': [{
-                'id': b.id,
-                'name': b.name,
-            } for b in project.boards.all()],
-            'sprints': [{
-                'id': s.id,
-                'name': s.name,
-                'start_date': s.start_date.isoformat(),
-                'end_date': s.end_date.isoformat(),
-                'status': s.status,
-                'goal': s.goal,
-                'issue_count': s.issues.count(),
-                'completed_count': s.issues.filter(status='done').count(),
-                'blocked_count': s.blocked_count,
-            } for s in sprints]
-        })
     except Project.DoesNotExist:
         return Response({'error': 'Project not found'}, status=404)
+
+    if request.method in ['PUT', 'PATCH']:
+        is_admin = getattr(request.user, 'role', '') == 'admin'
+        is_project_lead = project.lead_id == request.user.id
+        if not is_admin and not is_project_lead:
+            return Response({'error': 'Permission denied for this project'}, status=403)
+
+        if 'name' in request.data:
+            project.name = (request.data.get('name') or '').strip()
+
+        if 'description' in request.data:
+            project.description = request.data.get('description') or ''
+
+        if 'lead_id' in request.data or 'lead' in request.data:
+            lead_ref = request.data.get('lead_id', request.data.get('lead'))
+            if lead_ref in (None, ''):
+                project.lead = None
+            else:
+                lead = User.objects.filter(
+                    id=lead_ref,
+                    organization=request.user.organization,
+                ).first()
+                if not lead:
+                    return Response({'error': 'Lead user not found in organization'}, status=400)
+                project.lead = lead
+
+        if not project.name:
+            return Response({'error': 'Project name is required'}, status=400)
+
+        project.save()
+
+    sprints = project.sprints.all().order_by('-start_date')
+
+    return Response({
+        'id': project.id,
+        'name': project.name,
+        'key': project.key,
+        'description': project.description,
+        'lead': project.lead.get_full_name() if project.lead else None,
+        'lead_id': project.lead_id,
+        'lead_name': project.lead.get_full_name() if project.lead else None,
+        'issue_count': project.issues.count(),
+        'completed_issues': project.issues.filter(status='done').count(),
+        'active_issues': project.issues.filter(status__in=['todo', 'in_progress']).count(),
+        'boards': [{
+            'id': b.id,
+            'name': b.name,
+        } for b in project.boards.all()],
+        'sprints': [{
+            'id': s.id,
+            'name': s.name,
+            'start_date': s.start_date.isoformat(),
+            'end_date': s.end_date.isoformat(),
+            'status': s.status,
+            'goal': s.goal,
+            'issue_count': s.issues.count(),
+            'completed_count': s.issues.filter(status='done').count(),
+            'blocked_count': s.blocked_count,
+        } for s in sprints]
+    })
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])

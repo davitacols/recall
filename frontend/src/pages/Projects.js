@@ -87,7 +87,12 @@ export default function Projects() {
   const fetchProjects = async () => {
     try {
       const response = await api.get("/api/agile/projects/");
-      setProjects(response.data || []);
+      setProjects(
+        (response.data || []).map((project) => ({
+          ...project,
+          lead_name: project.lead_name || project.lead || "",
+        }))
+      );
     } catch (error) {
       console.error("Failed to fetch projects:", error);
       setProjects([]);
@@ -128,7 +133,7 @@ export default function Projects() {
 
   const openLeadPicker = (project) => {
     setLeadPickerProject(project);
-    setLeadDraft(project?.lead ? String(project.lead) : "");
+    setLeadDraft(project?.lead_id ? String(project.lead_id) : "");
     setLeadError("");
     setShowLeadPicker(true);
   };
@@ -139,9 +144,20 @@ export default function Projects() {
     setSavingLead(true);
     setLeadError("");
     try {
-      await api.put(`/api/agile/projects/${leadPickerProject.id}/`, {
+      const response = await api.put(`/api/agile/projects/${leadPickerProject.id}/`, {
         lead_id: leadDraft || "",
       });
+      const updatedProject = response.data
+        ? {
+            ...response.data,
+            lead_name: response.data.lead_name || response.data.lead || "",
+          }
+        : null;
+      if (updatedProject) {
+        setProjects((current) =>
+          current.map((project) => (project.id === leadPickerProject.id ? { ...project, ...updatedProject } : project))
+        );
+      }
       setShowLeadPicker(false);
       setLeadPickerProject(null);
       setLeadDraft("");

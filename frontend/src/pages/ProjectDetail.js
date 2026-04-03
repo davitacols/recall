@@ -90,6 +90,14 @@ export default function ProjectDetail() {
     }
   };
 
+  const syncProjectSnapshot = (snapshot) => {
+    if (!snapshot) return;
+    setProject((current) => (current ? { ...current, ...snapshot } : snapshot));
+    if (Array.isArray(snapshot.boards)) {
+      setBoards(snapshot.boards);
+    }
+  };
+
   const handleCreateSprint = async (event) => {
     event.preventDefault();
     setIsCreatingSprint(true);
@@ -155,13 +163,15 @@ export default function ProjectDetail() {
       lead_id: projectForm.lead_id || "",
     };
     try {
-      await api.patch(`/api/agile/projects/${projectId}/`, payload);
+      const response = await api.patch(`/api/agile/projects/${projectId}/`, payload);
+      syncProjectSnapshot(response.data);
       setShowEditProject(false);
       fetchProject();
     } catch (error) {
       if (error?.response?.status === 405) {
         try {
-          await api.put(`/api/agile/projects/${projectId}/`, payload);
+          const fallbackResponse = await api.put(`/api/agile/projects/${projectId}/`, payload);
+          syncProjectSnapshot(fallbackResponse.data);
           setShowEditProject(false);
           fetchProject();
           return;

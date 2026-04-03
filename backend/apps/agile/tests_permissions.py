@@ -4,7 +4,7 @@ from django.test import TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from apps.organizations.models import Organization, User
-from .agile_fresh import project_detail as fresh_project_detail
+from .agile_fresh import project_detail as fresh_project_detail, projects as fresh_projects
 from .kanban_views import assign_issue_to_sprint, board_view
 from .ml_endpoints import predict_sprint, sprint_insights, suggest_assignee
 from .models import Board, Column, Component, Issue, IssueLabel, Project, Release, Sprint
@@ -244,6 +244,19 @@ class AgilePermissionIsolationTests(TestCase):
         response = fresh_project_detail(request, self.project_a.id)
         self.assertEqual(response.status_code, 400)
         self.assertIn("Lead user not found", str(response.data.get("error", "")))
+
+    def test_fresh_projects_list_includes_lead_fields(self):
+        self.project_a.lead = self.contributor_a
+        self.project_a.save(update_fields=["lead"])
+
+        request = self.factory.get("/api/agile/projects/")
+        force_authenticate(request, user=self.admin_a)
+        response = fresh_projects(request)
+        self.assertEqual(response.status_code, 200)
+
+        project_payload = next(item for item in response.data if item["id"] == self.project_a.id)
+        self.assertEqual(project_payload["lead_id"], self.contributor_a.id)
+        self.assertEqual(project_payload["lead_name"], self.contributor_a.get_full_name())
 
     def test_check_wip_limit_is_org_scoped(self):
         request = self.factory.get(f"/api/agile/columns/{self.column_b.id}/wip-check/")

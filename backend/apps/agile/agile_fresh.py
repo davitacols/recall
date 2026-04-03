@@ -134,13 +134,15 @@ def projects(request):
         return Response({'error': 'User does not have an organization'}, status=400)
     
     if request.method == 'GET':
-        projects = Project.objects.filter(organization=request.user.organization)
+        projects = Project.objects.select_related('lead').filter(organization=request.user.organization)
         return Response([{
             'id': p.id,
             'name': p.name,
             'key': p.key,
             'description': p.description,
             'lead': p.lead.get_full_name() if p.lead else None,
+            'lead_id': p.lead_id,
+            'lead_name': p.lead.get_full_name() if p.lead else None,
             'issue_count': p.issues.count(),
             'sprint_count': p.sprints.count(),
             'created_at': p.created_at.isoformat()

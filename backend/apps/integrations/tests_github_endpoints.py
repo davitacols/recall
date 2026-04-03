@@ -1,7 +1,9 @@
 import hashlib
 import hmac
 import json
+from unittest.mock import patch
 
+from django.db import DatabaseError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -174,6 +176,32 @@ class GitHubEndpointTests(TestCase):
             response.data["webhook_readiness"]["webhook_url"],
             "https://api.example.com/api/integrations/github/webhook/",
         )
+
+    def test_github_config_stays_available_when_summary_queries_fail(self):
+        with patch(
+            "apps.integrations.github_engineering.IntegrationPullRequest.objects.filter",
+            side_effect=DatabaseError("missing table"),
+        ), patch(
+            "apps.integrations.github_engineering.get_recent_github_activity",
+            side_effect=DatabaseError("missing table"),
+        ), patch(
+            "apps.integrations.github_engineering.get_webhook_observability",
+            side_effect=DatabaseError("missing table"),
+        ):
+            response = self.client.get("/api/integrations/fresh/github/config/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["engineering_summary"],
+            {
+                "decision_pull_requests": 0,
+                "issue_pull_requests": 0,
+                "commits": 0,
+                "deployments": 0,
+            },
+        )
+        self.assertEqual(response.data["recent_activity"], [])
+        self.assertEqual(response.data["webhook_observability"]["health"], "not_configured")
 
     def test_decision_timeline_merges_decision_and_issue_execution_signals(self):
         response = self.client.get(f"/api/integrations/fresh/github/decisions/{self.decision.id}/timeline/")

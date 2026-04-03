@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import logging
 import re
 
 import requests
 from django.conf import settings
+from django.db import DatabaseError
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
@@ -22,6 +24,7 @@ from apps.integrations.models import (
 )
 
 PR_URL_RE = re.compile(r"github\.com/([^/]+)/([^/]+)/pull/(\d+)", re.IGNORECASE)
+logger = logging.getLogger(__name__)
 
 
 def _iso(value):
@@ -82,6 +85,62 @@ def _webhook_readiness_payload(config, request=None):
         "detail": detail,
         "webhook_url": webhook_url,
     }
+
+
+def _default_engineering_summary():
+    return {
+        "decision_pull_requests": 0,
+        "issue_pull_requests": 0,
+        "commits": 0,
+        "deployments": 0,
+    }
+
+
+def _default_webhook_observability():
+    return {
+        "health": "not_configured",
+        "last_delivery_at": None,
+        "last_success_at": None,
+        "recent_failure_count": 0,
+        "recent_processed_count": 0,
+        "recent_ignored_count": 0,
+        "recent_deliveries": [],
+    }
+
+
+def _safe_engineering_summary(organization):
+    try:
+        return {
+            "decision_pull_requests": IntegrationPullRequest.objects.filter(organization=organization).count(),
+            "issue_pull_requests": AgilePullRequest.objects.filter(organization=organization).count(),
+            "commits": IntegrationCommit.objects.filter(organization=organization).count()
+            + CodeCommit.objects.filter(organization=organization).count(),
+            "deployments": Deployment.objects.filter(organization=organization).count(),
+        }
+    except DatabaseError:
+        logger.exception("Failed to build GitHub engineering summary")
+        return _default_engineering_summary()
+
+
+def _safe_recent_activity(organization, config, limit=6, include_remote=False):
+    try:
+        return get_recent_github_activity(
+            organization,
+            config=config,
+            limit=limit,
+            include_remote=include_remote,
+        )
+    except DatabaseError:
+        logger.exception("Failed to load GitHub recent activity")
+        return []
+
+
+def _safe_webhook_observability(config):
+    try:
+        return get_webhook_observability(config)
+    except DatabaseError:
+        logger.exception("Failed to load GitHub webhook observability")
+        return _default_webhook_observability()
 
 
 def _serialize_webhook_delivery(delivery):
@@ -291,15 +350,10 @@ def serialize_github_config(config, request=None, include_remote_activity=False)
             "repo_name": "",
             "auto_link_prs": True,
             "has_webhook_secret": False,
-            "engineering_summary": {
-                "decision_pull_requests": 0,
-                "issue_pull_requests": 0,
-                "commits": 0,
-                "deployments": 0,
-            },
+            "engineering_summary": _default_engineering_summary(),
             "recent_activity": [],
             "webhook_readiness": _webhook_readiness_payload(None, request=request),
-            "webhook_observability": get_webhook_observability(None),
+            "webhook_observability": _default_webhook_observability(),
         }
 
     organization = config.organization
@@ -311,21 +365,15 @@ def serialize_github_config(config, request=None, include_remote_activity=False)
         "repo_slug": f"{config.repo_owner}/{config.repo_name}",
         "auto_link_prs": config.auto_link_prs,
         "has_webhook_secret": bool(config.get_webhook_secret()),
-        "engineering_summary": {
-            "decision_pull_requests": IntegrationPullRequest.objects.filter(organization=organization).count(),
-            "issue_pull_requests": AgilePullRequest.objects.filter(organization=organization).count(),
-            "commits": IntegrationCommit.objects.filter(organization=organization).count()
-            + CodeCommit.objects.filter(organization=organization).count(),
-            "deployments": Deployment.objects.filter(organization=organization).count(),
-        },
-        "recent_activity": get_recent_github_activity(
+        "engineering_summary": _safe_engineering_summary(organization),
+        "recent_activity": _safe_recent_activity(
             organization,
             config=config,
             limit=6,
             include_remote=include_remote_activity,
         ),
         "webhook_readiness": _webhook_readiness_payload(config, request=request),
-        "webhook_observability": get_webhook_observability(config),
+        "webhook_observability": _safe_webhook_observability(config),
     }
 
 

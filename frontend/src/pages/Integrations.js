@@ -331,9 +331,9 @@ function buildIntegrationGuide(providerKey, form, status) {
       };
     }
     return {
-      title: "Connect GitHub for implementation timelines",
+      title: "Connect GitHub in four clear steps",
       description:
-        "GitHub works best when the repo, token, and webhook are all configured together so pull requests, commits, and deliveries can flow back into Knoledgr.",
+        "Save the repo access, save the webhook secret, add the webhook in GitHub, then confirm one delivery lands in Knoledgr.",
       docHref: "/docs/integrations/github",
       docLabel: "Open GitHub guide",
       needs: [
@@ -343,25 +343,25 @@ function buildIntegrationGuide(providerKey, form, status) {
       ],
       steps: [
         {
-          title: "Add a repository access token",
+          title: "Save a repository access token",
           detail:
             "Use a GitHub PAT with repo read access so Knoledgr can validate the repository and fetch activity.",
           done: Boolean(status?.configured) || hasText(form.access_token),
         },
         {
-          title: "Point Knoledgr at the correct repository",
+          title: "Save the repository owner and name",
           detail:
             "Enter the repository owner and repository name exactly as they appear in GitHub.",
           done: Boolean(status?.repo_slug) || repoConfigured,
         },
         {
-          title: "Set the webhook secret on both sides",
+          title: "Save the webhook secret",
           detail:
             "Use the same secret in GitHub and Knoledgr so incoming pull_request and push events can be verified safely.",
           done: Boolean(status?.has_webhook_secret) || hasText(form.webhook_secret),
         },
         {
-          title: "Enable GitHub and confirm delivery health",
+          title: "Test the connection and confirm a delivery",
           detail:
             "Save the config, turn the integration on, run Test, then watch the Webhook Delivery Monitor for processed events.",
           done: Boolean(form.enabled || status?.enabled),
@@ -370,7 +370,7 @@ function buildIntegrationGuide(providerKey, form, status) {
       nextAction,
       fieldChecklist,
       setupValues: {
-        title: "Exact GitHub webhook settings",
+        title: "GitHub values to copy",
         items: [
           {
             label: "Payload URL",
@@ -441,8 +441,8 @@ After saving the webhook, send a test delivery or push a commit and confirm Knol
       ],
       verification: [
         "Run Test after saving to validate the repository credentials.",
-        "In GitHub webhook settings, subscribe to pull_request and push events.",
-        "Check the Webhook Delivery Monitor until the latest delivery shows as processed.",
+        "In GitHub webhook settings, subscribe to push and pull_request.",
+        "Check the Webhook Delivery Monitor until the newest delivery shows as processed.",
       ],
       pitfalls: [
         "Using a token without repo access or with the wrong account scope.",
@@ -739,6 +739,12 @@ export default function Integrations() {
           },
     [darkMode]
   );
+  const connectionSetupIntro =
+    active === "github"
+      ? "Save the repository details first. Then copy the webhook values below into GitHub and send one push or pull request event."
+      : active === "slack"
+        ? "Paste the webhook and channel, save the setup, then run one test message before turning Slack on for the team."
+        : "Add the Jira site, account, and token, save the setup, then run a test before enabling ongoing sync.";
 
   const fetchIntegrations = async () => {
     setLoading(true);
@@ -836,9 +842,9 @@ export default function Integrations() {
           <div className="space-y-5">
             <div>
               <p className={tone.heroEyebrow}>Integrations Hub</p>
-              <h1 className={tone.heroTitle}>Run integrations like an operating layer</h1>
+              <h1 className={tone.heroTitle}>Connect external tools without guesswork</h1>
               <p className={tone.heroText}>
-                Connect Slack, GitHub, and Jira with a setup flow that keeps credentials, verification, rollout guidance, and delivery health in one place.
+                Set up Slack, GitHub, and Jira in one place with clear credentials, exact values to copy, validation steps, and live health checks.
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
@@ -911,15 +917,15 @@ export default function Integrations() {
                 ? "border-stone-700 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_transparent_55%),linear-gradient(180deg,rgba(28,25,23,0.95),rgba(17,24,39,0.92))]"
                 : "border-white/70 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.22),_transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(255,251,235,0.9))] shadow-[0_24px_60px_rgba(28,25,23,0.08)]"
             }`}
-          >
-            <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-              Operator Focus
-            </p>
-            <h2 className={`mt-3 text-2xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
-              {activeProvider?.name} integration cockpit
-            </h2>
-            <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
-              {activeGuide.nextAction?.detail || activeProvider?.desc}
+            >
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                Selected Integration
+              </p>
+              <h2 className={`mt-3 text-2xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
+                {activeProvider?.name} setup
+              </h2>
+              <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
+                {activeGuide.nextAction?.detail || activeProvider?.desc}
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -947,7 +953,7 @@ export default function Integrations() {
 
             <div className="mt-5 space-y-2">
               <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-                Active rollout notes
+                What To Do Next
               </p>
               {[
                 activeGuide.nextAction?.detail || "Use the assistant to finish the next missing step.",
@@ -987,7 +993,7 @@ export default function Integrations() {
       <section className="grid gap-4 2xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-4">
           <div className={tone.shellAside}>
-            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Provider Atlas</p>
+            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Available Integrations</p>
             <div className="space-y-3">
               {providerSummaries.map((provider) => {
                 const isActive = provider.key === active;
@@ -1057,7 +1063,7 @@ export default function Integrations() {
           </div>
 
           <div className={tone.shellAside}>
-            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Rollout Playbook</p>
+            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Setup Rules</p>
             <div className="space-y-2">
               {[
                 "Save credentials or URLs before running the first validation test.",
@@ -1110,7 +1116,7 @@ export default function Integrations() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className={`text-xs uppercase tracking-widest ${tone.muted}`}>{activeProvider?.category}</p>
-                  <h2 className={`mt-1 text-2xl font-black ${tone.text}`}>{activeProvider?.name} control room</h2>
+                  <h2 className={`mt-1 text-2xl font-black ${tone.text}`}>{activeProvider?.name} setup</h2>
                   <p className={`mt-2 max-w-3xl text-sm leading-6 ${tone.subtext}`}>{activeProvider?.desc}</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1172,11 +1178,11 @@ export default function Integrations() {
           <section className={tone.shellMain}>
             <div className={`flex flex-wrap items-end justify-between gap-4 border-b pb-4 ${darkMode ? "border-stone-700" : "border-stone-200"}`}>
               <div>
-                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${tone.muted}`}>Connection Settings</p>
+                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${tone.muted}`}>Setup</p>
                 <h3 className={`mt-1 text-lg font-bold ${tone.text}`}>Configure {activeProvider?.name}</h3>
               </div>
               <p className={`max-w-xl text-sm ${tone.subtext}`}>
-                Paste the provider details, save the setup, run a test, then enable the integration only after the assistant and live workflow both look healthy.
+                {connectionSetupIntro}
               </p>
             </div>
 
@@ -1362,6 +1368,13 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
   const webhookSettingsUrl = repoUrl ? `${repoUrl}/settings/hooks` : null;
   const deliveries = observability?.recent_deliveries || [];
   const recentActivity = status?.recent_activity || [];
+  const hasToken = Boolean(status?.configured) || hasText(value.access_token);
+  const hasRepoTarget = Boolean(repoSlug);
+  const hasSecret = Boolean(status?.has_webhook_secret) || hasText(value.webhook_secret);
+  const hasDeliveries = Boolean(observability?.last_delivery_at || deliveries.length);
+  const processedCount = observability?.recent_processed_count || 0;
+  const ignoredCount = observability?.recent_ignored_count || 0;
+  const failedCount = observability?.recent_failure_count || 0;
   const readinessTone =
     readiness?.state === "ready"
       ? darkMode
@@ -1377,38 +1390,35 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
   const heroShell = darkMode
     ? "rounded-[28px] border border-stone-700 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.16),_transparent_28%),linear-gradient(180deg,rgba(17,24,39,0.95),rgba(15,23,42,0.92))] p-5"
     : "rounded-[28px] border border-stone-200 bg-[radial-gradient(circle_at_top_right,_rgba(125,211,252,0.24),_transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(239,246,255,0.95))] p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)]";
-  const metricTone =
-    status?.configured && observability?.recent_processed_count > 0
-      ? "emerald"
-      : status?.configured
-        ? "sky"
-        : "slate";
-  const statusCards = [
+  const setupSteps = [
     {
-      label: "Repository",
-      value: repoSlug || "Not connected",
-      helper: status?.configured ? "Knoledgr is pointed at the tracked repository." : "Save an owner and repo to connect GitHub.",
-      tone: repoSlug ? "sky" : "slate",
+      step: "Step 1",
+      title: "Save the repository details",
+      detail: hasRepoTarget
+        ? `Knoledgr is pointed at ${repoSlug}.`
+        : "Add the token, repository owner, and repository name, then click Save.",
+      state: hasToken && hasRepoTarget ? "Ready" : "Needs input",
+      tone: hasToken && hasRepoTarget ? "sky" : "slate",
     },
     {
-      label: "Webhook health",
-      value: (observability?.health || readiness?.state || "awaiting_setup").replaceAll("_", " "),
-      helper: observability?.recent_processed_count
-        ? "Recent GitHub deliveries are arriving and being processed."
-        : "Validate repo credentials, then confirm GitHub starts sending deliveries.",
-      tone: metricTone,
+      step: "Step 2",
+      title: "Save one shared webhook secret",
+      detail: hasSecret
+        ? "Use the same secret in GitHub and Knoledgr so deliveries can be verified."
+        : "Add the webhook secret here first, then reuse that exact same value in GitHub.",
+      state: hasSecret ? "Ready" : "Missing secret",
+      tone: hasSecret ? "emerald" : "amber",
     },
     {
-      label: "Processed events",
-      value: `${observability?.recent_processed_count || 0}`,
-      helper: "Processed pull_request and push events power engineering timelines.",
-      tone: observability?.recent_processed_count ? "emerald" : "slate",
-    },
-    {
-      label: "Auto-linking",
-      value: value.auto_link_prs ? "On" : "Off",
-      helper: "PR titles, branches, and commits can attach themselves to Knoledgr records.",
-      tone: value.auto_link_prs ? "sky" : "slate",
+      step: "Step 3",
+      title: "Add the webhook in GitHub",
+      detail: processedCount
+        ? `${processedCount} recent GitHub deliveries have already been processed by Knoledgr.`
+        : hasDeliveries
+          ? "GitHub is sending traffic, but the latest deliveries still need review."
+          : "Copy the payload URL below into GitHub, subscribe to push and pull_request, then send one delivery.",
+      state: processedCount ? "Live" : hasDeliveries ? "Check deliveries" : "Waiting on GitHub",
+      tone: processedCount ? "emerald" : hasDeliveries ? "amber" : "slate",
     },
   ];
 
@@ -1418,14 +1428,14 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-sky-300/80" : "text-sky-700"}`}>
-              GitHub engineering cockpit
+              GitHub setup
             </p>
             <h3 className={`mt-2 text-2xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
-              {repoSlug || "Connect a repository and start receiving engineering signal"}
+              Connect the repository in three clear moves
             </h3>
             <p className={`mt-3 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
-              Keep repository access, webhook delivery health, recent pull request activity, and decision linking in one operating lane
-              so engineering changes can flow back into Knoledgr without guesswork.
+              Save the repo access, save one webhook secret, then copy the exact GitHub webhook values from this page. After a push
+              or pull request lands, Knoledgr will show the delivery health below.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1465,85 +1475,73 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
                   ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
                   : "border-stone-300 bg-white text-stone-800 hover:border-sky-500"
               }`}
-            >
-              GitHub guide
-            </Link>
+              >
+                GitHub guide
+              </Link>
+            </div>
           </div>
-        </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-4">
-          {statusCards.map((card) => (
-            <GitHubMetricCard
-              key={card.label}
-              label={card.label}
-              value={card.value}
-              helper={card.helper}
-              tone={card.tone}
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          {setupSteps.map((step) => (
+            <GitHubStepCard
+              key={step.title}
+              step={step.step}
+              title={step.title}
+              detail={step.detail}
+              state={step.state}
+              tone={step.tone}
               darkMode={darkMode}
             />
           ))}
         </div>
 
-        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_300px]">
-          <div className={`rounded-2xl border p-4 ${readinessTone}`}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-80">Webhook readiness</p>
-            <p className="mt-2 text-base font-semibold">{readiness?.label || "Repository setup incomplete"}</p>
-            <p className="mt-2 text-sm leading-6">
-              {readiness?.detail || "Save the repository credentials and webhook secret so Knoledgr can verify push and pull_request deliveries."}
-            </p>
-            {webhookUrl ? <p className="mt-3 break-all text-xs opacity-80">Payload URL: {webhookUrl}</p> : null}
-          </div>
-
-          <div
-            className={`rounded-2xl border p-4 ${
-              darkMode ? "border-stone-700 bg-stone-900/90 text-stone-200" : "border-stone-200 bg-white/90 text-stone-700"
-            }`}
-          >
-            <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-              Linking standard
-            </p>
-            <p className={`mt-2 text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
-              Use DECISION-123, RECALL-123, or #123 in branches, PR titles, and commits.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span
-                className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                  value.auto_link_prs
-                    ? darkMode
-                      ? "border-sky-500/40 bg-sky-500/10 text-sky-200"
-                      : "border-sky-200 bg-sky-50 text-sky-800"
-                    : darkMode
-                      ? "border-stone-600 bg-stone-800 text-stone-300"
-                      : "border-stone-200 bg-stone-100 text-stone-700"
-                }`}
-              >
-                Auto-link {value.auto_link_prs ? "enabled" : "disabled"}
-              </span>
-              <span
-                className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                  status?.has_webhook_secret || hasText(value.webhook_secret)
-                    ? darkMode
-                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : darkMode
-                      ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                      : "border-amber-200 bg-amber-50 text-amber-800"
-                }`}
-              >
-                {status?.has_webhook_secret ? "Secret stored" : hasText(value.webhook_secret) ? "Secret ready to save" : "Secret missing"}
-              </span>
+        <div className={`mt-5 rounded-2xl border p-4 ${readinessTone}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="max-w-3xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-80">Current readiness</p>
+              <p className="mt-2 text-base font-semibold">{readiness?.label || "Finish the saved setup before GitHub can send events"}</p>
+              <p className="mt-2 text-sm leading-6">
+                {readiness?.detail ||
+                  "Save the repository and webhook secret first. Then paste the payload URL into GitHub, use application/json, and subscribe to push plus pull_request."}
+              </p>
             </div>
+            {webhookUrl ? <CopyShortcutButton label="Copy payload URL" value={webhookUrl} darkMode={darkMode} /> : null}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <StatusPill label="Repository" value={repoSlug || "Not saved yet"} tone={hasRepoTarget ? "sky" : "slate"} darkMode={darkMode} />
+            <StatusPill
+              label="Secret"
+              value={status?.has_webhook_secret ? "Stored" : hasText(value.webhook_secret) ? "Ready to save" : "Missing"}
+              tone={hasSecret ? "emerald" : "amber"}
+              darkMode={darkMode}
+            />
+            <StatusPill
+              label="Deliveries"
+              value={processedCount ? `${processedCount} processed` : hasDeliveries ? "Needs review" : "None yet"}
+              tone={processedCount ? "emerald" : hasDeliveries ? "amber" : "slate"}
+              darkMode={darkMode}
+            />
+            <StatusPill label="Auto-link" value={value.auto_link_prs ? "On" : "Off"} tone={value.auto_link_prs ? "sky" : "slate"} darkMode={darkMode} />
           </div>
         </div>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 2xl:grid-cols-3">
         <GitHubPanel
-          eyebrow="Repository access"
-          title="Credentials and repository targeting"
-          description="Point Knoledgr at the exact repository and keep token entry scoped to repository read access."
+          eyebrow="Step 1"
+          title="Connect the repository"
+          description="Paste one GitHub PAT with repo read access, then point Knoledgr at the exact owner and repository name."
           darkMode={darkMode}
         >
+          <div className="flex flex-wrap gap-2">
+            <StatusPill
+              label="Token"
+              value={status?.configured ? "Stored" : hasText(value.access_token) ? "Ready to save" : "Missing"}
+              tone={hasToken ? "sky" : "slate"}
+              darkMode={darkMode}
+            />
+            <StatusPill label="Repository" value={repoSlug || "Missing"} tone={hasRepoTarget ? "sky" : "slate"} darkMode={darkMode} />
+          </div>
           <Field label="Access Token" hint="Use a PAT with repo read access." darkMode={darkMode}>
             <ClipboardInput
               id="github-access-token"
@@ -1580,14 +1578,30 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
               />
             </Field>
           </div>
+          <div
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              darkMode ? "border-stone-700 bg-stone-900 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700"
+            }`}
+          >
+            Save after filling these fields. Once Knoledgr knows which repository to watch, the exact webhook payload URL appears in Step 3.
+          </div>
         </GitHubPanel>
 
         <GitHubPanel
-          eyebrow="Webhook security"
-          title="Delivery verification and automation"
-          description="Store the same webhook secret on both sides, then decide whether GitHub should auto-link engineering work back to Knoledgr."
+          eyebrow="Step 2"
+          title="Save the webhook secret"
+          description="Use one shared secret in both GitHub and Knoledgr so push and pull request deliveries can be verified."
           darkMode={darkMode}
         >
+          <div className="flex flex-wrap gap-2">
+            <StatusPill
+              label="Secret"
+              value={status?.has_webhook_secret ? "Stored" : hasText(value.webhook_secret) ? "Ready to save" : "Missing"}
+              tone={hasSecret ? "emerald" : "amber"}
+              darkMode={darkMode}
+            />
+            <StatusPill label="Auto-link" value={value.auto_link_prs ? "On" : "Off"} tone={value.auto_link_prs ? "sky" : "slate"} darkMode={darkMode} />
+          </div>
           <Field
             label="Webhook Secret"
             hint="Use the same secret in GitHub so pull_request and push events can be verified."
@@ -1610,30 +1624,107 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
             label="Auto-link pull requests to decisions"
             darkMode={darkMode}
           />
-          <div className={`rounded-xl border p-4 text-sm ${readinessTone}`}>
-            <p className="font-semibold">{readiness?.label || "Webhook setup"}</p>
-            <p className="mt-1">{readiness?.detail || "Connect the repo to unlock engineering timelines."}</p>
-            {webhookUrl ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <p className="min-w-0 flex-1 break-all text-xs opacity-80">Webhook URL: {webhookUrl}</p>
-                <CopyShortcutButton label="Copy URL" value={webhookUrl} darkMode={darkMode} compact />
-              </div>
-            ) : null}
+          <div
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              darkMode ? "border-stone-700 bg-stone-900 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700"
+            }`}
+          >
+            Turn on auto-linking if you want PR titles, branches, and commits that mention <span className="font-semibold">DECISION-123</span>,{" "}
+            <span className="font-semibold">RECALL-123</span>, or <span className="font-semibold">#123</span> to attach themselves to Knoledgr records.
           </div>
+        </GitHubPanel>
+        <GitHubPanel
+          eyebrow="Step 3"
+          title="Add the webhook in GitHub"
+          description="Open the repository webhook settings and copy these exact values into GitHub."
+          darkMode={darkMode}
+          action={
+            <div className="flex gap-2 flex-wrap">
+              {webhookSettingsUrl ? (
+                <a
+                  href={webhookSettingsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                    darkMode
+                      ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
+                      : "border-stone-300 bg-white text-stone-800 hover:border-sky-500"
+                  }`}
+                >
+                  Open webhook settings
+                </a>
+              ) : null}
+              {repoUrl ? (
+                <a
+                  href={repoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                    darkMode
+                      ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
+                      : "border-stone-300 bg-white text-stone-800 hover:border-sky-500"
+                  }`}
+                >
+                  Open repo
+                </a>
+              ) : null}
+            </div>
+          }
+        >
+          <GitHubValueRow
+            label="Where to add it"
+            value="GitHub -> Settings -> Webhooks -> Add webhook"
+            helper="Create the webhook on the same repository shown above."
+            darkMode={darkMode}
+          />
+          <GitHubValueRow
+            label="Payload URL"
+            value={webhookUrl || "Save Step 1 and Step 2 first to reveal the URL"}
+            helper="Paste this into the Payload URL field in GitHub."
+            copyValue={webhookUrl || null}
+            darkMode={darkMode}
+          />
+          <GitHubValueRow
+            label="Content type"
+            value="application/json"
+            helper="Use JSON so Knoledgr can parse the delivery cleanly."
+            copyValue="application/json"
+            darkMode={darkMode}
+          />
+          <GitHubValueRow
+            label="Events"
+            value="push, pull_request"
+            helper="These two events power commit, pull request, and delivery updates."
+            copyValue="push,pull_request"
+            darkMode={darkMode}
+          />
+          <GitHubValueRow
+            label="Secret"
+            value={hasSecret ? "Use the same webhook secret saved in Step 2" : "Add the webhook secret in Step 2 before creating the GitHub webhook"}
+            helper="The GitHub webhook secret must match Knoledgr exactly."
+            darkMode={darkMode}
+          />
+          <GitHubValueRow
+            label="Linking format"
+            value="DECISION-123, RECALL-123, or #123"
+            helper="Use one of these patterns in PR titles, branches, or commits for automatic linking."
+            copyValue="DECISION-123, RECALL-123, #123"
+            darkMode={darkMode}
+          />
         </GitHubPanel>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
         <GitHubPanel
           eyebrow="Webhook delivery monitor"
-          title="Track GitHub deliveries inside Knoledgr"
-          description="Processed, ignored, and failed deliveries stay visible here so repo health does not disappear into GitHub settings."
+          title="Confirm GitHub is sending traffic"
+          description="Processed, ignored, and failed deliveries stay visible here so you can verify the integration without jumping back into GitHub."
           darkMode={darkMode}
           action={
             <div className="flex gap-2 flex-wrap">
-              <StatusPill label="Processed" value={observability?.recent_processed_count || 0} tone="emerald" darkMode={darkMode} />
-              <StatusPill label="Ignored" value={observability?.recent_ignored_count || 0} tone="amber" darkMode={darkMode} />
-              <StatusPill label="Failed" value={observability?.recent_failure_count || 0} tone="rose" darkMode={darkMode} />
+              <StatusPill label="Processed" value={processedCount} tone="emerald" darkMode={darkMode} />
+              <StatusPill label="Ignored" value={ignoredCount} tone="amber" darkMode={darkMode} />
+              <StatusPill label="Failed" value={failedCount} tone="rose" darkMode={darkMode} />
             </div>
           }
         >
@@ -1654,8 +1745,8 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
 
         <GitHubPanel
           eyebrow="Repository activity"
-          title="Recent engineering signal"
-          description="Use recent pull request and commit activity to confirm the integration is seeing real code movement."
+          title="Recent repository activity"
+          description="Use recent pull requests and commits to confirm the connection is seeing real engineering work."
           darkMode={darkMode}
         >
           {recentActivity.length ? (
@@ -1684,6 +1775,8 @@ function StatusPill({ label, value, tone, darkMode }) {
     emerald: darkMode ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-200 bg-emerald-50 text-emerald-800",
     amber: darkMode ? "border-amber-500/40 bg-amber-500/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800",
     rose: darkMode ? "border-rose-500/40 bg-rose-500/10 text-rose-200" : "border-rose-200 bg-rose-50 text-rose-800",
+    sky: darkMode ? "border-sky-500/40 bg-sky-500/10 text-sky-200" : "border-sky-200 bg-sky-50 text-sky-800",
+    slate: darkMode ? "border-stone-600 bg-stone-900 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700",
   };
   return (
     <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${styles[tone]}`}>
@@ -1751,11 +1844,14 @@ function GitHubPanel({ eyebrow, title, description, darkMode, action = null, chi
   );
 }
 
-function GitHubMetricCard({ label, value, helper, tone = "slate", darkMode }) {
+function GitHubStepCard({ step, title, detail, state, tone = "slate", darkMode }) {
   const tones = {
     emerald: darkMode
       ? "border-emerald-500/30 bg-emerald-500/10"
       : "border-emerald-200 bg-emerald-50/90",
+    amber: darkMode
+      ? "border-amber-500/30 bg-amber-500/10"
+      : "border-amber-200 bg-amber-50/90",
     sky: darkMode
       ? "border-sky-500/30 bg-sky-500/10"
       : "border-sky-200 bg-sky-50/90",
@@ -1766,11 +1862,41 @@ function GitHubMetricCard({ label, value, helper, tone = "slate", darkMode }) {
 
   return (
     <div className={`rounded-2xl border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-        {label}
-      </p>
-      <p className={`mt-2 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
-      <p className={`mt-2 text-xs leading-5 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{helper}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+          {step}
+        </p>
+        <span
+          className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+            darkMode ? "border-stone-600 bg-stone-900 text-stone-200" : "border-stone-200 bg-white text-stone-700"
+          }`}
+        >
+          {state}
+        </span>
+      </div>
+      <p className={`mt-3 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{title}</p>
+      <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{detail}</p>
+    </div>
+  );
+}
+
+function GitHubValueRow({ label, value, helper, darkMode, copyValue = null }) {
+  return (
+    <div
+      className={`rounded-xl border px-4 py-3 ${
+        darkMode ? "border-stone-700 bg-stone-900/90 text-stone-200" : "border-stone-200 bg-white/90 text-stone-700"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+            {label}
+          </p>
+          <p className={`mt-2 break-all text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
+          <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-stone-400" : "text-stone-500"}`}>{helper}</p>
+        </div>
+        {copyValue ? <CopyShortcutButton label="Copy" value={copyValue} darkMode={darkMode} compact /> : null}
+      </div>
     </div>
   );
 }

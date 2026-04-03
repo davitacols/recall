@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import json
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -164,6 +164,16 @@ class GitHubEndpointTests(TestCase):
         self.assertEqual(response.data["engineering_summary"]["commits"], 2)
         self.assertEqual(response.data["engineering_summary"]["deployments"], 1)
         self.assertGreaterEqual(len(response.data["recent_activity"]), 1)
+
+    @override_settings(PUBLIC_API_URL="https://api.example.com")
+    def test_github_config_uses_public_api_url_for_webhook_readiness(self):
+        response = self.client.get("/api/integrations/fresh/github/config/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["webhook_readiness"]["webhook_url"],
+            "https://api.example.com/api/integrations/github/webhook/",
+        )
 
     def test_decision_timeline_merges_decision_and_issue_execution_signals(self):
         response = self.client.get(f"/api/integrations/fresh/github/decisions/{self.decision.id}/timeline/")

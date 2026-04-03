@@ -22,6 +22,8 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      - key: PUBLIC_API_URL
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: DEFAULT_FROM_EMAIL
@@ -48,6 +50,8 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      - key: PUBLIC_API_URL
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: DEFAULT_FROM_EMAIL
@@ -73,6 +77,8 @@ services:
       - key: REDIS_URL
         sync: false
       - key: FRONTEND_URL
+        sync: false
+      - key: PUBLIC_API_URL
         sync: false
       - key: NOTIFICATIONS_USE_CELERY
         value: "True"

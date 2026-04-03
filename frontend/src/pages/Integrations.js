@@ -1181,16 +1181,33 @@ export default function Integrations() {
                 <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${tone.muted}`}>Setup</p>
                 <h3 className={`mt-1 text-lg font-bold ${tone.text}`}>Configure {activeProvider?.name}</h3>
               </div>
-              <p className={`max-w-xl text-sm ${tone.subtext}`}>
-                {connectionSetupIntro}
-              </p>
+              <div className="flex flex-col items-start gap-3 sm:items-end">
+                <p className={`max-w-xl text-sm ${tone.subtext}`}>
+                  {connectionSetupIntro}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={handleTest} disabled={testing} className={tone.testBtn}>
+                    {testing ? "Testing..." : "Test"}
+                  </button>
+                  <button onClick={handleSave} disabled={saving} className={tone.saveBtn}>
+                    {saving ? "Saving..." : `Save ${activeProvider?.name}`}
+                  </button>
+                </div>
+              </div>
             </div>
 
             {active === "slack" ? (
               <SlackConfig value={slackForm} onChange={setSlackForm} darkMode={darkMode} />
             ) : null}
             {active === "github" ? (
-              <GitHubConfig value={githubForm} status={github} onChange={setGithubForm} darkMode={darkMode} />
+              <GitHubConfig
+                value={githubForm}
+                status={github}
+                onChange={setGithubForm}
+                darkMode={darkMode}
+                onSave={handleSave}
+                saving={saving}
+              />
             ) : null}
             {active === "jira" ? (
               <JiraConfig value={jiraForm} onChange={setJiraForm} darkMode={darkMode} />
@@ -1356,7 +1373,7 @@ function SlackConfig({ value, onChange, darkMode }) {
   );
 }
 
-function GitHubConfig({ value, status, onChange, darkMode }) {
+function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = false }) {
   const readiness = status?.webhook_readiness;
   const observability = status?.webhook_observability;
   const repoOwner = status?.repo_owner || value.repo_owner;
@@ -1671,6 +1688,35 @@ function GitHubConfig({ value, status, onChange, darkMode }) {
             </div>
           }
         >
+          {!webhookUrl ? (
+            <div
+              className={`rounded-xl border px-4 py-4 ${
+                darkMode ? "border-amber-500/30 bg-amber-500/10 text-amber-100" : "border-amber-200 bg-amber-50 text-amber-900"
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="max-w-2xl">
+                  <p className="text-sm font-semibold">Payload URL is generated after you save</p>
+                  <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-amber-100/90" : "text-amber-900/80"}`}>
+                    You have entered the GitHub details in this form, but Knoledgr only reveals the payload URL after the current
+                    repository and secret are saved.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onSave}
+                  disabled={saving}
+                  className={`inline-flex rounded-full border px-4 py-2 text-xs font-semibold ${
+                    darkMode
+                      ? "border-amber-300/40 bg-stone-950 text-amber-100 hover:border-amber-200 disabled:opacity-60"
+                      : "border-amber-300 bg-white text-amber-900 hover:border-amber-400 disabled:opacity-60"
+                  }`}
+                >
+                  {saving ? "Saving..." : "Save GitHub setup"}
+                </button>
+              </div>
+            </div>
+          ) : null}
           <GitHubValueRow
             label="Where to add it"
             value="GitHub -> Settings -> Webhooks -> Add webhook"

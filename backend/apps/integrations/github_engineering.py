@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 import requests
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
@@ -27,6 +28,16 @@ def _iso(value):
     return value.isoformat() if value else None
 
 
+def _public_api_url(path, request=None):
+    base_url = (getattr(settings, "PUBLIC_API_URL", "") or "").strip().rstrip("/")
+    if not base_url and request:
+        base_url = request.build_absolute_uri("/").rstrip("/")
+    if not base_url:
+        return None
+    normalized_path = path if str(path).startswith("/") else f"/{path}"
+    return f"{base_url}{normalized_path}"
+
+
 def extract_github_pr_metadata(pr_url):
     match = PR_URL_RE.search(pr_url or "")
     if not match:
@@ -49,8 +60,8 @@ def _webhook_readiness_payload(config, request=None):
         }
 
     webhook_url = None
-    if request:
-        webhook_url = request.build_absolute_uri("/api/integrations/github/webhook/")
+    if request or getattr(settings, "PUBLIC_API_URL", ""):
+        webhook_url = _public_api_url("/api/integrations/github/webhook/", request=request)
 
     if not config.enabled:
         state = "disabled"

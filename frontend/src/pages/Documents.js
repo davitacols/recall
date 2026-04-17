@@ -1,10 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRightIcon,
   ArrowTopRightOnSquareIcon,
-  ClockIcon,
   DocumentTextIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
@@ -334,17 +333,17 @@ export default function Documents() {
         aside={libraryAside}
         actions={
           <>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowModal(true)} style={ui.primaryButton}>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowModal(true)} style={docPrimaryButton(palette)}>
               <PlusIcon style={icon14} /> New Document
             </button>
             <button
               className="ui-btn-polish ui-focus-ring"
               onClick={() => navigate(buildAskRecallPath("Which recent documents should I review first, and what changed most recently?"))}
-              style={ui.secondaryButton}
+              style={docSecondaryButton(palette)}
             >
               <SparklesIcon style={icon14} /> Ask Recall
             </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={fetchDocuments} style={ui.secondaryButton}>
+            <button className="ui-btn-polish ui-focus-ring" onClick={fetchDocuments} style={docSecondaryButton(palette)}>
               Refresh Library
             </button>
           </>
@@ -352,75 +351,102 @@ export default function Documents() {
       />
 
       <WorkspaceToolbar palette={palette}>
-        <div style={toolbarLayout}>
-          <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Library Controls</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>Search, sort, and triage the document library</h2>
-            <p style={{ ...toolbarCopy, color: palette.muted }}>
-              Use keywords and type filters to move from a broad library view to the exact source record you need.
-            </p>
-          </div>
-
-          <div style={toolbarMetaRail}>
-            <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              Showing {viewDocuments.length}
-            </span>
-            {query.trim() ? (
-              <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                Query "{query.trim()}"
-              </span>
-            ) : null}
-          </div>
-
-          <div style={searchRail}>
-            <div style={{ position: "relative", flex: "1 1 360px", minWidth: 0 }}>
-              <MagnifyingGlassIcon style={{ ...searchIcon, color: palette.muted }} />
-              <input
-                className="ui-focus-ring"
-                type="text"
-                placeholder="Search title, description, or document content..."
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => event.key === "Enter" && handleSearch()}
-                style={{ ...ui.input, paddingLeft: 38 }}
-              />
+        <div style={controlDeck}>
+          <section className="ui-card-lift ui-smooth" style={{ ...controlCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Library Control</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Search the library, then jump straight into the right source record</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>
+                Keep search, reset, and live library state in one place so the page feels more like a document desk and less like stacked filters.
+              </p>
             </div>
 
-            <button
-              onClick={() => handleSearch()}
-              className="ui-btn-polish ui-focus-ring"
-              style={{ ...ui.primaryButton, minWidth: 116, justifyContent: "center", opacity: busySearch ? 0.7 : 1 }}
-              disabled={busySearch}
-            >
-              {busySearch ? "Searching..." : "Search"}
-            </button>
+            <div style={toolbarMetaRail}>
+              <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                Showing {viewDocuments.length}
+              </span>
+              {query.trim() ? (
+                <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  Query "{query.trim()}"
+                </span>
+              ) : null}
+              <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                <ShieldCheckIcon style={icon14} /> {statPolicies} policy records
+              </span>
+            </div>
 
-            <button onClick={handleResetFilters} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
-              Reset
-            </button>
-          </div>
+            <div style={searchRail}>
+              <div style={{ position: "relative", flex: "1 1 360px", minWidth: 0 }}>
+                <MagnifyingGlassIcon style={{ ...searchIcon, color: palette.muted }} />
+                <input
+                  className="ui-focus-ring"
+                  type="text"
+                  placeholder="Search title, description, or document content..."
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && handleSearch()}
+                  style={{ ...ui.input, paddingLeft: 38 }}
+                />
+              </div>
 
-          <div style={filterRail}>
-            <div style={{ position: "relative" }}>
-              <FunnelIcon style={{ ...filterIcon, color: palette.muted }} />
-              <select className="ui-focus-ring" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} style={{ ...ui.input, width: 190, paddingLeft: 34 }}>
-                {DOC_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type === "all" ? "All Types" : formatTypeLabel(type)}
-                  </option>
-                ))}
+              <button
+                onClick={() => handleSearch()}
+                className="ui-btn-polish ui-focus-ring"
+                style={{ ...docPrimaryButton(palette), minWidth: 112, opacity: busySearch ? 0.7 : 1 }}
+                disabled={busySearch}
+              >
+                {busySearch ? "Searching..." : "Search"}
+              </button>
+
+              <button onClick={handleResetFilters} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
+                Reset
+              </button>
+            </div>
+          </section>
+
+          <section className="ui-card-lift ui-smooth" style={{ ...controlCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Filter and Pace</p>
+              <h2 style={{ ...controlSubTitle, color: palette.text }}>Narrow by type and sort the reading order</h2>
+            </div>
+
+            <div style={filterGrid}>
+              <div style={{ position: "relative" }}>
+                <FunnelIcon style={{ ...filterIcon, color: palette.muted }} />
+                <select className="ui-focus-ring" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} style={{ ...ui.input, width: "100%", paddingLeft: 34 }}>
+                  {DOC_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type === "all" ? "All Types" : formatTypeLabel(type)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <select className="ui-focus-ring" value={sortMode} onChange={(event) => setSortMode(event.target.value)} style={{ ...ui.input, width: "100%" }}>
+                <option value="recent">Recent first</option>
+                <option value="title">Title</option>
               </select>
             </div>
 
-            <select className="ui-focus-ring" value={sortMode} onChange={(event) => setSortMode(event.target.value)} style={{ ...ui.input, width: 170 }}>
-              <option value="recent">Recent first</option>
-              <option value="title">Title</option>
-            </select>
-
-            <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              <ShieldCheckIcon style={icon14} /> {statPolicies} policy records
-            </span>
-          </div>
+            <div style={controlMetricGrid}>
+              <div style={{ ...controlMetricCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                <p style={{ ...controlMetricLabel, color: palette.muted }}>Library</p>
+                <p style={{ ...controlMetricValue, color: palette.text }}>{statTotal}</p>
+              </div>
+              <div style={{ ...controlMetricCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                <p style={{ ...controlMetricLabel, color: palette.muted }}>File-backed</p>
+                <p style={{ ...controlMetricValue, color: palette.text }}>{statWithFiles}</p>
+              </div>
+              <div style={{ ...controlMetricCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                <p style={{ ...controlMetricLabel, color: palette.muted }}>Policies</p>
+                <p style={{ ...controlMetricValue, color: palette.text }}>{statPolicies}</p>
+              </div>
+              <div style={{ ...controlMetricCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                <p style={{ ...controlMetricLabel, color: palette.muted }}>Updated 30d</p>
+                <p style={{ ...controlMetricValue, color: palette.text }}>{statRecentlyUpdated}</p>
+              </div>
+            </div>
+          </section>
         </div>
       </WorkspaceToolbar>
 
@@ -437,7 +463,7 @@ export default function Documents() {
             <button
               onClick={hasAnyDocuments ? handleResetFilters : () => setShowModal(true)}
               className="ui-btn-polish ui-focus-ring"
-              style={ui.primaryButton}
+              style={docPrimaryButton(palette)}
             >
               {hasAnyDocuments ? "Reset Filters" : "Create First Document"}
             </button>
@@ -451,7 +477,6 @@ export default function Documents() {
               <article
                 key={doc.id}
                 className="ui-card-lift ui-smooth"
-                onClick={() => handleOpenDocument(doc)}
                 style={{
                   ...documentCard,
                   border: `1px solid ${palette.border}`,
@@ -500,19 +525,22 @@ export default function Documents() {
 
                   <div style={documentActionRail}>
                     <button
-                      onClick={(event) => {
-                        event.stopPropagation();
+                      onClick={() => {
                         navigate(`/business/documents/${doc.id}`);
                       }}
                       className="ui-btn-polish ui-focus-ring"
-                      style={miniActionButton(palette)}
+                      style={docSecondaryButton(palette)}
                     >
                       Edit
                     </button>
-                    <span style={{ ...openLink, color: palette.accent }}>
+                    <button
+                      onClick={() => handleOpenDocument(doc)}
+                      className="ui-btn-polish ui-focus-ring"
+                      style={docPrimaryButton(palette)}
+                    >
                       {doc.has_file ? "Open file" : "Open document"}
                       {doc.has_file ? <ArrowTopRightOnSquareIcon style={icon12} /> : <ArrowRightIcon style={icon12} />}
-                    </span>
+                    </button>
                   </div>
                 </div>
               </article>
@@ -535,7 +563,7 @@ export default function Documents() {
                 <p style={{ ...viewerEyebrow, color: palette.muted }}>Preview</p>
                 <p style={{ ...viewerTitle, color: palette.text }}>Document file viewer</p>
               </div>
-              <button className="ui-btn-polish ui-focus-ring" onClick={closeViewer} style={{ ...ui.secondaryButton, background: palette.cardAlt }}>
+              <button className="ui-btn-polish ui-focus-ring" onClick={closeViewer} style={docSecondaryButton(palette)}>
                 Close
               </button>
             </div>
@@ -559,72 +587,95 @@ export default function Documents() {
                       Add a rich-text note, attach a source file, or combine both so teams can recover the record behind their work.
                     </p>
                   </div>
-                  <button onClick={() => setShowModal(false)} className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, padding: "8px 10px" }}>
+                  <button onClick={() => setShowModal(false)} className="ui-btn-polish ui-focus-ring" style={docIconButton(palette)}>
                     <XMarkIcon style={{ width: 16, height: 16 }} />
                   </button>
                 </div>
 
-                <form onSubmit={handleSubmit} style={formStack}>
-                  <input
-                    required
-                    placeholder="Document title"
-                    value={formData.title}
-                    onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-                    className="ui-focus-ring"
-                    style={ui.input}
-                  />
-
-                  <div style={ui.twoCol}>
-                    <select
-                      value={formData.document_type}
-                      onChange={(event) => setFormData({ ...formData, document_type: event.target.value })}
-                      className="ui-focus-ring"
-                      style={ui.input}
-                    >
-                      <option value="policy">Policy</option>
-                      <option value="procedure">Procedure</option>
-                      <option value="guide">Guide</option>
-                      <option value="report">Report</option>
-                      <option value="other">Other</option>
-                    </select>
-
+                <div style={modalLayout}>
+                  <form onSubmit={handleSubmit} style={formStack}>
                     <input
-                      type="file"
-                      accept=".pdf,.doc,.docx,.txt,.md"
-                      onChange={(event) => setUploadFile(event.target.files?.[0] || null)}
+                      required
+                      placeholder="Document title"
+                      value={formData.title}
+                      onChange={(event) => setFormData({ ...formData, title: event.target.value })}
                       className="ui-focus-ring"
                       style={ui.input}
                     />
-                  </div>
 
-                  <textarea
-                    rows={3}
-                    placeholder="Short description"
-                    value={formData.description}
-                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-                    className="ui-focus-ring"
-                    style={{ ...ui.input, resize: "vertical" }}
-                  />
+                    <div style={ui.twoCol}>
+                      <select
+                        value={formData.document_type}
+                        onChange={(event) => setFormData({ ...formData, document_type: event.target.value })}
+                        className="ui-focus-ring"
+                        style={ui.input}
+                      >
+                        <option value="policy">Policy</option>
+                        <option value="procedure">Procedure</option>
+                        <option value="guide">Guide</option>
+                        <option value="report">Report</option>
+                        <option value="other">Other</option>
+                      </select>
 
-                  <div>
-                    <p style={{ ...editorLabel, color: palette.muted }}>Document Content</p>
-                    <RichTextEditor
-                      value={formData.content}
-                      onChange={(value) => setFormData({ ...formData, content: value })}
-                      placeholder="Write your document content..."
-                      darkMode={darkMode}
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt,.md"
+                        onChange={(event) => setUploadFile(event.target.files?.[0] || null)}
+                        className="ui-focus-ring"
+                        style={ui.input}
+                      />
+                    </div>
+
+                    <textarea
+                      rows={3}
+                      placeholder="Short description"
+                      value={formData.description}
+                      onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                      className="ui-focus-ring"
+                      style={{ ...ui.input, resize: "vertical" }}
                     />
-                  </div>
 
-                  <div style={buttonRow}>
-                    <button type="button" onClick={() => setShowModal(false)} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
-                      Cancel
-                    </button>
-                    <button type="submit" className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, opacity: submitting ? 0.7 : 1 }} disabled={submitting}>
-                      {submitting ? "Creating..." : "Create"}
-                    </button>
-                  </div>
-                </form>
+                    <div>
+                      <p style={{ ...editorLabel, color: palette.muted }}>Document Content</p>
+                      <RichTextEditor
+                        value={formData.content}
+                        onChange={(value) => setFormData({ ...formData, content: value })}
+                        placeholder="Write your document content..."
+                        darkMode={darkMode}
+                      />
+                    </div>
+
+                    <div style={buttonRow}>
+                      <button type="button" onClick={() => setShowModal(false)} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
+                        Cancel
+                      </button>
+                      <button type="submit" className="ui-btn-polish ui-focus-ring" style={{ ...docPrimaryButton(palette), opacity: submitting ? 0.7 : 1 }} disabled={submitting}>
+                        {submitting ? "Creating..." : "Create"}
+                      </button>
+                    </div>
+                  </form>
+
+                  <aside style={{ ...modalGuideCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                    <p style={{ ...modalEyebrow, color: palette.muted }}>Publishing Guide</p>
+                    <h3 style={{ margin: 0, fontSize: 20, lineHeight: 1.08, color: palette.text }}>
+                      Keep each document easy to trust, skim, and retrieve later
+                    </h3>
+                    <div style={modalGuideList}>
+                      <div style={modalGuideItem}>
+                        <p style={{ ...modalGuideLabel, color: palette.muted }}>Title</p>
+                        <p style={{ ...modalGuideCopy, color: palette.text }}>Name the document the way the team would actually search for it later.</p>
+                      </div>
+                      <div style={modalGuideItem}>
+                        <p style={{ ...modalGuideLabel, color: palette.muted }}>Type</p>
+                        <p style={{ ...modalGuideCopy, color: palette.text }}>Use the most operationally honest category so filters stay useful.</p>
+                      </div>
+                      <div style={modalGuideItem}>
+                        <p style={{ ...modalGuideLabel, color: palette.muted }}>Summary</p>
+                        <p style={{ ...modalGuideCopy, color: palette.text }}>Write a short description that helps someone decide whether to open the full record.</p>
+                      </div>
+                    </div>
+                  </aside>
+                </div>
               </div>
             </div>,
             document.body
@@ -633,24 +684,6 @@ export default function Documents() {
     </div>
   );
 }
-
-function miniActionButton(palette) {
-  return {
-    border: "none",
-    borderRadius: 999,
-    padding: "8px 12px",
-    background: palette.cardAlt,
-    color: palette.text,
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: "pointer",
-  };
-}
-
-const toolbarLayout = {
-  display: "grid",
-  gap: 14,
-};
 
 const toolbarIntro = {
   display: "grid",
@@ -669,6 +702,12 @@ const toolbarTitle = {
   margin: 0,
   fontSize: 24,
   lineHeight: 1.02,
+};
+
+const controlSubTitle = {
+  margin: 0,
+  fontSize: 20,
+  lineHeight: 1.08,
 };
 
 const toolbarCopy = {
@@ -694,6 +733,54 @@ const toolbarMetaChip = {
   fontWeight: 700,
 };
 
+const controlDeck = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
+  gap: 12,
+};
+
+const controlCard = {
+  borderRadius: 22,
+  padding: 16,
+  display: "grid",
+  gap: 14,
+  boxShadow: "var(--ui-shadow-xs)",
+};
+
+const filterGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
+  gap: 10,
+};
+
+const controlMetricGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))",
+  gap: 10,
+};
+
+const controlMetricCard = {
+  borderRadius: 16,
+  padding: "12px 12px 10px",
+  display: "grid",
+  gap: 4,
+};
+
+const controlMetricLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const controlMetricValue = {
+  margin: 0,
+  fontSize: 20,
+  fontWeight: 700,
+  lineHeight: 1,
+};
+
 const searchRail = {
   display: "flex",
   gap: 10,
@@ -708,13 +795,6 @@ const searchIcon = {
   left: 12,
   top: "50%",
   transform: "translateY(-50%)",
-};
-
-const filterRail = {
-  display: "flex",
-  gap: 10,
-  flexWrap: "wrap",
-  alignItems: "center",
 };
 
 const filterIcon = {
@@ -785,7 +865,6 @@ const asideMetricValue = {
 const documentCard = {
   borderRadius: 26,
   padding: 20,
-  cursor: "pointer",
   display: "grid",
   gap: 14,
   minHeight: 278,
@@ -823,7 +902,7 @@ const cardTitle = {
 };
 
 const typeChip = {
-  borderRadius: 999,
+  borderRadius: 12,
   padding: "7px 10px",
   fontSize: 11,
   fontWeight: 700,
@@ -847,7 +926,7 @@ const miniChip = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  borderRadius: 999,
+  borderRadius: 12,
   padding: "7px 10px",
   fontSize: 11,
   fontWeight: 700,
@@ -882,14 +961,6 @@ const documentActionRail = {
   gap: 8,
   flexWrap: "wrap",
   alignItems: "center",
-};
-
-const openLink = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  fontSize: 12,
-  fontWeight: 700,
 };
 
 const viewerOverlay = {
@@ -955,6 +1026,14 @@ const modalCard = {
   boxShadow: "var(--ui-shadow-lg)",
 };
 
+const modalLayout = {
+  marginTop: 16,
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
+  gap: 14,
+  alignItems: "start",
+};
+
 const modalHeader = {
   display: "flex",
   justifyContent: "space-between",
@@ -983,7 +1062,6 @@ const modalBody = {
 };
 
 const formStack = {
-  marginTop: 16,
   display: "grid",
   gap: 12,
 };
@@ -1003,6 +1081,84 @@ const buttonRow = {
   marginTop: 6,
   flexWrap: "wrap",
 };
+
+const modalGuideCard = {
+  borderRadius: 20,
+  padding: 16,
+  display: "grid",
+  gap: 14,
+};
+
+const modalGuideList = {
+  display: "grid",
+  gap: 10,
+};
+
+const modalGuideItem = {
+  borderRadius: 16,
+  padding: "12px 12px 10px",
+  background: "rgba(255,255,255,0.32)",
+  display: "grid",
+  gap: 4,
+};
+
+const modalGuideLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const modalGuideCopy = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.6,
+};
+
+function docButtonBase(palette) {
+  return {
+    minHeight: 40,
+    padding: "0 14px",
+    borderRadius: 12,
+    fontSize: 13,
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    cursor: "pointer",
+    textDecoration: "none",
+    whiteSpace: "nowrap",
+    border: `1px solid ${palette.border}`,
+  };
+}
+
+function docPrimaryButton(palette) {
+  return {
+    ...docButtonBase(palette),
+    border: "1px solid transparent",
+    background: palette.ctaGradient,
+    color: palette.buttonText,
+  };
+}
+
+function docSecondaryButton(palette) {
+  return {
+    ...docButtonBase(palette),
+    background: palette.cardAlt,
+    color: palette.text,
+  };
+}
+
+function docIconButton(palette) {
+  return {
+    ...docSecondaryButton(palette),
+    width: 40,
+    minWidth: 40,
+    padding: 0,
+  };
+}
 
 const icon14 = { width: 14, height: 14 };
 const icon12 = { width: 12, height: 12 };

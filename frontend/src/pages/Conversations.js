@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRightIcon,
@@ -243,94 +243,152 @@ function Conversations() {
       <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
         <div style={toolbarLayout}>
           <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Thread List</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>Keep the next response visible</h2>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Thread Control</p>
+            <h2 style={{ ...toolbarTitle, color: palette.text }}>Keep the next response and next route visible</h2>
             <p style={{ ...toolbarCopy, color: palette.muted }}>
-              Threads with no reply or weak context surface first, while the rest of the discussion atlas stays easy to scan and route onward.
+              Triage the live discussion first, then use the routing deck to move useful threads into decisions, tasks, meetings, or longer-term context.
             </p>
           </div>
-          <div style={toolbarChipRail}>
-            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              {averageReplies} avg replies
-            </span>
-            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              {filteredConversations.length} visible
-            </span>
-            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              {typeCounts[filterType] || 0} in current type
-            </span>
-          </div>
-        </div>
-      </WorkspaceToolbar>
 
-      <section className="ui-enter" style={{ ...featureRail, gridTemplateColumns: isMobile ? "1fr" : featureRail.gridTemplateColumns }}>
-        {linkedFeatures.map((feature) => {
-          const Icon = feature.icon;
-          return (
-            <Link
-              key={feature.label}
-              to={feature.to}
-              className="ui-card-lift ui-smooth"
+          <div style={{ ...conversationCommandGrid, gridTemplateColumns: isMobile ? "1fr" : conversationCommandGrid.gridTemplateColumns }}>
+            <article
               style={{
-                ...featureCard,
+                ...commandCard,
                 border: `1px solid ${palette.border}`,
                 background: palette.card,
               }}
             >
-              <span style={{ ...featureIconWrap, background: palette.cardAlt }}>
-                <Icon style={icon16} />
-              </span>
-              <div>
-                <p style={{ margin: 0, color: palette.text, fontSize: 13, fontWeight: 700 }}>{feature.label}</p>
-                <p style={{ margin: "4px 0 0", color: palette.muted, fontSize: 12 }}>{feature.helper}</p>
+              <div style={commandCardHead}>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Filter threads</p>
+                  <h3 style={{ ...commandCardTitle, color: palette.text }}>Shape the conversation queue</h3>
+                </div>
+                <div style={toolbarChipRail}>
+                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    {filteredConversations.length} visible
+                  </span>
+                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    {typeCounts[filterType] || 0} in current type
+                  </span>
+                </div>
               </div>
-            </Link>
-          );
-        })}
-      </section>
 
-      <section className="ui-enter" style={{ ...statsGrid, gridTemplateColumns: isMobile ? "repeat(2,minmax(0,1fr))" : statsGrid.gridTemplateColumns }}>
-        <StatCard label="Total Threads" value={conversations.length} palette={palette} />
-        <StatCard label="This Week" value={thisWeekCount} palette={palette} />
-        <StatCard label="Avg Replies" value={averageReplies} palette={palette} />
-        <StatCard label="Visible" value={filteredConversations.length} palette={palette} />
-      </section>
+              <div style={{ ...searchWrap, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
+                <input
+                  type="text"
+                  placeholder="Search titles, summaries, or thread content"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  style={{ ...searchInput, color: palette.text }}
+                />
+              </div>
 
-      <section className="ui-enter" style={{ ...filterShell, border: `1px solid ${palette.border}`, background: palette.card }}>
-        <div style={{ ...searchWrap, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
-          <input
-            type="text"
-            placeholder="Search threads"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            style={{ ...searchInput, color: palette.text }}
-          />
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {["all", "question", "discussion", "decision", "blocker"].map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => setFilterType(type)}
-              className="ui-btn-polish ui-focus-ring"
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {["all", "question", "discussion", "decision", "blocker"].map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFilterType(type)}
+                    className="ui-btn-polish ui-focus-ring"
+                    style={{
+                      ...typeChip,
+                      border: `1px solid ${filterType === type ? palette.accent : palette.border}`,
+                      color: filterType === type ? palette.accent : palette.text,
+                      background: filterType === type ? palette.accentSoft : palette.card,
+                    }}
+                  >
+                    {type} ({typeCounts[type] || 0})
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ ...searchRail, gridTemplateColumns: isMobile ? "1fr" : "auto auto minmax(0, 1fr)" }}>
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...sortSelect, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt, width: isMobile ? "100%" : "fit-content" }}>
+                  <option value="recent">Sort: Most Recent</option>
+                  <option value="replies">Sort: Most Replies</option>
+                  <option value="views">Sort: Most Views</option>
+                </select>
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setFilterType("all");
+                    setSortBy("recent");
+                  }}
+                  style={threadSecondaryButton(palette)}
+                >
+                  Reset view
+                </button>
+                <div style={toolbarChipRail}>
+                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    {averageReplies} avg replies
+                  </span>
+                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    {followUpCount} need response
+                  </span>
+                </div>
+              </div>
+            </article>
+
+            <article
               style={{
-                ...typeChip,
+                ...commandCard,
                 border: `1px solid ${palette.border}`,
-                color: filterType === type ? palette.text : palette.muted,
-                background: filterType === type ? palette.cardAlt : palette.card,
+                background: palette.card,
               }}
             >
-              {type} ({typeCounts[type] || 0})
-            </button>
-          ))}
+              <div style={commandCardHead}>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Route discussion</p>
+                  <h3 style={{ ...commandCardTitle, color: palette.text }}>Push good threads into the next system</h3>
+                </div>
+                <div style={toolbarChipRail}>
+                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    {documentedThreads} documented
+                  </span>
+                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    {thisWeekCount} this week
+                  </span>
+                </div>
+              </div>
+
+              <section style={{ ...statsGrid, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                <StatCard label="Threads" value={conversations.length} palette={palette} />
+                <StatCard label="Needs response" value={followUpCount} palette={palette} />
+                <StatCard label="Documented" value={documentedThreads} palette={palette} />
+                <StatCard label="Avg replies" value={averageReplies} palette={palette} />
+              </section>
+
+              <section style={{ ...featureRail, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                {linkedFeatures.map((feature) => {
+                  const Icon = feature.icon;
+                  return (
+                    <Link
+                      key={feature.label}
+                      to={feature.to}
+                      className="ui-card-lift ui-smooth"
+                      style={{
+                        ...featureCard,
+                        border: `1px solid ${palette.border}`,
+                        background: palette.cardAlt,
+                      }}
+                    >
+                      <span style={{ ...featureIconWrap, background: palette.card }}>
+                        <Icon style={icon16} />
+                      </span>
+                      <div>
+                        <p style={{ margin: 0, color: palette.text, fontSize: 13, fontWeight: 700 }}>{feature.label}</p>
+                        <p style={{ margin: "4px 0 0", color: palette.muted, fontSize: 12 }}>{feature.helper}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </section>
+            </article>
+          </div>
         </div>
-        <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...sortSelect, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
-          <option value="recent">Sort: Most Recent</option>
-          <option value="replies">Sort: Most Replies</option>
-          <option value="views">Sort: Most Views</option>
-        </select>
-      </section>
+      </WorkspaceToolbar>
 
       {filteredConversations.length === 0 ? (
         searchQuery ? (
@@ -399,15 +457,18 @@ function ConversationSection({ title, description, items, navigate, palette, isM
               background: palette.card,
             }}
           >
-            <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
               <div style={cardTopRow}>
-                <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
+                <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
                   {conversation.post_type || "discussion"}
                 </span>
                 <span style={{ ...typeBadge, border: `1px solid ${conversation.needsFollowUp ? palette.accent : palette.border}`, color: conversation.needsFollowUp ? palette.link : palette.muted, background: conversation.needsFollowUp ? palette.accentSoft : palette.cardAlt }}>
                   {conversation.momentumLabel}
                 </span>
                 {conversation.is_closed ? <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Closed</span> : null}
+                <span style={{ ...threadMetaChip, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>
+                  <ClockIcon style={icon14} /> {conversation.createdLabel}
+                </span>
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
@@ -417,77 +478,52 @@ function ConversationSection({ title, description, items, navigate, palette, isM
                 <p style={{ ...conversationSummary, color: palette.muted }}>{conversation.summary}</p>
               </div>
 
-              <div style={threadMetrics}>
-                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                  <p style={{ ...metricLabel, color: palette.muted }}>Updated</p>
-                  <p style={{ ...metricValue, color: palette.text }}>{conversation.createdLabel}</p>
-                </div>
-                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                  <p style={{ ...metricLabel, color: palette.muted }}>Replies</p>
-                  <p style={{ ...metricValue, color: palette.text }}>{conversation.replies}</p>
-                </div>
-                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                  <p style={{ ...metricLabel, color: palette.muted }}>Views</p>
-                  <p style={{ ...metricValue, color: palette.text }}>{conversation.views}</p>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    navigate(`/decisions/new?conversation_id=${conversation.id}`);
-                  }}
-                  className="ui-btn-polish ui-focus-ring"
-                  style={linkFeatureButton}
-                >
-                  <DocumentCheckIcon style={icon14} />
-                  Link Decision
-                </button>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    navigate(`/business/tasks?conversation_id=${conversation.id}`);
-                  }}
-                  className="ui-btn-polish ui-focus-ring"
-                  style={linkFeatureButton}
-                >
-                  <ClipboardDocumentListIcon style={icon14} />
-                  Link Task
-                </button>
-                <span style={{ ...openThreadLink, color: palette.accent }}>
-                  Open thread <ArrowRightIcon style={icon14} />
-                </span>
+              <div style={threadMetricRail}>
+                <ThreadMetricPill label="Replies" value={conversation.replies} palette={palette} />
+                <ThreadMetricPill label="Views" value={conversation.views} palette={palette} />
+                <AuthorPill conversation={conversation} palette={palette} />
               </div>
             </div>
 
-            <div style={{ ...sideRail, flexDirection: isMobile ? "row" : "column" }}>
-              <div style={authorAvatarWrap}>
-                {(() => {
-                  const avatarUrl = getAvatarUrl(conversation.author_avatar || conversation.author?.avatar);
-                  const initial = (conversation.author || conversation.author_name || "U").charAt(0).toUpperCase();
-                  return avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt={conversation.author || "Author"}
-                      style={authorAvatarImage}
-                      onError={(event) => {
-                        event.target.style.display = "none";
-                        event.target.parentElement.innerHTML = `<span style="color:var(--app-button-text);font-size:13px;font-weight:700;">${initial}</span>`;
-                      }}
-                    />
-                  ) : (
-                    <span style={avatarInitial}>{initial}</span>
-                  );
-                })()}
-              </div>
-              <p style={{ margin: 0, fontSize: 11, color: palette.muted, maxWidth: 88, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {conversation.author || conversation.author_name || "Unknown"}
-              </p>
-              <button className="ui-btn-polish ui-focus-ring" onClick={(event) => deleteConversation(conversation.id, event)} style={deleteButton}>
+            <div style={{ ...actionStack, gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : "1fr" }}>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(`/conversations/${conversation.id}`);
+                }}
+                className="ui-btn-polish ui-focus-ring"
+                style={threadPrimaryButton(palette)}
+              >
+                Open thread <ArrowRightIcon style={icon14} />
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(`/decision-proposals?conversation_id=${conversation.id}`);
+                }}
+                className="ui-btn-polish ui-focus-ring"
+                style={threadSecondaryButton(palette)}
+              >
+                <DocumentCheckIcon style={icon14} />
+                Decision queue
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(`/business/tasks?conversation_id=${conversation.id}`);
+                }}
+                className="ui-btn-polish ui-focus-ring"
+                style={threadSecondaryButton(palette)}
+              >
+                <ClipboardDocumentListIcon style={icon14} />
+                Task board
+              </button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={(event) => deleteConversation(conversation.id, event)} style={threadDangerButton(palette)}>
                 <TrashIcon style={icon14} />
+                Delete
               </button>
             </div>
           </article>
@@ -506,6 +542,97 @@ function StatCard({ label, value, palette }) {
   );
 }
 
+function ThreadMetricPill({ label, value, palette }) {
+  return (
+    <div style={{ ...threadMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+      <span style={{ color: palette.muted }}>{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+function AuthorPill({ conversation, palette }) {
+  const avatarUrl = getAvatarUrl(conversation.author_avatar || conversation.author?.avatar);
+  const initial = (conversation.author || conversation.author_name || "U").charAt(0).toUpperCase();
+
+  return (
+    <div style={{ ...authorPill, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+      <span style={authorAvatarWrap}>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={conversation.author || "Author"}
+            style={authorAvatarImage}
+            onError={(event) => {
+              event.target.style.display = "none";
+              event.target.parentElement.innerHTML = `<span style="color:var(--app-button-text);font-size:13px;font-weight:700;">${initial}</span>`;
+            }}
+          />
+        ) : (
+          <span style={avatarInitial}>{initial}</span>
+        )}
+      </span>
+      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {conversation.author || conversation.author_name || "Unknown"}
+      </span>
+    </div>
+  );
+}
+
+function threadPrimaryButton(palette) {
+  return {
+    borderRadius: 10,
+    border: "none",
+    padding: "8px 11px",
+    fontSize: 12,
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    background: palette.accent,
+    color: palette.accentText,
+    cursor: "pointer",
+    minHeight: 38,
+  };
+}
+
+function threadSecondaryButton(palette) {
+  return {
+    borderRadius: 10,
+    border: `1px solid ${palette.border}`,
+    padding: "8px 11px",
+    fontSize: 12,
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    background: palette.cardAlt,
+    color: palette.text,
+    cursor: "pointer",
+    minHeight: 38,
+  };
+}
+
+function threadDangerButton() {
+  return {
+    borderRadius: 10,
+    border: `1px solid var(--app-danger-border)`,
+    padding: "8px 11px",
+    fontSize: 12,
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    background: "transparent",
+    color: "var(--app-danger)",
+    cursor: "pointer",
+    minHeight: 38,
+  };
+}
+
 const page = {
   width: "100%",
   display: "grid",
@@ -516,6 +643,34 @@ const featureRail = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
   gap: 8,
+};
+
+const conversationCommandGrid = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0,1.02fr) minmax(300px,0.98fr)",
+  gap: 14,
+};
+
+const commandCard = {
+  borderRadius: 18,
+  padding: 14,
+  display: "grid",
+  gap: 12,
+  alignContent: "start",
+};
+
+const commandCardHead = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  alignItems: "start",
+  flexWrap: "wrap",
+};
+
+const commandCardTitle = {
+  margin: 0,
+  fontSize: 18,
+  lineHeight: 1.08,
 };
 
 const featureCard = {
@@ -546,13 +701,6 @@ const statsGrid = {
 const statCard = {
   borderRadius: 14,
   padding: "11px 12px",
-};
-
-const filterShell = {
-  borderRadius: 16,
-  padding: 10,
-  display: "grid",
-  gap: 8,
 };
 
 const searchWrap = {
@@ -588,17 +736,23 @@ const sortSelect = {
   width: "fit-content",
 };
 
+const searchRail = {
+  display: "grid",
+  gap: 10,
+  alignItems: "center",
+};
+
 const listWrap = {
   display: "grid",
   gap: 10,
 };
 
 const conversationCard = {
-  borderRadius: 14,
+  borderRadius: 16,
   padding: 14,
   display: "grid",
-  gridTemplateColumns: "minmax(0,1fr) 72px",
-  gap: 12,
+  gridTemplateColumns: "minmax(0,1fr) 220px",
+  gap: 14,
   cursor: "pointer",
 };
 
@@ -611,32 +765,24 @@ const cardTopRow = {
 
 const typeBadge = {
   borderRadius: 999,
-  padding: "3px 8px",
+  padding: "4px 9px",
   fontSize: 11,
   fontWeight: 700,
   textTransform: "capitalize",
-};
-
-const metaRow = {
-  marginTop: 10,
-  display: "flex",
-  gap: 14,
-  fontSize: 12,
-  flexWrap: "wrap",
-};
-
-const linkFeatureButton = {
-  borderRadius: 8,
-  border: "1px solid var(--app-border)",
-  padding: "5px 8px",
-  fontSize: 11,
-  fontWeight: 700,
   display: "inline-flex",
   alignItems: "center",
-  gap: 5,
-  background: "var(--ui-panel-alt)",
-  color: "var(--app-text)",
-  cursor: "pointer",
+  gap: 6,
+};
+
+const threadMetaChip = {
+  borderRadius: 999,
+  padding: "4px 9px",
+  fontSize: 11,
+  fontWeight: 700,
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  flexWrap: "wrap",
 };
 
 const conversationSummary = {
@@ -649,44 +795,36 @@ const conversationSummary = {
   WebkitBoxOrient: "vertical",
 };
 
-const threadMetrics = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))",
-  gap: 8,
-};
-
-const metricTile = {
-  borderRadius: 12,
-  padding: "8px 10px",
-  display: "grid",
-  gap: 3,
-};
-
-const metricLabel = {
-  margin: 0,
-  fontSize: 9,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const metricValue = {
-  margin: 0,
-  fontSize: 13,
-  fontWeight: 700,
-  lineHeight: 1.4,
-};
-
-const sideRail = {
+const threadMetricRail = {
   display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
   alignItems: "center",
-  gap: 6,
+};
+
+const actionStack = {
+  display: "grid",
+  gap: 8,
+  alignContent: "start",
+};
+
+const authorPill = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "4px 8px 4px 4px",
+  borderRadius: 999,
+  minWidth: 0,
+  maxWidth: 180,
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--app-text)",
 };
 
 const authorAvatarWrap = {
-  width: 32,
-  height: 32,
-  borderRadius: 8,
+  width: 26,
+  height: 26,
+  borderRadius: 999,
   overflow: "hidden",
   background: "var(--app-gradient-accent)",
   display: "grid",
@@ -701,20 +839,8 @@ const authorAvatarImage = {
 
 const avatarInitial = {
   color: "var(--app-button-text)",
-  fontSize: 13,
+  fontSize: 11,
   fontWeight: 700,
-};
-
-const deleteButton = {
-  width: 28,
-  height: 28,
-  borderRadius: 8,
-  border: "1px solid var(--app-danger-border)",
-  background: "transparent",
-  color: "var(--app-danger)",
-  display: "grid",
-  placeItems: "center",
-  cursor: "pointer",
 };
 
 const toolbarLayout = {
@@ -815,15 +941,6 @@ const sectionCopy = {
   fontSize: 12,
   lineHeight: 1.55,
   maxWidth: 620,
-};
-
-const openThreadLink = {
-  marginLeft: "auto",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  fontSize: 12,
-  fontWeight: 700,
 };
 
 const icon16 = { width: 16, height: 16 };

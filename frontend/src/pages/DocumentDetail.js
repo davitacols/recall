@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
@@ -12,8 +12,6 @@ import { buildAskRecallPath } from "../utils/askRecall";
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
-  ChatBubbleLeftIcon,
-  ClockIcon,
   DocumentTextIcon,
   PencilIcon,
   ShieldCheckIcon,
@@ -27,40 +25,6 @@ const DOCUMENT_TYPES = ["policy", "procedure", "guide", "report", "other"];
 function formatTypeLabel(value) {
   if (!value) return "Other";
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function SummaryCard({ icon: Icon, label, value, helper, palette, tone }) {
-  return (
-    <article
-      style={{
-        borderRadius: 22,
-        padding: "16px 16px 14px",
-        border: `1px solid ${tone?.border || palette.border}`,
-        background: tone?.bg || palette.cardAlt,
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 12,
-            display: "grid",
-            placeItems: "center",
-            background: tone?.iconBg || palette.accentSoft,
-            color: tone?.iconColor || palette.accent,
-          }}
-        >
-          <Icon style={{ width: 16, height: 16 }} />
-        </span>
-        <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", color: palette.muted, textTransform: "uppercase", fontWeight: 700 }}>{label}</p>
-      </div>
-      <p style={{ margin: 0, fontSize: 28, fontWeight: 800, color: tone?.text || palette.text, lineHeight: 1 }}>{value}</p>
-      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.muted }}>{helper}</p>
-    </article>
-  );
 }
 
 function SnapshotTile({ label, value, palette }) {
@@ -266,7 +230,7 @@ export default function DocumentDetail() {
       <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
         <div style={ambientLayer} />
         <div style={{ ...ui.container, position: "relative", zIndex: 1 }}>
-          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={{ ...ui.secondaryButton, marginBottom: 14 }}>
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={{ ...docSecondaryButton(palette), marginBottom: 14 }}>
             <ArrowLeftIcon style={{ width: 14, height: 14 }} /> All Documents
           </button>
           <section className="ui-card-lift ui-smooth" style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.card, padding: "40px 22px", textAlign: "center", boxShadow: "var(--ui-shadow-xs)" }}>
@@ -288,6 +252,10 @@ export default function DocumentDetail() {
     { label: "Updated", value: updatedAt, helper: "Most recent recorded change." },
     { label: "Comments", value: `${comments.length}`, helper: "Discussion attached here." },
   ];
+  const readingStateLabel = editing ? "Editing" : "Reading";
+  const modeGuidance = editing
+    ? "You are actively editing the document record. Save when the structure and wording are aligned."
+    : "Read the file, review the written body, and move into comments without losing the document snapshot.";
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -310,20 +278,20 @@ export default function DocumentDetail() {
           }
           actions={
             <>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={ui.secondaryButton}>
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={docSecondaryButton(palette)}>
                 <ArrowLeftIcon style={{ width: 14, height: 14 }} />
                 All Documents
               </button>
-              <button onClick={handleExportPDF} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+              <button onClick={handleExportPDF} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
                 <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
                 Export PDF
               </button>
-              <button onClick={() => navigate(buildAskRecallPath(documentAskRecallQuestion))} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+              <button onClick={() => navigate(buildAskRecallPath(documentAskRecallQuestion))} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
                 <SparklesIcon style={{ width: 14, height: 14 }} />
                 Ask Recall
               </button>
               {!editing ? (
-                <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+                <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={docPrimaryButton(palette)}>
                   <PencilIcon style={{ width: 14, height: 14 }} />
                   Edit Document
                 </button>
@@ -333,21 +301,35 @@ export default function DocumentDetail() {
         />
 
         <WorkspaceToolbar palette={palette}>
-          <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Library Controls</p>
-              <h2 style={{ margin: 0, fontSize: 28, lineHeight: 1.05, letterSpacing: "-0.04em", fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: palette.text }}>
-                Move between reading, editing, export, and team commentary
-              </h2>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: palette.muted }}>
-                The document detail page now keeps its primary actions close to the content instead of burying them inside disconnected card stacks.
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <span style={heroChip(palette)}>Version {versionLabel}</span>
-              <span style={heroChip(palette)}>{comments.length} comments</span>
-              <span style={heroChip(palette)}>{editing ? "Editing" : "Reading"}</span>
-            </div>
+          <div style={detailControlDeck}>
+            <section className="ui-card-lift ui-smooth" style={{ ...detailControlCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Document Control</p>
+                <h2 style={detailTitle(palette)}>Move between reading, editing, export, and team commentary without losing the source record</h2>
+                <p style={detailBody(palette)}>
+                  The document workspace keeps file preview, written context, and discussion close together so the page feels like one record instead of several disconnected panels.
+                </p>
+              </div>
+              <div style={detailChipRail}>
+                <span style={heroChip(palette)}>Version {versionLabel}</span>
+                <span style={heroChip(palette)}>{comments.length} comments</span>
+                <span style={heroChip(palette)}>{readingStateLabel}</span>
+              </div>
+            </section>
+
+            <section className="ui-card-lift ui-smooth" style={{ ...detailControlCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Reading State</p>
+                <h2 style={detailSubTitle(palette)}>{readingStateLabel} mode</h2>
+                <p style={detailBody(palette)}>{modeGuidance}</p>
+              </div>
+              <div style={detailMetricGrid}>
+                <SnapshotTile label="Type" value={typeLabel} palette={palette} />
+                <SnapshotTile label="Updated" value={updatedAt} palette={palette} />
+                <SnapshotTile label="Comments" value={`${comments.length}`} palette={palette} />
+                <SnapshotTile label="File" value={documentRecord.has_file ? "Attached" : "Inline"} palette={palette} />
+              </div>
+            </section>
           </div>
         </WorkspaceToolbar>
 
@@ -387,10 +369,10 @@ export default function DocumentDetail() {
                     <RichTextEditor value={formData.content || ""} onChange={(value) => setFormData({ ...formData, content: value })} placeholder="Write document content..." darkMode={darkMode} />
                   </div>
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                    <button type="button" onClick={() => setEditing(false)} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+                    <button type="button" onClick={() => setEditing(false)} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
                       Cancel
                     </button>
-                    <button type="submit" className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+                    <button type="submit" className="ui-btn-polish ui-focus-ring" style={docPrimaryButton(palette)}>
                       Save
                     </button>
                   </div>
@@ -412,7 +394,7 @@ export default function DocumentDetail() {
                           <p style={{ margin: "6px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{documentRecord.file_name || "Document file"}</p>
                         </div>
                         {!documentRecord.file_type?.includes("pdf") && (
-                          <a href={fileUrl} download={documentRecord.file_name} style={{ ...ui.secondaryButton, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <a href={fileUrl} download={documentRecord.file_name} style={docSecondaryButton(palette)}>
                             <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
                             Download File
                           </a>
@@ -458,7 +440,7 @@ export default function DocumentDetail() {
               >
                 <form onSubmit={handleAddComment} style={{ marginBottom: 18 }}>
                   <MentionInput value={newComment} onChange={setNewComment} placeholder="Add a comment... (Type @ to mention someone)" rows={3} darkMode={darkMode} />
-                  <button type="submit" disabled={!newComment.trim()} className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, marginTop: 10, opacity: !newComment.trim() ? 0.65 : 1 }}>
+                  <button type="submit" disabled={!newComment.trim()} className="ui-btn-polish ui-focus-ring" style={{ ...docPrimaryButton(palette), marginTop: 10, opacity: !newComment.trim() ? 0.65 : 1 }}>
                     Post Comment
                   </button>
                 </form>
@@ -515,7 +497,7 @@ export default function DocumentDetail() {
 
             <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
               <h3 style={sideTitle(palette)}>Actions</h3>
-              <div style={{ display: "grid", gap: 10 }}>
+              <div style={detailActionStack}>
                 <AIEnhancementButton
                   content={documentRecord.content || documentRecord.description || ""}
                   title={documentRecord.title}
@@ -523,11 +505,11 @@ export default function DocumentDetail() {
                   documentId={documentRecord.id}
                   onResult={(feature, data) => setAiResults(data)}
                 />
-                <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+                <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
                   <PencilIcon style={{ width: 14, height: 14 }} />
                   Edit
                 </button>
-                <button onClick={handleDelete} className="ui-btn-polish ui-focus-ring" style={{ border: "1px solid var(--app-danger-border)", color: "var(--app-danger)", background: "rgba(239,68,68,0.1)", borderRadius: 14, padding: "10px 14px", fontSize: 13, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
+                <button onClick={handleDelete} className="ui-btn-polish ui-focus-ring" style={docDangerButton(palette, darkMode)}>
                   <TrashIcon style={{ width: 14, height: 14 }} />
                   Delete
                 </button>
@@ -589,6 +571,58 @@ const sideTitle = (palette) => ({
   color: palette.muted,
 });
 
+const detailControlDeck = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
+  gap: 12,
+};
+
+const detailControlCard = {
+  borderRadius: 22,
+  padding: 16,
+  display: "grid",
+  gap: 14,
+  boxShadow: "var(--ui-shadow-xs)",
+};
+
+const detailTitle = (palette) => ({
+  margin: 0,
+  fontSize: 24,
+  lineHeight: 1.04,
+  color: palette.text,
+});
+
+const detailSubTitle = (palette) => ({
+  margin: 0,
+  fontSize: 20,
+  lineHeight: 1.08,
+  color: palette.text,
+});
+
+const detailBody = (palette) => ({
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.65,
+  color: palette.muted,
+});
+
+const detailChipRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const detailMetricGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
+  gap: 10,
+};
+
+const detailActionStack = {
+  display: "grid",
+  gap: 10,
+};
+
 const avatarChip = (palette) => ({
   width: 36,
   height: 36,
@@ -598,3 +632,47 @@ const avatarChip = (palette) => ({
   background: palette.accentSoft,
   color: palette.accent,
 });
+
+function docButtonBase(palette) {
+  return {
+    minHeight: 40,
+    padding: "0 14px",
+    borderRadius: 12,
+    fontSize: 13,
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    cursor: "pointer",
+    textDecoration: "none",
+    whiteSpace: "nowrap",
+    border: `1px solid ${palette.border}`,
+  };
+}
+
+function docPrimaryButton(palette) {
+  return {
+    ...docButtonBase(palette),
+    border: "1px solid transparent",
+    background: palette.ctaGradient,
+    color: palette.buttonText,
+  };
+}
+
+function docSecondaryButton(palette) {
+  return {
+    ...docButtonBase(palette),
+    background: palette.cardAlt,
+    color: palette.text,
+  };
+}
+
+function docDangerButton(palette, darkMode) {
+  return {
+    ...docButtonBase(palette),
+    border: `1px solid ${darkMode ? "rgba(238,146,153,0.34)" : "rgba(200,86,93,0.24)"}`,
+    background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)",
+    color: palette.danger,
+  };
+}

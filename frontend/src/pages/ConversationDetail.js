@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeftIcon,
@@ -688,6 +688,14 @@ function ConversationDetail() {
       ? "Enough signal is present to convert this into a tracked decision if the team is aligned."
       : "Keep the thread moving a little longer before locking it into a decision record.";
   const conversationAskRecallQuestion = `For the conversation titled "${conversation.title || "Untitled conversation"}", what needs a response, decision, or follow-up next?`;
+  const decisionReadinessLabel = replyCount + reactionTotal >= 6 ? "Ready to route" : "Still forming";
+  const nextStepGuidance =
+    replyCount + reactionTotal >= 6
+      ? "Capture the thread into a decision record, then keep comments focused on implementation risk and follow-through."
+      : replyCount === 0
+        ? "The thread needs an opening response to create momentum before it can be routed anywhere meaningful."
+        : "Keep responses coming until the tradeoffs and owner are clear enough to promote into a decision.";
+  const threadMomentumValue = replyCount + reactionTotal;
 
   return (
     <div style={{ ...page, position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -728,14 +736,84 @@ function ConversationDetail() {
       />
 
       <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{conversationType}</span>
-          <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{replyCount} replies</span>
-          <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{reactionTotal} reactions</span>
+        <div
+          style={{
+            ...threadControlGrid,
+            gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1.35fr) minmax(300px,0.92fr)",
+          }}
+        >
+          <section
+            className="ui-card-lift ui-smooth"
+            style={{ ...threadCommandCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}
+          >
+            <div style={threadCommandHead}>
+              <p style={{ ...sectionLabel, color: palette.muted }}>Thread control</p>
+              <h2 style={{ ...threadCommandTitle, color: palette.text }}>
+                Route the discussion without losing the conversation that created it
+              </h2>
+              <p style={{ ...threadCommandCopy, color: palette.muted }}>
+                Keep the thread anchored to its owner, signal level, and current route so follow-up work stays tied to the original discussion.
+              </p>
+            </div>
+
+            <div style={threadMetaRail}>
+              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{conversationType}</span>
+              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{authorName}</span>
+              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{replyCount} replies</span>
+              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{reactionTotal} reactions</span>
+              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>Updated {updatedLabel}</span>
+            </div>
+
+            <div style={threadActionRail}>
+              <QuickLink sourceType="conversations.conversation" sourceId={id} />
+              <button
+                className="ui-btn-polish ui-focus-ring"
+                onClick={handleConvertToDecision}
+                disabled={converting || savingPost || deletingPost}
+                style={ghostSuccessButton}
+              >
+                {converting ? <ArrowPathIcon style={{ ...icon14, animation: "spin 1s linear infinite" }} /> : null}
+                {converting ? "Converting..." : "Convert to Decision"}
+              </button>
+              <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={ui.secondaryButton}>
+                <ArrowPathIcon style={icon14} /> Refresh thread
+              </button>
+            </div>
+          </section>
+
+          <section
+            className="ui-card-lift ui-smooth"
+            style={{ ...threadCommandCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}
+          >
+            <div style={threadCommandHead}>
+              <p style={{ ...sectionLabel, color: palette.muted }}>Response guide</p>
+              <h2 style={{ ...threadCommandTitle, color: palette.text }}>{decisionReadinessLabel}</h2>
+              <p style={{ ...threadCommandCopy, color: palette.muted }}>{nextStepGuidance}</p>
+            </div>
+
+            <div style={threadGuideGrid}>
+              <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+                <p style={{ ...threadGuideLabel, color: palette.muted }}>Pulse</p>
+                <p style={{ ...threadGuideValue, color: palette.text }}>{threadMomentumValue}</p>
+              </div>
+              <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+                <p style={{ ...threadGuideLabel, color: palette.muted }}>Updated</p>
+                <p style={{ ...threadGuideValue, color: palette.text }}>{updatedLabel}</p>
+              </div>
+              <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+                <p style={{ ...threadGuideLabel, color: palette.muted }}>Replies</p>
+                <p style={{ ...threadGuideValue, color: palette.text }}>{replyCount}</p>
+              </div>
+              <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+                <p style={{ ...threadGuideLabel, color: palette.muted }}>Reactions</p>
+                <p style={{ ...threadGuideValue, color: palette.text }}>{reactionTotal}</p>
+              </div>
+            </div>
+          </section>
         </div>
       </WorkspaceToolbar>
 
-      <section style={{ ...briefingGrid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1.2fr) repeat(2, minmax(220px, 0.4fr))" }}>
+      <section style={{ ...briefingGrid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1.25fr) minmax(300px,0.85fr)" }}>
         <article
           className="ui-card-lift ui-smooth"
           style={{
@@ -770,16 +848,31 @@ function ConversationDetail() {
           </div>
         </article>
 
-        <article className="ui-card-lift ui-smooth" style={{ ...briefingMetricCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}>
-          <p style={{ ...summaryMetricLabel, color: palette.muted }}>Thread pulse</p>
-          <p style={{ ...summaryMetricValue, color: palette.text }}>{replyCount + reactionTotal}</p>
-          <p style={{ ...summaryMetricBody, color: palette.muted }}>{threadPulseLabel}</p>
-        </article>
+        <article className="ui-card-lift ui-smooth" style={{ ...briefingSideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}>
+          <div style={{ display: "grid", gap: 6 }}>
+            <p style={{ ...sectionLabel, color: palette.muted }}>Conversation posture</p>
+            <h2 style={{ margin: 0, fontSize: "clamp(1.05rem,1.6vw,1.28rem)", lineHeight: 1.15, color: palette.text }}>
+              Read the signal, then decide whether this stays conversational or becomes operational
+            </h2>
+          </div>
 
-        <article className="ui-card-lift ui-smooth" style={{ ...briefingMetricCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}>
-          <p style={{ ...summaryMetricLabel, color: palette.muted }}>Decision readiness</p>
-          <p style={{ ...summaryMetricValue, color: palette.text }}>{replyCount + reactionTotal >= 6 ? "Ready" : "Building"}</p>
-          <p style={{ ...summaryMetricBody, color: palette.muted }}>{threadActionReadiness}</p>
+          <div style={threadGuideGrid}>
+            <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+              <p style={{ ...threadGuideLabel, color: palette.muted }}>Thread pulse</p>
+              <p style={{ ...threadGuideValue, color: palette.text }}>{threadMomentumValue}</p>
+            </div>
+            <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+              <p style={{ ...threadGuideLabel, color: palette.muted }}>Decision state</p>
+              <p style={{ ...threadGuideValue, color: palette.text }}>{decisionReadinessLabel}</p>
+            </div>
+          </div>
+
+          <div style={{ ...threadGuideNote, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.text }}>{threadPulseLabel}</p>
+          </div>
+          <div style={{ ...threadGuideNote, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.text }}>{threadActionReadiness}</p>
+          </div>
         </article>
       </section>
 
@@ -823,9 +916,9 @@ function ConversationDetail() {
             <div style={{ ...actionDeck, borderTop: `1px solid ${palette.border}` }}>
               <div style={actionDeckHeader}>
                 <div>
-                  <p style={{ ...sectionLabel, color: palette.muted, marginBottom: 4 }}>Thread Actions</p>
+                  <p style={{ ...sectionLabel, color: palette.muted, marginBottom: 4 }}>Operate the thread</p>
                   <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.5 }}>
-                    Use favorites, export, and editing controls without leaving the thread.
+                    Keep the thread personally organized, export it when needed, and use draft controls when you are actively editing.
                   </p>
                 </div>
                 {isEditingPost ? (
@@ -835,87 +928,88 @@ function ConversationDetail() {
                 ) : null}
               </div>
 
-              <div style={actionRow}>
-                <QuickLink sourceType="conversations.conversation" sourceId={id} />
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  onClick={handleConvertToDecision}
-                  disabled={converting || savingPost || deletingPost}
-                  style={ghostSuccessButton}
-                >
-                  {converting ? <ArrowPathIcon style={{ ...icon14, animation: "spin 1s linear infinite" }} /> : null}
-                  {converting ? "Converting..." : "Convert to Decision"}
-                </button>
+              <div style={threadActionClusters}>
+                <div style={{ ...threadActionCluster, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+                  <p style={{ ...threadActionClusterTitle, color: palette.muted }}>Personal workflow</p>
+                  <div style={actionRow}>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={handleToggleBookmark}
+                      disabled={bookmarkState.loading}
+                      style={actionButton(palette, bookmarkState.bookmarked
+                        ? {
+                            borderColor: "rgba(202,138,4,0.32)",
+                            background: darkMode ? "rgba(202,138,4,0.16)" : "rgba(234,179,8,0.12)",
+                            color: darkMode ? "#facc15" : "#a16207",
+                          }
+                        : null)}
+                    >
+                      <StarIcon style={icon14} />
+                      {bookmarkState.loading
+                        ? "Saving..."
+                        : bookmarkState.bookmarked
+                          ? "Favorited"
+                          : "Add to Favorites"}
+                    </button>
 
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  onClick={handleToggleBookmark}
-                  disabled={bookmarkState.loading}
-                  style={actionButton(palette, bookmarkState.bookmarked
-                    ? {
-                        borderColor: "rgba(202,138,4,0.32)",
-                        background: darkMode ? "rgba(202,138,4,0.16)" : "rgba(234,179,8,0.12)",
-                        color: darkMode ? "#facc15" : "#a16207",
-                      }
-                    : null)}
-                >
-                  <StarIcon style={icon14} />
-                  {bookmarkState.loading
-                    ? "Saving..."
-                    : bookmarkState.bookmarked
-                      ? "Favorited"
-                      : "Add to Favorites"}
-                </button>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={handleExportConversation}
+                      disabled={exporting}
+                      style={actionButton(palette)}
+                    >
+                      <ArrowDownTrayIcon style={icon14} />
+                      {exporting ? "Exporting..." : "Export PDF"}
+                    </button>
+                  </div>
+                </div>
 
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  onClick={handleExportConversation}
-                  disabled={exporting}
-                  style={actionButton(palette)}
-                >
-                  <ArrowDownTrayIcon style={icon14} />
-                  {exporting ? "Exporting..." : "Export PDF"}
-                </button>
-
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  onClick={handleUndoDraft}
-                  disabled={!canUndo}
-                  style={actionButton(palette, null, !canUndo)}
-                  title="Undo draft change"
-                >
-                  <ArrowUturnLeftIcon style={icon14} />
-                  Undo
-                </button>
-
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  onClick={handleRedoDraft}
-                  disabled={!canRedo}
-                  style={actionButton(palette, null, !canRedo)}
-                  title="Redo draft change"
-                >
-                  <ArrowUturnRightIcon style={icon14} />
-                  Redo
-                </button>
+                <div style={{ ...threadActionCluster, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+                  <p style={{ ...threadActionClusterTitle, color: palette.muted }}>Draft history</p>
+                  <div style={actionRow}>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={handleUndoDraft}
+                      disabled={!canUndo}
+                      style={actionButton(palette, null, !canUndo)}
+                      title="Undo draft change"
+                    >
+                      <ArrowUturnLeftIcon style={icon14} />
+                      Undo
+                    </button>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={handleRedoDraft}
+                      disabled={!canRedo}
+                      style={actionButton(palette, null, !canRedo)}
+                      title="Redo draft change"
+                    >
+                      <ArrowUturnRightIcon style={icon14} />
+                      Redo
+                    </button>
+                  </div>
+                </div>
 
                 {isConversationOwner ? (
-                  <>
-                    <button
-                      className="ui-btn-polish ui-focus-ring"
-                      onClick={isEditingPost ? cancelEditingPost : beginEditingPost}
-                      style={smallOutlineButton(palette)}
-                    >
-                      {isEditingPost ? "Cancel edit" : "Edit"}
-                    </button>
-                    <button
-                      className="ui-btn-polish ui-focus-ring"
-                      onClick={handleDeletePost}
-                      style={smallDangerButton(palette, darkMode)}
-                    >
-                      {deletingPost ? "Deleting..." : "Delete"}
-                    </button>
-                  </>
+                  <div style={{ ...threadActionCluster, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+                    <p style={{ ...threadActionClusterTitle, color: palette.muted }}>Owner controls</p>
+                    <div style={actionRow}>
+                      <button
+                        className="ui-btn-polish ui-focus-ring"
+                        onClick={isEditingPost ? cancelEditingPost : beginEditingPost}
+                        style={smallOutlineButton(palette)}
+                      >
+                        {isEditingPost ? "Cancel edit" : "Edit"}
+                      </button>
+                      <button
+                        className="ui-btn-polish ui-focus-ring"
+                        onClick={handleDeletePost}
+                        style={smallDangerButton(palette, darkMode)}
+                      >
+                        {deletingPost ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
+                  </div>
                 ) : null}
               </div>
 
@@ -1028,7 +1122,11 @@ function ConversationDetail() {
 
         <div style={isNarrow ? railStackMobile : railStack}>
           <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "200ms" }}>
-            <h2 style={{ ...h2, color: palette.text, marginBottom: 14 }}>Thread Snapshot</h2>
+            <div style={{ display: "grid", gap: 6, marginBottom: 14 }}>
+              <p style={{ ...sectionLabel, color: palette.muted }}>Thread route</p>
+              <h2 style={{ ...h2, color: palette.text, margin: 0 }}>Keep the signal visible while you read</h2>
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.muted }}>{threadActionReadiness}</p>
+            </div>
             <div style={snapshotGrid}>
               <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
                 <p style={{ ...snapshotLabel, color: palette.muted }}>Type</p>
@@ -1046,6 +1144,9 @@ function ConversationDetail() {
                 <p style={{ ...snapshotLabel, color: palette.muted }}>Updated</p>
                 <p style={{ ...snapshotValue, color: palette.text }}>{updatedLabel}</p>
               </div>
+            </div>
+            <div style={{ ...threadGuideNote, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode), marginTop: 12 }}>
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.text }}>{threadPulseLabel}</p>
             </div>
           </section>
 
@@ -1065,23 +1166,24 @@ function ConversationDetail() {
 
 const page = { width: "100%" };
 const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
-const masthead = { position: "relative", zIndex: 1, borderRadius: 16, padding: "14px 16px", marginBottom: 12 };
-const mastheadTopRow = { display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" };
-const backPill = { display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none", borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
-const commandStrip = { display: "flex", gap: 8, flexWrap: "wrap" };
-const commandPill = { borderRadius: 999, padding: "7px 11px", fontSize: 12, fontWeight: 700, background: "transparent", cursor: "pointer" };
-const eyebrow = { margin: "10px 0 0", fontSize: 11, letterSpacing: "0.13em", fontWeight: 700 };
-const mastheadTitle = { margin: "7px 0 6px", fontSize: "clamp(1.16rem,2vw,1.68rem)", lineHeight: 1.15 };
-const mastheadSub = { margin: 0, fontSize: 14, lineHeight: 1.45, maxWidth: 760 };
 const grid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
 const briefingGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
+const threadControlGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
+const threadCommandCard = { borderRadius: 26, padding: 18, display: "grid", gap: 14, boxShadow: "var(--ui-shadow-xs)" };
+const threadCommandHead = { display: "grid", gap: 6 };
+const threadCommandTitle = { margin: 0, fontSize: "clamp(1.04rem,1.6vw,1.24rem)", lineHeight: 1.15 };
+const threadCommandCopy = { margin: 0, fontSize: 13, lineHeight: 1.6 };
+const threadMetaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const threadActionRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const threadGuideGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 8 };
+const threadGuideItem = { borderRadius: 16, padding: "11px 12px", display: "grid", gap: 4 };
+const threadGuideLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
+const threadGuideValue = { margin: 0, fontSize: 14, fontWeight: 700, lineHeight: 1.2 };
+const threadGuideNote = { borderRadius: 16, padding: "12px 14px" };
 const briefingPrimaryCard = { borderRadius: 28, padding: 22, display: "grid", gap: 16, boxShadow: "var(--ui-shadow-sm)" };
-const briefingMetricCard = { borderRadius: 24, padding: 18, display: "grid", gap: 8, alignContent: "start", boxShadow: "var(--ui-shadow-xs)" };
+const briefingSideCard = { borderRadius: 24, padding: 18, display: "grid", gap: 12, alignContent: "start", boxShadow: "var(--ui-shadow-xs)" };
 const briefingBadgeRow = { display: "flex", gap: 8, flexWrap: "wrap" };
 const summaryChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
-const summaryMetricLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
-const summaryMetricValue = { margin: 0, fontSize: 28, lineHeight: 1, fontWeight: 800 };
-const summaryMetricBody = { margin: 0, fontSize: 12, lineHeight: 1.6 };
 const loadingWrap = { minHeight: 320, display: "grid", placeItems: "center" };
 const spinner = {
   width: 28,
@@ -1091,23 +1193,12 @@ const spinner = {
   borderRadius: "50%",
   animation: "spin 1s linear infinite",
 };
-const backLink = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  textDecoration: "none",
-  fontSize: 13,
-  fontWeight: 700,
-  marginBottom: 10,
-};
-const h1 = { margin: "0 0 8px", fontSize: "clamp(1.18rem,2.05vw,1.72rem)" };
 const h2 = { margin: "0 0 10px", fontSize: 16, display: "flex", alignItems: "center", gap: 7 };
 const sub = { margin: "0 0 12px", fontSize: 14 };
 const card = { borderRadius: 24, padding: 18, marginBottom: 14, boxShadow: "var(--ui-shadow-sm)" };
 const typeGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 };
 const typeCard = { borderRadius: 14, padding: 16, textAlign: "left", cursor: "pointer" };
 const typeLabel = { margin: "0 0 6px", fontSize: 16, fontWeight: 700 };
-const formCard = { borderRadius: 14, padding: 16 };
 const formStack = { display: "grid", gap: 10 };
 const label = { fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" };
 const textInput = { borderRadius: 10, padding: "10px 12px", fontSize: 14, outline: "none", width: "100%" };
@@ -1123,12 +1214,6 @@ const primaryButton = {
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
-};
-const secondaryButton = {
-  ...primaryButton,
-  background: "transparent",
-  color: "var(--app-muted)",
-  border: "1px solid var(--app-border-strong)",
 };
 const titleMain = { margin: "0 0 10px", fontSize: "clamp(1.3rem,2.8vw,1.8rem)" };
 const heroSignals = { display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 8 };
@@ -1146,6 +1231,9 @@ const metaText = { margin: "2px 0 0", fontSize: 11 };
 const actionDeck = { display: "grid", gap: 12, marginTop: 14, paddingTop: 14 };
 const actionDeckHeader = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" };
 const actionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
+const threadActionClusters = { display: "grid", gap: 10 };
+const threadActionCluster = { borderRadius: 16, padding: "12px 14px", display: "grid", gap: 8 };
+const threadActionClusterTitle = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
 const editingHint = { borderRadius: 12, padding: "10px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
 const ghostSuccessButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--app-success-border)", borderRadius: 999, background: "var(--app-success-soft)", color: "var(--app-success)", fontSize: 12, fontWeight: 700, padding: "8px 12px", cursor: "pointer" };
 const actionButton = (palette, emphasis = null, disabled = false) => ({

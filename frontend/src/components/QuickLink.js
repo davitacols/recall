@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   CheckCircleIcon,
@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 
 const TARGET_OPTIONS = [
   {
@@ -69,8 +70,14 @@ function getContextCacheKey(contentType, objectId) {
   return `context_${contentType}_${objectId}`;
 }
 
+function getRecordOption(value) {
+  return TARGET_OPTIONS.find((option) => option.value === value) || null;
+}
+
 export default function QuickLink({ sourceType, sourceId, onLinked }) {
   const { darkMode } = useTheme();
+  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
+  const ui = useMemo(() => getProjectUi(palette), [palette]);
   const searchInputRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
   const [targetType, setTargetType] = useState(() => getDefaultTargetType(sourceType));
@@ -82,9 +89,22 @@ export default function QuickLink({ sourceType, sourceId, onLinked }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const sourceOption = useMemo(
+    () =>
+      getRecordOption(sourceType) || {
+        value: sourceType,
+        label: "Record",
+        helper: "This source record can be connected to other knowledge items.",
+      },
+    [sourceType]
+  );
   const activeTargetOption = useMemo(
-    () => TARGET_OPTIONS.find((option) => option.value === targetType) || TARGET_OPTIONS[0],
+    () => getRecordOption(targetType) || TARGET_OPTIONS[0],
     [targetType]
+  );
+  const activeLinkOption = useMemo(
+    () => LINK_TYPE_OPTIONS.find((option) => option.value === linkType) || LINK_TYPE_OPTIONS[0],
+    [linkType]
   );
 
   useEffect(() => {
@@ -145,7 +165,9 @@ export default function QuickLink({ sourceType, sourceId, onLinked }) {
     const timer = window.setTimeout(async () => {
       setSearching(true);
       try {
-        const response = await api.get("/api/knowledge/search-all/", { params: { q: trimmedQuery } });
+        const response = await api.get("/api/knowledge/search-all/", {
+          params: { q: trimmedQuery },
+        });
         if (cancelled) return;
 
         const filtered = (response.data?.results || []).filter((item) => {
@@ -174,15 +196,16 @@ export default function QuickLink({ sourceType, sourceId, onLinked }) {
     };
   }, [query, showModal, sourceId, sourceType, targetType]);
 
-  const resolvedTargetId = selectedTarget?.id || (/^\d+$/.test(query.trim()) ? Number(query.trim()) : null);
-
-  const panelBg = darkMode ? "rgba(24, 20, 17, 0.98)" : "rgba(255, 252, 248, 0.98)";
-  const cardBg = darkMode ? "rgba(35, 30, 26, 0.92)" : "rgba(248, 244, 238, 0.92)";
-  const inputBg = darkMode ? "rgba(44, 36, 32, 0.96)" : "#ffffff";
-  const borderColor = darkMode ? "rgba(120, 113, 108, 0.3)" : "rgba(148, 163, 184, 0.22)";
-  const textPrimary = darkMode ? "var(--app-text)" : "var(--app-text)";
-  const textSecondary = darkMode ? "var(--app-muted)" : "#5b6474";
-  const accent = darkMode ? "#f6c97d" : "#3157c8";
+  const directIdCandidate = /^\d+$/.test(query.trim()) ? Number(query.trim()) : null;
+  const resolvedTargetId = selectedTarget?.id || directIdCandidate;
+  const previewTargetLabel = selectedTarget?.title
+    ? `${selectedTarget.title} (#${selectedTarget.id})`
+    : resolvedTargetId
+      ? `${activeTargetOption.label} #${resolvedTargetId}`
+      : `Choose a ${activeTargetOption.label.toLowerCase()}`;
+  const previewSentence = resolvedTargetId
+    ? `${sourceOption.label} #${sourceId} will be marked as "${activeLinkOption.label.toLowerCase()}" with ${previewTargetLabel}.`
+    : `Select a ${activeTargetOption.label.toLowerCase()} to create the link.`;
 
   const createLink = async () => {
     if (!resolvedTargetId) {
@@ -213,29 +236,28 @@ export default function QuickLink({ sourceType, sourceId, onLinked }) {
     }
   };
 
+  const overlayBg = darkMode ? "rgba(5, 7, 11, 0.66)" : "rgba(15, 23, 42, 0.22)";
+  const shellBg = darkMode
+    ? "linear-gradient(180deg, rgba(20, 17, 15, 0.98), rgba(16, 13, 12, 0.96))"
+    : "linear-gradient(180deg, rgba(255, 252, 248, 0.99), rgba(248, 243, 236, 0.98))";
+  const panelBg = darkMode
+    ? "linear-gradient(180deg, rgba(30, 25, 22, 0.95), rgba(24, 20, 18, 0.92))"
+    : "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 239, 230, 0.92))";
+  const insetBg = darkMode
+    ? "linear-gradient(180deg, rgba(39, 33, 29, 0.96), rgba(31, 26, 23, 0.92))"
+    : "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 233, 221, 0.94))";
+
   return (
     <>
       <button
         className="ui-btn-polish ui-focus-ring"
         onClick={() => setShowModal(true)}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          minHeight: 40,
-          padding: "0 14px",
-          borderRadius: 999,
-          border: `1px solid ${borderColor}`,
-          background: cardBg,
-          color: textPrimary,
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: "pointer",
-          boxShadow: "var(--ui-shadow-xs)",
-        }}
+        style={triggerButtonStyle(palette, darkMode)}
       >
-        <LinkIcon style={{ width: 14, height: 14, color: accent }} />
-        Link to...
+        <span style={triggerIconWrap(palette)}>
+          <LinkIcon style={{ width: 14, height: 14 }} />
+        </span>
+        Link record
       </button>
 
       {showModal && typeof document !== "undefined"
@@ -244,42 +266,82 @@ export default function QuickLink({ sourceType, sourceId, onLinked }) {
               style={{
                 position: "fixed",
                 inset: 0,
-                background: "rgba(15, 23, 42, 0.48)",
-                backdropFilter: "blur(8px)",
+                background: overlayBg,
+                backdropFilter: "blur(10px)",
                 display: "grid",
                 placeItems: "center",
-                padding: 20,
+                padding: 18,
                 zIndex: 1600,
               }}
               onClick={() => setShowModal(false)}
             >
               <div
+                className="ui-card-lift ui-smooth"
                 style={{
-                  width: "min(760px, 100%)",
-                  maxHeight: "min(88vh, 920px)",
-                  overflow: "hidden",
-                  borderRadius: 28,
-                  border: `1px solid ${borderColor}`,
-                  background: panelBg,
-                  boxShadow: "0 26px 80px rgba(15, 23, 42, 0.26)",
+                  width: "min(980px, 100%)",
+                  maxHeight: "min(90vh, 920px)",
+                  borderRadius: 32,
+                  border: `1px solid ${palette.border}`,
+                  background: shellBg,
+                  boxShadow: darkMode
+                    ? "0 32px 100px rgba(0, 0, 0, 0.45)"
+                    : "0 28px 72px rgba(33, 25, 19, 0.18)",
                   display: "grid",
-                  gap: 16,
-                  padding: 20,
+                  gridTemplateRows: "auto minmax(0, 1fr) auto",
+                  overflow: "hidden",
+                  fontFamily:
+                    'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                 }}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: textSecondary, fontWeight: 700 }}>
-                      Link Record
-                    </p>
-                    <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: textPrimary }}>
-                      Connect this item to another record
-                    </h3>
-                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: textSecondary, maxWidth: 560 }}>
-                      Search by title or paste a numeric ID. New links show up in the context rail and knowledge graph immediately.
-                    </p>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 16,
+                    alignItems: "flex-start",
+                    padding: "22px 22px 18px",
+                    borderBottom: `1px solid ${palette.border}`,
+                  }}
+                >
+                  <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <span style={metaPillStyle(palette, insetBg)}>
+                        Source {sourceOption.label}
+                      </span>
+                      <span style={metaPillStyle(palette, insetBg)}>
+                        Target {activeTargetOption.label}
+                      </span>
+                      <span style={metaPillStyle(palette, insetBg)}>
+                        {activeLinkOption.label}
+                      </span>
+                    </div>
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <p style={sectionEyebrow(palette)}>Link Record</p>
+                      <h3
+                        style={{
+                          margin: 0,
+                          fontSize: "clamp(1.3rem, 2.1vw, 1.75rem)",
+                          lineHeight: 1.04,
+                          color: palette.text,
+                        }}
+                      >
+                        Connect this {sourceOption.label.toLowerCase()} to another record with clear context
+                      </h3>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: 13,
+                          lineHeight: 1.65,
+                          color: palette.muted,
+                          maxWidth: 620,
+                        }}
+                      >
+                        Search by title, pick the relationship, or paste a numeric ID when you already know the exact target. New links appear in the context rail and knowledge graph immediately.
+                      </p>
+                    </div>
                   </div>
+
                   <button
                     className="ui-focus-ring"
                     onClick={() => setShowModal(false)}
@@ -287,270 +349,378 @@ export default function QuickLink({ sourceType, sourceId, onLinked }) {
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      width: 36,
-                      height: 36,
+                      width: 40,
+                      height: 40,
                       borderRadius: 999,
-                      border: `1px solid ${borderColor}`,
-                      background: cardBg,
-                      color: textSecondary,
+                      border: `1px solid ${palette.border}`,
+                      background: panelBg,
+                      color: palette.muted,
                       cursor: "pointer",
+                      flexShrink: 0,
                     }}
                   >
                     <XMarkIcon style={{ width: 18, height: 18 }} />
                   </button>
                 </div>
 
-                <div style={{ display: "grid", gap: 14, minHeight: 0 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-                    <div style={{ display: "grid", gap: 6 }}>
-                      <label style={{ margin: 0, fontSize: 12, color: textSecondary, fontWeight: 700 }}>Target type</label>
-                      <select
-                        value={targetType}
-                        onChange={(event) => setTargetType(event.target.value)}
-                        style={{
-                          width: "100%",
-                          minHeight: 42,
-                          padding: "0 12px",
-                          borderRadius: 14,
-                          border: `1px solid ${borderColor}`,
-                          background: inputBg,
-                          color: textPrimary,
-                          fontSize: 14,
-                        }}
-                      >
-                        {TARGET_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p style={{ margin: 0, fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
-                        {activeTargetOption.helper}
-                      </p>
-                    </div>
-
-                    <div style={{ display: "grid", gap: 6 }}>
-                      <label style={{ margin: 0, fontSize: 12, color: textSecondary, fontWeight: 700 }}>Relationship</label>
-                      <select
-                        value={linkType}
-                        onChange={(event) => setLinkType(event.target.value)}
-                        style={{
-                          width: "100%",
-                          minHeight: 42,
-                          padding: "0 12px",
-                          borderRadius: 14,
-                          border: `1px solid ${borderColor}`,
-                          background: inputBg,
-                          color: textPrimary,
-                          fontSize: 14,
-                        }}
-                      >
-                        {LINK_TYPE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <label style={{ margin: 0, fontSize: 12, color: textSecondary, fontWeight: 700 }}>
-                      Search for a {activeTargetOption.label.toLowerCase()}
-                    </label>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        minHeight: 46,
-                        borderRadius: 16,
-                        border: `1px solid ${borderColor}`,
-                        background: inputBg,
-                        padding: "0 14px",
-                      }}
-                    >
-                      <MagnifyingGlassIcon style={{ width: 18, height: 18, color: textSecondary }} />
-                      <input
-                        ref={searchInputRef}
-                        value={query}
-                        onChange={(event) => {
-                          setQuery(event.target.value);
-                          setError("");
-                        }}
-                        placeholder={`Search ${activeTargetOption.label.toLowerCase()} titles or enter an ID`}
-                        style={{
-                          width: "100%",
-                          border: "none",
-                          outline: "none",
-                          background: "transparent",
-                          color: textPrimary,
-                          fontSize: 14,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {selectedTarget ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        alignItems: "center",
-                        borderRadius: 18,
-                        border: `1px solid ${darkMode ? "rgba(110, 231, 183, 0.24)" : "rgba(16, 185, 129, 0.2)"}`,
-                        background: darkMode ? "rgba(16, 185, 129, 0.12)" : "rgba(236, 253, 245, 0.9)",
-                        padding: "12px 14px",
-                      }}
-                    >
-                      <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
-                        <CheckCircleIcon style={{ width: 18, height: 18, color: darkMode ? "#6ee7b7" : "#059669", flexShrink: 0 }} />
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {selectedTarget.title}
-                          </p>
-                          <p style={{ margin: "2px 0 0", fontSize: 12, color: textSecondary }}>
-                            {activeTargetOption.label} #{selectedTarget.id}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        className="ui-focus-ring"
-                        onClick={() => setSelectedTarget(null)}
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          color: textSecondary,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  ) : null}
-
-                  <div
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                    gap: 16,
+                    padding: 20,
+                    overflow: "auto",
+                  }}
+                >
+                  <section
                     style={{
-                      borderRadius: 20,
-                      border: `1px solid ${borderColor}`,
-                      background: cardBg,
-                      minHeight: 220,
-                      maxHeight: 320,
-                      overflowY: "auto",
+                      display: "grid",
+                      gap: 16,
+                      minWidth: 0,
                     }}
                   >
-                    {query.trim().length < 2 ? (
-                      <div style={{ padding: 18, color: textSecondary, fontSize: 13, lineHeight: 1.6 }}>
-                        Type at least 2 characters to search, or enter a numeric ID like <strong>42</strong> and link directly.
+                    <div
+                      style={{
+                        borderRadius: 24,
+                        border: `1px solid ${palette.border}`,
+                        background: panelBg,
+                        padding: 16,
+                        display: "grid",
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ display: "grid", gap: 4 }}>
+                        <p style={sectionEyebrow(palette)}>Choose Target</p>
+                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+                          Pick the kind of record you want to connect, then search for the exact item.
+                        </p>
                       </div>
-                    ) : searching ? (
-                      <div style={{ padding: 18, color: textSecondary, fontSize: 13 }}>
-                        Searching {activeTargetOption.label.toLowerCase()}s...
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                          gap: 10,
+                        }}
+                      >
+                        {TARGET_OPTIONS.map((option) => {
+                          const active = option.value === targetType;
+                          return (
+                            <button
+                              key={option.value}
+                              className="ui-focus-ring"
+                              onClick={() => setTargetType(option.value)}
+                              style={targetOptionButtonStyle(palette, darkMode, active)}
+                            >
+                              <span style={{ fontSize: 14, fontWeight: 700, color: active ? palette.link : palette.text }}>
+                                {option.label}
+                              </span>
+                              <span style={{ fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
+                                {option.helper}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
-                    ) : results.length === 0 ? (
-                      <div style={{ padding: 18, color: textSecondary, fontSize: 13, lineHeight: 1.6 }}>
-                        No matching {activeTargetOption.label.toLowerCase()} records found. You can still paste a numeric ID into the search box and link it directly.
+                    </div>
+
+                    <div
+                      style={{
+                        borderRadius: 24,
+                        border: `1px solid ${palette.border}`,
+                        background: panelBg,
+                        padding: 16,
+                        display: "grid",
+                        gap: 12,
+                        minWidth: 0,
+                      }}
+                    >
+                      <div style={{ display: "grid", gap: 4 }}>
+                        <label htmlFor="quick-link-search" style={fieldLabel(palette)}>
+                          Search for a {activeTargetOption.label.toLowerCase()}
+                        </label>
+                        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
+                          Search titles and excerpts, or type a numeric ID if you already know the exact record.
+                        </p>
                       </div>
-                    ) : (
-                      results.map((item) => {
-                        const selected = Number(selectedTarget?.id) === Number(item.id);
-                        return (
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          minHeight: 52,
+                          borderRadius: 18,
+                          border: `1px solid ${palette.border}`,
+                          background: insetBg,
+                          padding: "0 14px",
+                        }}
+                      >
+                        <MagnifyingGlassIcon style={{ width: 18, height: 18, color: palette.muted, flexShrink: 0 }} />
+                        <input
+                          id="quick-link-search"
+                          ref={searchInputRef}
+                          value={query}
+                          onChange={(event) => {
+                            setQuery(event.target.value);
+                            setError("");
+                          }}
+                          placeholder={`Search ${activeTargetOption.label.toLowerCase()} titles or enter an ID`}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            outline: "none",
+                            background: "transparent",
+                            color: palette.text,
+                            fontSize: 14,
+                            fontFamily: "inherit",
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          borderRadius: 22,
+                          border: `1px solid ${palette.border}`,
+                          background: insetBg,
+                          minHeight: 280,
+                          maxHeight: 380,
+                          overflowY: "auto",
+                        }}
+                      >
+                        {query.trim().length < 2 ? (
+                          <div style={emptyStateStyle(palette)}>
+                            Type at least 2 characters to search. If you already know the ID, enter it directly and create the link from the footer.
+                          </div>
+                        ) : searching ? (
+                          <div style={emptyStateStyle(palette)}>
+                            Searching {activeTargetOption.label.toLowerCase()} records...
+                          </div>
+                        ) : results.length === 0 ? (
+                          <div style={emptyStateStyle(palette)}>
+                            No matching {activeTargetOption.label.toLowerCase()} records found. You can still use a numeric ID from the search box to create the link directly.
+                          </div>
+                        ) : (
+                          results.map((item, index) => {
+                            const selected = Number(selectedTarget?.id) === Number(item.id);
+                            const isLast = index === results.length - 1;
+                            return (
+                              <button
+                                key={`${item.type}-${item.id}`}
+                                className="ui-focus-ring"
+                                onClick={() => {
+                                  setSelectedTarget(item);
+                                  setError("");
+                                }}
+                                style={resultButtonStyle(palette, darkMode, selected, isLast)}
+                              >
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                                  <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+                                    <span
+                                      style={{
+                                        fontSize: 14,
+                                        fontWeight: 700,
+                                        color: palette.text,
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                      }}
+                                    >
+                                      {item.title}
+                                    </span>
+                                    <span style={{ fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
+                                      {item.excerpt || `${activeTargetOption.label} #${item.id}`}
+                                    </span>
+                                  </div>
+                                  <div style={{ display: "grid", gap: 6, justifyItems: "end", flexShrink: 0 }}>
+                                    <span style={resultBadgeStyle(palette, insetBg)}>
+                                      #{item.id}
+                                    </span>
+                                    {selected ? (
+                                      <span style={{ fontSize: 11, fontWeight: 700, color: palette.link }}>
+                                        Selected
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </section>
+
+                  <aside
+                    style={{
+                      display: "grid",
+                      gap: 16,
+                      alignContent: "start",
+                      minWidth: 0,
+                    }}
+                  >
+                    <section
+                      style={{
+                        borderRadius: 24,
+                        border: `1px solid ${palette.border}`,
+                        background: panelBg,
+                        padding: 16,
+                        display: "grid",
+                        gap: 14,
+                      }}
+                    >
+                      <div style={{ display: "grid", gap: 4 }}>
+                        <p style={sectionEyebrow(palette)}>Link Setup</p>
+                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+                          Review the source, set the relationship, and confirm the target before saving the link.
+                        </p>
+                      </div>
+
+                      <div style={summaryCardStyle(palette, insetBg)}>
+                        <p style={fieldLabel(palette)}>Source record</p>
+                        <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>
+                          {sourceOption.label} #{sourceId}
+                        </p>
+                        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
+                          {sourceOption.helper}
+                        </p>
+                      </div>
+
+                      <div style={{ display: "grid", gap: 8 }}>
+                        <label htmlFor="quick-link-relationship" style={fieldLabel(palette)}>
+                          Relationship
+                        </label>
+                        <select
+                          id="quick-link-relationship"
+                          value={linkType}
+                          onChange={(event) => setLinkType(event.target.value)}
+                          style={ui.input}
+                        >
+                          {LINK_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div
+                        style={{
+                          ...summaryCardStyle(
+                            palette,
+                            selectedTarget || directIdCandidate
+                              ? darkMode
+                                ? "rgba(41, 59, 98, 0.4)"
+                                : "rgba(46, 99, 208, 0.08)"
+                              : insetBg
+                          ),
+                          border: `1px solid ${selectedTarget || directIdCandidate ? palette.accent : palette.border}`,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                          <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+                            <p style={fieldLabel(palette)}>Target preview</p>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 15,
+                                fontWeight: 700,
+                                color: palette.text,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                            >
+                              {previewTargetLabel}
+                            </p>
+                            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
+                              {selectedTarget
+                                ? "Selected from search results."
+                                : directIdCandidate
+                                  ? "Using direct numeric ID input."
+                                  : `No ${activeTargetOption.label.toLowerCase()} selected yet.`}
+                            </p>
+                          </div>
+                          {selectedTarget ? (
+                            <CheckCircleIcon style={{ width: 18, height: 18, color: palette.success, flexShrink: 0 }} />
+                          ) : null}
+                        </div>
+
+                        {selectedTarget ? (
                           <button
-                            key={`${item.type}-${item.id}`}
                             className="ui-focus-ring"
-                            onClick={() => {
-                              setSelectedTarget(item);
-                              setError("");
-                            }}
+                            onClick={() => setSelectedTarget(null)}
                             style={{
-                              width: "100%",
                               border: "none",
-                              borderBottom: `1px solid ${borderColor}`,
-                              background: selected
-                                ? (darkMode ? "rgba(246, 201, 125, 0.12)" : "rgba(49, 87, 200, 0.08)")
-                                : "transparent",
-                              color: textPrimary,
-                              textAlign: "left",
-                              padding: "14px 16px",
+                              background: "transparent",
+                              color: palette.link,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              padding: 0,
                               cursor: "pointer",
-                              display: "grid",
-                              gap: 6,
+                              justifySelf: "start",
                             }}
                           >
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                              <span style={{ fontSize: 14, fontWeight: 700 }}>{item.title}</span>
-                              <span
-                                style={{
-                                  flexShrink: 0,
-                                  borderRadius: 999,
-                                  border: `1px solid ${borderColor}`,
-                                  padding: "4px 8px",
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  letterSpacing: "0.08em",
-                                  textTransform: "uppercase",
-                                  color: textSecondary,
-                                }}
-                              >
-                                {item.type}
-                              </span>
-                            </div>
-                            <span style={{ fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
-                              {item.excerpt || `${activeTargetOption.label} #${item.id}`}
-                            </span>
+                            Clear selection
                           </button>
-                        );
-                      })
+                        ) : null}
+                      </div>
+
+                      <div style={summaryCardStyle(palette, insetBg)}>
+                        <p style={fieldLabel(palette)}>Link preview</p>
+                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.text }}>
+                          {previewSentence}
+                        </p>
+                      </div>
+                    </section>
+                  </aside>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    padding: "16px 20px 20px",
+                    borderTop: `1px solid ${palette.border}`,
+                    background: darkMode ? "rgba(18, 15, 13, 0.72)" : "rgba(255, 252, 248, 0.78)",
+                  }}
+                >
+                  <div style={{ minHeight: 18 }}>
+                    {error ? (
+                      <p style={{ margin: 0, fontSize: 12, color: palette.danger }}>
+                        {error}
+                      </p>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                        Links update the context rail and graph immediately after creation.
+                      </p>
                     )}
                   </div>
 
-                  {error ? (
-                    <p style={{ margin: 0, fontSize: 12, color: "#dc2626" }}>
-                      {error}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    className="ui-btn-polish ui-focus-ring"
-                    onClick={() => setShowModal(false)}
-                    style={{
-                      minHeight: 42,
-                      padding: "0 16px",
-                      borderRadius: 999,
-                      border: `1px solid ${borderColor}`,
-                      background: cardBg,
-                      color: textSecondary,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="ui-btn-polish ui-focus-ring"
-                    onClick={createLink}
-                    disabled={submitting || !resolvedTargetId}
-                    style={{
-                      minHeight: 42,
-                      padding: "0 16px",
-                      borderRadius: 999,
-                      border: "none",
-                      background: "linear-gradient(135deg, #3157c8, #5e86f2)",
-                      color: "#f8fafc",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: submitting || !resolvedTargetId ? "not-allowed" : "pointer",
-                      opacity: submitting || !resolvedTargetId ? 0.65 : 1,
-                    }}
-                  >
-                    {submitting ? "Linking..." : "Create Link"}
-                  </button>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={() => setShowModal(false)}
+                      style={ui.secondaryButton}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={createLink}
+                      disabled={submitting || !resolvedTargetId}
+                      style={{
+                        ...ui.primaryButton,
+                        cursor: submitting || !resolvedTargetId ? "not-allowed" : "pointer",
+                        opacity: submitting || !resolvedTargetId ? 0.62 : 1,
+                      }}
+                    >
+                      {submitting ? "Linking..." : "Create Link"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>,
@@ -559,4 +729,146 @@ export default function QuickLink({ sourceType, sourceId, onLinked }) {
         : null}
     </>
   );
+}
+
+function triggerButtonStyle(palette, darkMode) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 40,
+    padding: "0 14px",
+    borderRadius: 999,
+    border: `1px solid ${palette.border}`,
+    background: darkMode
+      ? "linear-gradient(180deg, rgba(35, 30, 26, 0.94), rgba(29, 24, 21, 0.9))"
+      : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,233,221,0.94))",
+    color: palette.text,
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+    boxShadow: "var(--ui-shadow-xs)",
+  };
+}
+
+function triggerIconWrap(palette) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 22,
+    height: 22,
+    borderRadius: 999,
+    background: palette.accentSoft,
+    color: palette.link,
+    flexShrink: 0,
+  };
+}
+
+function sectionEyebrow(palette) {
+  return {
+    margin: 0,
+    fontSize: 11,
+    letterSpacing: "0.14em",
+    textTransform: "uppercase",
+    color: palette.muted,
+    fontWeight: 700,
+  };
+}
+
+function fieldLabel(palette) {
+  return {
+    margin: 0,
+    fontSize: 12,
+    color: palette.muted,
+    fontWeight: 700,
+  };
+}
+
+function metaPillStyle(palette, background) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    padding: "8px 12px",
+    border: `1px solid ${palette.border}`,
+    background,
+    color: palette.text,
+    fontSize: 12,
+    fontWeight: 700,
+  };
+}
+
+function targetOptionButtonStyle(palette, darkMode, active) {
+  return {
+    border: `1px solid ${active ? palette.accent : palette.border}`,
+    borderRadius: 18,
+    background: active
+      ? palette.accentSoft
+      : darkMode
+        ? "rgba(39, 33, 29, 0.96)"
+        : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,233,221,0.94))",
+    padding: "14px 14px 12px",
+    textAlign: "left",
+    display: "grid",
+    gap: 6,
+    cursor: "pointer",
+    boxShadow: active ? "var(--ui-shadow-xs)" : "none",
+  };
+}
+
+function summaryCardStyle(palette, background) {
+  return {
+    borderRadius: 18,
+    border: `1px solid ${palette.border}`,
+    background,
+    padding: "13px 14px",
+    display: "grid",
+    gap: 6,
+  };
+}
+
+function emptyStateStyle(palette) {
+  return {
+    padding: 18,
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 1.65,
+  };
+}
+
+function resultButtonStyle(palette, darkMode, selected, isLast) {
+  return {
+    width: "100%",
+    border: "none",
+    borderBottom: isLast ? "none" : `1px solid ${palette.border}`,
+    background: selected
+      ? palette.accentSoft
+      : darkMode
+        ? "transparent"
+        : "rgba(255,255,255,0.38)",
+    color: palette.text,
+    textAlign: "left",
+    padding: "14px 16px",
+    cursor: "pointer",
+    display: "grid",
+    gap: 8,
+  };
+}
+
+function resultBadgeStyle(palette, background) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    border: `1px solid ${palette.border}`,
+    background,
+    padding: "4px 8px",
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    color: palette.muted,
+  };
 }

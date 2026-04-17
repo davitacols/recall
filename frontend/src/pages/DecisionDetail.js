@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowDownTrayIcon,
@@ -361,6 +361,47 @@ function DecisionDetail() {
     : decision.status === "implemented"
       ? "Implementation is marked complete, but the outcome review is still open."
       : "Outcome review will become more meaningful once implementation progresses.";
+  const implementationDeadlineLabel = decision.implementation_deadline
+    ? new Date(decision.implementation_deadline).toLocaleDateString()
+    : "No deadline set";
+  const decisionTabs = [
+    {
+      key: "overview",
+      label: "Overview",
+      description: "Recover the decision statement and the headline framing behind it.",
+    },
+    {
+      key: "rationale",
+      label: "Rationale",
+      description: "Inspect the why, the assumptions, and the pressure behind the call.",
+    },
+    {
+      key: "code",
+      label: "Engineering",
+      description: "Trace implementation evidence across pull requests, commits, and deployments.",
+    },
+    {
+      key: "details",
+      label: "Risk Notes",
+      description: "Review failure modes, alternatives, and supporting context around the decision.",
+    },
+    {
+      key: "outcome",
+      label: "Outcome Review",
+      description: "Record whether the decision worked and capture lessons from implementation.",
+    },
+    {
+      key: "impact",
+      label: "Impact Trail",
+      description: "See downstream graph links and how the record connects to other knowledge.",
+    },
+    {
+      key: "replay",
+      label: "Replay",
+      description: "Model alternate paths and turn simulation safeguards into follow-up work.",
+    },
+  ];
+  const activeTabMeta = decisionTabs.find((tab) => tab.key === activeTab) || decisionTabs[0];
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -414,29 +455,115 @@ function DecisionDetail() {
         />
 
         <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
-          <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Pill text={status} tone="blue" palette={palette} />
-              <Pill text={impact} tone="amber" palette={palette} />
-              <span style={toolbarMetaChip(palette)}>
-                <UserIcon style={{ width: 14, height: 14 }} /> {decisionMakerName}
-              </span>
-              <span style={toolbarMetaChip(palette)}>
-                <CalendarIcon style={{ width: 14, height: 14 }} /> {createdLabel}
-              </span>
-              {decision.confidence?.score ? (
+          <div
+            style={{
+              ...detailCommandGrid,
+              gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1.45fr) minmax(300px,0.92fr)",
+            }}
+          >
+            <section
+              className="ui-card-lift ui-smooth"
+              style={{ ...detailCommandCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}
+            >
+              <div style={detailCommandHead}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+                  Record control
+                </p>
+                <h2 style={{ ...detailCommandTitle, color: palette.text }}>
+                  Move between evidence, outcome, and replay without losing the original call
+                </h2>
+                <p style={{ ...detailCommandCopy, color: palette.muted }}>
+                  Keep the decision anchored to its owner, confidence, and implementation status while switching between the parts of the record that matter most right now.
+                </p>
+              </div>
+
+              <div style={detailMetaRail}>
+                <Pill text={status} tone="blue" palette={palette} />
+                <Pill text={impact} tone="amber" palette={palette} />
                 <span style={toolbarMetaChip(palette)}>
-                  <ChartBarIcon style={{ width: 14, height: 14 }} /> {decision.confidence.score}% confidence
+                  <UserIcon style={{ width: 14, height: 14 }} /> {decisionMakerName}
                 </span>
-              ) : null}
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>All Decisions</button>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => setActiveTab("outcome")} style={ui.secondaryButton}>Outcome Review</button>
-              <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecision} style={ui.secondaryButton}>
-                <ArrowPathIcon style={{ width: 13, height: 13 }} /> Refresh
-              </button>
-            </div>
+                <span style={toolbarMetaChip(palette)}>
+                  <CalendarIcon style={{ width: 14, height: 14 }} /> Logged {createdLabel}
+                </span>
+                <span style={toolbarMetaChip(palette)}>
+                  <ChartBarIcon style={{ width: 14, height: 14 }} /> {confidenceScore}% confidence
+                </span>
+              </div>
+
+              <div style={detailTabRail}>
+                {decisionTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    className="ui-btn-polish ui-focus-ring"
+                    onClick={() => setActiveTab(tab.key)}
+                    style={detailTabButton(palette, activeTab === tab.key)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={detailActionRail}>
+                <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
+                  All Decisions
+                </button>
+                <button className="ui-btn-polish ui-focus-ring" onClick={() => setActiveTab("outcome")} style={ui.secondaryButton}>
+                  Outcome Review
+                </button>
+                <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecision} style={ui.secondaryButton}>
+                  <ArrowPathIcon style={{ width: 13, height: 13 }} /> Refresh
+                </button>
+                {linkedConversation ? (
+                  <button
+                    className="ui-btn-polish ui-focus-ring"
+                    onClick={() => navigate(`/conversations/${linkedConversation.id}`)}
+                    style={ui.secondaryButton}
+                  >
+                    Source thread
+                  </button>
+                ) : null}
+              </div>
+            </section>
+
+            <section
+              className="ui-card-lift ui-smooth"
+              style={{ ...detailCommandCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}
+            >
+              <div style={detailCommandHead}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+                  Active view
+                </p>
+                <h2 style={{ ...detailCommandTitle, color: palette.text }}>{activeTabMeta.label}</h2>
+                <p style={{ ...detailCommandCopy, color: palette.muted }}>{activeTabMeta.description}</p>
+              </div>
+
+              <div style={detailSnapshotGrid}>
+                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Owner</p>
+                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{decisionMakerName}</p>
+                </div>
+                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Recorded</p>
+                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{createdLabel}</p>
+                </div>
+                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Decision date</p>
+                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{decisionDate}</p>
+                </div>
+                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Deadline</p>
+                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{implementationDeadlineLabel}</p>
+                </div>
+              </div>
+
+              <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
+                  Review posture
+                </p>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{reviewPosture}</p>
+              </div>
+            </section>
           </div>
         </WorkspaceToolbar>
 
@@ -508,25 +635,13 @@ function DecisionDetail() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-              {["overview", "rationale", "code", "details", "outcome", "impact", "replay"].map((tab) => (
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  style={{
-                    ...ui.secondaryButton,
-                    padding: "8px 12px",
-                    fontSize: 12,
-                    textTransform: "capitalize",
-                    background: activeTab === tab ? palette.accentSoft : palette.card,
-                    border: activeTab === tab ? `1px solid ${palette.accent}` : ui.secondaryButton.border,
-                    color: activeTab === tab ? palette.link : ui.secondaryButton.color,
-                  }}
-                >
-                  {tab}
-                </button>
-              ))}
+            <div style={{ display: "grid", gap: 6, marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${palette.border}` }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+                {activeTabMeta.label}
+              </p>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>
+                {activeTabMeta.description}
+              </p>
             </div>
 
             {activeTab === "overview" && <TextBlock title="Overview" text={decision.description} palette={palette} darkMode={darkMode} />}
@@ -848,45 +963,127 @@ function DecisionDetail() {
             )}
           </section>
 
-          <aside style={{ display: "grid", gap: 12, alignContent: "start" }}>
-            {decision.confidence && (
-              <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
-                <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Confidence</h3>
-                <p style={{ margin: 0, fontSize: 30, fontWeight: 800, color: palette.text }}>{decision.confidence.score || 0}%</p>
-                <div style={{ width: "100%", height: 8, borderRadius: 999, background: palette.progressTrack, overflow: "hidden", marginTop: 6 }}>
-                  <div style={{ height: "100%", width: `${decision.confidence.score || 0}%`, background: `linear-gradient(90deg, ${palette.success}, ${palette.success})` }} />
+          <aside style={detailSidebarGrid}>
+            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
+              <div style={{ display: "grid", gap: 6, marginBottom: 14 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+                  Decision snapshot
+                </p>
+                <h3 style={{ margin: 0, fontSize: 18, color: palette.text }}>
+                  Confidence, reliability, and execution state in one pass
+                </h3>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+                  This rail keeps the health of the record visible while you review the deeper narrative in the main panel.
+                </p>
+              </div>
+
+              <div style={detailSnapshotGrid}>
+                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Confidence</p>
+                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{confidenceScore}%</p>
                 </div>
-                {decision.confidence.factors?.length > 0 && (
-                  <ul style={{ margin: "8px 0 0", paddingLeft: 16, color: palette.muted, fontSize: 11 }}>
-                    {decision.confidence.factors.map((factor, index) => <li key={index} style={{ marginBottom: 4 }}>{factor}</li>)}
+                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Reliability</p>
+                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{reliabilityScore}%</p>
+                </div>
+                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Impact links</p>
+                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{impactTrail.edges?.length || 0}</p>
+                </div>
+                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Status</p>
+                  <p style={{ ...detailSnapshotValue, color: palette.text, textTransform: "capitalize" }}>{status}</p>
+                </div>
+              </div>
+
+              <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
+                  Outcome posture
+                </p>
+                <InfoRow label="Reliability band" value={(decision.outcome_reliability?.band || "low").toUpperCase()} palette={palette} />
+                <InfoRow label="Decision date" value={decisionDate} palette={palette} />
+                <InfoRow label="Deadline" value={implementationDeadlineLabel} palette={palette} />
+              </div>
+
+              {decision.confidence?.factors?.length > 0 ? (
+                <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
+                    Confidence factors
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: 16, color: palette.text, fontSize: 12, lineHeight: 1.6 }}>
+                    {decision.confidence.factors.map((factor, index) => (
+                      <li key={index}>{factor}</li>
+                    ))}
                   </ul>
-                )}
-              </section>
-            )}
-
-            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
-              <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Reliability</h3>
-              <InfoRow label="Outcome reliability" value={`${decision.outcome_reliability?.score ?? 0}%`} palette={palette} />
-              <InfoRow label="Band" value={(decision.outcome_reliability?.band || "low").toUpperCase()} palette={palette} />
+                </div>
+              ) : null}
             </section>
 
             <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
-              <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Details</h3>
-              <InfoRow label="Decided" value={decisionDate} palette={palette} />
-              <InfoRow label="Deadline" value={decision.implementation_deadline ? new Date(decision.implementation_deadline).toLocaleDateString() : "-"} palette={palette} />
-            </section>
+              <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
+                  Context and review
+                </p>
+                <h3 style={{ margin: 0, fontSize: 18, color: palette.text }}>
+                  Stay close to the source thread and watch for drift
+                </h3>
+              </div>
 
-            {linkedConversation && (
-              <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
-                <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Linked Context</h3>
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.text }}>
-                  {linkedConversation.title || `Conversation #${linkedConversation.id}`}
-                </p>
-                <p style={{ margin: "6px 0 0", fontSize: 12, lineHeight: 1.6, color: palette.muted }}>
-                  This decision traces back to a source conversation so the reasoning stays connected.
-                </p>
-              </section>
-            )}
+              <div style={detailSidebarPanel}>
+                <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
+                    Review posture
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.text }}>{reviewPosture}</p>
+                </div>
+
+                {driftAlert ? (
+                  <div
+                    style={{
+                      ...detailNoteCard,
+                      border: `1px solid ${darkMode ? "rgba(238,146,153,0.42)" : "rgba(200,86,93,0.24)"}`,
+                      background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.danger }}>
+                      Drift alert
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>
+                      {driftAlert.severity} severity with a score of {driftAlert.drift_score}
+                    </p>
+                    <ul style={{ margin: 0, paddingLeft: 16, color: palette.text, fontSize: 12, lineHeight: 1.6 }}>
+                      {(driftAlert.signals || []).slice(0, 3).map((signal, index) => (
+                        <li key={index}>{signal}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {linkedConversation ? (
+                  <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
+                      Source conversation
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.5, color: palette.text }}>
+                      {linkedConversation.title || `Conversation #${linkedConversation.id}`}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.muted }}>
+                      This record stays grounded in the original discussion so the reasoning chain does not drift away from the team conversation.
+                    </p>
+                    <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                      <button
+                        className="ui-btn-polish ui-focus-ring"
+                        onClick={() => navigate(`/conversations/${linkedConversation.id}`)}
+                        style={ui.secondaryButton}
+                      >
+                        Open source thread
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+            </section>
 
             <ContextPanel contentType="decisions.decision" objectId={id} refreshKey={contextRefreshKey} />
           </aside>
@@ -1100,17 +1297,50 @@ function EngineeringList({ title, items, palette, darkMode, emptyText }) {
 
 const fieldLabel = { margin: 0, fontSize: 12, color: "var(--app-muted)", fontWeight: 700 };
 const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
-const commandStrip = { position: "sticky", top: 72, zIndex: 1, marginBottom: 12, borderRadius: 24, padding: 12, display: "flex", gap: 8, flexWrap: "wrap" };
-const commandPill = { display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "8px 12px", background: "transparent", fontSize: 12, fontWeight: 700, cursor: "pointer" };
-const toolbarMetaChip = (palette) => ({ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, fontSize: 12, fontWeight: 700 });
-const heroMetrics = { marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 };
-const metricChip = { borderRadius: 18, padding: "14px 14px 12px", boxShadow: "var(--ui-shadow-xs)" };
-const metricLabel = { margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 };
-const metricValue = { margin: "6px 0 0", fontSize: 20, fontWeight: 800 };
+const toolbarMetaChip = (palette) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "8px 12px",
+  border: `1px solid ${palette.border}`,
+  background: palette.cardAlt,
+  color: palette.text,
+  fontSize: 12,
+  fontWeight: 700,
+});
+const detailCommandGrid = { display: "grid", gap: 12 };
+const detailCommandCard = { borderRadius: 26, padding: "18px 18px 16px", display: "grid", gap: 14, boxShadow: "var(--ui-shadow-xs)" };
+const detailCommandHead = { display: "grid", gap: 6 };
+const detailCommandTitle = { margin: 0, fontSize: "clamp(1.02rem,1.6vw,1.24rem)", lineHeight: 1.15 };
+const detailCommandCopy = { margin: 0, fontSize: 13, lineHeight: 1.6 };
+const detailMetaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const detailTabRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const detailActionRail = { display: "flex", gap: 8, flexWrap: "wrap" };
+const detailSnapshotGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8 };
+const detailSnapshotCard = { borderRadius: 18, padding: "12px 12px 10px", display: "grid", gap: 4 };
+const detailSnapshotLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
+const detailSnapshotValue = { margin: 0, fontSize: 14, fontWeight: 700, lineHeight: 1.25 };
+const detailNoteCard = { borderRadius: 18, padding: "12px 14px", display: "grid", gap: 6 };
+const detailSidebarGrid = { display: "grid", gap: 12, alignContent: "start" };
+const detailSidebarPanel = { display: "grid", gap: 12 };
 const mainGrid = { position: "relative", zIndex: 1, display: "grid" };
 const panelCard = { borderRadius: 28, padding: "clamp(18px,2.4vw,24px)", boxShadow: "var(--ui-shadow-sm)" };
 const innerCard = { borderRadius: 20, padding: 14, background: "var(--app-surface-alt)" };
 const sideCard = { borderRadius: 24, padding: 16, boxShadow: "var(--ui-shadow-xs)" };
+
+function detailTabButton(palette, active) {
+  return {
+    borderRadius: 999,
+    border: `1px solid ${active ? palette.accent : palette.border}`,
+    background: active ? palette.accentSoft : palette.cardAlt,
+    color: active ? palette.link : palette.text,
+    padding: "8px 12px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  };
+}
 
 function memoryHeroSurface(darkMode) {
   return {

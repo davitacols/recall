@@ -31,6 +31,12 @@ def _env_bool(key, default=False):
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = _env_bool('DEBUG', default=False)
 ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',') if host.strip()]
+ALLOWED_HOSTS.extend([
+    'localhost',
+    '127.0.0.1',
+    '[::1]',
+    '.localhost',
+])
 if not DEBUG:
     ALLOWED_HOSTS.extend([
         host.strip()
@@ -39,6 +45,7 @@ if not DEBUG:
     ])
 if _env_bool('ALLOW_ALL_HOSTS', default=False):
     ALLOWED_HOSTS.append('*')
+ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
 
 SENTRY_DSN = config('SENTRY_DSN', default='').strip()
 SENTRY_ENVIRONMENT = config('SENTRY_ENVIRONMENT', default='development').strip()
@@ -104,7 +111,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
+    'config.security_middleware.LocalDevelopmentSecurityMiddleware',
     'config.security_middleware.RequestSecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -229,7 +236,12 @@ NOTIFICATIONS_USE_CELERY = _env_bool('NOTIFICATIONS_USE_CELERY', default=False)
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
 AWS_REGION = config('AWS_REGION', default='us-east-1')
-ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
+CLAUDE_API_KEY = config('CLAUDE_API_KEY', default='').strip()
+ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default=CLAUDE_API_KEY).strip()
+CLAUDE_MODEL = (
+    config('CLAUDE_MODEL', default='').strip()
+    or config('ANTHROPIC_MODEL', default='claude-3-5-sonnet-20241022').strip()
+)
 
 # Bot protection (Cloudflare Turnstile)
 TURNSTILE_ENABLED = _env_bool('TURNSTILE_ENABLED', default=False)
@@ -277,7 +289,7 @@ def _parse_csv(value):
 CORS_ALLOWED_ORIGINS = _parse_csv(
     config(
         'CORS_ALLOWED_ORIGINS',
-        default='http://localhost:3000,http://127.0.0.1:3000'
+        default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001'
     )
 )
 
@@ -336,7 +348,7 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 CSRF_TRUSTED_ORIGINS = _parse_csv(
     config(
         'CSRF_TRUSTED_ORIGINS',
-        default='http://localhost:3000,http://127.0.0.1:3000'
+        default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001'
     )
 )
 if not DEBUG:

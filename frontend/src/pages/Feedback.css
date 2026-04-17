@@ -142,7 +142,7 @@
 .feedback-form-head h3 {
   margin: 0;
   letter-spacing: -0.05em;
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-family: var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .feedback-hero-copy h1 {

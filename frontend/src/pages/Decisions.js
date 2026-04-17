@@ -10,6 +10,7 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   RocketLaunchIcon,
+  SparklesIcon,
   Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import {
@@ -20,6 +21,7 @@ import {
 } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { buildAskRecallPath } from "../utils/askRecall";
 import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { createPlainTextPreview } from "../utils/textPreview";
@@ -223,9 +225,7 @@ function Decisions() {
       style={{
         ...decisionAsideCard,
         border: `1px solid ${palette.border}`,
-        background: darkMode
-          ? "linear-gradient(160deg, rgba(32,27,23,0.9), rgba(22,18,15,0.82))"
-          : "linear-gradient(160deg, rgba(255,252,248,0.96), rgba(244,237,226,0.88))",
+        background: palette.card,
       }}
     >
       <p style={{ ...decisionAsideEyebrow, color: palette.muted }}>Decision Flow</p>
@@ -250,34 +250,33 @@ function Decisions() {
 
   if (loading) {
     return (
-      <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gap: 12 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
           {[1, 2, 3, 4].map((item) => (
             <div
               key={item}
               style={{
-                borderRadius: 24,
+                borderRadius: 16,
                 height: 150,
                 background: palette.card,
                 border: `1px solid ${palette.border}`,
                 opacity: 0.76,
-                boxShadow: "var(--ui-shadow-sm)",
               }}
             />
           ))}
         </div>
-        <div style={{ borderRadius: 26, height: 420, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
+        <div style={{ borderRadius: 18, height: 420, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
       </div>
     );
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gap: 12 }}>
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
         variant="memory"
-        eyebrow="Decision Memory"
+        eyebrow="Workspace Memory"
         title="Decisions"
         description="Capture proposals, approvals, and implementation moves in one place so teams can recover the reasoning behind what changed."
         stats={decisionStats}
@@ -290,8 +289,12 @@ function Decisions() {
             <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decision-proposals")} style={ui.secondaryButton}>
               Decision Proposals
             </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/sprint")} style={ui.secondaryButton}>
-              Current Sprint
+            <button
+              className="ui-btn-polish ui-focus-ring"
+              onClick={() => navigate(buildAskRecallPath("Which decisions need review or follow-up right now?"))}
+              style={ui.secondaryButton}
+            >
+              <SparklesIcon style={icon14} /> Ask Recall
             </button>
             <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecisions} style={ui.secondaryButton}>
               <ArrowPathIcon style={icon14} /> Refresh
@@ -303,10 +306,10 @@ function Decisions() {
       <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
         <div style={toolbarLayout}>
           <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Refine The Stream</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>Find the records that need attention now</h2>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Decision Stream</p>
+            <h2 style={{ ...toolbarTitle, color: palette.text }}>Work the queue, then browse the record</h2>
             <p style={{ ...toolbarCopy, color: palette.muted }}>
-              Filter by stage, search across the log, and switch between an editorial list or compact card layout.
+              Filter by stage, search across the log, and switch between a compact list or card layout.
             </p>
           </div>
 
@@ -340,7 +343,7 @@ function Decisions() {
                   style={{
                     ...filterPill,
                     border: `1px solid ${active ? palette.accent : palette.border}`,
-                    background: active ? palette.accentSoft : palette.cardAlt,
+                    background: active ? palette.accentSoft : palette.card,
                     color: active ? palette.accent : palette.text,
                   }}
                 >
@@ -411,17 +414,15 @@ function Decisions() {
             style={{
               ...decisionSpotlight,
               border: `1px solid ${palette.border}`,
-              background: darkMode
-                ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
-                : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              background: palette.card,
             }}
           >
             <div style={{ display: "grid", gap: 8 }}>
               <p style={{ ...cardEyebrow, color: palette.muted, margin: 0 }}>Latest record</p>
-              <h2 style={{ margin: 0, fontSize: "clamp(1.2rem,2vw,1.68rem)", lineHeight: 1.05, color: palette.text }}>
+              <h2 style={{ margin: 0, fontSize: "clamp(1.05rem,1.8vw,1.4rem)", lineHeight: 1.1, color: palette.text }}>
                 {newestDecision?.title || "Decision stream"}
               </h2>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
                 {newestDecision?.summary || "Capture the next decision to build the memory layer."}
               </p>
             </div>
@@ -489,7 +490,7 @@ function Decisions() {
           }
         />
       ) : viewMode === "grid" ? (
-        <div style={{ display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", gap: 14 }}>
           {focusedQueue.length ? (
             <DecisionSection
               title="Needs attention"
@@ -518,7 +519,7 @@ function Decisions() {
           />
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", gap: 14 }}>
           {focusedQueue.length ? (
             <DecisionListSection
               title="Needs attention"
@@ -559,15 +560,14 @@ function DecisionGridCard({ decision, palette, statusLabel, statusTone, impactTo
       className="ui-card-lift ui-smooth"
       onClick={onOpen}
       style={{
-        borderRadius: 26,
+        borderRadius: 16,
         border: `1px solid ${palette.border}`,
         background: palette.card,
-        padding: 20,
+        padding: 14,
         cursor: "pointer",
         display: "grid",
-        gap: 14,
-        minHeight: 258,
-        boxShadow: "var(--ui-shadow-sm)",
+        gap: 12,
+        minHeight: 220,
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
@@ -725,12 +725,12 @@ function formatDate(rawDate) {
 
 function decisionLinkButton(palette) {
   return {
-    border: "none",
+    border: `1px solid ${palette.border}`,
     borderRadius: 999,
-    padding: "8px 12px",
-    background: palette.accentSoft,
-    color: palette.accent,
-    fontSize: 12,
+    padding: "6px 10px",
+    background: palette.cardAlt,
+    color: palette.text,
+    fontSize: 11,
     fontWeight: 700,
     display: "inline-flex",
     alignItems: "center",
@@ -741,7 +741,7 @@ function decisionLinkButton(palette) {
 
 const toolbarLayout = {
   display: "grid",
-  gap: 14,
+  gap: 10,
 };
 
 const toolbarIntro = {
@@ -751,23 +751,23 @@ const toolbarIntro = {
 
 const toolbarEyebrow = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.14em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const toolbarTitle = {
   margin: 0,
-  fontSize: 24,
-  lineHeight: 1.02,
+  fontSize: 20,
+  lineHeight: 1.08,
 };
 
 const toolbarCopy = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.6,
-  maxWidth: 760,
+  fontSize: 12,
+  lineHeight: 1.55,
+  maxWidth: 720,
 };
 
 const toolbarMetaRail = {
@@ -781,23 +781,22 @@ const toolbarMetaChip = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
+  padding: "6px 10px",
+  fontSize: 11,
   fontWeight: 700,
 };
 
 const decisionOverviewGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
-  gap: 14,
+  gap: 10,
 };
 
 const decisionSpotlight = {
-  borderRadius: 24,
-  padding: 18,
+  borderRadius: 16,
+  padding: 14,
   display: "grid",
-  gap: 14,
-  boxShadow: "var(--ui-shadow-sm)",
+  gap: 10,
 };
 
 const decisionSpotlightMeta = {
@@ -813,33 +812,32 @@ const decisionSignalGrid = {
 };
 
 const signalCard = {
-  borderRadius: 20,
-  padding: 16,
+  borderRadius: 14,
+  padding: 12,
   display: "grid",
-  gap: 8,
+  gap: 6,
   alignContent: "start",
-  boxShadow: "var(--ui-shadow-xs)",
 };
 
 const signalLabel = {
   margin: 0,
   fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.12em",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const signalValue = {
   margin: 0,
-  fontSize: 28,
+  fontSize: 22,
   lineHeight: 1,
-  fontWeight: 800,
+  fontWeight: 700,
 };
 
 const signalHelper = {
   margin: 0,
-  fontSize: 12,
-  lineHeight: 1.6,
+  fontSize: 11,
+  lineHeight: 1.5,
 };
 
 const filterRail = {
@@ -850,8 +848,8 @@ const filterRail = {
 
 const filterPill = {
   borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
+  padding: "6px 10px",
+  fontSize: 11,
   fontWeight: 700,
   display: "inline-flex",
   alignItems: "center",
@@ -886,8 +884,8 @@ const viewToggle = {
 };
 
 const toggleButton = {
-  width: 36,
-  height: 36,
+  width: 32,
+  height: 32,
   borderRadius: 999,
   border: "none",
   display: "grid",
@@ -898,44 +896,44 @@ const toggleButton = {
 const toolbarSummary = {
   display: "grid",
   gap: 2,
-  minWidth: 88,
+  minWidth: 72,
 };
 
 const toolbarSummaryLabel = {
   margin: 0,
   fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.12em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const toolbarSummaryValue = {
   margin: 0,
-  fontSize: 24,
+  fontSize: 20,
   fontWeight: 700,
   lineHeight: 1,
 };
 
 const decisionAsideCard = {
   minWidth: 240,
-  borderRadius: 24,
-  padding: 16,
+  borderRadius: 16,
+  padding: 14,
   display: "grid",
-  gap: 10,
+  gap: 8,
 };
 
 const decisionAsideEyebrow = {
   margin: 0,
   fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.14em",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const decisionAsideTitle = {
   margin: 0,
-  fontSize: 20,
-  lineHeight: 1.04,
+  fontSize: 18,
+  lineHeight: 1.08,
 };
 
 const decisionAsideBody = {
@@ -951,8 +949,8 @@ const decisionAsideMetrics = {
 };
 
 const decisionAsideMetric = {
-  borderRadius: 18,
-  padding: "10px 12px",
+  borderRadius: 12,
+  padding: "9px 10px",
   display: "grid",
   gap: 3,
 };
@@ -961,13 +959,13 @@ const decisionAsideMetricLabel = {
   margin: 0,
   fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.12em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const decisionAsideMetricValue = {
   margin: 0,
-  fontSize: 18,
+  fontSize: 16,
   fontWeight: 700,
   lineHeight: 1,
 };
@@ -982,28 +980,28 @@ const cardEyebrow = {
   margin: "0 0 6px",
   fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.14em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const cardTitle = {
   margin: 0,
-  fontSize: 22,
-  lineHeight: 1.05,
+  fontSize: 18,
+  lineHeight: 1.1,
 };
 
 const dateChip = {
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 700,
   borderRadius: 999,
-  padding: "7px 10px",
+  padding: "5px 9px",
   whiteSpace: "nowrap",
 };
 
 const cardDescription = {
   margin: 0,
-  fontSize: 14,
-  lineHeight: 1.7,
+  fontSize: 12,
+  lineHeight: 1.55,
 };
 
 const decisionFoot = {
@@ -1020,13 +1018,13 @@ const cardLabel = {
   margin: 0,
   fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.12em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const cardOwner = {
-  margin: "6px 0 0",
-  fontSize: 14,
+  margin: "4px 0 0",
+  fontSize: 13,
   fontWeight: 700,
 };
 
@@ -1048,14 +1046,14 @@ const sectionIntro = {
 
 const sectionTitle = {
   margin: "4px 0 0",
-  fontSize: 26,
-  lineHeight: 1.03,
+  fontSize: 20,
+  lineHeight: 1.08,
 };
 
 const sectionCopy = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.65,
+  fontSize: 12,
+  lineHeight: 1.55,
   maxWidth: 620,
 };
 

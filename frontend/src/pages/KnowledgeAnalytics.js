@@ -40,14 +40,14 @@ function Breakdown({ rows, total, color, palette }) {
         .map(([type, count]) => (
           <div key={type} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" }}>
             <div style={{ display: "grid", gap: 5 }}>
-              <p style={{ margin: 0, fontSize: 12, color: palette.muted, textTransform: "capitalize" }}>
+              <p style={{ margin: 0, fontSize: 11, color: palette.muted, textTransform: "capitalize" }}>
                 {type.replace(/_/g, " ")}
               </p>
-              <div style={{ width: "100%", height: 8, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
+              <div style={{ width: "100%", height: 6, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
                 <div style={{ width: `${(count / total) * 100}%`, height: "100%", background: color }} />
               </div>
             </div>
-            <p style={{ margin: 0, minWidth: 26, fontSize: 13, fontWeight: 800, color: palette.text, textAlign: "right" }}>
+            <p style={{ margin: 0, minWidth: 26, fontSize: 12, fontWeight: 700, color: palette.text, textAlign: "right" }}>
               {count}
             </p>
           </div>
@@ -135,45 +135,45 @@ export default function KnowledgeAnalytics() {
       ]
     : [];
 
+  const analyticsAside = (
+    <div style={{ ...analyticsAsideCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+      <p style={{ ...analyticsAsideEyebrow, color: palette.muted }}>30-day readout</p>
+      <div style={{ display: "grid", gap: 8 }}>
+        {[
+          { icon: ChartBarIcon, label: "Timeline window", value: "30 days" },
+          { icon: UserGroupIcon, label: "Graph coverage", value: stats?.totalNodes || 0 },
+          { icon: LinkIcon, label: "Connections", value: stats?.totalLinks || 0 },
+          { icon: ArrowTrendingUpIcon, label: "Avg links", value: stats?.avgLinksPerNode || "0.0" },
+        ].map((item) => (
+          <div
+            key={item.label}
+            style={{
+              ...analyticsAsideRow,
+              border: `1px solid ${palette.border}`,
+              background: palette.cardAlt,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <item.icon style={{ width: 15, height: 15, color: palette.info }} />
+              <span style={{ fontSize: 11, color: palette.muted }}>{item.label}</span>
+            </div>
+            <strong style={{ color: palette.text, fontSize: 13 }}>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div style={{ ...ui.container, display: "grid", gap: 14 }}>
+    <div style={{ ...ui.container, display: "grid", gap: 12 }}>
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
-        eyebrow="Knowledge Signals"
+        eyebrow="Workspace Memory"
         title="Knowledge Analytics"
-        description="Track how activity flows through the workspace, which record types dominate the graph, and how richly the knowledge network is connected."
+        description="Track how activity flows through the workspace, which record types dominate the graph, and how densely the memory layer is connected."
         stats={heroStats}
-        aside={
-          <div style={{ display: "grid", gap: 10, minWidth: 220 }}>
-            {[
-              { icon: ChartBarIcon, label: "Timeline window", value: "30 days" },
-              { icon: UserGroupIcon, label: "Graph coverage", value: stats?.totalNodes || 0 },
-              { icon: LinkIcon, label: "Connections", value: stats?.totalLinks || 0 },
-              { icon: ArrowTrendingUpIcon, label: "Avg links", value: stats?.avgLinksPerNode || "0.0" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                style={{
-                  borderRadius: 18,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.cardAlt,
-                  padding: "12px 14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <item.icon style={{ width: 16, height: 16, color: palette.info }} />
-                  <span style={{ fontSize: 12, color: palette.muted }}>{item.label}</span>
-                </div>
-                <strong style={{ color: palette.text, fontSize: 14 }}>{item.value}</strong>
-              </div>
-            ))}
-          </div>
-        }
+        aside={analyticsAside}
       />
 
       {loading ? (
@@ -183,7 +183,7 @@ export default function KnowledgeAnalytics() {
               key={item}
               style={{
                 minHeight: 180,
-                borderRadius: 20,
+                borderRadius: 16,
                 border: `1px solid ${palette.border}`,
                 background: palette.card,
                 opacity: 0.7,
@@ -217,3 +217,28 @@ export default function KnowledgeAnalytics() {
     </div>
   );
 }
+
+const analyticsAsideCard = {
+  minWidth: 220,
+  borderRadius: 16,
+  padding: 14,
+  display: "grid",
+  gap: 10,
+};
+
+const analyticsAsideEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const analyticsAsideRow = {
+  borderRadius: 12,
+  padding: "10px 11px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+};

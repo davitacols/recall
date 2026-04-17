@@ -24,6 +24,51 @@ import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
 
 const TYPE_ORDER = ["decision", "conversation", "goal", "document", "meeting", "task", "other"];
+const GRAPH_WIDTH = 1180;
+const GRAPH_HEIGHT = 660;
+const GRAPH_MARGIN_X = 72;
+const GRAPH_MARGIN_Y = 56;
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function typeSortIndex(type) {
+  const index = TYPE_ORDER.indexOf(type || "other");
+  return index === -1 ? TYPE_ORDER.length : index;
+}
+
+function polarPosition(centerX, centerY, radiusX, radiusY, angle) {
+  return {
+    x: centerX + radiusX * Math.cos(angle),
+    y: centerY + radiusY * Math.sin(angle),
+  };
+}
+
+function getNodeLabelPlacement(node, centerX, centerY) {
+  if (!node) {
+    return { x: centerX, y: centerY, anchor: "middle" };
+  }
+
+  const dx = node.x - centerX;
+  const dy = node.y - centerY;
+
+  if (node.ring === "hub") {
+    return { x: node.x, y: node.y + 58, anchor: "middle" };
+  }
+
+  if (Math.abs(dx) < 84) {
+    return {
+      x: node.x,
+      y: node.y + (dy < 0 ? -34 : 36),
+      anchor: "middle",
+    };
+  }
+
+  return dx > 0
+    ? { x: node.x + 30, y: node.y + 4, anchor: "start" }
+    : { x: node.x - 30, y: node.y + 4, anchor: "end" };
+}
 
 export default function KnowledgeGraph() {
   const navigate = useNavigate();
@@ -168,44 +213,190 @@ export default function KnowledgeGraph() {
     return routes[type] || "/knowledge";
   };
 
+  const { adjacencyMap, degreeMap, hubNodeId } = useMemo(() => {
+    const nodes = graphData.nodes || [];
+    const edges = graphData.edges || [];
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    const adjacency = {};
+    const degrees = {};
+
+    nodes.forEach((node) => {
+      adjacency[node.id] = new Set();
+      degrees[node.id] = 0;
+    });
+
+    edges.forEach((edge) => {
+      if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) return;
+      adjacency[edge.source].add(edge.target);
+      adjacency[edge.target].add(edge.source);
+      degrees[edge.source] += 1;
+      degrees[edge.target] += 1;
+    });
+
+    const focusNode = graphData.summary?.focus_node;
+    const matchedNode = nodes.find((node) => node.matched)?.id;
+    const rankedNodes = [...nodes].sort((left, right) => {
+      const degreeDelta = (degrees[right.id] || 0) - (degrees[left.id] || 0);
+      if (degreeDelta !== 0) return degreeDelta;
+      return typeSortIndex(left.type) - typeSortIndex(right.type);
+    });
+
+    return {
+      adjacencyMap: adjacency,
+      degreeMap: degrees,
+      hubNodeId:
+        (focusNode && nodeIds.has(focusNode) ? focusNode : null) ||
+        matchedNode ||
+        rankedNodes[0]?.id ||
+        null,
+    };
+  }, [graphData.edges, graphData.nodes, graphData.summary]);
+
   const positionedNodes = useMemo(() => {
-    const width = 1200;
-    const height = 720;
     const nodes = graphData.nodes || [];
     if (nodes.length === 0) return [];
 
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const outerRadiusX = 360;
-    const outerRadiusY = 220;
-    const groups = TYPE_ORDER.map((type) => ({
-      type,
-      nodes: nodes.filter((node) => (node.type || "other") === type),
-    })).filter((group) => group.nodes.length > 0);
+    const nodeById = nodes.reduce((acc, node) => {
+      acc[node.id] = node;
+      return acc;
+    }, {});
 
-    const positions = [];
+    const centerX = GRAPH_WIDTH / 2;
+    const centerY = GRAPH_HEIGHT / 2;
+    const hubId = hubNodeId || nodes[0]?.id;
+    const placed = new Map();
 
-    groups.forEach((group, groupIndex) => {
-      const sectorCenter = (-Math.PI / 2) + (groupIndex / groups.length) * Math.PI * 2;
-      const spread = Math.min(Math.PI / 2.8, Math.PI / Math.max(2, group.nodes.length + 0.4));
-      const baseX = centerX + outerRadiusX * Math.cos(sectorCenter);
-      const baseY = centerY + outerRadiusY * Math.sin(sectorCenter);
+    const setPosition = (node, x, y, extras = {}) => {
+      placed.set(node.id, {
+        ...node,
+        x: clamp(x, GRAPH_MARGIN_X, GRAPH_WIDTH - GRAPH_MARGIN_X),
+        y: clamp(y, GRAPH_MARGIN_Y, GRAPH_HEIGHT - GRAPH_MARGIN_Y),
+        ...extras,
+      });
+    };
 
-      group.nodes.forEach((node, nodeIndex) => {
-        const offset = group.nodes.length === 1 ? 0 : (nodeIndex - (group.nodes.length - 1) / 2) * spread;
-        const angle = sectorCenter + offset;
-        const innerRadius = 44 + (nodeIndex % 3) * 10;
+    const hubNode = nodeById[hubId] || nodes[0];
+    setPosition(hubNode, centerX, centerY, {
+      ring: "hub",
+      degree: degreeMap[hubNode.id] || 0,
+    });
 
-        positions.push({
-          ...node,
-          x: baseX + innerRadius * Math.cos(angle),
-          y: baseY + innerRadius * Math.sin(angle),
-        });
+    const primaryNodes = [...(adjacencyMap[hubNode.id] || new Set())]
+      .map((id) => nodeById[id])
+      .filter(Boolean)
+      .sort((left, right) => {
+        const degreeDelta = (degreeMap[right.id] || 0) - (degreeMap[left.id] || 0);
+        if (degreeDelta !== 0) return degreeDelta;
+        return typeSortIndex(left.type) - typeSortIndex(right.type);
+      });
+
+    const primaryRadiusX = primaryNodes.length > 6 ? 238 : 214;
+    const primaryRadiusY = primaryNodes.length > 6 ? 174 : 152;
+
+    primaryNodes.forEach((node, index) => {
+      const angle = (-Math.PI / 2) + (index / Math.max(primaryNodes.length, 1)) * Math.PI * 2;
+      const point = polarPosition(centerX, centerY, primaryRadiusX, primaryRadiusY, angle);
+      setPosition(node, point.x, point.y, {
+        ring: "primary",
+        angle,
+        degree: degreeMap[node.id] || 0,
       });
     });
 
-    return positions;
-  }, [graphData.nodes]);
+    const remainingNodes = nodes
+      .filter((node) => !placed.has(node.id))
+      .sort((left, right) => {
+        const degreeDelta = (degreeMap[right.id] || 0) - (degreeMap[left.id] || 0);
+        if (degreeDelta !== 0) return degreeDelta;
+        return typeSortIndex(left.type) - typeSortIndex(right.type);
+      });
+
+    const outerGroups = TYPE_ORDER.map((type) => ({
+      type,
+      nodes: remainingNodes.filter((node) => (node.type || "other") === type),
+    })).filter((group) => group.nodes.length > 0);
+
+    outerGroups.forEach((group, groupIndex) => {
+      const sectorAngle = (-Math.PI / 2) + (groupIndex / Math.max(outerGroups.length, 1)) * Math.PI * 2;
+      const anchor = polarPosition(centerX, centerY, 370, 250, sectorAngle);
+
+      group.nodes.forEach((node, nodeIndex) => {
+        const row = Math.floor(nodeIndex / 3);
+        const slot = (nodeIndex % 3) - 1;
+        const angleOffset = group.nodes.length === 1 ? 0 : (nodeIndex - (group.nodes.length - 1) / 2) * 0.16;
+        const localAngle = sectorAngle + angleOffset;
+        const radialDrift = 54 + row * 42;
+        const point = polarPosition(anchor.x, anchor.y, radialDrift, radialDrift * 0.72, localAngle);
+
+        setPosition(
+          node,
+          point.x + slot * 14,
+          point.y + slot * 10,
+          {
+            ring: "outer",
+            angle: localAngle,
+            degree: degreeMap[node.id] || 0,
+          }
+        );
+      });
+    });
+
+    const relaxed = Array.from(placed.values());
+    for (let iteration = 0; iteration < 24; iteration += 1) {
+      for (let leftIndex = 0; leftIndex < relaxed.length; leftIndex += 1) {
+        for (let rightIndex = leftIndex + 1; rightIndex < relaxed.length; rightIndex += 1) {
+          const left = relaxed[leftIndex];
+          const right = relaxed[rightIndex];
+          const dx = right.x - left.x;
+          const dy = right.y - left.y;
+          const distance = Math.hypot(dx, dy) || 1;
+          const minimumSpacing =
+            left.ring === "hub" || right.ring === "hub"
+              ? 86
+              : left.ring === "primary" && right.ring === "primary"
+                ? 78
+                : 60;
+
+          if (distance >= minimumSpacing) continue;
+
+          const overlap = (minimumSpacing - distance) / 2;
+          const unitX = dx / distance;
+          const unitY = dy / distance;
+
+          if (left.ring !== "hub") {
+            left.x = clamp(left.x - unitX * overlap, GRAPH_MARGIN_X, GRAPH_WIDTH - GRAPH_MARGIN_X);
+            left.y = clamp(left.y - unitY * overlap, GRAPH_MARGIN_Y, GRAPH_HEIGHT - GRAPH_MARGIN_Y);
+          }
+
+          if (right.ring !== "hub") {
+            right.x = clamp(right.x + unitX * overlap, GRAPH_MARGIN_X, GRAPH_WIDTH - GRAPH_MARGIN_X);
+            right.y = clamp(right.y + unitY * overlap, GRAPH_MARGIN_Y, GRAPH_HEIGHT - GRAPH_MARGIN_Y);
+          }
+        }
+      }
+
+      relaxed.forEach((node) => {
+        if (node.ring === "primary") {
+          const target = polarPosition(centerX, centerY, primaryRadiusX, primaryRadiusY, node.angle || 0);
+          node.x = clamp((node.x * 0.84) + (target.x * 0.16), GRAPH_MARGIN_X, GRAPH_WIDTH - GRAPH_MARGIN_X);
+          node.y = clamp((node.y * 0.84) + (target.y * 0.16), GRAPH_MARGIN_Y, GRAPH_HEIGHT - GRAPH_MARGIN_Y);
+        }
+
+        if (node.ring === "outer") {
+          const target = polarPosition(centerX, centerY, 388, 258, node.angle || 0);
+          node.x = clamp((node.x * 0.88) + (target.x * 0.12), GRAPH_MARGIN_X, GRAPH_WIDTH - GRAPH_MARGIN_X);
+          node.y = clamp((node.y * 0.88) + (target.y * 0.12), GRAPH_MARGIN_Y, GRAPH_HEIGHT - GRAPH_MARGIN_Y);
+        }
+      });
+    }
+
+    const positionedById = relaxed.reduce((acc, node) => {
+      acc[node.id] = node;
+      return acc;
+    }, {});
+
+    return nodes.map((node) => positionedById[node.id] || node);
+  }, [adjacencyMap, degreeMap, graphData.nodes, hubNodeId]);
 
   const nodeMap = useMemo(
     () =>
@@ -228,8 +419,9 @@ export default function KnowledgeGraph() {
           node: nodeMap[otherId],
         };
       })
-      .filter((edge) => edge.node);
-  }, [graphData.edges, nodeMap, selectedNodeId]);
+      .filter((edge) => edge.node)
+      .sort((left, right) => (degreeMap[right.node.id] || 0) - (degreeMap[left.node.id] || 0));
+  }, [degreeMap, graphData.edges, nodeMap, selectedNodeId]);
 
   const nodeTypeCounts = useMemo(() => {
     return (graphData.nodes || []).reduce((acc, node) => {
@@ -245,6 +437,11 @@ export default function KnowledgeGraph() {
   }));
 
   const edgeDensity = graphData.nodes?.length ? ((graphData.edges?.length || 0) / graphData.nodes.length).toFixed(1) : "0.0";
+  const graphCenterX = GRAPH_WIDTH / 2;
+  const graphCenterY = GRAPH_HEIGHT / 2;
+  const graphHub = hubNodeId ? nodeMap[hubNodeId] || null : null;
+  const graphHubLabel = graphHub?.label || "Hub view";
+  const compactHubLabel = graphHubLabel.length > 18 ? `${graphHubLabel.slice(0, 18)}...` : graphHubLabel;
 
   const heroStats = [
     {
@@ -260,12 +457,6 @@ export default function KnowledgeGraph() {
       tone: palette.info,
     },
     {
-      label: "Entity Types",
-      value: typeSummary.length,
-      helper: "Kinds of records represented right now",
-      tone: palette.text,
-    },
-    {
       label: "Density",
       value: edgeDensity,
       helper: "Average connections per visible node",
@@ -278,15 +469,13 @@ export default function KnowledgeGraph() {
       style={{
         ...asideCard,
         border: `1px solid ${palette.border}`,
-        background: darkMode
-          ? "linear-gradient(160deg, rgba(32,27,23,0.9), rgba(22,18,15,0.82))"
-          : "linear-gradient(160deg, rgba(255,252,248,0.96), rgba(244,237,226,0.88))",
+        background: palette.card,
       }}
     >
       <p style={{ ...asideEyebrow, color: palette.muted }}>Graph Readout</p>
-      <h3 style={{ ...asideTitle, color: palette.text }}>See how cross-team context actually clusters.</h3>
+      <h3 style={{ ...asideTitle, color: palette.text }}>See the strongest context cluster first.</h3>
       <p style={{ ...asideBody, color: palette.muted }}>
-        Use the graph to move between decisions, conversations, goals, meetings, tasks, and documents without losing the trail.
+        Start from the hub, scan its nearest records, and then branch outward without losing the trail.
       </p>
       <div style={asideMetricRail}>
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
@@ -307,35 +496,34 @@ export default function KnowledgeGraph() {
 
   if (loading) {
     return (
-      <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gap: 12 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
           {[1, 2, 3, 4].map((item) => (
             <div
               key={item}
               style={{
-                borderRadius: 24,
+                borderRadius: 16,
                 height: 150,
                 background: palette.card,
                 border: `1px solid ${palette.border}`,
                 opacity: 0.76,
-                boxShadow: "var(--ui-shadow-sm)",
               }}
             />
           ))}
         </div>
-        <div style={{ borderRadius: 26, height: 540, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
+        <div style={{ borderRadius: 18, height: 540, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
       </div>
     );
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gap: 10 }}>
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
-        eyebrow="Knowledge"
+        eyebrow="Workspace Memory"
         title="Knowledge Graph"
-        description="Explore how conversations, decisions, goals, meetings, documents, and tasks connect so the reasoning behind work stays visible."
+        description="Follow how conversations, decisions, goals, meetings, documents, and tasks connect so the reasoning behind work stays visible."
         stats={heroStats}
         aside={graphAside}
         actions={
@@ -343,7 +531,7 @@ export default function KnowledgeGraph() {
             <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/knowledge")} style={ui.primaryButton}>
               <MagnifyingGlassIcon style={icon14} /> Open Knowledge Search
             </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={fetchGraph} style={ui.secondaryButton}>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => fetchGraph()} style={ui.secondaryButton}>
               <ArrowPathIcon style={icon14} /> Refresh Graph
             </button>
             {(graphQuery.trim() || activeTypes.length || searchParams.get("focus_type")) ? (
@@ -358,8 +546,8 @@ export default function KnowledgeGraph() {
       <WorkspaceToolbar palette={palette}>
         <div style={toolbarLayout}>
           <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Network Filters</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>Explore a focused neighborhood</h2>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Filters</p>
+            <h2 style={{ ...toolbarTitle, color: palette.text }}>Focus the neighborhood you want to inspect</h2>
             <p style={{ ...toolbarCopy, color: palette.muted }}>
               Search inside the graph, narrow by record types, and keep or remove isolated nodes before you inspect the nearby context.
             </p>
@@ -370,7 +558,7 @@ export default function KnowledgeGraph() {
               event.preventDefault();
               applyFilters({ keepFocus: true });
             }}
-            style={{ display: "grid", gap: 10 }}
+            style={{ display: "grid", gap: 10, borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10 }}
           >
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 8 }}>
               <div style={{ position: "relative" }}>
@@ -378,7 +566,7 @@ export default function KnowledgeGraph() {
                 <input
                   value={graphQuery}
                   onChange={(event) => setGraphQuery(event.target.value)}
-                  placeholder="Search visible graph records..."
+                  placeholder="Search visible records..."
                   className="ui-focus-ring"
                   style={{ ...ui.input, paddingLeft: 34 }}
                 />
@@ -407,10 +595,10 @@ export default function KnowledgeGraph() {
                     style={{
                       borderRadius: 999,
                       border: `1px solid ${active ? getNodeColor(type) : palette.border}`,
-                      background: active ? (darkMode ? "rgba(96,165,250,0.12)" : "#eef4ff") : palette.cardAlt,
+                      background: active ? (darkMode ? "rgba(96,165,250,0.1)" : "#ecf3ff") : palette.card,
                       color: active ? palette.text : palette.muted,
-                      padding: "7px 11px",
-                      fontSize: 12,
+                      padding: "6px 10px",
+                      fontSize: 11,
                       fontWeight: 700,
                     }}
                   >
@@ -424,7 +612,7 @@ export default function KnowledgeGraph() {
                 className="ui-btn-polish ui-focus-ring"
                 style={{
                   ...ui.secondaryButton,
-                  background: includeIsolated ? palette.cardAlt : darkMode ? "rgba(248,113,113,0.12)" : "#fef2f2",
+                  background: includeIsolated ? palette.card : darkMode ? "rgba(248,113,113,0.1)" : "#fef2f2",
                 }}
               >
                 {includeIsolated ? "Hide isolated" : "Show isolated"}
@@ -459,49 +647,86 @@ export default function KnowledgeGraph() {
           }
         />
       ) : (
-        <section style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.8fr) minmax(300px, 0.9fr)", gap: 14 }}>
+        <section style={{ display: "grid", gridTemplateColumns: "minmax(0, 2.15fr) minmax(280px, 0.85fr)", gap: 10 }}>
           <WorkspacePanel
             palette={palette}
             eyebrow="Network Canvas"
             title="Connected records"
-            description="The graph arranges related record types into readable clusters so adjacent context is easier to follow."
+            description="The graph now centers the strongest record and fans related context outward so the neighborhood is easier to read."
             action={
               <span style={{ ...panelStatChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {graphData.nodes?.length || 0} nodes / {graphData.edges?.length || 0} edges
+                {compactHubLabel} / {graphData.edges?.length || 0} edges
               </span>
             }
-            minHeight={620}
+            minHeight={520}
           >
             <div style={graphFrame}>
               <div style={{ overflowX: "auto" }}>
-                <svg viewBox="0 0 1200 720" style={{ width: "100%", minWidth: 880, borderRadius: 22 }}>
+                <svg viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`} style={{ width: "100%", minWidth: 820, borderRadius: 18 }}>
                   <defs>
                     <pattern id="graph-grid" width="28" height="28" patternUnits="userSpaceOnUse">
                       <path d="M 28 0 L 0 0 0 28" fill="none" stroke={darkMode ? "rgba(245,239,230,0.04)" : "rgba(58,47,38,0.05)"} strokeWidth="1" />
                     </pattern>
                   </defs>
-                  <rect x="0" y="0" width="1200" height="720" rx="28" fill={darkMode ? "#191411" : "#fbf7f0"} />
-                  <rect x="0" y="0" width="1200" height="720" rx="28" fill="url(#graph-grid)" />
+                  <rect x="0" y="0" width={GRAPH_WIDTH} height={GRAPH_HEIGHT} rx="22" fill={darkMode ? "#191411" : "#fbf7f0"} />
+                  <rect x="0" y="0" width={GRAPH_WIDTH} height={GRAPH_HEIGHT} rx="22" fill="url(#graph-grid)" />
+                  <circle
+                    cx={graphCenterX}
+                    cy={graphCenterY}
+                    r="116"
+                    fill="none"
+                    stroke={darkMode ? "rgba(245,239,230,0.06)" : "rgba(58,47,38,0.06)"}
+                    strokeWidth="1"
+                  />
+                  <circle
+                    cx={graphCenterX}
+                    cy={graphCenterY}
+                    r="224"
+                    fill="none"
+                    stroke={darkMode ? "rgba(245,239,230,0.05)" : "rgba(58,47,38,0.05)"}
+                    strokeWidth="1"
+                  />
+                  <circle
+                    cx={graphCenterX}
+                    cy={graphCenterY}
+                    r="328"
+                    fill="none"
+                    stroke={darkMode ? "rgba(245,239,230,0.04)" : "rgba(58,47,38,0.04)"}
+                    strokeWidth="1"
+                  />
+                  {graphHub ? (
+                    <circle
+                      cx={graphHub.x}
+                      cy={graphHub.y}
+                      r="72"
+                      fill={darkMode ? "rgba(96,165,250,0.08)" : "rgba(59,130,246,0.08)"}
+                    />
+                  ) : null}
 
                   {(graphData.edges || []).map((edge, index) => {
                     const sourceNode = nodeMap[edge.source];
                     const targetNode = nodeMap[edge.target];
                     if (!sourceNode || !targetNode) return null;
 
-                    const midX = (sourceNode.x + targetNode.x) / 2;
-                    const midY = (sourceNode.y + targetNode.y) / 2;
-                    const controlY = midY + ((midY > 360 ? 1 : -1) * 36);
+                    const dx = targetNode.x - sourceNode.x;
+                    const dy = targetNode.y - sourceNode.y;
+                    const distance = Math.hypot(dx, dy) || 1;
+                    const centerPull = Math.min(0.28, 110 / distance);
+                    const controlOneX = sourceNode.x + (dx * 0.3) + ((graphCenterX - sourceNode.x) * centerPull);
+                    const controlOneY = sourceNode.y + (dy * 0.3) + ((graphCenterY - sourceNode.y) * centerPull);
+                    const controlTwoX = sourceNode.x + (dx * 0.7) + ((graphCenterX - targetNode.x) * centerPull);
+                    const controlTwoY = sourceNode.y + (dy * 0.7) + ((graphCenterY - targetNode.y) * centerPull);
                     const isSelected =
                       edge.source === selectedNodeId || edge.target === selectedNodeId;
 
                     return (
                       <path
                         key={`${edge.source}-${edge.target}-${index}`}
-                        d={`M ${sourceNode.x} ${sourceNode.y} Q ${midX} ${controlY} ${targetNode.x} ${targetNode.y}`}
+                        d={`M ${sourceNode.x} ${sourceNode.y} C ${controlOneX} ${controlOneY}, ${controlTwoX} ${controlTwoY}, ${targetNode.x} ${targetNode.y}`}
                         fill="none"
-                        stroke={isSelected ? palette.accent : darkMode ? "rgba(245,239,230,0.18)" : "rgba(58,47,38,0.14)"}
-                        strokeWidth={isSelected ? 2.6 : 1.6}
-                        opacity={isSelected ? 0.92 : 0.72}
+                        stroke={isSelected ? palette.accent : darkMode ? "rgba(245,239,230,0.16)" : "rgba(58,47,38,0.12)"}
+                        strokeWidth={isSelected ? 2.3 : 1.4}
+                        opacity={isSelected ? 0.94 : 0.78}
                       />
                     );
                   })}
@@ -511,6 +736,8 @@ export default function KnowledgeGraph() {
                     const matched = Boolean(node.matched);
                     const nodeColor = getNodeColor(node.type || "other");
                     const label = node.label || getNodeLabel(node.type || "other");
+                    const labelPlacement = getNodeLabelPlacement(node, graphCenterX, graphCenterY);
+                    const nodeRadius = node.ring === "hub" ? 30 : node.ring === "primary" ? 23 : 18;
                     return (
                       <g
                         key={node.id}
@@ -521,7 +748,7 @@ export default function KnowledgeGraph() {
                           <circle
                             cx={node.x}
                             cy={node.y}
-                            r="40"
+                            r={nodeRadius + 14}
                             fill="none"
                             stroke={nodeColor}
                             strokeOpacity="0.25"
@@ -532,7 +759,7 @@ export default function KnowledgeGraph() {
                           <circle
                             cx={node.x}
                             cy={node.y}
-                            r="35"
+                            r={nodeRadius + 10}
                             fill="none"
                             stroke={nodeColor}
                             strokeOpacity="0.18"
@@ -542,7 +769,7 @@ export default function KnowledgeGraph() {
                         <circle
                           cx={node.x}
                           cy={node.y}
-                          r={selected ? 29 : 24}
+                          r={selected ? nodeRadius + 4 : nodeRadius}
                           fill={nodeColor}
                           opacity={selected ? 0.98 : 0.9}
                           stroke={selected ? (darkMode ? "#f5efe6" : "#ffffff") : "none"}
@@ -554,18 +781,25 @@ export default function KnowledgeGraph() {
                           textAnchor="middle"
                           dominantBaseline="middle"
                           fill={darkMode ? "#14110f" : "#fffdf8"}
-                          style={{ fontSize: 12, fontWeight: 800 }}
+                          style={{ fontSize: node.ring === "hub" ? 13 : 11, fontWeight: 700 }}
                         >
                           {getNodeLabel(node.type || "other").charAt(0)}
                         </text>
                         <text
-                          x={node.x}
-                          y={node.y + (selected ? 56 : 48)}
-                          textAnchor="middle"
+                          x={labelPlacement.x}
+                          y={labelPlacement.y}
+                          textAnchor={labelPlacement.anchor}
                           fill={darkMode ? "#b7ab9b" : "#6e655b"}
-                          style={{ fontSize: 12, fontWeight: selected || matched ? 700 : 600 }}
+                          style={{
+                            fontSize: node.ring === "hub" ? 12 : 11,
+                            fontWeight: selected || matched || node.ring === "hub" ? 700 : 600,
+                            paintOrder: "stroke",
+                            stroke: darkMode ? "#191411" : "#fbf7f0",
+                            strokeWidth: 5,
+                            strokeLinejoin: "round",
+                          }}
                         >
-                          {label.length > 24 ? `${label.slice(0, 24)}...` : label}
+                          {label.length > 22 ? `${label.slice(0, 22)}...` : label}
                         </text>
                       </g>
                     );
@@ -601,7 +835,7 @@ export default function KnowledgeGraph() {
                 {selectedNode.preview ? (
                   <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                     <p style={{ ...inspectorLabel, color: palette.muted }}>Preview</p>
-                    <p style={{ margin: 0, color: palette.text, fontSize: 13, lineHeight: 1.6 }}>{selectedNode.preview}</p>
+                    <p style={{ margin: 0, color: palette.text, fontSize: 12, lineHeight: 1.55 }}>{selectedNode.preview}</p>
                   </div>
                 ) : null}
 
@@ -678,7 +912,7 @@ export default function KnowledgeGraph() {
 
 const toolbarLayout = {
   display: "grid",
-  gap: 14,
+  gap: 8,
 };
 
 const toolbarIntro = {
@@ -688,23 +922,23 @@ const toolbarIntro = {
 
 const toolbarEyebrow = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.14em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const toolbarTitle = {
   margin: 0,
-  fontSize: 24,
-  lineHeight: 1.02,
+  fontSize: 20,
+  lineHeight: 1.08,
 };
 
 const toolbarCopy = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.6,
-  maxWidth: 760,
+  fontSize: 12,
+  lineHeight: 1.55,
+  maxWidth: 720,
 };
 
 const legendRail = {
@@ -718,8 +952,8 @@ const legendChip = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
+  padding: "6px 10px",
+  fontSize: 11,
   fontWeight: 700,
 };
 
@@ -736,36 +970,37 @@ const panelStatChip = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
+  padding: "6px 10px",
+  fontSize: 11,
   fontWeight: 700,
 };
 
 const graphFrame = {
-  borderRadius: 24,
+  borderRadius: 16,
   overflow: "hidden",
+  minHeight: 0,
 };
 
 const asideCard = {
   minWidth: 240,
-  borderRadius: 24,
-  padding: 16,
+  borderRadius: 16,
+  padding: 14,
   display: "grid",
-  gap: 10,
+  gap: 8,
 };
 
 const asideEyebrow = {
   margin: 0,
   fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.14em",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const asideTitle = {
   margin: 0,
-  fontSize: 20,
-  lineHeight: 1.04,
+  fontSize: 18,
+  lineHeight: 1.08,
 };
 
 const asideBody = {
@@ -776,13 +1011,13 @@ const asideBody = {
 
 const asideMetricRail = {
   display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: 8,
 };
 
 const asideMetric = {
-  borderRadius: 18,
-  padding: "10px 12px",
+  borderRadius: 12,
+  padding: "9px 10px",
   display: "grid",
   gap: 3,
 };
@@ -791,13 +1026,13 @@ const asideMetricLabel = {
   margin: 0,
   fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.12em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const asideMetricValue = {
   margin: 0,
-  fontSize: 18,
+  fontSize: 16,
   fontWeight: 700,
   lineHeight: 1,
 };
@@ -809,8 +1044,8 @@ const inspectorStatGrid = {
 };
 
 const inspectorStat = {
-  borderRadius: 18,
-  padding: "12px 13px",
+  borderRadius: 12,
+  padding: "10px 11px",
   display: "grid",
   gap: 3,
 };
@@ -819,13 +1054,13 @@ const inspectorLabel = {
   margin: 0,
   fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.12em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const inspectorValue = {
   margin: 0,
-  fontSize: 16,
+  fontSize: 15,
   fontWeight: 700,
   lineHeight: 1.2,
 };
@@ -843,9 +1078,9 @@ const inspectorSection = {
 
 const inspectorSectionLabel = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.12em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
@@ -855,8 +1090,8 @@ const connectionList = {
 };
 
 const connectionCard = {
-  borderRadius: 18,
-  padding: "12px 13px",
+  borderRadius: 12,
+  padding: "10px 11px",
   display: "grid",
   gridTemplateColumns: "auto 1fr auto",
   alignItems: "center",
@@ -886,8 +1121,8 @@ const typeList = {
 };
 
 const typeRow = {
-  borderRadius: 16,
-  padding: "10px 12px",
+  borderRadius: 12,
+  padding: "9px 11px",
   display: "flex",
   justifyContent: "space-between",
   gap: 10,

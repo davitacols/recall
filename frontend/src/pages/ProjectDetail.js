@@ -8,6 +8,7 @@ import {
   ClockIcon,
   PlusIcon,
   RocketLaunchIcon,
+  SparklesIcon,
   TrashIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
@@ -21,6 +22,7 @@ import {
   WorkspaceToolbar,
 } from "../components/WorkspaceChrome";
 import { createPlainTextPreview, hasMeaningfulText } from "../utils/textPreview";
+import { buildAskRecallPath } from "../utils/askRecall";
 
 export default function ProjectDetail() {
   const { projectId } = useParams();
@@ -218,6 +220,7 @@ export default function ProjectDetail() {
   const documentedIssues = issues.filter((issue) => hasMeaningfulText(issue.description)).length;
   const issueCoverage = issues.length ? Math.round((documentedIssues / issues.length) * 100) : 0;
   const readySprints = sprints.filter((sprint) => hasMeaningfulText(sprint.goal)).length;
+  const projectAskRecallQuestion = `What changed most recently in the ${project.name} project, and what needs attention next?`;
   const sprintCoverage = sprints.length ? Math.round((readySprints / sprints.length) * 100) : 0;
   const projectReadinessLabel =
     !project.description
@@ -230,6 +233,29 @@ export default function ProjectDetail() {
   const projectRoutingLabel = currentBoard
     ? "A connected board is already in place, so this page can act as the project control room."
     : "The project is structured, but a board route would make execution easier to navigate.";
+  const detailAside = (
+    <div style={{ ...detailAsideCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+      <p style={{ ...detailAsideEyebrow, color: palette.muted }}>Project readout</p>
+      <div style={detailAsideGrid}>
+        <div style={detailAsideItem}>
+          <p style={{ ...detailAsideLabel, color: palette.muted }}>Key</p>
+          <p style={{ ...detailAsideValue, color: palette.text }}>{project.key || "PRJ"}</p>
+        </div>
+        <div style={detailAsideItem}>
+          <p style={{ ...detailAsideLabel, color: palette.muted }}>Lead</p>
+          <p style={{ ...detailAsideValue, color: palette.text }}>{project.lead_name || "Assign lead"}</p>
+        </div>
+        <div style={detailAsideItem}>
+          <p style={{ ...detailAsideLabel, color: palette.muted }}>Boards</p>
+          <p style={{ ...detailAsideValue, color: palette.text }}>{boards.length}</p>
+        </div>
+        <div style={detailAsideItem}>
+          <p style={{ ...detailAsideLabel, color: palette.muted }}>Active sprints</p>
+          <p style={{ ...detailAsideValue, color: palette.text }}>{activeSprintCount}</p>
+        </div>
+      </div>
+    </div>
+  );
   const tabs = [
     { key: "sprints", label: "Sprints", count: sprints.length },
     { key: "issues", label: "Issues", count: issues.length },
@@ -238,15 +264,22 @@ export default function ProjectDetail() {
 
   return (
     <div style={{ minHeight: "100vh", position: "relative" }}>
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: darkMode ? "radial-gradient(circle at 10% 5%, rgba(154,185,255,0.16), transparent 30%), radial-gradient(circle at 92% 12%, rgba(121,200,159,0.12), transparent 28%)" : "radial-gradient(circle at 10% 5%, rgba(46,99,208,0.1), transparent 30%), radial-gradient(circle at 92% 12%, rgba(47,127,95,0.08), transparent 28%)" }} />
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: darkMode ? "radial-gradient(circle at 12% 8%, rgba(154,185,255,0.08), transparent 28%)" : "radial-gradient(circle at 12% 8%, rgba(46,99,208,0.05), transparent 28%)" }} />
       <div style={{ ...ui.container, position: "relative", zIndex: 1, display: "grid", gap: 16 }}>
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
           variant="execution"
-          eyebrow="Execution Workspace"
+          eyebrow="Project workspace"
           title={project.name}
-          description={project.description || "Plan sprints, shape the issue queue, and keep delivery context in one calmer workspace."}
+          description={projectSummary}
+          aside={detailAside}
+          stats={[
+            { label: "Issues", value: project.issue_count || 0, helper: "Tracked work items in this project." },
+            { label: "Done", value: `${completionRate}%`, helper: "Closed share of the issue queue." },
+            { label: "Sprints", value: sprints.length, helper: activeSprintCount ? `${activeSprintCount} active sprint in motion.` : "No active sprint right now." },
+            { label: "Team", value: teamMembers.length, helper: project.lead_name ? `Lead: ${project.lead_name}` : "Project lead still unassigned." },
+          ]}
           actions={
             <>
               <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}>
@@ -255,8 +288,12 @@ export default function ProjectDetail() {
               <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.secondaryButton}>
                 <PlusIcon style={{ width: 14, height: 14 }} /> New Issue
               </button>
-              <button className="ui-btn-polish ui-focus-ring" onClick={openEditProject} style={ui.secondaryButton}>
-                <UserGroupIcon style={{ width: 14, height: 14 }} /> {project.lead_name ? "Edit Project" : "Assign lead"}
+              <button
+                className="ui-btn-polish ui-focus-ring"
+                onClick={() => navigate(buildAskRecallPath(projectAskRecallQuestion))}
+                style={ui.secondaryButton}
+              >
+                <SparklesIcon style={{ width: 14, height: 14 }} /> Ask Recall
               </button>
             </>
           }
@@ -265,8 +302,8 @@ export default function ProjectDetail() {
         <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "grid", gap: 6 }}>
-              <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: palette.muted }}>Control Room</p>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>Jump between execution routes and keep the core project facts visible without stretching the header.</p>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Workspace routes</p>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>Move between planning, backlog, and execution routes without losing the core project facts.</p>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <span style={chipStyle(palette)}>{project.key || "Project"}</span>
@@ -300,14 +337,12 @@ export default function ProjectDetail() {
             style={{
               ...briefingPrimary,
               border: `1px solid ${palette.border}`,
-              background: darkMode
-                ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
-                : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              background: palette.card,
             }}
           >
             <div style={{ display: "grid", gap: 8 }}>
-              <p style={{ ...briefingEyebrow, color: palette.muted }}>Project Briefing</p>
-              <h2 style={{ margin: 0, fontSize: "clamp(1.18rem,2vw,1.68rem)", lineHeight: 1.05, color: palette.text }}>
+              <p style={{ ...briefingEyebrow, color: palette.muted }}>Project brief</p>
+              <h2 style={{ margin: 0, fontSize: "clamp(1.08rem,1.8vw,1.4rem)", lineHeight: 1.12, color: palette.text }}>
                 {projectSummary}
               </h2>
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>
@@ -406,27 +441,27 @@ export default function ProjectDetail() {
 }
 
 function Modal({ title, onClose, children, palette }) {
-  return <div style={{ position: "fixed", inset: 0, background: "rgba(22,18,15,0.56)", backdropFilter: "blur(14px)", display: "grid", placeItems: "center", padding: 18, zIndex: 120 }}><div style={{ width: "min(680px,100%)", borderRadius: 32, padding: 24, boxShadow: "var(--ui-shadow-lg)", display: "grid", gap: 18, border: `1px solid ${palette.border}`, background: palette.card }}><div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}><div><p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: palette.muted }}>Project Workspace</p><h3 style={{ margin: 0, fontSize: 28, color: palette.text, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif' }}>{title}</h3></div><button className="ui-btn-polish ui-focus-ring" onClick={onClose} style={{ border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, borderRadius: 999, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Close</button></div>{children}</div></div>;
+  return <div style={{ position: "fixed", inset: 0, background: "rgba(22,18,15,0.56)", backdropFilter: "blur(14px)", display: "grid", placeItems: "center", padding: 18, zIndex: 120 }}><div style={{ width: "min(680px,100%)", borderRadius: 24, padding: 20, boxShadow: "var(--ui-shadow-lg)", display: "grid", gap: 18, border: `1px solid ${palette.border}`, background: palette.card }}><div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}><div><p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Project workspace</p><h3 style={{ margin: 0, fontSize: 22, color: palette.text, fontFamily: "inherit", lineHeight: 1.1, letterSpacing: "-0.02em" }}>{title}</h3></div><button className="ui-btn-polish ui-focus-ring" onClick={onClose} style={{ border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text, borderRadius: 999, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Close</button></div>{children}</div></div>;
 }
 
 function SummaryTile({ icon: Icon, label, value, palette }) {
-  return <article style={{ borderRadius: 20, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 14, display: "grid", gap: 10 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>{label}</p><span style={{ width: 34, height: 34, borderRadius: 12, display: "grid", placeItems: "center", background: palette.accentSoft, color: palette.accent }}><Icon style={{ width: 16, height: 16 }} /></span></div><p style={{ margin: 0, fontSize: 26, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.05em", fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', color: palette.text }}>{value}</p></article>;
+  return <article style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 12, display: "grid", gap: 8 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>{label}</p><span style={{ width: 30, height: 30, borderRadius: 10, display: "grid", placeItems: "center", background: palette.card, color: palette.accent }}><Icon style={{ width: 15, height: 15 }} /></span></div><p style={{ margin: 0, fontSize: 20, fontWeight: 700, lineHeight: 1.05, letterSpacing: "-0.02em", fontFamily: "inherit", color: palette.text }}>{value}</p></article>;
 }
 
 function InfoRow({ label, value, palette }) {
-  return <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}><span style={{ color: palette.muted }}>{label}</span><span style={{ color: palette.text, fontWeight: 700 }}>{value}</span></div>;
+  return <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13, padding: "10px 12px", borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}><span style={{ color: palette.muted }}>{label}</span><span style={{ color: palette.text, fontWeight: 700, textAlign: "right" }}>{value}</span></div>;
 }
 
 const chipStyle = (palette) => ({
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  padding: "8px 12px",
+  padding: "7px 11px",
   borderRadius: 999,
   border: `1px solid ${palette.border}`,
   background: palette.cardAlt,
   color: palette.text,
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 700,
   textTransform: "capitalize",
 });
@@ -446,11 +481,11 @@ const briefingGrid = {
 };
 
 const briefingPrimary = {
-  borderRadius: 24,
-  padding: 18,
+  borderRadius: 16,
+  padding: 16,
   display: "grid",
-  gap: 14,
-  boxShadow: "var(--ui-shadow-sm)",
+  gap: 12,
+  boxShadow: "none",
 };
 
 const briefingEyebrow = {
@@ -478,12 +513,12 @@ const briefingChip = {
 };
 
 const briefingMetric = {
-  borderRadius: 20,
-  padding: 16,
+  borderRadius: 16,
+  padding: 14,
   display: "grid",
   gap: 8,
   alignContent: "start",
-  boxShadow: "var(--ui-shadow-xs)",
+  boxShadow: "none",
 };
 
 const metricHeading = {
@@ -496,9 +531,53 @@ const metricHeading = {
 
 const metricFigure = {
   margin: 0,
-  fontSize: 28,
-  lineHeight: 1,
-  fontWeight: 800,
+  fontSize: 22,
+  lineHeight: 1.05,
+  fontWeight: 700,
+};
+
+const detailAsideCard = {
+  borderRadius: 14,
+  padding: "12px 13px",
+  display: "grid",
+  gap: 10,
+  minWidth: 0,
+};
+
+const detailAsideEyebrow = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const detailAsideGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const detailAsideItem = {
+  display: "grid",
+  gap: 2,
+  minWidth: 0,
+};
+
+const detailAsideLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const detailAsideValue = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.4,
+  fontWeight: 700,
+  wordBreak: "break-word",
 };
 
 const metricNarrative = {

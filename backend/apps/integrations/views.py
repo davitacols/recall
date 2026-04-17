@@ -7,10 +7,10 @@ from rest_framework.response import Response
 import requests
 
 from apps.integrations.github_engineering import (
-    link_manual_pr_to_decision,
     save_github_config,
     serialize_github_config,
 )
+from apps.integrations.github_endpoints import link_pr_to_decision as canonical_decision_prs
 from apps.integrations.models import GitHubIntegration, JiraIntegration, SlackIntegration
 from apps.integrations.utils import post_to_slack
 from apps.users.auth_utils import check_rate_limit, validate_email
@@ -168,61 +168,15 @@ def test_integration(request, integration_type):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def search_github_prs(request, decision_id):
-    """Search GitHub for PRs related to a decision."""
-    from apps.decisions.models import Decision
-    from apps.integrations.utils import search_github_prs as search_prs
-
-    try:
-        decision = Decision.objects.get(id=decision_id, organization=request.user.organization)
-        github = GitHubIntegration.objects.get(organization=request.user.organization)
-        prs = search_prs(github, decision.title)
-        return Response(
-            {
-                "prs": [
-                    {
-                        "number": pr.get("number"),
-                        "title": pr.get("title"),
-                        "url": pr.get("html_url"),
-                        "state": pr.get("state"),
-                        "created_at": pr.get("created_at"),
-                    }
-                    for pr in prs
-                ]
-            }
-        )
-    except Decision.DoesNotExist:
-        return Response({"error": "Decision not found"}, status=404)
-    except GitHubIntegration.DoesNotExist:
-        return Response({"error": "GitHub not configured"}, status=400)
+    """Compatibility wrapper for the canonical decision PR search endpoint."""
+    return canonical_decision_prs(getattr(request, "_request", request), decision_id)
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def link_github_pr(request, decision_id):
-    """Link a GitHub PR to a decision."""
-    from apps.decisions.models import Decision
-
-    try:
-        decision = Decision.objects.get(id=decision_id, organization=request.user.organization)
-        pr_url = (request.data.get("pr_url") or "").strip()
-        if not pr_url:
-            return Response({"error": "pr_url is required"}, status=400)
-        try:
-            url_validator(pr_url)
-        except ValidationError:
-            return Response({"error": "Invalid pr_url"}, status=400)
-
-        linked_pr = link_manual_pr_to_decision(decision, pr_url, source="integration_linker")
-        decision.refresh_from_db(fields=["code_links"])
-        return Response(
-            {
-                "message": "PR linked",
-                "code_links": decision.code_links,
-                "pull_request_id": linked_pr.id if linked_pr else None,
-            }
-        )
-    except Decision.DoesNotExist:
-        return Response({"error": "Decision not found"}, status=404)
+    """Compatibility wrapper for the canonical decision PR link endpoint."""
+    return canonical_decision_prs(getattr(request, "_request", request), decision_id)
 
 
 @api_view(["POST"])

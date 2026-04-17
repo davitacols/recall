@@ -2,6 +2,29 @@ import uuid
 
 from django.conf import settings
 from django.http import JsonResponse
+from django.middleware.security import SecurityMiddleware
+
+
+def _is_loopback_host(hostname):
+    normalized = (hostname or "").strip().lower().strip("[]")
+    if not normalized:
+        return False
+    return normalized in {"localhost", "127.0.0.1", "::1", "0.0.0.0"} or normalized.endswith(".localhost")
+
+
+class LocalDevelopmentSecurityMiddleware(SecurityMiddleware):
+    """
+    Keep Django's security headers/redirect behavior, but avoid forcing HTTPS
+    for loopback hosts so local development still works when prod-like env vars
+    leak into the shell.
+    """
+
+    def process_request(self, request):
+        host = request.META.get("HTTP_HOST", "")
+        host_name = host.split(":", 1)[0]
+        if _is_loopback_host(host_name):
+            return None
+        return super().process_request(request)
 
 
 class RequestSecurityMiddleware:

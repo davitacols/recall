@@ -13,6 +13,18 @@ def _client_ip(request):
     return request.META.get("REMOTE_ADDR")
 
 
+def _is_loopback_host(hostname):
+    normalized = (hostname or "").strip().lower().strip("[]")
+    if not normalized:
+        return False
+    return normalized in {"localhost", "127.0.0.1", "::1", "0.0.0.0"} or normalized.endswith(".localhost")
+
+
+def _request_targets_local_backend(request):
+    host_header = (request.get_host() or "").split(":", 1)[0]
+    return _is_loopback_host(host_header)
+
+
 def verify_turnstile_token(request, token):
     """
     Verify Cloudflare Turnstile token.
@@ -27,6 +39,12 @@ def verify_turnstile_token(request, token):
     )
 
     if not enabled:
+        return True, None
+
+    # Keep localhost development usable even when prod-like env vars leak into
+    # a developer shell. Only bypass when the backend itself is being served on
+    # a loopback host, so hosted environments still enforce Turnstile.
+    if _request_targets_local_backend(request):
         return True, None
 
     # Optional controlled bypass for native mobile clients.

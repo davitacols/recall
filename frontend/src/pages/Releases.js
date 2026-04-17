@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { useNavigate, useParams } from "react-router-dom";
+import { PlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { buildAskRecallPath } from "../utils/askRecall";
 import { createPlainTextPreview } from "../utils/textPreview";
 
 function Releases() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -77,6 +79,11 @@ function Releases() {
       : nextRelease
         ? `The next release in view is ${nextRelease.name}${nextRelease.release_date ? ` on ${new Date(nextRelease.release_date).toLocaleDateString()}` : ""}.`
         : "All visible releases are either shipped or archived.";
+  const releaseAskRecallQuestion = nextRelease
+    ? `What should we watch before shipping ${nextRelease.name}?`
+    : releases.length
+      ? "Which release is closest to shipping, and what should we watch next?"
+      : "What release should this project define first, based on the current delivery context?";
 
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -112,10 +119,20 @@ function Releases() {
             </div>
           }
           actions={
-            <button onClick={() => setShowForm(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
-              <PlusIcon style={icon14} />
-              New Release
-            </button>
+            <>
+              <button onClick={() => setShowForm(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+                <PlusIcon style={icon14} />
+                New Release
+              </button>
+              <button
+                onClick={() => navigate(buildAskRecallPath(releaseAskRecallQuestion))}
+                className="ui-btn-polish ui-focus-ring"
+                style={ui.secondaryButton}
+              >
+                <SparklesIcon style={icon14} />
+                Ask Recall
+              </button>
+            </>
           }
         />
 

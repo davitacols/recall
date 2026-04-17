@@ -1,26 +1,16 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
+import GitHubIntegrationWorkspace from "../components/integrations/GitHubIntegrationWorkspace";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 
 const PROVIDERS = [
   {
-    key: "slack",
-    name: "Slack",
-    category: "Comms",
-    desc: "Push decisions, blockers, and sprint summaries to channels.",
-  },
-  {
     key: "github",
     name: "GitHub",
     category: "Engineering",
     desc: "Link PRs to decisions and track implementation flow.",
-  },
-  {
-    key: "jira",
-    name: "Jira",
-    category: "Delivery",
-    desc: "Sync work items and keep status aligned across systems.",
   },
 ];
 
@@ -595,27 +585,16 @@ Save the Jira integration, enable it, run Test, and verify one real issue refres
   };
 }
 
-export default function Integrations() {
+export default function Integrations({ forceActive = null, focusedProvider = null }) {
   const { darkMode } = useTheme();
-  const [active, setActive] = useState("slack");
+  const [active, setActive] = useState(forceActive || "github");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [flash, setFlash] = useState(null);
   const [testResults, setTestResults] = useState({});
 
-  const [slack, setSlack] = useState(null);
   const [github, setGithub] = useState(null);
-  const [jira, setJira] = useState(null);
-
-  const [slackForm, setSlackForm] = useState({
-    webhook_url: "",
-    channel: "#general",
-    post_decisions: true,
-    post_blockers: true,
-    post_sprint_summary: false,
-    enabled: false,
-  });
   const [githubForm, setGithubForm] = useState({
     access_token: "",
     repo_owner: "",
@@ -624,29 +603,16 @@ export default function Integrations() {
     auto_link_prs: true,
     enabled: false,
   });
-  const [jiraForm, setJiraForm] = useState({
-    site_url: "",
-    email: "",
-    api_token: "",
-    auto_sync_issues: false,
-    enabled: false,
-  });
+
+  useEffect(() => {
+    if (forceActive) {
+      setActive(forceActive);
+    }
+  }, [forceActive]);
 
   useEffect(() => {
     fetchIntegrations();
   }, []);
-
-  useEffect(() => {
-    if (!slack) return;
-    setSlackForm({
-      webhook_url: slack.webhook_url || "",
-      channel: slack.channel || "#general",
-      post_decisions: slack.post_decisions ?? true,
-      post_blockers: slack.post_blockers ?? true,
-      post_sprint_summary: slack.post_sprint_summary ?? false,
-      enabled: Boolean(slack.enabled),
-    });
-  }, [slack]);
 
   useEffect(() => {
     if (!github) return;
@@ -660,26 +626,12 @@ export default function Integrations() {
     });
   }, [github]);
 
-  useEffect(() => {
-    if (!jira) return;
-    setJiraForm({
-      site_url: jira.site_url || "",
-      email: jira.email || "",
-      api_token: jira.api_token || "",
-      auto_sync_issues: jira.auto_sync_issues ?? false,
-      enabled: Boolean(jira.enabled),
-    });
-  }, [jira]);
-
-  const byKey = { slack, github, jira };
-  const formByKey = { slack: slackForm, github: githubForm, jira: jiraForm };
-  const connectedCount = useMemo(
-    () => Object.values(byKey).filter((item) => Boolean(item?.enabled)).length,
-    [slack, github, jira]
-  );
+  const byKey = { github };
+  const formByKey = { github: githubForm };
+  const connectedCount = useMemo(() => (github?.enabled ? 1 : 0), [github]);
   const activeProvider = PROVIDERS.find((p) => p.key === active);
   const activeData = byKey[active] || {};
-  const activeForm = active === "slack" ? slackForm : active === "github" ? githubForm : jiraForm;
+  const activeForm = githubForm;
   const activeGuide = useMemo(
     () => buildIntegrationGuide(active, activeForm, activeData),
     [active, activeData, activeForm]
@@ -699,9 +651,14 @@ export default function Integrations() {
           lastTest: testResults[provider.key] || null,
         };
       }),
-    [slackForm, githubForm, jiraForm, slack, github, jira, testResults]
+    [githubForm, github, testResults]
+  );
+  const visibleProviderSummaries = useMemo(
+    () => (focusedProvider ? providerSummaries.filter((provider) => provider.key === focusedProvider) : providerSummaries),
+    [focusedProvider, providerSummaries]
   );
   const activeSummary = providerSummaries.find((provider) => provider.key === active) || null;
+  const isFocusedGitHub = focusedProvider === "github";
   const tone = useMemo(
     () =>
       darkMode
@@ -740,23 +697,16 @@ export default function Integrations() {
     [darkMode]
   );
   const connectionSetupIntro =
-    active === "github"
-      ? "Save the repository details first. Then copy the webhook values below into GitHub and send one push or pull request event."
-      : active === "slack"
-        ? "Paste the webhook and channel, save the setup, then run one test message before turning Slack on for the team."
-        : "Add the Jira site, account, and token, save the setup, then run a test before enabling ongoing sync.";
+    "Use the GitHub setup flow below to save the repository, reveal the payload URL, and confirm one real webhook delivery.";
+  const handleProviderSelect = (providerKey) => {
+    setActive(providerKey);
+  };
 
   const fetchIntegrations = async () => {
     setLoading(true);
     try {
-      const [s, g, j] = await Promise.all([
-        api.get("/api/integrations/slack/"),
-        api.get("/api/integrations/fresh/github/config/"),
-        api.get("/api/integrations/jira/"),
-      ]);
-      setSlack(s.data || null);
+      const g = await api.get("/api/integrations/fresh/github/config/");
       setGithub(g.data || null);
-      setJira(j.data || null);
     } catch (error) {
       setFlash({ type: "error", text: "Failed to load integrations." });
     } finally {
@@ -797,16 +747,9 @@ export default function Integrations() {
     setSaving(true);
     setFlash(null);
     try {
-      let response = null;
-      if (active === "slack") {
-        response = await api.post("/api/integrations/slack/", slackForm);
-      } else if (active === "github") {
-        response = await api.post("/api/integrations/fresh/github/config/", githubForm);
-        if (response?.data?.github) {
-          setGithub(response.data.github);
-        }
-      } else {
-        response = await api.post("/api/integrations/jira/", jiraForm);
+      const response = await api.post("/api/integrations/fresh/github/config/", githubForm);
+      if (response?.data?.github) {
+        setGithub(response.data.github);
       }
       await fetchIntegrations();
       setFlash({ type: "success", text: `${activeProvider?.name} settings saved.` });
@@ -826,13 +769,7 @@ export default function Integrations() {
   };
 
   const toggleEnabled = () => {
-    if (active === "slack") {
-      setSlackForm((prev) => ({ ...prev, enabled: !prev.enabled }));
-    } else if (active === "github") {
-      setGithubForm((prev) => ({ ...prev, enabled: !prev.enabled }));
-    } else {
-      setJiraForm((prev) => ({ ...prev, enabled: !prev.enabled }));
-    }
+    setGithubForm((prev) => ({ ...prev, enabled: !prev.enabled }));
   };
 
   if (loading) {
@@ -847,29 +784,200 @@ export default function Integrations() {
     );
   }
 
+  if (isFocusedGitHub) {
+    const repoOwner = github?.repo_owner || githubForm.repo_owner;
+    const repoName = github?.repo_name || githubForm.repo_name;
+    const repoSlug =
+      github?.repo_slug || (hasText(repoOwner) && hasText(repoName) ? `${repoOwner}/${repoName}` : null);
+    const repoUrl = repoSlug ? `https://github.com/${repoSlug}` : null;
+    const webhookSettingsUrl = repoUrl ? `${repoUrl}/settings/hooks` : null;
+    const webhookObservability = github?.webhook_observability;
+    const processedCount = webhookObservability?.recent_processed_count || 0;
+    const failedCount = webhookObservability?.recent_failure_count || 0;
+    const nextMoveLabel = activeGuide.nextAction?.title || "Finish the setup flow";
+    const deliveryValue = processedCount
+      ? `${processedCount} processed`
+      : webhookObservability?.recent_deliveries?.length
+        ? "Needs review"
+        : "No deliveries yet";
+
+    return (
+      <div className="space-y-6">
+        <section className={`${tone.hero} overflow-hidden`}>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+            <div className="space-y-5">
+              <div>
+                <p className={tone.heroEyebrow}>Engineering Integration</p>
+                <h1 className={tone.heroTitle}>GitHub Workspace</h1>
+                <p className={tone.heroText}>
+                  Connect repository access, webhook delivery, and code-to-decision linking in one place so engineering signals stay anchored to real work.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {repoUrl ? (
+                  <a
+                    href={repoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      darkMode
+                        ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
+                        : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                    }`}
+                  >
+                    Open repo
+                  </a>
+                ) : null}
+                {webhookSettingsUrl ? (
+                  <a
+                    href={webhookSettingsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      darkMode
+                        ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
+                        : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                    }`}
+                  >
+                    Webhook settings
+                  </a>
+                ) : null}
+                <Link
+                  to="/docs/integrations/github"
+                  className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                    darkMode
+                      ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
+                      : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                  }`}
+                >
+                  GitHub guide
+                </Link>
+              </div>
+            </div>
+
+            <div
+              className={`rounded-[28px] border p-5 ${
+                darkMode
+                  ? "border-stone-700 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.14),_transparent_55%),linear-gradient(180deg,rgba(28,25,23,0.95),rgba(17,24,39,0.92))]"
+                  : "border-white/70 bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.22),_transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(239,246,255,0.9))] shadow-[0_24px_60px_rgba(28,25,23,0.08)]"
+              }`}
+            >
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                GitHub signal
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <SignalCard label="Repository" value={repoSlug || "Not saved"} darkMode={darkMode} />
+                <SignalCard label="Connection" value={github?.enabled ? "Enabled" : "Setup in progress"} darkMode={darkMode} />
+                <SignalCard label="Deliveries" value={deliveryValue} darkMode={darkMode} />
+                <SignalCard label="Next step" value={nextMoveLabel} darkMode={darkMode} />
+              </div>
+              <div className="mt-5 space-y-2">
+                {[activeGuide.nextAction?.detail, activeTestResult?.detail, failedCount ? `${failedCount} recent delivery failure${failedCount === 1 ? "" : "s"} still need review.` : null]
+                  .filter(Boolean)
+                  .map((note) => (
+                    <div
+                      key={note}
+                      className={`rounded-xl border px-3 py-3 text-sm ${
+                        darkMode ? "border-stone-700 bg-stone-900/80 text-stone-200" : "border-stone-200 bg-white/90 text-stone-700"
+                      }`}
+                    >
+                      {note}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {flash ? (
+          <div
+            className={`rounded-2xl border px-4 py-3 text-sm ${
+              flash.type === "success"
+                ? darkMode
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                  : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : darkMode
+                  ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
+                  : "bg-rose-50 border-rose-200 text-rose-700"
+            }`}
+          >
+            {flash.text}
+          </div>
+        ) : null}
+
+        {activeTestResult ? <TestResultCard testResult={activeTestResult} darkMode={darkMode} /> : null}
+
+        <section className={tone.shellMain}>
+          <div className={`flex flex-wrap items-end justify-between gap-4 border-b pb-4 ${darkMode ? "border-stone-700" : "border-stone-200"}`}>
+            <div>
+              <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${tone.muted}`}>GitHub workspace</p>
+              <h3 className={`mt-1 text-lg font-bold ${tone.text}`}>Configure GitHub</h3>
+            </div>
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              <p className={`max-w-xl text-sm ${tone.subtext}`}>
+                Use the setup flow below to connect the repo, reveal the webhook payload URL, and validate one real delivery before relying on engineering signals.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setGithubForm((prev) => ({ ...prev, enabled: !prev.enabled }))}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold border ${
+                    githubForm.enabled
+                      ? darkMode
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                        : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                      : darkMode
+                        ? "border-stone-600 bg-stone-900 text-stone-200"
+                        : "border-stone-300 bg-white text-stone-700"
+                  }`}
+                >
+                  {githubForm.enabled ? "Disable" : "Enable"}
+                </button>
+                <button onClick={handleTest} disabled={testing} className={tone.testBtn}>
+                  {testing ? "Testing..." : "Test"}
+                </button>
+                <button onClick={handleSave} disabled={saving} className={tone.saveBtn}>
+                  {saving ? "Saving..." : "Save GitHub"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <GitHubConfig
+            value={githubForm}
+            status={github}
+            onChange={setGithubForm}
+            darkMode={darkMode}
+            onSave={handleSave}
+            saving={saving}
+          />
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <section className={`${tone.hero} overflow-hidden`}>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
           <div className="space-y-5">
-            <div>
-              <p className={tone.heroEyebrow}>Integrations Hub</p>
-              <h1 className={tone.heroTitle}>Connect external tools without guesswork</h1>
-              <p className={tone.heroText}>
-                Set up Slack, GitHub, and Jira in one place with clear credentials, exact values to copy, validation steps, and live health checks.
-              </p>
-            </div>
+              <div>
+                <p className={tone.heroEyebrow}>Integrations Hub</p>
+                <h1 className={tone.heroTitle}>Connect GitHub without guesswork</h1>
+                <p className={tone.heroText}>
+                  Keep the integration layer focused on GitHub with clear credentials, exact webhook values to copy, validation steps, and live health checks.
+                </p>
+              </div>
             <div className="grid gap-2 sm:grid-cols-3">
-              <Stat label="Providers" value={`${PROVIDERS.length}`} tone={tone} />
+              <Stat label="Providers" value={`${visibleProviderSummaries.length}`} tone={tone} />
               <Stat label="Connected" value={`${connectedCount}`} tone={tone} />
               <Stat label="Ready Steps" value={`${providerSummaries.reduce((sum, provider) => sum + provider.completedSteps, 0)}`} tone={tone} />
             </div>
             <div className="grid gap-3 lg:grid-cols-3">
-              {providerSummaries.map((provider) => (
+              {visibleProviderSummaries.map((provider) => (
                 <button
                   key={provider.key}
                   type="button"
-                  onClick={() => setActive(provider.key)}
+                  onClick={() => handleProviderSelect(provider.key)}
                   className={`rounded-2xl border p-4 text-left transition ${
                     provider.key === active
                       ? darkMode
@@ -910,15 +1018,15 @@ export default function Integrations() {
                       style={{ width: `${(provider.completedSteps / provider.totalSteps) * 100}%` }}
                     />
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <p className={`text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-                      {provider.completedSteps}/{provider.totalSteps} steps ready
-                    </p>
-                    <p className={`text-xs font-medium ${darkMode ? "text-stone-300" : "text-stone-700"}`}>
-                      {provider.lastTest ? provider.lastTest.title : provider.nextAction}
-                    </p>
-                  </div>
-                </button>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className={`text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                        {provider.completedSteps}/{provider.totalSteps} steps ready
+                      </p>
+                      <p className={`text-xs font-medium ${darkMode ? "text-stone-300" : "text-stone-700"}`}>
+                        {provider.key === "github" ? "Open workspace" : provider.lastTest ? provider.lastTest.title : provider.nextAction}
+                      </p>
+                    </div>
+                  </button>
               ))}
             </div>
           </div>
@@ -1005,15 +1113,15 @@ export default function Integrations() {
       <section className="grid gap-4 2xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-4">
           <div className={tone.shellAside}>
-            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Available Integrations</p>
+            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Git Integration</p>
             <div className="space-y-3">
-              {providerSummaries.map((provider) => {
+              {visibleProviderSummaries.map((provider) => {
                 const isActive = provider.key === active;
                 return (
                   <button
                     key={provider.key}
                     type="button"
-                    onClick={() => setActive(provider.key)}
+                    onClick={() => handleProviderSelect(provider.key)}
                     className={`w-full rounded-2xl border p-4 text-left transition ${
                       isActive
                         ? darkMode
@@ -1065,7 +1173,7 @@ export default function Integrations() {
                         {provider.completedSteps}/{provider.totalSteps} steps ready
                       </p>
                       <p className={`text-xs font-medium ${isActive && !darkMode ? "text-white" : darkMode ? "text-stone-200" : "text-stone-700"}`}>
-                        {provider.lastTest ? (provider.lastTest.state === "success" ? "Test passed" : "Needs attention") : "Not tested"}
+                        {provider.key === "github" ? "Open workspace" : provider.lastTest ? (provider.lastTest.state === "success" ? "Test passed" : "Needs attention") : "Not tested"}
                       </p>
                     </div>
                   </button>
@@ -1208,22 +1316,14 @@ export default function Integrations() {
               </div>
             </div>
 
-            {active === "slack" ? (
-              <SlackConfig value={slackForm} onChange={setSlackForm} darkMode={darkMode} />
-            ) : null}
-            {active === "github" ? (
-              <GitHubConfig
-                value={githubForm}
-                status={github}
-                onChange={setGithubForm}
-                darkMode={darkMode}
-                onSave={handleSave}
-                saving={saving}
-              />
-            ) : null}
-            {active === "jira" ? (
-              <JiraConfig value={jiraForm} onChange={setJiraForm} darkMode={darkMode} />
-            ) : null}
+            <GitHubIntegrationWorkspace
+              value={githubForm}
+              status={github}
+              onChange={setGithubForm}
+              darkMode={darkMode}
+              onSave={handleSave}
+              saving={saving}
+            />
           </section>
         </div>
       </section>
@@ -1240,152 +1340,9 @@ function Stat({ label, value, tone }) {
   );
 }
 
-function Field({ label, hint, children, darkMode }) {
-  return (
-    <div>
-      <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{label}</label>
-      {children}
-      {hint ? <p className={`mt-1 text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>{hint}</p> : null}
-    </div>
-  );
-}
-
-function TextInput({ darkMode, ...props }) {
-  return (
-    <input
-      {...props}
-      className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${
-        darkMode
-          ? "border-stone-600 bg-stone-800 text-stone-100 focus:border-stone-400"
-          : "border-stone-300 bg-white text-stone-900 focus:border-stone-500"
-      }`}
-    />
-  );
-}
-
-function ClipboardInput({ darkMode, onPasteValue, pasteLabel = "Paste", ...props }) {
-  const [clipboardState, setClipboardState] = useState("");
-
-  const handlePaste = async () => {
-    if (!navigator?.clipboard?.readText) {
-      setClipboardState("unsupported");
-      return;
-    }
-    try {
-      const pasted = await navigator.clipboard.readText();
-      if (!pasted) {
-        setClipboardState("empty");
-        return;
-      }
-      onPasteValue?.(pasted.trim());
-      setClipboardState("pasted");
-      window.setTimeout(() => {
-        setClipboardState((current) => (current === "pasted" ? "" : current));
-      }, 1500);
-    } catch {
-      setClipboardState("error");
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      <TextInput darkMode={darkMode} {...props} />
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={handlePaste}
-          className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${
-            darkMode
-              ? "border-stone-600 bg-stone-900 text-stone-200 hover:border-stone-400"
-              : "border-stone-300 bg-white text-stone-700 hover:border-stone-500"
-          }`}
-        >
-          {clipboardState === "pasted" ? "Pasted" : pasteLabel}
-        </button>
-        {clipboardState === "unsupported" ? (
-          <span className={`text-[11px] ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
-            Clipboard paste is unavailable in this browser.
-          </span>
-        ) : null}
-        {clipboardState === "empty" ? (
-          <span className={`text-[11px] ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
-            Clipboard is empty.
-          </span>
-        ) : null}
-        {clipboardState === "error" ? (
-          <span className={`text-[11px] ${darkMode ? "text-rose-300" : "text-rose-700"}`}>
-            Could not read the clipboard.
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function Check({ checked, onChange, label, darkMode }) {
-  return (
-    <label
-      className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${
-        darkMode ? "border-stone-700 bg-stone-800" : "border-stone-200"
-      }`}
-    >
-      <input type="checkbox" checked={checked} onChange={onChange} className="h-4 w-4" />
-      <span className={`text-sm ${darkMode ? "text-stone-200" : "text-stone-800"}`}>{label}</span>
-    </label>
-  );
-}
-
-function SlackConfig({ value, onChange, darkMode }) {
-  return (
-    <div className="space-y-5">
-      <Field label="Webhook URL" hint="Create an incoming webhook in your Slack app settings." darkMode={darkMode}>
-        <ClipboardInput
-          id="slack-webhook-url"
-          darkMode={darkMode}
-          type="url"
-          value={value.webhook_url}
-          placeholder="https://hooks.slack.com/services/..."
-          pasteLabel="Paste webhook"
-          onPasteValue={(pasted) => onChange((prev) => ({ ...prev, webhook_url: pasted }))}
-          onChange={(e) => onChange((prev) => ({ ...prev, webhook_url: e.target.value }))}
-        />
-      </Field>
-      <Field label="Channel" darkMode={darkMode}>
-        <ClipboardInput
-          id="slack-channel"
-          darkMode={darkMode}
-          value={value.channel}
-          placeholder="#general"
-          pasteLabel="Paste channel"
-          onPasteValue={(pasted) => onChange((prev) => ({ ...prev, channel: pasted }))}
-          onChange={(e) => onChange((prev) => ({ ...prev, channel: e.target.value }))}
-        />
-      </Field>
-      <div className="grid gap-2 md:grid-cols-2">
-        <Check
-          checked={value.post_decisions}
-          onChange={(e) => onChange((prev) => ({ ...prev, post_decisions: e.target.checked }))}
-          label="Post decisions to Slack"
-          darkMode={darkMode}
-        />
-        <Check
-          checked={value.post_blockers}
-          onChange={(e) => onChange((prev) => ({ ...prev, post_blockers: e.target.checked }))}
-          label="Post blockers to Slack"
-          darkMode={darkMode}
-        />
-        <Check
-          checked={value.post_sprint_summary}
-          onChange={(e) => onChange((prev) => ({ ...prev, post_sprint_summary: e.target.checked }))}
-          label="Post sprint summary"
-          darkMode={darkMode}
-        />
-      </div>
-    </div>
-  );
-}
-
-function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = false }) {
+function GitHubConfig() {
+  return null;
+  /*
   const readiness = status?.webhook_readiness;
   const observability = status?.webhook_observability;
   const repoOwner = status?.repo_owner || value.repo_owner;
@@ -1405,6 +1362,8 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
   const processedCount = observability?.recent_processed_count || 0;
   const ignoredCount = observability?.recent_ignored_count || 0;
   const failedCount = observability?.recent_failure_count || 0;
+  const connectionReady = hasToken && hasRepoTarget;
+  const canOperate = Boolean(hasWebhookReady || hasDeliveries || recentActivity.length);
   const readinessTone =
     readiness?.state === "ready"
       ? darkMode
@@ -1417,16 +1376,28 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
         : darkMode
           ? "border-stone-700 bg-stone-800 text-stone-300"
           : "border-stone-200 bg-stone-50 text-stone-700";
-  const heroShell = darkMode
-    ? "rounded-[28px] border border-stone-700 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.16),_transparent_28%),linear-gradient(180deg,rgba(17,24,39,0.95),rgba(15,23,42,0.92))] p-5"
-    : "rounded-[28px] border border-stone-200 bg-[radial-gradient(circle_at_top_right,_rgba(125,211,252,0.24),_transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(239,246,255,0.95))] p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)]";
+  const overviewShell = darkMode
+    ? "rounded-[18px] border border-stone-700 bg-stone-900/90 p-5"
+    : "rounded-[18px] border border-stone-200 bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)]";
+  const surfaceTone = darkMode
+    ? "rounded-[14px] border border-stone-700 bg-stone-950/70"
+    : "rounded-[14px] border border-stone-200 bg-stone-50/60";
+  const [repoReference, setRepoReference] = useState(repoSlug || "");
+
+  useEffect(() => {
+    if (repoSlug) {
+      setRepoReference(repoSlug);
+    }
+  }, [repoSlug]);
+
+  const parsedRepoReference = parseGitHubRepositoryInput(repoReference);
   const setupSteps = [
     {
       step: "Step 1",
-      title: "Save the repository details",
+      title: "Choose the repository",
       detail: hasRepoTarget
         ? `Knoledgr is pointed at ${repoSlug}.`
-        : "Add the token, repository owner, and repository name, then click Save.",
+        : "Paste a GitHub URL or owner/repo, confirm the token, then save.",
       state: hasToken && hasRepoTarget ? "Ready" : "Needs input",
       tone: hasToken && hasRepoTarget ? "sky" : "slate",
     },
@@ -1453,21 +1424,89 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
       tone: processedCount ? "emerald" : hasDeliveries ? "amber" : hasWebhookReady ? "sky" : "slate",
     },
   ];
+  const nextActionTitle = !connectionReady
+    ? "Save the repository target"
+    : !hasSecret
+      ? "Save the shared webhook secret"
+      : !hasWebhookReady
+        ? "Save once to reveal the payload URL"
+        : !hasDeliveries
+          ? "Create the webhook in GitHub and send one event"
+          : failedCount > 0 || ignoredCount > 0
+            ? "Review the newest webhook deliveries"
+            : "GitHub is live";
+  const nextActionDetail = !connectionReady
+    ? "Paste a GitHub URL or owner/repo, confirm the PAT, then save so Knoledgr knows which repository to watch."
+    : !hasSecret
+      ? "Use one shared secret in Knoledgr and GitHub so deliveries can be verified safely."
+      : !hasWebhookReady
+        ? "Save the repository target and secret first. Knoledgr then reveals the exact payload URL GitHub should send to."
+        : !hasDeliveries
+          ? "Open GitHub webhook settings, paste the payload URL, keep application/json, subscribe to push plus pull_request, then trigger one test event."
+          : failedCount > 0 || ignoredCount > 0
+            ? "GitHub is reaching Knoledgr, but the latest deliveries still need review before this setup is trustworthy."
+            : "The connection, webhook, and live delivery flow are all working.";
+  const webhookValues = [
+    {
+      label: "Payload URL",
+      value: webhookUrl || "Save the repository and secret first to reveal the payload URL",
+      helper: "Paste this into the Payload URL field in GitHub.",
+      copyValue: webhookUrl || null,
+    },
+    {
+      label: "Where to add it",
+      value: "GitHub -> Settings -> Webhooks -> Add webhook",
+      helper: "Create the webhook on the same repository shown above.",
+      copyValue: "GitHub -> Settings -> Webhooks -> Add webhook",
+    },
+    {
+      label: "Content type",
+      value: "application/json",
+      helper: "Use JSON so Knoledgr can parse the delivery cleanly.",
+      copyValue: "application/json",
+    },
+    {
+      label: "Events",
+      value: "push, pull_request",
+      helper: "These events power commit, pull request, and delivery updates.",
+      copyValue: "push,pull_request",
+    },
+    {
+      label: "Secret",
+      value: hasSecret ? "Use the same webhook secret saved in Knoledgr" : "Add the webhook secret here before creating the GitHub webhook",
+      helper: "The GitHub webhook secret must match Knoledgr exactly.",
+    },
+    {
+      label: "Linking format",
+      value: "DECISION-123, RECALL-123, or #123",
+      helper: "Use one of these patterns in PR titles, branches, or commits for automatic linking.",
+      copyValue: "DECISION-123, RECALL-123, #123",
+    },
+  ];
+
+  const applyParsedRepoReference = () => {
+    if (!parsedRepoReference) return;
+    onChange((prev) => ({
+      ...prev,
+      repo_owner: parsedRepoReference.owner,
+      repo_name: parsedRepoReference.repo,
+    }));
+  };
 
   return (
-    <div className="space-y-5">
-      <section className={heroShell}>
+    <div className="space-y-4">
+      <section className={overviewShell}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
-            <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-sky-300/80" : "text-sky-700"}`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
               GitHub setup
             </p>
-            <h3 className={`mt-2 text-2xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
-              Connect the repository in three clear moves
+            <h3 className={`mt-2 text-2xl font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
+              Connect one repository, reveal the webhook, then confirm live delivery traffic
             </h3>
             <p className={`mt-3 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
-              Save the repo access, save one webhook secret, then copy the exact GitHub webhook values from this page. After a push
-              or pull request lands, Knoledgr will show the delivery health below.
+              The setup flow is now simple: choose the repository, save one shared webhook secret, copy the exact values into GitHub,
+              and wait for one real push or pull request delivery to land in Knoledgr.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1478,8 +1517,8 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
                 rel="noreferrer"
                 className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   darkMode
-                    ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
-                    : "border-stone-300 bg-white text-stone-800 hover:border-sky-500"
+                    ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
+                    : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
                 }`}
               >
                 Open repo
@@ -1492,8 +1531,8 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
                 rel="noreferrer"
                 className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   darkMode
-                    ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
-                    : "border-stone-300 bg-white text-stone-800 hover:border-sky-500"
+                    ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
+                    : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
                 }`}
               >
                 Webhook settings
@@ -1504,14 +1543,14 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
               to="/docs/integrations/github"
               className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                 darkMode
-                  ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
-                  : "border-stone-300 bg-white text-stone-800 hover:border-sky-500"
+                  ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
+                  : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
               }`}
-              >
+            >
                 GitHub guide
-              </Link>
-            </div>
+            </Link>
           </div>
+        </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-3">
           {setupSteps.map((step) => (
@@ -1527,151 +1566,28 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
           ))}
         </div>
 
-        <div className={`mt-5 rounded-2xl border p-4 ${readinessTone}`}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="max-w-3xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-80">Current readiness</p>
-              <p className="mt-2 text-base font-semibold">{readiness?.label || "Finish the saved setup before GitHub can send events"}</p>
-              <p className="mt-2 text-sm leading-6">
-                {readiness?.detail ||
-                  "Save the repository and webhook secret first. Then paste the payload URL into GitHub, use application/json, and subscribe to push plus pull_request."}
-              </p>
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
+          <div className={`${surfaceTone} px-4 py-4`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-sky-300/80" : "text-sky-700"}`}>
+              Next move
+            </p>
+            <p className={`mt-2 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{nextActionTitle}</p>
+            <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{nextActionDetail}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <StatusPill label="Repository" value={repoSlug || "Not saved yet"} tone={hasRepoTarget ? "sky" : "slate"} darkMode={darkMode} />
+              <StatusPill label="Secret" value={hasSecret ? "Ready" : "Missing"} tone={hasSecret ? "emerald" : "amber"} darkMode={darkMode} />
+              <StatusPill label="Webhook" value={hasWebhookReady ? "Ready to copy" : "Save first"} tone={hasWebhookReady ? "sky" : "slate"} darkMode={darkMode} />
             </div>
-            {webhookUrl ? <CopyShortcutButton label="Copy payload URL" value={webhookUrl} darkMode={darkMode} /> : null}
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <StatusPill label="Repository" value={repoSlug || "Not saved yet"} tone={hasRepoTarget ? "sky" : "slate"} darkMode={darkMode} />
-            <StatusPill
-              label="Secret"
-              value={status?.has_webhook_secret ? "Stored" : hasText(value.webhook_secret) ? "Ready to save" : "Missing"}
-              tone={hasSecret ? "emerald" : "amber"}
-              darkMode={darkMode}
-            />
-            <StatusPill
-              label="Deliveries"
-              value={processedCount ? `${processedCount} processed` : hasDeliveries ? "Needs review" : "None yet"}
-              tone={processedCount ? "emerald" : hasDeliveries ? "amber" : "slate"}
-              darkMode={darkMode}
-            />
-            <StatusPill label="Auto-link" value={value.auto_link_prs ? "On" : "Off"} tone={value.auto_link_prs ? "sky" : "slate"} darkMode={darkMode} />
-          </div>
-        </div>
-      </section>
-
-      <div className="grid gap-4 2xl:grid-cols-3">
-        <GitHubPanel
-          eyebrow="Step 1"
-          title="Connect the repository"
-          description="Paste one GitHub PAT with repo read access, then point Knoledgr at the exact owner and repository name."
-          darkMode={darkMode}
-        >
-          <div className="flex flex-wrap gap-2">
-            <StatusPill
-              label="Token"
-              value={status?.configured ? "Stored" : hasText(value.access_token) ? "Ready to save" : "Missing"}
-              tone={hasToken ? "sky" : "slate"}
-              darkMode={darkMode}
-            />
-            <StatusPill label="Repository" value={repoSlug || "Missing"} tone={hasRepoTarget ? "sky" : "slate"} darkMode={darkMode} />
-          </div>
-          <Field label="Access Token" hint="Use a PAT with repo read access." darkMode={darkMode}>
-            <ClipboardInput
-              id="github-access-token"
-              darkMode={darkMode}
-              type="password"
-              value={value.access_token}
-              placeholder="ghp_..."
-              pasteLabel="Paste token"
-              onPasteValue={(pasted) => onChange((prev) => ({ ...prev, access_token: pasted }))}
-              onChange={(e) => onChange((prev) => ({ ...prev, access_token: e.target.value }))}
-            />
-          </Field>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Repository Owner" darkMode={darkMode}>
-              <ClipboardInput
-                id="github-repo-owner"
-                darkMode={darkMode}
-                value={value.repo_owner}
-                placeholder="org-or-user"
-                pasteLabel="Paste owner"
-                onPasteValue={(pasted) => onChange((prev) => ({ ...prev, repo_owner: pasted }))}
-                onChange={(e) => onChange((prev) => ({ ...prev, repo_owner: e.target.value }))}
-              />
-            </Field>
-            <Field label="Repository Name" darkMode={darkMode}>
-              <ClipboardInput
-                id="github-repo-name"
-                darkMode={darkMode}
-                value={value.repo_name}
-                placeholder="repo-name"
-                pasteLabel="Paste repo"
-                onPasteValue={(pasted) => onChange((prev) => ({ ...prev, repo_name: pasted }))}
-                onChange={(e) => onChange((prev) => ({ ...prev, repo_name: e.target.value }))}
-              />
-            </Field>
-          </div>
-          <div
-            className={`rounded-xl border px-4 py-3 text-sm ${
-              darkMode ? "border-stone-700 bg-stone-900 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700"
-            }`}
-          >
-            Save after filling these fields. Once Knoledgr knows which repository to watch, the exact webhook payload URL appears in Step 3.
-          </div>
-        </GitHubPanel>
-
-        <GitHubPanel
-          eyebrow="Step 2"
-          title="Save the webhook secret"
-          description="Use one shared secret in both GitHub and Knoledgr so push and pull request deliveries can be verified."
-          darkMode={darkMode}
-        >
-          <div className="flex flex-wrap gap-2">
-            <StatusPill
-              label="Secret"
-              value={status?.has_webhook_secret ? "Stored" : hasText(value.webhook_secret) ? "Ready to save" : "Missing"}
-              tone={hasSecret ? "emerald" : "amber"}
-              darkMode={darkMode}
-            />
-            <StatusPill label="Auto-link" value={value.auto_link_prs ? "On" : "Off"} tone={value.auto_link_prs ? "sky" : "slate"} darkMode={darkMode} />
-          </div>
-          <Field
-            label="Webhook Secret"
-            hint="Use the same secret in GitHub so pull_request and push events can be verified."
-            darkMode={darkMode}
-          >
-            <ClipboardInput
-              id="github-webhook-secret"
-              darkMode={darkMode}
-              type="password"
-              value={value.webhook_secret}
-              placeholder={status?.has_webhook_secret ? "Webhook secret already configured" : "Add webhook secret"}
-              pasteLabel="Paste secret"
-              onPasteValue={(pasted) => onChange((prev) => ({ ...prev, webhook_secret: pasted }))}
-              onChange={(e) => onChange((prev) => ({ ...prev, webhook_secret: e.target.value }))}
-            />
-          </Field>
-          <Check
-            checked={value.auto_link_prs}
-            onChange={(e) => onChange((prev) => ({ ...prev, auto_link_prs: e.target.checked }))}
-            label="Auto-link pull requests to decisions"
-            darkMode={darkMode}
-          />
-          <div
-            className={`rounded-xl border px-4 py-3 text-sm ${
-              darkMode ? "border-stone-700 bg-stone-900 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700"
-            }`}
-          >
-            Turn on auto-linking if you want PR titles, branches, and commits that mention <span className="font-semibold">DECISION-123</span>,{" "}
-            <span className="font-semibold">RECALL-123</span>, or <span className="font-semibold">#123</span> to attach themselves to Knoledgr records.
-          </div>
-        </GitHubPanel>
-        <GitHubPanel
-          eyebrow="Step 3"
-          title="Add the webhook in GitHub"
-          description="Open the repository webhook settings and copy these exact values into GitHub."
-          darkMode={darkMode}
-          action={
-            <div className="flex gap-2 flex-wrap">
+          <div className={`rounded-[14px] border p-4 ${readinessTone}`}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-80">Current readiness</p>
+            <p className="mt-2 text-base font-semibold">{readiness?.label || "Finish the saved setup before GitHub can send events"}</p>
+            <p className="mt-2 text-sm leading-6">
+              {readiness?.detail ||
+                "Save the repository and webhook secret first. Then paste the payload URL into GitHub, use application/json, and subscribe to push plus pull_request."}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {webhookUrl ? <CopyShortcutButton label="Copy payload URL" value={webhookUrl} darkMode={darkMode} /> : null}
               {webhookSettingsUrl ? (
                 <a
                   href={webhookSettingsUrl}
@@ -1679,191 +1595,311 @@ function GitHubConfig({ value, status, onChange, darkMode, onSave, saving = fals
                   rel="noreferrer"
                   className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     darkMode
-                      ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
-                      : "border-stone-300 bg-white text-stone-800 hover:border-sky-500"
+                      ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
+                      : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
                   }`}
                 >
                   Open webhook settings
                 </a>
               ) : null}
-              {repoUrl ? (
+              <StatusPill label="Processed" value={processedCount} tone={processedCount > 0 ? "emerald" : "slate"} darkMode={darkMode} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+        <div className="space-y-4">
+          <GitHubPanel
+            eyebrow="Step 1"
+            title="Choose the repository"
+            description="Paste a GitHub URL or owner/repo first, then confirm the access token. This keeps the setup anchored on one exact repository."
+            darkMode={darkMode}
+          >
+            <div className="flex flex-wrap gap-2">
+              <StatusPill
+                label="Token"
+                value={status?.configured ? "Stored" : hasText(value.access_token) ? "Ready to save" : "Missing"}
+                tone={hasToken ? "sky" : "slate"}
+                darkMode={darkMode}
+              />
+              <StatusPill label="Repository" value={repoSlug || "Missing"} tone={hasRepoTarget ? "sky" : "slate"} darkMode={darkMode} />
+            </div>
+            <Field
+              label="Repository URL or owner/repo"
+              hint="Paste https://github.com/owner/repo or owner/repo and Knoledgr will split it for you."
+              darkMode={darkMode}
+            >
+              <ClipboardInput
+                id="github-repo-reference"
+                darkMode={darkMode}
+                value={repoReference}
+                placeholder="https://github.com/acme/platform-api or acme/platform-api"
+                pasteLabel="Paste repo"
+                onPasteValue={(pasted) => setRepoReference(pasted)}
+                onChange={(e) => setRepoReference(e.target.value)}
+              />
+            </Field>
+            <div className={`${surfaceTone} px-4 py-4`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="max-w-2xl">
+                  <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Repository target preview</p>
+                  <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
+                    {parsedRepoReference
+                      ? `Ready to use ${parsedRepoReference.slug}. Apply it below if the repository fields do not already match.`
+                      : "Paste a full GitHub URL or owner/repo here to avoid manually splitting the repository."}
+                  </p>
+                </div>
+                {parsedRepoReference ? (
+                  <button
+                    type="button"
+                    onClick={applyParsedRepoReference}
+                    className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      darkMode
+                        ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
+                        : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                    }`}
+                  >
+                    Use {parsedRepoReference.slug}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <Field label="Access Token" hint="Use a PAT with repo read access." darkMode={darkMode}>
+              <ClipboardInput
+                id="github-access-token"
+                darkMode={darkMode}
+                type="password"
+                value={value.access_token}
+                placeholder="ghp_..."
+                pasteLabel="Paste token"
+                onPasteValue={(pasted) => onChange((prev) => ({ ...prev, access_token: pasted }))}
+                onChange={(e) => onChange((prev) => ({ ...prev, access_token: e.target.value }))}
+              />
+            </Field>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Repository Owner" darkMode={darkMode}>
+                <ClipboardInput
+                  id="github-repo-owner"
+                  darkMode={darkMode}
+                  value={value.repo_owner}
+                  placeholder="org-or-user"
+                  pasteLabel="Paste owner"
+                  onPasteValue={(pasted) => onChange((prev) => ({ ...prev, repo_owner: pasted }))}
+                  onChange={(e) => onChange((prev) => ({ ...prev, repo_owner: e.target.value }))}
+                />
+              </Field>
+              <Field label="Repository Name" darkMode={darkMode}>
+                <ClipboardInput
+                  id="github-repo-name"
+                  darkMode={darkMode}
+                  value={value.repo_name}
+                  placeholder="repo-name"
+                  pasteLabel="Paste repo"
+                  onPasteValue={(pasted) => onChange((prev) => ({ ...prev, repo_name: pasted }))}
+                  onChange={(e) => onChange((prev) => ({ ...prev, repo_name: e.target.value }))}
+                />
+              </Field>
+            </div>
+            <div className={`${surfaceTone} px-4 py-3 text-sm ${darkMode ? "text-stone-300" : "text-stone-700"}`}>
+              Save after filling these fields. Once Knoledgr knows which repository to watch, the exact webhook payload URL appears in the next step.
+            </div>
+          </GitHubPanel>
+
+          <GitHubPanel
+            eyebrow="Step 2"
+            title="Save one shared webhook secret"
+            description="Use one secret in Knoledgr and GitHub. That single shared value is what keeps incoming push and pull_request deliveries verifiable."
+            darkMode={darkMode}
+            action={
+              webhookSettingsUrl ? (
                 <a
-                  href={repoUrl}
+                  href={webhookSettingsUrl}
                   target="_blank"
                   rel="noreferrer"
                   className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     darkMode
-                      ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
-                      : "border-stone-300 bg-white text-stone-800 hover:border-sky-500"
+                      ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
+                      : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
                   }`}
                 >
-                  Open repo
+                  Open webhook settings
                 </a>
-              ) : null}
+              ) : null
+            }
+          >
+            <div className="flex flex-wrap gap-2">
+              <StatusPill
+                label="Secret"
+                value={status?.has_webhook_secret ? "Stored" : hasText(value.webhook_secret) ? "Ready to save" : "Missing"}
+                tone={hasSecret ? "emerald" : "amber"}
+                darkMode={darkMode}
+              />
+              <StatusPill label="Auto-link" value={value.auto_link_prs ? "On" : "Off"} tone={value.auto_link_prs ? "sky" : "slate"} darkMode={darkMode} />
             </div>
-          }
-        >
-          {!webhookUrl ? (
-            <div
-              className={`rounded-xl border px-4 py-4 ${
-                darkMode ? "border-amber-500/30 bg-amber-500/10 text-amber-100" : "border-amber-200 bg-amber-50 text-amber-900"
-              }`}
+            <Field
+              label="Webhook Secret"
+              hint="Use the same secret in GitHub so pull_request and push events can be verified."
+              darkMode={darkMode}
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="max-w-2xl">
-                  <p className="text-sm font-semibold">Payload URL is generated after you save</p>
-                  <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-amber-100/90" : "text-amber-900/80"}`}>
-                    You have entered the GitHub details in this form, but Knoledgr only reveals the payload URL after the current
-                    repository and secret are saved.
-                  </p>
+              <ClipboardInput
+                id="github-webhook-secret"
+                darkMode={darkMode}
+                type="password"
+                value={value.webhook_secret}
+                placeholder={status?.has_webhook_secret ? "Webhook secret already configured" : "Add webhook secret"}
+                pasteLabel="Paste secret"
+                onPasteValue={(pasted) => onChange((prev) => ({ ...prev, webhook_secret: pasted }))}
+                onChange={(e) => onChange((prev) => ({ ...prev, webhook_secret: e.target.value }))}
+              />
+            </Field>
+            <Check
+              checked={value.auto_link_prs}
+              onChange={(e) => onChange((prev) => ({ ...prev, auto_link_prs: e.target.checked }))}
+              label="Auto-link pull requests to decisions"
+              darkMode={darkMode}
+            />
+            {!webhookUrl ? (
+              <div
+                className={`rounded-[14px] border px-4 py-4 ${
+                  darkMode ? "border-amber-500/30 bg-amber-500/10 text-amber-100" : "border-amber-200 bg-amber-50 text-amber-900"
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="max-w-2xl">
+                    <p className="text-sm font-semibold">Payload URL appears after you save</p>
+                    <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-amber-100/90" : "text-amber-900/80"}`}>
+                      Save the repository target and webhook secret first. Knoledgr then reveals the exact payload URL GitHub should send to.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onSave}
+                    disabled={saving}
+                    className={`inline-flex rounded-full border px-4 py-2 text-xs font-semibold ${
+                      darkMode
+                        ? "border-amber-300/40 bg-stone-950 text-amber-100 hover:border-amber-200 disabled:opacity-60"
+                        : "border-amber-300 bg-white text-amber-900 hover:border-amber-400 disabled:opacity-60"
+                    }`}
+                  >
+                    {saving ? "Saving..." : "Save GitHub setup"}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={onSave}
-                  disabled={saving}
-                  className={`inline-flex rounded-full border px-4 py-2 text-xs font-semibold ${
-                    darkMode
-                      ? "border-amber-300/40 bg-stone-950 text-amber-100 hover:border-amber-200 disabled:opacity-60"
-                      : "border-amber-300 bg-white text-amber-900 hover:border-amber-400 disabled:opacity-60"
-                  }`}
-                >
-                  {saving ? "Saving..." : "Save GitHub setup"}
-                </button>
               </div>
-            </div>
-          ) : null}
-          <GitHubValueRow
-            label="Where to add it"
-            value="GitHub -> Settings -> Webhooks -> Add webhook"
-            helper="Create the webhook on the same repository shown above."
-            darkMode={darkMode}
-          />
-          <GitHubValueRow
-            label="Payload URL"
-            value={webhookUrl || "Save Step 1 and Step 2 first to reveal the URL"}
-            helper="Paste this into the Payload URL field in GitHub."
-            copyValue={webhookUrl || null}
-            darkMode={darkMode}
-          />
-          <GitHubValueRow
-            label="Content type"
-            value="application/json"
-            helper="Use JSON so Knoledgr can parse the delivery cleanly."
-            copyValue="application/json"
-            darkMode={darkMode}
-          />
-          <GitHubValueRow
-            label="Events"
-            value="push, pull_request"
-            helper="These two events power commit, pull request, and delivery updates."
-            copyValue="push,pull_request"
-            darkMode={darkMode}
-          />
-          <GitHubValueRow
-            label="Secret"
-            value={hasSecret ? "Use the same webhook secret saved in Step 2" : "Add the webhook secret in Step 2 before creating the GitHub webhook"}
-            helper="The GitHub webhook secret must match Knoledgr exactly."
-            darkMode={darkMode}
-          />
-          <GitHubValueRow
-            label="Linking format"
-            value="DECISION-123, RECALL-123, or #123"
-            helper="Use one of these patterns in PR titles, branches, or commits for automatic linking."
-            copyValue="DECISION-123, RECALL-123, #123"
-            darkMode={darkMode}
-          />
-        </GitHubPanel>
-      </div>
+            ) : null}
+          </GitHubPanel>
+        </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
-        <GitHubPanel
-          eyebrow="Webhook delivery monitor"
-          title="Confirm GitHub is sending traffic"
-          description="Processed, ignored, and failed deliveries stay visible here so you can verify the integration without jumping back into GitHub."
-          darkMode={darkMode}
-          action={
-            <div className="flex gap-2 flex-wrap">
-              <StatusPill label="Processed" value={processedCount} tone="emerald" darkMode={darkMode} />
-              <StatusPill label="Ignored" value={ignoredCount} tone="amber" darkMode={darkMode} />
-              <StatusPill label="Failed" value={failedCount} tone="rose" darkMode={darkMode} />
-            </div>
-          }
-        >
-          {deliveries.length ? (
-            <div className="space-y-2">
-              {deliveries.slice(0, 5).map((delivery) => (
-                <GitHubDeliveryRow key={delivery.id} delivery={delivery} darkMode={darkMode} />
+        <div className="space-y-4">
+          <GitHubPanel
+            eyebrow="Step 3"
+            title="Copy these exact GitHub values"
+            description="After the repository target and secret are saved, copy these values into GitHub exactly as shown."
+            darkMode={darkMode}
+            action={
+              webhookUrl ? <CopyShortcutButton label="Copy payload URL" value={webhookUrl} darkMode={darkMode} /> : null
+            }
+          >
+            {!webhookUrl ? (
+              <GitHubEmptyCard
+                title="Payload URL appears after you save"
+                description="Save the repository target and webhook secret first. Knoledgr will then reveal the exact payload URL GitHub should send to."
+                darkMode={darkMode}
+              />
+            ) : null}
+            <div className="grid gap-3">
+              {webhookValues.map((item) => (
+                <GitHubValueRow
+                  key={item.label}
+                  label={item.label}
+                  value={item.value}
+                  helper={item.helper}
+                  copyValue={item.copyValue || null}
+                  darkMode={darkMode}
+                />
               ))}
             </div>
-          ) : (
-            <GitHubEmptyCard
-              title="No webhook deliveries yet"
-              description="After you add the GitHub webhook and trigger a push or pull request event, Knoledgr will show the newest deliveries here."
-              darkMode={darkMode}
-            />
-          )}
-        </GitHubPanel>
+          </GitHubPanel>
 
-        <GitHubPanel
-          eyebrow="Repository activity"
-          title="Recent repository activity"
-          description="Use recent pull requests and commits to confirm the connection is seeing real engineering work."
-          darkMode={darkMode}
-        >
-          {recentActivity.length ? (
-            <div className="space-y-2">
-              {recentActivity.slice(0, 5).map((item, index) => (
-                <GitHubActivityRow key={`${item.type}-${item.url || index}`} item={item} darkMode={darkMode} />
-              ))}
-            </div>
-          ) : (
-            <GitHubEmptyCard
-              title="No recent activity yet"
-              description="Once the repository is connected and GitHub starts sending traffic, pull requests and commits will appear here."
-              darkMode={darkMode}
-            />
-          )}
-        </GitHubPanel>
+          <GitHubPanel
+            eyebrow="Validation"
+            title="Webhook deliveries"
+            description="Use this monitor to confirm that GitHub is actually reaching Knoledgr after you add the webhook."
+            darkMode={darkMode}
+            action={
+              <div className="flex gap-2 flex-wrap">
+                <StatusPill label="Processed" value={processedCount} tone="emerald" darkMode={darkMode} />
+                <StatusPill label="Ignored" value={ignoredCount} tone="amber" darkMode={darkMode} />
+                <StatusPill label="Failed" value={failedCount} tone="rose" darkMode={darkMode} />
+              </div>
+            }
+          >
+            {deliveries.length ? (
+              <div className="space-y-2">
+                {deliveries.slice(0, 5).map((delivery) => (
+                  <GitHubDeliveryRow key={delivery.id} delivery={delivery} darkMode={darkMode} />
+                ))}
+              </div>
+            ) : (
+              <GitHubEmptyCard
+                title="No webhook deliveries yet"
+                description="After you add the GitHub webhook and trigger a push or pull request event, Knoledgr will show the newest deliveries here."
+                darkMode={darkMode}
+              />
+            )}
+          </GitHubPanel>
+        </div>
       </div>
 
-      <GitHubDecisionLinker enabled={value.enabled} darkMode={darkMode} repoSlug={repoSlug} />
+      <GitHubPanel
+        eyebrow="After setup"
+        title="Use the connected repository"
+        description="These tools matter after the connection is in place. Knoledgr keeps them below the setup flow so they stop competing with the initial rollout."
+        darkMode={darkMode}
+      >
+        {canOperate ? (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <GitHubPanel
+              eyebrow="Decision links"
+              title="Link pull requests to decision records"
+              description="Search the connected repository, review the candidate list, and attach the cleanest implementation record to the right decision."
+              darkMode={darkMode}
+            >
+              <GitHubDecisionLinker enabled={value.enabled} darkMode={darkMode} repoSlug={repoSlug} />
+            </GitHubPanel>
+
+            <GitHubPanel
+              eyebrow="Repository activity"
+              title="Recent repository activity"
+              description="Use recent pull requests and commits to confirm the connection is seeing real engineering work."
+              darkMode={darkMode}
+            >
+              {recentActivity.length ? (
+                <div className="space-y-2">
+                  {recentActivity.slice(0, 5).map((item, index) => (
+                    <GitHubActivityRow key={`${item.type}-${item.url || index}`} item={item} darkMode={darkMode} />
+                  ))}
+                </div>
+              ) : (
+                <GitHubEmptyCard
+                  title="No recent activity yet"
+                  description="Once the repository is connected and GitHub starts sending traffic, pull requests and commits will appear here."
+                  darkMode={darkMode}
+                />
+              )}
+            </GitHubPanel>
+          </div>
+        ) : (
+          <GitHubEmptyCard
+            title="Finish the connection first"
+            description="Advanced GitHub tools appear here after the repository target is saved and Knoledgr can start observing real repo traffic."
+            darkMode={darkMode}
+          />
+        )}
+      </GitHubPanel>
     </div>
   );
-}
-
-function StatusPill({ label, value, tone, darkMode }) {
-  const styles = {
-    emerald: darkMode ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-200 bg-emerald-50 text-emerald-800",
-    amber: darkMode ? "border-amber-500/40 bg-amber-500/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800",
-    rose: darkMode ? "border-rose-500/40 bg-rose-500/10 text-rose-200" : "border-rose-200 bg-rose-50 text-rose-800",
-    sky: darkMode ? "border-sky-500/40 bg-sky-500/10 text-sky-200" : "border-sky-200 bg-sky-50 text-sky-800",
-    slate: darkMode ? "border-stone-600 bg-stone-900 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700",
-  };
-  return (
-    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${styles[tone]}`}>
-      {label}
-      <span>{value}</span>
-    </span>
-  );
-}
-
-function DeliveryStateBadge({ state, darkMode, kind = "state" }) {
-  const stateMap =
-    kind === "signature"
-      ? {
-          signed: darkMode ? "border-sky-500/40 bg-sky-500/10 text-sky-200" : "border-sky-200 bg-sky-50 text-sky-800",
-          unsigned: darkMode ? "border-stone-600 bg-stone-800 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700",
-        }
-      : {
-          processed: darkMode ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-200 bg-emerald-50 text-emerald-800",
-          ignored: darkMode ? "border-amber-500/40 bg-amber-500/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800",
-          failed: darkMode ? "border-rose-500/40 bg-rose-500/10 text-rose-200" : "border-rose-200 bg-rose-50 text-rose-800",
-        };
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${stateMap[state] || stateMap.failed}`}>
-      {state.replaceAll("_", " ")}
-    </span>
-  );
+  */
 }
 
 function SignalCard({ label, value, darkMode }) {
@@ -1877,205 +1913,6 @@ function SignalCard({ label, value, darkMode }) {
         {label}
       </p>
       <p className={`mt-2 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
-    </div>
-  );
-}
-
-function GitHubPanel({ eyebrow, title, description, darkMode, action = null, children }) {
-  return (
-    <section
-      className={`rounded-[24px] border p-5 ${
-        darkMode
-          ? "border-stone-700 bg-[linear-gradient(180deg,rgba(17,24,39,0.9),rgba(15,23,42,0.82))]"
-          : "border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,245,249,0.92))] shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
-      }`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-2xl">
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-sky-300/80" : "text-sky-700"}`}>
-            {eyebrow}
-          </p>
-          <h4 className={`mt-2 text-lg font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{title}</h4>
-          <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{description}</p>
-        </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
-      </div>
-      <div className="mt-5 space-y-4">{children}</div>
-    </section>
-  );
-}
-
-function GitHubStepCard({ step, title, detail, state, tone = "slate", darkMode }) {
-  const tones = {
-    emerald: darkMode
-      ? "border-emerald-500/30 bg-emerald-500/10"
-      : "border-emerald-200 bg-emerald-50/90",
-    amber: darkMode
-      ? "border-amber-500/30 bg-amber-500/10"
-      : "border-amber-200 bg-amber-50/90",
-    sky: darkMode
-      ? "border-sky-500/30 bg-sky-500/10"
-      : "border-sky-200 bg-sky-50/90",
-    slate: darkMode
-      ? "border-stone-700 bg-stone-900/90"
-      : "border-stone-200 bg-white/90",
-  };
-
-  return (
-    <div className={`rounded-2xl border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-start justify-between gap-3">
-        <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-          {step}
-        </p>
-        <span
-          className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-            darkMode ? "border-stone-600 bg-stone-900 text-stone-200" : "border-stone-200 bg-white text-stone-700"
-          }`}
-        >
-          {state}
-        </span>
-      </div>
-      <p className={`mt-3 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{title}</p>
-      <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{detail}</p>
-    </div>
-  );
-}
-
-function GitHubValueRow({ label, value, helper, darkMode, copyValue = null }) {
-  return (
-    <div
-      className={`rounded-xl border px-4 py-3 ${
-        darkMode ? "border-stone-700 bg-stone-900/90 text-stone-200" : "border-stone-200 bg-white/90 text-stone-700"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-            {label}
-          </p>
-          <p className={`mt-2 break-all text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
-          <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-stone-400" : "text-stone-500"}`}>{helper}</p>
-        </div>
-        {copyValue ? <CopyShortcutButton label="Copy" value={copyValue} darkMode={darkMode} compact /> : null}
-      </div>
-    </div>
-  );
-}
-
-function CopyShortcutButton({ label, value, darkMode, compact = false }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    if (!value || !navigator?.clipboard?.writeText) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className={`inline-flex rounded-full border font-semibold ${
-        compact ? "px-2.5 py-1 text-[11px]" : "px-3 py-1.5 text-xs"
-      } ${
-        darkMode
-          ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
-          : "border-stone-300 bg-white text-stone-800 hover:border-sky-500"
-      }`}
-    >
-      {copied ? "Copied" : label}
-    </button>
-  );
-}
-
-function GitHubEmptyCard({ title, description, darkMode }) {
-  return (
-    <div
-      className={`rounded-2xl border border-dashed px-4 py-5 ${
-        darkMode ? "border-stone-600 bg-stone-900/80 text-stone-300" : "border-stone-300 bg-white/80 text-stone-600"
-      }`}
-    >
-      <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{title}</p>
-      <p className="mt-2 text-sm leading-6">{description}</p>
-    </div>
-  );
-}
-
-function GitHubDeliveryRow({ delivery, darkMode }) {
-  return (
-    <div
-      className={`rounded-2xl border px-4 py-4 ${
-        darkMode ? "border-stone-700 bg-stone-900/90 text-stone-200" : "border-stone-200 bg-white text-stone-700"
-      }`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
-            {[delivery.event, delivery.action || null].filter(Boolean).join(" | ")}
-          </p>
-          <p className={`mt-1 text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-            {[
-              delivery.delivery_id ? `Delivery ${delivery.delivery_id}` : null,
-              delivery.created_at ? new Date(delivery.created_at).toLocaleString() : null,
-              delivery.repository_owner && delivery.repository_name ? `${delivery.repository_owner}/${delivery.repository_name}` : null,
-            ]
-              .filter(Boolean)
-              .join(" | ")}
-          </p>
-          {delivery.message ? (
-            <p className={`mt-2 text-xs leading-5 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{delivery.message}</p>
-          ) : null}
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <DeliveryStateBadge state={delivery.processing_state} darkMode={darkMode} />
-          <DeliveryStateBadge
-            state={delivery.signature_valid ? "signed" : "unsigned"}
-            darkMode={darkMode}
-            kind="signature"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GitHubActivityRow({ item, darkMode }) {
-  const itemType = (item.type || "activity").replaceAll("_", " ");
-  return (
-    <div
-      className={`rounded-2xl border px-4 py-4 ${
-        darkMode ? "border-stone-700 bg-stone-900/90 text-stone-200" : "border-stone-200 bg-white text-stone-700"
-      }`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.title || itemType}</p>
-          <p className={`mt-1 text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-            {[itemType, item.subtitle, item.author, item.timestamp ? new Date(item.timestamp).toLocaleString() : null]
-              .filter(Boolean)
-              .join(" | ")}
-          </p>
-        </div>
-        {item.url ? (
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noreferrer"
-            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-              darkMode
-                ? "border-stone-600 bg-stone-800 text-stone-100 hover:border-sky-400"
-                : "border-stone-300 bg-stone-50 text-stone-800 hover:border-sky-500"
-            }`}
-          >
-            Open
-          </a>
-        ) : null}
-      </div>
     </div>
   );
 }
@@ -2465,290 +2302,5 @@ function GuideList({ title, items, darkMode }) {
         ))}
       </div>
     </div>
-  );
-}
-
-function JiraConfig({ value, onChange, darkMode }) {
-  return (
-    <div className="space-y-5">
-      <Field label="Site URL" hint="Example: https://your-team.atlassian.net" darkMode={darkMode}>
-        <ClipboardInput
-          id="jira-site-url"
-          darkMode={darkMode}
-          type="url"
-          value={value.site_url}
-          placeholder="https://your-team.atlassian.net"
-          pasteLabel="Paste site URL"
-          onPasteValue={(pasted) => onChange((prev) => ({ ...prev, site_url: pasted }))}
-          onChange={(e) => onChange((prev) => ({ ...prev, site_url: e.target.value }))}
-        />
-      </Field>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Jira Email" darkMode={darkMode}>
-          <ClipboardInput
-            id="jira-email"
-            darkMode={darkMode}
-            type="email"
-            value={value.email}
-            placeholder="name@company.com"
-            pasteLabel="Paste email"
-            onPasteValue={(pasted) => onChange((prev) => ({ ...prev, email: pasted }))}
-            onChange={(e) => onChange((prev) => ({ ...prev, email: e.target.value }))}
-          />
-        </Field>
-        <Field label="API Token" darkMode={darkMode}>
-          <ClipboardInput
-            id="jira-api-token"
-            darkMode={darkMode}
-            type="password"
-            value={value.api_token}
-            placeholder="Atlassian API token"
-            pasteLabel="Paste token"
-            onPasteValue={(pasted) => onChange((prev) => ({ ...prev, api_token: pasted }))}
-            onChange={(e) => onChange((prev) => ({ ...prev, api_token: e.target.value }))}
-          />
-        </Field>
-      </div>
-      <Check
-        checked={value.auto_sync_issues}
-        onChange={(e) => onChange((prev) => ({ ...prev, auto_sync_issues: e.target.checked }))}
-        label="Auto-sync Jira issues"
-        darkMode={darkMode}
-      />
-    </div>
-  );
-}
-
-function GitHubDecisionLinker({ enabled, darkMode, repoSlug }) {
-  const [decisionId, setDecisionId] = useState("");
-  const [decisions, setDecisions] = useState([]);
-  const [prs, setPrs] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [linking, setLinking] = useState(null);
-  const [searched, setSearched] = useState(false);
-  const [linkMessage, setLinkMessage] = useState("");
-
-  useEffect(() => {
-    if (!enabled) return;
-    fetchDecisions();
-  }, [enabled]);
-
-  const fetchDecisions = async () => {
-    try {
-      const res = await api.get("/api/decisions/");
-      const payload = Array.isArray(res.data) ? res.data : res.data?.results || [];
-      setDecisions(payload);
-    } catch {
-      setDecisions([]);
-    }
-  };
-
-  const searchPRs = async () => {
-    if (!decisionId) return;
-    setLoading(true);
-    setSearched(true);
-    setLinkMessage("");
-    try {
-      const res = await api.get(`/api/integrations/github/search/${decisionId}/`);
-      setPrs(res.data?.prs || []);
-    } catch {
-      setPrs([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const linkPR = async (prUrl) => {
-    setLinking(prUrl);
-    setLinkMessage("");
-    try {
-      await api.post(`/api/integrations/github/link/${decisionId}/`, { pr_url: prUrl });
-      setLinkMessage("Pull request linked to the selected decision.");
-    } finally {
-      setLinking(null);
-    }
-  };
-
-  const selectedDecision = decisions.find((item) => String(item.id) === String(decisionId));
-
-  if (!enabled) {
-    return (
-      <GitHubEmptyCard
-        title="Enable GitHub before linking pull requests"
-        description="Turn the GitHub integration on, validate the repository connection, then return here to attach pull requests directly to decisions."
-        darkMode={darkMode}
-      />
-    );
-  }
-
-  return (
-    <section
-      className={`rounded-xl border p-4 space-y-3 ${
-        darkMode
-          ? "border-stone-700 bg-[linear-gradient(180deg,rgba(17,24,39,0.9),rgba(15,23,42,0.82))]"
-          : "border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,245,249,0.92))] shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
-      }`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-3xl">
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-sky-300/80" : "text-sky-700"}`}>
-            PR linking workbench
-          </p>
-          <h4 className={`mt-2 text-lg font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
-            Attach pull requests to the right decision
-          </h4>
-          <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
-            Pick a decision, search {repoSlug || "the connected repository"}, and connect the matching pull request without leaving
-            the GitHub integration workspace.
-          </p>
-        </div>
-        <div
-          className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-            darkMode ? "border-stone-600 bg-stone-900 text-stone-200" : "border-stone-300 bg-white text-stone-700"
-          }`}
-        >
-          {repoSlug || "Repository pending"}
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div
-          className={`rounded-2xl border p-4 ${
-            darkMode ? "border-stone-700 bg-stone-900/90" : "border-stone-200 bg-white/90"
-          }`}
-        >
-          <div className="flex flex-col gap-2 md:flex-row">
-            <select
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
-                darkMode ? "border-stone-600 bg-stone-950 text-stone-100" : "border-stone-300 bg-white"
-              }`}
-              value={decisionId}
-              onChange={(e) => setDecisionId(e.target.value)}
-            >
-              <option value="">Select a decision...</option>
-              {decisions.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.title}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={searchPRs}
-              disabled={!decisionId || loading}
-              className={`rounded-lg border px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 ${
-                darkMode ? "border-sky-500 bg-sky-600" : "border-stone-900 bg-stone-900"
-              }`}
-            >
-              {loading ? "Searching..." : "Search PRs"}
-            </button>
-          </div>
-
-          {linkMessage ? (
-            <div
-              className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
-                darkMode ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-emerald-200 bg-emerald-50 text-emerald-800"
-              }`}
-            >
-              {linkMessage}
-            </div>
-          ) : null}
-
-          <div className="mt-4 space-y-3">
-            {prs.length > 0 ? (
-              prs.map((pr) => (
-                <div
-                  key={pr.number}
-                  className={`rounded-2xl border p-4 ${
-                    darkMode ? "border-stone-700 bg-stone-950/90" : "border-stone-200 bg-white"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{pr.title}</p>
-                      <p className={`mt-1 text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-                        #{pr.number} | {(pr.state || "open").replaceAll("_", " ")}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      {pr.url ? (
-                        <a
-                          href={pr.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                            darkMode
-                              ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-sky-400"
-                              : "border-stone-300 bg-stone-50 text-stone-800 hover:border-sky-500"
-                          }`}
-                        >
-                          Open GitHub
-                        </a>
-                      ) : null}
-                      <button
-                        onClick={() => linkPR(pr.url)}
-                        disabled={linking === pr.url || !pr.url}
-                        className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                          darkMode
-                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                            : "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        }`}
-                      >
-                        {linking === pr.url ? "Linking..." : "Link to decision"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : searched && !loading ? (
-              <GitHubEmptyCard
-                title="No matching pull requests found"
-                description="Try a different decision, confirm the repository is correct, or create a PR title that includes the decision reference format."
-                darkMode={darkMode}
-              />
-            ) : (
-              <GitHubEmptyCard
-                title="Search for pull requests after selecting a decision"
-                description="Knoledgr will look for repository pull requests that can be attached to the selected decision record."
-                darkMode={darkMode}
-              />
-            )}
-          </div>
-        </div>
-
-        <div
-          className={`rounded-2xl border p-4 ${
-            darkMode ? "border-stone-700 bg-stone-900/90 text-stone-200" : "border-stone-200 bg-white/90 text-stone-700"
-          }`}
-        >
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-sky-300/80" : "text-sky-700"}`}>
-            Selected decision
-          </p>
-          <p className={`mt-2 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
-            {selectedDecision?.title || "Choose a decision to begin"}
-          </p>
-          <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
-            {selectedDecision
-              ? "Search pull requests, review the candidate list, then link the PR that best represents the implementation path."
-              : "The linker becomes useful once you pick the decision record that should own the engineering work."}
-          </p>
-          <div className="mt-4 space-y-2">
-            {[
-              "Search after saving the repository configuration and validating the GitHub connection.",
-              "Prefer pull requests whose titles, branches, or commits already include DECISION-123, RECALL-123, or #123.",
-              "Link the cleanest implementation record first so decision timelines stay readable.",
-            ].map((tip) => (
-              <div
-                key={tip}
-                className={`rounded-xl border px-3 py-3 text-sm ${
-                  darkMode ? "border-stone-700 bg-stone-950/70 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700"
-                }`}
-              >
-                {tip}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }

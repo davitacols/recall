@@ -114,16 +114,17 @@ function FeatureLink({ to, icon: Icon, label }) {
       to={to}
       className="ui-btn-polish"
       style={{
-        borderRadius: 10,
+        borderRadius: 8,
         border: "1px solid var(--app-border-strong)",
+        background: "var(--app-panel)",
         color: "var(--app-muted)",
         textDecoration: "none",
-        padding: "8px 10px",
-        fontSize: 12,
+        padding: "7px 9px",
+        fontSize: 11,
         fontWeight: 700,
         display: "inline-flex",
         alignItems: "center",
-        gap: 6,
+        gap: 5,
       }}
     >
       <Icon style={{ width: 14, height: 14 }} />
@@ -134,10 +135,10 @@ function FeatureLink({ to, icon: Icon, label }) {
 
 function StatCard({ label, value, helper, tone, palette }) {
   return (
-    <article style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }}>
-      <p style={{ margin: "0 0 4px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: palette.muted }}>{label}</p>
-      <p style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 800, color: tone }}>{value}</p>
-      <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>{helper}</p>
+    <article style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
+      <p style={{ margin: "0 0 3px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: palette.muted }}>{label}</p>
+      <p style={{ margin: "0 0 3px", fontSize: 22, fontWeight: 700, lineHeight: 1.05, color: tone }}>{value}</p>
+      <p style={{ margin: 0, fontSize: 11, lineHeight: 1.45, color: palette.muted }}>{helper}</p>
     </article>
   );
 }
@@ -339,9 +340,9 @@ export default function Knowledge() {
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
-          eyebrow="Knowledge Command"
+          eyebrow="Workspace Memory"
           title="Knowledge"
-          description="Search the organizational memory layer, jump into graph context, and surface missing knowledge before it turns into repeat work."
+          description="Search the memory layer, pivot into graph context, and spot missing knowledge before it turns into repeated work."
           stats={[
             { label: "Searchable items", value: stats.total_items, helper: "Indexed records across the workspace." },
             { label: "This week", value: stats.this_week, helper: "New knowledge added recently." },
@@ -353,16 +354,14 @@ export default function Knowledge() {
               style={{
                 ...knowledgeSpotlight,
                 border: `1px solid ${palette.border}`,
-                background: darkMode
-                  ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
-                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+                background: palette.card,
               }}
             >
               <p style={{ ...knowledgeSpotlightEyebrow, color: palette.muted }}>Trending now</p>
-              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+              <h3 style={{ margin: 0, fontSize: 18, lineHeight: 1.1, color: palette.text }}>
                 {newestTrending?.topic || newestTrending?.title || "No trending topic yet"}
               </h3>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
                 {newestTrending
                   ? `Use this as a jump point into the knowledge graph or run it as a search query to recover nearby context.`
                   : "Run a search or explore the graph to start building a more visible memory layer."}
@@ -403,8 +402,8 @@ export default function Knowledge() {
         <WorkspaceToolbar palette={palette}>
           <div style={knowledgeToolbarLayout}>
             <div style={knowledgeToolbarIntro}>
-              <p style={{ ...knowledgeToolbarEyebrow, color: palette.muted }}>Command Surface</p>
-              <h2 style={{ ...knowledgeToolbarTitle, color: palette.text }}>Search first, then pivot into graph, analytics, or health</h2>
+              <p style={{ ...knowledgeToolbarEyebrow, color: palette.muted }}>Search Surface</p>
+              <h2 style={{ ...knowledgeToolbarTitle, color: palette.text }}>Search once, then pivot into graph, analytics, or health</h2>
               <p style={{ ...knowledgeToolbarCopy, color: palette.muted }}>{commandSummary}</p>
             </div>
             <div style={knowledgeToolbarChipRail}>
@@ -432,8 +431,8 @@ export default function Knowledge() {
           <div style={commandStudioHeader}>
             <div>
               <p style={{ ...knowledgeToolbarEyebrow, color: palette.muted, margin: 0 }}>Prompt Studio</p>
-              <h2 style={{ margin: "6px 0 4px", color: palette.text, fontSize: 26, lineHeight: 1.04 }}>Run a grounded workspace query</h2>
-              <p style={{ margin: 0, color: palette.muted, fontSize: 13, lineHeight: 1.65 }}>
+              <h2 style={{ margin: "4px 0 4px", color: palette.text, fontSize: 22, lineHeight: 1.08 }}>Run a grounded workspace query</h2>
+              <p style={{ margin: 0, color: palette.muted, fontSize: 12, lineHeight: 1.6 }}>
                 Search for decisions, blockers, experts, artifacts, or context trails, then branch into graph or downstream records.
               </p>
             </div>
@@ -450,10 +449,10 @@ export default function Knowledge() {
               runSearch(query);
             }}
             style={{
-              borderRadius: 16,
+              borderRadius: 14,
               border: `1px solid ${palette.border}`,
               background: palette.cardAlt,
-              padding: 10,
+              padding: 8,
               display: "grid",
               gridTemplateColumns: "minmax(0,1fr) auto auto",
               gap: 8,
@@ -470,7 +469,7 @@ export default function Knowledge() {
                   setQuery(event.target.value);
                   setShowSuggestions(true);
                 }}
-                placeholder="Search for prior decisions, blockers, owners, knowledge gaps, or implementation context..."
+                placeholder="Search for prior decisions, blockers, owners, or implementation context..."
                 style={{ ...ui.input, paddingLeft: 35, paddingRight: 34 }}
               />
               {query ? (
@@ -501,7 +500,7 @@ export default function Knowledge() {
                     left: 0,
                     right: 0,
                     zIndex: 5,
-                    borderRadius: 14,
+                    borderRadius: 12,
                     border: `1px solid ${palette.border}`,
                     background: palette.card,
                     boxShadow: "var(--ui-shadow-lg)",
@@ -564,16 +563,16 @@ export default function Knowledge() {
                   runSearch(quickQuery);
                 }}
                 className="ui-btn-polish ui-focus-ring"
-                style={{
-                  border: `1px solid ${palette.border}`,
-                  borderRadius: 999,
-                  background: "transparent",
-                  color: palette.muted,
-                  fontSize: 12,
-                  padding: "6px 10px",
-                  cursor: "pointer",
-                }}
-              >
+                  style={{
+                    border: `1px solid ${palette.border}`,
+                    borderRadius: 999,
+                    background: palette.cardAlt,
+                    color: palette.muted,
+                    fontSize: 12,
+                    padding: "5px 9px",
+                    cursor: "pointer",
+                  }}
+                >
                 {quickQuery}
               </button>
             ))}
@@ -595,9 +594,9 @@ export default function Knowledge() {
                   style={{
                     borderRadius: 999,
                     border: `1px solid ${active ? palette.accent : palette.border}`,
-                    background: active ? (darkMode ? "rgba(96,165,250,0.14)" : "#dbeafe") : "transparent",
+                    background: active ? (darkMode ? "rgba(96,165,250,0.12)" : "#eaf2ff") : palette.cardAlt,
                     color: active ? palette.text : palette.muted,
-                    padding: "7px 11px",
+                    padding: "6px 10px",
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -639,8 +638,8 @@ export default function Knowledge() {
                         border: `1px solid ${palette.border}`,
                         background: palette.cardAlt,
                         color: palette.text,
-                        padding: "8px 11px",
-                        fontSize: 12,
+                        padding: "6px 10px",
+                        fontSize: 11,
                         fontWeight: 700,
                       }}
                     >
@@ -809,7 +808,7 @@ export default function Knowledge() {
                         <article
                           key={`${type}_${item.id}_${index}`}
                           className="ui-card-lift ui-smooth"
-                          style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16 }}
+                          style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }}
                         >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -821,7 +820,7 @@ export default function Knowledge() {
                                 padding: "3px 8px",
                                 color: palette.muted,
                                 border: `1px solid ${palette.border}`,
-                                background: darkMode ? "#2b2227" : "#f3e9da",
+                                background: palette.cardAlt,
                               }}
                             >
                               {LABELS[type] || "Other"}
@@ -866,17 +865,17 @@ export default function Knowledge() {
 
 const knowledgeSpotlight = {
   minWidth: 240,
-  borderRadius: 24,
-  padding: 16,
+  borderRadius: 16,
+  padding: 14,
   display: "grid",
-  gap: 10,
+  gap: 8,
 };
 
 const knowledgeSpotlightEyebrow = {
   margin: 0,
   fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.14em",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
@@ -891,14 +890,14 @@ const knowledgeSpotlightChip = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
+  padding: "6px 10px",
+  fontSize: 11,
   fontWeight: 700,
 };
 
 const knowledgeToolbarLayout = {
   display: "grid",
-  gap: 14,
+  gap: 10,
 };
 
 const knowledgeToolbarIntro = {
@@ -908,22 +907,22 @@ const knowledgeToolbarIntro = {
 
 const knowledgeToolbarEyebrow = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.14em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const knowledgeToolbarTitle = {
   margin: 0,
-  fontSize: 24,
-  lineHeight: 1.04,
+  fontSize: 20,
+  lineHeight: 1.08,
 };
 
 const knowledgeToolbarCopy = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.65,
+  fontSize: 12,
+  lineHeight: 1.55,
   maxWidth: 760,
 };
 
@@ -938,24 +937,24 @@ const knowledgeToolbarChip = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
+  padding: "6px 10px",
+  fontSize: 11,
   fontWeight: 700,
 };
 
 const commandStudio = {
-  borderRadius: 20,
-  padding: 18,
+  borderRadius: 16,
+  padding: 14,
   marginBottom: 14,
   display: "grid",
-  gap: 14,
+  gap: 12,
 };
 
 const commandStudioHeader = {
   display: "flex",
   justifyContent: "space-between",
   gap: 12,
-  alignItems: "end",
+  alignItems: "start",
   flexWrap: "wrap",
 };
 
@@ -969,22 +968,22 @@ const sectionIntro = {
 
 const sectionTitle = {
   margin: "4px 0 0",
-  fontSize: 26,
-  lineHeight: 1.03,
+  fontSize: 20,
+  lineHeight: 1.08,
 };
 
 const sectionCopy = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.65,
+  fontSize: 12,
+  lineHeight: 1.55,
   maxWidth: 620,
 };
 
 const trendCard = {
-  borderRadius: 18,
-  padding: 14,
+  borderRadius: 14,
+  padding: 12,
   textAlign: "left",
   display: "grid",
-  gap: 6,
+  gap: 5,
   cursor: "pointer",
 };

@@ -21,6 +21,7 @@ import { ListSkeleton } from "../components/Skeleton";
 import { NoData, NoResults } from "../components/EmptyState";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { buildAskRecallPath } from "../utils/askRecall";
 import { createPlainTextPreview, hasMeaningfulText } from "../utils/textPreview";
 
 function Conversations() {
@@ -110,6 +111,9 @@ function Conversations() {
   const documentedThreads = preparedConversations.filter((conversation) =>
     hasMeaningfulText(conversation.content || conversation.description)
   ).length;
+  const conversationsAskRecallQuestion = latestConversation
+    ? "Which conversations need response, a stronger summary, or conversion into a decision right now?"
+    : "What discussion should we capture first so important workspace context does not get lost?";
 
   const linkedFeatures = [
     { label: "Knowledge Search", to: "/knowledge", icon: MagnifyingGlassIcon, helper: "Find prior context before posting" },
@@ -181,7 +185,7 @@ function Conversations() {
         palette={palette}
         darkMode={darkMode}
         variant="memory"
-        eyebrow="Conversation Workspace"
+        eyebrow="Workspace Memory"
         title="Conversations"
         description="Scan which threads need response, which ones already have enough signal, and move discussion into decisions or execution without losing context."
         stats={[
@@ -195,16 +199,14 @@ function Conversations() {
             style={{
               ...spotlightCard,
               border: `1px solid ${palette.border}`,
-              background: darkMode
-                ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
-                : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
+              background: palette.card,
             }}
           >
             <p style={{ ...spotlightEyebrow, color: palette.muted }}>Latest thread</p>
-            <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
+            <h3 style={{ margin: 0, fontSize: 18, lineHeight: 1.08, color: palette.text }}>
               {latestConversation?.title || "No conversations yet"}
             </h3>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
               {latestConversation?.summary || "Start a thread to capture questions, decisions, blockers, and discussion context."}
             </p>
             {latestConversation ? (
@@ -224,6 +226,13 @@ function Conversations() {
             <button className="ui-btn-polish ui-focus-ring" onClick={loadConversations} style={ui.secondaryButton}>
               <ArrowPathIcon style={icon14} /> Refresh
             </button>
+            <button
+              className="ui-btn-polish ui-focus-ring"
+              onClick={() => navigate(buildAskRecallPath(conversationsAskRecallQuestion))}
+              style={ui.secondaryButton}
+            >
+              <SparklesIcon style={icon14} /> Ask Recall
+            </button>
             <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={ui.primaryButton}>
               <PlusIcon style={icon14} /> New Conversation
             </button>
@@ -234,10 +243,10 @@ function Conversations() {
       <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
         <div style={toolbarLayout}>
           <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Discussion Flow</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>Keep the list centered on response pressure, not just chronology</h2>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Thread List</p>
+            <h2 style={{ ...toolbarTitle, color: palette.text }}>Keep the next response visible</h2>
             <p style={{ ...toolbarCopy, color: palette.muted }}>
-              Threads with no reply or weak context now surface first, while the rest of the discussion atlas stays easier to scan and route onward.
+              Threads with no reply or weak context surface first, while the rest of the discussion atlas stays easy to scan and route onward.
             </p>
           </div>
           <div style={toolbarChipRail}>
@@ -265,10 +274,10 @@ function Conversations() {
               style={{
                 ...featureCard,
                 border: `1px solid ${palette.border}`,
-                background: palette.panel,
+                background: palette.card,
               }}
             >
-              <span style={{ ...featureIconWrap, background: palette.panelAlt }}>
+              <span style={{ ...featureIconWrap, background: palette.cardAlt }}>
                 <Icon style={icon16} />
               </span>
               <div>
@@ -287,12 +296,12 @@ function Conversations() {
         <StatCard label="Visible" value={filteredConversations.length} palette={palette} />
       </section>
 
-      <section className="ui-enter" style={{ ...filterShell, border: `1px solid ${palette.border}`, background: palette.panel }}>
-        <div style={{ ...searchWrap, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+      <section className="ui-enter" style={{ ...filterShell, border: `1px solid ${palette.border}`, background: palette.card }}>
+        <div style={{ ...searchWrap, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
           <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
           <input
             type="text"
-            placeholder="Search conversations"
+            placeholder="Search threads"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             style={{ ...searchInput, color: palette.text }}
@@ -309,14 +318,14 @@ function Conversations() {
                 ...typeChip,
                 border: `1px solid ${palette.border}`,
                 color: filterType === type ? palette.text : palette.muted,
-                background: filterType === type ? palette.panelAlt : "transparent",
+                background: filterType === type ? palette.cardAlt : palette.card,
               }}
             >
               {type} ({typeCounts[type] || 0})
             </button>
           ))}
         </div>
-        <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...sortSelect, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>
+        <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...sortSelect, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
           <option value="recent">Sort: Most Recent</option>
           <option value="replies">Sort: Most Replies</option>
           <option value="views">Sort: Most Views</option>
@@ -330,7 +339,7 @@ function Conversations() {
           <NoData type="conversations" onCreate={() => navigate("/conversations/new")} />
         )
       ) : (
-        <div style={{ display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", gap: 14 }}>
           {needsFollowUpItems.length ? (
             <ConversationSection
               title="Needs response"
@@ -368,7 +377,7 @@ function ConversationSection({ title, description, items, navigate, palette, isM
   }
 
   return (
-    <section style={{ display: "grid", gap: 12 }}>
+    <section style={{ display: "grid", gap: 10 }}>
       <div style={sectionIntro}>
         <div>
           <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Conversation Section</p>
@@ -387,37 +396,37 @@ function ConversationSection({ title, description, items, navigate, palette, isM
               ...conversationCard,
               gridTemplateColumns: isMobile ? "1fr" : conversationCard.gridTemplateColumns,
               border: `1px solid ${palette.border}`,
-              background: palette.panel,
+              background: palette.card,
             }}
           >
-            <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "grid", gap: 10 }}>
               <div style={cardTopRow}>
                 <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.text }}>
                   {conversation.post_type || "discussion"}
                 </span>
-                <span style={{ ...typeBadge, border: `1px solid ${conversation.needsFollowUp ? palette.accent : palette.border}`, color: conversation.needsFollowUp ? palette.link : palette.muted, background: conversation.needsFollowUp ? palette.accentSoft : "transparent" }}>
+                <span style={{ ...typeBadge, border: `1px solid ${conversation.needsFollowUp ? palette.accent : palette.border}`, color: conversation.needsFollowUp ? palette.link : palette.muted, background: conversation.needsFollowUp ? palette.accentSoft : palette.cardAlt }}>
                   {conversation.momentumLabel}
                 </span>
-                {conversation.is_closed ? <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.muted }}>Closed</span> : null}
+                {conversation.is_closed ? <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.muted, background: palette.cardAlt }}>Closed</span> : null}
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
-                <h3 style={{ margin: 0, color: palette.text, fontSize: 18, lineHeight: 1.15 }}>
+                <h3 style={{ margin: 0, color: palette.text, fontSize: 16, lineHeight: 1.18 }}>
                   {conversation.title || conversation.question || "Untitled"}
                 </h3>
                 <p style={{ ...conversationSummary, color: palette.muted }}>{conversation.summary}</p>
               </div>
 
               <div style={threadMetrics}>
-                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                   <p style={{ ...metricLabel, color: palette.muted }}>Updated</p>
                   <p style={{ ...metricValue, color: palette.text }}>{conversation.createdLabel}</p>
                 </div>
-                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                   <p style={{ ...metricLabel, color: palette.muted }}>Replies</p>
                   <p style={{ ...metricValue, color: palette.text }}>{conversation.replies}</p>
                 </div>
-                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.panelAlt }}>
+                <div style={{ ...metricTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                   <p style={{ ...metricLabel, color: palette.muted }}>Views</p>
                   <p style={{ ...metricValue, color: palette.text }}>{conversation.views}</p>
                 </div>
@@ -490,9 +499,9 @@ function ConversationSection({ title, description, items, navigate, palette, isM
 
 function StatCard({ label, value, palette }) {
   return (
-    <article style={{ ...statCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-      <p style={{ margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", color: palette.muted }}>{label}</p>
-      <p style={{ margin: "6px 0 0", fontSize: 26, fontWeight: 800, color: palette.text }}>{value}</p>
+    <article style={{ ...statCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+      <p style={{ margin: 0, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: palette.muted }}>{label}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 700, color: palette.text }}>{value}</p>
     </article>
   );
 }
@@ -500,22 +509,22 @@ function StatCard({ label, value, palette }) {
 const page = {
   width: "100%",
   display: "grid",
-  gap: 16,
+  gap: 12,
 };
 
 const featureRail = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 10,
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: 8,
 };
 
 const featureCard = {
-  borderRadius: 18,
+  borderRadius: 14,
   textDecoration: "none",
-  padding: 12,
+  padding: 10,
   display: "grid",
   gridTemplateColumns: "auto minmax(0, 1fr)",
-  gap: 10,
+  gap: 8,
   alignItems: "start",
 };
 
@@ -531,24 +540,24 @@ const featureIconWrap = {
 const statsGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-  gap: 10,
+  gap: 8,
 };
 
 const statCard = {
-  borderRadius: 18,
-  padding: "13px 14px",
+  borderRadius: 14,
+  padding: "11px 12px",
 };
 
 const filterShell = {
-  borderRadius: 22,
-  padding: 14,
+  borderRadius: 16,
+  padding: 10,
   display: "grid",
-  gap: 10,
+  gap: 8,
 };
 
 const searchWrap = {
-  borderRadius: 10,
-  padding: "8px 10px",
+  borderRadius: 8,
+  padding: "7px 9px",
   display: "flex",
   alignItems: "center",
   gap: 8,
@@ -564,31 +573,31 @@ const searchInput = {
 
 const typeChip = {
   borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 12,
+  padding: "5px 9px",
+  fontSize: 11,
   fontWeight: 700,
   textTransform: "capitalize",
   cursor: "pointer",
 };
 
 const sortSelect = {
-  borderRadius: 10,
-  padding: "9px 10px",
-  fontSize: 13,
+  borderRadius: 8,
+  padding: "8px 9px",
+  fontSize: 12,
   outline: "none",
   width: "fit-content",
 };
 
 const listWrap = {
   display: "grid",
-  gap: 12,
+  gap: 10,
 };
 
 const conversationCard = {
-  borderRadius: 22,
-  padding: 18,
+  borderRadius: 14,
+  padding: 14,
   display: "grid",
-  gridTemplateColumns: "minmax(0,1fr) auto",
+  gridTemplateColumns: "minmax(0,1fr) 72px",
   gap: 12,
   cursor: "pointer",
 };
@@ -617,23 +626,23 @@ const metaRow = {
 };
 
 const linkFeatureButton = {
-  borderRadius: 9,
+  borderRadius: 8,
   border: "1px solid var(--app-border)",
-  padding: "6px 9px",
-  fontSize: 12,
+  padding: "5px 8px",
+  fontSize: 11,
   fontWeight: 700,
   display: "inline-flex",
   alignItems: "center",
   gap: 5,
-  background: "transparent",
+  background: "var(--ui-panel-alt)",
   color: "var(--app-text)",
   cursor: "pointer",
 };
 
 const conversationSummary = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.6,
+  fontSize: 12,
+  lineHeight: 1.55,
   display: "-webkit-box",
   overflow: "hidden",
   WebkitLineClamp: 3,
@@ -647,17 +656,17 @@ const threadMetrics = {
 };
 
 const metricTile = {
-  borderRadius: 16,
-  padding: "10px 12px",
+  borderRadius: 12,
+  padding: "8px 10px",
   display: "grid",
-  gap: 4,
+  gap: 3,
 };
 
 const metricLabel = {
   margin: 0,
-  fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.12em",
+  fontSize: 9,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
@@ -671,13 +680,13 @@ const metricValue = {
 const sideRail = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  gap: 6,
 };
 
 const authorAvatarWrap = {
-  width: 36,
-  height: 36,
-  borderRadius: 10,
+  width: 32,
+  height: 32,
+  borderRadius: 8,
   overflow: "hidden",
   background: "var(--app-gradient-accent)",
   display: "grid",
@@ -710,7 +719,7 @@ const deleteButton = {
 
 const toolbarLayout = {
   display: "grid",
-  gap: 14,
+  gap: 10,
 };
 
 const toolbarIntro = {
@@ -720,23 +729,23 @@ const toolbarIntro = {
 
 const toolbarEyebrow = {
   margin: 0,
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 700,
-  letterSpacing: "0.14em",
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const toolbarTitle = {
   margin: 0,
-  fontSize: 24,
-  lineHeight: 1.04,
+  fontSize: 20,
+  lineHeight: 1.08,
 };
 
 const toolbarCopy = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.65,
-  maxWidth: 760,
+  fontSize: 12,
+  lineHeight: 1.55,
+  maxWidth: 720,
 };
 
 const toolbarChipRail = {
@@ -750,24 +759,24 @@ const toolbarChip = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
+  padding: "6px 10px",
+  fontSize: 11,
   fontWeight: 700,
 };
 
 const spotlightCard = {
   minWidth: 240,
-  borderRadius: 24,
-  padding: 16,
+  borderRadius: 16,
+  padding: 14,
   display: "grid",
-  gap: 10,
+  gap: 8,
 };
 
 const spotlightEyebrow = {
   margin: 0,
   fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.14em",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
@@ -782,8 +791,8 @@ const spotlightChip = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
+  padding: "6px 10px",
+  fontSize: 11,
   fontWeight: 700,
 };
 
@@ -797,14 +806,14 @@ const sectionIntro = {
 
 const sectionTitle = {
   margin: "4px 0 0",
-  fontSize: 26,
-  lineHeight: 1.03,
+  fontSize: 20,
+  lineHeight: 1.08,
 };
 
 const sectionCopy = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.65,
+  fontSize: 12,
+  lineHeight: 1.55,
   maxWidth: 620,
 };
 

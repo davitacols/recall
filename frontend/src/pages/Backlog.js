@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, PlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { buildAskRecallPath } from "../utils/askRecall";
 import { createPlainTextPreview } from "../utils/textPreview";
 
 function Backlog() {
@@ -106,6 +107,12 @@ function Backlog() {
       : highPriorityCount > 0
         ? `${highPriorityCount} high-priority issue${highPriorityCount === 1 ? "" : "s"} should be shaped before the next sprint commit.`
         : "Backlog is populated and ready to be sorted into the next sprint window.";
+  const backlogAskRecallQuestion =
+    backlogCount === 0
+      ? "Is this project backlog truly clear, or is there missing work we should capture before the next sprint?"
+      : highPriorityCount > 0
+        ? "Which backlog issues should we shape or move into the next sprint first?"
+        : "Which backlog issues are most ready to move into the next sprint?";
 
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -145,9 +152,18 @@ function Backlog() {
             </div>
           }
           actions={
-            <button onClick={() => setShowCreate(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
-              <PlusIcon style={icon14} /> New Issue
-            </button>
+            <>
+              <button onClick={() => setShowCreate(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
+                <PlusIcon style={icon14} /> New Issue
+              </button>
+              <button
+                onClick={() => navigate(buildAskRecallPath(backlogAskRecallQuestion))}
+                className="ui-btn-polish ui-focus-ring"
+                style={ui.secondaryButton}
+              >
+                <SparklesIcon style={icon14} /> Ask Recall
+              </button>
+            </>
           }
         />
 

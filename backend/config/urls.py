@@ -33,7 +33,6 @@ urlpatterns = [
     path('api/business/', include('apps.business.urls')),
     path('api/integrations/', include('apps.integrations.urls')),
     path('api/integrations/fresh/', include('apps.integrations.urls_fresh')),
-    path('api/integrations/github/', include('apps.integrations.github_urls')),
     path('ws/notifications/', websocket_unavailable),
     path('ws/boards/<int:board_id>/', websocket_unavailable),
 ]

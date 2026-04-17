@@ -141,7 +141,7 @@ function PlanCard({ palette, ui, plan, currentPlanName, actionState, handlePlanA
           <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
             {plan.name}
           </p>
-          <h3 style={{ margin: 0, fontSize: 28, lineHeight: 0.95, letterSpacing: "-0.05em", color: palette.text, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif' }}>
+          <h3 style={{ margin: 0, fontSize: 28, lineHeight: 0.95, letterSpacing: "-0.05em", color: palette.text, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
             {plan.display_name}
           </h3>
         </div>
@@ -399,7 +399,7 @@ export default function Subscription() {
               <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: palette.muted }}>
                 Recommended Next Move
               </p>
-              <h3 style={{ margin: 0, fontSize: 24, lineHeight: 1.02, letterSpacing: "-0.05em", color: palette.text, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif' }}>
+              <h3 style={{ margin: 0, fontSize: 24, lineHeight: 1.02, letterSpacing: "-0.05em", color: palette.text, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                 {recommendedPlan?.display_name || "Review plans"}
               </h3>
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>

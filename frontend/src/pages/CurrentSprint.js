@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ExclamationTriangleIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ExclamationTriangleIcon, PlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { buildAskRecallPath } from "../utils/askRecall";
 
 function CurrentSprint() {
   const { darkMode } = useTheme();
@@ -91,6 +92,7 @@ function CurrentSprint() {
       : completion >= 70
         ? "Sprint is moving well and the blocker lane is clear."
         : "Delivery is active and the sprint still has room to tighten execution.";
+  const sprintAskRecallQuestion = `What is putting the ${sprint.name} sprint at risk, and what should we fix next?`;
 
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -128,6 +130,9 @@ function CurrentSprint() {
           actions={
             <>
               <Link to={`/projects/${sprint.project_id}`} className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Project</Link>
+              <Link to={buildAskRecallPath(sprintAskRecallQuestion)} className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
+                <SparklesIcon style={{ width: 14, height: 14 }} /> Ask Recall
+              </Link>
               <Link to="/sprint-management" className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Manage Sprints</Link>
             </>
           }

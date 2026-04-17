@@ -312,7 +312,7 @@
 
 .enterprise-metric-value {
   margin: 0;
-  font-family: var(--font-display, "Fraunces"), Georgia, serif;
+  font-family: var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 28px;
   line-height: 0.98;
   letter-spacing: -0.05em;

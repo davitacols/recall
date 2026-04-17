@@ -45,8 +45,8 @@ export const spacing = {
 
 export const typography = {
   fontFamily: {
-    body: '"Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    header: '"Fraunces", Georgia, serif',
+    body: '"League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    header: '"League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     mono: '"IBM Plex Mono", "Courier New", monospace',
   },
   sizes: {

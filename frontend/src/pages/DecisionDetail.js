@@ -8,6 +8,7 @@ import {
   ChartBarIcon,
   ExclamationTriangleIcon,
   LinkIcon,
+  SparklesIcon,
   UserIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
@@ -19,6 +20,7 @@ import QuickLink from "../components/QuickLink";
 import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import api from "../services/api";
 import { createPlainTextPreview } from "../utils/textPreview";
+import { buildAskRecallPath } from "../utils/askRecall";
 
 function DecisionDetail() {
   const { id } = useParams();
@@ -348,6 +350,7 @@ function DecisionDetail() {
     "Open the overview tab to document the actual decision statement.",
     240
   );
+  const decisionAskRecallQuestion = `Summarize the decision "${decision.title}" and tell me what is still unresolved.`;
   const rationaleSummary = createPlainTextPreview(
     decision.rationale,
     "Capture the rationale so future reviews can recover why this path was chosen.",
@@ -360,7 +363,7 @@ function DecisionDetail() {
       : "Outcome review will become more meaningful once implementation progresses.";
 
   return (
-    <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       <div
         style={{
           ...ambientLayer,
@@ -387,6 +390,13 @@ function DecisionDetail() {
             <>
               <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
                 <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
+              </button>
+              <button
+                className="ui-btn-polish ui-focus-ring"
+                onClick={() => navigate(buildAskRecallPath(decisionAskRecallQuestion))}
+                style={ui.secondaryButton}
+              >
+                <SparklesIcon style={{ width: 14, height: 14 }} /> Ask Recall
               </button>
               <QuickLink
                 sourceType="decisions.decision"

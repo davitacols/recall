@@ -26,6 +26,7 @@ import { TimeEstimate, TimeTracker } from "../components/TimeTracker";
 import { WorkspaceEmptyState, WorkspacePanel } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { buildAskRecallPath } from "../utils/askRecall";
 
 const STATUSES = ["backlog", "todo", "in_progress", "in_review", "testing", "done"];
 const PRIORITIES = ["lowest", "low", "medium", "high", "highest"];
@@ -256,6 +257,10 @@ function IssueDetail() {
     issue.due_date &&
     issue.status !== "done" &&
     new Date(issue.due_date).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
+  const issueAnchorName = issue.key ? `${issue.key} ${issue.title}` : issue.title;
+  const issueAskRecallQuestion = issue.sprint_name
+    ? `What is the current status of ${issueAnchorName} in ${issue.sprint_name}, what is blocking it, and what should happen next?`
+    : `What is the current status of ${issueAnchorName}, what is blocking it, and what should happen next?`;
 
   const engineeringRows = [
     { label: "Code review", value: issue.code_review_status ? formatLabel(issue.code_review_status) : "Not linked" },
@@ -298,6 +303,14 @@ function IssueDetail() {
                 {issue.sprint_name || "Open Sprint"}
               </Link>
             ) : null}
+            <button
+              className="ui-btn-polish ui-focus-ring"
+              onClick={() => navigate(buildAskRecallPath(issueAskRecallQuestion))}
+              style={contextLink(palette)}
+            >
+              <SparklesIcon style={icon14} />
+              Ask Recall
+            </button>
           </div>
         </div>
 
@@ -319,9 +332,7 @@ function IssueDetail() {
           style={{
             ...heroCard,
             border: `1px solid ${palette.border}`,
-            background: darkMode
-              ? "linear-gradient(145deg, rgba(24,20,18,0.96) 0%, rgba(31,26,23,0.94) 56%, rgba(39,33,29,0.9) 100%)"
-              : "linear-gradient(145deg, rgba(255,252,248,0.97) 0%, rgba(247,242,235,0.98) 56%, rgba(241,233,221,0.94) 100%)",
+            background: palette.card,
             "--ui-delay": "40ms",
           }}
         >
@@ -373,8 +384,8 @@ function IssueDetail() {
           <aside style={heroAside}>
             <div style={heroAsideHeader}>
               <div>
-                <p style={{ ...eyebrow, color: palette.muted }}>Execution Snapshot</p>
-                <p style={{ ...asideTitle, color: palette.text }}>Operational view of this issue</p>
+                <p style={{ ...eyebrow, color: palette.muted }}>Issue Readout</p>
+                <p style={{ ...asideTitle, color: palette.text }}>Current state and activity</p>
               </div>
               <div style={heroActionRow}>
                 <WatchButton issueId={resolvedIssueId} isWatching={Boolean(issue.is_watching)} onToggle={handleWatchToggle} />
@@ -941,26 +952,26 @@ const topRow = { display: "flex", justifyContent: "space-between", alignItems: "
 const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", fontWeight: 700, fontSize: 13, cursor: "pointer" };
 const contextLinkRow = { display: "flex", gap: 8, flexWrap: "wrap" };
 const errorBanner = { borderRadius: 16, padding: "12px 14px", marginBottom: 12, fontSize: 13, lineHeight: 1.55 };
-const heroCard = { borderRadius: 30, padding: "clamp(20px, 2.8vw, 30px)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18, alignItems: "start", boxShadow: "var(--ui-shadow-sm)" };
-const heroAside = { display: "grid", gap: 14 };
-const heroAsideHeader = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" };
+const heroCard = { borderRadius: 18, padding: "clamp(16px, 2.2vw, 22px)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14, alignItems: "start", boxShadow: "none" };
+const heroAside = { display: "grid", gap: 10, alignContent: "start" };
+const heroAsideHeader = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" };
 const heroActionRow = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
-const eyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
-const issueKey = { margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" };
-const heroTitle = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: "clamp(1.8rem, 3vw, 3rem)", lineHeight: 0.98, letterSpacing: "-0.05em", maxWidth: "17ch" };
-const heroSummary = { margin: 0, fontSize: 14, lineHeight: 1.7, maxWidth: 760 };
-const chipRow = { display: "flex", gap: 8, flexWrap: "wrap" };
-const chip = { borderRadius: 999, padding: "6px 11px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
-const heroMetaRow = { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" };
+const eyebrow = { margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" };
+const issueKey = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" };
+const heroTitle = { margin: 0, fontFamily: "inherit", fontSize: "clamp(1.45rem, 2.2vw, 2rem)", lineHeight: 1.08, letterSpacing: "-0.03em", fontWeight: 700, maxWidth: "24ch" };
+const heroSummary = { margin: 0, fontSize: 13, lineHeight: 1.62, maxWidth: 680 };
+const chipRow = { display: "flex", gap: 6, flexWrap: "wrap" };
+const chip = { borderRadius: 999, padding: "5px 10px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
+const heroMetaRow = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
 const tinyMeta = { margin: 0, fontSize: 11, lineHeight: 1.5 };
-const statusNote = { borderRadius: 999, padding: "5px 10px", fontSize: 11, fontWeight: 800, background: "rgba(245,158,11,0.1)" };
-const asideTitle = { margin: "4px 0 0", fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em" };
-const summaryGrid = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 };
-const summaryTile = { borderRadius: 18, padding: 14, display: "grid", gap: 6 };
-const summaryLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", gap: 5 };
-const summaryValue = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: 24, lineHeight: 1, letterSpacing: "-0.05em" };
-const summaryHelper = { margin: 0, fontSize: 12, lineHeight: 1.55 };
-const contentGrid = { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, alignItems: "start" };
+const statusNote = { borderRadius: 999, padding: "4px 9px", fontSize: 10, fontWeight: 700, background: "rgba(245,158,11,0.1)" };
+const asideTitle = { margin: "2px 0 0", fontSize: 14, fontWeight: 700, letterSpacing: "-0.02em" };
+const summaryGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 };
+const summaryTile = { borderRadius: 14, padding: "11px 12px", display: "grid", gap: 4 };
+const summaryLabel = { margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", gap: 5 };
+const summaryValue = { margin: 0, fontFamily: "inherit", fontSize: 18, fontWeight: 700, lineHeight: 1.05, letterSpacing: "-0.02em" };
+const summaryHelper = { margin: 0, fontSize: 11, lineHeight: 1.45 };
+const contentGrid = { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, alignItems: "start" };
 const mainColumn = { display: "grid", gap: 14 };
 const asideColumn = { display: "grid", gap: 14, alignContent: "start", position: "sticky", top: 18 };
 const descriptionText = { margin: 0, fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" };

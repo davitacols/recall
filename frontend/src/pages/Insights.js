@@ -68,7 +68,7 @@ function Insights() {
   }
 
   return (
-    <div style={{ ...ui.container, display: "grid", gap: 12, fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+    <div style={{ ...ui.container, display: "grid", gap: 12, fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       <section
         style={{
           border: `1px solid ${palette.border}`,

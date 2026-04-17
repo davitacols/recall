@@ -4,7 +4,7 @@ import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette } from "../utils/projectUi";
 import RichTextEditor from "../components/RichTextEditor";
-import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
+import { WorkspaceHero } from "../components/WorkspaceChrome";
 import api from "../services/api";
 import { useToast } from "../components/Toast";
 
@@ -79,14 +79,14 @@ function CreateConversation() {
 
   return (
     <div style={{ ...page, background: palette.page }}>
-      <section
-        style={{
-          ...hero,
-          border: `1px solid ${palette.border}`,
-          background: `linear-gradient(140deg, ${palette.accentSoft}, rgba(58,184,160,0.14))`,
-        }}
-      >
-        <div>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        variant="memory"
+        eyebrow="New conversation"
+        title="Start a conversation"
+        description="Capture the question, decision, or blocker clearly so the team can respond without extra back-and-forth."
+        actions={
           <button
             onClick={() => navigate("/conversations")}
             style={{ ...backButton, color: palette.muted, border: `1px solid ${palette.line}` }}
@@ -94,14 +94,19 @@ function CreateConversation() {
             <ArrowLeftIcon style={{ width: 15, height: 15 }} />
             Back to Conversations
           </button>
-          <p style={{ ...eyebrow, color: palette.muted }}>NEW</p>
-          <h1 style={{ ...heroTitle, color: palette.text }}>Start a Conversation</h1>
-          <p style={{ ...heroSubtitle, color: palette.muted }}>
-            Share your thoughts, ask questions, or start a discussion.
-          </p>
-        </div>
-        {!isNarrow ? <BrandedTechnicalIllustration darkMode={darkMode} compact /> : null}
-      </section>
+        }
+        aside={
+          !isNarrow ? (
+            <div style={{ ...heroNote, border: `1px solid ${palette.line}`, background: palette.cardAlt }}>
+              <p style={{ ...heroNoteLabel, color: palette.muted }}>Posting flow</p>
+              <p style={{ ...heroNoteTitle, color: palette.text }}>Type, title, then context.</p>
+              <p style={{ ...heroNoteBody, color: palette.muted }}>
+                Keep the title specific, set the right thread type, and add enough background for someone to answer in one pass.
+              </p>
+            </div>
+          ) : null
+        }
+      />
 
       <form
         onSubmit={handleSubmit}
@@ -223,20 +228,11 @@ const page = {
   gap: 12,
 };
 
-const hero = {
-  borderRadius: 18,
-  padding: "clamp(16px, 2.4vw, 24px)",
-  display: "grid",
-  gridTemplateColumns: "minmax(0,1fr) auto",
-  alignItems: "end",
-  gap: 10,
-};
-
 const backButton = {
   width: "fit-content",
   borderRadius: 999,
   background: "transparent",
-  padding: "7px 11px",
+  padding: "8px 12px",
   fontSize: 12,
   fontWeight: 700,
   display: "inline-flex",
@@ -245,9 +241,34 @@ const backButton = {
   cursor: "pointer",
 };
 
-const eyebrow = { margin: 0, fontSize: 11, letterSpacing: "0.14em", fontWeight: 700 };
-const heroTitle = { margin: 0, fontSize: "clamp(1.14rem,1.95vw,1.65rem)", lineHeight: 1.1, letterSpacing: "-0.02em" };
-const heroSubtitle = { margin: 0, fontSize: 14, lineHeight: 1.5 };
+const heroNote = {
+  borderRadius: 14,
+  padding: "12px 13px",
+  display: "grid",
+  gap: 4,
+  alignContent: "start",
+};
+
+const heroNoteLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const heroNoteTitle = {
+  margin: 0,
+  fontSize: 14,
+  fontWeight: 700,
+  letterSpacing: "-0.02em",
+};
+
+const heroNoteBody = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.55,
+};
 
 const layout = {
   display: "grid",

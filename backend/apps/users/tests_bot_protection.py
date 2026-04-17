@@ -16,6 +16,20 @@ class TurnstileVerificationTests(SimpleTestCase):
         self.assertTrue(ok)
         self.assertIsNone(message)
 
+    @override_settings(
+        TURNSTILE_ENABLED=True,
+        TURNSTILE_SECRET_KEY="secret",
+        ALLOWED_HOSTS=["localhost", "127.0.0.1", "testserver"],
+    )
+    def test_verification_skips_for_loopback_backend(self):
+        request = self.factory.post(
+            "/api/auth/login/",
+            HTTP_HOST="localhost:8000",
+        )
+        ok, message = verify_turnstile_token(request, token=None)
+        self.assertTrue(ok)
+        self.assertIsNone(message)
+
     @override_settings(TURNSTILE_ENABLED=True, TURNSTILE_SECRET_KEY="secret")
     @patch("apps.users.bot_protection.requests.post")
     def test_verification_succeeds(self, mock_post):

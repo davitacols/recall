@@ -1,6 +1,6 @@
 from django.urls import path
-from . import views, integration_endpoints, github_views
-from .github_integration import connect_github, github_commits, github_prs, list_integrations, github_activity
+from . import views, integration_endpoints, github_endpoints
+from .github_integration import list_integrations
 
 urlpatterns = [
     # Webhooks
@@ -30,11 +30,11 @@ urlpatterns = [
     path('github/search/<int:decision_id>/', views.search_github_prs, name='search_github_prs'),
     path('github/link/<int:decision_id>/', views.link_github_pr, name='link_github_pr'),
     path('github/', views.github_integration, name='github_integration'),
-    path('github/webhook/', github_views.github_webhook, name='github_webhook'),
-    path('github/connect/', connect_github, name='connect_github'),
-    path('github/commits/<int:issue_id>/', github_commits, name='github_commits'),
-    path('github/prs/<int:issue_id>/', github_prs, name='github_prs'),
-    path('github/activity/', github_activity, name='github_activity'),
+    path('github/webhook/', github_endpoints.github_webhook, name='github_webhook'),
+    path('github/connect/', github_endpoints.connect_github, name='connect_github'),
+    path('github/commits/<int:issue_id>/', github_endpoints.issue_commits, name='github_commits'),
+    path('github/prs/<int:issue_id>/', github_endpoints.issue_pull_requests, name='github_prs'),
+    path('github/activity/', github_endpoints.github_activity, name='github_activity'),
     
     # Jira
     path('jira/create/<int:blocker_id>/', views.create_jira_issue, name='create_jira_issue'),

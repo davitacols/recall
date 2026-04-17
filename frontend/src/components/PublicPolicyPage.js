@@ -188,7 +188,7 @@ const titleStyle = {
   fontSize: "clamp(2.6rem, 5vw, 4.4rem)",
   lineHeight: 0.98,
   letterSpacing: "-0.05em",
-  fontFamily: "'Space Grotesk', 'Segoe UI', sans-serif",
+  fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
 
 const leadStyle = {

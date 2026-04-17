@@ -8,6 +8,7 @@ import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancement
 import { WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import RichTextEditor from "../components/RichTextEditor";
 import RichTextRenderer from "../components/RichTextRenderer";
+import { buildAskRecallPath } from "../utils/askRecall";
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
@@ -16,6 +17,7 @@ import {
   DocumentTextIcon,
   PencilIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   TrashIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -253,7 +255,7 @@ export default function DocumentDetail() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
         <div style={{ width: 32, height: 32, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
       </div>
     );
@@ -261,7 +263,7 @@ export default function DocumentDetail() {
 
   if (!documentRecord) {
     return (
-      <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
         <div style={ambientLayer} />
         <div style={{ ...ui.container, position: "relative", zIndex: 1 }}>
           <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={{ ...ui.secondaryButton, marginBottom: 14 }}>
@@ -280,6 +282,7 @@ export default function DocumentDetail() {
   const createdAt = documentRecord.created_at ? new Date(documentRecord.created_at).toLocaleDateString() : "N/A";
   const typeLabel = formatTypeLabel(documentRecord.document_type || "other");
   const versionLabel = documentRecord.version || "-";
+  const documentAskRecallQuestion = `Summarize the document "${documentRecord.title}" and tell me what I should pay attention to first.`;
   const heroStats = [
     { label: "Version", value: versionLabel, helper: "Current published revision." },
     { label: "Updated", value: updatedAt, helper: "Most recent recorded change." },
@@ -287,7 +290,7 @@ export default function DocumentDetail() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       <div style={ambientLayer} />
       <div style={{ ...ui.container, position: "relative", zIndex: 1, display: "grid", gap: 16 }}>
         <WorkspaceHero
@@ -315,6 +318,10 @@ export default function DocumentDetail() {
                 <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
                 Export PDF
               </button>
+              <button onClick={() => navigate(buildAskRecallPath(documentAskRecallQuestion))} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
+                <SparklesIcon style={{ width: 14, height: 14 }} />
+                Ask Recall
+              </button>
               {!editing ? (
                 <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
                   <PencilIcon style={{ width: 14, height: 14 }} />
@@ -329,7 +336,7 @@ export default function DocumentDetail() {
           <div style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "grid", gap: 6 }}>
               <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Library Controls</p>
-              <h2 style={{ margin: 0, fontSize: 28, lineHeight: 1.05, letterSpacing: "-0.04em", fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', color: palette.text }}>
+              <h2 style={{ margin: 0, fontSize: 28, lineHeight: 1.05, letterSpacing: "-0.04em", fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: palette.text }}>
                 Move between reading, editing, export, and team commentary
               </h2>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: palette.muted }}>

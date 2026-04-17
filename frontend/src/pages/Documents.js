@@ -10,6 +10,7 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import {
@@ -20,6 +21,7 @@ import {
 import { useToast } from "../components/Toast";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { buildAskRecallPath } from "../utils/askRecall";
 import RichTextEditor from "../components/RichTextEditor";
 
 const DOC_TYPES = ["all", "policy", "procedure", "guide", "report", "other"];
@@ -334,6 +336,13 @@ export default function Documents() {
           <>
             <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowModal(true)} style={ui.primaryButton}>
               <PlusIcon style={icon14} /> New Document
+            </button>
+            <button
+              className="ui-btn-polish ui-focus-ring"
+              onClick={() => navigate(buildAskRecallPath("Which recent documents should I review first, and what changed most recently?"))}
+              style={ui.secondaryButton}
+            >
+              <SparklesIcon style={icon14} /> Ask Recall
             </button>
             <button className="ui-btn-polish ui-focus-ring" onClick={fetchDocuments} style={ui.secondaryButton}>
               Refresh Library

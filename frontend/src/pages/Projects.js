@@ -8,15 +8,16 @@ import {
   FolderIcon,
   PlusIcon,
   RocketLaunchIcon,
+  SparklesIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import {
   WorkspaceEmptyState,
   WorkspaceHero,
-  WorkspaceToolbar,
 } from "../components/WorkspaceChrome";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+import { buildAskRecallPath } from "../utils/askRecall";
 import api from "../services/api";
 import { createPlainTextPreview, hasMeaningfulText } from "../utils/textPreview";
 
@@ -68,6 +69,10 @@ export default function Projects() {
   const leadGaps = useMemo(() => portfolioProjects.filter((project) => !project.hasLead).length, [portfolioProjects]);
   const briefGaps = useMemo(() => portfolioProjects.filter((project) => !project.hasBrief).length, [portfolioProjects]);
   const newestProject = portfolioProjects[0] || null;
+  const spotlightProject = useMemo(() => readyProjects[0] || newestProject, [readyProjects, newestProject]);
+  const priorityProjects = useMemo(() => attentionProjects.slice(0, 3), [attentionProjects]);
+  const leadCoverage = projects.length ? Math.round(((projects.length - leadGaps) / projects.length) * 100) : 0;
+  const briefCoverage = projects.length ? Math.round(((projects.length - briefGaps) / projects.length) * 100) : 0;
 
   useEffect(() => {
     fetchProjects();
@@ -180,25 +185,33 @@ export default function Projects() {
       style={{
         ...asideCard,
         border: `1px solid ${palette.border}`,
-        background: darkMode
-          ? "linear-gradient(160deg, rgba(32,27,23,0.9), rgba(22,18,15,0.82))"
-          : "linear-gradient(160deg, rgba(255,252,248,0.96), rgba(244,237,226,0.88))",
+        background: palette.cardAlt,
       }}
     >
-      <p style={{ ...asideEyebrow, color: palette.muted }}>Execution Readiness</p>
-      <h3 style={{ ...asideTitle, color: palette.text }}>Projects move faster when the project lead and context are obvious.</h3>
+      <p style={{ ...asideEyebrow, color: palette.muted }}>Portfolio pulse</p>
+      <h3 style={{ ...asideTitle, color: palette.text }}>
+        {attentionProjects.length
+          ? "Tighten ownership and written context before execution fans out."
+          : "The current portfolio is shaped well enough to move straight into delivery."}
+      </h3>
       <p style={{ ...asideBody, color: palette.muted }}>
-        {readyProjects.length} workspaces are ready to run. {attentionProjects.length} still need shaping before handoffs feel clean.
+        {attentionProjects.length
+          ? `${attentionProjects.length} workspaces still need cleanup so handoffs, planning reviews, and sprint setup stay clear.`
+          : `${readyProjects.length} workspaces already have a visible lead and enough brief context to act as a stable front door into execution.`}
       </p>
       <div style={asideMetricGrid}>
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Lead gaps</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{leadGaps}</p>
+          <p style={{ ...asideMetricLabel, color: palette.muted }}>Ready</p>
+          <p style={{ ...asideMetricValue, color: palette.text }}>{readyProjects.length}</p>
         </div>
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Brief gaps</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{briefGaps}</p>
+          <p style={{ ...asideMetricLabel, color: palette.muted }}>Needs shaping</p>
+          <p style={{ ...asideMetricValue, color: palette.text }}>{attentionProjects.length}</p>
         </div>
+      </div>
+      <div style={asideCoverageStack}>
+        <CoverageMeter palette={palette} label="Lead coverage" value={leadCoverage} tone={palette.accent} />
+        <CoverageMeter palette={palette} label="Brief coverage" value={briefCoverage} tone={palette.success} />
       </div>
     </div>
   );
@@ -245,88 +258,199 @@ export default function Projects() {
         palette={palette}
         darkMode={darkMode}
         variant="execution"
-        eyebrow="Execution Workspace"
+        eyebrow="Project library"
         title="Projects"
-        description="Organize delivery tracks, roadmaps, and project lead accountability in a calmer workspace that keeps execution context close."
+        description="Scan the portfolio, fix ownership or brief gaps early, and move from project triage into roadmap and management views without losing context."
         aside={operationsAside}
+        stats={[
+          { label: "All", value: projects.length, helper: "Project workspaces in view." },
+          { label: "Ready", value: readyProjects.length, helper: "Lead and brief already in place." },
+          { label: "Lead gaps", value: leadGaps, helper: "Workspaces missing an owner." },
+          { label: "Brief gaps", value: briefGaps, helper: "Workspaces missing written context." },
+          { label: "Team", value: teamMembers.length, helper: "Teammates available to assign." },
+        ]}
         actions={
           <>
             <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreate(true)} style={ui.primaryButton}>
               <PlusIcon style={icon14} /> New Project
             </button>
+            <button
+              className="ui-btn-polish ui-focus-ring"
+              onClick={() => navigate(buildAskRecallPath("Which active projects need attention most right now?"))}
+              style={ui.secondaryButton}
+            >
+              <SparklesIcon style={icon14} /> Ask Recall
+            </button>
             <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/sprint")} style={ui.secondaryButton}>
               <RocketLaunchIcon style={icon14} /> Sprint Center
-            </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={ui.secondaryButton}>
-              Documents
             </button>
           </>
         }
       />
-
-      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
-        <div style={toolbarLayout}>
-          <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Portfolio View</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>See which workspaces are ready to run and which still need shaping</h2>
-            <p style={{ ...toolbarCopy, color: palette.muted }}>
-              The portfolio now leads with operating signals first, then drops into the project atlas so you can spot lead gaps and missing briefs before they slow delivery.
-            </p>
-          </div>
-
-          <div style={toolbarChipRail}>
-            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              {readyProjects.length} ready to run
-            </span>
-            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              {leadGaps} missing leads
-            </span>
-            <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-              {briefGaps} missing briefs
-            </span>
-          </div>
-        </div>
-      </WorkspaceToolbar>
-
       {projects.length ? (
-        <section style={portfolioOverviewGrid}>
+        <section style={commandDeckGrid}>
           <article
             className="ui-card-lift ui-smooth"
             style={{
-              ...portfolioSpotlight,
+              ...commandDeckPrimary,
               border: `1px solid ${palette.border}`,
-              background: darkMode
-                ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
-                : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(247,240,230,0.92))",
+              background: palette.card,
             }}
           >
-            <div style={{ display: "grid", gap: 8 }}>
-              <p style={{ ...cardEyebrow, color: palette.muted, margin: 0 }}>Portfolio Spotlight</p>
-              <h3 style={{ margin: 0, fontSize: 28, lineHeight: 1.02, color: palette.text }}>
-                {newestProject ? newestProject.name : "Start a new workspace"}
-              </h3>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: palette.muted }}>
-                {newestProject
-                  ? newestProject.summary
-                  : "Create a project to coordinate boards, roadmaps, project lead accountability, and surrounding execution context from one place."}
+            <div style={commandDeckHeader}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <p style={{ ...sectionEyebrow, color: palette.muted }}>Portfolio queue</p>
+                <h2 style={{ ...commandDeckTitle, color: palette.text }}>
+                  {attentionProjects.length
+                    ? "Fix the projects that will create ambiguity first"
+                    : "Portfolio is clear enough to act on"}
+                </h2>
+                <p style={{ ...commandDeckCopy, color: palette.muted }}>
+                  {attentionProjects.length
+                    ? "Start with missing ownership and project brief gaps before teams drop into roadmaps, boards, and sprint planning."
+                    : "Every visible project already has a lead and enough written context to act as a strong execution front door."}
+                </p>
+              </div>
+              <div style={commandDeckChipRail}>
+                <span style={{ ...commandDeckChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  {readyProjects.length} ready to run
+                </span>
+                <span style={{ ...commandDeckChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  {attentionProjects.length} need shaping
+                </span>
+                <span style={{ ...commandDeckChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  {teamMembers.length} teammates available
+                </span>
+              </div>
+            </div>
+
+            {priorityProjects.length ? (
+              <div style={queuePreviewStack}>
+                {priorityProjects.map((project) => (
+                  <article
+                    key={`queue-${project.id}`}
+                    className="ui-card-lift ui-smooth"
+                    style={{
+                      ...queuePreviewItem,
+                      border: `1px solid ${palette.border}`,
+                      background: palette.cardAlt,
+                    }}
+                  >
+                    <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={{ ...queuePreviewKey, background: palette.accentSoft, color: palette.accent }}>
+                          {project.key || "PRJ"}
+                        </span>
+                        <span style={statusBadge(palette, darkMode, project.needsAttention)}>{project.statusLabel}</span>
+                      </div>
+                      <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+                        <h3 style={{ ...queuePreviewTitle, color: palette.text }}>{project.name || "Untitled project"}</h3>
+                        <p style={{ ...queuePreviewBody, color: palette.muted }}>{project.summary}</p>
+                      </div>
+                      <div style={queuePreviewMeta}>
+                        <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                          <UserGroupIcon style={icon12} /> {project.lead_name || "No lead assigned"}
+                        </span>
+                        <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
+                          <ClipboardDocumentListIcon style={icon12} /> {project.hasBrief ? "Brief in place" : "Needs brief"}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={queuePreviewActions}>
+                      {!project.hasLead ? (
+                        <button
+                          className="ui-btn-polish ui-focus-ring"
+                          onClick={() => openLeadPicker(project)}
+                          style={miniActionButton(palette)}
+                        >
+                          Set lead
+                        </button>
+                      ) : null}
+                      <button
+                        className="ui-btn-polish ui-focus-ring"
+                        onClick={() => navigate(`/projects/${project.id}`)}
+                        style={ui.primaryButton}
+                      >
+                        Open workspace <ArrowRightIcon style={icon14} />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  ...queueReadyState,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.cardAlt,
+                }}
+              >
+                <p style={{ ...sectionEyebrow, color: palette.muted }}>Ready to run</p>
+                <h3 style={{ ...queueReadyTitle, color: palette.text }}>No projects are waiting on basic setup.</h3>
+                <p style={{ ...queueReadyCopy, color: palette.muted }}>
+                  Move into the atlas below to open roadmaps, management views, and deeper execution surfaces.
+                </p>
+              </div>
+            )}
+          </article>
+
+          <article
+            className="ui-card-lift ui-smooth"
+            style={{
+              ...commandDeckSecondary,
+              border: `1px solid ${palette.border}`,
+              background: palette.card,
+            }}
+          >
+            <div style={{ display: "grid", gap: 6 }}>
+              <p style={{ ...sectionEyebrow, color: palette.muted }}>Portfolio spotlight</p>
+              <h2 style={{ ...commandDeckTitle, color: palette.text }}>
+                {spotlightProject ? spotlightProject.name : "Start a new project workspace"}
+              </h2>
+              <p style={{ ...commandDeckCopy, color: palette.muted }}>
+                {spotlightProject
+                  ? spotlightProject.summary
+                  : "Create a project to coordinate roadmap, management, and delivery context from one operating surface."}
               </p>
             </div>
+
+            <div style={coveragePanel}>
+              <CoverageMeter palette={palette} label="Lead coverage" value={leadCoverage} tone={palette.accent} />
+              <CoverageMeter palette={palette} label="Brief coverage" value={briefCoverage} tone={palette.success} />
+            </div>
+
+            <div style={portfolioSignalGrid}>
+              <PortfolioSignalCard
+                palette={palette}
+                icon={FolderIcon}
+                label="Ready workspaces"
+                value={readyProjects.length}
+                helper="Lead and brief are already in place."
+              />
+              <PortfolioSignalCard
+                palette={palette}
+                icon={ExclamationTriangleIcon}
+                label="Attention now"
+                value={attentionProjects.length}
+                helper="Projects that need shaping before handoff gets fuzzy."
+                highlight={attentionProjects.length > 0}
+              />
+            </div>
+
             <div style={spotlightMetaRail}>
               <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                <FolderIcon style={icon12} /> {newestProject?.key || "PRJ"}
+                <ClockIcon style={icon12} /> {spotlightProject?.createdLabel || "New workspace"}
               </span>
               <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                <ClockIcon style={icon12} /> {newestProject?.createdLabel || "New workspace"}
-              </span>
-              <span style={{ ...statusBadge(palette, darkMode, newestProject?.needsAttention), maxWidth: "100%" }}>
-                {newestProject?.statusLabel || "Ready to start"}
+                <UserGroupIcon style={icon12} /> {teamMembers.length} teammates
               </span>
             </div>
+
             <div style={spotlightActions}>
-              {newestProject ? (
+              {spotlightProject ? (
                 <button
                   className="ui-btn-polish ui-focus-ring"
-                  onClick={() => navigate(`/projects/${newestProject.id}`)}
+                  onClick={() => navigate(`/projects/${spotlightProject.id}`)}
                   style={ui.primaryButton}
                 >
                   Open workspace <ArrowRightIcon style={icon14} />
@@ -336,40 +460,15 @@ export default function Projects() {
                   <PlusIcon style={icon14} /> Create Project
                 </button>
               )}
+              <button
+                className="ui-btn-polish ui-focus-ring"
+                onClick={() => navigate(buildAskRecallPath("Which projects need ownership or context cleanup first?"))}
+                style={ui.secondaryButton}
+              >
+                <SparklesIcon style={icon14} /> Ask Recall about the portfolio
+              </button>
             </div>
           </article>
-
-          <div style={portfolioSignalGrid}>
-            <PortfolioSignalCard
-              palette={palette}
-              icon={FolderIcon}
-              label="Ready workspaces"
-              value={readyProjects.length}
-              helper="Lead and brief are already in place."
-            />
-            <PortfolioSignalCard
-              palette={palette}
-              icon={UserGroupIcon}
-              label="Lead gaps"
-              value={leadGaps}
-              helper="Projects that still need a visible lead."
-            />
-            <PortfolioSignalCard
-              palette={palette}
-              icon={ClipboardDocumentListIcon}
-              label="Brief gaps"
-              value={briefGaps}
-              helper="Workspaces that need more written context."
-            />
-            <PortfolioSignalCard
-              palette={palette}
-              icon={ExclamationTriangleIcon}
-              label="Attention now"
-              value={attentionProjects.length}
-              helper="Best first scan for cleanup and handoff safety."
-              highlight
-            />
-          </div>
         </section>
       ) : null}
 
@@ -516,8 +615,9 @@ export default function Projects() {
           {attentionProjects.length ? (
             <PortfolioSection
               palette={palette}
-              title="Needs shaping"
-              description="These workspaces are missing a project lead, project context, or both."
+              variant="priority"
+              title="Shape first"
+              description="These workspaces still need a visible owner, a written brief, or both before they become a clean front door into execution."
               projects={attentionProjects}
               navigate={navigate}
               darkMode={darkMode}
@@ -527,10 +627,11 @@ export default function Projects() {
 
           <PortfolioSection
             palette={palette}
+            variant="atlas"
             title={attentionProjects.length ? "Project atlas" : "All workspaces"}
             description={
               attentionProjects.length
-                ? "The rest of the portfolio is structured enough to use as the front door into active delivery."
+                ? "The rest of the portfolio is structured enough to act as the front door into roadmap, management, and active delivery."
                 : "Each project acts as the front door into roadmap, management, and surrounding execution context."
             }
             projects={attentionProjects.length ? readyProjects : portfolioProjects}
@@ -557,52 +658,25 @@ function miniActionButton(palette) {
   };
 }
 
-const toolbarLayout = {
-  display: "grid",
-  gap: 14,
-};
-
-const toolbarIntro = {
-  display: "grid",
-  gap: 4,
-};
-
-const toolbarEyebrow = {
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const toolbarTitle = {
-  margin: 0,
-  fontSize: 24,
-  lineHeight: 1.02,
-};
-
-const toolbarCopy = {
-  margin: 0,
-  fontSize: 13,
-  lineHeight: 1.6,
-  maxWidth: 760,
-};
-
-const toolbarChipRail = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const toolbarChip = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
-  fontWeight: 700,
-};
+function CoverageMeter({ palette, label, value, tone }) {
+  return (
+    <div style={coverageMeter}>
+      <div style={coverageMeterHead}>
+        <p style={{ ...coverageMeterLabel, color: palette.muted }}>{label}</p>
+        <p style={{ ...coverageMeterValue, color: tone }}>{value}%</p>
+      </div>
+      <div style={{ ...coverageMeterTrack, background: palette.progressTrack }}>
+        <div
+          style={{
+            ...coverageMeterFill,
+            width: `${Math.max(0, Math.min(100, value))}%`,
+            background: tone,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function PortfolioSignalCard({ palette, icon: Icon, label, value, helper, highlight = false }) {
   return (
@@ -626,7 +700,7 @@ function PortfolioSignalCard({ palette, icon: Icon, label, value, helper, highli
   );
 }
 
-function PortfolioSection({ palette, title, description, projects, navigate, darkMode, onOpenLeadPicker }) {
+function PortfolioSection({ palette, title, description, projects, navigate, darkMode, onOpenLeadPicker, variant = "atlas" }) {
   if (!projects.length) {
     return null;
   }
@@ -635,116 +709,196 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
     <section style={{ display: "grid", gap: 12 }}>
       <div style={sectionIntro}>
         <div>
-          <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Project Section</p>
+          <p style={{ ...sectionEyebrow, color: palette.muted, margin: 0 }}>
+            {variant === "priority" ? "Action queue" : "Project atlas"}
+          </p>
           <h2 style={{ ...sectionTitle, color: palette.text }}>{title}</h2>
         </div>
         <p style={{ ...sectionCopy, color: palette.muted }}>{description}</p>
       </div>
 
-      <div style={projectGrid}>
-        {projects.map((project) => (
-          <article
-            key={project.id}
-            className="ui-card-lift ui-smooth"
-            onClick={() => navigate(`/projects/${project.id}`)}
-            style={{
-              ...projectCard,
-              border: `1px solid ${palette.border}`,
-              background: palette.card,
-            }}
-          >
-            <div style={projectCardTop}>
-              <div style={{ ...keyBadge, background: palette.ctaGradient, color: palette.buttonText }}>
-                {project.key || "PRJ"}
-              </div>
-              <div style={{ minWidth: 0, display: "grid", gap: 8 }}>
-                <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap" }}>
-                  <p style={{ ...cardEyebrow, color: palette.muted, margin: 0 }}>Delivery Workspace</p>
+      {variant === "priority" ? (
+        <div style={priorityList}>
+          {projects.map((project) => (
+            <article
+              key={project.id}
+              className="ui-card-lift ui-smooth"
+              style={{
+                ...priorityRow,
+                border: `1px solid ${palette.border}`,
+                background: palette.card,
+              }}
+            >
+              <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ ...queuePreviewKey, background: palette.accentSoft, color: palette.accent }}>
+                    {project.key || "PRJ"}
+                  </span>
                   <span style={statusBadge(palette, darkMode, project.needsAttention)}>{project.statusLabel}</span>
                 </div>
-                <div>
-                  <h3 style={{ ...cardTitle, color: palette.text }}>{project.name || "Untitled project"}</h3>
-                  <p style={{ ...cardDescription, color: palette.muted }}>{project.summary}</p>
+                <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+                  <h3 style={{ ...priorityTitle, color: palette.text }}>{project.name || "Untitled project"}</h3>
+                  <p style={{ ...priorityCopy, color: palette.muted }}>{project.summary}</p>
+                </div>
+                <div style={priorityMetaRail}>
+                  <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    <UserGroupIcon style={icon12} /> {project.lead_name || "No lead assigned"}
+                  </span>
+                  <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    <ClipboardDocumentListIcon style={icon12} /> {project.hasBrief ? "Brief in place" : "Needs brief"}
+                  </span>
+                  <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                    <ClockIcon style={icon12} /> {project.createdLabel}
+                  </span>
                 </div>
               </div>
-            </div>
-
-            <div style={projectSummaryGrid}>
-              <div style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <p style={{ ...summaryLabel, color: palette.muted }}>Lead</p>
-                <p style={{ ...summaryValue, color: palette.text }}>{project.lead_name || "Assign lead"}</p>
+              <div style={priorityActions}>
+                {!project.hasLead ? (
+                  <button
+                    className="ui-btn-polish ui-focus-ring"
+                    onClick={() => onOpenLeadPicker?.(project)}
+                    style={miniActionButton(palette)}
+                  >
+                    Set lead
+                  </button>
+                ) : null}
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                  style={uiActionButton(palette)}
+                >
+                  Overview
+                </button>
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={() => navigate(`/projects/${project.id}/manage`)}
+                  style={uiActionButton(palette)}
+                >
+                  Manage
+                </button>
               </div>
-              <div style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <p style={{ ...summaryLabel, color: palette.muted }}>Brief</p>
-                <p style={{ ...summaryValue, color: palette.text }}>{project.hasBrief ? "In place" : "Needs context"}</p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div style={projectGrid}>
+          {projects.map((project) => (
+            <article
+              key={project.id}
+              className="ui-card-lift ui-smooth"
+              onClick={() => navigate(`/projects/${project.id}`)}
+              style={{
+                ...projectCard,
+                border: `1px solid ${palette.border}`,
+                background: palette.card,
+              }}
+            >
+              <div style={projectCardTop}>
+                <div style={{ ...keyBadge, background: palette.accentSoft, color: palette.accent }}>
+                  {project.key || "PRJ"}
+                </div>
+                <div style={{ minWidth: 0, display: "grid", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <p style={{ ...cardEyebrow, color: palette.muted, margin: 0 }}>Project workspace</p>
+                    <span style={statusBadge(palette, darkMode, project.needsAttention)}>{project.statusLabel}</span>
+                  </div>
+                  <div>
+                    <h3 style={{ ...cardTitle, color: palette.text }}>{project.name || "Untitled project"}</h3>
+                    <p style={{ ...cardDescription, color: palette.muted }}>{project.summary}</p>
+                  </div>
+                </div>
               </div>
-              <div style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <p style={{ ...summaryLabel, color: palette.muted }}>Created</p>
-                <p style={{ ...summaryValue, color: palette.text }}>{project.createdLabel}</p>
+
+              <div style={projectSummaryGrid}>
+                <div style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                  <p style={{ ...summaryLabel, color: palette.muted }}>Lead</p>
+                  <p style={{ ...summaryValue, color: palette.text }}>{project.lead_name || "Assign lead"}</p>
+                </div>
+                <div style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                  <p style={{ ...summaryLabel, color: palette.muted }}>Brief</p>
+                  <p style={{ ...summaryValue, color: palette.text }}>{project.hasBrief ? "In place" : "Needs context"}</p>
+                </div>
+                <div style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                  <p style={{ ...summaryLabel, color: palette.muted }}>Created</p>
+                  <p style={{ ...summaryValue, color: palette.text }}>{project.createdLabel}</p>
+                </div>
               </div>
-            </div>
 
-            <div style={projectChipRail}>
-              <span style={{ ...chip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                <UserGroupIcon style={icon12} /> {project.lead_name || "No lead assigned"}
-              </span>
-              <span style={{ ...chip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                <ClipboardDocumentListIcon style={icon12} /> {project.hasBrief ? "Brief in place" : "Needs brief"}
-              </span>
-            </div>
+              <div style={projectChipRail}>
+                <span style={{ ...chip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  <UserGroupIcon style={icon12} /> {project.lead_name || "No lead assigned"}
+                </span>
+                <span style={{ ...chip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  <ClipboardDocumentListIcon style={icon12} /> {project.hasBrief ? "Brief in place" : "Needs brief"}
+                </span>
+              </div>
 
-            <div style={{ ...projectActions, borderTop: `1px solid ${palette.border}` }}>
-              {!project.hasLead ? (
+              <div style={{ ...projectActions, borderTop: `1px solid ${palette.border}` }}>
+                {!project.hasLead ? (
+                  <button
+                    className="ui-btn-polish ui-focus-ring"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onOpenLeadPicker?.(project);
+                    }}
+                    style={miniActionButton(palette)}
+                  >
+                    Set lead
+                  </button>
+                ) : null}
                 <button
                   className="ui-btn-polish ui-focus-ring"
                   onClick={(event) => {
                     event.stopPropagation();
-                    onOpenLeadPicker?.(project);
+                    navigate(`/projects/${project.id}`);
                   }}
                   style={miniActionButton(palette)}
                 >
-                  Set lead
+                  Overview
                 </button>
-              ) : null}
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  navigate(`/projects/${project.id}`);
-                }}
-                style={miniActionButton(palette)}
-              >
-                Overview
-              </button>
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  navigate(`/projects/${project.id}/roadmap`);
-                }}
-                style={miniActionButton(palette)}
-              >
-                Roadmap
-              </button>
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  navigate(`/projects/${project.id}/manage`);
-                }}
-                style={miniActionButton(palette)}
-              >
-                Manage
-              </button>
-              <span style={{ ...openLink, color: palette.accent }}>
-                Open workspace <ArrowRightIcon style={icon12} />
-              </span>
-            </div>
-          </article>
-        ))}
-      </div>
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/projects/${project.id}/roadmap`);
+                  }}
+                  style={miniActionButton(palette)}
+                >
+                  Roadmap
+                </button>
+                <button
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/projects/${project.id}/manage`);
+                  }}
+                  style={miniActionButton(palette)}
+                >
+                  Manage
+                </button>
+                <span style={{ ...openLink, color: palette.accent }}>
+                  Open workspace <ArrowRightIcon style={icon12} />
+                </span>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
+}
+
+function uiActionButton(palette) {
+  return {
+    border: `1px solid ${palette.border}`,
+    borderRadius: 999,
+    padding: "8px 12px",
+    background: palette.cardAlt,
+    color: palette.text,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  };
 }
 
 function statusBadge(palette, darkMode, needsAttention) {
@@ -769,10 +923,10 @@ function statusBadge(palette, darkMode, needsAttention) {
 
 const asideCard = {
   minWidth: 240,
-  borderRadius: 24,
-  padding: 16,
+  borderRadius: 16,
+  padding: 14,
   display: "grid",
-  gap: 10,
+  gap: 8,
 };
 
 const asideEyebrow = {
@@ -785,8 +939,9 @@ const asideEyebrow = {
 
 const asideTitle = {
   margin: 0,
-  fontSize: 20,
-  lineHeight: 1.04,
+  fontSize: 16,
+  lineHeight: 1.18,
+  letterSpacing: "-0.02em",
 };
 
 const asideBody = {
@@ -798,6 +953,11 @@ const asideBody = {
 const asideMetricGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const asideCoverageStack = {
+  display: "grid",
   gap: 8,
 };
 
@@ -894,13 +1054,13 @@ const buttonRow = {
 };
 
 const projectCard = {
-  borderRadius: 26,
-  padding: 20,
+  borderRadius: 18,
+  padding: 18,
   cursor: "pointer",
   display: "grid",
   gap: 14,
-  minHeight: 310,
-  boxShadow: "var(--ui-shadow-sm)",
+  minHeight: 268,
+  boxShadow: "none",
 };
 
 const projectCardTop = {
@@ -911,14 +1071,13 @@ const projectCardTop = {
 };
 
 const keyBadge = {
-  width: 58,
-  height: 58,
-  borderRadius: 18,
+  width: 46,
+  height: 46,
+  borderRadius: 14,
   display: "grid",
   placeItems: "center",
-  fontWeight: 800,
-  fontSize: 13,
-  boxShadow: "var(--ui-shadow-sm)",
+  fontWeight: 700,
+  fontSize: 12,
 };
 
 const cardEyebrow = {
@@ -931,18 +1090,19 @@ const cardEyebrow = {
 
 const cardTitle = {
   margin: 0,
-  fontSize: 24,
-  lineHeight: 1.04,
+  fontSize: 20,
+  lineHeight: 1.08,
+  letterSpacing: "-0.02em",
 };
 
 const cardDescription = {
   margin: "8px 0 0",
-  fontSize: 14,
-  lineHeight: 1.65,
-  minHeight: 72,
+  fontSize: 13,
+  lineHeight: 1.6,
+  minHeight: 60,
   display: "-webkit-box",
   WebkitBoxOrient: "vertical",
-  WebkitLineClamp: 4,
+  WebkitLineClamp: 3,
   overflow: "hidden",
 };
 
@@ -980,18 +1140,146 @@ const openLink = {
   fontWeight: 700,
 };
 
-const portfolioOverviewGrid = {
+const commandDeckGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
   gap: 14,
 };
 
-const portfolioSpotlight = {
-  borderRadius: 28,
-  padding: 22,
+const commandDeckPrimary = {
+  borderRadius: 18,
+  padding: 18,
   display: "grid",
-  gap: 16,
-  boxShadow: "var(--ui-shadow-sm)",
+  gap: 14,
+  boxShadow: "none",
+};
+
+const commandDeckSecondary = {
+  borderRadius: 18,
+  padding: 18,
+  display: "grid",
+  gap: 14,
+  alignContent: "start",
+  boxShadow: "none",
+};
+
+const commandDeckHeader = {
+  display: "grid",
+  gap: 10,
+};
+
+const sectionEyebrow = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const commandDeckTitle = {
+  margin: 0,
+  fontSize: 28,
+  lineHeight: 1.02,
+  letterSpacing: "-0.03em",
+};
+
+const commandDeckCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.65,
+};
+
+const commandDeckChipRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const commandDeckChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const queuePreviewStack = {
+  display: "grid",
+  gap: 10,
+};
+
+const queuePreviewItem = {
+  borderRadius: 18,
+  padding: 14,
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 14,
+  alignItems: "start",
+};
+
+const queuePreviewKey = {
+  display: "inline-grid",
+  placeItems: "center",
+  minWidth: 46,
+  height: 30,
+  padding: "0 10px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 800,
+  letterSpacing: "0.05em",
+};
+
+const queuePreviewTitle = {
+  margin: 0,
+  fontSize: 18,
+  lineHeight: 1.1,
+  letterSpacing: "-0.02em",
+};
+
+const queuePreviewBody = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.55,
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: 2,
+  overflow: "hidden",
+};
+
+const queuePreviewMeta = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const queuePreviewActions = {
+  display: "grid",
+  gap: 8,
+  justifyItems: "end",
+  alignContent: "start",
+};
+
+const queueReadyState = {
+  borderRadius: 18,
+  padding: 18,
+  display: "grid",
+  gap: 6,
+};
+
+const queueReadyTitle = {
+  margin: 0,
+  fontSize: 20,
+  lineHeight: 1.08,
+  letterSpacing: "-0.02em",
+};
+
+const queueReadyCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.65,
+  maxWidth: 640,
 };
 
 const spotlightMetaRail = {
@@ -1017,6 +1305,49 @@ const spotlightActions = {
   alignItems: "center",
 };
 
+const coveragePanel = {
+  display: "grid",
+  gap: 10,
+};
+
+const coverageMeter = {
+  display: "grid",
+  gap: 6,
+};
+
+const coverageMeterHead = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 10,
+  alignItems: "center",
+};
+
+const coverageMeterLabel = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const coverageMeterValue = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 800,
+};
+
+const coverageMeterTrack = {
+  width: "100%",
+  height: 10,
+  borderRadius: 999,
+  overflow: "hidden",
+};
+
+const coverageMeterFill = {
+  height: "100%",
+  borderRadius: 999,
+};
+
 const portfolioSignalGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
@@ -1024,11 +1355,11 @@ const portfolioSignalGrid = {
 };
 
 const signalCard = {
-  borderRadius: 22,
-  padding: 16,
+  borderRadius: 16,
+  padding: 14,
   display: "grid",
-  gap: 10,
-  boxShadow: "var(--ui-shadow-xs)",
+  gap: 8,
+  boxShadow: "none",
 };
 
 const signalCardTop = {
@@ -1055,9 +1386,9 @@ const signalLabel = {
 
 const signalValue = {
   margin: 0,
-  fontSize: 28,
-  lineHeight: 1,
-  fontWeight: 800,
+  fontSize: 22,
+  lineHeight: 1.05,
+  fontWeight: 700,
 };
 
 const signalHelper = {
@@ -1070,14 +1401,15 @@ const sectionIntro = {
   display: "flex",
   justifyContent: "space-between",
   gap: 12,
-  alignItems: "end",
+  alignItems: "start",
   flexWrap: "wrap",
 };
 
 const sectionTitle = {
   margin: "4px 0 0",
-  fontSize: 26,
-  lineHeight: 1.03,
+  fontSize: 22,
+  lineHeight: 1.08,
+  letterSpacing: "-0.02em",
 };
 
 const sectionCopy = {
@@ -1091,6 +1423,47 @@ const projectGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))",
   gap: 14,
+};
+
+const priorityList = {
+  display: "grid",
+  gap: 12,
+};
+
+const priorityRow = {
+  borderRadius: 18,
+  padding: 16,
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 16,
+  alignItems: "start",
+};
+
+const priorityTitle = {
+  margin: 0,
+  fontSize: 20,
+  lineHeight: 1.08,
+  letterSpacing: "-0.02em",
+};
+
+const priorityCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.6,
+  maxWidth: 760,
+};
+
+const priorityMetaRail = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const priorityActions = {
+  display: "grid",
+  gap: 8,
+  justifyItems: "end",
+  alignContent: "start",
 };
 
 const projectSummaryGrid = {

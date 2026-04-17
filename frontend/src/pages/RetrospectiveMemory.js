@@ -54,7 +54,7 @@ function RetrospectiveMemory() {
       : `${recurringCount} recurring cause${recurringCount === 1 ? "" : "s"} are showing up in sprint reviews and should shape process improvements.`;
 
   return (
-    <div style={{ ...ui.container, display: "grid", gap: 12, fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+    <div style={{ ...ui.container, display: "grid", gap: 12, fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}

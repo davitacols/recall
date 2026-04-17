@@ -47,11 +47,11 @@ function SummaryCard({ label, value, tone, palette }) {
       className="ui-card-lift ui-smooth"
       style={{
         borderRadius: 16,
-        padding: 12,
+        padding: 10,
         display: "grid",
-        gap: 4,
+        gap: 3,
         border: `1px solid ${palette.border}`,
-        background: palette.cardAlt,
+        background: palette.card,
       }}
     >
       <p style={{ ...microLabel, color: palette.muted }}>{label}</p>
@@ -60,20 +60,18 @@ function SummaryCard({ label, value, tone, palette }) {
   );
 }
 
-function CommandCard({ title, description, metric, to, palette, darkMode, icon: Icon }) {
+function CommandCard({ title, description, metric, to, palette, icon: Icon }) {
   return (
     <Link
       to={to}
       className="ui-card-lift ui-smooth ui-focus-ring"
-      style={{
-        ...commandCard,
-        color: palette.text,
-        border: `1px solid ${palette.border}`,
-        background: darkMode
-          ? `linear-gradient(180deg, ${palette.cardAlt}, rgba(20,18,16,0.92))`
-          : "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,244,238,0.92))",
-      }}
-    >
+        style={{
+          ...commandCard,
+          color: palette.text,
+          border: `1px solid ${palette.border}`,
+          background: palette.card,
+        }}
+      >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div style={{ display: "grid", gap: 4 }}>
           <h3 style={{ margin: 0, fontSize: 16, lineHeight: 1.1 }}>{title}</h3>
@@ -83,11 +81,11 @@ function CommandCard({ title, description, metric, to, palette, darkMode, icon: 
           style={{
             width: 34,
             height: 34,
-            borderRadius: 12,
+            borderRadius: 10,
             display: "grid",
             placeItems: "center",
             border: `1px solid ${palette.border}`,
-            background: palette.panel,
+            background: palette.cardAlt,
             color: palette.accent,
             flexShrink: 0,
           }}
@@ -108,13 +106,13 @@ function PriorityCard({ title, value, helper, note, to, tone, palette, icon: Ico
     <Link
       to={to}
       className="ui-card-lift ui-smooth ui-focus-ring"
-      style={{
-        ...priorityCard,
-        color: palette.text,
-        border: `1px solid ${palette.border}`,
-        background: palette.cardAlt,
-      }}
-    >
+        style={{
+          ...priorityCard,
+          color: palette.text,
+          border: `1px solid ${palette.border}`,
+          background: palette.card,
+        }}
+      >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "grid", gap: 6 }}>
           <p style={{ ...microLabel, color: palette.muted }}>{title}</p>
@@ -124,10 +122,10 @@ function PriorityCard({ title, value, helper, note, to, tone, palette, icon: Ico
           style={{
             width: 40,
             height: 40,
-            borderRadius: 14,
+            borderRadius: 10,
             display: "grid",
             placeItems: "center",
-            background: palette.panel,
+            background: palette.cardAlt,
             border: `1px solid ${palette.border}`,
             color: tone,
             flexShrink: 0,
@@ -640,12 +638,20 @@ export default function UnifiedDashboard() {
 
   const heroStats = [
     {
+      label: "Signals",
+      value: stats.activity || 0,
+      helper: featuredActivity
+        ? `${humanizeActivityType(featuredActivity)} is the freshest workspace signal`
+        : "No new activity is competing for attention yet",
+      tone: palette.accent,
+    },
+    {
       label: "Sprint lane",
       value: currentSprint ? `${sprintProgress}%` : "Idle",
       helper: currentSprint
         ? `${sprintBlocked} blocked and ${sprintInProgress} active in ${currentSprint.name}`
         : "Activate a sprint to surface live delivery signals",
-      tone: sprintBlocked > 0 ? palette.warn : palette.accent,
+      tone: sprintBlocked > 0 ? palette.warn : palette.good,
     },
     {
       label: "Follow-through",
@@ -656,7 +662,7 @@ export default function UnifiedDashboard() {
       tone: pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good,
     },
     {
-      label: "Context drift",
+      label: "Drift",
       value: driftMeta.total,
       helper: driftMeta.critical > 0
         ? `${driftMeta.critical} critical alerts need a decision owner`
@@ -670,6 +676,34 @@ export default function UnifiedDashboard() {
     to: card.to,
     primary: index === 0,
   }));
+
+  const personalSummaryCards = [
+    {
+      label: "Open tasks",
+      value: personalCounts.assigned_open_tasks || 0,
+      tone: palette.accent,
+    },
+    {
+      label: "Watchlist",
+      value: personalCounts.watched_issues || 0,
+      tone: palette.info,
+    },
+    {
+      label: "Decisions",
+      value: personalCounts.relevant_decisions || 0,
+      tone: palette.warn,
+    },
+    {
+      label: "Saved context",
+      value: personalCounts.bookmarked_conversations || 0,
+      tone: palette.good,
+    },
+    {
+      label: "Ask Recall",
+      value: personalCounts.recent_ask_recall_queries || 0,
+      tone: palette.accent,
+    },
+  ];
 
   if (loading) {
     return (
@@ -694,7 +728,7 @@ export default function UnifiedDashboard() {
         palette={palette}
         darkMode={darkMode}
         variant="execution"
-        eyebrow={`Dashboard briefing | ${todayLabel}`}
+        eyebrow={`${workspaceName} | ${todayLabel}`}
         title={roleProfile.title}
         description={roleProfile.description}
         stats={heroStats}
@@ -712,137 +746,168 @@ export default function UnifiedDashboard() {
           <article
             className="ui-card-lift ui-smooth"
             style={{
-              ...panelCard,
+              ...spotlightCard,
               border: `1px solid ${palette.border}`,
-              background: darkMode
-                ? "linear-gradient(180deg, rgba(31, 25, 21, 0.96), rgba(21, 18, 15, 0.92))"
-                : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,239,229,0.94))",
+              background: `linear-gradient(180deg, ${palette.card}, ${palette.cardAlt})`,
             }}
           >
-              <div style={{ display: "grid", gap: 6 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <p style={{ ...microLabel, color: palette.muted }}>Execution lane</p>
-                    <h2 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>{currentSprint?.name || "No active sprint"}</h2>
-                  </div>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
-                    {roleProfile.badge}
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ display: "grid", gap: 6 }}>
+                  <p style={{ ...microLabel, color: palette.muted }}>Operating spotlight</p>
+                  <h2 style={{ ...spotlightTitle, color: palette.text }}>
+                    {currentSprint?.name || "No active sprint"}
+                  </h2>
+                </div>
+                <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
+                  {roleProfile.badge}
+                </span>
+              </div>
+              <p style={{ ...bodyCopy, color: palette.muted }}>
+                {currentSprint
+                  ? `${sprintCompleted} of ${sprintTotal} sprint items are complete, with ${sprintBlocked} blocked and ${sprintInProgress} actively moving.`
+                  : "Activate a sprint to surface delivery pressure, blocked work, and progress from this home board."}
+              </p>
+              <p style={{ ...spotlightNote, color: palette.text }}>{note}</p>
+            </div>
+
+            {currentSprint ? (
+              <>
+                <div style={spotlightProgressTrack}>
+                  <div
+                    style={{
+                      ...spotlightProgressFill,
+                      width: `${sprintProgress}%`,
+                      background: palette.ctaGradient,
+                    }}
+                  />
+                </div>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                  <SummaryCard label="Blocked" value={sprintBlocked} tone={sprintBlocked > 0 ? palette.warn : palette.good} palette={palette} />
+                  <SummaryCard label="In Progress" value={sprintInProgress} tone={palette.accent} palette={palette} />
+                </div>
+                <div style={chipRow}>
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                    Mode | {experienceMode}
+                  </span>
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                    {pendingOutcomeMeta.total} reviews pending
                   </span>
                 </div>
-                <p style={{ ...bodyCopy, color: palette.muted }}>
-                  {currentSprint
-                    ? `${sprintCompleted} of ${sprintTotal} items are complete, with ${sprintBlocked} blocked and ${sprintInProgress} actively moving.`
-                    : "Start or activate a sprint to surface delivery signals from this home screen."}
-                </p>
-                <p style={{ ...caption, color: palette.text }}>{note}</p>
+                <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>
+                  Open Sprint Board
+                </Link>
+              </>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={chipRow}>
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                    Mode | {experienceMode}
+                  </span>
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                    {stats.activity} signals this week
+                  </span>
+                </div>
+                <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>
+                  Plan Sprint Work
+                </Link>
               </div>
-
-              {currentSprint ? (
-                <>
-                  <div style={{ width: "100%", height: 10, borderRadius: 999, overflow: "hidden", background: palette.border }}>
-                    <div style={{ width: `${sprintProgress}%`, height: "100%", borderRadius: 999, background: palette.ctaGradient }} />
-                  </div>
-                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                    <SummaryCard label="Blocked" value={sprintBlocked} tone={sprintBlocked > 0 ? palette.warn : palette.good} palette={palette} />
-                    <SummaryCard label="In Progress" value={sprintInProgress} tone={palette.accent} palette={palette} />
-                  </div>
-                  <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>Open Sprint Board</Link>
-                </>
-              ) : (
-                <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>Plan Sprint Work</Link>
-              )}
-            </article>
+            )}
+          </article>
         )}
       />
 
-      <section className="ui-enter" style={{ "--ui-delay": "120ms" }}>
+      <section
+        className="ui-enter"
+        style={{
+          "--ui-delay": "120ms",
+          display: "grid",
+          gap: 14,
+          gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.12fr) minmax(320px,0.88fr)",
+        }}
+      >
         <WorkspacePanel
           palette={palette}
           darkMode={darkMode}
           variant="execution"
-          eyebrow="Focus board"
+          eyebrow="Today"
           title={roleProfile.focusTitle}
-          description="Keep the next move obvious without opening half the workspace."
+          description="Start with the live risk picture, then move into the next decision or lane without opening half the product."
         >
           <div style={{ display: "grid", gap: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
-                  {roleProfile.badge}
-                </span>
-                <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                  {workspaceName}
-                </span>
-                <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                  Mode | {experienceMode}
-                </span>
-              </div>
-              <p style={{ ...caption, color: palette.muted, maxWidth: 420 }}>{note}</p>
-            </div>
-
-            <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-              {roleProfile.focusItems.map((item) => (
-                <div key={item} style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                  <span style={{ ...focusDot, background: palette.accent }} />
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{item}</p>
+            <div style={{ ...briefingBand, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
+                    {roleProfile.badge}
+                  </span>
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                    {workspaceName}
+                  </span>
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                    Mode | {experienceMode}
+                  </span>
                 </div>
-              ))}
-            </div>
-
-            <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
-
-            <div style={{ display: "grid", gap: 14, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.12fr) minmax(300px,0.88fr)" }}>
-              <div style={{ display: "grid", gap: 12 }}>
-                <div style={{ display: "grid", gap: 4 }}>
-                  <p style={{ ...microLabel, color: palette.muted }}>Priority queues</p>
-                  <p style={{ ...caption, color: palette.muted, margin: 0 }}>Start with the pressure points most likely to slow execution or disconnect context.</p>
-                </div>
-                <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-                  <PriorityCard
-                    title="Outcome Reviews"
-                    value={`${pendingOutcomeMeta.overdue} overdue`}
-                    helper={`${pendingOutcomeMeta.total} reviews are still open in the queue.`}
-                    note={pendingOutcomeMeta.overdue > 0 ? "Nudge owners before this slips another day." : "Follow-through looks stable right now."}
-                    to="/decisions?outcome=pending"
-                    tone={pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good}
-                    palette={palette}
-                    icon={QueueListIcon}
-                  />
-                  <PriorityCard
-                    title="Decision Drift"
-                    value={`${driftMeta.critical} critical`}
-                    helper={`${driftMeta.high} additional high-severity alerts are in the stack.`}
-                    note={driftMeta.critical > 0 ? "Revisit assumptions before more execution compounds." : "Decision set is currently stable."}
-                    to="/decisions"
-                    tone={driftMeta.critical > 0 ? palette.accent : palette.info}
-                    palette={palette}
-                    icon={SparklesIcon}
-                  />
-                  <PriorityCard
-                    title="Sprint Risk"
-                    value={`${sprintBlocked} blocked`}
-                    helper={`${sprintInProgress} work items are actively moving through delivery.`}
-                    note={sprintBlocked > 0 ? "Clear blockers before planning more scope." : "Delivery lane is moving without visible blockage."}
-                    to="/sprint"
-                    tone={sprintBlocked > 0 ? palette.warn : palette.good}
-                    palette={palette}
-                    icon={BoltIcon}
-                  />
-                </div>
+                <p style={{ ...caption, color: palette.muted, maxWidth: 380 }}>{note}</p>
               </div>
 
-              <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
-                <div style={{ display: "grid", gap: 4 }}>
-                  <p style={{ ...microLabel, color: palette.muted }}>Quick routes</p>
-                  <p style={{ ...caption, color: palette.muted, margin: 0 }}>Jump into the right workspace without rereading the whole board.</p>
-                </div>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {roleProfile.commandDeck.map((card) => (
-                    <CommandCard key={card.title} {...card} palette={palette} darkMode={darkMode} />
-                  ))}
-                </div>
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+                {roleProfile.focusItems.map((item) => (
+                  <div key={item} style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                    <span style={{ ...focusDot, background: palette.accent }} />
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{item}</p>
+                  </div>
+                ))}
               </div>
             </div>
+
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+              <PriorityCard
+                title="Outcome Reviews"
+                value={`${pendingOutcomeMeta.overdue} overdue`}
+                helper={`${pendingOutcomeMeta.total} reviews are still open in the queue.`}
+                note={pendingOutcomeMeta.overdue > 0 ? "Nudge owners before this slips another day." : "Follow-through looks stable right now."}
+                to="/decisions?outcome=pending"
+                tone={pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good}
+                palette={palette}
+                icon={QueueListIcon}
+              />
+              <PriorityCard
+                title="Decision Drift"
+                value={`${driftMeta.critical} critical`}
+                helper={`${driftMeta.high} additional high-severity alerts are in the stack.`}
+                note={driftMeta.critical > 0 ? "Revisit assumptions before more execution compounds." : "Decision set is currently stable."}
+                to="/decisions"
+                tone={driftMeta.critical > 0 ? palette.accent : palette.info}
+                palette={palette}
+                icon={SparklesIcon}
+              />
+              <PriorityCard
+                title="Sprint Risk"
+                value={`${sprintBlocked} blocked`}
+                helper={`${sprintInProgress} work items are actively moving through delivery.`}
+                note={sprintBlocked > 0 ? "Clear blockers before planning more scope." : "Delivery lane is moving without visible blockage."}
+                to="/sprint"
+                tone={sprintBlocked > 0 ? palette.warn : palette.good}
+                palette={palette}
+                icon={BoltIcon}
+              />
+            </div>
+          </div>
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="memory"
+          eyebrow="Command deck"
+          title="Re-enter the workspace with less scanning"
+          description="The fastest doors back into the most useful parts of the product right now."
+        >
+          <div style={{ display: "grid", gap: 10 }}>
+            {roleProfile.commandDeck.map((card) => (
+              <CommandCard key={card.title} {...card} palette={palette} />
+            ))}
           </div>
         </WorkspacePanel>
       </section>
@@ -876,245 +941,255 @@ export default function UnifiedDashboard() {
               action={<Link className="ui-btn-polish ui-focus-ring" to="/business/tasks" style={primaryButton(palette)}>{roleProfile.personalPanel.actionLabel}</Link>}
             />
           ) : (
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-              <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(112px, 1fr))" }}>
+                {personalSummaryCards.map((item) => (
+                  <SummaryCard
+                    key={item.label}
+                    label={item.label}
+                    value={item.value}
+                    tone={item.tone}
+                    palette={palette}
+                  />
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gap: 14, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1fr) minmax(0,1fr)" }}>
+                <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                  <div style={{ display: "grid", gap: 6 }}>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.accent }}>
                         <QueueListIcon style={icon14} />
                       </span>
-                      <p style={{ ...microLabel, color: palette.muted }}>Assigned to you</p>
+                      <p style={{ ...microLabel, color: palette.muted }}>Execution lane</p>
                     </div>
-                    <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{personalCounts.assigned_tasks || 0}</span>
+                    <p style={{ ...caption, color: palette.muted }}>
+                      The assigned tasks and watched issues closest to your actual delivery lane.
+                    </p>
                   </div>
-                  <p style={{ ...caption, color: palette.muted }}>The tasks closest to your actual lane right now.</p>
-                </div>
-                {assignedTasks.length ? (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {assignedTasks.slice(0, 4).map((task) => (
-                      <Link key={task.id} className="ui-card-lift ui-smooth ui-focus-ring" to="/business/tasks" style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                        <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{task.title}</p>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.accent }}>{formatStatusLabel(task.status)}</span>
-                            <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(task.priority)}</span>
-                          </div>
-                          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
-                            {task.decision_title || task.goal_title || task.conversation_title || (task.due_date ? `Due ${formatDateLabel(task.due_date)}` : "Open task in your work queue")}
-                          </p>
-                        </div>
-                        <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ ...caption, color: palette.muted }}>No tasks are directly assigned to you right now.</p>
-                )}
-              </article>
 
-              <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.info }}>
-                        <EyeIcon style={icon14} />
+                  <div style={laneSectionBlock}>
+                    <div style={laneSectionHeader}>
+                      <span style={{ ...microLabel, color: palette.muted }}>Assigned work</span>
+                      <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                        {personalCounts.assigned_tasks || 0}
                       </span>
-                      <p style={{ ...microLabel, color: palette.muted }}>Watched issues</p>
                     </div>
-                    <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{personalCounts.watched_issues || 0}</span>
+                    {assignedTasks.length ? (
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {assignedTasks.slice(0, 3).map((task) => (
+                          <Link key={task.id} className="ui-card-lift ui-smooth ui-focus-ring" to="/business/tasks" style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
+                            <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{task.title}</p>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.accent }}>{formatStatusLabel(task.status)}</span>
+                                <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(task.priority)}</span>
+                              </div>
+                              <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
+                                {task.decision_title || task.goal_title || task.conversation_title || (task.due_date ? `Due ${formatDateLabel(task.due_date)}` : "Open task in your work queue")}
+                              </p>
+                            </div>
+                            <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ ...caption, color: palette.muted, margin: 0 }}>
+                        No tasks are directly assigned to you right now.
+                      </p>
+                    )}
                   </div>
-                  <p style={{ ...caption, color: palette.muted }}>Execution threads you chose to keep close.</p>
-                </div>
-                {watchedIssues.length ? (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {watchedIssues.slice(0, 4).map((issue) => (
-                      <Link key={issue.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/issues/${issue.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                        <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{issue.key ? `${issue.key} | ${issue.title}` : issue.title}</p>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.info }}>{formatStatusLabel(issue.status)}</span>
-                            {issue.project_name ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{issue.project_name}</span> : null}
-                          </div>
-                          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
-                            {issue.sprint_name || `Updated ${formatDateLabel(issue.updated_at)}`}
-                          </p>
-                        </div>
-                        <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ ...caption, color: palette.muted }}>No watched issues are in your lane yet.</p>
-                )}
-              </article>
 
-              <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
+
+                  <div style={laneSectionBlock}>
+                    <div style={laneSectionHeader}>
+                      <span style={{ ...microLabel, color: palette.muted }}>Watched issues</span>
+                      <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                        {personalCounts.watched_issues || 0}
+                      </span>
+                    </div>
+                    {watchedIssues.length ? (
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {watchedIssues.slice(0, 3).map((issue) => (
+                          <Link key={issue.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/issues/${issue.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
+                            <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{issue.key ? `${issue.key} | ${issue.title}` : issue.title}</p>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.info }}>{formatStatusLabel(issue.status)}</span>
+                                {issue.project_name ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{issue.project_name}</span> : null}
+                              </div>
+                              <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
+                                {issue.sprint_name || `Updated ${formatDateLabel(issue.updated_at)}`}
+                              </p>
+                            </div>
+                            <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ ...caption, color: palette.muted, margin: 0 }}>
+                        No watched issues are in your lane yet.
+                      </p>
+                    )}
+                  </div>
+                </article>
+
+                <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                  <div style={{ display: "grid", gap: 6 }}>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.warn }}>
                         <SparklesIcon style={icon14} />
                       </span>
-                      <p style={{ ...microLabel, color: palette.muted }}>Your decisions</p>
+                      <p style={{ ...microLabel, color: palette.muted }}>Context memory</p>
                     </div>
-                    <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{personalCounts.relevant_decisions || 0}</span>
+                    <p style={{ ...caption, color: palette.muted }}>
+                      Decisions, saved conversations, and recent Recall prompts that help you regain context quickly.
+                    </p>
                   </div>
-                  <p style={{ ...caption, color: palette.muted }}>Decisions you made or were directly involved in, kept close to the work around you.</p>
-                </div>
-                {relevantDecisions.length ? (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {relevantDecisions.slice(0, 4).map((decision) => (
-                      <Link key={decision.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/decisions/${decision.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                        <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{decision.title}</p>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.warn }}>{formatStatusLabel(decision.status)}</span>
-                            {decision.impact_level ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(decision.impact_level)}</span> : null}
-                          </div>
-                          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
-                            {decision.conversation_title || decision.decision_maker_name || `Created ${formatDateLabel(decision.created_at)}`}
-                          </p>
-                        </div>
-                        <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                      </Link>
-                    ))}
-                    <Link className="ui-btn-polish ui-focus-ring" to="/decisions?mine=1&queue=review&sort=recent" style={secondaryButton(palette)}>
-                      Review my queue
-                    </Link>
-                  </div>
-                ) : (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    <p style={{ ...caption, color: palette.muted, margin: 0 }}>No directly relevant decisions are in your lane yet.</p>
-                    <Link className="ui-btn-polish ui-focus-ring" to="/decisions?mine=1&queue=review&sort=recent" style={secondaryButton(palette)}>
-                      Open my review queue
-                    </Link>
-                  </div>
-                )}
-              </article>
 
-              <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.good }}>
-                        <BookmarkIcon style={icon14} />
+                  <div style={laneSectionBlock}>
+                    <div style={laneSectionHeader}>
+                      <span style={{ ...microLabel, color: palette.muted }}>Decision memory</span>
+                      <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                        {personalCounts.relevant_decisions || 0}
                       </span>
-                      <p style={{ ...microLabel, color: palette.muted }}>Saved context</p>
                     </div>
-                    <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{personalCounts.bookmarked_conversations || 0}</span>
+                    {relevantDecisions.length ? (
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {relevantDecisions.slice(0, 3).map((decision) => (
+                          <Link key={decision.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/decisions/${decision.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
+                            <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{decision.title}</p>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.warn }}>{formatStatusLabel(decision.status)}</span>
+                                {decision.impact_level ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(decision.impact_level)}</span> : null}
+                              </div>
+                              <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
+                                {decision.conversation_title || decision.decision_maker_name || `Created ${formatDateLabel(decision.created_at)}`}
+                              </p>
+                            </div>
+                            <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ ...caption, color: palette.muted, margin: 0 }}>
+                        No directly relevant decisions are in your lane yet.
+                      </p>
+                    )}
                   </div>
-                  <p style={{ ...caption, color: palette.muted }}>Conversation context you explicitly kept for later.</p>
-                </div>
-                {bookmarkedConversations.length ? (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {bookmarkedConversations.slice(0, 4).map((bookmark) => (
-                      <Link key={bookmark.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/conversations/${bookmark.conversation_id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                        <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{bookmark.conversation_title || "Saved conversation"}</p>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {bookmark.conversation_type ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.good }}>{formatStatusLabel(bookmark.conversation_type)}</span> : null}
-                            {bookmark.conversation_status ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(bookmark.conversation_status)}</span> : null}
-                          </div>
-                          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>{bookmark.note || `Saved ${formatDateLabel(bookmark.created_at)}`}</p>
-                        </div>
-                        <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ ...caption, color: palette.muted }}>No saved conversations are pinned in your lane yet.</p>
-                )}
-              </article>
 
-              <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.warn }}>
-                        <ChatBubbleLeftRightIcon style={icon14} />
-                      </span>
-                      <p style={{ ...microLabel, color: palette.muted }}>Recent threads</p>
-                    </div>
-                    <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{personalCounts.recent_conversations || 0}</span>
-                  </div>
-                  <p style={{ ...caption, color: palette.muted }}>The conversations most likely to reconnect you to current context quickly.</p>
-                </div>
-                {recentConversations.length ? (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {recentConversations.slice(0, 4).map((conversation) => (
-                      <Link key={conversation.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/conversations/${conversation.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                        <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{conversation.title}</p>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.warn }}>{formatStatusLabel(conversation.post_type)}</span>
-                            {conversation.status_label ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(conversation.status_label)}</span> : null}
-                          </div>
-                          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>{formatDateLabel(conversation.created_at)}</p>
-                        </div>
-                        <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ ...caption, color: palette.muted }}>No recent conversation threads are linked to you yet.</p>
-                )}
-              </article>
+                  <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
 
-              <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.accent }}>
-                        <CpuChipIcon style={icon14} />
-                      </span>
-                      <p style={{ ...microLabel, color: palette.muted }}>Ask Recall memory</p>
-                    </div>
-                    <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{personalCounts.recent_ask_recall_queries || 0}</span>
-                  </div>
-                  <p style={{ ...caption, color: palette.muted }}>The prompts you recently used to interrogate workspace memory.</p>
-                </div>
-                {recentAskRecallQueries.length ? (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {recentAskRecallQueries.slice(0, 4).map((queryItem) => (
-                      <Link
-                        key={queryItem.id}
-                        className="ui-card-lift ui-smooth ui-focus-ring"
-                        to={`/ask?q=${encodeURIComponent(queryItem.query)}&autorun=1`}
-                        state={{ askRecallSnapshot: queryItem }}
-                        style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}
-                      >
-                        <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{queryItem.query}</p>
-                          {queryItem.answer_preview ? (
-                            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.text }}>
-                              {queryItem.answer_preview}
-                            </p>
-                          ) : null}
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {queryItem.response_mode ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.accent }}>{formatStatusLabel(queryItem.response_mode)}</span> : null}
-                            {queryItem.confidence_band ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(queryItem.confidence_band)}</span> : null}
-                          </div>
-                          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
-                            {queryItem.evidence_count} evidence item{queryItem.evidence_count === 1 ? "" : "s"} | {Math.round(queryItem.coverage_score || 0)}% coverage | {formatDateLabel(queryItem.created_at)}
-                          </p>
+                  <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                    <div style={laneSectionBlock}>
+                      <div style={laneSectionHeader}>
+                        <span style={{ ...microLabel, color: palette.muted }}>Saved context</span>
+                        <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                          {personalCounts.bookmarked_conversations || 0}
+                        </span>
+                      </div>
+                      {bookmarkedConversations.length ? (
+                        <div style={{ display: "grid", gap: 10 }}>
+                          {bookmarkedConversations.slice(0, 2).map((bookmark) => (
+                            <Link key={bookmark.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/conversations/${bookmark.conversation_id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
+                              <div style={{ minWidth: 0, display: "grid", gap: 4 }}>
+                                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, lineHeight: 1.45 }}>{bookmark.conversation_title || "Saved conversation"}</p>
+                                <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: palette.muted }}>
+                                  {bookmark.note || `Saved ${formatDateLabel(bookmark.created_at)}`}
+                                </p>
+                              </div>
+                              <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
+                            </Link>
+                          ))}
                         </div>
-                        <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                      </Link>
-                    ))}
-                    <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={secondaryButton(palette)}>
-                      Open Ask Recall
-                    </Link>
+                      ) : (
+                        <p style={{ ...caption, color: palette.muted, margin: 0 }}>
+                          No saved conversations are pinned in your lane yet.
+                        </p>
+                      )}
+                    </div>
+
+                    <div style={laneSectionBlock}>
+                      <div style={laneSectionHeader}>
+                        <span style={{ ...microLabel, color: palette.muted }}>Recent threads</span>
+                        <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                          {personalCounts.recent_conversations || 0}
+                        </span>
+                      </div>
+                      {recentConversations.length ? (
+                        <div style={{ display: "grid", gap: 10 }}>
+                          {recentConversations.slice(0, 2).map((conversation) => (
+                            <Link key={conversation.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/conversations/${conversation.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
+                              <div style={{ minWidth: 0, display: "grid", gap: 4 }}>
+                                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, lineHeight: 1.45 }}>{conversation.title}</p>
+                                <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: palette.muted }}>
+                                  {formatDateLabel(conversation.created_at)}
+                                </p>
+                              </div>
+                              <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ ...caption, color: palette.muted, margin: 0 }}>
+                          No recent conversation threads are linked to you yet.
+                        </p>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    <p style={{ ...caption, color: palette.muted, margin: 0 }}>Your recent Ask Recall prompts will appear here after you use the copilot.</p>
-                    <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={secondaryButton(palette)}>
-                      Open Ask Recall
-                    </Link>
+
+                  <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
+
+                  <div style={laneSectionBlock}>
+                    <div style={laneSectionHeader}>
+                      <span style={{ ...microLabel, color: palette.muted }}>Ask Recall memory</span>
+                      <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                        {personalCounts.recent_ask_recall_queries || 0}
+                      </span>
+                    </div>
+                    {recentAskRecallQueries.length ? (
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {recentAskRecallQueries.slice(0, 2).map((queryItem) => (
+                          <Link
+                            key={queryItem.id}
+                            className="ui-card-lift ui-smooth ui-focus-ring"
+                            to={`/ask?q=${encodeURIComponent(queryItem.query)}&autorun=1`}
+                            state={{ askRecallSnapshot: queryItem }}
+                            style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}
+                          >
+                            <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{queryItem.query}</p>
+                              {queryItem.answer_preview ? (
+                                <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: palette.muted }}>
+                                  {queryItem.answer_preview}
+                                </p>
+                              ) : null}
+                              <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: palette.muted }}>
+                                {queryItem.evidence_count} evidence item{queryItem.evidence_count === 1 ? "" : "s"} | {Math.round(queryItem.coverage_score || 0)}% coverage
+                              </p>
+                            </div>
+                            <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
+                          </Link>
+                        ))}
+                        <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={secondaryButton(palette)}>
+                          Open Ask Recall
+                        </Link>
+                      </div>
+                    ) : (
+                      <div style={{ display: "grid", gap: 10 }}>
+                        <p style={{ ...caption, color: palette.muted, margin: 0 }}>
+                          Your recent Ask Recall prompts will appear here after you use the copilot.
+                        </p>
+                        <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={secondaryButton(palette)}>
+                          Open Ask Recall
+                        </Link>
+                      </div>
+                    )}
                   </div>
-                )}
-              </article>
+                </article>
+              </div>
             </div>
           )}
         </WorkspacePanel>
@@ -1145,13 +1220,13 @@ export default function UnifiedDashboard() {
                 <Link
                   className="ui-card-lift ui-smooth ui-focus-ring"
                   to={getActivityUrl(featuredActivity)}
-                  style={{ ...featureCard, border: `1px solid ${palette.border}`, background: darkMode ? `linear-gradient(180deg, ${palette.cardAlt}, rgba(26,22,19,0.92))` : "linear-gradient(180deg, rgba(255,252,247,0.96), rgba(247,242,235,0.92))" }}
+                  style={{ ...featureCard, border: `1px solid ${palette.border}`, background: palette.card }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.accent }}>{humanizeActivityType(featuredActivity)}</span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: palette.muted }}>{formatDateLabel(featuredActivity.created_at)}</span>
                   </div>
-                  <h3 style={{ ...sectionTitle, margin: 0, fontSize: 30, color: palette.text }}>{featuredActivity.title}</h3>
+                  <h3 style={{ ...sectionTitle, margin: 0, fontSize: 26, color: palette.text }}>{featuredActivity.title}</h3>
                   <p style={{ ...bodyCopy, color: palette.muted }}>{getActivitySummary(featuredActivity)}</p>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: palette.text }}>Open signal <ArrowRightIcon style={icon14} /></span>
                 </Link>
@@ -1298,11 +1373,11 @@ export default function UnifiedDashboard() {
 function primaryButton(palette) {
   return {
     textDecoration: "none",
-    borderRadius: 999,
-    padding: "10px 14px",
-    minHeight: 40,
+    borderRadius: 10,
+    padding: "9px 12px",
+    minHeight: 36,
     fontSize: 12,
-    fontWeight: 800,
+    fontWeight: 700,
     lineHeight: 1.2,
     background: palette.ctaGradient,
     color: palette.buttonText,
@@ -1316,14 +1391,14 @@ function primaryButton(palette) {
 function secondaryButton(palette) {
   return {
     textDecoration: "none",
-    borderRadius: 999,
-    padding: "10px 14px",
-    minHeight: 40,
+    borderRadius: 10,
+    padding: "9px 12px",
+    minHeight: 36,
     fontSize: 12,
-    fontWeight: 800,
+    fontWeight: 700,
     lineHeight: 1.2,
     border: `1px solid ${palette.border}`,
-    background: palette.cardAlt,
+    background: palette.card,
     color: palette.text,
     display: "inline-flex",
     alignItems: "center",
@@ -1332,29 +1407,36 @@ function secondaryButton(palette) {
   };
 }
 
-const pageStyle = { position: "relative", padding: "clamp(14px, 2.4vw, 26px)", display: "grid", gap: 14 };
-const panelCard = { borderRadius: 22, padding: 16, display: "grid", gap: 12, boxShadow: "var(--ui-shadow-sm)" };
-const sectionTitle = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: 28, lineHeight: 1.02, letterSpacing: "-0.05em" };
+const pageStyle = { position: "relative", padding: "clamp(10px, 1.8vw, 18px)", display: "grid", gap: 12 };
+const sectionTitle = { margin: 0, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 22, lineHeight: 1.08, letterSpacing: "-0.035em" };
 const bodyCopy = { margin: 0, fontSize: 13, lineHeight: 1.65 };
 const caption = { margin: 0, fontSize: 12, lineHeight: 1.6 };
-const microLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
-const summaryValue = { margin: 0, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif', fontSize: 24, lineHeight: 1, letterSpacing: "-0.05em" };
+const microLabel = { margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" };
+const summaryValue = { margin: 0, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 22, lineHeight: 1.02, letterSpacing: "-0.04em" };
 const chipRow = { display: "flex", gap: 10, flexWrap: "wrap" };
-const featureCard = { borderRadius: 22, padding: 18, display: "grid", gap: 10, textDecoration: "none", boxShadow: "var(--ui-shadow-sm)" };
-const commandCard = { borderRadius: 22, padding: 16, display: "grid", gap: 12, textDecoration: "none", boxShadow: "var(--ui-shadow-sm)" };
-const priorityCard = { borderRadius: 22, padding: 16, display: "grid", gap: 10, textDecoration: "none", boxShadow: "var(--ui-shadow-sm)" };
-const listCard = { borderRadius: 16, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, textDecoration: "none" };
-const laneCard = { borderRadius: 20, padding: 14, display: "grid", gap: 12, boxShadow: "var(--ui-shadow-sm)" };
-const laneIcon = { width: 28, height: 28, borderRadius: 10, display: "grid", placeItems: "center", flexShrink: 0 };
-const typeChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "5px 9px", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", background: "var(--ui-panel)" };
+const spotlightCard = { borderRadius: 18, padding: 16, display: "grid", gap: 12, alignContent: "start" };
+const spotlightTitle = { margin: 0, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 24, lineHeight: 1.04, letterSpacing: "-0.04em" };
+const spotlightNote = { margin: 0, fontSize: 13, lineHeight: 1.6, fontWeight: 600 };
+const spotlightProgressTrack = { width: "100%", height: 10, borderRadius: 999, overflow: "hidden", background: "var(--ui-border)" };
+const spotlightProgressFill = { height: "100%", borderRadius: 999 };
+const briefingBand = { borderRadius: 16, padding: 14, display: "grid", gap: 12 };
+const featureCard = { borderRadius: 16, padding: 14, display: "grid", gap: 8, textDecoration: "none" };
+const commandCard = { borderRadius: 14, padding: 12, display: "grid", gap: 10, textDecoration: "none" };
+const priorityCard = { borderRadius: 14, padding: 12, display: "grid", gap: 10, textDecoration: "none" };
+const listCard = { borderRadius: 12, padding: "11px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, textDecoration: "none" };
+const laneCard = { borderRadius: 14, padding: 12, display: "grid", gap: 10 };
+const laneSectionBlock = { display: "grid", gap: 10, alignContent: "start" };
+const laneSectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" };
+const laneIcon = { width: 26, height: 26, borderRadius: 8, display: "grid", placeItems: "center", flexShrink: 0 };
+const typeChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "4px 8px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", background: "var(--ui-panel)" };
 const commandMetric = { margin: 0, fontSize: 12, fontWeight: 700, lineHeight: 1.45 };
-const focusCard = { borderRadius: 18, padding: 14, display: "flex", alignItems: "flex-start", gap: 10 };
+const focusCard = { borderRadius: 12, padding: 12, display: "flex", alignItems: "flex-start", gap: 10 };
 const focusDot = { width: 8, height: 8, borderRadius: 999, marginTop: 6, flexShrink: 0 };
-const roleChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "6px 10px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", background: "var(--ui-panel)" };
+const roleChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "5px 9px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", background: "var(--ui-panel)" };
 const railDivider = { width: "100%", margin: "4px 0" };
 const loadingWrap = { padding: "clamp(16px, 3vw, 28px)", minHeight: "50vh", display: "grid", placeItems: "center" };
-const loadingCard = { width: "min(520px, 100%)", borderRadius: 22, padding: 18, boxShadow: "0 18px 40px rgba(0,0,0,0.16)" };
+const loadingCard = { width: "min(520px, 100%)", borderRadius: 16, padding: 16, boxShadow: "0 12px 28px rgba(0,0,0,0.12)" };
 const loadingTop = { display: "flex", alignItems: "center", gap: 12 };
-const loadingOrb = { width: 40, height: 40, borderRadius: 14, display: "grid", placeItems: "center", color: "var(--app-button-text)", flexShrink: 0 };
-const loadingTitle = { margin: 0, fontSize: 15, fontWeight: 800, letterSpacing: "-0.01em" };
+const loadingOrb = { width: 38, height: 38, borderRadius: 10, display: "grid", placeItems: "center", color: "var(--app-button-text)", flexShrink: 0 };
+const loadingTitle = { margin: 0, fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em" };
 const icon14 = { width: 14, height: 14 };

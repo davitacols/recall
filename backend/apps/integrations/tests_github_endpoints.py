@@ -232,6 +232,79 @@ class GitHubEndpointTests(TestCase):
         self.assertEqual(response.data["linked_decisions"][0]["title"], self.decision.title)
         self.assertEqual(response.data["engineering_signals"]["branch_name"], "feature/talking-stage-rollout")
 
+    @patch("apps.integrations.github_endpoints.search_pull_request_candidates")
+    def test_fresh_decision_pr_endpoint_returns_search_candidates(self, mock_search_candidates):
+        mock_search_candidates.return_value = [
+            {
+                "number": 91,
+                "title": "DECISION-1: Ship the GitHub execution timeline",
+                "html_url": "https://github.com/acme/justice-app/pull/91",
+                "state": "open",
+                "created_at": "2026-04-07T10:15:00Z",
+            }
+        ]
+
+        response = self.client.get(f"/api/integrations/fresh/github/decisions/{self.decision.id}/prs/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["decision_id"], self.decision.id)
+        self.assertEqual(response.data["repo_slug"], "acme/justice-app")
+        self.assertEqual(len(response.data["prs"]), 1)
+        self.assertEqual(response.data["prs"][0]["number"], 91)
+        mock_search_candidates.assert_called_once()
+
+    @patch("apps.integrations.github_endpoints.search_pull_request_candidates")
+    def test_legacy_decision_pr_search_route_delegates_to_canonical_search(self, mock_search_candidates):
+        mock_search_candidates.return_value = [
+            {
+                "number": 72,
+                "title": "DECISION-1: Canonical wrapper search",
+                "html_url": "https://github.com/acme/justice-app/pull/72",
+                "state": "open",
+                "created_at": "2026-04-07T10:30:00Z",
+            }
+        ]
+
+        response = self.client.get(f"/api/integrations/github/search/{self.decision.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["decision_id"], self.decision.id)
+        self.assertEqual(response.data["repo_slug"], "acme/justice-app")
+        self.assertEqual(response.data["prs"][0]["number"], 72)
+        mock_search_candidates.assert_called_once()
+
+    def test_fresh_decision_pr_endpoint_links_pull_request(self):
+        response = self.client.post(
+            f"/api/integrations/fresh/github/decisions/{self.decision.id}/prs/",
+            {"pr_url": "https://github.com/acme/justice-app/pull/91"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.decision.refresh_from_db()
+        self.assertTrue(any(link.get("url") == "https://github.com/acme/justice-app/pull/91" for link in self.decision.code_links))
+        self.assertTrue(
+            IntegrationPullRequest.objects.filter(
+                organization=self.org,
+                decision=self.decision,
+                pr_number=91,
+            ).exists()
+        )
+
+    def test_legacy_github_connect_route_returns_canonical_config_payload(self):
+        response = self.client.post(
+            "/api/integrations/github/connect/",
+            {"repo_url": "acme/platform-api", "github_token": "ghp_rotated_token"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "GitHub connected")
+        self.assertEqual(response.data["github"]["repo_slug"], "acme/platform-api")
+        self.integration.refresh_from_db()
+        self.assertEqual(self.integration.repo_owner, "acme")
+        self.assertEqual(self.integration.repo_name, "platform-api")
+
     def test_decision_link_pr_endpoint_now_persists_tracked_pull_request(self):
         response = self.client.post(
             f"/api/decisions/{self.decision.id}/link-pr/",

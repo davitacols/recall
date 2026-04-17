@@ -1,10 +1,16 @@
 from unittest.mock import Mock, patch
 
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.agile.models import Project
+from apps.agile.models import Release, Sprint
 from apps.organizations.auditlog_models import AuditLog
 from apps.organizations.models import Organization, User
+from apps.conversations.models import Conversation
+from apps.decisions.models import Decision
+from apps.business.document_models import Document
 
 
 class AGICopilotContractTests(TestCase):
@@ -68,6 +74,90 @@ class AGICopilotContractTests(TestCase):
         self.assertIsNotNone(log)
         self.assertEqual((log.details or {}).get("query"), "where is risk?")
         self.assertTrue(bool((log.details or {}).get("answer_preview")))
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_low_evidence_task_reassignment_uses_live_interventions(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "tasks": [],
+            "total": 0,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "watch",
+            "readiness_score": 65.0,
+            "interventions": [
+                {
+                    "id": "task:11",
+                    "kind": "task_ownership",
+                    "title": "Assign owner: Reconcile launch checklist",
+                    "impact": "medium",
+                    "confidence": 74,
+                    "reason": "High-priority task is unassigned",
+                    "url": "/business/tasks",
+                },
+                {
+                    "id": "task:12",
+                    "kind": "task_ownership",
+                    "title": "Assign owner: Escalation handoff for onboarding",
+                    "impact": "medium",
+                    "confidence": 74,
+                    "reason": "High-priority task is unassigned",
+                    "url": "/business/tasks",
+                },
+                {
+                    "id": "task:13",
+                    "kind": "task_ownership",
+                    "title": "Assign owner: API migration QA sweep",
+                    "impact": "medium",
+                    "confidence": 74,
+                    "reason": "High-priority task is unassigned",
+                    "url": "/business/tasks",
+                },
+            ],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 1, "active_blockers": 0, "high_priority_unassigned_tasks": 3},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "Which high-priority tasks should we reassign now?"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "needs_evidence")
+        self.assertIn("Reconcile launch checklist", response.data.get("answer", ""))
+        self.assertIn("Escalation handoff for onboarding", response.data.get("answer", ""))
+        self.assertIn("inference from the live intervention plan", response.data.get("answer", "").lower())
+        self.assertIn("No direct workspace records matched this query.", response.data.get("credibility_summary", ""))
+        self.assertTrue(any("Strongest recommended moves were" in item for item in response.data.get("answer_foundation") or []))
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    def test_greeting_query_returns_conversational_opener(self, get_search_engine, build_plan, _rate_limit):
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 84.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "Hello there"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "conversation")
+        self.assertIn("workspace copilot", response.data.get("answer", "").lower())
+        self.assertEqual(response.data.get("evidence_count"), 0)
+        self.assertEqual(response.data.get("missing_evidence"), [])
+        self.assertTrue(len(response.data.get("follow_up_questions") or []) >= 3)
+        get_search_engine.assert_not_called()
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
@@ -176,6 +266,393 @@ class AGICopilotContractTests(TestCase):
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
     @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_recent_project_query_uses_workspace_lookup_fallback(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "projects": [],
+            "total": 0,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 82.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        older_project = Project.objects.create(
+            organization=self.org,
+            name="Legacy Console",
+            key="LEG",
+            lead=self.user,
+            description="Older delivery workspace",
+        )
+        newer_project = Project.objects.create(
+            organization=self.org,
+            name="Orbit Ops",
+            key="ORB",
+            lead=self.user,
+            description="Newest control surface",
+        )
+        earlier = timezone.now() - timezone.timedelta(days=5)
+        Project.objects.filter(id=older_project.id).update(created_at=earlier, updated_at=earlier)
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "most recent project"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertEqual(response.data.get("evidence_count"), 1)
+        self.assertIn('The most recent project in Knoledgr is "Orbit Ops"', response.data.get("answer", ""))
+        self.assertEqual((response.data.get("sources") or {}).get("projects")[0]["title"], "Orbit Ops")
+        self.assertEqual((response.data.get("citations") or [{}])[0].get("title"), "Orbit Ops")
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_recent_sprint_query_uses_workspace_lookup_fallback(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "sprints": [],
+            "total": 0,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 80.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        project = Project.objects.create(
+            organization=self.org,
+            name="Justice App",
+            key="JAPP",
+            lead=self.user,
+            description="Primary delivery workspace",
+        )
+        Sprint.objects.create(
+            organization=self.org,
+            project=project,
+            name="Talking Stage Sprint",
+            start_date=timezone.now().date(),
+            end_date=(timezone.now() + timezone.timedelta(days=14)).date(),
+            goal="Ship the talking stage flow",
+            status="active",
+        )
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "latest sprint"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertIn('The most recent sprint in Knoledgr is "Talking Stage Sprint"', response.data.get("answer", ""))
+        self.assertEqual((response.data.get("sources") or {}).get("sprints")[0]["title"], "Talking Stage Sprint")
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_recent_decision_query_uses_workspace_lookup_fallback(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "total": 0,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 80.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        conversation = Conversation.objects.create(
+            organization=self.org,
+            author=self.user,
+            post_type="decision",
+            title="Rollout thread",
+            content="Conversation context for the decision.",
+        )
+        Decision.objects.create(
+            organization=self.org,
+            conversation=conversation,
+            title="Approve support handoff",
+            description="Move support handoff into the launch plan.",
+            decision_maker=self.user,
+            status="approved",
+            rationale="Reduce rollout friction",
+            impact_level="high",
+        )
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "most recent decision"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertIn('The most recent decision in Knoledgr is "Approve support handoff".', response.data.get("answer", ""))
+        self.assertEqual((response.data.get("sources") or {}).get("decisions")[0]["title"], "Approve support handoff")
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_recent_document_query_uses_workspace_lookup_fallback(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "documents": [],
+            "total": 0,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 80.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        Document.objects.create(
+            organization=self.org,
+            title="Launch Brief",
+            description="Release preparation brief",
+            document_type="guide",
+            content="Step-by-step launch plan.",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "latest document"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertIn('The most recent document in Knoledgr is "Launch Brief".', response.data.get("answer", ""))
+        self.assertEqual((response.data.get("sources") or {}).get("documents")[0]["title"], "Launch Brief")
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_recent_release_query_uses_workspace_lookup_fallback(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "releases": [],
+            "total": 0,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 80.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        project = Project.objects.create(
+            organization=self.org,
+            name="Orbit Ops",
+            key="ORB",
+            lead=self.user,
+            description="Ops workspace",
+        )
+        Release.objects.create(
+            project=project,
+            name="Spring Launch",
+            version="2.3.0",
+            release_date=timezone.now().date(),
+            status="unreleased",
+            description="First spring launch cut",
+        )
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "latest release"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertIn('The most recent release in Knoledgr is "Spring Launch" (2.3.0)', response.data.get("answer", ""))
+        self.assertEqual((response.data.get("sources") or {}).get("releases")[0]["title"], "Spring Launch")
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_recent_conversation_query_uses_workspace_lookup_fallback(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "total": 0,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 80.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        Conversation.objects.create(
+            organization=self.org,
+            author=self.user,
+            post_type="update",
+            title="Launch retro prep",
+            content="We need to prepare the launch retro and assign owners.",
+        )
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "most recent conversation"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertIn('The most recent conversation in Knoledgr is "Launch retro prep".', response.data.get("answer", ""))
+        self.assertEqual((response.data.get("sources") or {}).get("conversations")[0]["title"], "Launch retro prep")
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_follow_up_query_uses_thread_context_anchor(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.side_effect = [
+            {
+                "conversations": [],
+                "decisions": [],
+                "projects": [],
+                "total": 0,
+            },
+            {
+                "conversations": [],
+                "decisions": [],
+                "projects": [
+                    {
+                        "id": 21,
+                        "title": "Orbit Ops",
+                        "key": "ORB",
+                        "updated_at": "2026-04-08T08:30:00Z",
+                        "created_at": "2026-04-07T08:30:00Z",
+                        "url": "/projects/21",
+                        "content_preview": "Newest control surface",
+                    }
+                ],
+                "total": 1,
+            },
+        ]
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 82.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {
+                "query": "what changed most recently there?",
+                "thread_context": [
+                    {
+                        "id": "thread-1",
+                        "question": "most recent project",
+                        "response_mode": "answer",
+                        "sources": [
+                            {"id": 21, "type": "project", "title": "Orbit Ops", "href": "/projects/21"}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertEqual((response.data.get("context_anchor") or {}).get("title"), "Orbit Ops")
+        self.assertIn('Recent thread context anchored this answer to project "Orbit Ops".', response.data.get("answer_foundation", [])[0])
+        self.assertEqual((response.data.get("sources") or {}).get("projects")[0]["title"], "Orbit Ops")
+        self.assertEqual(search_engine.search.call_count, 2)
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_generic_follow_up_prefers_thread_scoped_results(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.side_effect = [
+            {
+                "conversations": [],
+                "decisions": [
+                    {
+                        "id": 31,
+                        "title": "Approve support handoff",
+                        "created_at": "2026-04-08T08:30:00Z",
+                        "url": "/decisions/31",
+                        "content_preview": "Support handoff decision.",
+                    }
+                ],
+                "total": 1,
+            },
+            {
+                "conversations": [],
+                "decisions": [
+                    {
+                        "id": 32,
+                        "title": "Orbit Ops support handoff",
+                        "created_at": "2026-04-08T09:30:00Z",
+                        "url": "/decisions/32",
+                        "content_preview": "Support handoff decision for Orbit Ops.",
+                        "project_name": "Orbit Ops",
+                    }
+                ],
+                "total": 1,
+            },
+        ]
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 82.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {
+                "query": "summarize the decision instead",
+                "thread_context": [
+                    {
+                        "id": "thread-2",
+                        "question": "most recent project",
+                        "response_mode": "answer",
+                        "sources": [
+                            {"id": 21, "type": "project", "title": "Orbit Ops", "href": "/projects/21"}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertEqual((response.data.get("context_anchor") or {}).get("title"), "Orbit Ops")
+        self.assertEqual((response.data.get("sources") or {}).get("decisions")[0]["title"], "Orbit Ops support handoff")
+        self.assertIn('Recent thread context anchored this answer to project "Orbit Ops".', response.data.get("answer_foundation", [])[0])
+        self.assertEqual(search_engine.search.call_count, 2)
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
     @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value="The onboarding goal is supported by a matching task and onboarding guide.")
     def test_answer_mode_returns_broader_organization_sources(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
         search_engine = Mock()
@@ -214,7 +691,7 @@ class AGICopilotContractTests(TestCase):
         response = self.client.post("/api/knowledge/ai/copilot/", {"query": "What active goals are related to onboarding?"}, format="json")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data.get("response_mode"), "answer")
-        self.assertEqual(response.data.get("answer_engine"), "anthropic")
+        self.assertEqual(response.data.get("answer_engine"), "claude")
         self.assertIn("goal", response.data.get("source_types"))
         self.assertIn("task", response.data.get("source_types"))
         self.assertIn("document", response.data.get("source_types"))
@@ -289,7 +766,7 @@ class AGICopilotContractTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data.get("response_mode"), "answer")
-        self.assertEqual(response.data.get("answer_engine"), "anthropic")
+        self.assertEqual(response.data.get("answer_engine"), "claude")
         self.assertIn("project", response.data.get("source_types"))
         self.assertIn("sprint", response.data.get("source_types"))
         self.assertIn("issue", response.data.get("source_types"))

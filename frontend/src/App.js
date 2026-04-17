@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { GlobalSearch } from "./components/GlobalSearch";
@@ -234,6 +234,7 @@ const ADMIN_ROUTES = [
   { path: "/settings", element: <Settings /> },
   { path: "/invitations", element: <StaffInvitations /> },
   { path: "/integrations", element: <Integrations /> },
+  { path: "/integrations/github", element: <Navigate to="/integrations" replace /> },
   { path: "/integrations-manage", element: <Navigate to="/integrations" replace /> },
   { path: "/analytics", element: <Navigate to="/dashboard" replace /> },
   { path: "/team", element: <TeamManagement /> },

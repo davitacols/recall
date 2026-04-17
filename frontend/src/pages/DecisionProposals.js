@@ -139,7 +139,7 @@ function DecisionProposals() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+      <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
         <div style={ambientLayer(darkMode)} />
         <div style={{ ...ui.container, position: "relative", zIndex: 1 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14 }}>
@@ -153,7 +153,7 @@ function DecisionProposals() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       <div style={ambientLayer(darkMode)} />
       <div style={{ ...ui.container, position: "relative", zIndex: 1, display: "grid", gap: 16 }}>
         <section

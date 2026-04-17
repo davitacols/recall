@@ -14,7 +14,7 @@ from collections import Counter
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
 from apps.knowledge.unified_models import ContentLink, UnifiedActivity
-from apps.agile.models import Blocker, Sprint
+from apps.agile.models import Blocker, Project, Release, Sprint
 from apps.organizations.auditlog_models import AuditLog
 from apps.notifications.utils import create_notification
 from apps.users.auth_utils import check_rate_limit
@@ -146,6 +146,13 @@ SOURCE_BUCKET_REGISTRY = [
         'label': 'projects',
         'date_fields': ('updated_at', 'created_at'),
         'fallback_url': lambda item_id: f'/projects/{item_id}',
+    },
+    {
+        'bucket': 'releases',
+        'type': 'release',
+        'label': 'releases',
+        'date_fields': ('release_date', 'created_at'),
+        'fallback_url': lambda _item_id: '/projects',
     },
     {
         'bucket': 'sprints',
@@ -370,13 +377,672 @@ def _detect_copilot_query_mode(query):
     return 'answer'
 
 
+def _detect_conversational_opener(query):
+    text = ' '.join(str(query or '').strip().lower().split())
+    if not text:
+        return False
+
+    opener_phrases = {
+        'hello',
+        'hello there',
+        'hi',
+        'hi there',
+        'hey',
+        'hey there',
+        'good morning',
+        'good afternoon',
+        'good evening',
+        'howdy',
+        'what can you do',
+        'who are you',
+        'help',
+        'help me',
+        'thanks',
+        'thank you',
+    }
+    if text in opener_phrases:
+        return True
+
+    cleaned_tokens = [token for token in (''.join(ch for ch in part if ch.isalnum()) for part in text.split()) if token]
+    if not cleaned_tokens:
+        return False
+
+    if len(cleaned_tokens) <= 4 and cleaned_tokens[0] in {'hello', 'hi', 'hey'}:
+        return True
+    if len(cleaned_tokens) <= 4 and cleaned_tokens[:2] == ['thank', 'you']:
+        return True
+    return False
+
+
+def _build_conversational_answer(query):
+    text = ' '.join(str(query or '').strip().lower().split())
+    if text in {'thanks', 'thank you'}:
+        return (
+            "Anytime. Ask about a project, sprint, decision, document, teammate, or delivery question "
+            "and I'll pull the latest linked context from Knoledgr."
+        )
+    if text in {'who are you', 'what can you do', 'help', 'help me'}:
+        return (
+            "I'm Ask Recall, Knoledgr's workspace copilot. I can summarize projects, sprints, decisions, "
+            "documents, teammates, blockers, and delivery risk from the records already linked in the workspace."
+        )
+    return (
+        "Hi. I'm Ask Recall, Knoledgr's workspace copilot. Ask about a project, sprint, decision, document, "
+        "teammate, blocker, or delivery question and I'll pull the newest linked context."
+    )
+
+
+def _query_mentions(query, *terms):
+    text = str(query or '').strip().lower()
+    if not text:
+        return False
+    cleaned_tokens = set(''.join(ch for ch in token if ch.isalnum()) for token in text.replace('-', ' ').split())
+    cleaned_tokens.discard('')
+    for term in terms:
+        normalized = str(term or '').strip().lower()
+        if not normalized:
+            continue
+        compact = ''.join(ch for ch in normalized if ch.isalnum())
+        if normalized in text or compact in cleaned_tokens:
+            return True
+    return False
+
+
+def _select_relevant_interventions(query, recommended_interventions, limit=3):
+    interventions = list(recommended_interventions or [])
+    if not interventions:
+        return []
+
+    preferred_kinds = []
+    if _query_mentions(query, 'task', 'tasks', 'reassign', 'assign', 'owner', 'assignee', 'ownership'):
+        preferred_kinds.append('task_ownership')
+    if _query_mentions(query, 'blocker', 'blockers', 'blocked', 'unblock'):
+        preferred_kinds.append('blocker_escalation')
+    if _query_mentions(query, 'decision', 'decisions', 'approval', 'resolve'):
+        preferred_kinds.append('decision_resolution')
+
+    for kind in preferred_kinds:
+        matching = [item for item in interventions if item.get('kind') == kind]
+        if matching:
+            return matching[:limit]
+    return interventions[:limit]
+
+
+def _format_answer_date(value):
+    dt = _parse_source_created_at(value)
+    if dt is None:
+        return ''
+    try:
+        localized = timezone.localtime(dt)
+    except Exception:
+        localized = dt
+    return localized.strftime('%b %d, %Y')
+
+
+def _build_recent_project_lookup(org, query):
+    if not _query_mentions(query, 'recent', 'latest', 'newest'):
+        return None
+    if not _query_mentions(query, 'project', 'projects'):
+        return None
+
+    project = (
+        Project.objects.filter(organization=org)
+        .select_related('lead')
+        .order_by('-updated_at', '-created_at')
+        .first()
+    )
+    if not project:
+        return None
+
+    lead_name = project.lead.get_full_name() if project.lead else ''
+    updated_at = project.updated_at or project.created_at
+    updated_label = _format_answer_date(updated_at)
+    preview_parts = [project.description, f'Project key {project.key}']
+    if lead_name:
+        preview_parts.append(f'Lead {lead_name}')
+
+    answer_parts = [f'The most recent project in Knoledgr is "{project.name}"']
+    if project.key:
+        answer_parts[-1] += f' ({project.key})'
+    if updated_label:
+        answer_parts.append(f'It was last updated {updated_label}.')
+    if lead_name:
+        answer_parts.append(f'The current lead is {lead_name}.')
+    answer_parts.append('Open it in Projects to review the latest issues, sprint activity, and ownership.')
+
+    return {
+        'search_data': {
+            'projects': [
+                {
+                    'id': project.id,
+                    'title': project.name,
+                    'content_preview': ' '.join(part for part in preview_parts if part).strip(),
+                    'type': 'project',
+                    'key': project.key,
+                    'lead_name': lead_name,
+                    'created_at': project.created_at.isoformat() if project.created_at else '',
+                    'updated_at': updated_at.isoformat() if updated_at else '',
+                    'url': f'/projects/{project.id}',
+                }
+            ],
+            'total': 1,
+        },
+        'answer': ' '.join(part for part in answer_parts if part).strip(),
+    }
+
+
+def _build_recent_release_lookup(org, query):
+    if not _query_mentions(query, 'recent', 'latest', 'newest'):
+        return None
+    if not _query_mentions(query, 'release', 'releases', 'ship', 'shipping'):
+        return None
+
+    release = (
+        Release.objects.filter(project__organization=org)
+        .select_related('project')
+        .order_by('-release_date', '-created_at')
+        .first()
+    )
+    if not release:
+        return None
+
+    release_date = _format_answer_date(release.release_date)
+    preview_parts = [release.description, f'Version {release.version}', f'Project {release.project.name}', f'Status {release.status}']
+    answer_parts = [f'The most recent release in Knoledgr is "{release.name}"']
+    if release.version:
+        answer_parts[-1] += f' ({release.version})'
+    answer_parts.append(f'It belongs to the {release.project.name} project.')
+    if release.status:
+        answer_parts.append(f'Current status is {release.status.replace("_", " ")}.')
+    if release_date:
+        answer_parts.append(f'The release date on record is {release_date}.')
+    answer_parts.append('Open Releases from the project workspace to review shipping status and scope.')
+
+    return {
+        'search_data': {
+            'releases': [
+                {
+                    'id': release.id,
+                    'title': release.name,
+                    'content_preview': ' '.join(part for part in preview_parts if part).strip(),
+                    'type': 'release',
+                    'version': release.version,
+                    'status': release.status,
+                    'project_name': release.project.name,
+                    'project_id': release.project_id,
+                    'release_date': release.release_date.isoformat() if release.release_date else '',
+                    'created_at': release.created_at.isoformat() if release.created_at else '',
+                    'url': f'/projects/{release.project_id}/releases',
+                }
+            ],
+            'total': 1,
+        },
+        'answer': ' '.join(part for part in answer_parts if part).strip(),
+    }
+
+
+def _build_recent_sprint_lookup(org, query):
+    if not _query_mentions(query, 'recent', 'latest', 'newest'):
+        return None
+    if not _query_mentions(query, 'sprint', 'sprints', 'iteration'):
+        return None
+
+    sprint = (
+        Sprint.objects.filter(organization=org)
+        .select_related('project')
+        .order_by('-start_date', '-created_at')
+        .first()
+    )
+    if not sprint:
+        return None
+
+    start_label = _format_answer_date(sprint.start_date)
+    end_label = _format_answer_date(sprint.end_date)
+    preview_parts = [sprint.summary, sprint.goal, f'Status {sprint.status}']
+    if sprint.project:
+        preview_parts.append(f'Project {sprint.project.name}')
+
+    answer_parts = [f'The most recent sprint in Knoledgr is "{sprint.name}"']
+    if sprint.project:
+        answer_parts.append(f'It belongs to the {sprint.project.name} project.')
+    if sprint.status:
+        answer_parts.append(f'Current status is {sprint.status}.')
+    if start_label and end_label:
+        answer_parts.append(f'It runs from {start_label} to {end_label}.')
+    elif start_label:
+        answer_parts.append(f'It starts {start_label}.')
+    answer_parts.append('Open the sprint workspace to review active issues, blockers, and updates.')
+
+    return {
+        'search_data': {
+            'sprints': [
+                {
+                    'id': sprint.id,
+                    'title': sprint.name,
+                    'content_preview': ' '.join(part for part in preview_parts if part).strip(),
+                    'type': 'sprint',
+                    'status': sprint.status,
+                    'project_name': sprint.project.name if sprint.project else '',
+                    'start_date': sprint.start_date.isoformat() if sprint.start_date else '',
+                    'end_date': sprint.end_date.isoformat() if sprint.end_date else '',
+                    'created_at': sprint.created_at.isoformat() if sprint.created_at else '',
+                    'url': f'/sprints/{sprint.id}',
+                }
+            ],
+            'total': 1,
+        },
+        'answer': ' '.join(part for part in answer_parts if part).strip(),
+    }
+
+
+def _build_recent_decision_lookup(org, query):
+    if not _query_mentions(query, 'recent', 'latest', 'newest'):
+        return None
+    if not _query_mentions(query, 'decision', 'decisions', 'approval', 'approvals'):
+        return None
+
+    decision = (
+        Decision.objects.filter(organization=org)
+        .select_related('decision_maker')
+        .order_by('-created_at')
+        .first()
+    )
+    if not decision:
+        return None
+
+    created_label = _format_answer_date(decision.created_at)
+    maker_name = decision.decision_maker.get_full_name() or decision.decision_maker.username if decision.decision_maker else ''
+    preview_parts = [decision.plain_language_summary, decision.description, f'Status {decision.status}', f'Impact {decision.impact_level}']
+    if maker_name:
+        preview_parts.append(f'Decision maker {maker_name}')
+
+    answer_parts = [f'The most recent decision in Knoledgr is "{decision.title}".']
+    if decision.status:
+        answer_parts.append(f'It is currently {decision.status.replace("_", " ")}.')
+    if maker_name:
+        answer_parts.append(f'The decision maker is {maker_name}.')
+    if created_label:
+        answer_parts.append(f'It was created {created_label}.')
+    answer_parts.append('Open it in Decisions to review the rationale, tradeoffs, and follow-through.')
+
+    return {
+        'search_data': {
+            'decisions': [
+                {
+                    'id': decision.id,
+                    'title': decision.title,
+                    'content_preview': ' '.join(part for part in preview_parts if part).strip(),
+                    'type': 'decision',
+                    'status': decision.status,
+                    'impact_level': decision.impact_level,
+                    'owner_name': maker_name,
+                    'created_at': decision.created_at.isoformat() if decision.created_at else '',
+                    'url': f'/decisions/{decision.id}',
+                }
+            ],
+            'total': 1,
+        },
+        'answer': ' '.join(part for part in answer_parts if part).strip(),
+    }
+
+
+def _build_recent_document_lookup(org, query):
+    if Document is None:
+        return None
+    if not _query_mentions(query, 'recent', 'latest', 'newest'):
+        return None
+    if not _query_mentions(query, 'document', 'documents', 'doc', 'docs', 'guide', 'policy', 'report'):
+        return None
+
+    document = (
+        Document.objects.filter(organization=org)
+        .select_related('updated_by', 'created_by')
+        .order_by('-updated_at', '-created_at')
+        .first()
+    )
+    if not document:
+        return None
+
+    updated_label = _format_answer_date(document.updated_at or document.created_at)
+    owner = document.updated_by or document.created_by
+    owner_name = owner.get_full_name() or owner.username if owner else ''
+    preview_parts = [document.description, document.content[:220] if document.content else '', f'Type {document.document_type}', f'Version {document.version}']
+    if owner_name:
+        preview_parts.append(f'Updated by {owner_name}')
+
+    answer_parts = [f'The most recent document in Knoledgr is "{document.title}".']
+    if document.document_type:
+        answer_parts.append(f'It is a {document.document_type.replace("_", " ")} document.')
+    if updated_label:
+        answer_parts.append(f'It was last updated {updated_label}.')
+    if owner_name:
+        answer_parts.append(f'The latest editor on record is {owner_name}.')
+    answer_parts.append('Open it in Documents to review the latest content and linked context.')
+
+    return {
+        'search_data': {
+            'documents': [
+                {
+                    'id': document.id,
+                    'title': document.title,
+                    'content_preview': ' '.join(part for part in preview_parts if part).strip(),
+                    'type': 'document',
+                    'document_type': document.document_type,
+                    'version': document.version,
+                    'owner_name': owner_name,
+                    'created_at': document.created_at.isoformat() if document.created_at else '',
+                    'updated_at': document.updated_at.isoformat() if document.updated_at else '',
+                    'url': f'/business/documents/{document.id}',
+                }
+            ],
+            'total': 1,
+        },
+        'answer': ' '.join(part for part in answer_parts if part).strip(),
+    }
+
+
+def _build_recent_conversation_lookup(org, query):
+    if not _query_mentions(query, 'recent', 'latest', 'newest'):
+        return None
+    if not _query_mentions(query, 'conversation', 'conversations', 'thread', 'threads', 'discussion', 'discussions'):
+        return None
+
+    conversation = (
+        Conversation.objects.filter(organization=org, is_archived=False)
+        .select_related('author')
+        .order_by('-updated_at', '-created_at')
+        .first()
+    )
+    if not conversation:
+        return None
+
+    updated_label = _format_answer_date(conversation.updated_at or conversation.created_at)
+    author_name = conversation.author.get_full_name() or conversation.author.username if conversation.author else ''
+    preview_parts = [
+        conversation.key_takeaway,
+        conversation.plain_language_summary,
+        conversation.content[:220] if conversation.content else '',
+        f'Post type {conversation.post_type}',
+        f'Priority {conversation.priority}',
+    ]
+    if author_name:
+        preview_parts.append(f'Author {author_name}')
+
+    answer_parts = [f'The most recent conversation in Knoledgr is "{conversation.title}".']
+    if conversation.post_type:
+        answer_parts.append(f'It is a {conversation.post_type} thread.')
+    if updated_label:
+        answer_parts.append(f'It was last updated {updated_label}.')
+    if author_name:
+        answer_parts.append(f'The author is {author_name}.')
+    answer_parts.append('Open it in Conversations to review the thread, replies, and linked decisions.')
+
+    return {
+        'search_data': {
+            'conversations': [
+                {
+                    'id': conversation.id,
+                    'title': conversation.title,
+                    'content_preview': ' '.join(part for part in preview_parts if part).strip(),
+                    'type': 'conversation',
+                    'post_type': conversation.post_type,
+                    'priority': conversation.priority,
+                    'owner_name': author_name,
+                    'created_at': conversation.created_at.isoformat() if conversation.created_at else '',
+                    'updated_at': conversation.updated_at.isoformat() if conversation.updated_at else '',
+                    'url': f'/conversations/{conversation.id}',
+                }
+            ],
+            'total': 1,
+        },
+        'answer': ' '.join(part for part in answer_parts if part).strip(),
+    }
+
+
+def _sanitize_thread_context(raw_context):
+    if not isinstance(raw_context, list):
+        return []
+
+    cleaned_entries = []
+    for entry in raw_context[:4]:
+        if not isinstance(entry, dict):
+            continue
+        sources = []
+        for source in (entry.get('sources') or [])[:4]:
+            if not isinstance(source, dict):
+                continue
+            title = str(source.get('title') or '').strip()
+            source_type = str(source.get('type') or '').strip().lower()
+            if not title or not source_type:
+                continue
+            sources.append({
+                'id': source.get('id'),
+                'type': source_type,
+                'title': title[:255],
+                'href': str(source.get('href') or '').strip()[:255],
+            })
+        cleaned_entries.append({
+            'id': str(entry.get('id') or '')[:100],
+            'question': str(entry.get('question') or '').strip()[:500],
+            'response_mode': str(entry.get('response_mode') or '').strip().lower()[:50],
+            'generated_at': str(entry.get('generated_at') or '').strip()[:100],
+            'sources': sources,
+        })
+    return cleaned_entries
+
+
+def _query_needs_thread_anchor(query):
+    text = ' '.join(str(query or '').strip().lower().split())
+    if not text:
+        return False
+
+    explicit_follow_up_starts = (
+        'what about',
+        'how about',
+        'and ',
+        'also ',
+        'what else',
+        'how else',
+    )
+    if text.startswith(explicit_follow_up_starts):
+        return True
+
+    referential_phrases = (
+        ' there',
+        ' that',
+        ' this',
+        ' it',
+        ' them',
+        ' those',
+        ' these',
+        ' same',
+    )
+    padded = f' {text} '
+    return any(phrase in padded for phrase in referential_phrases)
+
+
+def _query_prefers_thread_scope(query):
+    text = ' '.join(str(query or '').strip().lower().split())
+    if not text:
+        return False
+    if _query_needs_thread_anchor(text):
+        return True
+    if ' instead' in f' {text} ':
+        return True
+
+    tokens = [token for token in (''.join(ch for ch in part if ch.isalnum()) for part in text.split()) if token]
+    if len(tokens) <= 7 and _preferred_thread_source_types(query) and not _query_mentions(query, 'recent', 'latest', 'newest'):
+        return True
+    return False
+
+
+def _preferred_thread_source_types(query):
+    type_hints = []
+    mappings = [
+        (('project', 'projects'), 'project'),
+        (('sprint', 'sprints', 'iteration'), 'sprint'),
+        (('decision', 'decisions', 'approval', 'approvals'), 'decision'),
+        (('document', 'documents', 'doc', 'docs', 'guide', 'policy', 'report'), 'document'),
+        (('release', 'releases', 'ship', 'shipping'), 'release'),
+        (('conversation', 'conversations', 'thread', 'threads', 'discussion', 'discussions'), 'conversation'),
+        (('issue', 'issues', 'ticket', 'tickets'), 'issue'),
+        (('task', 'tasks'), 'task'),
+        (('blocker', 'blockers'), 'blocker'),
+        (('teammate', 'teammates', 'person', 'people', 'owner', 'owners'), 'person'),
+    ]
+    for terms, source_type in mappings:
+        if _query_mentions(query, *terms):
+            type_hints.append(source_type)
+    return type_hints
+
+
+def _pick_thread_anchor(query, thread_context):
+    preferred_types = _preferred_thread_source_types(query)
+    for entry in reversed(thread_context or []):
+        sources = entry.get('sources') or []
+        if preferred_types:
+            for source in sources:
+                if source.get('type') in preferred_types and source.get('title'):
+                    return source
+    for entry in reversed(thread_context or []):
+        for source in entry.get('sources') or []:
+            if source.get('title'):
+                return source
+    return None
+
+
+def _anchor_match_count(search_data, anchor_title):
+    normalized_title = str(anchor_title or '').strip().lower()
+    if not normalized_title:
+        return 0
+
+    anchor_terms = _tokenize_for_match(normalized_title)
+    matches = 0
+    for item in _build_evidence_items(search_data):
+        blob = _source_match_blob(item)
+        if anchor_terms:
+            if any(term in blob for term in anchor_terms):
+                matches += 1
+        elif normalized_title in blob:
+            matches += 1
+    return matches
+
+
+def _apply_thread_context_search(query, search_data, thread_context, search_engine, org_id):
+    total = int((search_data or {}).get('total', 0) or 0)
+    if not thread_context or not _query_prefers_thread_scope(query):
+        return search_data, None
+
+    anchor = _pick_thread_anchor(query, thread_context)
+    if not anchor:
+        return search_data, None
+
+    anchor_title = str(anchor.get('title') or '').strip()
+    if not anchor_title:
+        return search_data, None
+
+    expanded_query = f'{query} {anchor_title}'.strip()
+    anchored_search = search_engine.search(expanded_query, org_id, filters={}, limit=6)
+    anchored_total = int((anchored_search or {}).get('total', 0) or 0)
+    if anchored_total <= 0:
+        return search_data, None
+
+    original_anchor_matches = _anchor_match_count(search_data, anchor_title)
+    anchored_anchor_matches = _anchor_match_count(anchored_search, anchor_title)
+    if total > 0:
+        if anchored_anchor_matches < original_anchor_matches:
+            return search_data, None
+        if anchored_anchor_matches == original_anchor_matches and not _query_needs_thread_anchor(query):
+            return search_data, None
+
+    return anchored_search, {
+        'anchor': anchor,
+        'expanded_query': expanded_query,
+    }
+
+
+def _apply_workspace_lookup_fallback(org, query, search_data):
+    total = int((search_data or {}).get('total', 0) or 0)
+    if total > 0:
+        return search_data, None, False
+
+    lookup_builders = [
+        _build_recent_project_lookup,
+        _build_recent_sprint_lookup,
+        _build_recent_decision_lookup,
+        _build_recent_document_lookup,
+        _build_recent_release_lookup,
+        _build_recent_conversation_lookup,
+    ]
+    for builder in lookup_builders:
+        lookup = builder(org, query)
+        if lookup:
+            return lookup['search_data'], lookup['answer'], True
+
+    return search_data, None, False
+
+
+def _build_diagnosis_answer_text(query, search_data, plan, evidence_contract, recommended_interventions):
+    total = int(search_data.get('total', 0) or 0)
+    readiness_status = plan.get('status') or 'watch'
+    readiness_score = plan.get('readiness_score')
+    counts = plan.get('counts') or {}
+    highlighted_actions = _select_relevant_interventions(query, recommended_interventions, limit=3)
+    action_titles = _human_join([f'"{item.get("title")}"' for item in highlighted_actions if item.get('title')])
+
+    if total > 0:
+        evidence_labels = _human_join(
+            [f'{item["type"]} "{item["title"]}"' for item in _build_evidence_items(search_data)[:2]]
+        )
+        evidence_line = (
+            f'Strongest matching evidence is {evidence_labels}.'
+            if evidence_labels
+            else 'Strongest evidence is currently limited; expand linked artifacts for better precision.'
+        )
+        action_line = f' Highest-leverage moves right now are {action_titles}.' if action_titles else ''
+        return (
+            f'For "{query}", organizational readiness is {readiness_status} '
+            f'with score {readiness_score}. '
+            f'I found {total} related workspace records and prepared {len(recommended_interventions or [])} '
+            f'interventions to reduce execution risk.{action_line} {evidence_line}'
+        ).strip()
+
+    if highlighted_actions:
+        if any(item.get('kind') == 'task_ownership' for item in highlighted_actions):
+            unassigned = _safe_int(counts.get('high_priority_unassigned_tasks'), 0)
+            task_count_text = (
+                f'{unassigned} high-priority unassigned task{"s" if unassigned != 1 else ""}'
+                if unassigned > 0
+                else f'{len(highlighted_actions)} high-priority ownership intervention{"s" if len(highlighted_actions) != 1 else ""}'
+            )
+            return (
+                f'For "{query}", I did not find directly matched workspace records, '
+                f'but current operational signals show {task_count_text}. '
+                f'The clearest reassignment candidates right now are {action_titles}. '
+                f'This is an inference from the live intervention plan rather than directly matched task records. '
+                f'Organizational readiness is {readiness_status} with score {readiness_score}.'
+            )
+        return (
+            f'For "{query}", I did not find directly matched workspace records, '
+            f'but the live intervention plan points to {action_titles} as the strongest next moves. '
+            f'This is an inference from current operational signals rather than directly matched records. '
+            f'Organizational readiness is {readiness_status} with score {readiness_score}.'
+        )
+
+    return (
+        f'For "{query}", I could not find directly matched workspace records. '
+        f'Organizational readiness is {readiness_status} with score {readiness_score}, '
+        f'but I do not yet have enough linked task, decision, blocker, or document evidence to rank a precise next move.'
+    )
+
+
 def _build_answer_text(query, search_data, plan, evidence_contract):
     records = list(_iter_source_records(search_data, limit_per_bucket=6))
     total = int(search_data.get('total', 0) or 0)
     if not records or total == 0:
         return (
-            f'For "{query}", I could not find directly related organization records. '
-            'Try using the name of a project, sprint, issue, blocker, document, decision, conversation, milestone, or teammate that should exist in the workspace.'
+            f'I do not have enough linked workspace context to answer "{query}" yet. '
+            'Name a project, sprint, issue, blocker, document, decision, conversation, milestone, or teammate and I can pull the newest linked context.'
         )
 
     query_lower = str(query or '').lower()
@@ -404,6 +1070,21 @@ def _build_answer_text(query, search_data, plan, evidence_contract):
         f'For "{query}", I found {total} matching records across {_summarize_source_mix(search_data)}. '
         f'The strongest matches are {strongest_matches}.{preview_text}{freshness_text}{readiness_text}'
     ).strip()
+
+
+def _apply_thread_resolution_to_foundation(answer_foundation, thread_resolution):
+    lines = list(answer_foundation or [])
+    anchor = (thread_resolution or {}).get('anchor') or {}
+    anchor_title = str(anchor.get('title') or '').strip()
+    anchor_type = str(anchor.get('type') or '').strip()
+    if not anchor_title:
+        return lines
+
+    if anchor_type:
+        prefix = f'Recent thread context anchored this answer to {anchor_type} "{anchor_title}".'
+    else:
+        prefix = f'Recent thread context anchored this answer to "{anchor_title}".'
+    return [prefix, *lines][:4]
 
 
 def _copilot_sources_payload(search_data):
@@ -479,6 +1160,13 @@ def _build_credibility_summary(evidence_contract, citations):
     freshness_days = evidence_contract.get('freshness_days')
     direct_matches = sum(1 for item in citations if item.get('direct_match'))
 
+    if evidence_count == 0:
+        summary = 'No direct workspace records matched this query.'
+        missing_evidence = evidence_contract.get('missing_evidence') or []
+        if missing_evidence:
+            summary += f' Confidence is limited because {missing_evidence[0].rstrip(".")}.'
+        return summary
+
     summary = (
         f'Grounded in {evidence_count} record'
         f'{"s" if evidence_count != 1 else ""} across {len(source_types)} source type'
@@ -529,6 +1217,10 @@ def _build_answer_foundation(query_mode, evidence_contract, citations, evidence_
         strongest = _human_join([f'{item.get("type")} "{item.get("title")}"' for item in citations[:3]])
         if strongest:
             lines.append(f'Strongest supporting records were {strongest}.')
+    elif query_mode == 'diagnosis' and recommended_interventions:
+        strongest_interventions = _human_join([f'"{item.get("title")}"' for item in recommended_interventions[:3] if item.get('title')])
+        if strongest_interventions:
+            lines.append(f'Strongest recommended moves were {strongest_interventions}.')
     if evidence_breakdown:
         coverage_mix = _human_join([f'{item["count"]} {item["label"]}' for item in evidence_breakdown[:3]])
         lines.append(f'Evidence came from {coverage_mix}.')
@@ -670,8 +1362,8 @@ def _build_evidence_contract(search_data, now):
     missing_evidence = []
     if total == 0:
         missing_evidence.extend([
-            'No related indexed knowledge matched this query across conversations, execution records, documents, and team context.',
-            'Add or link related artifacts before relying on this answer.',
+            "I couldn't match this to linked workspace records across conversations, delivery work, documents, or team context yet.",
+            'Name or link the related record before relying on this answer.',
         ])
     else:
         if len(source_types) < 2:
@@ -1955,6 +2647,7 @@ def agi_copilot(request):
             max_actions = 3
         max_actions = max(1, min(max_actions, 5))
 
+        thread_context = _sanitize_thread_context(request.data.get('thread_context'))
         disable_navigation = bool(request.data.get('disable_navigation', False))
         query_lower = query.lower()
         explicit_navigation = any(
@@ -2012,8 +2705,59 @@ def agi_copilot(request):
                 _log_copilot_query(request, org, user, query, response_payload)
                 return Response(response_payload)
 
+        if _detect_conversational_opener(query):
+            plan = _build_chief_of_staff_plan(org, now, user=user)
+            response_payload = {
+                'analysis_id': str(uuid4()),
+                'query': query,
+                'answer': _build_conversational_answer(query),
+                'answer_engine': 'rules',
+                'confidence': 86,
+                'confidence_band': _confidence_band(86),
+                'response_mode': 'conversation',
+                'evidence_count': 0,
+                'source_types': [],
+                'freshness_days': None,
+                'coverage_score': 0,
+                'missing_evidence': [],
+                'evidence_breakdown': [],
+                'citations': [],
+                'credibility_summary': 'This was treated as a conversational opener, so Ask Recall is waiting for a workspace-specific follow-up.',
+                'answer_foundation': ['This message did not reference a workspace record yet, so Ask Recall responded as a conversational opener.'],
+                'follow_up_questions': [
+                    'Which active projects need attention most right now?',
+                    'What decisions are blocking delivery?',
+                    'Summarize the latest updates in [project or document name].',
+                    'What is active in [sprint name] right now?',
+                ],
+                'tool_links': [],
+                'risk_status': plan.get('status'),
+                'readiness_score': plan.get('readiness_score'),
+                'learning_model': plan.get('learning_model', {}),
+                'counts': plan.get('counts', {}),
+                'sources': _copilot_sources_payload({}),
+                'recommended_interventions': [],
+                'requires_approval_for_execution': False,
+                'execution': {
+                    'performed': False,
+                    'dry_run': True,
+                    'result': None,
+                },
+                'generated_at': now.isoformat(),
+            }
+            _log_copilot_query(request, org, user, query, response_payload)
+            return Response(response_payload)
+
         search_engine = get_search_engine()
         search_data = search_engine.search(query, org.id, filters={}, limit=6)
+        search_data, thread_resolution = _apply_thread_context_search(
+            query=query,
+            search_data=search_data,
+            thread_context=thread_context,
+            search_engine=search_engine,
+            org_id=org.id,
+        )
+        search_data, answer_override, grounded_lookup = _apply_workspace_lookup_fallback(org, query, search_data)
 
         plan = _build_chief_of_staff_plan(org, now, user=user)
         interventions = plan.get('interventions', [])
@@ -2029,6 +2773,10 @@ def agi_copilot(request):
         confidence += min(18, len(recommended_for_response) * 5)
         if plan.get('status') == 'critical':
             confidence += 8
+        if grounded_lookup:
+            confidence = max(confidence, 58)
+        if thread_resolution:
+            confidence = max(confidence, 54)
         confidence = max(18, min(96, confidence))
         evidence_contract = _build_evidence_contract(search_data, now)
         citations = _rank_source_citations(search_data, query)
@@ -2042,6 +2790,7 @@ def agi_copilot(request):
             recommended_interventions=recommended_for_response,
             plan=plan,
         )
+        answer_foundation = _apply_thread_resolution_to_foundation(answer_foundation, thread_resolution)
         follow_up_questions = _build_follow_up_questions(
             query=query,
             query_mode=query_mode,
@@ -2059,43 +2808,33 @@ def agi_copilot(request):
             evidence_contract=evidence_contract,
             recommended_interventions=recommended_for_response,
         )
-        answer_engine = 'anthropic' if llm_answer else 'rules'
+        answer_engine = 'claude' if llm_answer else 'rules'
 
         if llm_answer:
             answer_text = llm_answer
+        elif answer_override:
+            answer_text = answer_override
         elif query_mode == 'answer':
             answer_text = _build_answer_text(query, search_data, plan, evidence_contract)
-        elif int(search_data.get("total", 0) or 0) == 0:
-            answer_text = (
-                f'For "{query}", I could not find directly related memory records. '
-                f'Organizational readiness is {plan.get("status")} with score {plan.get("readiness_score")}, '
-                f'and I prepared {len(recommended_for_response)} interventions based on current org signals.'
-            )
         else:
-            evidence_labels = _human_join(
-                [f'{item["type"]} "{item["title"]}"' for item in _build_evidence_items(search_data)[:2]]
-            )
-            evidence_line = (
-                f'Strongest evidence: {evidence_labels}.'
-                if evidence_labels
-                else 'Strongest evidence is currently limited; expand linked artifacts for better precision.'
-            )
-            answer_text = (
-                f'For "{query}", organizational readiness is {plan.get("status")} '
-                f'with score {plan.get("readiness_score")}. '
-                f'I found {search_data.get("total", 0)} related memory records and prepared '
-                f'{len(recommended_for_response)} interventions to reduce execution risk. {evidence_line}'
+            answer_text = _build_diagnosis_answer_text(
+                query=query,
+                search_data=search_data,
+                plan=plan,
+                evidence_contract=evidence_contract,
+                recommended_interventions=recommended_for_response,
             )
 
         low_evidence_mode = (
             evidence_contract.get('evidence_count', 0) == 0
             or float(evidence_contract.get('coverage_score', 0.0) or 0.0) < 45.0
         )
+        if grounded_lookup:
+            low_evidence_mode = False
+        if thread_resolution and evidence_contract.get('evidence_count', 0) > 0:
+            low_evidence_mode = False
         if low_evidence_mode:
             confidence = min(confidence, 64)
-            if evidence_contract.get('missing_evidence'):
-                first_gap = evidence_contract['missing_evidence'][0]
-                answer_text = f'{answer_text} Evidence gap: {first_gap}'
 
         confidence_band = _confidence_band(confidence)
         response_mode = 'needs_evidence' if low_evidence_mode else query_mode
@@ -2119,6 +2858,7 @@ def agi_copilot(request):
             'answer_foundation': answer_foundation,
             'follow_up_questions': follow_up_questions,
             'tool_links': [],
+            'context_anchor': (thread_resolution or {}).get('anchor'),
             'risk_status': plan.get('status'),
             'readiness_score': plan.get('readiness_score'),
             'learning_model': plan.get('learning_model', {}),

@@ -10,6 +10,7 @@ import {
   ExclamationTriangleIcon,
   HandThumbUpIcon,
   QuestionMarkCircleIcon,
+  SparklesIcon,
   StarIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
@@ -24,6 +25,7 @@ import QuickLink from "../components/QuickLink";
 import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { buildAskRecallPath } from "../utils/askRecall";
 import { createPlainTextPreview, stripRichTextToPlainText } from "../utils/textPreview";
 
 const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette, darkMode }) => {
@@ -685,9 +687,10 @@ function ConversationDetail() {
     replyCount + reactionTotal >= 6
       ? "Enough signal is present to convert this into a tracked decision if the team is aligned."
       : "Keep the thread moving a little longer before locking it into a decision record.";
+  const conversationAskRecallQuestion = `For the conversation titled "${conversation.title || "Untitled conversation"}", what needs a response, decision, or follow-up next?`;
 
   return (
-    <div style={{ ...page, position: "relative", fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif" }}>
+    <div style={{ ...page, position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.16), transparent 30%)" : "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 90% 8%, var(--app-success-soft), transparent 30%)" }} />
       <WorkspaceHero
         palette={palette}
@@ -707,6 +710,13 @@ function ConversationDetail() {
             <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
               <ArrowLeftIcon style={icon14} /> All Conversations
             </Link>
+            <button
+              className="ui-btn-polish ui-focus-ring"
+              onClick={() => navigate(buildAskRecallPath(conversationAskRecallQuestion))}
+              style={ui.secondaryButton}
+            >
+              <SparklesIcon style={icon14} /> Ask Recall
+            </button>
             <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
               Decision Hub
             </button>

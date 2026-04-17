@@ -112,13 +112,13 @@ Backend endpoints that power this workflow:
    - Links PRs/commits to decisions
    - Updates decision status on merge
 
-2. GET /api/integrations/github/decision/<id>/prs/
-   - Fetches all PRs linked to a decision
-   - Used by GitHubPanel component
+2. GET /api/integrations/fresh/github/decisions/<id>/prs/
+   - Searches the configured repository for candidate PRs for a decision
+   - Used by the GitHub decision linker workbench
 
-3. POST /api/integrations/github/link-pr/
-   - Manual PR linking (if auto-detection missed it)
-   - Accepts: decision_id, pr_url
+3. POST /api/integrations/fresh/github/decisions/<id>/prs/
+   - Manually links the chosen PR to the decision after review
+   - Accepts: pr_url
 """
 
 # ============================================

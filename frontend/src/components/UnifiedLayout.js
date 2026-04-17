@@ -7,14 +7,15 @@ import BrandLogo from "./BrandLogo";
 import NLCommandBar from "./NLCommandBar";
 import NotificationBell from "./NotificationBell";
 import UnifiedNav from "./UnifiedNav";
+import { formatWorkspaceName } from "./unifiedNavConfig";
 
 const SIDEBAR_STORAGE_KEY = "unifiedSidebarWidth";
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "unifiedSidebarCollapsed";
 const SIDEBAR_WIDTH_DEFAULT = 272;
-const SIDEBAR_WIDTH_COLLAPSED = 72;
-const SIDEBAR_WIDTH_MIN = 220;
-const SIDEBAR_WIDTH_MAX = 420;
-const SUBNAV_WIDTH = 236;
+const SIDEBAR_WIDTH_COLLAPSED = 84;
+const SIDEBAR_WIDTH_MIN = 224;
+const SIDEBAR_WIDTH_MAX = 384;
+const SUBNAV_WIDTH = 248;
 const ASK_FAB_STORAGE_KEY = "askRecallFabPosV1";
 const ASK_FAB_WIDTH = 132;
 const ASK_FAB_HEIGHT = 44;
@@ -188,6 +189,10 @@ export default function UnifiedLayout({ children }) {
   const activeSidebarWidth = sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidth;
   const pageMeta = getPageMeta(location.pathname);
   const pageTitle = pageMeta.title;
+  const workspaceName =
+    user?.organization_name ||
+    (user?.organization_slug ? formatWorkspaceName(user.organization_slug) : "") ||
+    "Workspace";
   const todayLabel = useMemo(
     () =>
       new Intl.DateTimeFormat("en-US", {
@@ -443,39 +448,33 @@ export default function UnifiedLayout({ children }) {
               background: palette.headerBg,
               border: `1px solid ${palette.border}`,
               boxShadow: palette.headerShadow,
-              backdropFilter: "blur(18px)",
+              backdropFilter: "blur(12px)",
             }}
           >
-            <div style={headerPrimaryRow}>
-              <div style={headerIdentity}>
-                <div
-                  style={{
-                    ...headerBrandCapsule,
-                    border: `1px solid ${palette.border}`,
-                    background: palette.buttonBg,
-                  }}
-                >
-                  <BrandLogo tone={darkMode ? "light" : "warm"} size="sm" showText={false} />
-                  {!isMobile ? (
-                    <div style={headerBrandCopy}>
-                      <p style={{ ...headerBrandLabel, color: palette.text }}>Knoledgr</p>
-                    </div>
-                  ) : null}
-                </div>
+            <div style={{ ...headerPrimaryRow, ...(isMobile ? headerPrimaryRowMobile : null) }}>
+              <div style={{ ...headerIdentity, ...(isMobile ? headerIdentityMobile : null) }}>
                 <div style={headerTitleBlock}>
-                  <span
-                    style={{
-                      ...headerSectionPill,
-                      border: `1px solid ${palette.border}`,
-                      background: palette.buttonBg,
-                      color: palette.muted,
-                    }}
-                  >
-                    {pageMeta.section}
-                  </span>
+                  <div style={headerMetaRow}>
+                    <span style={{ ...headerEyebrow, color: palette.muted }}>{workspaceName} workspace</span>
+                    {!isMobile ? <span style={{ ...headerMetaDivider, background: palette.border }} /> : null}
+                    <span
+                      style={{
+                        ...headerSectionPill,
+                        border: `1px solid ${palette.border}`,
+                        background: darkMode ? "rgba(154, 185, 255, 0.12)" : "rgba(46, 99, 208, 0.08)",
+                        color: palette.text,
+                      }}
+                    >
+                      {pageMeta.section}
+                    </span>
+                    {!isMobile ? <span style={{ ...headerMetaStamp, color: palette.muted }}>{todayLabel}</span> : null}
+                  </div>
                   <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
                     {pageTitle}
                   </h1>
+                  {pageMeta.description ? (
+                    <p style={{ ...headerDescription, color: palette.muted }}>{pageMeta.description}</p>
+                  ) : null}
                 </div>
               </div>
 
@@ -529,7 +528,7 @@ export default function UnifiedLayout({ children }) {
                       )}
                     </span>
                     {!isMobile ? (
-                      <span style={menuTriggerLabel}>{user?.organization_slug || "workspace"}</span>
+                      <span style={menuTriggerLabel}>{workspaceName}</span>
                     ) : null}
                     <ChevronDownIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
                   </button>
@@ -548,7 +547,7 @@ export default function UnifiedLayout({ children }) {
                         <p style={{ ...emailLine, color: palette.muted }}>{user?.email || ""}</p>
                         <div style={menuMetaRail}>
                           <span style={{ ...menuMetaPill, border: `1px solid ${palette.border}`, background: palette.panelBgAlt, color: palette.text }}>
-                            {user?.organization_slug || "workspace"}
+                            {workspaceName}
                           </span>
                           <span style={{ ...menuMetaPill, border: `1px solid ${palette.border}`, background: palette.panelBgAlt, color: palette.muted }}>
                             {`Mode: ${String(user?.experience_mode || "standard")}`}
@@ -704,6 +703,9 @@ const menuTriggerLabel = {
   fontSize: 12,
   lineHeight: 1,
   whiteSpace: "nowrap",
+  maxWidth: 140,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
 
 const profileMenu = {
@@ -857,7 +859,7 @@ const main = {
 const contentContainer = {
   maxWidth: 1720,
   margin: "0 auto",
-  padding: "14px clamp(12px, 1.8vw, 22px) 32px",
+  padding: "12px clamp(12px, 1.6vw, 20px) 28px",
 };
 
 const contentContainerMobile = {
@@ -866,58 +868,66 @@ const contentContainerMobile = {
 
 const layoutHeader = {
   position: "sticky",
-  top: 10,
+  top: 8,
   zIndex: 80,
-  borderRadius: 18,
+  borderRadius: 16,
   padding: "10px 14px",
-  marginBottom: 12,
+  marginBottom: 10,
 };
 
 const layoutHeaderMobile = {
   top: 8,
-  borderRadius: 16,
-  padding: "10px 10px",
+  borderRadius: 14,
+  padding: "9px 10px",
   marginBottom: 8,
 };
 
 const headerTitle = {
   margin: 0,
   fontFamily: "inherit",
-  fontSize: "clamp(1.05rem, 1.6vw, 1.34rem)",
-  letterSpacing: "-0.02em",
-  lineHeight: 1.15,
-  fontWeight: 700,
+  fontSize: "clamp(1.12rem, 1.55vw, 1.42rem)",
+  letterSpacing: "-0.028em",
+  lineHeight: 1.08,
+  fontWeight: 800,
 };
 
 const headerTitleMobile = {
-  fontSize: "1rem",
+  fontSize: "1.04rem",
 };
 
 const headerPrimaryRow = {
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
   justifyContent: "space-between",
   gap: 10,
-  flexWrap: "wrap",
   position: "relative",
   zIndex: 1,
 };
 
+const headerPrimaryRowMobile = {
+  gridTemplateColumns: "minmax(0, 1fr)",
+  gap: 8,
+};
+
 const headerIdentity = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
+  minWidth: 0,
+};
+
+const headerIdentityMobile = {
   minWidth: 0,
 };
 
 const headerActions = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  justifyContent: "flex-end",
+  gap: 10,
 };
 
 const headerActionsMobile = {
   gap: 6,
+  justifyContent: "flex-end",
 };
 
 const headerActionCluster = {
@@ -925,52 +935,71 @@ const headerActionCluster = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "4px",
+  padding: "3px",
 };
 
 const headerTitleBlock = {
   minWidth: 0,
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  flexWrap: "wrap",
-};
-
-const headerBrandCapsule = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  width: "fit-content",
-  borderRadius: 999,
-  padding: "6px 10px",
-  backdropFilter: "blur(12px)",
-};
-
-const headerBrandCopy = {
   display: "grid",
-  gap: 1,
-};
-
-const headerBrandLabel = {
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 800,
-  letterSpacing: "0.04em",
-  textTransform: "uppercase",
+  gap: 4,
 };
 
 const headerSectionPill = {
   borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 10,
+  padding: "4px 8px",
+  fontSize: 9.5,
   fontWeight: 700,
-  letterSpacing: "0.08em",
+  letterSpacing: "0.06em",
   textTransform: "uppercase",
   whiteSpace: "nowrap",
 };
 
+const headerMetaRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+  flexWrap: "wrap",
+};
+
+const headerEyebrow = {
+  margin: 0,
+  fontSize: 10.5,
+  lineHeight: 1.1,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+};
+
+const headerMetaDivider = {
+  width: 4,
+  height: 4,
+  borderRadius: 999,
+  flexShrink: 0,
+};
+
+const headerMetaStamp = {
+  margin: 0,
+  fontSize: 11,
+  lineHeight: 1.25,
+  whiteSpace: "nowrap",
+};
+
+const headerDescription = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.45,
+  maxWidth: 720,
+};
+
 function getPageMeta(pathname) {
   const routeMeta = [
+    {
+      prefix: "/ask",
+      title: "Ask Recall",
+      section: "Workspace AI",
+      description: "Query memory, execution, and team context from one connected copilot surface.",
+    },
     {
       prefix: "/conversations",
       title: "Conversations",
@@ -1042,6 +1071,18 @@ function getPageMeta(pathname) {
       title: "Documentation",
       section: "Resources",
       description: "Reference how the platform works without leaving the broader workflow context.",
+    },
+    {
+      prefix: "/integrations",
+      title: "Integrations",
+      section: "Administration",
+      description: "Connect external tools, manage credentials, and control how context flows in.",
+    },
+    {
+      prefix: "/enterprise",
+      title: "Apps",
+      section: "Workspace",
+      description: "Launch installed apps and manage workspace extensions from one place.",
     },
     {
       prefix: "/settings",

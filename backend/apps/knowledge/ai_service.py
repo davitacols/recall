@@ -11,18 +11,28 @@ from apps.knowledge.models import KnowledgeEntry
 
 class AIService:
     def __init__(self):
-        api_key = (getattr(settings, "ANTHROPIC_API_KEY", "") or "").strip()
+        api_key = (
+            (getattr(settings, "ANTHROPIC_API_KEY", "") or "").strip()
+            or (getattr(settings, "CLAUDE_API_KEY", "") or "").strip()
+        )
+        self.model = (
+            (getattr(settings, "CLAUDE_MODEL", "") or "").strip()
+            or "claude-3-5-sonnet-20241022"
+        )
         self.client = anthropic.Anthropic(api_key=api_key) if api_key else None
 
     def is_enabled(self):
         return self.client is not None
+
+    def engine_name(self):
+        return "claude" if self.client else "rules"
 
     def _call_claude(self, system_prompt, user_prompt, max_tokens=700, temperature=0):
         if not self.client:
             return None
         try:
             message = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model=self.model,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 system=system_prompt,

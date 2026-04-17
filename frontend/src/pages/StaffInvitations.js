@@ -259,7 +259,7 @@ export default function StaffInvitations() {
               <p style={{ margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
                 Reserved seats
               </p>
-              <p style={{ margin: "6px 0 4px", fontSize: 28, lineHeight: 1, letterSpacing: "-0.05em", color: palette.text, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif' }}>
+              <p style={{ margin: "6px 0 4px", fontSize: 28, lineHeight: 1, letterSpacing: "-0.05em", color: palette.text, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
                 {seatSummary?.reserved_seats ?? invitations.length}
               </p>
               <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>

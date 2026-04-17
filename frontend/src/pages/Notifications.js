@@ -1,7 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BellIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowPathIcon,
+  BellAlertIcon,
+  CheckCircleIcon,
+  LinkIcon,
+} from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspacePanel,
+} from "../components/WorkspaceChrome";
 import {
   deleteNotification,
   listNotifications,
@@ -25,6 +35,65 @@ function toRelativeTime(value) {
   return date.toLocaleDateString();
 }
 
+function formatNotificationType(value) {
+  const raw = String(value || "system").replace(/[_-]+/g, " ").trim();
+  if (!raw) return "System";
+  return raw.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatDestination(link) {
+  if (!link) return "";
+  const clean = String(link).replace(/^\/+/, "");
+  if (!clean) return "Open destination";
+  const formatted = clean
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => (segment.length > 18 ? `${segment.slice(0, 18)}…` : segment))
+    .join(" / ");
+  return formatted.replace(/\u00e2\u20ac\u00a6/g, "...");
+}
+
+function getFilterMeta(filter, counts) {
+  const config = {
+    all: {
+      label: "All activity",
+      description: "Use the full inbox when you need the complete thread across action-needed alerts and quieter updates.",
+    },
+    unread: {
+      label: "Unread only",
+      description: "Focus on what has not been acknowledged yet, then clear it in batches.",
+    },
+    read: {
+      label: "Read archive",
+      description: "Review previously seen alerts without re-mixing them into the active queue.",
+    },
+    attention: {
+      label: "Attention queue",
+      description: "High-signal alerts that are more likely to need an answer, decision, or next step.",
+    },
+    fyi: {
+      label: "FYI stream",
+      description: "Lower-pressure updates that still matter for awareness and timeline context.",
+    },
+  };
+
+  const current = config[filter] || config.all;
+
+  return {
+    ...current,
+    summary:
+      filter === "all"
+        ? `${counts.unread} unread, ${counts.attention} attention alerts, ${counts.linked} with linked destinations.`
+        : filter === "unread"
+          ? `${counts.unread} unread items are still waiting to be seen.`
+          : filter === "read"
+            ? `${counts.read} items are already acknowledged.`
+            : filter === "attention"
+              ? `${counts.attention} high-signal alerts are in scope for this view.`
+              : `${counts.fyi} lower-pressure updates are in scope for this view.`,
+  };
+}
+
 function Notifications() {
   const { darkMode } = useTheme();
   const [items, setItems] = useState([]);
@@ -35,28 +104,44 @@ function Notifications() {
     () =>
       darkMode
         ? {
-            bg: "#0f0b0d",
-            panel: "var(--app-surface)",
-            panelSoft: "#1d171b",
+            bg: "#14110f",
+            card: "rgba(29, 24, 21, 0.92)",
+            cardAlt: "#221d19",
+            cardSoft: "rgba(37, 31, 27, 0.84)",
             border: "var(--app-border)",
-            borderStrong: "rgba(255,225,193,0.24)",
+            borderStrong: "rgba(154, 185, 255, 0.24)",
             text: "var(--app-text)",
             muted: "var(--app-muted)",
             accent: "var(--app-accent)",
-            accentText: "#20120d",
-            unreadBg: "rgba(255,180,118,0.14)",
+            accentText: "var(--app-button-text)",
+            link: "var(--app-link)",
+            info: "var(--app-info)",
+            success: "var(--app-success)",
+            warn: "var(--app-warning)",
+            danger: "var(--app-danger)",
+            unreadBg: "rgba(154, 185, 255, 0.12)",
+            priorityBg: "rgba(210, 168, 106, 0.12)",
+            track: "rgba(238, 229, 216, 0.14)",
           }
         : {
             bg: "var(--app-bg)",
-            panel: "var(--app-surface)",
-            panelSoft: "var(--app-surface-alt)",
+            card: "var(--app-surface)",
+            cardAlt: "var(--app-surface-alt)",
+            cardSoft: "rgba(255, 252, 248, 0.78)",
             border: "var(--app-border)",
-            borderStrong: "#d8cab6",
+            borderStrong: "rgba(46, 99, 208, 0.2)",
             text: "var(--app-text)",
             muted: "var(--app-muted)",
             accent: "var(--app-accent)",
-            accentText: "var(--app-surface-alt)7ee",
-            unreadBg: "rgba(217,105,46,0.1)",
+            accentText: "var(--app-button-text)",
+            link: "var(--app-link)",
+            info: "var(--app-info)",
+            success: "var(--app-success)",
+            warn: "var(--app-warning)",
+            danger: "var(--app-danger)",
+            unreadBg: "rgba(46, 99, 208, 0.09)",
+            priorityBg: "rgba(168, 116, 57, 0.1)",
+            track: "rgba(58, 47, 38, 0.12)",
           },
     [darkMode]
   );
@@ -109,7 +194,11 @@ function Notifications() {
   const unreadCount = items.filter((item) => !item.is_read).length;
   const readCount = items.length - unreadCount;
   const attentionCount = items.filter((item) => ATTENTION_TYPES.has(item.type)).length;
+  const attentionUnread = items.filter((item) => ATTENTION_TYPES.has(item.type) && !item.is_read).length;
   const fyiCount = items.length - attentionCount;
+  const linkedCount = items.filter((item) => Boolean(item.link)).length;
+  const readCoverage = items.length ? Math.round((readCount / items.length) * 100) : 0;
+  const attentionCoverage = attentionCount ? Math.round(((attentionCount - attentionUnread) / attentionCount) * 100) : 100;
 
   const filtered = items.filter((item) => {
     if (filter === "all") return true;
@@ -122,6 +211,13 @@ function Notifications() {
 
   const visibleAttention = filtered.filter((item) => ATTENTION_TYPES.has(item.type));
   const visibleFYI = filtered.filter((item) => !ATTENTION_TYPES.has(item.type));
+  const filterMeta = getFilterMeta(filter, {
+    unread: unreadCount,
+    read: readCount,
+    attention: attentionCount,
+    fyi: fyiCount,
+    linked: linkedCount,
+  });
 
   const filterPills = [
     { key: "all", label: `All (${items.length})` },
@@ -131,25 +227,327 @@ function Notifications() {
     { key: "fyi", label: `FYI (${fyiCount})` },
   ];
 
-  const renderRow = (item) => (
+  const inboxAside = (
     <article
-      key={item.id}
+      className="ui-card-lift ui-smooth"
       style={{
-        ...rowCard,
-        border: `1px solid ${item.is_read ? palette.border : palette.borderStrong}`,
-        background: item.is_read ? palette.panelSoft : palette.unreadBg,
+        ...asideCard,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardAlt,
       }}
     >
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ ...typeBadge, border: `1px solid ${palette.border}`, color: palette.muted }}>
-            {item.type || "system"}
-          </span>
-          {!item.is_read ? <span style={{ ...unreadDot, background: palette.accent }} /> : null}
-          <span style={{ ...timestamp, color: palette.muted }}>{toRelativeTime(item.created_at)}</span>
+      <div style={{ display: "grid", gap: 8 }}>
+        <p style={{ ...microLabel, color: palette.muted }}>Inbox posture</p>
+        <h2 style={{ ...asideTitle, color: palette.text }}>
+          {attentionUnread > 0
+            ? `${attentionUnread} unread alerts still need an answer or quick review.`
+            : unreadCount > 0
+              ? "Unread updates are mostly low-pressure right now."
+              : "The inbox is caught up and ready for the next signal."}
+        </h2>
+        <p style={{ ...asideCopy, color: palette.muted }}>
+          Open the highest-signal items first, mark the rest cleanly, and use linked destinations to jump back into the work without losing context.
+        </p>
+      </div>
+      <div style={asideMetricGrid}>
+        <MetricTile palette={palette} label="Unread" value={unreadCount} tone={palette.accent} />
+        <MetricTile palette={palette} label="Response now" value={attentionUnread} tone={palette.warn} />
+      </div>
+      <div style={coverageStack}>
+        <CoverageMeter palette={palette} label="Read coverage" value={readCoverage} tone={palette.accent} />
+        <CoverageMeter palette={palette} label="Attention cleared" value={attentionCoverage} tone={palette.success} />
+      </div>
+    </article>
+  );
+
+  return (
+    <div style={page}>
+      <WorkspaceHero
+        palette={palette}
+        darkMode={darkMode}
+        variant="memory"
+        eyebrow="Notification center"
+        title="Notifications"
+        description="Separate what needs a response from what just needs awareness, then clear the inbox without losing the important threads."
+        aside={inboxAside}
+        stats={[
+          { label: "All activity", value: items.length, helper: "Everything in the inbox." },
+          { label: "Unread", value: unreadCount, helper: "Still waiting to be seen." },
+          { label: "Attention", value: attentionCount, helper: "High-signal alerts in the mix." },
+          { label: "Linked routes", value: linkedCount, helper: "Items that jump back into work." },
+        ]}
+        actions={
+          <>
+            <button className="ui-btn-polish ui-focus-ring" onClick={fetchData} style={secondaryButton(palette)}>
+              <ArrowPathIcon style={icon14} /> Refresh
+            </button>
+            {unreadCount > 0 ? (
+              <button className="ui-btn-polish ui-focus-ring" onClick={onMarkAllRead} style={primaryButton(palette)}>
+                <CheckCircleIcon style={icon14} /> Mark all read
+              </button>
+            ) : null}
+          </>
+        }
+      />
+
+      <section style={controlGrid}>
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="memory"
+          eyebrow="Inbox controls"
+          title="Filter the queue by response pressure"
+          description={filterMeta.description}
+        >
+          <div style={filterRail}>
+            {filterPills.map((pill) => {
+              const active = filter === pill.key;
+              return (
+                <button
+                  key={pill.key}
+                  onClick={() => setFilter(pill.key)}
+                  className="ui-btn-polish ui-focus-ring"
+                  style={{
+                    ...filterPill,
+                    border: `1px solid ${active ? palette.borderStrong : palette.border}`,
+                    background: active ? palette.unreadBg : palette.cardAlt,
+                    color: palette.text,
+                  }}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              ...focusBand,
+              border: `1px solid ${palette.border}`,
+              background: palette.cardAlt,
+            }}
+          >
+            <div style={{ display: "grid", gap: 4 }}>
+              <p style={{ ...microLabel, color: palette.muted }}>Current focus</p>
+              <h3 style={{ ...focusTitle, color: palette.text }}>{filterMeta.label}</h3>
+              <p style={{ ...focusCopy, color: palette.muted }}>{filterMeta.summary}</p>
+            </div>
+          </div>
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="memory"
+          eyebrow="Workflow guide"
+          title="Keep the inbox useful instead of noisy"
+          description="High-signal alerts should become an open route, an acknowledged update, or a deletion instead of sitting unread."
+        >
+          <div style={guideStack}>
+            <GuideRow
+              palette={palette}
+              icon={BellAlertIcon}
+              label="Handle attention alerts first"
+              text="Mentions, task nudges, decisions, goals, and meetings usually deserve the first scan."
+            />
+            <GuideRow
+              palette={palette}
+              icon={LinkIcon}
+              label="Use linked destinations"
+              text="Open the routed context directly from the inbox so you do not lose the thread while triaging."
+            />
+            <GuideRow
+              palette={palette}
+              icon={CheckCircleIcon}
+              label="Batch clear low-signal updates"
+              text="Once the urgent items are covered, mark the rest cleanly so unread counts stay meaningful."
+            />
+          </div>
+        </WorkspacePanel>
+      </section>
+
+      {loading ? (
+        <WorkspaceEmptyState
+          palette={palette}
+          darkMode={darkMode}
+          variant="memory"
+          title="Loading notifications"
+          description="Pulling the latest inbox activity and unread state."
+        />
+      ) : filtered.length === 0 ? (
+        <WorkspaceEmptyState
+          palette={palette}
+          darkMode={darkMode}
+          variant="memory"
+          title="Nothing matches this filter"
+          description="Switch the view or return to the full inbox to see everything again."
+          action={
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => setFilter("all")} style={primaryButton(palette)}>
+              Show all notifications
+            </button>
+          }
+        />
+      ) : (
+        <section style={feedGrid}>
+          {filter !== "fyi" ? (
+            <NotificationSection
+              palette={palette}
+              darkMode={darkMode}
+              variant="memory"
+              eyebrow={filter === "attention" ? "Attention queue" : "Needs response"}
+              title={filter === "attention" ? "Action-needed alerts" : "What deserves a first look"}
+              description="These are the alerts most likely to need an answer, open route, or next step."
+              items={visibleAttention}
+              emptyTitle="No attention alerts in this view"
+              emptyDescription="The current filter is not surfacing any high-signal notifications right now."
+              onMarkRead={onMarkRead}
+              onDelete={onDelete}
+            />
+          ) : null}
+
+          {filter !== "attention" ? (
+            <NotificationSection
+              palette={palette}
+              darkMode={darkMode}
+              variant="memory"
+              eyebrow={filter === "fyi" ? "FYI stream" : "Keep in view"}
+              title={filter === "fyi" ? "Awareness updates" : "Lower-pressure updates"}
+              description="Useful context that is worth seeing, but usually does not need the first response."
+              items={visibleFYI}
+              emptyTitle="No FYI updates in this view"
+              emptyDescription="The current filter is only surfacing action-needed notifications."
+              onMarkRead={onMarkRead}
+              onDelete={onDelete}
+            />
+          ) : null}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function NotificationSection({
+  palette,
+  darkMode,
+  variant,
+  eyebrow,
+  title,
+  description,
+  items,
+  emptyTitle,
+  emptyDescription,
+  onMarkRead,
+  onDelete,
+}) {
+  return (
+    <WorkspacePanel
+      palette={palette}
+      darkMode={darkMode}
+      variant={variant}
+      eyebrow={eyebrow}
+      title={title}
+      description={description}
+      action={
+        <span
+          style={{
+            ...countBadge,
+            border: `1px solid ${palette.border}`,
+            background: palette.cardAlt,
+            color: palette.text,
+          }}
+        >
+          {items.length} {items.length === 1 ? "item" : "items"}
+        </span>
+      }
+    >
+      {items.length ? (
+        <div style={rowStack}>
+          {items.map((item) => (
+            <NotificationRow
+              key={item.id}
+              item={item}
+              palette={palette}
+              darkMode={darkMode}
+              onMarkRead={onMarkRead}
+              onDelete={onDelete}
+            />
+          ))}
         </div>
-        <h3 style={{ ...rowTitle, color: palette.text }}>{item.title}</h3>
-        <p style={{ ...rowMessage, color: palette.muted }}>{item.message}</p>
+      ) : (
+        <div
+          style={{
+            ...sectionEmpty,
+            border: `1px dashed ${palette.border}`,
+            background: palette.cardAlt,
+          }}
+        >
+          <p style={{ ...sectionEmptyTitle, color: palette.text }}>{emptyTitle}</p>
+          <p style={{ ...sectionEmptyCopy, color: palette.muted }}>{emptyDescription}</p>
+        </div>
+      )}
+    </WorkspacePanel>
+  );
+}
+
+function NotificationRow({ item, palette, darkMode, onMarkRead, onDelete }) {
+  const isAttention = ATTENTION_TYPES.has(item.type);
+  const background = item.is_read ? palette.cardAlt : isAttention ? palette.priorityBg : palette.unreadBg;
+  const borderColor = item.is_read ? palette.border : isAttention ? palette.warn : palette.borderStrong;
+  const tone = item.is_read ? palette.muted : isAttention ? palette.warn : palette.accent;
+
+  return (
+    <article
+      className="ui-card-lift ui-smooth"
+      style={{
+        ...rowCard,
+        border: `1px solid ${borderColor}`,
+        background,
+      }}
+    >
+      <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
+        <div style={rowMeta}>
+          <span
+            style={{
+              ...typeBadge,
+              border: `1px solid ${item.is_read ? palette.border : borderColor}`,
+              background: palette.cardSoft,
+              color: tone,
+            }}
+          >
+            {formatNotificationType(item.type)}
+          </span>
+          {!item.is_read ? (
+            <span
+              style={{
+                ...statusPill,
+                border: `1px solid ${borderColor}`,
+                background: palette.cardSoft,
+                color: tone,
+              }}
+            >
+              Unread
+            </span>
+          ) : null}
+          <span style={{ ...timestamp, color: palette.muted }}>{toRelativeTime(item.created_at)}</span>
+          {item.link ? (
+            <span
+              style={{
+                ...destinationPill,
+                border: `1px solid ${palette.border}`,
+                background: palette.cardSoft,
+                color: palette.text,
+              }}
+            >
+              <LinkIcon style={icon12} />
+              {formatDestination(item.link)}
+            </span>
+          ) : null}
+        </div>
+
+        <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+          <h3 style={{ ...rowTitle, color: palette.text }}>{item.title || "Notification"}</h3>
+          <p style={{ ...rowMessage, color: palette.muted }}>{item.message}</p>
+        </div>
       </div>
 
       <div style={rowActions}>
@@ -158,36 +556,23 @@ function Notifications() {
             to={item.link}
             onClick={() => onMarkRead(item)}
             className="ui-btn-polish ui-focus-ring"
-            style={{
-              ...actionPill,
-              border: `1px solid ${palette.border}`,
-              color: palette.text,
-            }}
+            style={primaryButton(palette)}
           >
             Open
           </Link>
         ) : null}
         {!item.is_read ? (
-          <button
-            onClick={() => onMarkRead(item)}
-            className="ui-btn-polish ui-focus-ring"
-            style={{
-              ...actionPill,
-              border: `1px solid ${palette.border}`,
-              color: palette.text,
-              background: "transparent",
-            }}
-          >
+          <button className="ui-btn-polish ui-focus-ring" onClick={() => onMarkRead(item)} style={secondaryButton(palette)}>
             Mark read
           </button>
         ) : null}
         <button
-          onClick={() => onDelete(item)}
           className="ui-btn-polish ui-focus-ring"
+          onClick={() => onDelete(item)}
           style={{
-            ...actionPill,
-            border: "1px solid var(--app-danger-border)",
-            color: "var(--app-danger)",
+            ...dangerButton,
+            border: `1px solid ${darkMode ? "rgba(238, 146, 153, 0.3)" : "rgba(200, 86, 93, 0.26)"}`,
+            color: palette.danger,
             background: "transparent",
           }}
         >
@@ -196,111 +581,227 @@ function Notifications() {
       </div>
     </article>
   );
+}
 
+function MetricTile({ palette, label, value, tone }) {
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={container}>
-        <header style={{ ...hero, background: palette.panel, border: `1px solid ${palette.border}` }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <BellIcon style={{ width: 22, height: 22, color: palette.text }} />
-              <h1 style={{ margin: 0, fontSize: "clamp(1rem,1.35vw,1.25rem)", color: palette.text }}>Notifications</h1>
-            </div>
-            <p style={{ margin: "6px 0 0", fontSize: 13, color: palette.muted }}>
-              {unreadCount} unread of {items.length} total
-            </p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <button
-              onClick={fetchData}
-              className="ui-btn-polish ui-focus-ring"
-              style={{ ...heroAction, border: `1px solid ${palette.border}`, color: palette.text, background: "transparent" }}
-            >
-              Refresh
-            </button>
-            {unreadCount > 0 ? (
-              <button
-                onClick={onMarkAllRead}
-                className="ui-btn-polish ui-focus-ring"
-                style={{
-                  ...heroAction,
-                  border: `1px solid ${darkMode ? "rgba(255,180,118,0.5)" : "#b95322"}`,
-                  background: palette.accent,
-                  color: palette.accentText,
-                }}
-              >
-                Mark all read
-              </button>
-            ) : null}
-          </div>
-        </header>
+    <div
+      style={{
+        ...metricTile,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardSoft,
+      }}
+    >
+      <p style={{ ...metricLabel, color: palette.muted }}>{label}</p>
+      <p style={{ ...metricValue, color: tone }}>{value}</p>
+    </div>
+  );
+}
 
-        <section style={filtersWrap}>
-          {filterPills.map((pill) => (
-            <button
-              key={pill.key}
-              onClick={() => setFilter(pill.key)}
-              className="ui-btn-polish ui-focus-ring"
-              style={{
-                ...filterPill,
-                border: `1px solid ${palette.border}`,
-                background: filter === pill.key ? palette.unreadBg : palette.panel,
-                color: palette.text,
-              }}
-            >
-              {pill.label}
-            </button>
-          ))}
-        </section>
-
-        {loading ? (
-          <div style={{ ...emptyCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.muted }}>
-            Loading notifications...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ ...emptyCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.muted }}>
-            Nothing to show for this filter.
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: 12 }}>
-            {visibleAttention.length > 0 ? <p style={{ ...sectionTitle, color: palette.muted }}>Attention</p> : null}
-            {visibleAttention.map(renderRow)}
-            {visibleFYI.length > 0 ? <p style={{ ...sectionTitle, color: palette.muted }}>FYI</p> : null}
-            {visibleFYI.map(renderRow)}
-          </div>
-        )}
+function CoverageMeter({ palette, label, value, tone }) {
+  return (
+    <div style={coverageMeter}>
+      <div style={coverageHead}>
+        <p style={{ ...coverageLabel, color: palette.muted }}>{label}</p>
+        <p style={{ ...coverageValue, color: tone }}>{value}%</p>
+      </div>
+      <div style={{ ...coverageTrack, background: palette.track }}>
+        <div
+          style={{
+            ...coverageFill,
+            width: `${Math.max(0, Math.min(100, value))}%`,
+            background: tone,
+          }}
+        />
       </div>
     </div>
   );
 }
 
-const container = {
-  width: "min(1100px, 100%)",
-  margin: "0 auto",
-  padding: "clamp(12px,2.2vw,24px)",
+function GuideRow({ palette, icon: Icon, label, text }) {
+  return (
+    <article
+      style={{
+        ...guideRow,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardAlt,
+      }}
+    >
+      <span
+        style={{
+          ...guideIcon,
+          background: palette.unreadBg,
+          color: palette.accent,
+        }}
+      >
+        <Icon style={icon14} />
+      </span>
+      <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+        <p style={{ ...guideLabel, color: palette.text }}>{label}</p>
+        <p style={{ ...guideCopy, color: palette.muted }}>{text}</p>
+      </div>
+    </article>
+  );
+}
+
+function primaryButton(palette) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    border: "none",
+    borderRadius: 999,
+    padding: "9px 13px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+    textDecoration: "none",
+    background: palette.accent,
+    color: palette.accentText,
+    boxShadow: "var(--ui-shadow-sm)",
+  };
+}
+
+function secondaryButton(palette) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    padding: "9px 13px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+    textDecoration: "none",
+    background: palette.cardAlt,
+    color: palette.text,
+    border: `1px solid ${palette.border}`,
+  };
+}
+
+const dangerButton = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "9px 13px",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+  textDecoration: "none",
+};
+
+const page = {
+  display: "grid",
+  gap: 14,
+};
+
+const asideCard = {
+  borderRadius: 18,
+  padding: 16,
   display: "grid",
   gap: 12,
 };
 
-const hero = {
-  borderRadius: 16,
-  padding: "14px 16px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  flexWrap: "wrap",
-};
-
-const heroAction = {
-  borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
+const microLabel = {
+  margin: 0,
+  fontSize: 10,
   fontWeight: 700,
-  cursor: "pointer",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
 };
 
-const filtersWrap = {
+const asideTitle = {
+  margin: 0,
+  fontSize: 22,
+  lineHeight: 1.08,
+  letterSpacing: "-0.03em",
+};
+
+const asideCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.6,
+};
+
+const asideMetricGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const metricTile = {
+  borderRadius: 16,
+  padding: "10px 12px",
+  display: "grid",
+  gap: 4,
+};
+
+const metricLabel = {
+  margin: 0,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const metricValue = {
+  margin: 0,
+  fontSize: 20,
+  lineHeight: 1,
+  fontWeight: 800,
+};
+
+const coverageStack = {
+  display: "grid",
+  gap: 8,
+};
+
+const coverageMeter = {
+  display: "grid",
+  gap: 6,
+};
+
+const coverageHead = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 10,
+  alignItems: "center",
+};
+
+const coverageLabel = {
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const coverageValue = {
+  margin: 0,
+  fontSize: 12,
+  fontWeight: 800,
+};
+
+const coverageTrack = {
+  width: "100%",
+  height: 10,
+  borderRadius: 999,
+  overflow: "hidden",
+};
+
+const coverageFill = {
+  height: "100%",
+  borderRadius: 999,
+};
+
+const controlGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+  gap: 14,
+};
+
+const filterRail = {
   display: "flex",
   gap: 8,
   flexWrap: "wrap",
@@ -308,41 +809,134 @@ const filtersWrap = {
 
 const filterPill = {
   borderRadius: 999,
-  padding: "7px 12px",
+  padding: "8px 12px",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
 };
 
-const sectionTitle = {
-  margin: "4px 2px 0",
+const focusBand = {
+  borderRadius: 16,
+  padding: 14,
+  display: "grid",
+  gap: 6,
+};
+
+const focusTitle = {
+  margin: 0,
+  fontSize: 20,
+  lineHeight: 1.08,
+  letterSpacing: "-0.03em",
+};
+
+const focusCopy = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.6,
+};
+
+const guideStack = {
+  display: "grid",
+  gap: 10,
+};
+
+const guideRow = {
+  borderRadius: 16,
+  padding: 12,
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr)",
+  gap: 10,
+  alignItems: "start",
+};
+
+const guideIcon = {
+  width: 34,
+  height: 34,
+  borderRadius: 12,
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
+};
+
+const guideLabel = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 700,
+  lineHeight: 1.3,
+};
+
+const guideCopy = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.55,
+};
+
+const feedGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+  gap: 14,
+};
+
+const countBadge = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  padding: "7px 10px",
   fontSize: 11,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  fontWeight: 800,
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+};
+
+const rowStack = {
+  display: "grid",
+  gap: 10,
 };
 
 const rowCard = {
-  borderRadius: 14,
-  padding: "12px 12px",
+  borderRadius: 16,
+  padding: 14,
   display: "grid",
-  gridTemplateColumns: "minmax(0,1fr)",
   gap: 12,
 };
 
-const typeBadge = {
-  borderRadius: 999,
-  fontSize: 10,
-  padding: "3px 8px",
-  fontWeight: 700,
-  textTransform: "uppercase",
-  width: "fit-content",
+const rowMeta = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
 };
 
-const unreadDot = {
-  width: 7,
-  height: 7,
-  borderRadius: "50%",
+const typeBadge = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  padding: "5px 9px",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+};
+
+const statusPill = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  padding: "5px 9px",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+};
+
+const destinationPill = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 999,
+  padding: "5px 9px",
+  fontSize: 11,
+  fontWeight: 700,
+  minWidth: 0,
 };
 
 const timestamp = {
@@ -350,16 +944,17 @@ const timestamp = {
 };
 
 const rowTitle = {
-  margin: "8px 0 4px",
-  fontSize: 15,
+  margin: 0,
+  fontSize: 17,
   fontWeight: 700,
-  lineHeight: 1.35,
+  lineHeight: 1.25,
+  letterSpacing: "-0.02em",
 };
 
 const rowMessage = {
   margin: 0,
   fontSize: 13,
-  lineHeight: 1.45,
+  lineHeight: 1.55,
 };
 
 const rowActions = {
@@ -369,21 +964,28 @@ const rowActions = {
   flexWrap: "wrap",
 };
 
-const actionPill = {
-  textDecoration: "none",
-  borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
+const sectionEmpty = {
+  borderRadius: 16,
+  padding: "20px 16px",
+  display: "grid",
+  gap: 6,
+  textAlign: "center",
 };
 
-const emptyCard = {
-  borderRadius: 14,
-  textAlign: "center",
-  padding: "30px 14px",
-  fontSize: 13,
+const sectionEmptyTitle = {
+  margin: 0,
+  fontSize: 16,
+  fontWeight: 700,
+  letterSpacing: "-0.02em",
 };
+
+const sectionEmptyCopy = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.55,
+};
+
+const icon14 = { width: 14, height: 14 };
+const icon12 = { width: 12, height: 12 };
 
 export default Notifications;
-

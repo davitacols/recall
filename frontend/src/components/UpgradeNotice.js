@@ -60,7 +60,7 @@ export default function UpgradeNotice({
           </p>
           <ArrowTrendingUpIcon style={{ width: 16, height: 16, color: styles.accent, flexShrink: 0 }} />
         </div>
-        <h3 style={{ margin: 0, fontSize: 20, lineHeight: 1.05, letterSpacing: "-0.04em", color: palette.text, fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif' }}>
+        <h3 style={{ margin: 0, fontSize: 20, lineHeight: 1.05, letterSpacing: "-0.04em", color: palette.text, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
           {title}
         </h3>
         {description ? (

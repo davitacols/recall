@@ -3,9 +3,10 @@ import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { useTheme } from '../utils/ThemeAndAccessibility';
 import { useAuth } from '../hooks/useAuth';
-import BrandedTechnicalIllustration from '../components/BrandedTechnicalIllustration';
 import { WorkspaceHero, WorkspacePanel } from '../components/WorkspaceChrome';
 import { getProjectPalette } from '../utils/projectUi';
+
+const ASK_RECALL_THREAD_STORAGE_KEY = 'ask_recall_thread_v2';
 
 function toDisplayDate(value) {
   if (!value) return '';
@@ -64,6 +65,312 @@ function sanitizePreviewText(value) {
   return sanitizeNarrativeText(value).replace(/\s*\n+\s*/g, ' ').trim();
 }
 
+function truncateText(value, max = 240) {
+  const text = sanitizePreviewText(value);
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}...`;
+}
+
+function buildAnchorPrompt(source) {
+  const title = String(source?.title || '').trim();
+  if (!title) return '';
+
+  switch (source?.type) {
+    case 'project':
+      return `What changed most recently in ${title}?`;
+    case 'sprint':
+      return `What is active in ${title} right now?`;
+    case 'decision':
+      return `Summarize ${title} and what is still unresolved.`;
+    case 'document':
+      return `Summarize the latest updates in ${title}.`;
+    case 'issue':
+      return `What is the current status of ${title}?`;
+    case 'task':
+      return `What is blocking ${title}?`;
+    case 'person':
+      return `What work is ${title} currently involved in?`;
+    default:
+      return `Tell me about ${title}.`;
+  }
+}
+
+function readStoredThreadEntries() {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(ASK_RECALL_THREAD_STORAGE_KEY);
+    const parsed = JSON.parse(raw || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item && item.question && item.answer)
+      .slice(-6);
+  } catch {
+    return [];
+  }
+}
+
+function toThreadEntry(result) {
+  if (!result?.question || !result?.answer) return null;
+
+  return {
+    id: result.analysisId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    question: result.question,
+    answer: result.answer,
+    answerEngine: result.answerEngine || 'rules',
+    confidence: Number(result.confidence || 0),
+    confidenceBand: result.confidenceBand || getConfidenceLabel(result.confidence || 0).toLowerCase(),
+    responseMode: result.responseMode || 'answer',
+    riskStatus: result.riskStatus || 'unknown',
+    evidenceCount: Number(result.evidenceCount || 0),
+    coverageScore: Number(result.coverageScore || 0),
+    credibilitySummary: result.credibilitySummary || '',
+    followUpQuestions: Array.isArray(result.followUpQuestions) ? result.followUpQuestions.slice(0, 4) : [],
+    evidenceBreakdown: Array.isArray(result.evidenceBreakdown) ? result.evidenceBreakdown.slice(0, 4) : [],
+    freshnessDays: result.freshnessDays ?? null,
+    missingEvidence: Array.isArray(result.missingEvidence) ? result.missingEvidence.slice(0, 2) : [],
+    sources: Array.isArray(result.sources) ? result.sources.slice(0, 6) : [],
+    contextAnchor: result.contextAnchor || null,
+    generatedAt: result.generatedAt || new Date().toISOString(),
+  };
+}
+
+function buildAnchorSuggestions(entries) {
+  const seen = new Set();
+  const suggestions = [];
+
+  [...entries].reverse().forEach((entry, entryIndex) => {
+    (entry.sources || []).forEach((source, sourceIndex) => {
+      const prompt = buildAnchorPrompt(source);
+      const label = String(source?.title || '').trim();
+      if (!prompt || !label) return;
+      const key = `${label.toLowerCase()}::${prompt.toLowerCase()}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      suggestions.push({
+        id: `source-${entryIndex}-${sourceIndex}`,
+        label,
+        helper: titleCase(source.type || 'record'),
+        prompt,
+      });
+    });
+  });
+
+  if (suggestions.length < 4) {
+    [...entries]
+      .reverse()
+      .forEach((entry, entryIndex) => {
+        const prompt = String(entry.question || '').trim();
+        if (!prompt) return;
+        const key = `question::${prompt.toLowerCase()}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        suggestions.push({
+          id: `question-${entryIndex}`,
+          label: truncateText(prompt, 56),
+          helper: 'Recent ask',
+          prompt,
+        });
+      });
+  }
+
+  return suggestions.slice(0, 6);
+}
+
+function buildThreadContextPayload(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return [];
+
+  return entries.slice(-3).map((entry, entryIndex) => ({
+    id: entry.id || `thread-entry-${entryIndex}`,
+    question: String(entry.question || '').trim(),
+    response_mode: entry.responseMode || 'answer',
+    generated_at: entry.generatedAt || '',
+    sources: [
+      ...(entry.contextAnchor?.title ? [entry.contextAnchor] : []),
+      ...(Array.isArray(entry.sources) ? entry.sources : []),
+    ]
+      .slice(0, 4)
+      .map((source, sourceIndex) => ({
+          id: source.id ?? `${entryIndex}-${sourceIndex}`,
+          type: source.type || 'record',
+          title: String(source.title || '').trim(),
+          href: source.href || '',
+        })),
+  }));
+}
+
+function mergePromptChoices(primary = [], secondary = [], limit = 4) {
+  const merged = [];
+  const seen = new Set();
+
+  [...primary, ...secondary].forEach((item) => {
+    const text = String(item || '').trim();
+    const key = text.toLowerCase();
+    if (!text || seen.has(key)) return;
+    seen.add(key);
+    merged.push(text);
+  });
+
+  return merged.slice(0, limit);
+}
+
+function normalizeContextAnchor(anchor, fallbackSource = null) {
+  const candidate = anchor && anchor.title ? anchor : fallbackSource;
+  if (!candidate) return null;
+
+  const title = String(candidate.title || '').trim();
+  if (!title) return null;
+
+  return {
+    id: candidate.id ?? fallbackSource?.id ?? null,
+    type: String(candidate.type || fallbackSource?.type || 'record').trim(),
+    title,
+    href: candidate.href || candidate.url || fallbackSource?.href || '',
+  };
+}
+
+function buildScopedAnchorPrompts(anchor) {
+  if (!anchor?.title) return [];
+
+  const prompts = [];
+  const add = (value) => {
+    const text = String(value || '').trim();
+    if (!text || prompts.includes(text)) return;
+    prompts.push(text);
+  };
+
+  add(buildAnchorPrompt(anchor));
+
+  switch (anchor.type) {
+    case 'project':
+      add(`What blockers are affecting ${anchor.title} right now?`);
+      add(`Which decisions are still open for ${anchor.title}?`);
+      add(`What is shipping next for ${anchor.title}?`);
+      break;
+    case 'sprint':
+      add(`What tasks are active in ${anchor.title} right now?`);
+      add(`What blockers are affecting ${anchor.title}?`);
+      add(`What should we resolve before ${anchor.title} ends?`);
+      break;
+    case 'decision':
+      add(`What tasks or conversations are linked to ${anchor.title}?`);
+      add(`Who owns the follow-through for ${anchor.title}?`);
+      add(`What changed most recently around ${anchor.title}?`);
+      break;
+    case 'document':
+      add(`What decisions or tasks reference ${anchor.title}?`);
+      add(`What changed most recently around ${anchor.title}?`);
+      add(`Who updated ${anchor.title} most recently?`);
+      break;
+    case 'conversation':
+      add(`Summarize ${anchor.title} and what needs a response next.`);
+      add(`Which decisions or tasks came out of ${anchor.title}?`);
+      add(`What changed most recently in ${anchor.title}?`);
+      break;
+    case 'release':
+      add(`What should we watch before shipping ${anchor.title}?`);
+      add(`Which issues or blockers are tied to ${anchor.title}?`);
+      add(`What changed most recently around ${anchor.title}?`);
+      break;
+    case 'issue':
+      add(`What is blocking ${anchor.title}?`);
+      add(`Who owns the next action for ${anchor.title}?`);
+      add(`What changed most recently around ${anchor.title}?`);
+      break;
+    case 'task':
+      add(`Who owns ${anchor.title} and what is the next move?`);
+      add(`What is blocking ${anchor.title}?`);
+      break;
+    case 'blocker':
+      add(`How do we clear ${anchor.title}?`);
+      add(`Which project or sprint is ${anchor.title} affecting?`);
+      break;
+    default:
+      add(`What changed most recently around ${anchor.title}?`);
+      add(`What decisions or tasks are linked to ${anchor.title}?`);
+      break;
+  }
+
+  return prompts.slice(0, 4);
+}
+
+function buildScopedToolLinks(anchor) {
+  if (!anchor?.title) return [];
+
+  const links = [];
+  const add = (id, label, href, reason) => {
+    if (!href) return;
+    if (links.some((item) => item.id === id || item.href === href)) return;
+    links.push({ id, label, href, reason });
+  };
+
+  switch (anchor.type) {
+    case 'project':
+      add('open-project', 'Open Project', anchor.href || (anchor.id ? `/projects/${anchor.id}` : '/projects'), `Open ${anchor.title} in Projects.`);
+      if (anchor.id) {
+        add('project-backlog', 'Backlog', `/projects/${anchor.id}/backlog`, `Review backlog for ${anchor.title}.`);
+        add('project-releases', 'Releases', `/projects/${anchor.id}/releases`, `Review releases for ${anchor.title}.`);
+      }
+      add('projects', 'Projects', '/projects', 'Browse the project portfolio.');
+      break;
+    case 'sprint':
+      add('open-sprint', 'Open Sprint', anchor.href || (anchor.id ? `/sprints/${anchor.id}` : '/sprint-history'), `Open ${anchor.title}.`);
+      add('current-sprint', 'Sprint Board', '/sprint', 'Open the active sprint board.');
+      if (anchor.id) {
+        add('sprint-retro', 'Retrospective', `/sprints/${anchor.id}/retrospective`, `Open the retrospective for ${anchor.title}.`);
+      }
+      add('blockers', 'Blockers', '/blockers', 'Review blockers affecting sprint flow.');
+      break;
+    case 'decision':
+      add('open-decision', 'Open Decision', anchor.href || (anchor.id ? `/decisions/${anchor.id}` : '/decisions'), `Open ${anchor.title} in Decisions.`);
+      add('decisions', 'Decisions', '/decisions', 'Browse the decision workspace.');
+      add('conversations', 'Conversations', '/conversations', 'Open the discussion history.');
+      add('tasks', 'Task Board', '/business/tasks', 'Review execution follow-through.');
+      break;
+    case 'document':
+      add('open-document', 'Open Document', anchor.href || (anchor.id ? `/business/documents/${anchor.id}` : '/business/documents'), `Open ${anchor.title} in Documents.`);
+      add('documents', 'Documents', '/business/documents', 'Browse the document library.');
+      add('decisions', 'Decisions', '/decisions', 'Check linked decisions.');
+      add('tasks', 'Task Board', '/business/tasks', 'Review related follow-through.');
+      break;
+    case 'conversation':
+      add('open-conversation', 'Open Thread', anchor.href || (anchor.id ? `/conversations/${anchor.id}` : '/conversations'), `Open ${anchor.title} in Conversations.`);
+      add('conversations', 'Conversations', '/conversations', 'Browse the conversation workspace.');
+      add('decisions', 'Decisions', '/decisions', 'Check decisions related to the thread.');
+      add('tasks', 'Task Board', '/business/tasks', 'Review execution follow-through.');
+      break;
+    case 'release':
+      add('open-release', 'Open Releases', anchor.href || '/projects', `Open the release workspace for ${anchor.title}.`);
+      add('projects', 'Projects', '/projects', 'Return to project workspaces.');
+      add('tasks', 'Task Board', '/business/tasks', 'Review execution tasks before shipping.');
+      add('sprint', 'Sprint Board', '/sprint', 'Open sprint delivery flow.');
+      break;
+    case 'issue':
+      add('open-issue', 'Open Issue', anchor.href || (anchor.id ? `/issues/${anchor.id}` : '/projects'), `Open ${anchor.title}.`);
+      add('projects', 'Projects', '/projects', 'Return to project workspaces.');
+      add('sprint', 'Sprint Board', '/sprint', 'Open sprint delivery flow.');
+      add('tasks', 'Task Board', '/business/tasks', 'Review related execution tasks.');
+      break;
+    case 'blocker':
+      add('blockers', 'Blockers', anchor.href || '/blockers', `Open blocker tracking for ${anchor.title}.`);
+      add('sprint', 'Sprint Board', '/sprint', 'Open sprint delivery flow.');
+      add('tasks', 'Task Board', '/business/tasks', 'Review tasks around the blocker.');
+      break;
+    case 'task':
+      add('tasks', 'Task Board', anchor.href || '/business/tasks', `Open task tracking for ${anchor.title}.`);
+      add('projects', 'Projects', '/projects', 'Return to project workspaces.');
+      add('decisions', 'Decisions', '/decisions', 'Check linked decisions.');
+      break;
+    default:
+      add('knowledge', 'Knowledge', '/knowledge', 'Open the knowledge workspace.');
+      add('projects', 'Projects', '/projects', 'Return to project workspaces.');
+      add('decisions', 'Decisions', '/decisions', 'Browse the decision workspace.');
+      break;
+  }
+
+  return links.slice(0, 4);
+}
+
 function normalizeSources(sources) {
   const configs = [
     { key: 'conversations', type: 'conversation', fallbackHref: (item) => `/conversations/${item.id}`, dateKeys: ['created_at'] },
@@ -76,6 +383,7 @@ function normalizeSources(sources) {
     { key: 'meetings', type: 'meeting', fallbackHref: (item) => `/business/meetings/${item.id}`, dateKeys: ['meeting_date', 'created_at'] },
     { key: 'documents', type: 'document', fallbackHref: (item) => `/business/documents/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
     { key: 'projects', type: 'project', fallbackHref: (item) => `/projects/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
+    { key: 'releases', type: 'release', fallbackHref: (item) => item.project_id ? `/projects/${item.project_id}/releases` : '/projects', dateKeys: ['release_date', 'created_at'] },
     { key: 'sprints', type: 'sprint', fallbackHref: (item) => `/sprints/${item.id}`, dateKeys: ['start_date', 'created_at'] },
     { key: 'sprint_updates', type: 'sprint_update', fallbackHref: (item) => item.url || '/sprint', dateKeys: ['created_at'] },
     { key: 'issues', type: 'issue', fallbackHref: (item) => `/issues/${item.id}`, dateKeys: ['updated_at', 'created_at'] },
@@ -136,9 +444,12 @@ function getConfidenceLabel(value) {
 }
 
 function titleCase(value) {
-  const text = String(value || '').toLowerCase();
+  const text = String(value || '')
+    .replace(/[_-]+/g, ' ')
+    .toLowerCase()
+    .trim();
   if (!text) return '';
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return text.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatEvidenceTypeLabel(value, count = 1) {
@@ -151,6 +462,19 @@ function formatEvidenceTypeLabel(value, count = 1) {
   if (base === 'person') return 'people';
   if (base.endsWith('s')) return base;
   return `${base}s`;
+}
+
+function usesClaudeEngine(value) {
+  const engine = String(value || '').trim().toLowerCase();
+  return engine === 'claude' || engine === 'anthropic';
+}
+
+function isNavigationLikeResponse(value) {
+  return ['navigation', 'guidance'].includes(String(value || '').trim().toLowerCase());
+}
+
+function isConversationalResponse(value) {
+  return String(value || '').trim().toLowerCase() === 'conversation';
 }
 
 function describeFreshness(days) {
@@ -228,24 +552,11 @@ export default function AskRecall() {
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
+  const [threadEntries, setThreadEntries] = useState(() => readStoredThreadEntries());
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [requestState, setRequestState] = useState('idle');
   const [requestMessage, setRequestMessage] = useState('');
-
-  const [feedbackVote, setFeedbackVote] = useState('');
-  const [feedbackOutcome, setFeedbackOutcome] = useState('');
-  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
-  const [feedbackSummary, setFeedbackSummary] = useState(null);
-  const [feedbackTrend, setFeedbackTrend] = useState([]);
-
-  const [whatIfAction, setWhatIfAction] = useState('resolve_decisions');
-  const [whatIfUnits, setWhatIfUnits] = useState(1);
-  const [whatIfHorizon, setWhatIfHorizon] = useState(14);
-  const [whatIfLoading, setWhatIfLoading] = useState(false);
-  const [whatIfResult, setWhatIfResult] = useState(null);
-  const [whatIfError, setWhatIfError] = useState('');
 
   const suggestedQuestions = [
     'Where is execution risk highest this week?',
@@ -258,40 +569,10 @@ export default function AskRecall() {
     'Which integrations are connected to this workspace?',
   ];
 
-  const suggestedQuestionGroups = [
-    {
-      label: 'Execution',
-      description: 'Scan delivery risk, bottlenecks, and immediate follow-through.',
-      tone: 'warn',
-      items: [
-        'Where is execution risk highest this week?',
-        'What decisions are blocking delivery?',
-        'Which high-priority tasks should we reassign now?',
-      ],
-    },
-    {
-      label: 'Memory',
-      description: 'Use organizational memory to recover context and prior decisions.',
-      tone: 'info',
-      items: [
-        'Summarize recent decisions about API migration.',
-        'What active goals are related to onboarding?',
-      ],
-    },
-    {
-      label: 'Projects',
-      description: 'Ask about live projects, sprint work, and implementation context.',
-      tone: 'success',
-      items: [
-        'Tell me about the Talking Stage sprint in the Justice App project.',
-        'Which integrations are connected to this workspace?',
-        'What should leadership resolve in the next 24 hours?',
-      ],
-    },
-  ];
-
   const mapResponseToViewModel = (payload) => {
     const howTo = getContextualHowTo(payload?.query);
+    const normalizedSources = normalizeSources(payload.sources);
+    const contextAnchor = normalizeContextAnchor(payload?.context_anchor, normalizedSources[0] || null);
     const decisions = payload?.sources?.decisions || [];
     const linkedDecisions = decisions.slice(0, 3).map((item) => ({
       id: item.id,
@@ -345,6 +626,7 @@ export default function AskRecall() {
         })) || [],
       answerFoundation: payload.answer_foundation || [],
       followUpQuestions: payload.follow_up_questions || [],
+      contextAnchor,
       toolLinks: [
         ...((payload.tool_links || []).map((item) => ({
           id: item.id,
@@ -371,7 +653,7 @@ export default function AskRecall() {
           matchedTerms: item.matched_terms || [],
           directMatch: !!item.direct_match,
         })) || [],
-      sources: normalizeSources(payload.sources),
+      sources: normalizedSources,
       execution: payload.execution || { performed: false, result: null },
       generatedAt: payload.generated_at || '',
     };
@@ -486,6 +768,7 @@ export default function AskRecall() {
               'What recent conversation or document should be linked to answer this question?',
             ],
       toolLinks: [],
+      contextAnchor: normalizedLegacySources[0] || null,
       riskStatus: missionPayload?.north_star?.status || 'watch',
       readinessScore: missionPayload?.north_star?.critical_path_score ?? null,
       learningModel: {},
@@ -507,18 +790,13 @@ export default function AskRecall() {
     };
   };
 
-  const resetFeedbackControls = () => {
-    setFeedbackVote('');
-    setFeedbackOutcome('');
-    setFeedbackMessage('');
-  };
-
   const queryCopilot = async ({ execute = false, confirmExecute = false, question = query } = {}) => {
     const activeQuestion = String(question || '').trim();
     try {
       const contextualHowTo = getContextualHowTo(activeQuestion);
       const response = await api.post('/api/knowledge/ai/copilot/', {
         query: activeQuestion,
+        thread_context: buildThreadContextPayload(threadEntries),
         execute,
         confirm_execute: execute ? confirmExecute : false,
         max_actions: 3,
@@ -527,7 +805,7 @@ export default function AskRecall() {
       return mapResponseToViewModel(response.data);
     } catch (error) {
       const status = error?.response?.status;
-      if (status === 404 || status === 405 || status === 500) {
+      if (!status || status === 404 || status === 405 || status >= 500) {
         const [searchRes, recsRes, missionRes] = await Promise.allSettled([
           api.post('/api/knowledge/search/', { query: activeQuestion }),
           api.get('/api/knowledge/ai/recommendations/'),
@@ -553,14 +831,14 @@ export default function AskRecall() {
     setQuery(activeQuestion);
     setLoading(true);
     setRequestState('loading');
-    setRequestMessage('Analyzing organization state...');
+    setRequestMessage('Working through your workspace...');
 
     try {
       const data = await queryCopilot({ execute: false, question: activeQuestion });
       setResults(data);
-      resetFeedbackControls();
+      rememberThreadEntry(toThreadEntry(data));
       setRequestState('success');
-      setRequestMessage('Analysis complete.');
+      setRequestMessage('Answer ready.');
     } catch (error) {
       const detail =
         error?.response?.data?.detail ||
@@ -593,6 +871,23 @@ export default function AskRecall() {
         execution: { performed: false, result: null },
         toolLinks: [],
       });
+      rememberThreadEntry(
+        toThreadEntry({
+          question: activeQuestion,
+          answer: detail,
+          answerEngine: 'rules',
+          confidence: 0,
+          confidenceBand: 'low',
+          responseMode: 'needs_evidence',
+          riskStatus: 'unknown',
+          credibilitySummary: '',
+          followUpQuestions: ['Try the same question again in a moment.'],
+          evidenceBreakdown: [],
+          freshnessDays: null,
+          missingEvidence: ['Unable to evaluate evidence right now.'],
+          sources: [],
+        })
+      );
       setRequestState('error');
       setRequestMessage(detail);
     } finally {
@@ -623,7 +918,7 @@ export default function AskRecall() {
     try {
       const data = await queryCopilot({ execute: true, confirmExecute: true });
       setResults(data);
-      resetFeedbackControls();
+      rememberThreadEntry(toThreadEntry(data));
       setRequestState('success');
       setRequestMessage('Execution completed.');
     } catch (error) {
@@ -638,74 +933,34 @@ export default function AskRecall() {
     }
   };
 
-  const runWhatIf = async () => {
-    if (whatIfLoading) return;
-    setWhatIfLoading(true);
-    setWhatIfError('');
-    try {
-      const response = await api.post('/api/knowledge/ai/copilot/what-if/', {
-        action_type: whatIfAction,
-        units: Number(whatIfUnits || 1),
-        horizon_days: Number(whatIfHorizon || 14),
-      });
-      setWhatIfResult(response.data || null);
-    } catch (error) {
-      const detail =
-        error?.response?.data?.detail ||
-        error?.response?.data?.error ||
-        'Unable to run simulation right now.';
-      setWhatIfError(detail);
-      setWhatIfResult(null);
-    } finally {
-      setWhatIfLoading(false);
-    }
-  };
+  const rememberThreadEntry = (entry) => {
+    if (!entry) return;
 
-  const loadFeedbackSummary = async () => {
-    try {
-      const [summaryRes, trendRes] = await Promise.all([
-        api.get('/api/knowledge/ai/copilot/feedback-summary/'),
-        api.get('/api/knowledge/ai/copilot/feedback-trend/?days=7'),
-      ]);
-      setFeedbackSummary(summaryRes.data || null);
-      setFeedbackTrend((trendRes.data?.points || []).slice(-7));
-    } catch (_error) {
-      // Non-critical
-    }
-  };
+    setThreadEntries((current) => {
+      const next = [...current];
+      const last = next[next.length - 1];
+      const normalizedQuestion = String(entry.question || '').trim().toLowerCase();
+      const lastQuestion = String(last?.question || '').trim().toLowerCase();
 
-  const submitFeedback = async () => {
-    if (!results || !feedbackVote || feedbackSubmitting) return;
-    setFeedbackSubmitting(true);
-    setFeedbackMessage('');
-    try {
-      await api.post('/api/knowledge/ai/copilot/feedback/', {
-        analysis_id: results.analysisId || undefined,
-        query: results.question,
-        feedback: feedbackVote,
-        outcome: feedbackOutcome || undefined,
-        response_mode: results.responseMode,
-        confidence_band: results.confidenceBand,
-        evidence_count: results.evidenceCount,
-        coverage_score: results.coverageScore,
-        has_actions: (results.nextActions || []).length > 0,
-      });
-      setFeedbackMessage('Thanks. Feedback recorded.');
-      loadFeedbackSummary();
-    } catch (error) {
-      const detail =
-        error?.response?.data?.detail ||
-        error?.response?.data?.error ||
-        'Unable to record feedback right now.';
-      setFeedbackMessage(detail);
-    } finally {
-      setFeedbackSubmitting(false);
-    }
+      if (last && normalizedQuestion && lastQuestion === normalizedQuestion) {
+        next[next.length - 1] = entry;
+        return next.slice(-6);
+      }
+
+      return [...next, entry].slice(-6);
+    });
   };
 
   useEffect(() => {
-    loadFeedbackSummary();
-  }, []);
+    if (typeof window === 'undefined') return;
+
+    if (threadEntries.length) {
+      window.localStorage.setItem(ASK_RECALL_THREAD_STORAGE_KEY, JSON.stringify(threadEntries.slice(-6)));
+      return;
+    }
+
+    window.localStorage.removeItem(ASK_RECALL_THREAD_STORAGE_KEY);
+  }, [threadEntries]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -724,6 +979,7 @@ export default function AskRecall() {
           const currentQuestion = String(current?.question || '').trim();
           return currentQuestion === seededQuery ? current : cached;
         });
+        rememberThreadEntry(toThreadEntry(cached));
         setRequestState('success');
         setRequestMessage('Loaded your recent Ask Recall answer. Refreshing with the latest workspace evidence...');
       }
@@ -738,12 +994,14 @@ export default function AskRecall() {
   const normalizedQuery = query.trim().toLowerCase();
   const normalizedResultQuery = String(results?.question || '').trim().toLowerCase();
   const hasCurrentResults = !!results && normalizedQuery.length > 0 && normalizedQuery === normalizedResultQuery;
-  const isNavigationIntent =
-    results?.responseMode === 'navigation' || results?.responseMode === 'guidance';
+  const isNavigationIntent = isNavigationLikeResponse(results?.responseMode);
+  const isConversationMode = isConversationalResponse(results?.responseMode);
+  const isDiagnosisMode = results?.responseMode === 'diagnosis';
+  const answerActionLinks = results?.toolLinks?.length ? results.toolLinks : [];
 
   const lowEvidence =
     !!results &&
-    !['navigation', 'guidance'].includes(results.responseMode) &&
+    !['navigation', 'guidance', 'conversation'].includes(results.responseMode) &&
     (results.responseMode === 'needs_evidence' || Number(results.coverageScore || 0) < 45 || Number(results.evidenceCount || 0) === 0);
 
   const canManageAutonomousFixes = ['admin', 'manager'].includes(user?.role);
@@ -755,10 +1013,26 @@ export default function AskRecall() {
     !isNavigationIntent;
   const canRunAutonomousFixes = hasAutonomousPlan && canManageAutonomousFixes;
   const canSubmit = !!query.trim() && !loading && !executing;
-  const confidenceWidth = `${Math.max(0, Math.min(100, Number(results?.confidence || 0)))}%`;
-  const confidenceLabel = titleCase(results?.confidenceBand || getConfidenceLabel(results?.confidence));
-  const sourceTypeSummary =
-    (results?.sourceTypes || []).map((item) => formatEvidenceTypeLabel(item)).join(', ') || 'none';
+  const visibleThreadEntries = threadEntries.slice(-4);
+  const anchorSuggestions = buildAnchorSuggestions(threadEntries.slice(0, -1));
+  const scopedAnchorPrompts = buildScopedAnchorPrompts(results?.contextAnchor);
+  const sharpeningPrompts =
+    mergePromptChoices(
+      results?.followUpQuestions || [],
+      scopedAnchorPrompts.length
+        ? scopedAnchorPrompts
+        : [
+          'What changed most recently around [project name]?',
+          'Which decisions are still open for [project name]?',
+          'What tasks are active in [sprint or project] right now?',
+        ]
+    );
+  const lowEvidenceGuidance = lowEvidence
+    ? isDiagnosisMode
+      ? 'Ask Recall can see operating signals, but it still needs more linked workspace evidence before it can rank the best move confidently.'
+        : 'Ask Recall needs a clearer workspace handle here. Mention a project, sprint, issue, decision, document, or teammate and it will pull the newest linked context.'
+    : '';
+  const starterPrompts = suggestedQuestions.slice(0, 6);
 
   const quickToolLinks =
     results?.toolLinks?.length
@@ -769,602 +1043,395 @@ export default function AskRecall() {
           { label: 'Task Board', href: '/business/tasks' },
           { label: 'Decisions', href: '/decisions' },
         ];
-
-  const signalStats = [
-    {
-      label: 'Readiness',
-      value: results?.readinessScore ?? '--',
-      helper: results ? 'Current readiness signal from the latest answer' : 'Run a question to generate readiness guidance',
-      tone: results?.riskStatus === 'critical' ? palette.danger : results?.riskStatus === 'watch' ? palette.warn : palette.success,
-    },
-    {
-      label: 'Evidence',
-      value: results?.evidenceCount ?? 0,
-      helper: results ? sourceTypeSummary || 'No source types' : 'No evidence sources yet',
-      tone: lowEvidence ? palette.warn : palette.info,
-    },
-    {
-      label: 'Actions',
-      value: results?.nextActions?.length ?? 0,
-      helper: hasAutonomousPlan
-        ? canManageAutonomousFixes
-          ? 'Autonomous fixes are available'
-          : 'Autonomous fixes need admin or manager approval'
-        : 'Guidance only until confidence improves',
-      tone: hasAutonomousPlan ? (canManageAutonomousFixes ? palette.success : palette.warn) : palette.accent,
-    },
-  ];
-
-  const heroAside = (
-    <div style={{ display: 'grid', gap: 10 }}>
-      <BrandedTechnicalIllustration darkMode={darkMode} compact />
-      <div
-        style={{
-          border: `1px solid ${palette.border}`,
-          borderRadius: 20,
-          background: palette.card,
-          padding: '12px 14px',
-          display: 'flex',
-          gap: 8,
-          flexWrap: 'wrap',
-        }}
-      >
-        {signalStats.map((stat) => (
-          <span key={`${stat.label}-${stat.value}`} style={pillStyle(palette, stat.tone === palette.success ? 'success' : stat.tone === palette.warn ? 'warn' : stat.tone === palette.danger ? 'danger' : stat.tone === palette.info ? 'info' : 'default')}>
-            {stat.label} {stat.value}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-
-  const feedbackPanel = feedbackSummary ? (
-    <WorkspacePanel
-      palette={palette}
-      eyebrow="Feedback Loop"
-      title={`Copilot Feedback (${feedbackSummary.window_days || 30} days)`}
-      description="Track how people are responding to Ask Recall guidance and rate this answer when you are done."
-    >
-      <div style={{ display: 'grid', gap: 10 }}>
-        <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-          <article style={microCardStyle(palette, 'info')}>
-            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>Total</span>
-            <strong style={{ fontSize: 24, color: palette.text }}>{feedbackSummary.total_feedback || 0}</strong>
-            <span style={{ fontSize: 12, color: palette.muted }}>Signals in the current feedback window</span>
-          </article>
-          <article style={microCardStyle(palette, 'success')}>
-            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>Positive rate</span>
-            <strong style={{ fontSize: 24, color: palette.text }}>{feedbackSummary.positive_rate ?? '--'}%</strong>
-            <span style={{ fontSize: 12, color: palette.muted }}>
-              Up {feedbackSummary.upvotes || 0} / Down {feedbackSummary.downvotes || 0}
-            </span>
-          </article>
-        </div>
-
-        {feedbackTrend.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: 6 }}>
-            {feedbackTrend.map((point) => {
-              const total = Number(point.total || 0);
-              const up = Number(point.upvotes || 0);
-              const ratio = total > 0 ? Math.max(0.1, up / total) : 0.5;
-              return (
-                <div
-                  key={point.date}
-                  title={`${point.date}: ${up}/${total}`}
-                  style={{
-                    height: 30,
-                    border: `1px solid ${palette.border}`,
-                    borderRadius: 10,
-                    background: `linear-gradient(180deg, ${palette.success} ${Math.round(ratio * 100)}%, ${palette.warn} ${Math.round(ratio * 100)}%)`,
-                    opacity: total > 0 ? 1 : 0.3,
-                  }}
-                />
-              );
-            })}
-          </div>
-        ) : null}
-
-        {results ? (
-          <>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <button type="button" onClick={() => setFeedbackVote('up')} style={feedbackVote === 'up' ? buttonFilled(palette) : buttonGhost(palette)}>
-                Helpful
-              </button>
-              <button type="button" onClick={() => setFeedbackVote('down')} style={feedbackVote === 'down' ? buttonFilled(palette) : buttonGhost(palette)}>
-                Not Helpful
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8 }}>
-              <select value={feedbackOutcome} onChange={(e) => setFeedbackOutcome(e.target.value)} style={inputCompact(palette)}>
-                <option value="">Outcome</option>
-                <option value="improved">Improved</option>
-                <option value="neutral">Neutral</option>
-                <option value="worse">Worse</option>
-              </select>
-              <button type="button" onClick={submitFeedback} disabled={!feedbackVote || feedbackSubmitting} style={buttonGhost(palette, !feedbackVote || feedbackSubmitting)}>
-                {feedbackSubmitting ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-            {!!feedbackMessage ? (
-              <div style={noteStyle(palette, feedbackMessage.includes('Thanks') ? 'success' : 'warn')}>{feedbackMessage}</div>
-            ) : null}
-          </>
-        ) : null}
-      </div>
-    </WorkspacePanel>
-  ) : null;
+  const scopedContextualLinks = !answerActionLinks.length && results?.contextAnchor ? buildScopedToolLinks(results.contextAnchor) : [];
+  const contextualLinks = answerActionLinks.length ? answerActionLinks : scopedContextualLinks.length ? scopedContextualLinks : quickToolLinks;
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
-        eyebrow="Organizational Copilot"
+        eyebrow="Workspace Assistant"
         title="Ask Recall"
-        description="Ask grounded questions, inspect the evidence trail, and move from diagnosis to safe action without leaving Knoledgr."
+        description="Ask about a project, sprint, decision, document, teammate, or delivery question. Ask Recall answers from Knoledgr first."
         actions={
-          <>
-            <button type="button" onClick={() => runAnalysis('Where is execution risk highest this week?')} style={buttonGhost(palette)}>
-              Use sample prompt
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setQuery('');
-                setResults(null);
-                setRequestState('idle');
-                setRequestMessage('');
-              }}
-              style={buttonFilled(palette, !results)}
-              disabled={!results}
-            >
-              New Analysis
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('');
+              setResults(null);
+              setThreadEntries([]);
+              setRequestState('idle');
+              setRequestMessage('');
+            }}
+            style={buttonFilled(palette, !results)}
+            disabled={!results}
+          >
+            New thread
+          </button>
         }
-        aside={heroAside}
       />
 
       <section style={splitSection()}>
-        <div style={laneStyle('1.45 1 660px')}>
+        <div style={laneStyle('1 1 880px')}>
           <WorkspacePanel
             palette={palette}
-            eyebrow="Prompt Studio"
-            title="Ask a grounded question"
-            description="Describe the situation, ask a question, then let Ask Recall read across conversations, decisions, docs, delivery, and connected systems."
+            eyebrow="Assistant Thread"
+            title={results ? (isConversationMode ? 'Start from the workspace' : 'Keep working in one thread') : 'Ask a workspace question'}
+            description={
+              results
+                ? isConversationMode
+                  ? 'Ask about a specific project, sprint, decision, document, or teammate and Ask Recall will pull it into the thread.'
+                  : 'Ask a follow-up, open the linked record, or run the next safe move from here.'
+                : 'The strongest answers come from naming the exact project, sprint, decision, document, or teammate.'
+            }
             action={
               <span style={pillStyle(palette, loading ? 'info' : hasCurrentResults ? 'success' : 'default')}>
-                {loading ? 'Refreshing workspace memory' : hasCurrentResults ? 'Answer ready' : 'Grounded mode'}
+                {loading ? 'Thinking' : hasCurrentResults ? 'Updated' : 'Ready'}
               </span>
             }
           >
-            <form onSubmit={handleSearch} style={{ display: 'grid', gap: 12 }}>
-              <textarea
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  if (!loading && !executing) {
-                    setRequestState('idle');
-                    setRequestMessage('');
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    if (canSubmit) e.currentTarget.form?.requestSubmit();
-                  }
-                }}
-                placeholder="Ask about a project, decision, sprint, integration, or organizational pattern..."
-                rows={6}
-                style={{
-                  ...inputStyle(palette),
-                  minHeight: 156,
-                  resize: 'vertical',
-                  lineHeight: 1.65,
-                  background: darkMode
-                    ? 'linear-gradient(180deg, rgba(34, 29, 25, 0.94), rgba(27, 22, 19, 0.94))'
-                    : 'linear-gradient(180deg, rgba(255, 252, 248, 0.98), rgba(247, 241, 232, 0.98))',
-                }}
-              />
-
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button type="submit" disabled={!canSubmit} style={buttonFilled(palette, !canSubmit)}>
-                    {loading ? 'Thinking...' : 'Ask Recall'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExecute}
-                    disabled={executing || loading || !canRunAutonomousFixes}
-                    style={buttonGhost(palette, executing || loading || !canRunAutonomousFixes)}
-                  >
-                    {executing ? 'Executing...' : 'Run Autonomous Fixes'}
-                  </button>
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={pillStyle(palette, 'default')}>Ctrl+Enter to submit</span>
-                  <span style={pillStyle(palette, hasAutonomousPlan ? (canManageAutonomousFixes ? 'success' : 'warn') : 'default')}>
-                    {hasAutonomousPlan
-                      ? canManageAutonomousFixes
-                        ? 'Autonomous plan available'
-                        : 'Plan available for manager approval'
-                      : 'Guidance mode'}
-                  </span>
-                </div>
+            <div style={consoleSurfaceStyle(palette, darkMode)}>
+              <div style={{ display: 'grid', gap: 4 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>
+                  Compose
+                </span>
+                <strong style={{ fontSize: 14, color: palette.text }}>What should Knoledgr figure out?</strong>
+                <span style={{ fontSize: 12, color: palette.muted, lineHeight: 1.6 }}>
+                  Use natural language and name the thing that should exist in the workspace.
+                </span>
               </div>
 
-              {hasAutonomousPlan && !canManageAutonomousFixes ? (
-                <div style={noteStyle(palette, 'warn')}>
-                  Autonomous fixes are available for this analysis, but only admins and managers can run them.
-                </div>
-              ) : null}
+              <form onSubmit={handleSearch} style={{ display: 'grid', gap: 12 }}>
+                <textarea
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    if (!loading && !executing) {
+                      setRequestState('idle');
+                      setRequestMessage('');
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                      e.preventDefault();
+                      if (canSubmit) e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                  placeholder="Example: What decisions are blocking the Justice App release?"
+                  rows={5}
+                  style={{
+                    ...inputStyle(palette),
+                    minHeight: 140,
+                    resize: 'vertical',
+                    lineHeight: 1.7,
+                    borderRadius: 22,
+                    background: darkMode
+                      ? 'linear-gradient(180deg, rgba(31, 27, 24, 0.96), rgba(22, 18, 16, 0.94))'
+                      : 'linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(246, 240, 231, 0.98))',
+                  }}
+                />
 
-              {requestState !== 'idle' ? (
-                <div style={noteStyle(palette, requestState === 'error' ? 'danger' : requestState === 'success' ? 'success' : 'info')}>
-                  {requestMessage}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="submit" disabled={!canSubmit} style={buttonFilled(palette, !canSubmit)}>
+                      {loading ? 'Thinking...' : 'Ask Recall'}
+                    </button>
+                    {hasAutonomousPlan ? (
+                      <button
+                        type="button"
+                        onClick={handleExecute}
+                        disabled={executing || loading || !canRunAutonomousFixes}
+                        style={buttonGhost(palette, executing || loading || !canRunAutonomousFixes)}
+                      >
+                        {executing ? 'Executing...' : 'Run fixes'}
+                      </button>
+                    ) : null}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={pillStyle(palette, 'default')}>Ctrl+Enter</span>
+                    {hasAutonomousPlan ? (
+                      <span style={pillStyle(palette, canManageAutonomousFixes ? 'success' : 'warn')}>
+                        {canManageAutonomousFixes ? 'Fixes available' : 'Fixes need approval'}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              ) : null}
-            </form>
+
+                {hasAutonomousPlan && !canManageAutonomousFixes ? (
+                  <div style={noteStyle(palette, 'warn')}>
+                    This answer includes executable fixes, but only admins and managers can run them.
+                  </div>
+                ) : null}
+
+                {requestState !== 'idle' ? (
+                  <div style={noteStyle(palette, requestState === 'error' ? 'danger' : requestState === 'success' ? 'success' : 'info')}>
+                    {requestMessage}
+                  </div>
+                ) : null}
+              </form>
+            </div>
 
             {!results && !loading ? (
-              <div style={{ display: 'grid', gap: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div style={{ display: 'grid', gap: 2 }}>
-                    <strong style={{ fontSize: 13, color: palette.text }}>Prompt ideas</strong>
-                    <span style={{ fontSize: 12, color: palette.muted }}>
-                      Start with a natural-language question and Ask Recall will ground the answer in workspace evidence.
-                    </span>
-                  </div>
-                  <span style={pillStyle(palette, 'info')}>{suggestedQuestions.length} starter prompts</span>
-                </div>
-
-                <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-                  {suggestedQuestionGroups.map((group) => (
-                    <article key={group.label} style={microCardStyle(palette, group.tone)}>
-                      <div style={{ display: 'grid', gap: 4 }}>
-                        <span style={pillStyle(palette, group.tone)}>{group.label}</span>
-                        <strong style={{ fontSize: 13, color: palette.text }}>{group.description}</strong>
-                      </div>
-                      <div style={{ display: 'grid', gap: 8 }}>
-                        {group.items.map((item) => (
-                          <button
-                            key={item}
-                            type="button"
-                            onClick={() => runAnalysis(item)}
-                            style={{
-                              ...buttonGhost(palette),
-                              textAlign: 'left',
-                              padding: '10px 12px',
-                              lineHeight: 1.45,
-                            }}
-                          >
-                            {item}
-                          </button>
-                        ))}
-                      </div>
-                    </article>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <strong style={{ fontSize: 13, color: palette.text }}>Try one of these</strong>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {starterPrompts.map((item) => (
+                    <button key={item} type="button" onClick={() => runAnalysis(item)} style={buttonGhost(palette)}>
+                      {item}
+                    </button>
                   ))}
                 </div>
               </div>
             ) : null}
-          </WorkspacePanel>
-        </div>
 
-        <div style={laneStyle('0.9 1 320px')}>
-          <WorkspacePanel
-            palette={palette}
-            eyebrow="Copilot Rail"
-            title="Live operating signals"
-            description="Keep the important trust and execution signals visible while you ask, review, and act."
-          >
-            <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-              {signalStats.map((stat) => (
-                <article key={`${stat.label}-${stat.value}`} style={microCardStyle(palette, stat.tone)}>
-                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>
-                    {stat.label}
-                  </span>
-                  <strong style={{ fontSize: 26, lineHeight: 1, color: stat.tone || palette.text }}>{stat.value}</strong>
-                  <span style={{ fontSize: 12, lineHeight: 1.55, color: palette.muted }}>{stat.helper}</span>
-                </article>
-              ))}
-            </div>
+            {visibleThreadEntries.length ? (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {visibleThreadEntries.length > 1 ? (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={pillStyle(palette, 'default')}>{threadEntries.length} messages in this thread</span>
+                    {threadEntries.length > visibleThreadEntries.length ? (
+                      <span style={pillStyle(palette, 'default')}>Showing latest {visibleThreadEntries.length}</span>
+                    ) : null}
+                  </div>
+                ) : null}
 
-            {results ? (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <span style={pillStyle(palette, 'default')}>{titleCase(results.responseMode || 'answer')}</span>
-                <span style={pillStyle(palette, results.answerEngine === 'anthropic' ? 'info' : 'default')}>
-                  {results.answerEngine === 'anthropic' ? 'LLM synthesis' : 'Rules engine'}
-                </span>
-                <span style={pillStyle(palette, lowEvidence ? 'warn' : 'success')}>Coverage {results.coverageScore}</span>
-                {results.freshnessDays !== null ? <span style={pillStyle(palette, 'info')}>{describeFreshness(results.freshnessDays)}</span> : null}
-              </div>
-            ) : (
-              <div style={noteStyle(palette, 'default')}>
-                Ask Recall works best when you ask with project names, sprint names, decision titles, documents, or concrete delivery questions.
-              </div>
-            )}
-          </WorkspacePanel>
+                {visibleThreadEntries.map((entry, index) => {
+                  const isLatestEntry = index === visibleThreadEntries.length - 1;
+                  const entryNavigationIntent = isNavigationLikeResponse(entry.responseMode);
+                  const entryConversationMode = isConversationalResponse(entry.responseMode);
+                  const entryContextAnchor = normalizeContextAnchor(entry.contextAnchor, entry.sources?.[0] || null);
+                  const entryFollowUpIdeas = mergePromptChoices(entry.followUpQuestions || [], buildScopedAnchorPrompts(entryContextAnchor));
+                  const entryDiagnosisMode = entry.responseMode === 'diagnosis';
+                  const entryLowEvidence =
+                    !['navigation', 'guidance', 'conversation'].includes(entry.responseMode) &&
+                    (entry.responseMode === 'needs_evidence' || Number(entry.evidenceCount || 0) === 0 || Number(entry.coverageScore || 0) < 45);
+                  const entryConfidenceLabel = titleCase(entry.confidenceBand || getConfidenceLabel(entry.confidence));
+                  const entryConfidenceWidth = `${Math.max(8, Math.min(100, Number(entry.confidence || 0)))}%`;
 
-          <WorkspacePanel
-            palette={palette}
-            eyebrow="What-if"
-            title="Simulation Controls"
-            description="Model the effect of resolving decisions, clearing blockers, or assigning high-priority work."
-          >
-            <div style={{ display: 'grid', gap: 8 }}>
-              <select value={whatIfAction} onChange={(e) => setWhatIfAction(e.target.value)} style={inputCompact(palette)}>
-                <option value="resolve_decisions">Resolve decisions</option>
-                <option value="clear_blockers">Clear blockers</option>
-                <option value="assign_high_priority_tasks">Assign high-priority tasks</option>
-              </select>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-                <input type="number" min={1} max={10} value={whatIfUnits} onChange={(e) => setWhatIfUnits(e.target.value)} style={inputCompact(palette)} />
-                <input type="number" min={1} max={120} value={whatIfHorizon} onChange={(e) => setWhatIfHorizon(e.target.value)} style={inputCompact(palette)} />
-              </div>
-              <button type="button" onClick={runWhatIf} disabled={whatIfLoading} style={buttonGhost(palette, whatIfLoading)}>
-                {whatIfLoading ? 'Simulating...' : 'Run simulation'}
-              </button>
-            </div>
-            {!!whatIfError ? <div style={noteStyle(palette, 'warn')}>{whatIfError}</div> : null}
-            {whatIfResult ? (
-              <div style={microCardStyle(palette, (whatIfResult.projected?.delta || 0) >= 0 ? 'success' : 'warn')}>
-                <strong style={{ fontSize: 13, color: palette.text }}>Projected readiness shift</strong>
-                <p style={{ margin: 0, fontSize: 12, color: palette.muted, lineHeight: 1.55 }}>
-                  Baseline {whatIfResult.baseline?.readiness_score} ({whatIfResult.baseline?.status}) to projected{' '}
-                  <strong style={{ color: palette.text }}>{whatIfResult.projected?.readiness_score}</strong> ({whatIfResult.projected?.status}) with a delta of{' '}
-                  <strong style={{ color: (whatIfResult.projected?.delta || 0) >= 0 ? palette.success : palette.danger }}>
-                    {(whatIfResult.projected?.delta || 0) >= 0 ? '+' : ''}
-                    {whatIfResult.projected?.delta}
-                  </strong>
-                  .
-                </p>
+                  return (
+                    <React.Fragment key={entry.id || `${entry.question}-${index}`}>
+                      <div style={messageBubbleStyle(palette, darkMode, 'user')}>
+                        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>
+                          You
+                        </span>
+                        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: palette.text }}>{entry.question}</p>
+                      </div>
+
+                      <div style={messageBubbleStyle(palette, darkMode, 'assistant')}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <div style={{ display: 'grid', gap: 2 }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>
+                              Ask Recall
+                            </span>
+                            <strong style={{ fontSize: 14, color: palette.text }}>
+                              {entryNavigationIntent
+                                ? 'Relevant route'
+                                : entryConversationMode
+                                  ? 'Ready to help'
+                                : entryLowEvidence
+                                  ? 'Working answer'
+                                  : usesClaudeEngine(entry.answerEngine)
+                                    ? 'Claude answer'
+                                    : 'Grounded answer'}
+                            </strong>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={pillStyle(palette, entryConversationMode ? 'info' : entryLowEvidence ? 'warn' : 'success')}>
+                              {entryConversationMode ? 'Workspace copilot' : entryLowEvidence ? 'Needs a clearer anchor' : `${entry.confidence}% confidence`}
+                            </span>
+                            {usesClaudeEngine(entry.answerEngine) ? <span style={pillStyle(palette, 'info')}>Claude</span> : null}
+                            {entryDiagnosisMode && !entryNavigationIntent ? (
+                              <span style={pillStyle(palette, entry.riskStatus === 'critical' ? 'danger' : entry.riskStatus === 'watch' ? 'warn' : 'success')}>
+                                {titleCase(entry.riskStatus || 'stable')}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 14, color: palette.text, whiteSpace: 'pre-wrap', lineHeight: 1.85 }}>
+                          {isLatestEntry ? entry.answer : truncateText(entry.answer, 280)}
+                        </p>
+                        {isLatestEntry && !entryLowEvidence && !entryConversationMode && !!entry.credibilitySummary ? (
+                          <p style={{ margin: 0, fontSize: 12, color: palette.muted, lineHeight: 1.7 }}>{entry.credibilitySummary}</p>
+                        ) : null}
+                        {entry.generatedAt ? (
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={pillStyle(palette, 'default')}>Updated {toDisplayDate(entry.generatedAt)}</span>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {isLatestEntry && entryLowEvidence ? <div style={noteStyle(palette, 'warn')}>{lowEvidenceGuidance}</div> : null}
+
+                      {isLatestEntry && !entryNavigationIntent && ((entry.evidenceBreakdown || []).length > 0 || entry.freshnessDays !== null) ? (
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {(entry.evidenceBreakdown || []).map((item) => (
+                            <span key={`${item.type}-${item.count}`} style={pillStyle(palette, 'default')}>
+                              {item.count} {item.label}
+                            </span>
+                          ))}
+                          {entry.freshnessDays !== null ? <span style={pillStyle(palette, 'info')}>{describeFreshness(entry.freshnessDays)}</span> : null}
+                        </div>
+                      ) : null}
+
+                      {isLatestEntry && !entryNavigationIntent && entryFollowUpIdeas.length ? (
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          <strong style={{ fontSize: 12, color: palette.text }}>{entryConversationMode ? 'Try asking' : 'Follow-up ideas'}</strong>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {entryFollowUpIdeas.map((item) => (
+                              <button key={item} type="button" onClick={() => runAnalysis(item)} style={buttonGhost(palette)}>
+                                {item}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {isLatestEntry && !entryLowEvidence && !entryConversationMode ? (
+                        <div style={{ display: 'grid', gap: 6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                            <span style={{ fontSize: 12, color: palette.muted }}>Confidence</span>
+                            <strong style={{ fontSize: 12, color: palette.text }}>
+                              {entry.confidence}% ({entryConfidenceLabel})
+                            </strong>
+                          </div>
+                          <div style={{ height: 10, borderRadius: 999, overflow: 'hidden', background: palette.progressTrack }}>
+                            <div style={{ width: entryConfidenceWidth, height: '100%', background: palette.ctaGradient }} />
+                          </div>
+                        </div>
+                      ) : null}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             ) : null}
           </WorkspacePanel>
-
-          {!results ? feedbackPanel : null}
         </div>
+
       </section>
 
-      {loading ? <div style={noteStyle(palette, 'info')}>Analyzing organization state...</div> : null}
-
       {results && !loading ? (
-        <section style={splitSection()}>
-          <div style={laneStyle('1.45 1 660px')}>
-          {isNavigationIntent ? (
-            <WorkspacePanel
-              palette={palette}
-              eyebrow="Quick Links"
-              title="Relevant destinations"
-              description="Jump straight to the likely tool or route behind the request."
-            >
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {quickToolLinks.map((item) => (
-                  <a key={item.id || item.href} href={item.href} style={{ ...buttonGhost(palette), textDecoration: 'none' }}>
-                    {item.label}
-                  </a>
-                ))}
-              </div>
-            </WorkspacePanel>
-          ) : null}
-
-          <WorkspacePanel
-            palette={palette}
-            eyebrow="Answer"
-            title={results.answerEngine === 'anthropic' ? 'LLM-grounded response' : 'Grounded response'}
-            description={
-              results.answerEngine === 'anthropic'
-                ? 'Review the synthesized answer, supporting evidence, and confidence before acting.'
-                : 'Review the answer, evidence coverage, and confidence before acting.'
-            }
-            action={
-              <span style={pillStyle(palette, lowEvidence ? 'warn' : 'success')}>
-                {lowEvidence ? 'Low evidence' : `${results.confidence}% confidence`}
-              </span>
-            }
+        isConversationMode ? (
+          <section
+            style={{
+              display: 'grid',
+              gap: 12,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            }}
           >
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={pillStyle(palette, 'default')}>Question: {results.question}</span>
-              {!isNavigationIntent ? (
-                <span style={pillStyle(palette, results.riskStatus === 'critical' ? 'danger' : results.riskStatus === 'watch' ? 'warn' : 'success')}>
-                  Status {results.riskStatus}
-                </span>
-              ) : null}
-              {results.generatedAt ? <span style={pillStyle(palette, 'default')}>Updated {toDisplayDate(results.generatedAt)}</span> : null}
-            </div>
-
-            {lowEvidence ? <div style={noteStyle(palette, 'warn')}>Low evidence: this answer may be incomplete.</div> : null}
-
-            <div
-              style={{
-                border: `1px solid ${palette.border}`,
-                borderRadius: 20,
-                padding: '18px 18px 16px',
-                background: darkMode
-                  ? 'linear-gradient(180deg, rgba(34, 29, 25, 0.92), rgba(24, 20, 17, 0.9))'
-                  : 'linear-gradient(180deg, rgba(255, 252, 248, 0.98), rgba(245, 238, 228, 0.98))',
-                display: 'grid',
-                gap: 12,
-              }}
-            >
-              <p style={{ margin: 0, fontSize: 14, color: palette.text, whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>{results.answer}</p>
-              {!!results.credibilitySummary ? (
-                <p style={{ margin: 0, fontSize: 12, color: palette.muted, lineHeight: 1.7 }}>{results.credibilitySummary}</p>
-              ) : null}
-            </div>
-
-            {!isNavigationIntent ? (
-              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                Engine <strong style={{ color: palette.text }}>{results.answerEngine === 'anthropic' ? 'LLM' : 'Rules'}</strong> | Coverage <strong style={{ color: palette.text }}>{results.coverageScore}</strong> | Evidence{' '}
-                <strong style={{ color: palette.text }}>{results.evidenceCount}</strong> | Types{' '}
-                <strong style={{ color: palette.text }}>{sourceTypeSummary}</strong>
-              </p>
-            ) : null}
-            {!isNavigationIntent && ((results.evidenceBreakdown || []).length > 0 || results.freshnessDays !== null) ? (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {(results.evidenceBreakdown || []).map((item) => (
-                  <span key={`${item.type}-${item.count}`} style={pillStyle(palette, 'default')}>
-                    {item.count} {item.label}
-                  </span>
-                ))}
-                {results.freshnessDays !== null ? <span style={pillStyle(palette, 'info')}>{describeFreshness(results.freshnessDays)}</span> : null}
-              </div>
-            ) : null}
-            {results.citations?.length ? (
-              <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-                {results.citations.slice(0, 3).map((citation) => (
-                  <a
-                    key={`${citation.type}-${citation.id}`}
-                    href={citation.href}
-                    style={{
-                      ...microCardStyle(palette, citation.directMatch ? 'success' : 'default'),
-                      textDecoration: 'none',
-                      color: palette.text,
-                    }}
-                  >
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>{citation.title}</span>
-                    <span style={{ fontSize: 11, color: palette.muted }}>
-                      {citation.type} {citation.date ? `| ${citation.date}` : ''}{citation.directMatch ? ' | direct match' : ''}
-                    </span>
-                    {citation.matchedTerms?.length ? (
-                      <span style={{ fontSize: 11, color: palette.muted }}>
-                        Matched terms: {citation.matchedTerms.join(', ')}
-                      </span>
-                    ) : null}
-                    {citation.preview ? (
-                      <span style={{ fontSize: 11, color: palette.muted, lineHeight: 1.5 }}>
-                        {citation.preview}
-                      </span>
-                    ) : null}
-                  </a>
-                ))}
-              </div>
-            ) : null}
-
-            <div style={{ display: 'grid', gap: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                <span style={{ fontSize: 12, color: palette.muted }}>Confidence</span>
-                <strong style={{ fontSize: 12, color: palette.text }}>
-                  {results.confidence}% ({confidenceLabel})
-                </strong>
-              </div>
-              <div style={{ height: 10, borderRadius: 999, overflow: 'hidden', background: palette.progressTrack }}>
-                <div style={{ width: confidenceWidth, height: '100%', background: palette.ctaGradient }} />
-              </div>
-            </div>
-          </WorkspacePanel>
-
-          </div>
-
-          <div style={laneStyle('0.9 1 320px')}>
-
-          {!isNavigationIntent && (results.answerFoundation?.length > 0 || results.missingEvidence?.length > 0) ? (
             <WorkspacePanel
               palette={palette}
-              eyebrow="Trust"
-              title="Why this answer"
-              description="See what Ask Recall relied on and what still limits confidence."
+              eyebrow="Good Starting Points"
+              title="Ask from the workspace"
+              description="Pick a question style or open a workspace surface, then keep the thread going from there."
             >
-              {results.answerFoundation?.length ? (
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {results.answerFoundation.map((item) => (
-                    <div
-                      key={item}
-                      style={{
-                        border: `1px solid ${palette.border}`,
-                        borderRadius: 14,
-                        background: palette.cardAlt,
-                        padding: 12,
-                        fontSize: 12,
-                        color: palette.text,
-                        lineHeight: 1.6,
-                      }}
-                    >
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {(results.followUpQuestions.length ? results.followUpQuestions : starterPrompts.slice(0, 4)).map((item) => (
+                    <button key={`conversation-starter-${item}`} type="button" onClick={() => runAnalysis(item)} style={buttonGhost(palette)}>
                       {item}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {quickToolLinks.slice(0, 4).map((item) => (
+                    <a key={`conversation-link-${item.id || item.href}`} href={item.href} style={{ ...buttonGhost(palette), textDecoration: 'none' }}>
+                      {item.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </WorkspacePanel>
+          </section>
+        ) : (
+        <section
+          style={{
+            display: 'grid',
+            gap: 12,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          }}
+        >
+          {lowEvidence ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Refine The Ask"
+              title="Ask with a clearer workspace handle"
+              description="A clearer workspace handle will make the next answer much stronger."
+            >
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={noteStyle(palette, 'warn')}>
+                  {results.missingEvidence?.[0] || lowEvidenceGuidance}
+                </div>
+                {anchorSuggestions.length ? (
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <strong style={{ fontSize: 12, color: palette.text }}>Recent anchors from this thread</strong>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {anchorSuggestions.map((item) => (
+                        <button key={item.id} type="button" onClick={() => runAnalysis(item.prompt)} style={buttonGhost(palette)}>
+                          {item.label}
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : null}
-              {results.missingEvidence?.length ? (
-                <div style={{ display: 'grid', gap: 6 }}>
-                  {results.missingEvidence.map((item) => (
-                    <p key={item} style={{ margin: 0, fontSize: 12, color: palette.warn }}>
+                  </div>
+                ) : null}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {sharpeningPrompts.map((item) => (
+                    <button key={`sharpen-${item}`} type="button" onClick={() => runAnalysis(item)} style={buttonGhost(palette)}>
                       {item}
-                    </p>
+                    </button>
                   ))}
                 </div>
-              ) : null}
-            </WorkspacePanel>
-          ) : null}
-
-          {!isNavigationIntent ? (
-            <WorkspacePanel
-              palette={palette}
-              eyebrow="Current Status"
-              title="Risk posture"
-              description="Track the latest status and readiness signal for the situation."
-            >
-              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                Status{' '}
-                <strong style={{ color: results.riskStatus === 'critical' ? palette.danger : results.riskStatus === 'watch' ? palette.warn : palette.success }}>
-                  {results.riskStatus}
-                </strong>
-                {results.readinessScore !== null ? ` | Readiness ${results.readinessScore}` : ''}
-              </p>
-            </WorkspacePanel>
-          ) : null}
-
-          {results ? feedbackPanel : null}
-
-          {!isNavigationIntent && results.followUpQuestions?.length ? (
-            <WorkspacePanel
-              palette={palette}
-              eyebrow="Ask Next"
-              title="Suggested follow-ups"
-              description="Use these next questions to deepen the answer or close evidence gaps."
-            >
-              <div style={{ display: 'grid', gap: 8 }}>
-                {results.followUpQuestions.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => runAnalysis(item)}
-                    style={{ ...buttonGhost(palette), textAlign: 'left' }}
-                  >
-                    {item}
-                  </button>
-                ))}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {(results?.contextAnchor ? contextualLinks : quickToolLinks).slice(0, 4).map((item) => (
+                    <a key={`anchor-link-${item.id || item.href}`} href={item.href} style={{ ...buttonGhost(palette), textDecoration: 'none' }}>
+                      {item.label}
+                    </a>
+                  ))}
+                </div>
               </div>
-            </WorkspacePanel>
-          ) : null}
-
-          {!!results.execution?.performed && !!results.execution?.result ? (
-            <WorkspacePanel
-              palette={palette}
-              eyebrow="Execution"
-              title="Autonomous fix result"
-              description="Review what Ask Recall executed and what it skipped."
-            >
-              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                Executed: {results.execution.result.executed_count} | Skipped: {results.execution.result.skipped_count}
-              </p>
             </WorkspacePanel>
           ) : null}
 
           {results.responseMode === 'diagnosis' && results.nextActions.length > 0 && !isNavigationIntent && !lowEvidence ? (
             <WorkspacePanel
               palette={palette}
-              eyebrow="Next Actions"
-              title="Suggested interventions"
-              description="These recommendations are grounded in the current evidence trail."
+              eyebrow="Recommended Moves"
+              title="What to do next"
+              description="The strongest moves Ask Recall can justify from this answer."
             >
               <div style={{ display: 'grid', gap: 8 }}>
-                {results.nextActions.map((action) => (
-                  <div key={action.id} style={{ border: `1px solid ${palette.border}`, borderRadius: 14, background: palette.cardAlt, padding: 12 }}>
-                    <a href={action.href || '#'} style={{ textDecoration: 'none', color: palette.text, fontWeight: 700, fontSize: 13 }}>{action.title}</a>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: palette.muted }}>{action.reason}</p>
-                    <p style={{ margin: '4px 0 0', fontSize: 11, color: palette.muted }}>Impact {action.impact} | Confidence {action.confidence}%</p>
+                {results.nextActions.slice(0, 4).map((action) => (
+                  <div key={action.id} style={{ ...microCardStyle(palette, 'default'), gap: 6 }}>
+                    <a href={action.href || '#'} style={{ textDecoration: 'none', color: palette.text, fontWeight: 700, fontSize: 13 }}>
+                      {action.title}
+                    </a>
+                    <p style={{ margin: 0, fontSize: 12, color: palette.muted, lineHeight: 1.55 }}>{action.reason}</p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={pillStyle(palette, 'default')}>Impact {action.impact}</span>
+                      <span style={pillStyle(palette, 'default')}>Confidence {action.confidence}%</span>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </WorkspacePanel>
+          ) : null}
+
+          {!lowEvidence || isNavigationIntent ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow={isNavigationIntent ? 'Open In Knoledgr' : 'Next Step'}
+              title={isNavigationIntent ? 'Relevant destinations' : 'Continue from this answer'}
+              description={
+                isNavigationIntent
+                  ? 'Go straight to the surface behind this request.'
+                  : 'Use the next surface or continue the thread from here.'
+              }
+            >
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {contextualLinks.slice(0, 4).map((item) => (
+                  <a key={`next-${item.id || item.href}`} href={item.href} style={{ ...buttonGhost(palette), textDecoration: 'none' }}>
+                    {item.label}
+                  </a>
                 ))}
               </div>
             </WorkspacePanel>
@@ -1373,12 +1440,12 @@ export default function AskRecall() {
           {results.sources.length > 0 ? (
             <WorkspacePanel
               palette={palette}
-              eyebrow="Evidence"
-              title="Supporting sources"
-              description="Open the records Ask Recall grounded this answer on."
+              eyebrow="Linked Records"
+              title="Open the records behind this answer"
+              description="Jump straight into the Knoledgr records Ask Recall pulled in."
             >
               <div style={{ display: 'grid', gap: 8 }}>
-                {results.sources.map((source) => (
+                {results.sources.slice(0, 6).map((source) => (
                   <a
                     key={`${source.type}-${source.id}`}
                     href={source.href}
@@ -1389,28 +1456,39 @@ export default function AskRecall() {
                       borderRadius: 14,
                       background: palette.cardAlt,
                       padding: 12,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 8,
-                      flexWrap: 'wrap',
+                      display: 'grid',
+                      gap: 4,
                     }}
                   >
-                    <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
-                      <span style={{ fontSize: 12 }}>{source.title}</span>
-                      {source.preview ? (
-                        <span style={{ fontSize: 11, color: palette.muted, lineHeight: 1.5 }}>
-                          {source.preview}
-                        </span>
-                      ) : null}
-                    </div>
-                    <span style={{ fontSize: 11, color: palette.muted }}>{source.type} | {source.date}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{source.title}</span>
+                    <span style={{ fontSize: 11, color: palette.muted }}>
+                      {titleCase(source.type)}
+                      {source.date ? ` | ${source.date}` : ''}
+                    </span>
+                    {source.preview ? (
+                      <span style={{ fontSize: 11, color: palette.muted, lineHeight: 1.5 }}>{source.preview}</span>
+                    ) : null}
                   </a>
                 ))}
               </div>
             </WorkspacePanel>
           ) : null}
-          </div>
+
+          {!!results.execution?.performed && !!results.execution?.result ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Execution"
+              title="Autonomous fix result"
+              description="A quick summary of what Ask Recall executed."
+            >
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <span style={pillStyle(palette, 'success')}>Executed {results.execution.result.executed_count}</span>
+                <span style={pillStyle(palette, 'default')}>Skipped {results.execution.result.skipped_count}</span>
+              </div>
+            </WorkspacePanel>
+          ) : null}
         </section>
+        )
       ) : null}
     </div>
   );
@@ -1425,18 +1503,6 @@ function inputStyle(palette) {
     color: palette.text,
     padding: '12px 14px',
     fontSize: 14,
-    outline: 'none',
-  };
-}
-
-function inputCompact(palette) {
-  return {
-    border: `1px solid ${palette.border}`,
-    borderRadius: 14,
-    background: palette.cardAlt,
-    color: palette.text,
-    padding: '9px 12px',
-    fontSize: 12,
     outline: 'none',
   };
 }
@@ -1509,6 +1575,35 @@ function noteStyle(palette, tone = 'default') {
     lineHeight: 1.6,
     color: tone === 'default' ? palette.muted : accent,
     background: tone === 'default' ? palette.cardAlt : `${accent}14`,
+  };
+}
+
+function consoleSurfaceStyle(palette, darkMode) {
+  return {
+    border: `1px solid ${palette.border}`,
+    borderRadius: 24,
+    padding: 14,
+    display: 'grid',
+    gap: 12,
+    background: darkMode
+      ? 'linear-gradient(180deg, rgba(26, 22, 19, 0.95), rgba(20, 17, 14, 0.93))'
+      : 'linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(244, 238, 229, 0.98))',
+  };
+}
+
+function messageBubbleStyle(palette, darkMode, role = 'assistant') {
+  const isUser = role === 'user';
+  return {
+    border: `1px solid ${isUser ? `${palette.info}2f` : palette.border}`,
+    borderRadius: isUser ? 20 : 24,
+    padding: isUser ? '14px 16px' : '18px 18px 16px',
+    display: 'grid',
+    gap: isUser ? 6 : 12,
+    background: isUser
+      ? `${palette.info}10`
+      : darkMode
+        ? 'linear-gradient(180deg, rgba(34, 29, 25, 0.92), rgba(24, 20, 17, 0.9))'
+        : 'linear-gradient(180deg, rgba(255, 252, 248, 0.98), rgba(245, 238, 228, 0.98))',
   };
 }
 

@@ -78,7 +78,7 @@ export default function BrandLogo({
                 lineHeight: 0.94,
                 letterSpacing: "-0.055em",
                 color: color.text,
-                fontFamily: '"Space Grotesk", "Manrope", "Segoe UI", sans-serif',
+                fontFamily: '"League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                 whiteSpace: "nowrap",
               }}
             >

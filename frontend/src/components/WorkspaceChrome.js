@@ -13,7 +13,8 @@ export function WorkspaceHero({
 }) {
   const execution = variant === "execution";
   const memory = variant === "memory";
-  const enhanced = execution || memory;
+  const hasAside = Boolean(aside);
+  const hasStats = stats.length > 0;
 
   return (
     <section
@@ -27,87 +28,47 @@ export function WorkspaceHero({
             : { background: "transparent" }),
       }}
     >
-      {enhanced ? (
-        <>
-          <div
-            aria-hidden="true"
-            style={{
-              ...heroAura,
-              background: execution
-                ? darkMode
-                  ? "radial-gradient(circle, rgba(154, 185, 255, 0.18), transparent 70%)"
-                  : "radial-gradient(circle, rgba(46, 99, 208, 0.14), transparent 70%)"
-                : darkMode
-                  ? "radial-gradient(circle, rgba(109, 174, 255, 0.18), transparent 70%)"
-                  : "radial-gradient(circle, rgba(66, 125, 214, 0.14), transparent 70%)",
-              top: -120,
-              left: -80,
-            }}
-          />
-          <div
-            aria-hidden="true"
-            style={{
-              ...heroAura,
-              background: execution
-                ? darkMode
-                  ? "radial-gradient(circle, rgba(210, 168, 106, 0.14), transparent 70%)"
-                  : "radial-gradient(circle, rgba(168, 116, 57, 0.1), transparent 70%)"
-                : darkMode
-                  ? "radial-gradient(circle, rgba(94, 214, 183, 0.16), transparent 70%)"
-                  : "radial-gradient(circle, rgba(42, 147, 133, 0.1), transparent 70%)",
-              right: -120,
-              bottom: -110,
-            }}
-          />
-        </>
-      ) : null}
-
-      <div style={{ ...heroMain, gap: enhanced ? 14 : heroMain.gap }}>
-        <div style={{ display: "grid", gap: 8 }}>
-          {eyebrow ? <p style={{ ...heroEyebrow, color: palette.muted }}>{eyebrow}</p> : null}
-          <h1 style={{ ...heroTitle, color: palette.text }}>{title}</h1>
-          {description ? <p style={{ ...heroDescription, color: palette.muted }}>{description}</p> : null}
+      <div style={{ ...heroHeader, ...(hasAside ? null : heroHeaderCompact) }}>
+        <div style={heroMain}>
+          <div style={heroLead}>
+            {eyebrow ? <p style={{ ...heroEyebrow, color: palette.muted }}>{eyebrow}</p> : null}
+            <div style={heroCopy}>
+              <h1 style={{ ...heroTitle, color: palette.text }}>{title}</h1>
+              {description ? <p style={{ ...heroDescription, color: palette.muted }}>{description}</p> : null}
+            </div>
+          </div>
+          {actions ? <div style={heroActions}>{actions}</div> : null}
         </div>
-        {actions ? <div style={heroActions}>{actions}</div> : null}
+
+        {hasAside ? (
+          <div style={heroSide}>
+            <div style={asideWrap}>{aside}</div>
+          </div>
+        ) : null}
       </div>
 
-      <div style={heroSide}>
-        {aside ? <div style={{ ...asideWrap, justifyContent: enhanced ? "stretch" : asideWrap.justifyContent }}>{aside}</div> : null}
-        {stats.length ? (
+      {hasStats ? (
+        <div style={{ ...heroFooter, borderTop: `1px solid ${palette.border}` }}>
           <div style={statsGrid}>
             {stats.map((stat) => (
               <article
                 key={`${stat.label}-${stat.value}`}
                 style={{
                   ...statCard,
-                  ...(enhanced
-                    ? {
-                        borderRadius: 22,
-                        padding: "16px 16px 14px",
-                      }
-                    : null),
                   border: `1px solid ${palette.border}`,
-                  background: execution
-                    ? darkMode
-                      ? "linear-gradient(150deg, rgba(35, 29, 25, 0.96), rgba(24, 20, 17, 0.84))"
-                      : "linear-gradient(150deg, rgba(255, 252, 248, 0.98), rgba(245, 239, 229, 0.9))"
-                    : memory
-                      ? darkMode
-                        ? "linear-gradient(150deg, rgba(23, 28, 37, 0.96), rgba(18, 22, 30, 0.86))"
-                        : "linear-gradient(150deg, rgba(248, 251, 255, 0.98), rgba(236, 244, 252, 0.92))"
-                      : darkMode
-                        ? "linear-gradient(155deg, rgba(33, 28, 24, 0.9), rgba(24, 20, 17, 0.76))"
-                        : "linear-gradient(155deg, rgba(255, 252, 248, 0.96), rgba(246, 239, 229, 0.86))",
+                  background: palette.cardAlt,
                 }}
               >
-                <p style={{ ...statLabel, color: palette.muted }}>{stat.label}</p>
+                <div style={statMeta}>
+                  <p style={{ ...statLabel, color: palette.muted }}>{stat.label}</p>
+                  {stat.helper ? <p style={{ ...statHelper, color: palette.muted }}>{stat.helper}</p> : null}
+                </div>
                 <p style={{ ...statValue, color: stat.tone || palette.text }}>{stat.value}</p>
-                {stat.helper ? <p style={{ ...statHelper, color: palette.muted }}>{stat.helper}</p> : null}
               </article>
             ))}
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -146,7 +107,6 @@ export function WorkspaceToolbar({ palette, variant = "default", darkMode, child
 export function WorkspacePanel({ palette, variant = "default", darkMode, title, eyebrow, description, action, children, minHeight }) {
   const execution = variant === "execution";
   const memory = variant === "memory";
-  const enhanced = execution || memory;
 
   return (
     <section
@@ -160,27 +120,15 @@ export function WorkspacePanel({ palette, variant = "default", darkMode, title, 
             : null),
         minHeight,
         border: `1px solid ${palette.border}`,
-        background: execution
-          ? darkMode
-            ? "linear-gradient(150deg, rgba(24, 20, 18, 0.96), rgba(31, 26, 23, 0.9))"
-            : "linear-gradient(150deg, rgba(255, 252, 248, 0.98), rgba(247, 242, 235, 0.94))"
-          : memory
-            ? darkMode
-              ? "linear-gradient(150deg, rgba(18, 22, 30, 0.96), rgba(25, 31, 42, 0.9))"
-              : "linear-gradient(150deg, rgba(249, 252, 255, 0.98), rgba(241, 247, 252, 0.95))"
-          : palette.card,
+        background: palette.card,
       }}
     >
       {(title || eyebrow || description || action) && (
         <div
           style={{
             ...panelHead,
-            ...(enhanced
-              ? {
-                  paddingBottom: 14,
-                  borderBottom: `1px solid ${palette.border}`,
-                }
-              : null),
+            paddingBottom: 12,
+            borderBottom: `1px solid ${palette.border}`,
           }}
         >
           <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
@@ -197,39 +145,20 @@ export function WorkspacePanel({ palette, variant = "default", darkMode, title, 
 }
 
 export function WorkspaceEmptyState({ palette, variant = "default", darkMode, title, description, action }) {
-  const execution = variant === "execution";
-  const memory = variant === "memory";
-  const enhanced = execution || memory;
-
   return (
     <div
       style={{
         ...emptyState,
-        ...(execution
+        ...(variant === "execution"
           ? getExecutionEmptyShell(palette, darkMode)
-          : memory
+          : variant === "memory"
             ? getMemoryEmptyShell(palette, darkMode)
             : null),
         border: `1px dashed ${palette.border}`,
-        background: execution
-          ? darkMode
-            ? "linear-gradient(150deg, rgba(31, 26, 23, 0.9), rgba(24, 20, 17, 0.82))"
-            : "linear-gradient(150deg, rgba(255, 252, 248, 0.96), rgba(241, 233, 221, 0.94))"
-          : memory
-            ? darkMode
-              ? "linear-gradient(150deg, rgba(18, 22, 30, 0.9), rgba(23, 29, 39, 0.82))"
-              : "linear-gradient(150deg, rgba(248, 251, 255, 0.96), rgba(236, 244, 252, 0.94))"
-          : palette.cardAlt,
+        background: palette.cardAlt,
         color: palette.muted,
       }}
     >
-      <div
-        aria-hidden="true"
-        style={{
-          ...emptyOrb,
-          background: `radial-gradient(circle, ${palette.accentSoft}, transparent 72%)`,
-        }}
-      />
       <p style={{ ...emptyTitle, color: palette.text }}>{title}</p>
       {description ? <p style={emptyDescription}>{description}</p> : null}
       {action ? <div>{action}</div> : null}
@@ -239,110 +168,142 @@ export function WorkspaceEmptyState({ palette, variant = "default", darkMode, ti
 
 const hero = {
   position: "relative",
-  padding: "clamp(2px, 0.6vw, 6px) 0 clamp(4px, 0.8vw, 8px)",
+  padding: "clamp(2px, 0.3vw, 4px) 0 clamp(2px, 0.45vw, 6px)",
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: 12,
+  alignItems: "start",
+};
+
+const heroHeader = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1.45fr) minmax(260px, 0.78fr)",
   gap: 14,
   alignItems: "start",
+};
+
+const heroHeaderCompact = {
+  gridTemplateColumns: "minmax(0, 1fr)",
 };
 
 const heroMain = {
   position: "relative",
   zIndex: 1,
   display: "grid",
-  alignContent: "space-between",
+  alignContent: "start",
   gap: 10,
+  minWidth: 0,
+};
+
+const heroLead = {
+  display: "grid",
+  gap: 6,
+  minWidth: 0,
+};
+
+const heroCopy = {
+  display: "grid",
+  gap: 6,
   minWidth: 0,
 };
 
 const heroEyebrow = {
   margin: 0,
-  fontSize: 11,
-  fontWeight: 800,
-  letterSpacing: "0.16em",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.07em",
   textTransform: "uppercase",
 };
 
 const heroTitle = {
   margin: 0,
-  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
-  fontSize: "clamp(1.8rem, 3vw, 3rem)",
-  lineHeight: 0.98,
-  letterSpacing: "-0.05em",
-  maxWidth: "14ch",
+  fontFamily: "inherit",
+  fontSize: "clamp(1.3rem, 1.7vw, 1.75rem)",
+  lineHeight: 1.12,
+  letterSpacing: "-0.03em",
+  fontWeight: 700,
+  maxWidth: "26ch",
 };
 
 const heroDescription = {
   margin: 0,
-  fontSize: 14,
-  lineHeight: 1.65,
-  maxWidth: 680,
+  fontSize: 12,
+  lineHeight: 1.55,
+  maxWidth: 760,
 };
 
 const heroActions = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  gap: 6,
   flexWrap: "wrap",
+  minWidth: 0,
 };
 
 const heroSide = {
   position: "relative",
   zIndex: 1,
   display: "grid",
-  alignContent: "start",
   gap: 8,
+  minWidth: 0,
 };
 
 const asideWrap = {
-  display: "flex",
-  justifyContent: "flex-end",
+  display: "grid",
+  minWidth: 0,
 };
 
-const heroAura = {
-  position: "absolute",
-  width: 280,
-  height: 280,
-  borderRadius: "50%",
-  filter: "blur(18px)",
-  pointerEvents: "none",
+const heroFooter = {
+  display: "grid",
+  gap: 8,
+  paddingTop: 10,
 };
 
 const statsGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-  gap: 12,
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 8,
 };
 
 const statCard = {
-  borderRadius: 24,
-  padding: "14px 14px 12px",
+  borderRadius: 12,
+  padding: "10px 11px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 10,
+  minWidth: 0,
+};
+
+const statMeta = {
   display: "grid",
-  gap: 6,
-  boxShadow: "var(--ui-shadow-sm)",
+  gap: 2,
+  minWidth: 0,
 };
 
 const statLabel = {
   margin: 0,
   fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.14em",
+  fontWeight: 700,
+  letterSpacing: "0.07em",
   textTransform: "uppercase",
 };
 
 const statValue = {
   margin: 0,
-  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
-  fontSize: 26,
+  fontFamily: "inherit",
+  fontSize: 18,
   fontWeight: 700,
-  lineHeight: 0.98,
-  letterSpacing: "-0.05em",
+  lineHeight: 1,
+  letterSpacing: "-0.02em",
+  textAlign: "right",
+  flexShrink: 0,
 };
 
 const statHelper = {
   margin: 0,
-  fontSize: 12,
-  lineHeight: 1.45,
+  fontSize: 11,
+  lineHeight: 1.4,
+  maxWidth: 240,
 };
 
 const toolbar = {
@@ -354,11 +315,10 @@ const toolbar = {
 };
 
 const panel = {
-  borderRadius: 26,
-  padding: "18px",
+  borderRadius: 16,
+  padding: "14px",
   display: "grid",
-  gap: 14,
-  boxShadow: "var(--ui-shadow-sm)",
+  gap: 12,
 };
 
 const panelHead = {
@@ -372,52 +332,41 @@ const panelHead = {
 const panelEyebrow = {
   margin: 0,
   fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.14em",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
 const panelTitle = {
   margin: 0,
-  fontFamily: 'var(--font-display, "Fraunces"), Georgia, serif',
-  fontSize: 24,
-  lineHeight: 1.02,
-  letterSpacing: "-0.05em",
+  fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontSize: 20,
+  lineHeight: 1.08,
+  letterSpacing: "-0.03em",
 };
 
 const panelDescription = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.6,
+  fontSize: 12,
+  lineHeight: 1.55,
   maxWidth: 620,
 };
 
 const emptyState = {
   position: "relative",
   overflow: "hidden",
-  borderRadius: 18,
-  padding: "28px 18px",
+  borderRadius: 14,
+  padding: "22px 16px",
   textAlign: "center",
   display: "grid",
-  gap: 8,
+  gap: 6,
   placeItems: "center",
-};
-
-const emptyOrb = {
-  position: "absolute",
-  width: 180,
-  height: 180,
-  borderRadius: "50%",
-  top: -70,
-  right: -50,
-  pointerEvents: "none",
-  filter: "blur(20px)",
 };
 
 const emptyTitle = {
   margin: 0,
-  fontSize: 18,
-  fontWeight: 800,
+  fontSize: 16,
+  fontWeight: 700,
   letterSpacing: "-0.03em",
   position: "relative",
   zIndex: 1,
@@ -426,26 +375,23 @@ const emptyTitle = {
 const emptyDescription = {
   margin: 0,
   maxWidth: 420,
-  fontSize: 13,
-  lineHeight: 1.55,
+  fontSize: 12,
+  lineHeight: 1.5,
   position: "relative",
   zIndex: 1,
 };
 
-function getExecutionHeroShell(palette, darkMode) {
+function getExecutionHeroShell(palette) {
   return {
-    padding: "clamp(20px, 2.8vw, 30px)",
-    borderRadius: 32,
+    padding: "clamp(14px, 1.8vw, 18px)",
+    borderRadius: 16,
     border: `1px solid ${palette.border}`,
-    background: darkMode
-      ? "linear-gradient(145deg, rgba(24, 20, 18, 0.96) 0%, rgba(31, 26, 23, 0.94) 56%, rgba(39, 33, 29, 0.9) 100%)"
-      : "linear-gradient(145deg, rgba(255, 252, 248, 0.98) 0%, rgba(247, 242, 235, 0.98) 58%, rgba(241, 233, 221, 0.94) 100%)",
-    boxShadow: "var(--ui-shadow-sm)",
+    background: palette.card,
     overflow: "hidden",
   };
 }
 
-function getExecutionToolbarShell(palette, darkMode) {
+function getExecutionToolbarShell(darkMode) {
   return {
     borderRadius: 28,
     padding: "18px 20px",
@@ -454,36 +400,31 @@ function getExecutionToolbarShell(palette, darkMode) {
   };
 }
 
-function getExecutionPanelShell(palette, darkMode) {
+function getExecutionPanelShell() {
   return {
-    borderRadius: 28,
-    padding: "20px",
-    boxShadow: "var(--ui-shadow-sm)",
+    borderRadius: 16,
+    padding: "14px",
   };
 }
 
-function getExecutionEmptyShell(palette, darkMode) {
+function getExecutionEmptyShell() {
   return {
-    borderRadius: 22,
-    padding: "32px 20px",
-    boxShadow: "var(--ui-shadow-xs)",
+    borderRadius: 14,
+    padding: "22px 16px",
   };
 }
 
-function getMemoryHeroShell(palette, darkMode) {
+function getMemoryHeroShell(palette) {
   return {
-    padding: "clamp(20px, 2.8vw, 30px)",
-    borderRadius: 34,
+    padding: "clamp(14px, 1.8vw, 18px)",
+    borderRadius: 16,
     border: `1px solid ${palette.border}`,
-    background: darkMode
-      ? "linear-gradient(145deg, rgba(16, 20, 27, 0.97) 0%, rgba(22, 28, 38, 0.95) 58%, rgba(28, 37, 50, 0.9) 100%)"
-      : "linear-gradient(145deg, rgba(248, 251, 255, 0.99) 0%, rgba(239, 246, 252, 0.98) 58%, rgba(232, 241, 249, 0.94) 100%)",
-    boxShadow: "var(--ui-shadow-sm)",
+    background: palette.card,
     overflow: "hidden",
   };
 }
 
-function getMemoryToolbarShell(palette, darkMode) {
+function getMemoryToolbarShell(darkMode) {
   return {
     borderRadius: 30,
     padding: "18px 20px",
@@ -492,18 +433,16 @@ function getMemoryToolbarShell(palette, darkMode) {
   };
 }
 
-function getMemoryPanelShell(palette, darkMode) {
+function getMemoryPanelShell() {
   return {
-    borderRadius: 30,
-    padding: "20px",
-    boxShadow: "var(--ui-shadow-sm)",
+    borderRadius: 16,
+    padding: "14px",
   };
 }
 
-function getMemoryEmptyShell(palette, darkMode) {
+function getMemoryEmptyShell() {
   return {
-    borderRadius: 24,
-    padding: "32px 20px",
-    boxShadow: "var(--ui-shadow-xs)",
+    borderRadius: 14,
+    padding: "22px 16px",
   };
 }

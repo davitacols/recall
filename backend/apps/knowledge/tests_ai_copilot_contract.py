@@ -521,6 +521,73 @@ class AGICopilotContractTests(TestCase):
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
     @patch("apps.knowledge.ai_intelligence.get_search_engine")
     @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_today_workspace_activity_query_uses_workspace_lookup_fallback(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "documents": [],
+            "projects": [],
+            "sprints": [],
+            "total": 0,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 84.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 0, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        Conversation.objects.create(
+            organization=self.org,
+            author=self.user,
+            post_type="update",
+            title="Daily delivery sync",
+            content="Frontend reached QA and backend review is in progress.",
+        )
+        decision_conversation = Conversation.objects.create(
+            organization=self.org,
+            author=self.user,
+            post_type="decision",
+            title="Rollout checkpoint",
+            content="Decision context for today's rollout checkpoint.",
+        )
+        Decision.objects.create(
+            organization=self.org,
+            conversation=decision_conversation,
+            title="Approve onboarding release checklist",
+            description="Lock the checklist before rollout.",
+            decision_maker=self.user,
+            status="approved",
+            rationale="Reduce launch variance",
+            impact_level="medium",
+        )
+        Document.objects.create(
+            organization=self.org,
+            title="Ops handoff note",
+            description="Daily operations summary",
+            document_type="report",
+            content="Support coverage is ready for today's release window.",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        response = self.client.post("/api/knowledge/ai/copilot/", {"query": "what has happened today in the organization?"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "answer")
+        self.assertGreaterEqual(response.data.get("evidence_count") or 0, 3)
+        self.assertIn("Today in Knoledgr", response.data.get("answer", ""))
+        self.assertTrue((response.data.get("sources") or {}).get("conversations"))
+        self.assertTrue((response.data.get("sources") or {}).get("decisions"))
+        self.assertTrue((response.data.get("sources") or {}).get("documents"))
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
     def test_follow_up_query_uses_thread_context_anchor(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
         search_engine = Mock()
         search_engine.search.side_effect = [

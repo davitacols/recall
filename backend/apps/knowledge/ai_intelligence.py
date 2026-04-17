@@ -799,6 +799,246 @@ def _build_recent_conversation_lookup(org, query):
     }
 
 
+def _build_recent_workspace_activity_lookup(org, query):
+    text = str(query or '').strip().lower()
+    if not text:
+        return None
+
+    activity_signal = (
+        _query_mentions(query, 'today', 'recent', 'recently', 'latest', 'newest', 'update', 'updates', 'activity', 'activities')
+        or 'what happened' in text
+        or 'what has happened' in text
+        or 'what changed' in text
+    )
+    if not activity_signal:
+        return None
+
+    broad_scope = (
+        _query_mentions(query, 'organization', 'workspace', 'company', 'team')
+        or 'what happened' in text
+        or 'what has happened' in text
+        or 'what changed' in text
+    )
+    if not broad_scope:
+        return None
+
+    if _query_mentions(
+        query,
+        'project', 'projects',
+        'sprint', 'sprints',
+        'decision', 'decisions',
+        'document', 'documents', 'doc', 'docs',
+        'release', 'releases',
+        'conversation', 'conversations', 'thread', 'threads', 'discussion', 'discussions',
+    ):
+        return None
+
+    today = timezone.localdate()
+    wants_today = _query_mentions(query, 'today')
+
+    def _collect(today_only=False):
+        items = []
+
+        def add_item(bucket, payload, sort_value):
+            if not payload.get('title'):
+                return
+            items.append({
+                'bucket': bucket,
+                'payload': payload,
+                'sort_ts': _parse_source_created_at(sort_value) or datetime.min.replace(tzinfo=dt_timezone.utc),
+            })
+
+        conversations = Conversation.objects.filter(organization=org, is_archived=False).select_related('author')
+        if today_only:
+            conversations = conversations.filter(Q(updated_at__date=today) | Q(created_at__date=today))
+        for conversation in conversations.order_by('-updated_at', '-created_at')[:2]:
+            stamped_at = conversation.updated_at or conversation.created_at
+            author_name = conversation.author.get_full_name() or conversation.author.username if conversation.author else ''
+            preview = ' '.join(
+                part for part in [
+                    conversation.key_takeaway,
+                    conversation.plain_language_summary,
+                    conversation.content[:180] if conversation.content else '',
+                    f'Author {author_name}' if author_name else '',
+                ] if part
+            ).strip()
+            add_item(
+                'conversations',
+                {
+                    'id': conversation.id,
+                    'title': conversation.title,
+                    'content_preview': preview,
+                    'type': 'conversation',
+                    'post_type': conversation.post_type,
+                    'priority': conversation.priority,
+                    'owner_name': author_name,
+                    'created_at': stamped_at.isoformat() if stamped_at else '',
+                    'url': f'/conversations/{conversation.id}',
+                },
+                stamped_at,
+            )
+
+        decisions = Decision.objects.filter(organization=org).select_related('decision_maker')
+        if today_only:
+            decisions = decisions.filter(created_at__date=today)
+        for decision in decisions.order_by('-created_at')[:2]:
+            maker_name = decision.decision_maker.get_full_name() or decision.decision_maker.username if decision.decision_maker else ''
+            preview = ' '.join(
+                part for part in [
+                    decision.plain_language_summary,
+                    decision.description,
+                    f'Decision maker {maker_name}' if maker_name else '',
+                ] if part
+            ).strip()
+            add_item(
+                'decisions',
+                {
+                    'id': decision.id,
+                    'title': decision.title,
+                    'content_preview': preview,
+                    'type': 'decision',
+                    'status': decision.status,
+                    'impact_level': decision.impact_level,
+                    'owner_name': maker_name,
+                    'created_at': decision.created_at.isoformat() if decision.created_at else '',
+                    'url': f'/decisions/{decision.id}',
+                },
+                decision.created_at,
+            )
+
+        projects = Project.objects.filter(organization=org).select_related('lead')
+        if today_only:
+            projects = projects.filter(Q(updated_at__date=today) | Q(created_at__date=today))
+        for project in projects.order_by('-updated_at', '-created_at')[:2]:
+            stamped_at = project.updated_at or project.created_at
+            lead_name = project.lead.get_full_name() if project.lead else ''
+            preview = ' '.join(
+                part for part in [
+                    project.description,
+                    f'Project key {project.key}' if project.key else '',
+                    f'Lead {lead_name}' if lead_name else '',
+                ] if part
+            ).strip()
+            add_item(
+                'projects',
+                {
+                    'id': project.id,
+                    'title': project.name,
+                    'content_preview': preview,
+                    'type': 'project',
+                    'key': project.key,
+                    'lead_name': lead_name,
+                    'created_at': stamped_at.isoformat() if stamped_at else '',
+                    'updated_at': stamped_at.isoformat() if stamped_at else '',
+                    'url': f'/projects/{project.id}',
+                },
+                stamped_at,
+            )
+
+        sprints = Sprint.objects.filter(organization=org).select_related('project')
+        if today_only:
+            sprints = sprints.filter(Q(created_at__date=today) | Q(start_date=today))
+        for sprint in sprints.order_by('-start_date', '-created_at')[:2]:
+            preview = ' '.join(
+                part for part in [
+                    sprint.summary,
+                    sprint.goal,
+                    f'Project {sprint.project.name}' if sprint.project else '',
+                    f'Status {sprint.status}' if sprint.status else '',
+                ] if part
+            ).strip()
+            add_item(
+                'sprints',
+                {
+                    'id': sprint.id,
+                    'title': sprint.name,
+                    'content_preview': preview,
+                    'type': 'sprint',
+                    'status': sprint.status,
+                    'project_name': sprint.project.name if sprint.project else '',
+                    'created_at': sprint.created_at.isoformat() if sprint.created_at else '',
+                    'start_date': sprint.start_date.isoformat() if sprint.start_date else '',
+                    'url': f'/sprints/{sprint.id}',
+                },
+                sprint.created_at or sprint.start_date,
+            )
+
+        if Document is not None:
+            documents = Document.objects.filter(organization=org).select_related('updated_by', 'created_by')
+            if today_only:
+                documents = documents.filter(Q(updated_at__date=today) | Q(created_at__date=today))
+            for document in documents.order_by('-updated_at', '-created_at')[:2]:
+                stamped_at = document.updated_at or document.created_at
+                owner = document.updated_by or document.created_by
+                owner_name = owner.get_full_name() or owner.username if owner else ''
+                preview = ' '.join(
+                    part for part in [
+                        document.description,
+                        document.content[:180] if document.content else '',
+                        f'Updated by {owner_name}' if owner_name else '',
+                    ] if part
+                ).strip()
+                add_item(
+                    'documents',
+                    {
+                        'id': document.id,
+                        'title': document.title,
+                        'content_preview': preview,
+                        'type': 'document',
+                        'document_type': document.document_type,
+                        'owner_name': owner_name,
+                        'created_at': document.created_at.isoformat() if document.created_at else '',
+                        'updated_at': stamped_at.isoformat() if stamped_at else '',
+                        'url': f'/business/documents/{document.id}',
+                    },
+                    stamped_at,
+                )
+
+        return sorted(items, key=lambda item: item['sort_ts'], reverse=True)[:6]
+
+    activity_items = _collect(today_only=wants_today)
+    today_matched = bool(activity_items)
+    if wants_today and not activity_items:
+        activity_items = _collect(today_only=False)
+
+    if not activity_items:
+        return None
+
+    search_data = {'total': len(activity_items)}
+    for item in activity_items:
+        search_data.setdefault(item['bucket'], []).append(item['payload'])
+
+    mix_summary = _summarize_source_mix(search_data)
+    highlights = _human_join([
+        f'{item["payload"].get("type", "record")} "{item["payload"].get("title", "")}"'
+        for item in activity_items[:3]
+        if item['payload'].get('title')
+    ])
+
+    if wants_today and today_matched:
+        answer = (
+            f'Today in Knoledgr, I found {mix_summary}. '
+            f'The most recent linked activity includes {highlights}. '
+            'Open those records to review the detailed thread, decision, document, or sprint context.'
+        )
+    elif wants_today:
+        answer = (
+            'I do not see linked workspace records updated today yet. '
+            f'The newest organization activity on record includes {mix_summary}. '
+            f'Most recent linked records are {highlights}.'
+        )
+    else:
+        answer = (
+            f'The newest organization activity in Knoledgr includes {mix_summary}. '
+            f'Most recent linked records are {highlights}.'
+        )
+
+    return {
+        'search_data': search_data,
+        'answer': answer.strip(),
+    }
+
+
 def _sanitize_thread_context(raw_context):
     if not isinstance(raw_context, list):
         return []
@@ -967,6 +1207,7 @@ def _apply_workspace_lookup_fallback(org, query, search_data):
         return search_data, None, False
 
     lookup_builders = [
+        _build_recent_workspace_activity_lookup,
         _build_recent_project_lookup,
         _build_recent_sprint_lookup,
         _build_recent_decision_lookup,

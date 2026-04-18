@@ -177,6 +177,7 @@ const APP_ROUTES = [
   { path: "/search", element: <AdvancedSearch /> },
   { path: "/activity", element: <ActivityFeed /> },
   { path: "/profile", element: <Profile /> },
+  { path: "/profile/:userId", element: <Profile /> },
   { path: "/onboarding", element: <Onboarding /> },
   { path: "/faq", element: <Navigate to="/knowledge" replace /> },
   { path: "/reflection", element: <Navigate to="/knowledge" replace /> },

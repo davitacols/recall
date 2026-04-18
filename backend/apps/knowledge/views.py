@@ -31,6 +31,83 @@ except Exception:  # pragma: no cover - optional in some test environments
     Issue = None
 
 
+def _humanize_token(value):
+    if not value:
+        return 'Unspecified'
+    return str(value).replace('_', ' ').replace('-', ' ').title()
+
+
+def _display_user_name(user):
+    if not user:
+        return 'Team member'
+    return user.get_full_name() or getattr(user, 'full_name', '') or getattr(user, 'username', '') or 'Team member'
+
+
+def _truncate_text(value, limit=180):
+    text = (value or '').strip()
+    if not text:
+        return ''
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 1].rstrip()}…"
+
+
+def _briefing_priority_rank(value):
+    order = {
+        'critical': 0,
+        'urgent': 1,
+        'highest': 1,
+        'high': 2,
+        'medium': 3,
+        'low': 4,
+        'lowest': 5,
+    }
+    return order.get(str(value or '').lower(), 5)
+
+
+def _briefing_sort_key(item):
+    timestamp = item.get('_sort_timestamp') or timezone.now()
+    return (
+        _briefing_priority_rank(item.get('priority')),
+        -timestamp.timestamp(),
+    )
+
+
+def _build_briefing_item(
+    *,
+    key,
+    kind,
+    title,
+    summary,
+    why_it_matters,
+    source_type,
+    source_id,
+    source_url,
+    timestamp,
+    priority='medium',
+    suggested_action=None,
+    suggested_action_url=None,
+    citations=None,
+):
+    return {
+        'id': key,
+        'kind': kind,
+        'title': title,
+        'summary': _truncate_text(summary, 180),
+        'why_it_matters': _truncate_text(why_it_matters, 170),
+        'source_type': source_type,
+        'source_id': source_id,
+        'source_url': source_url,
+        'timestamp': timestamp,
+        'priority': priority,
+        'priority_label': _humanize_token(priority),
+        'suggested_action': suggested_action or 'Open record',
+        'suggested_action_url': suggested_action_url or source_url,
+        'citations': citations or [],
+        '_sort_timestamp': timestamp,
+    }
+
+
 def _compute_memory_gaps(org):
     recent_conversations = Conversation.objects.filter(
         organization=org,
@@ -370,6 +447,540 @@ def personal_briefing(request):
             'recent_ask_recall_queries': len(recent_ask_recall_queries),
         },
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def workspace_briefing(request):
+    org = request.user.organization
+    user = request.user
+    role = user.role or 'contributor'
+    now = timezone.now()
+
+    conversations = list(
+        Conversation.objects.filter(organization=org)
+        .select_related('author')
+        .order_by('-updated_at')[:4]
+    )
+    decisions = list(
+        Decision.objects.filter(organization=org)
+        .select_related('conversation', 'decision_maker')
+        .order_by('-created_at')[:4]
+    )
+    documents = []
+    if Document:
+        documents = list(
+            Document.objects.filter(organization=org)
+            .select_related('created_by', 'updated_by')
+            .order_by('-updated_at')[:3]
+        )
+    contributor_tasks = []
+    if Task:
+        contributor_tasks = list(
+            Task.objects.filter(organization=org, assigned_to=user)
+            .exclude(status='done')
+            .select_related('assigned_to', 'goal', 'decision', 'conversation')
+            .order_by('due_date', '-updated_at')[:4]
+        )
+    tasks = contributor_tasks
+    if Task and not tasks:
+        tasks = list(
+            Task.objects.filter(organization=org)
+            .exclude(status='done')
+            .select_related('assigned_to', 'goal', 'decision', 'conversation')
+            .order_by('due_date', '-updated_at')[:4]
+        )
+    contributor_issues = []
+    if Issue:
+        contributor_issues = list(
+            Issue.objects.filter(organization=org)
+            .filter(Q(assignee=user) | Q(watchers=user))
+            .exclude(status__in=['done', 'cancelled'])
+            .select_related('project', 'assignee', 'reporter')
+            .distinct()
+            .order_by('-updated_at')[:4]
+        )
+    issues = contributor_issues
+    if Issue and not issues:
+        issues = list(
+            Issue.objects.filter(organization=org)
+            .exclude(status__in=['done', 'cancelled'])
+            .select_related('project', 'assignee', 'reporter')
+            .order_by('-updated_at')[:4]
+        )
+
+    contributor_decision_ids = set()
+    if role == 'contributor':
+        contributor_decision_ids.update(
+            task.decision_id for task in contributor_tasks if task.decision_id
+        )
+        contributor_decision_ids.update(
+            decision.id for decision in decisions if decision.decision_maker_id == user.id
+        )
+        contributor_decision_ids.update(
+            decision.id
+            for decision in decisions
+            if decision.conversation and decision.conversation.author_id == user.id
+        )
+
+    what_changed = []
+    for conversation in conversations:
+        what_changed.append(
+            _build_briefing_item(
+                key=f'conversation-{conversation.id}',
+                kind='conversation',
+                title=conversation.title,
+                summary=conversation.ai_summary or conversation.content,
+                why_it_matters=(
+                    f'{conversation.reply_count} replies and a {conversation.get_post_type_display().lower()} thread '
+                    f'from {_display_user_name(conversation.author)} can reshape execution quickly.'
+                ),
+                source_type='conversation',
+                source_id=conversation.id,
+                source_url=f'/conversations/{conversation.id}',
+                timestamp=conversation.updated_at,
+                priority=conversation.priority,
+                suggested_action='Open thread',
+                citations=[
+                    {
+                        'kind': 'conversation',
+                        'id': conversation.id,
+                        'title': conversation.title,
+                        'url': f'/conversations/{conversation.id}',
+                    }
+                ],
+            )
+        )
+
+    for decision in decisions:
+        citations = []
+        if decision.conversation:
+            citations.append(
+                {
+                    'kind': 'conversation',
+                    'id': decision.conversation.id,
+                    'title': decision.conversation.title,
+                    'url': f'/conversations/{decision.conversation.id}',
+                }
+            )
+        what_changed.append(
+            _build_briefing_item(
+                key=f'decision-{decision.id}',
+                kind='decision',
+                title=decision.title,
+                summary=decision.plain_language_summary or decision.description or decision.rationale,
+                why_it_matters=(
+                    f'{_humanize_token(decision.status)} with {_humanize_token(decision.impact_level).lower()} '
+                    f'impact under {_display_user_name(decision.decision_maker)}.'
+                ),
+                source_type='decision',
+                source_id=decision.id,
+                source_url=f'/decisions/{decision.id}',
+                timestamp=decision.created_at,
+                priority=decision.impact_level,
+                suggested_action='Open decision',
+                citations=citations,
+            )
+        )
+
+    for document in documents:
+        what_changed.append(
+            _build_briefing_item(
+                key=f'document-{document.id}',
+                kind='document',
+                title=document.title,
+                summary=document.description or document.content,
+                why_it_matters=(
+                    f'Updated by {_display_user_name(document.updated_by or document.created_by)} and ready '
+                    'to be folded back into active execution.'
+                ),
+                source_type='document',
+                source_id=document.id,
+                source_url=f'/business/documents/{document.id}',
+                timestamp=document.updated_at,
+                priority='medium',
+                suggested_action='Review document',
+                citations=[
+                    {
+                        'kind': 'document',
+                        'id': document.id,
+                        'title': document.title,
+                        'url': f'/business/documents/{document.id}',
+                    }
+                ],
+            )
+        )
+
+    for issue in issues:
+        what_changed.append(
+            _build_briefing_item(
+                key=f'issue-{issue.id}',
+                kind='issue',
+                title=issue.title,
+                summary=issue.description or f'{issue.key} moved in {issue.project.name}.',
+                why_it_matters=(
+                    f'{issue.key} is {_humanize_token(issue.status).lower()} in {issue.project.name} and still '
+                    'sits in the delivery lane.'
+                ),
+                source_type='issue',
+                source_id=issue.id,
+                source_url=f'/issues/{issue.id}',
+                timestamp=issue.updated_at,
+                priority=issue.priority,
+                suggested_action='Inspect issue',
+                citations=[
+                    {
+                        'kind': 'issue',
+                        'id': issue.id,
+                        'title': issue.title,
+                        'url': f'/issues/{issue.id}',
+                    }
+                ],
+            )
+        )
+
+    what_changed.sort(key=lambda item: item.get('_sort_timestamp') or timezone.now(), reverse=True)
+    what_changed = what_changed[:6]
+
+    needs_attention = []
+    unresolved_decisions = [decision for decision in decisions if decision.status in ['proposed', 'under_review']]
+    if role == 'contributor' and contributor_decision_ids:
+        contributor_unresolved_decisions = [
+            decision for decision in unresolved_decisions if decision.id in contributor_decision_ids
+        ]
+        if contributor_unresolved_decisions:
+            unresolved_decisions = contributor_unresolved_decisions
+    for decision in unresolved_decisions:
+        attention_reason = (
+            'This decision is still unresolved and can leave execution guessing.'
+            if role in ['admin', 'manager']
+            else 'This decision is still unresolved and may change the work in your lane.'
+        )
+        needs_attention.append(
+            _build_briefing_item(
+                key=f'attention-decision-{decision.id}',
+                kind='decision',
+                title=decision.title,
+                summary=decision.description or decision.rationale,
+                why_it_matters=attention_reason,
+                source_type='decision',
+                source_id=decision.id,
+                source_url=f'/decisions/{decision.id}',
+                timestamp=decision.created_at,
+                priority=decision.impact_level,
+                suggested_action='Resolve decision path',
+                citations=[
+                    {
+                        'kind': 'decision',
+                        'id': decision.id,
+                        'title': decision.title,
+                        'url': f'/decisions/{decision.id}',
+                    }
+                ],
+            )
+        )
+
+    for task in tasks:
+        due_context = ''
+        if task.due_date:
+            due_context = f' Due {task.due_date.isoformat()}.'
+        needs_attention.append(
+            _build_briefing_item(
+                key=f'attention-task-{task.id}',
+                kind='task',
+                title=task.title,
+                summary=task.description or 'Task is still open on the board.',
+                why_it_matters=(
+                    f'{_humanize_token(task.priority)} priority work is still {_humanize_token(task.status).lower()}'
+                    f' for {_display_user_name(task.assigned_to)}.{due_context}'
+                ),
+                source_type='task',
+                source_id=task.id,
+                source_url='/business/tasks',
+                timestamp=task.updated_at,
+                priority=task.priority,
+                suggested_action='Move task forward',
+                suggested_action_url='/business/tasks',
+                citations=[
+                    citation
+                    for citation in [
+                        {
+                            'kind': 'decision',
+                            'id': task.decision.id,
+                            'title': task.decision.title,
+                            'url': f'/decisions/{task.decision.id}',
+                        } if task.decision else None,
+                        {
+                            'kind': 'conversation',
+                            'id': task.conversation.id,
+                            'title': task.conversation.title,
+                            'url': f'/conversations/{task.conversation.id}',
+                        } if task.conversation else None,
+                    ]
+                    if citation
+                ],
+            )
+        )
+
+    for issue in issues:
+        if issue.priority not in ['high', 'highest'] and issue.status not in ['blocked', 'in_progress']:
+            continue
+        needs_attention.append(
+            _build_briefing_item(
+                key=f'attention-issue-{issue.id}',
+                kind='issue',
+                title=issue.title,
+                summary=issue.description or f'{issue.key} still needs movement.',
+                why_it_matters=(
+                    f'{issue.key} is {_humanize_token(issue.status).lower()} with '
+                    f'{_humanize_token(issue.priority).lower()} priority in {issue.project.name}.'
+                ),
+                source_type='issue',
+                source_id=issue.id,
+                source_url=f'/issues/{issue.id}',
+                timestamp=issue.updated_at,
+                priority=issue.priority,
+                suggested_action='Unblock issue',
+                citations=[
+                    {
+                        'kind': 'issue',
+                        'id': issue.id,
+                        'title': issue.title,
+                        'url': f'/issues/{issue.id}',
+                    }
+                ],
+            )
+        )
+
+    stale_cutoff = now - timedelta(days=3)
+    stale_conversations = [
+        conversation
+        for conversation in conversations
+        if conversation.updated_at <= stale_cutoff and conversation.status_label in ['open', 'needs_followup', 'in_progress']
+    ]
+    for conversation in stale_conversations:
+        needs_attention.append(
+            _build_briefing_item(
+                key=f'attention-stale-conversation-{conversation.id}',
+                kind='conversation',
+                title=conversation.title,
+                summary=conversation.ai_summary or conversation.content,
+                why_it_matters='This thread has gone quiet long enough that context may be stalling instead of moving.',
+                source_type='conversation',
+                source_id=conversation.id,
+                source_url=f'/conversations/{conversation.id}',
+                timestamp=conversation.updated_at,
+                priority=conversation.priority,
+                suggested_action='Re-open thread',
+            )
+        )
+
+    unlinked_documents = [
+        document
+        for document in documents
+        if not any([document.goal_id, document.meeting_id, document.task_id])
+    ]
+    for document in unlinked_documents:
+        needs_attention.append(
+            _build_briefing_item(
+                key=f'attention-unlinked-document-{document.id}',
+                kind='document',
+                title=document.title,
+                summary=document.description or document.content,
+                why_it_matters='This document is recent but not linked to an active goal, meeting, or task yet.',
+                source_type='document',
+                source_id=document.id,
+                source_url=f'/business/documents/{document.id}',
+                timestamp=document.updated_at,
+                priority='medium',
+                suggested_action='Link document to work',
+            )
+        )
+
+    followup_conversations = [
+        conversation
+        for conversation in conversations
+        if conversation.status_label == 'needs_followup' or conversation.priority in ['high', 'urgent']
+    ]
+    for conversation in followup_conversations:
+        needs_attention.append(
+            _build_briefing_item(
+                key=f'attention-conversation-{conversation.id}',
+                kind='conversation',
+                title=conversation.title,
+                summary=conversation.ai_summary or conversation.content,
+                why_it_matters='This thread still needs a follow-up response before it quietly stalls.',
+                source_type='conversation',
+                source_id=conversation.id,
+                source_url=f'/conversations/{conversation.id}',
+                timestamp=conversation.updated_at,
+                priority=conversation.priority,
+                suggested_action='Reply or route thread',
+                citations=[
+                    {
+                        'kind': 'conversation',
+                        'id': conversation.id,
+                        'title': conversation.title,
+                        'url': f'/conversations/{conversation.id}',
+                    }
+                ],
+            )
+        )
+
+    needs_attention.sort(key=_briefing_sort_key)
+    needs_attention = needs_attention[:6]
+
+    suggested_next_moves = []
+    seen_actions = set()
+
+    def add_action(item):
+        key = (item.get('kind'), item.get('source_id'))
+        if key in seen_actions:
+            return
+        seen_actions.add(key)
+        suggested_next_moves.append(item)
+
+    if unresolved_decisions:
+        decision = unresolved_decisions[0]
+        add_action(
+            _build_briefing_item(
+                key=f'action-decision-{decision.id}',
+                kind='decision',
+                title=decision.title,
+                summary=decision.description or decision.rationale,
+                why_it_matters='Locking this decision reduces ambiguity for the team immediately.',
+                source_type='decision',
+                source_id=decision.id,
+                source_url=f'/decisions/{decision.id}',
+                timestamp=decision.created_at,
+                priority=decision.impact_level if role in ['admin', 'manager'] else 'medium',
+                suggested_action='Review and resolve decision',
+                citations=[
+                    {
+                        'kind': 'decision',
+                        'id': decision.id,
+                        'title': decision.title,
+                        'url': f'/decisions/{decision.id}',
+                    }
+                ],
+            )
+        )
+
+    if tasks:
+        task = tasks[0]
+        add_action(
+            _build_briefing_item(
+                key=f'action-task-{task.id}',
+                kind='task',
+                title=task.title,
+                summary=task.description or 'Open task still waiting on movement.',
+                why_it_matters='Advancing this task is the fastest route to visible execution movement.',
+                source_type='task',
+                source_id=task.id,
+                source_url='/business/tasks',
+                timestamp=task.updated_at,
+                priority='critical' if role == 'contributor' else task.priority,
+                suggested_action='Open task board',
+                suggested_action_url='/business/tasks',
+            )
+        )
+
+    if issues:
+        issue = issues[0]
+        add_action(
+            _build_briefing_item(
+                key=f'action-issue-{issue.id}',
+                kind='issue',
+                title=issue.title,
+                summary=issue.description or f'{issue.key} is still moving through delivery.',
+                why_it_matters='This issue is the cleanest operational door back into the current delivery lane.',
+                source_type='issue',
+                source_id=issue.id,
+                source_url=f'/issues/{issue.id}',
+                timestamp=issue.updated_at,
+                priority='high' if role == 'contributor' else issue.priority,
+                suggested_action='Open issue detail',
+            )
+        )
+
+    if conversations:
+        conversation = conversations[0]
+        add_action(
+            _build_briefing_item(
+                key=f'action-conversation-{conversation.id}',
+                kind='conversation',
+                title=conversation.title,
+                summary=conversation.ai_summary or conversation.content,
+                why_it_matters='The freshest thread usually carries the newest context before it reaches every other surface.',
+                source_type='conversation',
+                source_id=conversation.id,
+                source_url=f'/conversations/{conversation.id}',
+                timestamp=conversation.updated_at,
+                priority=conversation.priority,
+                suggested_action='Open thread',
+            )
+        )
+
+    if documents:
+        document = documents[0]
+        add_action(
+            _build_briefing_item(
+                key=f'action-document-{document.id}',
+                kind='document',
+                title=document.title,
+                summary=document.description or document.content,
+                why_it_matters='Fresh documentation usually means scope, context, or policy has shifted.',
+                source_type='document',
+                source_id=document.id,
+                source_url=f'/business/documents/{document.id}',
+                timestamp=document.updated_at,
+                priority='medium',
+                suggested_action='Read latest document',
+            )
+        )
+
+    suggested_next_moves.sort(key=_briefing_sort_key)
+    suggested_next_moves = suggested_next_moves[:4]
+
+    if role in ['admin', 'manager']:
+        headline = (
+            f'{len(what_changed)} fresh signals are live across {org.name}, with '
+            f'{len(needs_attention)} items asking for owner attention.'
+        )
+        scan_note = 'Use this briefing to scan change, pressure, and the shortest next move before dropping into the boards.'
+    else:
+        headline = (
+            f'{len(what_changed)} fresh workspace signals are live, with '
+            f'{len(needs_attention)} items most likely to affect your lane.'
+        )
+        scan_note = 'Start with the pressure points, then take the next move that keeps work grounded instead of scattered.'
+
+    if not any([what_changed, needs_attention, suggested_next_moves]):
+        headline = 'The workspace is quiet right now, so there is no fresh briefing to surface.'
+        scan_note = 'Come back after new work, updates, or decisions land in the workspace.'
+
+    payload = {
+        'generated_at': timezone.now(),
+        'scope': 'workspace',
+        'role': role,
+        'summary': {
+            'headline': headline,
+            'scan_note': scan_note,
+            'changed_count': len(what_changed),
+            'attention_count': len(needs_attention),
+            'action_count': len(suggested_next_moves),
+        },
+        'what_changed': what_changed,
+        'needs_attention': needs_attention,
+        'suggested_next_moves': suggested_next_moves,
+    }
+
+    for lane in ['what_changed', 'needs_attention', 'suggested_next_moves']:
+        for item in payload[lane]:
+            item.pop('_sort_timestamp', None)
+
+    return Response(payload)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

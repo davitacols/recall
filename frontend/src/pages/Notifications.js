@@ -3,8 +3,13 @@ import { Link } from "react-router-dom";
 import {
   ArrowPathIcon,
   BellAlertIcon,
+  BookmarkIcon,
+  ChatBubbleLeftRightIcon,
   CheckCircleIcon,
+  ExclamationTriangleIcon,
   LinkIcon,
+  QueueListIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import {
@@ -12,6 +17,7 @@ import {
   WorkspaceHero,
   WorkspacePanel,
 } from "../components/WorkspaceChrome";
+import api from "../services/api";
 import {
   deleteNotification,
   listNotifications,
@@ -20,6 +26,19 @@ import {
 } from "../services/notifications";
 
 const ATTENTION_TYPES = new Set(["mention", "decision", "task", "goal", "meeting"]);
+const EMPTY_WORKSPACE_BRIEFING = {
+  generated_at: null,
+  summary: {
+    headline: "",
+    scan_note: "",
+    changed_count: 0,
+    attention_count: 0,
+    action_count: 0,
+  },
+  what_changed: [],
+  needs_attention: [],
+  suggested_next_moves: [],
+};
 
 function toRelativeTime(value) {
   if (!value) return "";
@@ -51,6 +70,64 @@ function formatDestination(link) {
     .map((segment) => (segment.length > 18 ? `${segment.slice(0, 18)}…` : segment))
     .join(" / ");
   return formatted.replace(/\u00e2\u20ac\u00a6/g, "...");
+}
+
+function toCalendarLabel(value) {
+  if (!value) return "Recently refreshed";
+  try {
+    return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch (_) {
+    return "Recently refreshed";
+  }
+}
+
+function normalizeWorkspaceBriefing(payload) {
+  const data = payload && typeof payload === "object" ? payload : EMPTY_WORKSPACE_BRIEFING;
+  return {
+    generated_at: data.generated_at || null,
+    summary: {
+      headline: data.summary?.headline || "",
+      scan_note: data.summary?.scan_note || "",
+      changed_count: data.summary?.changed_count || 0,
+      attention_count: data.summary?.attention_count || 0,
+      action_count: data.summary?.action_count || 0,
+    },
+    what_changed: Array.isArray(data.what_changed) ? data.what_changed : [],
+    needs_attention: Array.isArray(data.needs_attention) ? data.needs_attention : [],
+    suggested_next_moves: Array.isArray(data.suggested_next_moves) ? data.suggested_next_moves : [],
+  };
+}
+
+function getBriefingIcon(kind) {
+  switch (kind) {
+    case "conversation":
+      return ChatBubbleLeftRightIcon;
+    case "decision":
+      return SparklesIcon;
+    case "task":
+      return QueueListIcon;
+    case "issue":
+      return ExclamationTriangleIcon;
+    case "document":
+      return BookmarkIcon;
+    default:
+      return LinkIcon;
+  }
+}
+
+function getBriefingTone(priority, palette) {
+  switch (priority) {
+    case "critical":
+    case "urgent":
+    case "highest":
+      return palette.accent;
+    case "high":
+      return palette.warn;
+    case "medium":
+      return palette.info;
+    default:
+      return palette.text;
+  }
 }
 
 function getFilterMeta(filter, counts) {
@@ -97,6 +174,7 @@ function getFilterMeta(filter, counts) {
 function Notifications() {
   const { darkMode } = useTheme();
   const [items, setItems] = useState([]);
+  const [workspaceBriefing, setWorkspaceBriefing] = useState(EMPTY_WORKSPACE_BRIEFING);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
@@ -153,11 +231,28 @@ function Notifications() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const { notifications } = await listNotifications();
-      setItems(Array.isArray(notifications) ? notifications : []);
+      const [notificationsResult, briefingResult] = await Promise.allSettled([
+        listNotifications(),
+        api.get("/api/knowledge/dashboard/workspace-briefing/"),
+      ]);
+
+      if (notificationsResult.status === "fulfilled") {
+        setItems(Array.isArray(notificationsResult.value.notifications) ? notificationsResult.value.notifications : []);
+      } else {
+        console.error("Failed to fetch notifications:", notificationsResult.reason);
+        setItems([]);
+      }
+
+      if (briefingResult.status === "fulfilled") {
+        setWorkspaceBriefing(normalizeWorkspaceBriefing(briefingResult.value.data));
+      } else {
+        console.error("Failed to fetch workspace briefing:", briefingResult.reason);
+        setWorkspaceBriefing(EMPTY_WORKSPACE_BRIEFING);
+      }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
       setItems([]);
+      setWorkspaceBriefing(EMPTY_WORKSPACE_BRIEFING);
     } finally {
       setLoading(false);
     }
@@ -226,6 +321,11 @@ function Notifications() {
     { key: "attention", label: `Attention (${attentionCount})` },
     { key: "fyi", label: `FYI (${fyiCount})` },
   ];
+  const briefingSummary = workspaceBriefing.summary || EMPTY_WORKSPACE_BRIEFING.summary;
+  const briefingQuiet =
+    (workspaceBriefing.what_changed || []).length === 0 &&
+    (workspaceBriefing.needs_attention || []).length === 0 &&
+    (workspaceBriefing.suggested_next_moves || []).length === 0;
 
   const inboxAside = (
     <article
@@ -289,6 +389,89 @@ function Notifications() {
           </>
         }
       />
+
+      <WorkspacePanel
+        palette={palette}
+        darkMode={darkMode}
+        variant="memory"
+        eyebrow="Workspace digest"
+        title="Carry the workspace briefing into the inbox."
+        description={
+          briefingSummary.headline ||
+          "See the shared briefing signal before you start triaging individual alerts."
+        }
+      >
+        <div style={briefingStack}>
+          <div
+            style={{
+              ...focusBand,
+              border: `1px solid ${palette.border}`,
+              background: palette.cardAlt,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "grid", gap: 4 }}>
+                <p style={{ ...microLabel, color: palette.muted }}>Briefing posture</p>
+                <p style={{ ...focusCopy, color: palette.muted }}>
+                  {briefingSummary.scan_note || "Use the digest to decide what deserves direct notification handling and what should stay as workspace context."}
+                </p>
+              </div>
+              <span
+                style={{
+                  ...destinationPill,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.cardSoft,
+                  color: palette.text,
+                }}
+              >
+                Refreshed {toCalendarLabel(workspaceBriefing.generated_at)}
+              </span>
+            </div>
+
+            <div style={briefingMetricGrid}>
+              <MetricTile palette={palette} label="What changed" value={briefingSummary.changed_count || 0} tone={palette.info} />
+              <MetricTile palette={palette} label="Needs attention" value={briefingSummary.attention_count || 0} tone={palette.warn} />
+              <MetricTile palette={palette} label="Next moves" value={briefingSummary.action_count || 0} tone={palette.accent} />
+            </div>
+          </div>
+
+          {briefingQuiet ? (
+            <div
+              style={{
+                ...sectionEmpty,
+                border: `1px dashed ${palette.border}`,
+                background: palette.cardAlt,
+              }}
+            >
+              <p style={{ ...sectionEmptyTitle, color: palette.text }}>No fresh workspace digest yet</p>
+              <p style={{ ...sectionEmptyCopy, color: palette.muted }}>
+                The inbox is running without a briefing layer right now. As new linked work lands, this digest will surface shared context above the raw notification stream.
+              </p>
+            </div>
+          ) : (
+            <div style={briefingGrid}>
+              <BriefingColumn
+                palette={palette}
+                title="What changed"
+                description="Fresh records worth knowing before you react to the inbox."
+                items={(workspaceBriefing.what_changed || []).slice(0, 2)}
+              />
+              <BriefingColumn
+                palette={palette}
+                title="Needs attention"
+                description="Pressure points that should shape how you triage alerts."
+                items={(workspaceBriefing.needs_attention || []).slice(0, 2)}
+              />
+              <BriefingColumn
+                palette={palette}
+                title="Suggested next moves"
+                description="The clearest routes back into work from this inbox session."
+                items={(workspaceBriefing.suggested_next_moves || []).slice(0, 2)}
+              />
+            </div>
+          )}
+        </div>
+      </WorkspacePanel>
 
       <section style={controlGrid}>
         <WorkspacePanel
@@ -486,6 +669,111 @@ function NotificationSection({
         </div>
       )}
     </WorkspacePanel>
+  );
+}
+
+function BriefingColumn({ palette, title, description, items }) {
+  return (
+    <article
+      className="ui-card-lift ui-smooth"
+      style={{
+        ...briefingColumn,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardAlt,
+      }}
+    >
+      <div style={{ display: "grid", gap: 4 }}>
+        <p style={{ ...microLabel, color: palette.muted }}>{title}</p>
+        <p style={{ ...guideCopy, color: palette.muted }}>{description}</p>
+      </div>
+
+      {items.length ? (
+        <div style={briefingCardStack}>
+          {items.map((item) => (
+            <BriefingCard key={item.id} item={item} palette={palette} />
+          ))}
+        </div>
+      ) : (
+        <div
+          style={{
+            ...sectionEmpty,
+            border: `1px dashed ${palette.border}`,
+            background: palette.cardSoft,
+            padding: "14px 12px",
+          }}
+        >
+          <p style={{ ...sectionEmptyCopy, color: palette.muted }}>No items are active in this lane right now.</p>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function BriefingCard({ item, palette }) {
+  const Icon = getBriefingIcon(item.kind);
+  const tone = getBriefingTone(item.priority, palette);
+  const destination = item.suggested_action_url || item.source_url;
+
+  return (
+    <Link
+      to={destination || "/notifications"}
+      className="ui-card-lift ui-smooth ui-focus-ring"
+      style={{
+        ...briefingCard,
+        border: `1px solid ${palette.border}`,
+        background: palette.cardSoft,
+        color: palette.text,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, minWidth: 0 }}>
+          <span
+            style={{
+              ...guideIcon,
+              width: 30,
+              height: 30,
+              borderRadius: 10,
+              background: palette.unreadBg,
+              color: tone,
+            }}
+          >
+            <Icon style={icon14} />
+          </span>
+          <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+            <div style={rowMeta}>
+              <span
+                style={{
+                  ...typeBadge,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.card,
+                  color: tone,
+                }}
+              >
+                {formatNotificationType(item.kind)}
+              </span>
+              <span
+                style={{
+                  ...statusPill,
+                  border: `1px solid ${palette.border}`,
+                  background: palette.card,
+                  color: palette.text,
+                }}
+              >
+                {item.priority_label || formatNotificationType(item.priority)}
+              </span>
+            </div>
+            <p style={{ ...guideLabel, color: palette.text }}>{item.title}</p>
+          </div>
+        </div>
+        <span style={{ ...timestamp, color: palette.muted }}>{toRelativeTime(item.timestamp)}</span>
+      </div>
+
+      <p style={{ ...rowMessage, color: palette.muted }}>{item.summary}</p>
+      <p style={{ ...guideCopy, color: palette.text }}>{item.why_it_matters}</p>
+      <span style={{ fontSize: 12, fontWeight: 800, color: tone }}>
+        {item.suggested_action || "Open record"}
+      </span>
+    </Link>
   );
 }
 
@@ -799,6 +1087,44 @@ const controlGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
   gap: 14,
+};
+
+const briefingStack = {
+  display: "grid",
+  gap: 12,
+};
+
+const briefingMetricGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+  gap: 8,
+};
+
+const briefingGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gap: 12,
+};
+
+const briefingColumn = {
+  borderRadius: 18,
+  padding: 14,
+  display: "grid",
+  gap: 10,
+  alignContent: "start",
+};
+
+const briefingCardStack = {
+  display: "grid",
+  gap: 10,
+};
+
+const briefingCard = {
+  borderRadius: 14,
+  padding: 12,
+  display: "grid",
+  gap: 10,
+  textDecoration: "none",
 };
 
 const filterRail = {

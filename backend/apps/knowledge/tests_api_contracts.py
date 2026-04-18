@@ -380,6 +380,121 @@ class KnowledgeApiContractTests(TestCase):
         self.assertEqual(payload["counts"]["relevant_decisions"], 1)
         self.assertEqual(payload["counts"]["recent_ask_recall_queries"], 1)
 
+    def test_workspace_briefing_returns_dashboard_payload(self):
+        response = self.client.get("/api/knowledge/dashboard/workspace-briefing/")
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.data
+        self.assertIn("summary", payload)
+        self.assertIn("what_changed", payload)
+        self.assertIn("needs_attention", payload)
+        self.assertIn("suggested_next_moves", payload)
+        self.assertEqual(payload["scope"], "workspace")
+        self.assertEqual(payload["role"], "admin")
+        self.assertEqual(payload["summary"]["changed_count"], len(payload["what_changed"]))
+        self.assertEqual(payload["summary"]["attention_count"], len(payload["needs_attention"]))
+        self.assertEqual(payload["summary"]["action_count"], len(payload["suggested_next_moves"]))
+
+        changed_kinds = {item["kind"] for item in payload["what_changed"]}
+        self.assertTrue({"conversation", "decision", "document"}.issubset(changed_kinds))
+
+        attention_kinds = {item["kind"] for item in payload["needs_attention"]}
+        self.assertIn("decision", attention_kinds)
+        self.assertTrue("task" in attention_kinds or "issue" in attention_kinds)
+
+        action_urls = {item["suggested_action_url"] for item in payload["suggested_next_moves"]}
+        self.assertIn(f"/decisions/{self.decision.id}", action_urls)
+        self.assertTrue(
+            any(url in action_urls for url in ["/business/tasks", f"/issues/{self.issue.id}", f"/conversations/{self.conversation.id}"])
+        )
+
+    def test_workspace_briefing_excludes_other_organizations(self):
+        other_org = Organization.objects.create(name="Outside Org", slug="outside-org")
+        other_user = User.objects.create_user(
+            username="outside_user",
+            email="outside@example.com",
+            password="pass1234",
+            organization=other_org,
+            role="admin",
+        )
+        other_conversation = Conversation.objects.create(
+            organization=other_org,
+            author=other_user,
+            post_type="update",
+            title="Outside org launch",
+            content="This launch belongs to a different organization entirely.",
+            ai_processed=True,
+        )
+        other_decision = Decision.objects.create(
+            organization=other_org,
+            conversation=other_conversation,
+            title="Outside org decision",
+            description="A decision that should never leak into another org briefing.",
+            decision_maker=other_user,
+            status="under_review",
+            rationale="Outside org rationale",
+        )
+
+        response = self.client.get("/api/knowledge/dashboard/workspace-briefing/")
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.data
+        all_titles = {
+            item["title"]
+            for lane in ["what_changed", "needs_attention", "suggested_next_moves"]
+            for item in payload[lane]
+        }
+        self.assertNotIn(other_conversation.title, all_titles)
+        self.assertNotIn(other_decision.title, all_titles)
+
+    def test_workspace_briefing_biases_contributor_toward_lane_local_work(self):
+        contributor = User.objects.create_user(
+            username="lane_contributor",
+            email="lane@example.com",
+            password="pass1234",
+            organization=self.org,
+            role="contributor",
+            full_name="Lane Contributor",
+        )
+        contributor_task = Task.objects.create(
+            organization=self.org,
+            title="Contributor follow-through task",
+            description="Local contributor task tied to the main decision.",
+            status="todo",
+            priority="medium",
+            assigned_to=contributor,
+            decision=self.decision,
+            conversation=self.conversation,
+        )
+        unrelated_decision = Decision.objects.create(
+            organization=self.org,
+            conversation=self.conversation,
+            title="Leadership staffing decision",
+            description="A broader decision that is not tied to the contributor lane.",
+            decision_maker=self.user,
+            status="under_review",
+            rationale="Leadership scope only",
+        )
+
+        self.client.force_authenticate(user=contributor)
+        response = self.client.get("/api/knowledge/dashboard/workspace-briefing/")
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.data
+        self.assertEqual(payload["role"], "contributor")
+        self.assertIn("your lane", payload["summary"]["headline"])
+        self.assertEqual(payload["suggested_next_moves"][0]["kind"], "task")
+        self.assertEqual(payload["suggested_next_moves"][0]["suggested_action_url"], "/business/tasks")
+
+        surfaced_attention_ids = {
+            item["source_id"]
+            for item in payload["needs_attention"]
+            if item["kind"] == "decision"
+        }
+        self.assertIn(self.decision.id, surfaced_attention_ids)
+        self.assertNotIn(unrelated_decision.id, surfaced_attention_ids)
+        self.assertEqual(contributor_task.assigned_to_id, contributor.id)
+
     def test_search_finds_hidden_reply_and_people_context(self):
         response = self.client.post(
             "/api/knowledge/search/",

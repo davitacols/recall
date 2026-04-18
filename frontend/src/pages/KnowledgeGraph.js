@@ -86,6 +86,9 @@ export default function KnowledgeGraph() {
     return raw ? raw.split(",").map((item) => item.trim()).filter(Boolean) : [];
   });
   const [includeIsolated, setIncludeIsolated] = useState(searchParams.get("include_isolated") !== "false");
+  const [isWideLayout, setIsWideLayout] = useState(() =>
+    typeof window === "undefined" ? true : window.innerWidth >= 1180
+  );
 
   useEffect(() => {
     const nextQuery = searchParams.get("q") || "";
@@ -112,6 +115,12 @@ export default function KnowledgeGraph() {
       setSelectedNodeId((matchedNode || nodes[0]).id);
     }
   }, [graphData.nodes, graphData.summary, selectedNodeId]);
+
+  useEffect(() => {
+    const handleResize = () => setIsWideLayout(window.innerWidth >= 1180);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const fetchGraph = async (paramsSource = searchParams) => {
     setLoading(true);
@@ -159,6 +168,20 @@ export default function KnowledgeGraph() {
     setActiveTypes([]);
     setIncludeIsolated(true);
     setSearchParams({});
+  };
+
+  const focusNodeInGraph = (node) => {
+    const [focusType, focusId] = (node?.id || "").split("_");
+    if (!focusType || !focusId) return;
+
+    const next = new URLSearchParams();
+    const trimmed = graphQuery.trim();
+    if (trimmed) next.set("q", trimmed);
+    if (activeTypes.length) next.set("types", activeTypes.join(","));
+    if (!includeIsolated) next.set("include_isolated", "false");
+    next.set("focus_type", focusType);
+    next.set("focus_id", focusId);
+    setSearchParams(next);
   };
 
   const getNodeColor = (type) => {
@@ -443,23 +466,46 @@ export default function KnowledgeGraph() {
   const graphHubLabel = graphHub?.label || "Hub view";
   const compactHubLabel = graphHubLabel.length > 18 ? `${graphHubLabel.slice(0, 18)}...` : graphHubLabel;
 
+  const hasActiveFilters = Boolean(graphQuery.trim() || activeTypes.length || searchParams.get("focus_type"));
+  const activeQuerySummary = graphData.summary?.query ? `"${graphData.summary.query}"` : "No text filter";
+  const typeScopeSummary = activeTypes.length
+    ? activeTypes.map((type) => getNodeLabel(type)).join(", ")
+    : "All record types";
+  const hotspotNodes = useMemo(
+    () =>
+      [...positionedNodes]
+        .sort((left, right) => {
+          const degreeDelta = (right.connection_count || degreeMap[right.id] || 0) - (left.connection_count || degreeMap[left.id] || 0);
+          if (degreeDelta !== 0) return degreeDelta;
+          return typeSortIndex(left.type) - typeSortIndex(right.type);
+        })
+        .slice(0, 5),
+    [degreeMap, positionedNodes]
+  );
+  const selectedStatusLabel = selectedNode
+    ? selectedNode.focused
+      ? "Focus lens"
+      : selectedNode.matched
+        ? "Query match"
+        : "Connected record"
+    : "Waiting";
   const heroStats = [
     {
-      label: "Nodes",
-      value: graphData.nodes?.length || 0,
-      helper: "Linked records visible in the graph",
+      label: "Visible records",
+      value: graphData.summary?.total_nodes || 0,
+      helper: "Records currently in the network view",
       tone: palette.accent,
     },
     {
-      label: "Connections",
-      value: graphData.edges?.length || 0,
-      helper: "Relationships drawn between records",
+      label: "Relationship lines",
+      value: graphData.summary?.total_edges || 0,
+      helper: "Links keeping the current neighborhood connected",
       tone: palette.info,
     },
     {
-      label: "Density",
-      value: edgeDensity,
-      helper: "Average connections per visible node",
+      label: "Query matches",
+      value: graphData.summary?.matched_nodes || 0,
+      helper: graphData.summary?.query ? "Records matching the active search" : "Add a query to spotlight matching records",
       tone: palette.success,
     },
   ];
@@ -472,27 +518,53 @@ export default function KnowledgeGraph() {
         background: palette.card,
       }}
     >
-      <p style={{ ...asideEyebrow, color: palette.muted }}>Graph Readout</p>
-      <h3 style={{ ...asideTitle, color: palette.text }}>See the strongest context cluster first.</h3>
+      <p style={{ ...asideEyebrow, color: palette.muted }}>Graph readout</p>
+      <h3 style={{ ...asideTitle, color: palette.text }}>Move from the loudest cluster into the details that support it.</h3>
       <p style={{ ...asideBody, color: palette.muted }}>
-        Start from the hub, scan its nearest records, and then branch outward without losing the trail.
+        The map keeps one hub in focus, lets you narrow the visible record types, and gives you a faster way to jump across the densest context pockets.
       </p>
       <div style={asideMetricRail}>
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Types</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{typeSummary.length}</p>
+          <p style={{ ...asideMetricLabel, color: palette.muted }}>Hub</p>
+          <p style={{ ...asideMetricValue, color: palette.text, fontSize: 14 }}>{compactHubLabel}</p>
+        </div>
+        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+          <p style={{ ...asideMetricLabel, color: palette.muted }}>Isolated</p>
+          <p style={{ ...asideMetricValue, color: palette.text }}>{graphData.summary?.isolated_nodes || 0}</p>
         </div>
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
           <p style={{ ...asideMetricLabel, color: palette.muted }}>Density</p>
           <p style={{ ...asideMetricValue, color: palette.text }}>{edgeDensity}</p>
         </div>
-        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Matches</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{graphData.summary?.matched_nodes || 0}</p>
-        </div>
       </div>
     </div>
   );
+
+  const primaryActionButton = {
+    ...ui.primaryButton,
+    borderRadius: 10,
+    padding: "10px 14px",
+  };
+
+  const secondaryActionButton = {
+    ...ui.secondaryButton,
+    borderRadius: 10,
+    padding: "10px 14px",
+  };
+
+  const typeToggleButton = (active, type) => ({
+    borderRadius: 10,
+    border: `1px solid ${active ? getNodeColor(type) : palette.border}`,
+    background: active ? (darkMode ? "rgba(96,165,250,0.14)" : "rgba(96,165,250,0.11)") : palette.card,
+    color: active ? palette.text : palette.muted,
+    padding: "8px 10px",
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+  });
 
   if (loading) {
     return (
@@ -517,25 +589,26 @@ export default function KnowledgeGraph() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
+    <div style={{ display: "grid", gap: 12 }}>
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
+        variant="memory"
         eyebrow="Workspace Memory"
         title="Knowledge Graph"
-        description="Follow how conversations, decisions, goals, meetings, documents, and tasks connect so the reasoning behind work stays visible."
+        description="Trace how conversations, decisions, goals, meetings, documents, and tasks reinforce each other so the reasoning behind execution stays legible."
         stats={heroStats}
         aside={graphAside}
         actions={
           <>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/knowledge")} style={ui.primaryButton}>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/knowledge")} style={primaryActionButton}>
               <MagnifyingGlassIcon style={icon14} /> Open Knowledge Search
             </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => fetchGraph()} style={ui.secondaryButton}>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => fetchGraph()} style={secondaryActionButton}>
               <ArrowPathIcon style={icon14} /> Refresh Graph
             </button>
-            {(graphQuery.trim() || activeTypes.length || searchParams.get("focus_type")) ? (
-              <button className="ui-btn-polish ui-focus-ring" onClick={clearFilters} style={ui.secondaryButton}>
+            {hasActiveFilters ? (
+              <button className="ui-btn-polish ui-focus-ring" onClick={clearFilters} style={secondaryActionButton}>
                 <XMarkIcon style={icon14} /> Clear Filters
               </button>
             ) : null}
@@ -543,137 +616,274 @@ export default function KnowledgeGraph() {
         }
       />
 
-      <WorkspaceToolbar palette={palette}>
-        <div style={toolbarLayout}>
-          <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Filters</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>Focus the neighborhood you want to inspect</h2>
-            <p style={{ ...toolbarCopy, color: palette.muted }}>
-              Search inside the graph, narrow by record types, and keep or remove isolated nodes before you inspect the nearby context.
-            </p>
+      <WorkspaceToolbar palette={palette} variant="memory" darkMode={darkMode}>
+        <div style={controlDeck}>
+          <div style={controlColumn}>
+            <div style={toolbarIntro}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Control deck</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Shape the network before you read it</h2>
+              <p style={{ ...toolbarCopy, color: palette.muted }}>
+                Search for a record, limit the graph by entity type, and decide whether isolated items should stay in view while you inspect the neighborhood.
+              </p>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                applyFilters({ keepFocus: true });
+              }}
+              style={filterFormShell(palette)}
+            >
+              <div style={searchRowLayout(isWideLayout)}>
+                <div style={{ position: "relative" }}>
+                  <MagnifyingGlassIcon style={{ width: 15, height: 15, position: "absolute", left: 12, top: 12, color: palette.muted }} />
+                  <input
+                    value={graphQuery}
+                    onChange={(event) => setGraphQuery(event.target.value)}
+                    placeholder="Search the visible graph..."
+                    className="ui-focus-ring"
+                    style={{ ...ui.input, borderRadius: 12, paddingLeft: 34 }}
+                  />
+                </div>
+                <button type="submit" className="ui-btn-polish ui-focus-ring" style={primaryActionButton}>
+                  <AdjustmentsHorizontalIcon style={icon14} /> Apply lens
+                </button>
+                <button type="button" onClick={clearFilters} className="ui-btn-polish ui-focus-ring" style={secondaryActionButton}>
+                  <XMarkIcon style={icon14} /> Reset view
+                </button>
+              </div>
+
+              <div style={filterLabelRow}>
+                <p style={{ ...toolbarEyebrow, color: palette.muted }}>Record types</p>
+                <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>
+                  {typeScopeSummary}
+                </p>
+              </div>
+
+              <div style={filterPillRail}>
+                {TYPE_ORDER.filter((type) => type !== "other").map((type) => {
+                  const active = activeTypes.includes(type);
+                  const Icon = getNodeIcon(type);
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() =>
+                        setActiveTypes((current) =>
+                          current.includes(type) ? current.filter((item) => item !== type) : [...current, type]
+                        )
+                      }
+                      className="ui-btn-polish ui-focus-ring"
+                      style={typeToggleButton(active, type)}
+                    >
+                      <span style={{ ...legendDot, background: getNodeColor(type) }} />
+                      <Icon style={icon12} />
+                      {getNodeLabel(type)}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setIncludeIsolated((current) => !current)}
+                  className="ui-btn-polish ui-focus-ring"
+                  style={{
+                    ...secondaryActionButton,
+                    padding: "8px 10px",
+                    fontSize: 11,
+                    background: includeIsolated ? palette.card : darkMode ? "rgba(248,113,113,0.12)" : "#fef2f2",
+                  }}
+                >
+                  {includeIsolated ? "Hide isolated records" : "Show isolated records"}
+                </button>
+              </div>
+            </form>
           </div>
 
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              applyFilters({ keepFocus: true });
-            }}
-            style={{ display: "grid", gap: 10, borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10 }}
-          >
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 8 }}>
-              <div style={{ position: "relative" }}>
-                <MagnifyingGlassIcon style={{ width: 15, height: 15, position: "absolute", left: 12, top: 12, color: palette.muted }} />
-                <input
-                  value={graphQuery}
-                  onChange={(event) => setGraphQuery(event.target.value)}
-                  placeholder="Search visible records..."
-                  className="ui-focus-ring"
-                  style={{ ...ui.input, paddingLeft: 34 }}
-                />
-              </div>
-              <button type="submit" className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
-                <AdjustmentsHorizontalIcon style={icon14} /> Apply
-              </button>
-              <button type="button" onClick={clearFilters} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
-                <XMarkIcon style={icon14} /> Reset
-              </button>
+          <div style={readoutGrid}>
+            <div style={readoutCard(palette)}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Focus hub</p>
+              <h3 style={{ ...readoutValue, color: palette.text }}>{graphHubLabel}</h3>
+              <p style={{ ...readoutMeta, color: palette.muted }}>
+                {(graphHub?.connection_count || degreeMap[graphHub?.id] || 0)} direct links are anchoring the current view.
+              </p>
             </div>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-              {TYPE_ORDER.filter((type) => type !== "other").map((type) => {
-                const active = activeTypes.includes(type);
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() =>
-                      setActiveTypes((current) =>
-                        current.includes(type) ? current.filter((item) => item !== type) : [...current, type]
-                      )
-                    }
-                    className="ui-btn-polish ui-focus-ring"
-                    style={{
-                      borderRadius: 999,
-                      border: `1px solid ${active ? getNodeColor(type) : palette.border}`,
-                      background: active ? (darkMode ? "rgba(96,165,250,0.1)" : "#ecf3ff") : palette.card,
-                      color: active ? palette.text : palette.muted,
-                      padding: "6px 10px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {getNodeLabel(type)}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => setIncludeIsolated((current) => !current)}
-                className="ui-btn-polish ui-focus-ring"
-                style={{
-                  ...ui.secondaryButton,
-                  background: includeIsolated ? palette.card : darkMode ? "rgba(248,113,113,0.1)" : "#fef2f2",
-                }}
-              >
-                {includeIsolated ? "Hide isolated" : "Show isolated"}
-              </button>
+            <div style={readoutCard(palette)}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Query scope</p>
+              <h3 style={{ ...readoutValue, color: palette.text }}>{graphData.summary?.query ? `${graphData.summary?.matched_nodes || 0} matches` : "Open view"}</h3>
+              <p style={{ ...readoutMeta, color: palette.muted }}>{activeQuerySummary}</p>
             </div>
-          </form>
-
-          <div style={legendRail}>
-            {TYPE_ORDER.filter((type) => nodeTypeCounts[type]).map((type) => {
-              const Icon = getNodeIcon(type);
-              return (
-                <span key={type} style={{ ...legendChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                  <span style={{ ...legendDot, background: getNodeColor(type) }} />
-                  <Icon style={icon12} />
-                  {getNodeLabel(type)} {nodeTypeCounts[type]}
-                </span>
-              );
-            })}
+            <div style={readoutCard(palette)}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Isolation</p>
+              <h3 style={{ ...readoutValue, color: palette.text }}>{includeIsolated ? "Visible" : "Collapsed"}</h3>
+              <p style={{ ...readoutMeta, color: palette.muted }}>
+                {graphData.summary?.isolated_nodes || 0} isolated records in the current lens.
+              </p>
+            </div>
+            <div style={readoutCard(palette)}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Entity spread</p>
+              <h3 style={{ ...readoutValue, color: palette.text }}>{typeSummary.length}</h3>
+              <p style={{ ...readoutMeta, color: palette.muted }}>
+                Distinct record types visible across this graph window.
+              </p>
+            </div>
           </div>
         </div>
+
+        {hotspotNodes.length ? (
+          <div style={hotspotSection}>
+            <div style={filterLabelRow}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Hotspots</p>
+              <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>
+                Jump to the densest context pockets without losing the current lens.
+              </p>
+            </div>
+            <div style={hotspotRail}>
+              {hotspotNodes.map((node) => (
+                <button
+                  key={`hotspot-${node.id}`}
+                  type="button"
+                  className="ui-btn-polish ui-focus-ring"
+                  onClick={() => {
+                    setSelectedNodeId(node.id);
+                    focusNodeInGraph(node);
+                  }}
+                  style={hotspotButtonStyle(palette, node.id === selectedNodeId)}
+                >
+                  <span style={{ ...legendDot, background: getNodeColor(node.type || "other") }} />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={hotspotTitleStyle(palette)}>{node.label || getNodeLabel(node.type || "other")}</span>
+                    <span style={hotspotMetaStyle(palette)}>
+                      {node.connection_count || degreeMap[node.id] || 0} links
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </WorkspaceToolbar>
 
       {positionedNodes.length === 0 ? (
         <WorkspaceEmptyState
           palette={palette}
+          variant="memory"
+          darkMode={darkMode}
           title="No graph connections yet"
           description="As conversations, decisions, goals, meetings, tasks, and documents accumulate, the graph will start surfacing how they relate."
           action={
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/knowledge")} style={ui.primaryButton}>
+            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/knowledge")} style={primaryActionButton}>
               Go To Knowledge
             </button>
           }
         />
       ) : (
-        <section style={{ display: "grid", gridTemplateColumns: "minmax(0, 2.15fr) minmax(280px, 0.85fr)", gap: 10 }}>
+        <section style={graphWorkspaceLayout(isWideLayout)}>
           <WorkspacePanel
             palette={palette}
+            variant="memory"
+            darkMode={darkMode}
             eyebrow="Network Canvas"
-            title="Connected records"
-            description="The graph now centers the strongest record and fans related context outward so the neighborhood is easier to read."
+            title="Context constellation"
+            description="The canvas keeps one record at the center, fans immediate context into a readable ring, and leaves the outer orbit for secondary evidence."
             action={
-              <span style={{ ...panelStatChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {compactHubLabel} / {graphData.edges?.length || 0} edges
-              </span>
+              <div style={canvasActionWrap}>
+                <span style={{ ...panelStatChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  Hub / {compactHubLabel}
+                </span>
+                <span style={{ ...panelStatChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
+                  {graphData.edges?.length || 0} edges
+                </span>
+              </div>
             }
             minHeight={520}
           >
-            <div style={graphFrame}>
-              <div style={{ overflowX: "auto" }}>
-                <svg viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`} style={{ width: "100%", minWidth: 820, borderRadius: 18 }}>
-                  <defs>
-                    <pattern id="graph-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-                      <path d="M 28 0 L 0 0 0 28" fill="none" stroke={darkMode ? "rgba(245,239,230,0.04)" : "rgba(58,47,38,0.05)"} strokeWidth="1" />
-                    </pattern>
-                  </defs>
-                  <rect x="0" y="0" width={GRAPH_WIDTH} height={GRAPH_HEIGHT} rx="22" fill={darkMode ? "#191411" : "#fbf7f0"} />
-                  <rect x="0" y="0" width={GRAPH_WIDTH} height={GRAPH_HEIGHT} rx="22" fill="url(#graph-grid)" />
-                  <circle
-                    cx={graphCenterX}
-                    cy={graphCenterY}
-                    r="116"
+            <div style={canvasOverviewGrid}>
+              <div style={canvasOverviewCard(palette)}>
+                <p style={{ ...toolbarEyebrow, color: palette.muted }}>Current lens</p>
+                <h3 style={{ ...readoutValue, color: palette.text }}>{graphData.summary?.focus_node ? "Focused neighborhood" : "Whole neighborhood"}</h3>
+                <p style={{ ...readoutMeta, color: palette.muted }}>
+                  {graphData.summary?.focus_node
+                    ? "The canvas is constrained around one record and its immediate links."
+                    : "The graph is showing the strongest visible cluster across the current filters."}
+                </p>
+              </div>
+              <div style={canvasOverviewCard(palette)}>
+                <p style={{ ...toolbarEyebrow, color: palette.muted }}>Type coverage</p>
+                <div style={legendRail}>
+                  {TYPE_ORDER.filter((type) => nodeTypeCounts[type]).map((type) => {
+                    const Icon = getNodeIcon(type);
+                    return (
+                      <span
+                        key={type}
+                        style={{ ...legendChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}
+                      >
+                        <span style={{ ...legendDot, background: getNodeColor(type) }} />
+                        <Icon style={icon12} />
+                        {getNodeLabel(type)} {nodeTypeCounts[type]}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div style={graphFrameShell(palette, darkMode)}>
+              <div style={graphCanvasHeader}>
+                <div style={{ display: "grid", gap: 3 }}>
+                  <p style={{ ...toolbarEyebrow, color: palette.muted }}>Reading path</p>
+                  <p style={{ margin: 0, color: palette.text, fontSize: 13, fontWeight: 700 }}>
+                    Start at the center, scan the primary ring, then follow outer records only when they reinforce the story.
+                  </p>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {selectedNode ? (
+                    <button
+                      type="button"
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={() => focusNodeInGraph(selectedNode)}
+                      style={secondaryActionButton}
+                    >
+                      Center on selection
+                    </button>
+                  ) : null}
+                  {graphHub ? (
+                    <button
+                      type="button"
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={() => {
+                        setSelectedNodeId(graphHub.id);
+                        focusNodeInGraph(graphHub);
+                      }}
+                      style={secondaryActionButton}
+                    >
+                      Recenter on hub
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div style={graphFrame}>
+                <div style={{ overflowX: "auto" }}>
+                  <svg viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`} style={{ width: "100%", minWidth: 820, borderRadius: 18 }}>
+                    <defs>
+                      <pattern id="graph-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+                        <path d="M 28 0 L 0 0 0 28" fill="none" stroke={darkMode ? "rgba(245,239,230,0.04)" : "rgba(58,47,38,0.05)"} strokeWidth="1" />
+                      </pattern>
+                    </defs>
+                    <rect x="0" y="0" width={GRAPH_WIDTH} height={GRAPH_HEIGHT} rx="22" fill={darkMode ? "#141b26" : "#f6fbff"} />
+                    <rect
+                      x="0"
+                      y="0"
+                      width={GRAPH_WIDTH}
+                      height={GRAPH_HEIGHT}
+                      rx="22"
+                      fill={darkMode ? "rgba(59,130,246,0.05)" : "rgba(96,165,250,0.08)"}
+                    />
+                    <rect x="0" y="0" width={GRAPH_WIDTH} height={GRAPH_HEIGHT} rx="22" fill="url(#graph-grid)" />
+                    <circle
+                      cx={graphCenterX}
+                      cy={graphCenterY}
+                      r="116"
                     fill="none"
                     stroke={darkMode ? "rgba(245,239,230,0.06)" : "rgba(58,47,38,0.06)"}
                     strokeWidth="1"
@@ -789,12 +999,12 @@ export default function KnowledgeGraph() {
                           x={labelPlacement.x}
                           y={labelPlacement.y}
                           textAnchor={labelPlacement.anchor}
-                          fill={darkMode ? "#b7ab9b" : "#6e655b"}
+                          fill={darkMode ? "#c5d7ee" : "#38516d"}
                           style={{
                             fontSize: node.ring === "hub" ? 12 : 11,
                             fontWeight: selected || matched || node.ring === "hub" ? 700 : 600,
                             paintOrder: "stroke",
-                            stroke: darkMode ? "#191411" : "#fbf7f0",
+                            stroke: darkMode ? "#141b26" : "#f6fbff",
                             strokeWidth: 5,
                             strokeLinejoin: "round",
                           }}
@@ -807,110 +1017,333 @@ export default function KnowledgeGraph() {
                 </svg>
               </div>
             </div>
+          </div>
           </WorkspacePanel>
 
-          <WorkspacePanel
-            palette={palette}
-            eyebrow="Inspector"
-            title={selectedNode ? selectedNode.label || getNodeLabel(selectedNode.type || "other") : "Select a node"}
-            description={
-              selectedNode
-                ? `${getNodeLabel(selectedNode.type || "other")} records nearby help explain how this item connects to the rest of the workspace.`
-                : "Select a node in the graph to inspect its connected records."
-            }
-          >
-            {selectedNode ? (
-              <>
-                <div style={inspectorStatGrid}>
-                  <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                    <p style={{ ...inspectorLabel, color: palette.muted }}>Type</p>
-                    <p style={{ ...inspectorValue, color: palette.text }}>{getNodeLabel(selectedNode.type || "other")}</p>
+          <div style={{ display: "grid", gap: 10 }}>
+            <WorkspacePanel
+              palette={palette}
+              variant="memory"
+              darkMode={darkMode}
+              eyebrow="Inspector"
+              title={selectedNode ? selectedNode.label || getNodeLabel(selectedNode.type || "other") : "Select a node"}
+              description={
+                selectedNode
+                  ? `${getNodeLabel(selectedNode.type || "other")} records nearby explain why this item matters in the broader workspace graph.`
+                  : "Select a node in the graph to inspect its connected records."
+              }
+            >
+              {selectedNode ? (
+                <>
+                  <div style={inspectorStatGrid}>
+                    <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                      <p style={{ ...inspectorLabel, color: palette.muted }}>Type</p>
+                      <p style={{ ...inspectorValue, color: palette.text }}>{getNodeLabel(selectedNode.type || "other")}</p>
+                    </div>
+                    <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                      <p style={{ ...inspectorLabel, color: palette.muted }}>Connections</p>
+                      <p style={{ ...inspectorValue, color: palette.text }}>{selectedConnections.length}</p>
+                    </div>
+                    <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                      <p style={{ ...inspectorLabel, color: palette.muted }}>State</p>
+                      <p style={{ ...inspectorValue, color: palette.text }}>{selectedStatusLabel}</p>
+                    </div>
+                    <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                      <p style={{ ...inspectorLabel, color: palette.muted }}>Record id</p>
+                      <p style={{ ...inspectorValue, color: palette.text }}>{selectedNode.object_id}</p>
+                    </div>
                   </div>
-                  <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                    <p style={{ ...inspectorLabel, color: palette.muted }}>Connections</p>
-                    <p style={{ ...inspectorValue, color: palette.text }}>{selectedConnections.length}</p>
+
+                  {selectedNode.preview ? (
+                    <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                      <p style={{ ...inspectorLabel, color: palette.muted }}>Preview</p>
+                      <p style={{ margin: 0, color: palette.text, fontSize: 12, lineHeight: 1.55 }}>{selectedNode.preview}</p>
+                    </div>
+                  ) : null}
+
+                  <div style={inspectorButtonRail}>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={() => navigate(getNodeRoute(selectedNode))}
+                      style={primaryActionButton}
+                    >
+                      Open record
+                    </button>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={() => focusNodeInGraph(selectedNode)}
+                      style={secondaryActionButton}
+                    >
+                      Center graph here
+                    </button>
+                    <button
+                      className="ui-btn-polish ui-focus-ring"
+                      onClick={() => navigate("/knowledge")}
+                      style={secondaryActionButton}
+                    >
+                      Knowledge search
+                    </button>
                   </div>
-                </div>
 
-                {selectedNode.preview ? (
-                  <div style={{ ...inspectorStat, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                    <p style={{ ...inspectorLabel, color: palette.muted }}>Preview</p>
-                    <p style={{ margin: 0, color: palette.text, fontSize: 12, lineHeight: 1.55 }}>{selectedNode.preview}</p>
-                  </div>
-                ) : null}
-
-                <div style={inspectorButtonRail}>
-                  <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(getNodeRoute(selectedNode))} style={ui.primaryButton}>
-                    Open record
-                  </button>
-                  <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/knowledge")} style={ui.secondaryButton}>
-                    Knowledge search
-                  </button>
-                </div>
-
-                <div style={inspectorSection}>
-                  <p style={{ ...inspectorSectionLabel, color: palette.muted }}>Connected records</p>
-                  <div style={connectionList}>
-                    {selectedConnections.length === 0 ? (
-                      <div style={{ ...connectionCard, border: `1px dashed ${palette.border}`, background: palette.cardAlt }}>
-                        <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>
-                          No nearby records are attached yet.
-                        </p>
-                      </div>
-                    ) : (
-                      selectedConnections.slice(0, 8).map((edge) => (
-                        <button
-                          key={`${selectedNodeId}-${edge.node.id}`}
-                          className="ui-btn-polish ui-focus-ring"
-                          onClick={() => setSelectedNodeId(edge.node.id)}
-                          style={{ ...connectionCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
-                        >
-                          <span style={{ ...legendDot, background: getNodeColor(edge.node.type || "other") }} />
-                          <span style={{ minWidth: 0 }}>
-                            <span style={{ ...connectionTitle, color: palette.text }}>
-                              {edge.node.label || getNodeLabel(edge.node.type || "other")}
-                            </span>
-                            <span style={{ ...connectionMeta, color: palette.muted }}>
-                              {getNodeLabel(edge.node.type || "other")} | {String(edge.type || "relates_to").replace(/_/g, " ")}
-                            </span>
-                          </span>
-                          <ArrowRightIcon style={{ ...icon12, color: palette.muted, flexShrink: 0 }} />
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div style={inspectorSection}>
-                  <p style={{ ...inspectorSectionLabel, color: palette.muted }}>Entity mix</p>
-                  <div style={typeList}>
-                    {typeSummary.map((item) => (
-                      <div key={item.type} style={{ ...typeRow, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                        <div style={typeRowMain}>
-                          <span style={{ ...legendDot, background: getNodeColor(item.type) }} />
-                          <span style={{ color: palette.text }}>{getNodeLabel(item.type)}</span>
+                  <div style={inspectorSection}>
+                    <p style={{ ...inspectorSectionLabel, color: palette.muted }}>Connected records</p>
+                    <div style={connectionList}>
+                      {selectedConnections.length === 0 ? (
+                        <div style={{ ...connectionCard, border: `1px dashed ${palette.border}`, background: palette.cardAlt, cursor: "default" }}>
+                          <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>
+                            No nearby records are attached yet.
+                          </p>
                         </div>
-                        <span style={{ color: palette.muted }}>{item.count}</span>
-                      </div>
-                    ))}
+                      ) : (
+                        selectedConnections.slice(0, 8).map((edge) => (
+                          <button
+                            key={`${selectedNodeId}-${edge.node.id}`}
+                            className="ui-btn-polish ui-focus-ring"
+                            onClick={() => setSelectedNodeId(edge.node.id)}
+                            style={{ ...connectionCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
+                          >
+                            <span style={{ ...legendDot, background: getNodeColor(edge.node.type || "other") }} />
+                            <span style={{ minWidth: 0 }}>
+                              <span style={{ ...connectionTitle, color: palette.text }}>
+                                {edge.node.label || getNodeLabel(edge.node.type || "other")}
+                              </span>
+                              <span style={{ ...connectionMeta, color: palette.muted }}>
+                                {getNodeLabel(edge.node.type || "other")} | {String(edge.type || "relates_to").replace(/_/g, " ")}
+                              </span>
+                            </span>
+                            <ArrowRightIcon style={{ ...icon12, color: palette.muted, flexShrink: 0 }} />
+                          </button>
+                        ))
+                      )}
+                    </div>
                   </div>
+                </>
+              ) : (
+                <WorkspaceEmptyState
+                  palette={palette}
+                  variant="memory"
+                  darkMode={darkMode}
+                  title="Choose a node"
+                  description="Click a node in the network to inspect related records and open the underlying source."
+                />
+              )}
+            </WorkspacePanel>
+
+            <WorkspacePanel
+              palette={palette}
+              variant="memory"
+              darkMode={darkMode}
+              eyebrow="Map Readout"
+              title="What this graph is emphasizing"
+              description="Keep the overall entity mix and current lens in sight while you inspect individual records."
+            >
+              <div style={typeList}>
+                {typeSummary.map((item) => (
+                  <div key={item.type} style={{ ...typeRow, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+                    <div style={typeRowMain}>
+                      <span style={{ ...legendDot, background: getNodeColor(item.type) }} />
+                      <span style={{ color: palette.text }}>{getNodeLabel(item.type)}</span>
+                    </div>
+                    <span style={{ color: palette.muted }}>{item.count}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={readoutStack}>
+                <div style={canvasOverviewCard(palette)}>
+                  <p style={{ ...toolbarEyebrow, color: palette.muted }}>Active query</p>
+                  <p style={{ margin: 0, color: palette.text, fontSize: 13, fontWeight: 700 }}>{activeQuerySummary}</p>
                 </div>
-              </>
-            ) : (
-              <WorkspaceEmptyState
-                palette={palette}
-                title="Choose a node"
-                description="Click a node in the network to inspect related records and open the underlying source."
-              />
-            )}
-          </WorkspacePanel>
+                <div style={canvasOverviewCard(palette)}>
+                  <p style={{ ...toolbarEyebrow, color: palette.muted }}>Type scope</p>
+                  <p style={{ margin: 0, color: palette.text, fontSize: 13, fontWeight: 700 }}>{typeScopeSummary}</p>
+                </div>
+              </div>
+            </WorkspacePanel>
+          </div>
         </section>
       )}
     </div>
   );
 }
 
-const toolbarLayout = {
+const controlDeck = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+  gap: 12,
+};
+
+const controlColumn = {
+  display: "grid",
+  gap: 10,
+  minWidth: 0,
+};
+
+function filterFormShell(palette) {
+  return {
+    display: "grid",
+    gap: 10,
+    borderRadius: 16,
+    border: `1px solid ${palette.border}`,
+    background: palette.cardAlt,
+    padding: 12,
+  };
+}
+
+function searchRowLayout(isWideLayout) {
+  return {
+    display: "grid",
+    gridTemplateColumns: isWideLayout ? "minmax(0,1fr) auto auto" : "minmax(0,1fr)",
+    gap: 8,
+  };
+}
+
+const filterLabelRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 8,
+  alignItems: "center",
+  flexWrap: "wrap",
+};
+
+const filterPillRail = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+  alignItems: "center",
+};
+
+const readoutGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 10,
+  minWidth: 0,
+};
+
+function readoutCard(palette) {
+  return {
+    borderRadius: 14,
+    border: `1px solid ${palette.border}`,
+    background: palette.cardAlt,
+    padding: "12px 12px",
+    display: "grid",
+    gap: 6,
+    minWidth: 0,
+  };
+}
+
+const readoutValue = {
+  margin: 0,
+  fontSize: 16,
+  lineHeight: 1.12,
+  fontWeight: 700,
+  letterSpacing: "-0.02em",
+};
+
+const readoutMeta = {
+  margin: 0,
+  fontSize: 12,
+  lineHeight: 1.5,
+};
+
+const hotspotSection = {
+  display: "grid",
+  gap: 8,
+};
+
+const hotspotRail = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+  gap: 8,
+};
+
+function hotspotButtonStyle(palette, active) {
+  return {
+    borderRadius: 12,
+    border: `1px solid ${active ? palette.accent : palette.border}`,
+    background: active ? palette.card : palette.cardAlt,
+    padding: "10px 11px",
+    display: "grid",
+    gridTemplateColumns: "auto 1fr",
+    alignItems: "center",
+    gap: 10,
+    textAlign: "left",
+    cursor: "pointer",
+  };
+}
+
+const hotspotTitleStyle = (palette) => ({
+  display: "block",
+  color: palette.text,
+  fontSize: 12,
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+});
+
+const hotspotMetaStyle = (palette) => ({
+  display: "block",
+  color: palette.muted,
+  fontSize: 11,
+  marginTop: 4,
+});
+
+function graphWorkspaceLayout(isWideLayout) {
+  return {
+    display: "grid",
+    gridTemplateColumns: isWideLayout ? "minmax(0, 1.7fr) minmax(320px, 0.9fr)" : "minmax(0, 1fr)",
+    gap: 10,
+    alignItems: "start",
+  };
+}
+
+const canvasActionWrap = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+};
+
+const canvasOverviewGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 10,
+};
+
+function canvasOverviewCard(palette) {
+  return {
+    borderRadius: 14,
+    border: `1px solid ${palette.border}`,
+    background: palette.cardAlt,
+    padding: "12px 12px",
+    display: "grid",
+    gap: 8,
+  };
+}
+
+function graphFrameShell(palette, darkMode) {
+  return {
+    borderRadius: 18,
+    border: `1px solid ${palette.border}`,
+    background: darkMode
+      ? "linear-gradient(180deg, rgba(20,27,38,0.98), rgba(13,18,26,0.96))"
+      : "linear-gradient(180deg, rgba(248,252,255,0.98), rgba(240,247,255,0.96))",
+    padding: 12,
+    display: "grid",
+    gap: 10,
+  };
+}
+
+const graphCanvasHeader = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 10,
+  flexWrap: "wrap",
+};
+
+const readoutStack = {
   display: "grid",
   gap: 8,
 };
@@ -951,7 +1384,7 @@ const legendChip = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  borderRadius: 999,
+  borderRadius: 10,
   padding: "6px 10px",
   fontSize: 11,
   fontWeight: 700,
@@ -969,7 +1402,7 @@ const panelStatChip = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  borderRadius: 999,
+  borderRadius: 10,
   padding: "6px 10px",
   fontSize: 11,
   fontWeight: 700,

@@ -10,7 +10,7 @@ from .settings_views import (
     get_invitation_links, email_duplicate_risk_report, experience_settings
 )
 from .team_views import (
-    get_team_members, get_user_role_info, change_user_role, remove_user,
+    get_team_members, get_team_member_profile, get_user_role_info, change_user_role, remove_user,
     get_audit_logs, get_user_activity, create_team_workflow, activate_workflow,
     get_team_workflows, get_workflow_instances, approve_workflow_step, reject_workflow_step
 )
@@ -89,6 +89,7 @@ urlpatterns = [
     path('members/<int:user_id>/', remove_member, name='member-detail'),
     path('members/', organization_members, name='members-list'),
     path('team/members/', get_team_members, name='team-members'),
+    path('team/members/<int:user_id>/profile/', get_team_member_profile, name='team-member-profile'),
     path('team/users/<int:user_id>/', get_user_role_info, name='user-role-info'),
     path('team/users/<int:user_id>/role/', change_user_role, name='change-user-role'),
     path('team/users/<int:user_id>/remove/', remove_user, name='remove-user'),

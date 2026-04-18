@@ -41,6 +41,133 @@ function formatStatusLabel(value) {
   return String(value).replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+const emptyWorkspaceBriefing = {
+  generated_at: null,
+  scope: "workspace",
+  role: "contributor",
+  summary: {
+    headline: "",
+    scan_note: "",
+    changed_count: 0,
+    attention_count: 0,
+    action_count: 0,
+  },
+  what_changed: [],
+  needs_attention: [],
+  suggested_next_moves: [],
+};
+
+function getBriefingItemIcon(kind) {
+  switch (kind) {
+    case "conversation":
+      return ChatBubbleLeftRightIcon;
+    case "decision":
+      return SparklesIcon;
+    case "task":
+      return QueueListIcon;
+    case "issue":
+      return ExclamationTriangleIcon;
+    case "document":
+      return BookmarkIcon;
+    default:
+      return ArrowRightIcon;
+  }
+}
+
+function getBriefingTone(priority, palette) {
+  switch (priority) {
+    case "critical":
+    case "urgent":
+    case "highest":
+      return palette.accent;
+    case "high":
+      return palette.warn;
+    case "medium":
+      return palette.info;
+    default:
+      return palette.text;
+  }
+}
+
+function BriefingItemCard({ item, palette }) {
+  const Icon = getBriefingItemIcon(item.kind);
+  const tone = getBriefingTone(item.priority, palette);
+  const to = item.suggested_action_url || item.source_url;
+  const content = (
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, minWidth: 0 }}>
+          <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: tone }}>
+            <Icon style={icon14} />
+          </span>
+          <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.muted }}>{formatStatusLabel(item.kind)}</span>
+              <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: tone }}>{item.priority_label || formatStatusLabel(item.priority)}</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45, fontWeight: 700 }}>{item.title}</p>
+          </div>
+        </div>
+        <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
+      </div>
+
+      <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.muted }}>{item.summary}</p>
+      <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.text }}>{item.why_it_matters}</p>
+
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <span style={{ ...caption, color: palette.muted }}>{formatDateLabel(item.timestamp)}</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: tone }}>{item.suggested_action || "Open record"}</span>
+      </div>
+    </>
+  );
+
+  if (!to) {
+    return (
+      <article className="ui-card-lift ui-smooth" style={{ ...briefingItemCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+        {content}
+      </article>
+    );
+  }
+
+  return (
+    <Link
+      to={to}
+      className="ui-card-lift ui-smooth ui-focus-ring"
+      style={{ ...briefingItemCard, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}
+    >
+      {content}
+    </Link>
+  );
+}
+
+function BriefingLane({ title, description, items, emptyMessage, palette, icon: Icon }) {
+  return (
+    <article className="ui-card-lift ui-smooth" style={{ ...briefingLaneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+      <div style={{ display: "grid", gap: 6 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.accent }}>
+            <Icon style={icon14} />
+          </span>
+          <p style={{ ...microLabel, color: palette.muted }}>{title}</p>
+        </div>
+        <p style={{ ...caption, color: palette.muted }}>{description}</p>
+      </div>
+
+      {items.length ? (
+        <div style={{ display: "grid", gap: 10 }}>
+          {items.map((item) => (
+            <BriefingItemCard key={item.id} item={item} palette={palette} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ ...briefingEmptyCard, border: `1px dashed ${palette.border}`, color: palette.muted }}>
+          {emptyMessage}
+        </div>
+      )}
+    </article>
+  );
+}
+
 function SummaryCard({ label, value, tone, palette }) {
   return (
     <article
@@ -156,6 +283,7 @@ export default function UnifiedDashboard() {
   const [orchestratingOutcomes, setOrchestratingOutcomes] = useState(false);
   const [driftAlerts, setDriftAlerts] = useState([]);
   const [driftMeta, setDriftMeta] = useState({ total: 0, critical: 0, high: 0 });
+  const [workspaceBriefing, setWorkspaceBriefing] = useState(emptyWorkspaceBriefing);
   const [personalBriefing, setPersonalBriefing] = useState({
     assigned_tasks: [],
     bookmarked_conversations: [],
@@ -229,13 +357,14 @@ export default function UnifiedDashboard() {
     try {
       const token = localStorage.getItem("access_token") || localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const [timelineRes, statsRes, pendingRes, driftRes, sprintRes, personalRes] = await Promise.all([
+      const [timelineRes, statsRes, pendingRes, driftRes, sprintRes, personalRes, workspaceRes] = await Promise.all([
         fetch(buildApiUrl(`/api/knowledge/timeline/?days=7&page=${page}&per_page=10`), { headers }),
         fetch(buildApiUrl("/api/knowledge/ai/success-rates/"), { headers }),
         fetch(buildApiUrl("/api/decisions/outcomes/pending/?overdue_only=false"), { headers }),
         fetch(buildApiUrl("/api/decisions/outcomes/drift-alerts/"), { headers }),
         fetch(buildApiUrl("/api/agile/current-sprint/"), { headers }),
         fetch(buildApiUrl("/api/knowledge/dashboard/personal-briefing/"), { headers }),
+        fetch(buildApiUrl("/api/knowledge/dashboard/workspace-briefing/"), { headers }),
       ]);
 
       const timelineData = unwrapPayload(await readJsonSafe(timelineRes, { results: [], pagination: { has_next: false } }), { results: [], pagination: { has_next: false } });
@@ -248,11 +377,27 @@ export default function UnifiedDashboard() {
       const driftData = unwrapPayload(await readJsonSafe(driftRes, { items: [] }), { items: [] });
       const sprintData = unwrapPayload(await readJsonSafe(sprintRes, null), null);
       const personalData = unwrapPayload(await readJsonSafe(personalRes, {}), {});
+      const workspaceData = unwrapPayload(await readJsonSafe(workspaceRes, emptyWorkspaceBriefing), emptyWorkspaceBriefing);
 
       setPendingOutcomeReviews(pendingData.items || []);
       setPendingOutcomeMeta({ total: pendingData.total || 0, overdue: pendingData.overdue || 0 });
       setDriftAlerts(driftData.items || []);
       setDriftMeta({ total: driftData.total || 0, critical: driftData.critical || 0, high: driftData.high || 0 });
+      setWorkspaceBriefing({
+        generated_at: workspaceData.generated_at || null,
+        scope: workspaceData.scope || "workspace",
+        role: workspaceData.role || user?.role || "contributor",
+        summary: {
+          headline: workspaceData.summary?.headline || "",
+          scan_note: workspaceData.summary?.scan_note || "",
+          changed_count: workspaceData.summary?.changed_count || 0,
+          attention_count: workspaceData.summary?.attention_count || 0,
+          action_count: workspaceData.summary?.action_count || 0,
+        },
+        what_changed: workspaceData.what_changed || [],
+        needs_attention: workspaceData.needs_attention || [],
+        suggested_next_moves: workspaceData.suggested_next_moves || [],
+      });
       setPersonalBriefing({
         assigned_tasks: personalData.assigned_tasks || [],
         bookmarked_conversations: personalData.bookmarked_conversations || [],
@@ -337,6 +482,14 @@ export default function UnifiedDashboard() {
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   const featuredActivity = timeline[0] || null;
   const signalStream = featuredActivity ? timeline.slice(1, 7) : [];
+  const workspaceBriefingSummary = workspaceBriefing.summary || emptyWorkspaceBriefing.summary;
+  const workspaceChangedItems = workspaceBriefing.what_changed || [];
+  const workspaceAttentionItems = workspaceBriefing.needs_attention || [];
+  const workspaceActionItems = workspaceBriefing.suggested_next_moves || [];
+  const workspaceBriefingQuiet =
+    workspaceChangedItems.length === 0 &&
+    workspaceAttentionItems.length === 0 &&
+    workspaceActionItems.length === 0;
   const assignedTasks = personalBriefing.assigned_tasks || [];
   const bookmarkedConversations = personalBriefing.bookmarked_conversations || [];
   const relevantDecisions = personalBriefing.relevant_decisions || [];
@@ -912,6 +1065,88 @@ export default function UnifiedDashboard() {
         </WorkspacePanel>
       </section>
 
+      <section className="ui-enter" style={{ "--ui-delay": "135ms" }}>
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="memory"
+          eyebrow="Workspace briefing"
+          title="See what shifted, what needs attention, and where to move next."
+          description={
+            workspaceBriefingSummary.headline ||
+            "Get one grounded scan of fresh signals, active pressure, and the shortest next moves across the workspace."
+          }
+          action={(
+            <button
+              className="ui-btn-polish ui-focus-ring"
+              onClick={fetchDashboardData}
+              style={{ ...secondaryButton(palette), cursor: "pointer" }}
+            >
+              Refresh briefing
+            </button>
+          )}
+        >
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ ...briefingSummaryBand, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <p style={{ ...microLabel, color: palette.muted }}>Briefing summary</p>
+                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+                    {formatDateLabel(workspaceBriefing.generated_at)}
+                  </span>
+                </div>
+                <p style={{ ...bodyCopy, color: palette.text }}>
+                  {workspaceBriefingSummary.scan_note || "Read the change layer first, then step into the most useful next move."}
+                </p>
+              </div>
+
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+                <SummaryCard label="What changed" value={workspaceBriefingSummary.changed_count || 0} tone={palette.info} palette={palette} />
+                <SummaryCard label="Needs attention" value={workspaceBriefingSummary.attention_count || 0} tone={palette.warn} palette={palette} />
+                <SummaryCard label="Next moves" value={workspaceBriefingSummary.action_count || 0} tone={palette.accent} palette={palette} />
+              </div>
+            </div>
+
+            {workspaceBriefingQuiet ? (
+              <WorkspaceEmptyState
+                palette={palette}
+                darkMode={darkMode}
+                variant="memory"
+                title="The workspace is quiet right now."
+                description="No fresh briefing items are active yet. New documents, decisions, conversations, or delivery changes will show up here automatically."
+              />
+            ) : (
+              <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+                <BriefingLane
+                  title="What changed"
+                  description="The newest records and shifts worth absorbing before you go deeper."
+                  items={workspaceChangedItems.slice(0, 3)}
+                  emptyMessage="Nothing new has landed in the workspace yet."
+                  palette={palette}
+                  icon={EyeIcon}
+                />
+                <BriefingLane
+                  title="Needs attention"
+                  description="Pressure points where ambiguity, risk, or stalled delivery are starting to matter."
+                  items={workspaceAttentionItems.slice(0, 3)}
+                  emptyMessage="No immediate pressure points are surfacing right now."
+                  palette={palette}
+                  icon={ExclamationTriangleIcon}
+                />
+                <BriefingLane
+                  title="Suggested next moves"
+                  description="The fastest grounded actions back into the workspace without opening every surface."
+                  items={workspaceActionItems.slice(0, 3)}
+                  emptyMessage="There is no obvious next move to surface yet."
+                  palette={palette}
+                  icon={CpuChipIcon}
+                />
+              </div>
+            )}
+          </div>
+        </WorkspacePanel>
+      </section>
+
       <section className="ui-enter" style={{ "--ui-delay": "145ms" }}>
         <WorkspacePanel
           palette={palette}
@@ -1420,6 +1655,10 @@ const spotlightNote = { margin: 0, fontSize: 13, lineHeight: 1.6, fontWeight: 60
 const spotlightProgressTrack = { width: "100%", height: 10, borderRadius: 999, overflow: "hidden", background: "var(--ui-border)" };
 const spotlightProgressFill = { height: "100%", borderRadius: 999 };
 const briefingBand = { borderRadius: 16, padding: 14, display: "grid", gap: 12 };
+const briefingSummaryBand = { borderRadius: 16, padding: 14, display: "grid", gap: 12 };
+const briefingLaneCard = { borderRadius: 16, padding: 14, display: "grid", gap: 12, alignContent: "start" };
+const briefingItemCard = { borderRadius: 14, padding: 12, display: "grid", gap: 10, textDecoration: "none" };
+const briefingEmptyCard = { borderRadius: 14, padding: 12, fontSize: 12, lineHeight: 1.6 };
 const featureCard = { borderRadius: 16, padding: 14, display: "grid", gap: 8, textDecoration: "none" };
 const commandCard = { borderRadius: 14, padding: 12, display: "grid", gap: 10, textDecoration: "none" };
 const priorityCard = { borderRadius: 14, padding: 12, display: "grid", gap: 10, textDecoration: "none" };

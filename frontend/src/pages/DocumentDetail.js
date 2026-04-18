@@ -5,7 +5,7 @@ import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { useToast } from "../components/Toast";
 import { MentionInput } from "../components/MentionInput";
 import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
-import { WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { WorkspaceHero, WorkspacePanel } from "../components/WorkspaceChrome";
 import RichTextEditor from "../components/RichTextEditor";
 import RichTextRenderer from "../components/RichTextRenderer";
 import { buildAskRecallPath } from "../utils/askRecall";
@@ -249,13 +249,15 @@ export default function DocumentDetail() {
   const documentAskRecallQuestion = `Summarize the document "${documentRecord.title}" and tell me what I should pay attention to first.`;
   const heroStats = [
     { label: "Version", value: versionLabel, helper: "Current published revision." },
-    { label: "Updated", value: updatedAt, helper: "Most recent recorded change." },
-    { label: "Comments", value: `${comments.length}`, helper: "Discussion attached here." },
+    { label: "Updated", value: updatedAt, helper: "Latest recorded change." },
+    { label: "Comments", value: `${comments.length}`, helper: "Discussion attached to this record." },
   ];
   const readingStateLabel = editing ? "Editing" : "Reading";
   const modeGuidance = editing
     ? "You are actively editing the document record. Save when the structure and wording are aligned."
     : "Read the file, review the written body, and move into comments without losing the document snapshot.";
+  const fileStateLabel = documentRecord.has_file ? "Attached file" : "Inline record";
+  const ownershipLabel = documentRecord.updated_by?.full_name || documentRecord.created_by?.full_name || "Unknown";
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -300,69 +302,78 @@ export default function DocumentDetail() {
           }
         />
 
-        <WorkspaceToolbar palette={palette}>
-          <div style={detailControlDeck}>
-            <section className="ui-card-lift ui-smooth" style={{ ...detailControlCard, border: `1px solid ${palette.border}`, background: palette.card }}>
-              <div style={{ display: "grid", gap: 6 }}>
-                <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Document Control</p>
-                <h2 style={detailTitle(palette)}>Move between reading, editing, export, and team commentary without losing the source record</h2>
-                <p style={detailBody(palette)}>
-                  The document workspace keeps file preview, written context, and discussion close together so the page feels like one record instead of several disconnected panels.
-                </p>
-              </div>
-              <div style={detailChipRail}>
-                <span style={heroChip(palette)}>Version {versionLabel}</span>
-                <span style={heroChip(palette)}>{comments.length} comments</span>
-                <span style={heroChip(palette)}>{readingStateLabel}</span>
-              </div>
-            </section>
+        <section style={documentOverviewDeck}>
+          <section className="ui-card-lift ui-smooth" style={{ ...overviewLeadCard(palette), background: palette.card }}>
+            <div style={{ display: "grid", gap: 8 }}>
+              <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Reading Room</p>
+              <h2 style={detailTitle(palette)}>Keep the file, written body, and team commentary in one editorial surface</h2>
+              <p style={detailBody(palette)}>
+                This page is now organized around one primary reading flow. Open the attached file, scan the written body, and move into comments or Ask Recall without bouncing between disconnected cards.
+              </p>
+            </div>
+            <div style={detailChipRail}>
+              <span style={heroChip(palette)}>{readingStateLabel} mode</span>
+              <span style={heroChip(palette)}>Version {versionLabel}</span>
+              <span style={heroChip(palette)}>{fileStateLabel}</span>
+            </div>
+          </section>
 
-            <section className="ui-card-lift ui-smooth" style={{ ...detailControlCard, border: `1px solid ${palette.border}`, background: palette.card }}>
-              <div style={{ display: "grid", gap: 6 }}>
-                <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Reading State</p>
-                <h2 style={detailSubTitle(palette)}>{readingStateLabel} mode</h2>
-                <p style={detailBody(palette)}>{modeGuidance}</p>
-              </div>
-              <div style={detailMetricGrid}>
-                <SnapshotTile label="Type" value={typeLabel} palette={palette} />
-                <SnapshotTile label="Updated" value={updatedAt} palette={palette} />
-                <SnapshotTile label="Comments" value={`${comments.length}`} palette={palette} />
-                <SnapshotTile label="File" value={documentRecord.has_file ? "Attached" : "Inline"} palette={palette} />
-              </div>
-            </section>
-          </div>
-        </WorkspaceToolbar>
+          <section className="ui-card-lift ui-smooth" style={{ ...overviewRailCard(palette), background: palette.card }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Record Pulse</p>
+              <h2 style={detailSubTitle(palette)}>{readingStateLabel} with the latest document state in view</h2>
+              <p style={detailBody(palette)}>{modeGuidance}</p>
+            </div>
+            <div style={detailMetricGrid}>
+              <SnapshotTile label="Type" value={typeLabel} palette={palette} />
+              <SnapshotTile label="Updated" value={updatedAt} palette={palette} />
+              <SnapshotTile label="Comments" value={`${comments.length}`} palette={palette} />
+              <SnapshotTile label="Owner" value={ownershipLabel} palette={palette} />
+            </div>
+          </section>
+        </section>
 
-        <div
-          className="ui-enter"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
-            gap: 14,
-            "--ui-delay": "90ms",
-          }}
-        >
-          <main style={{ display: "grid", gap: 14 }}>
-            <section className="ui-card-lift ui-smooth" style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.card, padding: "clamp(16px,2.2vw,22px)", boxShadow: "var(--ui-shadow-xs)" }}>
+        <div className="ui-enter" style={{ ...documentWorkbench, "--ui-delay": "90ms" }}>
+          <main style={{ flex: "1 1 760px", minWidth: 0, display: "grid", gap: 14 }}>
+            <WorkspacePanel
+              palette={palette}
+              eyebrow={editing ? "Editing Session" : "Reading Room"}
+              title={editing ? "Shape the document before you save it back to the record" : "Document body, file preview, and record context"}
+              description={
+                editing
+                  ? "Edit the title, summary, type, and rich text content in one focused workspace."
+                  : "The reading lane keeps the summary, file preview, and written body in a single calm scan order."
+              }
+            >
               {editing ? (
-                <form onSubmit={handleUpdate} style={{ display: "grid", gap: 12 }}>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <label style={fieldLabel(palette)}>Title</label>
-                    <input type="text" value={formData.title || ""} onChange={(event) => setFormData({ ...formData, title: event.target.value })} style={ui.input} />
+                <form onSubmit={handleUpdate} style={{ display: "grid", gap: 14 }}>
+                  <div style={editorTopGrid}>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <label style={fieldLabel(palette)}>Title</label>
+                      <input type="text" value={formData.title || ""} onChange={(event) => setFormData({ ...formData, title: event.target.value })} style={ui.input} />
+                    </div>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <label style={fieldLabel(palette)}>Document Type</label>
+                      <select value={formData.document_type || "other"} onChange={(event) => setFormData({ ...formData, document_type: event.target.value })} style={ui.input}>
+                        {DOCUMENT_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {formatTypeLabel(type)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <label style={fieldLabel(palette)}>Document Type</label>
-                    <select value={formData.document_type || "other"} onChange={(event) => setFormData({ ...formData, document_type: event.target.value })} style={ui.input}>
-                      {DOCUMENT_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {formatTypeLabel(type)}
-                        </option>
-                      ))}
-                    </select>
+
+                  <div style={editorNoteCard(palette)}>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Editing Guidance</p>
+                    <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.7, color: palette.text }}>
+                      Tighten the summary first, then update the long-form body. This keeps the document readable in both the library view and the detail page.
+                    </p>
                   </div>
+
                   <div style={{ display: "grid", gap: 8 }}>
                     <label style={fieldLabel(palette)}>Description</label>
-                    <textarea rows={3} value={formData.description || ""} onChange={(event) => setFormData({ ...formData, description: event.target.value })} style={{ ...ui.input, resize: "vertical" }} />
+                    <textarea rows={4} value={formData.description || ""} onChange={(event) => setFormData({ ...formData, description: event.target.value })} style={{ ...ui.input, resize: "vertical" }} />
                   </div>
                   <div style={{ display: "grid", gap: 8 }}>
                     <label style={fieldLabel(palette)}>Content</label>
@@ -373,25 +384,39 @@ export default function DocumentDetail() {
                       Cancel
                     </button>
                     <button type="submit" className="ui-btn-polish ui-focus-ring" style={docPrimaryButton(palette)}>
-                      Save
+                      Save Changes
                     </button>
                   </div>
                 </form>
               ) : (
                 <div style={{ display: "grid", gap: 16 }}>
-                  {documentRecord.description && (
-                    <div style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16 }}>
-                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Summary</p>
-                      <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.7, color: palette.text }}>{documentRecord.description}</p>
+                  <div style={summaryStage(palette)}>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Record Summary</p>
+                      <h3 style={{ margin: 0, fontSize: 24, lineHeight: 1.05, color: palette.text }}>
+                        {documentRecord.description || "This document does not have a summary yet."}
+                      </h3>
+                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: palette.muted }}>
+                        Use the file preview and document body below to review the full record, then move to Ask Recall or comments from the side rail if you need follow-through.
+                      </p>
                     </div>
-                  )}
+                    <div style={summaryMetaGrid}>
+                      <SnapshotTile label="Type" value={typeLabel} palette={palette} />
+                      <SnapshotTile label="Version" value={versionLabel} palette={palette} />
+                      <SnapshotTile label="Created" value={createdAt} palette={palette} />
+                      <SnapshotTile label="File" value={fileStateLabel} palette={palette} />
+                    </div>
+                  </div>
 
                   {documentRecord.has_file && fileUrl && (
-                    <div style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16 }}>
+                    <section style={contentCard(palette)}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
-                        <div>
+                        <div style={{ display: "grid", gap: 4 }}>
                           <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Attached File</p>
-                          <p style={{ margin: "6px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{documentRecord.file_name || "Document file"}</p>
+                          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{documentRecord.file_name || "Document file"}</p>
+                          <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
+                            {documentRecord.file_type?.includes("pdf") ? "Preview the file inline without leaving the document workspace." : "Download the source file to review the original artifact."}
+                          </p>
                         </div>
                         {!documentRecord.file_type?.includes("pdf") && (
                           <a href={fileUrl} download={documentRecord.file_name} style={docSecondaryButton(palette)}>
@@ -401,15 +426,17 @@ export default function DocumentDetail() {
                         )}
                       </div>
                       {documentRecord.file_type?.includes("pdf") ? (
-                        <iframe src={fileUrl} style={{ width: "100%", height: 560, border: `1px solid ${palette.border}`, borderRadius: 18, background: palette.card }} title="Document Preview" />
+                        <iframe src={fileUrl} style={{ width: "100%", height: 600, border: `1px solid ${palette.border}`, borderRadius: 20, background: palette.card }} title="Document Preview" />
                       ) : (
-                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>This file is attached to the document and ready to download.</p>
+                        <div style={mutedCallout(palette)}>
+                          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>This file is attached to the document and ready to download.</p>
+                        </div>
                       )}
-                    </div>
+                    </section>
                   )}
 
                   {!documentRecord.has_file && documentRecord.file_url && (
-                    <div style={{ borderRadius: 18, border: "1px solid rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.1)", padding: 16 }}>
+                    <div style={warningCallout}>
                       <p style={{ margin: 0, fontSize: 13, color: "var(--app-warning)", fontWeight: 700 }}>Legacy file storage detected</p>
                       <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.6, color: "var(--app-warning)" }}>
                         This document references older file storage. Re-upload the file to restore inline preview and current download handling.
@@ -417,52 +444,30 @@ export default function DocumentDetail() {
                     </div>
                   )}
 
-                  <div style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16 }}>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Content</p>
+                  <section style={contentCard(palette)}>
+                    <div style={{ display: "grid", gap: 4, marginBottom: 12 }}>
+                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Document Body</p>
+                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: palette.muted }}>
+                        Long-form content lives here so the page can behave like a document first and metadata record second.
+                      </p>
+                    </div>
                     {documentRecord.content ? (
-                      <div style={{ marginTop: 12 }}>
+                      <div style={articleSurface(palette)}>
                         <RichTextRenderer content={documentRecord.content} darkMode={darkMode} />
                       </div>
                     ) : (
-                      <p style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.6, color: palette.muted }}>No document content has been added yet.</p>
+                      <div style={mutedCallout(palette)}>
+                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>No document content has been added yet.</p>
+                      </div>
                     )}
-                  </div>
+                  </section>
                 </div>
               )}
-            </section>
-
-            {!editing && (
-              <WorkspacePanel
-                palette={palette}
-                eyebrow="Team Commentary"
-                title={`Comments (${comments.length})`}
-                description="Conversation now sits in its own calmer panel so the document body stays readable."
-              >
-                <form onSubmit={handleAddComment} style={{ marginBottom: 18 }}>
-                  <MentionInput value={newComment} onChange={setNewComment} placeholder="Add a comment... (Type @ to mention someone)" rows={3} darkMode={darkMode} />
-                  <button type="submit" disabled={!newComment.trim()} className="ui-btn-polish ui-focus-ring" style={{ ...docPrimaryButton(palette), marginTop: 10, opacity: !newComment.trim() ? 0.65 : 1 }}>
-                    Post Comment
-                  </button>
-                </form>
-
-                <div style={{ display: "grid", gap: 10 }}>
-                  {comments.map((comment) => (
-                    <div key={comment.id} style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 14 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>{comment.user?.full_name || comment.user?.username || "Unknown"}</span>
-                        <span style={{ fontSize: 11, color: palette.muted }}>{new Date(comment.created_at).toLocaleString()}</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted, whiteSpace: "pre-wrap" }}>{comment.content}</p>
-                    </div>
-                  ))}
-                  {comments.length === 0 && <p style={{ margin: 0, textAlign: "center", padding: "28px 12px", color: palette.muted, fontSize: 13 }}>No comments yet. Be the first to add context.</p>}
-                </div>
-              </WorkspacePanel>
-            )}
+            </WorkspacePanel>
           </main>
 
-          <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
-            <WorkspacePanel palette={palette} eyebrow="Snapshot" title="Document Snapshot" description="Key metadata stays visible without competing with the main content.">
+          <aside style={{ flex: "0 1 340px", minWidth: "min(100%, 320px)", display: "grid", gap: 14, alignContent: "start" }}>
+            <WorkspacePanel palette={palette} eyebrow="Record Lens" title="Document Snapshot" description="Key metadata stays visible without competing with the reading lane.">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
                 <SnapshotTile label="Type" value={typeLabel} palette={palette} />
                 <SnapshotTile label="Version" value={versionLabel} palette={palette} />
@@ -472,9 +477,9 @@ export default function DocumentDetail() {
             </WorkspacePanel>
 
             <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
-              <h3 style={sideTitle(palette)}>Ownership</h3>
+              <h3 style={sideTitle(palette)}>Ownership And Timeline</h3>
               <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <div style={ownershipRow(palette)}>
                   <span style={avatarChip(palette)}>
                     <UserCircleIcon style={{ width: 16, height: 16 }} />
                   </span>
@@ -483,7 +488,7 @@ export default function DocumentDetail() {
                     <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{documentRecord.created_by?.full_name || "Unknown"}</p>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <div style={ownershipRow(palette)}>
                   <span style={avatarChip(palette)}>
                     <UserCircleIcon style={{ width: 16, height: 16 }} />
                   </span>
@@ -492,11 +497,24 @@ export default function DocumentDetail() {
                     <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{documentRecord.updated_by?.full_name || "Unknown"}</p>
                   </div>
                 </div>
+                <div style={timelineStrip(palette)}>
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Created</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>{createdAt}</span>
+                  </div>
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Updated</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>{updatedAt}</span>
+                  </div>
+                </div>
               </div>
             </section>
 
             <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
-              <h3 style={sideTitle(palette)}>Actions</h3>
+              <h3 style={sideTitle(palette)}>Work With This Record</h3>
+              <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
+                Ask Recall for a summary, use AI tools, update the document, or remove it from the library from one compact action stack.
+              </p>
               <div style={detailActionStack}>
                 <AIEnhancementButton
                   content={documentRecord.content || documentRecord.description || ""}
@@ -505,9 +523,17 @@ export default function DocumentDetail() {
                   documentId={documentRecord.id}
                   onResult={(feature, data) => setAiResults(data)}
                 />
+                <button onClick={() => navigate(buildAskRecallPath(documentAskRecallQuestion))} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
+                  <SparklesIcon style={{ width: 14, height: 14 }} />
+                  Ask Recall
+                </button>
                 <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
                   <PencilIcon style={{ width: 14, height: 14 }} />
                   Edit
+                </button>
+                <button onClick={handleExportPDF} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
+                  <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
+                  Export PDF
                 </button>
                 <button onClick={handleDelete} className="ui-btn-polish ui-focus-ring" style={docDangerButton(palette, darkMode)}>
                   <TrashIcon style={{ width: 14, height: 14 }} />
@@ -515,6 +541,39 @@ export default function DocumentDetail() {
                 </button>
               </div>
             </section>
+
+            {!editing && (
+              <WorkspacePanel
+                palette={palette}
+                eyebrow="Discussion"
+                title={`Comments (${comments.length})`}
+                description="Keep lightweight discussion close to the record without pushing the document body out of view."
+              >
+                <form onSubmit={handleAddComment} style={{ marginBottom: 16, display: "grid", gap: 10 }}>
+                  <MentionInput value={newComment} onChange={setNewComment} placeholder="Add a comment... (Type @ to mention someone)" rows={3} darkMode={darkMode} />
+                  <button type="submit" disabled={!newComment.trim()} className="ui-btn-polish ui-focus-ring" style={{ ...docPrimaryButton(palette), opacity: !newComment.trim() ? 0.65 : 1 }}>
+                    Post Comment
+                  </button>
+                </form>
+
+                <div style={{ display: "grid", gap: 10 }}>
+                  {comments.map((comment) => (
+                    <div key={comment.id} style={commentCard(palette)}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>{comment.user?.full_name || comment.user?.username || "Unknown"}</span>
+                        <span style={{ fontSize: 11, color: palette.muted }}>{new Date(comment.created_at).toLocaleString()}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted, whiteSpace: "pre-wrap" }}>{comment.content}</p>
+                    </div>
+                  ))}
+                  {comments.length === 0 ? (
+                    <div style={emptyDiscussionState(palette)}>
+                      <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>No comments yet. Be the first to add context.</p>
+                    </div>
+                  ) : null}
+                </div>
+              </WorkspacePanel>
+            )}
           </aside>
         </div>
       </div>
@@ -571,18 +630,47 @@ const sideTitle = (palette) => ({
   color: palette.muted,
 });
 
-const detailControlDeck = {
+const documentOverviewDeck = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
-  gap: 12,
+  gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
+  gap: 14,
 };
 
-const detailControlCard = {
-  borderRadius: 22,
-  padding: 16,
+const documentWorkbench = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 14,
+  alignItems: "start",
+};
+
+const overviewLeadCard = (palette) => ({
+  borderRadius: 24,
+  border: `1px solid ${palette.border}`,
+  padding: "18px 20px",
   display: "grid",
   gap: 14,
   boxShadow: "var(--ui-shadow-xs)",
+});
+
+const overviewRailCard = (palette) => ({
+  borderRadius: 24,
+  border: `1px solid ${palette.border}`,
+  padding: "18px",
+  display: "grid",
+  gap: 14,
+  boxShadow: "var(--ui-shadow-xs)",
+});
+
+const editorTopGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+  gap: 12,
+};
+
+const summaryMetaGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
+  gap: 10,
 };
 
 const detailTitle = (palette) => ({
@@ -623,6 +711,52 @@ const detailActionStack = {
   gap: 10,
 };
 
+const summaryStage = (palette) => ({
+  borderRadius: 24,
+  border: `1px solid ${palette.border}`,
+  background: `linear-gradient(180deg, ${palette.cardAlt}, ${palette.card})`,
+  padding: "18px 18px 16px",
+  display: "grid",
+  gap: 16,
+});
+
+const contentCard = (palette) => ({
+  borderRadius: 22,
+  border: `1px solid ${palette.border}`,
+  background: palette.cardAlt,
+  padding: 18,
+  display: "grid",
+  gap: 14,
+});
+
+const mutedCallout = (palette) => ({
+  borderRadius: 18,
+  border: `1px solid ${palette.border}`,
+  background: palette.card,
+  padding: 14,
+});
+
+const editorNoteCard = (palette) => ({
+  borderRadius: 18,
+  border: `1px solid ${palette.border}`,
+  background: palette.cardAlt,
+  padding: 14,
+});
+
+const warningCallout = {
+  borderRadius: 18,
+  border: "1px solid rgba(245,158,11,0.4)",
+  background: "rgba(245,158,11,0.1)",
+  padding: 16,
+};
+
+const articleSurface = (palette) => ({
+  borderRadius: 20,
+  border: `1px solid ${palette.border}`,
+  background: palette.card,
+  padding: "18px clamp(14px,2vw,24px)",
+});
+
 const avatarChip = (palette) => ({
   width: 36,
   height: 36,
@@ -631,6 +765,43 @@ const avatarChip = (palette) => ({
   placeItems: "center",
   background: palette.accentSoft,
   color: palette.accent,
+});
+
+const ownershipRow = (palette) => ({
+  display: "flex",
+  gap: 10,
+  alignItems: "center",
+  borderRadius: 16,
+  border: `1px solid ${palette.border}`,
+  background: palette.cardAlt,
+  padding: 12,
+});
+
+const timelineStrip = (palette) => ({
+  display: "grid",
+  gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+  gap: 10,
+  borderRadius: 16,
+  border: `1px solid ${palette.border}`,
+  background: palette.cardAlt,
+  padding: 12,
+});
+
+const commentCard = (palette) => ({
+  borderRadius: 18,
+  border: `1px solid ${palette.border}`,
+  background: palette.cardAlt,
+  padding: 14,
+  display: "grid",
+  gap: 8,
+});
+
+const emptyDiscussionState = (palette) => ({
+  borderRadius: 18,
+  border: `1px dashed ${palette.border}`,
+  background: palette.cardAlt,
+  padding: "24px 14px",
+  textAlign: "center",
 });
 
 function docButtonBase(palette) {

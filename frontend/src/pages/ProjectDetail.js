@@ -23,6 +23,7 @@ import {
 } from "../components/WorkspaceChrome";
 import { createPlainTextPreview, hasMeaningfulText } from "../utils/textPreview";
 import { buildAskRecallPath } from "../utils/askRecall";
+import { safeStyle } from "../utils/safeStyle";
 
 export default function ProjectDetail() {
   const { projectId } = useParams();
@@ -30,6 +31,7 @@ export default function ProjectDetail() {
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
 
   const [project, setProject] = useState(null);
   const [sprints, setSprints] = useState([]);
@@ -38,7 +40,6 @@ export default function ProjectDetail() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("sprints");
-  const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1080);
   const [showCreateSprint, setShowCreateSprint] = useState(false);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
   const [showEditProject, setShowEditProject] = useState(false);
@@ -51,12 +52,14 @@ export default function ProjectDetail() {
   const [issueForm, setIssueForm] = useState({ title: "", description: "", priority: "medium", sprint_id: "", assignee_id: "" });
   const [projectForm, setProjectForm] = useState({ name: "", description: "", lead_id: "" });
   const [projectFormError, setProjectFormError] = useState("");
+  const isNarrow = viewportWidth < 1080;
+  const isPhone = viewportWidth < 720;
 
   useEffect(() => {
     fetchProject();
     fetchTeamMembers();
     const interval = setInterval(fetchProject, 6000);
-    const handleResize = () => setIsNarrow(window.innerWidth < 1080);
+    const handleResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
     return () => {
       clearInterval(interval);
@@ -236,20 +239,20 @@ export default function ProjectDetail() {
   const detailAside = (
     <div style={{ ...detailAsideCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
       <p style={{ ...detailAsideEyebrow, color: palette.muted }}>Project readout</p>
-      <div style={detailAsideGrid}>
-        <div style={detailAsideItem}>
+      <div style={{ ...detailAsideGrid, gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : detailAsideGrid.gridTemplateColumns }}>
+        <div style={safeStyle(detailAsideItem)}>
           <p style={{ ...detailAsideLabel, color: palette.muted }}>Key</p>
           <p style={{ ...detailAsideValue, color: palette.text }}>{project.key || "PRJ"}</p>
         </div>
-        <div style={detailAsideItem}>
+        <div style={safeStyle(detailAsideItem)}>
           <p style={{ ...detailAsideLabel, color: palette.muted }}>Lead</p>
           <p style={{ ...detailAsideValue, color: palette.text }}>{project.lead_name || "Assign lead"}</p>
         </div>
-        <div style={detailAsideItem}>
+        <div style={safeStyle(detailAsideItem)}>
           <p style={{ ...detailAsideLabel, color: palette.muted }}>Boards</p>
           <p style={{ ...detailAsideValue, color: palette.text }}>{boards.length}</p>
         </div>
-        <div style={detailAsideItem}>
+        <div style={safeStyle(detailAsideItem)}>
           <p style={{ ...detailAsideLabel, color: palette.muted }}>Active sprints</p>
           <p style={{ ...detailAsideValue, color: palette.text }}>{activeSprintCount}</p>
         </div>
@@ -265,7 +268,7 @@ export default function ProjectDetail() {
   return (
     <div style={{ minHeight: "100vh", position: "relative" }}>
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: darkMode ? "radial-gradient(circle at 12% 8%, rgba(154,185,255,0.08), transparent 28%)" : "radial-gradient(circle at 12% 8%, rgba(46,99,208,0.05), transparent 28%)" }} />
-      <div style={{ ...ui.container, position: "relative", zIndex: 1, display: "grid", gap: 16 }}>
+      <div style={{ ...ui.container, position: "relative", zIndex: 1, display: "grid", gap: isPhone ? 14 : 16 }}>
         <WorkspaceHero
           palette={palette}
           darkMode={darkMode}
@@ -313,7 +316,14 @@ export default function ProjectDetail() {
               <span style={chipStyle(palette)}>{boards.length} boards</span>
               <span style={chipStyle(palette)}>{activeTab}</span>
             </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: isPhone ? "grid" : "flex",
+                gridTemplateColumns: isPhone ? "repeat(auto-fit,minmax(140px,1fr))" : undefined,
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
               <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/projects")} style={ui.secondaryButton}><ArrowLeftIcon style={{ width: 14, height: 14 }} /> All Projects</button>
               <button className="ui-btn-polish ui-focus-ring" onClick={fetchProject} style={ui.secondaryButton}><ArrowPathIcon style={{ width: 14, height: 14 }} /> Refresh</button>
               <button className="ui-btn-polish ui-focus-ring" onClick={openEditProject} style={ui.secondaryButton}><UserGroupIcon style={{ width: 14, height: 14 }} /> {project.lead_name ? "Update lead" : "Assign lead"}</button>
@@ -322,7 +332,14 @@ export default function ProjectDetail() {
               <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Sprint Center</Link>
               <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowDeleteConfirm(true)} style={{ border: `1px solid ${palette.danger}`, borderRadius: 999, padding: "10px 16px", background: palette.accentSoft, color: palette.danger, fontSize: 13, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}><TrashIcon style={{ width: 14, height: 14 }} /> Delete</button>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: isPhone ? "grid" : "flex",
+                gridTemplateColumns: isPhone ? "repeat(auto-fit,minmax(120px,1fr))" : undefined,
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
               {tabs.map((tab) => {
                 const active = activeTab === tab.key;
                 return <button key={tab.key} className="ui-btn-polish ui-focus-ring" onClick={() => setActiveTab(tab.key)} style={{ borderRadius: 999, padding: "10px 14px", fontSize: 13, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${active ? palette.accent : palette.border}`, background: active ? palette.accentSoft : palette.cardAlt, color: active ? palette.accent : palette.text, cursor: "pointer" }}><span>{tab.label}</span><span style={{ opacity: 0.72 }}>{tab.count}</span></button>;
@@ -349,7 +366,7 @@ export default function ProjectDetail() {
                 {projectReadinessLabel}
               </p>
             </div>
-            <div style={briefingMetaRail}>
+            <div style={safeStyle(briefingMetaRail)}>
               <span style={{ ...briefingChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
                 {project.key || "PRJ"}
               </span>
@@ -386,12 +403,12 @@ export default function ProjectDetail() {
           <div style={{ display: "grid", gap: 14 }}>
             {activeTab === "sprints" ? (
               <WorkspacePanel darkMode={darkMode} variant="execution" palette={palette} eyebrow="Delivery Cadence" title="Sprint Timeline" description="Each sprint reads as a more deliberate record with goal, schedule, and current state surfaced together." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> Create Sprint</button>}>
-                {sprints.length === 0 ? <WorkspaceEmptyState darkMode={darkMode} variant="execution" palette={palette} title="Start the sprint rhythm" description="Create the first sprint to give the project a visible execution cadence." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}>New Sprint</button>} /> : <div style={{ display: "grid", gap: 12 }}>{sprints.map((sprint) => <Link key={sprint.id} className="ui-card-lift ui-smooth" to={`/sprints/${sprint.id}`} style={{ borderRadius: 22, padding: 18, display: "grid", gap: 10, textDecoration: "none", border: `1px solid ${palette.border}`, background: palette.cardAlt }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}><div style={{ minWidth: 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: palette.text }}>{sprint.name}</p><p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{sprint.start_date} to {sprint.end_date}</p></div><span style={{ borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 700, textTransform: "capitalize", border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>{sprint.status}</span></div><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{sprint.goal || "No explicit sprint goal has been recorded yet."}</p></Link>)}</div>}
+                {sprints.length === 0 ? <WorkspaceEmptyState darkMode={darkMode} variant="execution" palette={palette} title="Start the sprint rhythm" description="Create the first sprint to give the project a visible execution cadence." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(true)} style={ui.primaryButton}>New Sprint</button>} /> : <div style={{ display: "grid", gap: 12 }}>{sprints.map((sprint) => <Link key={sprint.id} className="ui-card-lift ui-smooth" to={`/sprints/${sprint.id}`} style={{ borderRadius: 22, padding: isPhone ? 16 : 18, display: "grid", gap: 10, textDecoration: "none", border: `1px solid ${palette.border}`, background: palette.cardAlt }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: isPhone ? "wrap" : "nowrap" }}><div style={{ minWidth: 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: palette.text }}>{sprint.name}</p><p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{sprint.start_date} to {sprint.end_date}</p></div><span style={{ borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 700, textTransform: "capitalize", border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>{sprint.status}</span></div><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{sprint.goal || "No explicit sprint goal has been recorded yet."}</p></Link>)}</div>}
               </WorkspacePanel>
             ) : null}
             {activeTab === "issues" ? (
               <WorkspacePanel darkMode={darkMode} variant="execution" palette={palette} eyebrow="Execution Queue" title="Issue Stream" description="Review the work queue with clearer priority and state rhythm." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}><PlusIcon style={{ width: 14, height: 14 }} /> Create Issue</button>}>
-                {issues.length === 0 ? <WorkspaceEmptyState darkMode={darkMode} variant="execution" palette={palette} title="No issues in the queue yet" description="Create an issue to start turning the project plan into executable work." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}>New Issue</button>} /> : <div style={{ display: "grid", gap: 12 }}>{issues.slice(0, 24).map((issue) => <Link key={issue.id} className="ui-card-lift ui-smooth" to={`/issues/${issue.id}`} style={{ borderRadius: 22, padding: 18, display: "grid", gap: 10, textDecoration: "none", border: `1px solid ${palette.border}`, background: palette.cardAlt }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}><div style={{ minWidth: 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: palette.text }}>{issue.title}</p><p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} | {(issue.priority || "medium").toUpperCase()}</p></div><span style={{ borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 700, textTransform: "capitalize", border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>{issue.status || "todo"}</span></div><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{createPlainTextPreview(issue.description, "No issue description has been added yet.", 160)}</p></Link>)}</div>}
+                {issues.length === 0 ? <WorkspaceEmptyState darkMode={darkMode} variant="execution" palette={palette} title="No issues in the queue yet" description="Create an issue to start turning the project plan into executable work." action={<button className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(true)} style={ui.primaryButton}>New Issue</button>} /> : <div style={{ display: "grid", gap: 12 }}>{issues.slice(0, 24).map((issue) => <Link key={issue.id} className="ui-card-lift ui-smooth" to={`/issues/${issue.id}`} style={{ borderRadius: 22, padding: isPhone ? 16 : 18, display: "grid", gap: 10, textDecoration: "none", border: `1px solid ${palette.border}`, background: palette.cardAlt }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: isPhone ? "wrap" : "nowrap" }}><div style={{ minWidth: 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: palette.text }}>{issue.title}</p><p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{issue.key || `Issue-${issue.id}`} | {(issue.priority || "medium").toUpperCase()}</p></div><span style={{ borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 700, textTransform: "capitalize", border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>{issue.status || "todo"}</span></div><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{createPlainTextPreview(issue.description, "No issue description has been added yet.", 160)}</p></Link>)}</div>}
               </WorkspacePanel>
             ) : null}
             {activeTab === "roadmap" ? (
@@ -403,7 +420,7 @@ export default function ProjectDetail() {
 
           <div style={{ display: "grid", gap: 14 }}>
             <WorkspacePanel darkMode={darkMode} variant="execution" palette={palette} eyebrow="Snapshot" title="Project Readout" description="A tighter summary rail for the state of delivery.">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isPhone ? "minmax(0,1fr)" : "repeat(2, minmax(0,1fr))", gap: 10 }}>
                 <SummaryTile icon={ChartBarIcon} label="Total Issues" value={project.issue_count || 0} palette={palette} />
                 <SummaryTile icon={CheckCircleIcon} label="Completed" value={`${completionRate}%`} palette={palette} />
                 <SummaryTile icon={ClockIcon} label="Active Issues" value={project.active_issues || 0} palette={palette} />

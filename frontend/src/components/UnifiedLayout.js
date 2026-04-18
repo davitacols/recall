@@ -57,7 +57,7 @@ export default function UnifiedLayout({ children }) {
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = Number(window.localStorage.getItem(SIDEBAR_STORAGE_KEY));
     if (!Number.isFinite(saved)) return SIDEBAR_WIDTH_DEFAULT;
@@ -85,9 +85,11 @@ export default function UnifiedLayout({ children }) {
     offsetY: 0,
     moved: false,
   });
+  const isMobile = viewportWidth < 768;
+  const isPhone = viewportWidth < 560;
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -202,7 +204,7 @@ export default function UnifiedLayout({ children }) {
       }).format(new Date()),
     []
   );
-  const showAskFab = location.pathname === "/" || location.pathname === "/dashboard";
+  const showAskFab = !isMobile && (location.pathname === "/" || location.pathname === "/dashboard");
 
   const handleSidebarWidthChange = (nextWidth) => {
     const clamped = Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, nextWidth));
@@ -440,11 +442,18 @@ export default function UnifiedLayout({ children }) {
           paddingBottom: isMobile ? 0 : undefined,
         }}
       >
-        <div style={{ ...contentContainer, ...(isMobile ? contentContainerMobile : null) }}>
+        <div
+          style={{
+            ...contentContainer,
+            ...(isMobile ? contentContainerMobile : null),
+            ...(isPhone ? contentContainerPhone : null),
+          }}
+        >
           <header
             style={{
               ...layoutHeader,
               ...(isMobile ? layoutHeaderMobile : null),
+              ...(isPhone ? layoutHeaderPhone : null),
               background: palette.headerBg,
               border: `1px solid ${palette.border}`,
               boxShadow: palette.headerShadow,
@@ -469,19 +478,41 @@ export default function UnifiedLayout({ children }) {
                     </span>
                     {!isMobile ? <span style={{ ...headerMetaStamp, color: palette.muted }}>{todayLabel}</span> : null}
                   </div>
-                  <h1 style={{ ...headerTitle, ...(isMobile ? headerTitleMobile : null), color: palette.text }}>
+                  <h1
+                    style={{
+                      ...headerTitle,
+                      ...(isMobile ? headerTitleMobile : null),
+                      ...(isPhone ? headerTitlePhone : null),
+                      color: palette.text,
+                    }}
+                  >
                     {pageTitle}
                   </h1>
                   {pageMeta.description ? (
-                    <p style={{ ...headerDescription, color: palette.muted }}>{pageMeta.description}</p>
+                    <p
+                      style={{
+                        ...headerDescription,
+                        ...(isPhone ? headerDescriptionPhone : null),
+                        color: palette.muted,
+                      }}
+                    >
+                      {pageMeta.description}
+                    </p>
                   ) : null}
                 </div>
               </div>
 
-              <div style={{ ...headerActions, ...(isMobile ? headerActionsMobile : null) }}>
+              <div
+                style={{
+                  ...headerActions,
+                  ...(isMobile ? headerActionsMobile : null),
+                  ...(isPhone ? headerActionsPhone : null),
+                }}
+              >
                 <div
                   style={{
                     ...headerActionCluster,
+                    ...(isMobile ? headerActionClusterMobile : null),
                     border: `1px solid ${palette.border}`,
                     background: palette.buttonBg,
                   }}
@@ -508,6 +539,7 @@ export default function UnifiedLayout({ children }) {
                     }}
                     style={{
                       ...menuTriggerButton,
+                      ...(isMobile ? menuTriggerButtonMobile : null),
                       border: `1px solid ${palette.border}`,
                       background: palette.buttonBg,
                       color: palette.text,
@@ -538,6 +570,7 @@ export default function UnifiedLayout({ children }) {
                       style={{
                         ...profileMenu,
                         ...(isMobile ? profileMenuMobile : null),
+                        ...(isPhone ? profileMenuPhone : null),
                         background: palette.menuSurface,
                         border: `1px solid ${palette.border}`,
                       }}
@@ -699,6 +732,11 @@ const menuTriggerButton = {
   fontWeight: 700,
 };
 
+const menuTriggerButtonMobile = {
+  minHeight: 40,
+  padding: "4px 8px 4px 4px",
+};
+
 const menuTriggerLabel = {
   fontSize: 12,
   lineHeight: 1,
@@ -722,7 +760,7 @@ const profileMenu = {
 
 const profileMenuMobile = {
   position: "fixed",
-  top: 70,
+  top: "max(70px, calc(env(safe-area-inset-top, 0px) + 58px))",
   left: 10,
   right: 10,
   minWidth: 0,
@@ -730,6 +768,13 @@ const profileMenuMobile = {
   maxHeight: "calc(100vh - 92px)",
   overflowY: "auto",
   borderRadius: 18,
+};
+
+const profileMenuPhone = {
+  left: 8,
+  right: 8,
+  borderRadius: 16,
+  maxHeight: "calc(100vh - 82px)",
 };
 
 const profileHead = {
@@ -866,6 +911,10 @@ const contentContainerMobile = {
   padding: "8px 12px calc(92px + env(safe-area-inset-bottom, 0px))",
 };
 
+const contentContainerPhone = {
+  padding: "8px 10px calc(98px + env(safe-area-inset-bottom, 0px))",
+};
+
 const layoutHeader = {
   position: "sticky",
   top: 8,
@@ -882,6 +931,12 @@ const layoutHeaderMobile = {
   marginBottom: 8,
 };
 
+const layoutHeaderPhone = {
+  top: "max(6px, calc(env(safe-area-inset-top, 0px) + 2px))",
+  padding: "10px 10px 12px",
+  borderRadius: 16,
+};
+
 const headerTitle = {
   margin: 0,
   fontFamily: "inherit",
@@ -893,6 +948,10 @@ const headerTitle = {
 
 const headerTitleMobile = {
   fontSize: "1.04rem",
+};
+
+const headerTitlePhone = {
+  fontSize: "0.98rem",
 };
 
 const headerPrimaryRow = {
@@ -926,8 +985,13 @@ const headerActions = {
 };
 
 const headerActionsMobile = {
+  gap: 8,
+  justifyContent: "space-between",
+  width: "100%",
+};
+
+const headerActionsPhone = {
   gap: 6,
-  justifyContent: "flex-end",
 };
 
 const headerActionCluster = {
@@ -936,6 +1000,11 @@ const headerActionCluster = {
   gap: 6,
   borderRadius: 999,
   padding: "3px",
+};
+
+const headerActionClusterMobile = {
+  minHeight: 40,
+  padding: "3px 4px",
 };
 
 const headerTitleBlock = {
@@ -990,6 +1059,15 @@ const headerDescription = {
   fontSize: 12,
   lineHeight: 1.45,
   maxWidth: 720,
+};
+
+const headerDescriptionPhone = {
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: 2,
+  overflow: "hidden",
+  fontSize: 11.5,
+  lineHeight: 1.4,
 };
 
 function getPageMeta(pathname) {

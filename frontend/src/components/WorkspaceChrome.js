@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { safeStyle } from "../utils/safeStyle";
 
 export function WorkspaceHero({
   palette,
@@ -11,10 +12,21 @@ export function WorkspaceHero({
   stats = [],
   aside,
 }) {
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1280));
   const execution = variant === "execution";
   const memory = variant === "memory";
   const hasAside = Boolean(aside);
   const hasStats = stats.length > 0;
+  const stackHero = viewportWidth < 920;
+  const phoneViewport = viewportWidth < 640;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
     <section
@@ -26,30 +38,37 @@ export function WorkspaceHero({
           : memory
             ? getMemoryHeroShell(palette, darkMode)
             : { background: "transparent" }),
+        ...(phoneViewport ? heroPhoneShell : null),
       }}
     >
-      <div style={{ ...heroHeader, ...(hasAside ? null : heroHeaderCompact) }}>
-        <div style={heroMain}>
-          <div style={heroLead}>
+      <div
+        style={{
+          ...heroHeader,
+          ...((hasAside && !stackHero) ? null : heroHeaderCompact),
+          ...(phoneViewport ? heroHeaderPhone : null),
+        }}
+      >
+        <div style={safeStyle({ ...heroMain, ...(phoneViewport ? heroMainPhone : null) })}>
+          <div style={safeStyle({ ...heroLead, ...(phoneViewport ? heroLeadPhone : null) })}>
             {eyebrow ? <p style={{ ...heroEyebrow, color: palette.muted }}>{eyebrow}</p> : null}
-            <div style={heroCopy}>
-              <h1 style={{ ...heroTitle, color: palette.text }}>{title}</h1>
-              {description ? <p style={{ ...heroDescription, color: palette.muted }}>{description}</p> : null}
+            <div style={safeStyle({ ...heroCopy, ...(phoneViewport ? heroCopyPhone : null) })}>
+              <h1 style={{ ...heroTitle, ...(phoneViewport ? heroTitlePhone : null), color: palette.text }}>{title}</h1>
+              {description ? <p style={{ ...heroDescription, ...(phoneViewport ? heroDescriptionPhone : null), color: palette.muted }}>{description}</p> : null}
             </div>
           </div>
-          {actions ? <div style={heroActions}>{actions}</div> : null}
+          {actions ? <div style={safeStyle({ ...heroActions, ...(phoneViewport ? heroActionsPhone : null) })}>{actions}</div> : null}
         </div>
 
         {hasAside ? (
-          <div style={heroSide}>
-            <div style={asideWrap}>{aside}</div>
+          <div style={safeStyle({ ...heroSide, ...(stackHero ? heroSideStacked : null), ...(phoneViewport ? heroSidePhone : null) })}>
+            <div style={safeStyle({ ...asideWrap, ...(phoneViewport ? asideWrapPhone : null) })}>{aside}</div>
           </div>
         ) : null}
       </div>
 
       {hasStats ? (
-        <div style={{ ...heroFooter, borderTop: `1px solid ${palette.border}` }}>
-          <div style={statsGrid}>
+        <div style={{ ...heroFooter, ...(phoneViewport ? heroFooterPhone : null), borderTop: `1px solid ${palette.border}` }}>
+          <div style={safeStyle(statsGrid)}>
             {stats.map((stat) => (
               <article
                 key={`${stat.label}-${stat.value}`}
@@ -59,7 +78,7 @@ export function WorkspaceHero({
                   background: palette.cardAlt,
                 }}
               >
-                <div style={statMeta}>
+                <div style={safeStyle(statMeta)}>
                   <p style={{ ...statLabel, color: palette.muted }}>{stat.label}</p>
                   {stat.helper ? <p style={{ ...statHelper, color: palette.muted }}>{stat.helper}</p> : null}
                 </div>
@@ -160,7 +179,7 @@ export function WorkspaceEmptyState({ palette, variant = "default", darkMode, ti
       }}
     >
       <p style={{ ...emptyTitle, color: palette.text }}>{title}</p>
-      {description ? <p style={emptyDescription}>{description}</p> : null}
+      {description ? <p style={safeStyle(emptyDescription)}>{description}</p> : null}
       {action ? <div>{action}</div> : null}
     </div>
   );
@@ -174,6 +193,10 @@ const hero = {
   alignItems: "start",
 };
 
+const heroPhoneShell = {
+  gap: 10,
+};
+
 const heroHeader = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1.45fr) minmax(260px, 0.78fr)",
@@ -185,6 +208,10 @@ const heroHeaderCompact = {
   gridTemplateColumns: "minmax(0, 1fr)",
 };
 
+const heroHeaderPhone = {
+  gap: 12,
+};
+
 const heroMain = {
   position: "relative",
   zIndex: 1,
@@ -194,16 +221,28 @@ const heroMain = {
   minWidth: 0,
 };
 
+const heroMainPhone = {
+  gap: 12,
+};
+
 const heroLead = {
   display: "grid",
   gap: 6,
   minWidth: 0,
 };
 
+const heroLeadPhone = {
+  gap: 8,
+};
+
 const heroCopy = {
   display: "grid",
   gap: 6,
   minWidth: 0,
+};
+
+const heroCopyPhone = {
+  gap: 8,
 };
 
 const heroEyebrow = {
@@ -224,11 +263,20 @@ const heroTitle = {
   maxWidth: "26ch",
 };
 
+const heroTitlePhone = {
+  fontSize: "clamp(1.55rem, 7vw, 1.95rem)",
+  maxWidth: "none",
+};
+
 const heroDescription = {
   margin: 0,
   fontSize: 12,
   lineHeight: 1.55,
   maxWidth: 760,
+};
+
+const heroDescriptionPhone = {
+  maxWidth: "none",
 };
 
 const heroActions = {
@@ -239,6 +287,10 @@ const heroActions = {
   minWidth: 0,
 };
 
+const heroActionsPhone = {
+  gap: 8,
+};
+
 const heroSide = {
   position: "relative",
   zIndex: 1,
@@ -247,15 +299,31 @@ const heroSide = {
   minWidth: 0,
 };
 
+const heroSideStacked = {
+  width: "100%",
+};
+
+const heroSidePhone = {
+  gap: 10,
+};
+
 const asideWrap = {
   display: "grid",
   minWidth: 0,
+};
+
+const asideWrapPhone = {
+  width: "100%",
 };
 
 const heroFooter = {
   display: "grid",
   gap: 8,
   paddingTop: 10,
+};
+
+const heroFooterPhone = {
+  paddingTop: 8,
 };
 
 const statsGrid = {

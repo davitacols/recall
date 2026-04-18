@@ -18,12 +18,14 @@ import {
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { buildAskRecallPath } from "../utils/askRecall";
+import { safeStyle } from "../utils/safeStyle";
 import api from "../services/api";
 import { createPlainTextPreview, hasMeaningfulText } from "../utils/textPreview";
 
 export default function Projects() {
   const { darkMode } = useTheme();
   const navigate = useNavigate();
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [projects, setProjects] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -73,10 +75,18 @@ export default function Projects() {
   const priorityProjects = useMemo(() => attentionProjects.slice(0, 3), [attentionProjects]);
   const leadCoverage = projects.length ? Math.round(((projects.length - leadGaps) / projects.length) * 100) : 0;
   const briefCoverage = projects.length ? Math.round(((projects.length - briefGaps) / projects.length) * 100) : 0;
+  const isNarrow = viewportWidth < 1080;
+  const isPhone = viewportWidth < 720;
 
   useEffect(() => {
     fetchProjects();
     fetchTeamMembers();
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const fetchTeamMembers = async () => {
@@ -199,7 +209,7 @@ export default function Projects() {
           ? `${attentionProjects.length} workspaces still need cleanup so handoffs, planning reviews, and sprint setup stay clear.`
           : `${readyProjects.length} workspaces already have a visible lead and enough brief context to act as a stable front door into execution.`}
       </p>
-      <div style={asideMetricGrid}>
+      <div style={{ ...asideMetricGrid, gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : asideMetricGrid.gridTemplateColumns }}>
         <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
           <p style={{ ...asideMetricLabel, color: palette.muted }}>Ready</p>
           <p style={{ ...asideMetricValue, color: palette.text }}>{readyProjects.length}</p>
@@ -209,7 +219,7 @@ export default function Projects() {
           <p style={{ ...asideMetricValue, color: palette.text }}>{attentionProjects.length}</p>
         </div>
       </div>
-      <div style={asideCoverageStack}>
+      <div style={safeStyle(asideCoverageStack)}>
         <CoverageMeter palette={palette} label="Lead coverage" value={leadCoverage} tone={palette.accent} />
         <CoverageMeter palette={palette} label="Brief coverage" value={briefCoverage} tone={palette.success} />
       </div>
@@ -219,7 +229,13 @@ export default function Projects() {
   if (loading) {
     return (
       <div style={{ display: "grid", gap: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isPhone ? "minmax(0,1fr)" : "repeat(auto-fit,minmax(220px,1fr))",
+            gap: 12,
+          }}
+        >
           {[1, 2, 3].map((item) => (
             <div
               key={item}
@@ -288,7 +304,16 @@ export default function Projects() {
         }
       />
       {projects.length ? (
-        <section style={commandDeckGrid}>
+        <section
+          style={{
+            ...commandDeckGrid,
+            gridTemplateColumns: isPhone
+              ? "minmax(0,1fr)"
+              : isNarrow
+                ? "repeat(auto-fit,minmax(260px,1fr))"
+                : commandDeckGrid.gridTemplateColumns,
+          }}
+        >
           <article
             className="ui-card-lift ui-smooth"
             style={{
@@ -297,7 +322,7 @@ export default function Projects() {
               background: palette.card,
             }}
           >
-            <div style={commandDeckHeader}>
+            <div style={safeStyle(commandDeckHeader)}>
               <div style={{ display: "grid", gap: 6 }}>
                 <p style={{ ...sectionEyebrow, color: palette.muted }}>Portfolio queue</p>
                 <h2 style={{ ...commandDeckTitle, color: palette.text }}>
@@ -311,7 +336,7 @@ export default function Projects() {
                     : "Every visible project already has a lead and enough written context to act as a strong execution front door."}
                 </p>
               </div>
-              <div style={commandDeckChipRail}>
+              <div style={safeStyle(commandDeckChipRail)}>
                 <span style={{ ...commandDeckChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
                   {readyProjects.length} ready to run
                 </span>
@@ -325,13 +350,14 @@ export default function Projects() {
             </div>
 
             {priorityProjects.length ? (
-              <div style={queuePreviewStack}>
+              <div style={safeStyle(queuePreviewStack)}>
                 {priorityProjects.map((project) => (
                   <article
                     key={`queue-${project.id}`}
                     className="ui-card-lift ui-smooth"
                     style={{
                       ...queuePreviewItem,
+                      gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : queuePreviewItem.gridTemplateColumns,
                       border: `1px solid ${palette.border}`,
                       background: palette.cardAlt,
                     }}
@@ -347,7 +373,7 @@ export default function Projects() {
                         <h3 style={{ ...queuePreviewTitle, color: palette.text }}>{project.name || "Untitled project"}</h3>
                         <p style={{ ...queuePreviewBody, color: palette.muted }}>{project.summary}</p>
                       </div>
-                      <div style={queuePreviewMeta}>
+                      <div style={safeStyle(queuePreviewMeta)}>
                         <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
                           <UserGroupIcon style={icon12} /> {project.lead_name || "No lead assigned"}
                         </span>
@@ -356,7 +382,12 @@ export default function Projects() {
                         </span>
                       </div>
                     </div>
-                    <div style={queuePreviewActions}>
+                    <div
+                      style={{
+                        ...queuePreviewActions,
+                        justifyItems: isPhone ? "stretch" : queuePreviewActions.justifyItems,
+                      }}
+                    >
                       {!project.hasLead ? (
                         <button
                           className="ui-btn-polish ui-focus-ring"
@@ -414,12 +445,12 @@ export default function Projects() {
               </p>
             </div>
 
-            <div style={coveragePanel}>
+            <div style={safeStyle(coveragePanel)}>
               <CoverageMeter palette={palette} label="Lead coverage" value={leadCoverage} tone={palette.accent} />
               <CoverageMeter palette={palette} label="Brief coverage" value={briefCoverage} tone={palette.success} />
             </div>
 
-            <div style={portfolioSignalGrid}>
+            <div style={safeStyle(portfolioSignalGrid)}>
               <PortfolioSignalCard
                 palette={palette}
                 icon={FolderIcon}
@@ -437,7 +468,7 @@ export default function Projects() {
               />
             </div>
 
-            <div style={spotlightMetaRail}>
+            <div style={safeStyle(spotlightMetaRail)}>
               <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
                 <ClockIcon style={icon12} /> {spotlightProject?.createdLabel || "New workspace"}
               </span>
@@ -446,7 +477,7 @@ export default function Projects() {
               </span>
             </div>
 
-            <div style={spotlightActions}>
+            <div style={safeStyle(spotlightActions)}>
               {spotlightProject ? (
                 <button
                   className="ui-btn-polish ui-focus-ring"
@@ -473,9 +504,9 @@ export default function Projects() {
       ) : null}
 
       {showCreate ? (
-        <div style={modalOverlay}>
+        <div style={safeStyle(modalOverlay)}>
           <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-            <div style={modalHeader}>
+            <div style={safeStyle(modalHeader)}>
               <div>
                 <p style={{ ...modalEyebrow, color: palette.muted }}>Create Delivery Workspace</p>
                 <h2 style={{ ...modalTitle, color: palette.text }}>Create Project</h2>
@@ -485,7 +516,7 @@ export default function Projects() {
               </div>
             </div>
 
-            <form onSubmit={handleCreate} style={formStack}>
+            <form onSubmit={handleCreate} style={safeStyle(formStack)}>
               {createError ? (
                 <div style={{ ...errorBox, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger }}>
                   {createError}
@@ -525,7 +556,7 @@ export default function Projects() {
                 ))}
               </select>
 
-              <div style={buttonRow}>
+              <div style={safeStyle(buttonRow)}>
                 <button type="button" onClick={() => setShowCreate(false)} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
                   Cancel
                 </button>
@@ -539,9 +570,9 @@ export default function Projects() {
       ) : null}
 
       {showLeadPicker && leadPickerProject ? (
-        <div style={modalOverlay}>
+        <div style={safeStyle(modalOverlay)}>
           <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-            <div style={modalHeader}>
+            <div style={safeStyle(modalHeader)}>
               <div>
                 <p style={{ ...modalEyebrow, color: palette.muted }}>Project Ownership</p>
                 <h2 style={{ ...modalTitle, color: palette.text }}>Set Project Owner</h2>
@@ -551,7 +582,7 @@ export default function Projects() {
               </div>
             </div>
 
-            <form onSubmit={handleSaveLead} style={formStack}>
+            <form onSubmit={handleSaveLead} style={safeStyle(formStack)}>
               {leadError ? (
                 <div style={{ ...errorBox, border: `1px solid ${palette.danger}`, background: palette.accentSoft, color: palette.danger }}>
                   {leadError}
@@ -574,7 +605,7 @@ export default function Projects() {
                 ))}
               </select>
 
-              <div style={buttonRow}>
+              <div style={safeStyle(buttonRow)}>
                 <button
                   type="button"
                   onClick={() => {
@@ -622,6 +653,8 @@ export default function Projects() {
               navigate={navigate}
               darkMode={darkMode}
               onOpenLeadPicker={openLeadPicker}
+              isPhone={isPhone}
+              isNarrow={isNarrow}
             />
           ) : null}
 
@@ -638,6 +671,8 @@ export default function Projects() {
             navigate={navigate}
             darkMode={darkMode}
             onOpenLeadPicker={openLeadPicker}
+            isPhone={isPhone}
+            isNarrow={isNarrow}
           />
         </div>
       )}
@@ -660,8 +695,8 @@ function miniActionButton(palette) {
 
 function CoverageMeter({ palette, label, value, tone }) {
   return (
-    <div style={coverageMeter}>
-      <div style={coverageMeterHead}>
+    <div style={safeStyle(coverageMeter)}>
+      <div style={safeStyle(coverageMeterHead)}>
         <p style={{ ...coverageMeterLabel, color: palette.muted }}>{label}</p>
         <p style={{ ...coverageMeterValue, color: tone }}>{value}%</p>
       </div>
@@ -688,7 +723,7 @@ function PortfolioSignalCard({ palette, icon: Icon, label, value, helper, highli
         background: highlight ? palette.accentSoft : palette.card,
       }}
     >
-      <div style={signalCardTop}>
+      <div style={safeStyle(signalCardTop)}>
         <span style={{ ...signalIconWrap, background: highlight ? palette.accent : palette.cardAlt, color: highlight ? palette.buttonText : palette.text }}>
           <Icon style={icon14} />
         </span>
@@ -700,14 +735,25 @@ function PortfolioSignalCard({ palette, icon: Icon, label, value, helper, highli
   );
 }
 
-function PortfolioSection({ palette, title, description, projects, navigate, darkMode, onOpenLeadPicker, variant = "atlas" }) {
+function PortfolioSection({
+  palette,
+  title,
+  description,
+  projects,
+  navigate,
+  darkMode,
+  onOpenLeadPicker,
+  variant = "atlas",
+  isPhone = false,
+  isNarrow = false,
+}) {
   if (!projects.length) {
     return null;
   }
 
   return (
     <section style={{ display: "grid", gap: 12 }}>
-      <div style={sectionIntro}>
+      <div style={safeStyle(sectionIntro)}>
         <div>
           <p style={{ ...sectionEyebrow, color: palette.muted, margin: 0 }}>
             {variant === "priority" ? "Action queue" : "Project atlas"}
@@ -718,13 +764,14 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
       </div>
 
       {variant === "priority" ? (
-        <div style={priorityList}>
+        <div style={safeStyle(priorityList)}>
           {projects.map((project) => (
             <article
               key={project.id}
               className="ui-card-lift ui-smooth"
               style={{
                 ...priorityRow,
+                gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : priorityRow.gridTemplateColumns,
                 border: `1px solid ${palette.border}`,
                 background: palette.card,
               }}
@@ -740,7 +787,7 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
                   <h3 style={{ ...priorityTitle, color: palette.text }}>{project.name || "Untitled project"}</h3>
                   <p style={{ ...priorityCopy, color: palette.muted }}>{project.summary}</p>
                 </div>
-                <div style={priorityMetaRail}>
+                <div style={safeStyle(priorityMetaRail)}>
                   <span style={{ ...summaryBadge, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
                     <UserGroupIcon style={icon12} /> {project.lead_name || "No lead assigned"}
                   </span>
@@ -752,7 +799,12 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
                   </span>
                 </div>
               </div>
-              <div style={priorityActions}>
+              <div
+                style={{
+                  ...priorityActions,
+                  justifyItems: isPhone ? "stretch" : priorityActions.justifyItems,
+                }}
+              >
                 {!project.hasLead ? (
                   <button
                     className="ui-btn-polish ui-focus-ring"
@@ -781,7 +833,16 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
           ))}
         </div>
       ) : (
-        <div style={projectGrid}>
+        <div
+          style={{
+            ...projectGrid,
+            gridTemplateColumns: isPhone
+              ? "minmax(0,1fr)"
+              : isNarrow
+                ? "repeat(auto-fit,minmax(280px,1fr))"
+                : projectGrid.gridTemplateColumns,
+          }}
+        >
           {projects.map((project) => (
             <article
               key={project.id}
@@ -789,11 +850,18 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
               onClick={() => navigate(`/projects/${project.id}`)}
               style={{
                 ...projectCard,
+                padding: isPhone ? 16 : projectCard.padding,
+                minHeight: isPhone ? "auto" : projectCard.minHeight,
                 border: `1px solid ${palette.border}`,
                 background: palette.card,
               }}
             >
-              <div style={projectCardTop}>
+              <div
+                style={{
+                  ...projectCardTop,
+                  gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : projectCardTop.gridTemplateColumns,
+                }}
+              >
                 <div style={{ ...keyBadge, background: palette.accentSoft, color: palette.accent }}>
                   {project.key || "PRJ"}
                 </div>
@@ -804,12 +872,14 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
                   </div>
                   <div>
                     <h3 style={{ ...cardTitle, color: palette.text }}>{project.name || "Untitled project"}</h3>
-                    <p style={{ ...cardDescription, color: palette.muted }}>{project.summary}</p>
+                    <p style={{ ...cardDescription, minHeight: isPhone ? 0 : cardDescription.minHeight, color: palette.muted }}>
+                      {project.summary}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div style={projectSummaryGrid}>
+              <div style={safeStyle(projectSummaryGrid)}>
                 <div style={{ ...summaryTile, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
                   <p style={{ ...summaryLabel, color: palette.muted }}>Lead</p>
                   <p style={{ ...summaryValue, color: palette.text }}>{project.lead_name || "Assign lead"}</p>
@@ -824,7 +894,7 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
                 </div>
               </div>
 
-              <div style={projectChipRail}>
+              <div style={safeStyle(projectChipRail)}>
                 <span style={{ ...chip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
                   <UserGroupIcon style={icon12} /> {project.lead_name || "No lead assigned"}
                 </span>
@@ -876,7 +946,14 @@ function PortfolioSection({ palette, title, description, projects, navigate, dar
                 >
                   Manage
                 </button>
-                <span style={{ ...openLink, color: palette.accent }}>
+                <span
+                  style={{
+                    ...openLink,
+                    marginLeft: isPhone ? 0 : openLink.marginLeft,
+                    width: isPhone ? "100%" : "auto",
+                    color: palette.accent,
+                  }}
+                >
                   Open workspace <ArrowRightIcon style={icon12} />
                 </span>
               </div>

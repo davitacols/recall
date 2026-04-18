@@ -31,7 +31,7 @@ export const MobileNav = ({ onSearchOpen }) => {
   } = useAuth();
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [workspaces, setWorkspaces] = useState([]);
   const [workspacePassword, setWorkspacePassword] = useState("");
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
@@ -42,12 +42,28 @@ export const MobileNav = ({ onSearchOpen }) => {
   const [experienceMode, setExperienceMode] = useState(
     localStorage.getItem("ui_experience_mode") || "standard"
   );
+  const isMobile = viewportWidth < 768;
+  const isPhone = viewportWidth < 560;
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -312,7 +328,13 @@ export const MobileNav = ({ onSearchOpen }) => {
           boxShadow: palette.shadow,
         }}
       >
-        <div style={mobileBottomInner}>
+        <div
+          style={{
+            ...mobileBottomInner,
+            gap: isPhone ? 2 : mobileBottomInner.gap,
+            padding: isPhone ? "8px 6px 10px" : mobileBottomInner.padding,
+          }}
+        >
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
             const active = item.match.some((candidate) =>
@@ -326,6 +348,7 @@ export const MobileNav = ({ onSearchOpen }) => {
                 to={item.path}
                 style={{
                   ...mobileNavItem,
+                  ...(isPhone ? mobileNavItemPhone : null),
                   color: active ? palette.accent : palette.muted,
                   background: active ? palette.accentSoft : "transparent",
                   border: `1px solid ${active ? palette.activeBorder : "transparent"}`,
@@ -342,6 +365,7 @@ export const MobileNav = ({ onSearchOpen }) => {
             onClick={onSearchOpen}
             style={{
               ...mobileNavItem,
+              ...(isPhone ? mobileNavItemPhone : null),
               color: palette.muted,
               background: "transparent",
               border: "1px solid transparent",
@@ -357,6 +381,7 @@ export const MobileNav = ({ onSearchOpen }) => {
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             style={{
               ...mobileNavItem,
+              ...(isPhone ? mobileNavItemPhone : null),
               color: menuOpen ? palette.accent : palette.muted,
               background: menuOpen ? palette.accentSoft : "transparent",
               border: `1px solid ${menuOpen ? palette.activeBorder : "transparent"}`,
@@ -370,20 +395,22 @@ export const MobileNav = ({ onSearchOpen }) => {
 
       {menuOpen ? (
         <div
-          style={{ ...menuOverlay, background: "rgba(17, 13, 10, 0.42)" }}
+          style={{ ...menuOverlay, background: "rgba(17, 13, 10, 0.42)", backdropFilter: "blur(12px)" }}
           onClick={() => setMenuOpen(false)}
         >
           <aside
             style={{
               ...menuPanel,
+              ...(isPhone ? menuPanelPhone : null),
               background: palette.navBg,
-              borderLeft: `1px solid ${palette.borderStrong || palette.border}`,
+              borderLeft: isPhone ? "none" : `1px solid ${palette.borderStrong || palette.border}`,
             }}
             onClick={(event) => event.stopPropagation()}
           >
             <div
               style={{
                 ...menuHeader,
+                ...(isPhone ? menuHeaderPhone : null),
                 borderBottom: `1px solid ${palette.border}`,
                 background: palette.surface,
               }}
@@ -426,7 +453,7 @@ export const MobileNav = ({ onSearchOpen }) => {
               </button>
             </div>
 
-            <div style={menuContent}>
+            <div style={{ ...menuContent, ...(isPhone ? menuContentPhone : null) }}>
               <Link
                 to={askRecallItem.href}
                 onClick={() => setMenuOpen(false)}
@@ -555,13 +582,19 @@ export const MobileNav = ({ onSearchOpen }) => {
                               Current
                             </span>
                           ) : (
-                            <div style={workspaceActions}>
+                            <div
+                              style={{
+                                ...workspaceActions,
+                                ...(isPhone ? workspaceActionsPhone : null),
+                              }}
+                            >
                               <button
                                 type="button"
                                 onClick={() => handleRequestWorkspaceCode(workspace.org_slug)}
                                 disabled={requestingCodeOrgSlug === workspace.org_slug}
                                 style={{
                                   ...workspaceGhostButton,
+                                  ...(isPhone ? workspaceActionButtonPhone : null),
                                   color: palette.text,
                                   border: `1px solid ${palette.border}`,
                                   background: palette.surface,
@@ -577,6 +610,7 @@ export const MobileNav = ({ onSearchOpen }) => {
                                 disabled={switchingOrgSlug === workspace.org_slug}
                                 style={{
                                   ...workspacePrimaryButton,
+                                  ...(isPhone ? workspaceActionButtonPhone : null),
                                   opacity: switchingOrgSlug === workspace.org_slug ? 0.65 : 1,
                                 }}
                               >
@@ -633,6 +667,13 @@ const mobileNavItem = {
   lineHeight: 1.1,
 };
 
+const mobileNavItemPhone = {
+  minHeight: 46,
+  borderRadius: 14,
+  fontSize: 9,
+  gap: 3,
+};
+
 const menuOverlay = {
   position: "fixed",
   inset: 0,
@@ -650,12 +691,24 @@ const menuPanel = {
   boxShadow: "0 28px 60px rgba(17, 13, 10, 0.24)",
 };
 
+const menuPanelPhone = {
+  width: "100vw",
+  maxWidth: "100vw",
+};
+
 const menuHeader = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: 10,
   padding: "16px 14px 14px",
+};
+
+const menuHeaderPhone = {
+  position: "sticky",
+  top: 0,
+  zIndex: 2,
+  padding: "max(14px, calc(env(safe-area-inset-top, 0px) + 8px)) 12px 12px",
 };
 
 const menuHeaderBrand = {
@@ -722,6 +775,11 @@ const menuContent = {
   padding: "14px",
   display: "grid",
   gap: 14,
+};
+
+const menuContentPhone = {
+  padding: "12px 12px calc(96px + env(safe-area-inset-bottom, 0px))",
+  gap: 12,
 };
 
 const askRecallCard = {
@@ -956,12 +1014,25 @@ const workspaceActions = {
   alignItems: "center",
 };
 
+const workspaceActionsPhone = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  width: "100%",
+};
+
 const workspaceGhostButton = {
   borderRadius: 999,
   padding: "8px 11px",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
+};
+
+const workspaceActionButtonPhone = {
+  display: "inline-flex",
+  alignItems: "center",
+  width: "100%",
+  justifyContent: "center",
 };
 
 const workspacePrimaryButton = {

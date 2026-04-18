@@ -907,9 +907,9 @@ export default function UnifiedDashboard() {
             <div style={{ display: "grid", gap: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                 <div style={{ display: "grid", gap: 6 }}>
-                  <p style={{ ...microLabel, color: palette.muted }}>Operating spotlight</p>
+                  <p style={{ ...microLabel, color: palette.muted }}>Operating snapshot</p>
                   <h2 style={{ ...spotlightTitle, color: palette.text }}>
-                    {currentSprint?.name || "No active sprint"}
+                    {currentSprint?.name || "Workspace status"}
                   </h2>
                 </div>
                 <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
@@ -918,11 +918,46 @@ export default function UnifiedDashboard() {
               </div>
               <p style={{ ...bodyCopy, color: palette.muted }}>
                 {currentSprint
-                  ? `${sprintCompleted} of ${sprintTotal} sprint items are complete, with ${sprintBlocked} blocked and ${sprintInProgress} actively moving.`
-                  : "Activate a sprint to surface delivery pressure, blocked work, and progress from this home board."}
+                  ? `${sprintCompleted} of ${sprintTotal} sprint items are done. The snapshot below keeps the active delivery pressure visible without leaving the dashboard.`
+                  : "No sprint is active yet, so this card stays focused on workspace pressure instead of delivery cadence."}
               </p>
-              <p style={{ ...spotlightNote, color: palette.text }}>{note}</p>
             </div>
+
+            <div style={snapshotMetricGrid}>
+              {currentSprint ? (
+                <>
+                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Completion</p>
+                    <p style={{ ...snapshotMetricValue, color: palette.accent }}>{sprintProgress}%</p>
+                  </div>
+                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Blocked</p>
+                    <p style={{ ...snapshotMetricValue, color: sprintBlocked > 0 ? palette.warn : palette.good }}>{sprintBlocked}</p>
+                  </div>
+                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>In progress</p>
+                    <p style={{ ...snapshotMetricValue, color: palette.text }}>{sprintInProgress}</p>
+                  </div>
+                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Sprint items</p>
+                    <p style={{ ...snapshotMetricValue, color: palette.text }}>{sprintTotal}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Signals</p>
+                    <p style={{ ...snapshotMetricValue, color: palette.accent }}>{stats.activity}</p>
+                  </div>
+                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
+                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Reviews</p>
+                    <p style={{ ...snapshotMetricValue, color: pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.text }}>{pendingOutcomeMeta.total}</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <p style={{ ...spotlightNote, color: palette.text }}>{note}</p>
 
             {currentSprint ? (
               <>
@@ -934,18 +969,6 @@ export default function UnifiedDashboard() {
                       background: palette.ctaGradient,
                     }}
                   />
-                </div>
-                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                  <SummaryCard label="Blocked" value={sprintBlocked} tone={sprintBlocked > 0 ? palette.warn : palette.good} palette={palette} />
-                  <SummaryCard label="In Progress" value={sprintInProgress} tone={palette.accent} palette={palette} />
-                </div>
-                <div style={chipRow}>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                    Mode | {experienceMode}
-                  </span>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                    {pendingOutcomeMeta.total} reviews pending
-                  </span>
                 </div>
                 <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>
                   Open Sprint Board
@@ -1652,6 +1675,10 @@ const chipRow = { display: "flex", gap: 10, flexWrap: "wrap" };
 const spotlightCard = { borderRadius: 18, padding: 16, display: "grid", gap: 12, alignContent: "start" };
 const spotlightTitle = { margin: 0, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 24, lineHeight: 1.04, letterSpacing: "-0.04em" };
 const spotlightNote = { margin: 0, fontSize: 13, lineHeight: 1.6, fontWeight: 600 };
+const snapshotMetricGrid = { display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" };
+const snapshotMetricCard = { borderRadius: 14, padding: "10px 12px", display: "grid", gap: 4 };
+const snapshotMetricLabel = { margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" };
+const snapshotMetricValue = { margin: 0, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 20, lineHeight: 1.02, letterSpacing: "-0.03em" };
 const spotlightProgressTrack = { width: "100%", height: 10, borderRadius: 999, overflow: "hidden", background: "var(--ui-border)" };
 const spotlightProgressFill = { height: "100%", borderRadius: 999 };
 const briefingBand = { borderRadius: 16, padding: 14, display: "grid", gap: 12 };

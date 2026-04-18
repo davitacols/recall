@@ -17,6 +17,7 @@ import {
   WorkspaceHero,
   WorkspacePanel,
 } from "../components/WorkspaceChrome";
+import { safeStyle } from "../utils/safeStyle";
 import api from "../services/api";
 import {
   deleteNotification,
@@ -349,11 +350,11 @@ function Notifications() {
           Open the highest-signal items first, mark the rest cleanly, and use linked destinations to jump back into the work without losing context.
         </p>
       </div>
-      <div style={asideMetricGrid}>
+      <div style={safeStyle(asideMetricGrid)}>
         <MetricTile palette={palette} label="Unread" value={unreadCount} tone={palette.accent} />
         <MetricTile palette={palette} label="Response now" value={attentionUnread} tone={palette.warn} />
       </div>
-      <div style={coverageStack}>
+      <div style={safeStyle(coverageStack)}>
         <CoverageMeter palette={palette} label="Read coverage" value={readCoverage} tone={palette.accent} />
         <CoverageMeter palette={palette} label="Attention cleared" value={attentionCoverage} tone={palette.success} />
       </div>
@@ -361,7 +362,7 @@ function Notifications() {
   );
 
   return (
-    <div style={page}>
+    <div style={safeStyle(page)}>
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
@@ -401,7 +402,7 @@ function Notifications() {
           "See the shared briefing signal before you start triaging individual alerts."
         }
       >
-        <div style={briefingStack}>
+        <div style={{ display: "grid", gap: 12 }}>
           <div
             style={{
               ...focusBand,
@@ -428,7 +429,7 @@ function Notifications() {
               </span>
             </div>
 
-            <div style={briefingMetricGrid}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
               <MetricTile palette={palette} label="What changed" value={briefingSummary.changed_count || 0} tone={palette.info} />
               <MetricTile palette={palette} label="Needs attention" value={briefingSummary.attention_count || 0} tone={palette.warn} />
               <MetricTile palette={palette} label="Next moves" value={briefingSummary.action_count || 0} tone={palette.accent} />
@@ -449,7 +450,7 @@ function Notifications() {
               </p>
             </div>
           ) : (
-            <div style={briefingGrid}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
               <BriefingColumn
                 palette={palette}
                 title="What changed"
@@ -473,7 +474,7 @@ function Notifications() {
         </div>
       </WorkspacePanel>
 
-      <section style={controlGrid}>
+      <section style={safeStyle(controlGrid)}>
         <WorkspacePanel
           palette={palette}
           darkMode={darkMode}
@@ -482,7 +483,7 @@ function Notifications() {
           title="Filter the queue by response pressure"
           description={filterMeta.description}
         >
-          <div style={filterRail}>
+          <div style={safeStyle(filterRail)}>
             {filterPills.map((pill) => {
               const active = filter === pill.key;
               return (
@@ -526,7 +527,7 @@ function Notifications() {
           title="Keep the inbox useful instead of noisy"
           description="High-signal alerts should become an open route, an acknowledged update, or a deletion instead of sitting unread."
         >
-          <div style={guideStack}>
+          <div style={safeStyle(guideStack)}>
             <GuideRow
               palette={palette}
               icon={BellAlertIcon}
@@ -571,7 +572,7 @@ function Notifications() {
           }
         />
       ) : (
-        <section style={feedGrid}>
+        <section style={safeStyle(feedGrid)}>
           {filter !== "fyi" ? (
             <NotificationSection
               palette={palette}
@@ -644,7 +645,7 @@ function NotificationSection({
       }
     >
       {items.length ? (
-        <div style={rowStack}>
+        <div style={safeStyle(rowStack)}>
           {items.map((item) => (
             <NotificationRow
               key={item.id}
@@ -677,7 +678,11 @@ function BriefingColumn({ palette, title, description, items }) {
     <article
       className="ui-card-lift ui-smooth"
       style={{
-        ...briefingColumn,
+        borderRadius: 18,
+        padding: 14,
+        display: "grid",
+        gap: 10,
+        alignContent: "start",
         border: `1px solid ${palette.border}`,
         background: palette.cardAlt,
       }}
@@ -688,7 +693,7 @@ function BriefingColumn({ palette, title, description, items }) {
       </div>
 
       {items.length ? (
-        <div style={briefingCardStack}>
+        <div style={{ display: "grid", gap: 10 }}>
           {items.map((item) => (
             <BriefingCard key={item.id} item={item} palette={palette} />
           ))}
@@ -719,7 +724,11 @@ function BriefingCard({ item, palette }) {
       to={destination || "/notifications"}
       className="ui-card-lift ui-smooth ui-focus-ring"
       style={{
-        ...briefingCard,
+        borderRadius: 14,
+        padding: 12,
+        display: "grid",
+        gap: 10,
+        textDecoration: "none",
         border: `1px solid ${palette.border}`,
         background: palette.cardSoft,
         color: palette.text,
@@ -740,7 +749,7 @@ function BriefingCard({ item, palette }) {
             <Icon style={icon14} />
           </span>
           <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-            <div style={rowMeta}>
+            <div style={safeStyle(rowMeta)}>
               <span
                 style={{
                   ...typeBadge,
@@ -793,7 +802,7 @@ function NotificationRow({ item, palette, darkMode, onMarkRead, onDelete }) {
       }}
     >
       <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
-        <div style={rowMeta}>
+        <div style={safeStyle(rowMeta)}>
           <span
             style={{
               ...typeBadge,
@@ -838,7 +847,7 @@ function NotificationRow({ item, palette, darkMode, onMarkRead, onDelete }) {
         </div>
       </div>
 
-      <div style={rowActions}>
+      <div style={safeStyle(rowActions)}>
         {item.link ? (
           <Link
             to={item.link}
@@ -888,8 +897,8 @@ function MetricTile({ palette, label, value, tone }) {
 
 function CoverageMeter({ palette, label, value, tone }) {
   return (
-    <div style={coverageMeter}>
-      <div style={coverageHead}>
+    <div style={safeStyle(coverageMeter)}>
+      <div style={safeStyle(coverageHead)}>
         <p style={{ ...coverageLabel, color: palette.muted }}>{label}</p>
         <p style={{ ...coverageValue, color: tone }}>{value}%</p>
       </div>
@@ -1087,44 +1096,6 @@ const controlGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
   gap: 14,
-};
-
-const briefingStack = {
-  display: "grid",
-  gap: 12,
-};
-
-const briefingMetricGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-  gap: 8,
-};
-
-const briefingGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-  gap: 12,
-};
-
-const briefingColumn = {
-  borderRadius: 18,
-  padding: 14,
-  display: "grid",
-  gap: 10,
-  alignContent: "start",
-};
-
-const briefingCardStack = {
-  display: "grid",
-  gap: 10,
-};
-
-const briefingCard = {
-  borderRadius: 14,
-  padding: 12,
-  display: "grid",
-  gap: 10,
-  textDecoration: "none",
 };
 
 const filterRail = {

@@ -213,6 +213,9 @@ export default function ProjectDetail() {
   }
 
   const currentBoard = boards[0] || null;
+  const commandCenter = project.command_center || {};
+  const priorityIssues = Array.isArray(commandCenter.priority_issues) ? commandCenter.priority_issues : [];
+  const recoveryMoves = Array.isArray(commandCenter.recommendations) ? commandCenter.recommendations : [];
   const activeSprintCount = sprints.filter((sprint) => sprint.status === "active").length;
   const completionRate = project.issue_count ? Math.round(((project.completed_issues || 0) / project.issue_count) * 100) : 0;
   const projectSummary = createPlainTextPreview(
@@ -224,6 +227,7 @@ export default function ProjectDetail() {
   const issueCoverage = issues.length ? Math.round((documentedIssues / issues.length) * 100) : 0;
   const readySprints = sprints.filter((sprint) => hasMeaningfulText(sprint.goal)).length;
   const projectAskRecallQuestion = `What changed most recently in the ${project.name} project, and what needs attention next?`;
+  const projectIssuePriorityQuestion = `Prioritize issues in the ${project.name} project and build a sprint recovery plan.`;
   const sprintCoverage = sprints.length ? Math.round((readySprints / sprints.length) * 100) : 0;
   const projectReadinessLabel =
     !project.description
@@ -282,6 +286,7 @@ export default function ProjectDetail() {
             { label: "Done", value: `${completionRate}%`, helper: "Closed share of the issue queue." },
             { label: "Sprints", value: sprints.length, helper: activeSprintCount ? `${activeSprintCount} active sprint in motion.` : "No active sprint right now." },
             { label: "Team", value: teamMembers.length, helper: project.lead_name ? `Lead: ${project.lead_name}` : "Project lead still unassigned." },
+            { label: "Health", value: commandCenter.risk_score ?? 0, helper: `${String(commandCenter.posture || "watch").replace("_", " ")} delivery posture.` },
           ]}
           actions={
             <>
@@ -298,9 +303,72 @@ export default function ProjectDetail() {
               >
                 <SparklesIcon style={{ width: 14, height: 14 }} /> Ask Recall
               </button>
+              <button
+                className="ui-btn-polish ui-focus-ring"
+                onClick={() => navigate(buildAskRecallPath(projectIssuePriorityQuestion))}
+                style={ui.secondaryButton}
+              >
+                <SparklesIcon style={{ width: 14, height: 14 }} /> Prioritize issues
+              </button>
             </>
           }
         />
+
+        <section style={{ display: "grid", gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1.2fr) minmax(280px,0.8fr)", gap: 14 }}>
+          <WorkspacePanel
+            darkMode={darkMode}
+            variant="execution"
+            palette={palette}
+            eyebrow="AI Command Center"
+            title="Delivery signals"
+            description="Live project health, ranked issues, and recovery moves from the current agile records."
+            action={<span style={chipStyle(palette)}>{String(commandCenter.posture || "watch").replace("_", " ")}</span>}
+          >
+            <div style={{ display: "grid", gridTemplateColumns: isPhone ? "minmax(0,1fr)" : "repeat(4,minmax(0,1fr))", gap: 10 }}>
+              <SummaryTile icon={ChartBarIcon} label="Health" value={commandCenter.risk_score ?? 0} palette={palette} />
+              <SummaryTile icon={ClockIcon} label="Overdue" value={commandCenter.overdue_count || 0} palette={palette} />
+              <SummaryTile icon={UserGroupIcon} label="Unassigned" value={commandCenter.unassigned_count || 0} palette={palette} />
+              <SummaryTile icon={RocketLaunchIcon} label="Blocked" value={commandCenter.blocked_count || 0} palette={palette} />
+            </div>
+            <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: palette.muted }}>
+                Top issues to move
+              </p>
+              {priorityIssues.length ? (
+                priorityIssues.slice(0, 4).map((issue) => (
+                  <Link
+                    key={issue.id}
+                    to={issue.url || `/issues/${issue.id}`}
+                    className="ui-card-lift ui-smooth"
+                    style={{ border: `1px solid ${palette.border}`, borderRadius: 16, background: palette.cardAlt, padding: 12, textDecoration: "none", display: "grid", gap: 6 }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+                      <strong style={{ color: palette.text, fontSize: 13 }}>{issue.rank}. {issue.title}</strong>
+                      <span style={chipStyle(palette)}>{issue.priority || "medium"}</span>
+                    </div>
+                    <span style={{ color: palette.muted, fontSize: 12, lineHeight: 1.45 }}>{issue.reason}</span>
+                  </Link>
+                ))
+              ) : (
+                <WorkspaceEmptyState darkMode={darkMode} variant="execution" palette={palette} title="No open priority issues" description="Create or move issues into this project to get a ranked execution list." />
+              )}
+            </div>
+          </WorkspacePanel>
+
+          <WorkspacePanel darkMode={darkMode} variant="execution" palette={palette} eyebrow="Recovery Moves" title="What to do next" description="Practical moves generated from project risk signals.">
+            <div style={{ display: "grid", gap: 10 }}>
+              {recoveryMoves.map((move) => (
+                <Link key={move.label} to={move.href || `/projects/${projectId}`} style={{ border: `1px solid ${palette.border}`, borderRadius: 16, background: palette.cardAlt, padding: 12, textDecoration: "none", display: "grid", gap: 5 }}>
+                  <strong style={{ color: palette.text, fontSize: 13 }}>{move.label}</strong>
+                  <span style={{ color: palette.muted, fontSize: 12, lineHeight: 1.45 }}>{move.detail}</span>
+                </Link>
+              ))}
+              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(buildAskRecallPath(projectIssuePriorityQuestion))} style={ui.primaryButton}>
+                <SparklesIcon style={{ width: 14, height: 14 }} /> Build recovery plan
+              </button>
+            </div>
+          </WorkspacePanel>
+        </section>
 
         <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
           <div style={{ display: "grid", gap: 12 }}>
@@ -449,7 +517,7 @@ export default function ProjectDetail() {
 
         {showCreateSprint ? <Modal title="Create Sprint" onClose={() => setShowCreateSprint(false)} palette={palette}><form onSubmit={handleCreateSprint} style={{ display: "grid", gap: 14 }}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Sprint name</label><input required value={sprintForm.name} onChange={(event) => setSprintForm({ ...sprintForm, name: event.target.value })} style={ui.input} placeholder="Sprint name" /></div><div style={ui.twoCol}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Start date</label><input type="date" required value={sprintForm.start_date} onChange={(event) => setSprintForm({ ...sprintForm, start_date: event.target.value })} style={ui.input} /></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>End date</label><input type="date" required value={sprintForm.end_date} onChange={(event) => setSprintForm({ ...sprintForm, end_date: event.target.value })} style={ui.input} /></div></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Goal</label><textarea rows={4} value={sprintForm.goal} onChange={(event) => setSprintForm({ ...sprintForm, goal: event.target.value })} style={{ ...ui.input, resize: "vertical" }} placeholder="What should this sprint accomplish?" /></div><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><button type="button" className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateSprint(false)} style={ui.secondaryButton}>Cancel</button><button className="ui-btn-polish ui-focus-ring" type="submit" style={ui.primaryButton}>{isCreatingSprint ? "Creating..." : "Create Sprint"}</button></div></form></Modal> : null}
 
-        {showCreateIssue ? <Modal title="Create Issue" onClose={() => setShowCreateIssue(false)} palette={palette}><form onSubmit={handleCreateIssue} style={{ display: "grid", gap: 14 }}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Issue title</label><input required value={issueForm.title} onChange={(event) => setIssueForm({ ...issueForm, title: event.target.value })} style={ui.input} placeholder="Issue title" /></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Description</label><textarea rows={4} value={issueForm.description} onChange={(event) => setIssueForm({ ...issueForm, description: event.target.value })} style={{ ...ui.input, resize: "vertical" }} placeholder="Describe the work" /></div><div style={ui.twoCol}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Priority</label><select value={issueForm.priority} onChange={(event) => setIssueForm({ ...issueForm, priority: event.target.value })} style={ui.input}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Sprint</label><select value={issueForm.sprint_id} onChange={(event) => setIssueForm({ ...issueForm, sprint_id: event.target.value })} style={ui.input}><option value="">No Sprint</option>{sprints.map((sprint) => <option key={sprint.id} value={sprint.id}>{sprint.name}</option>)}</select></div></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Assignee</label><select value={issueForm.assignee_id} onChange={(event) => setIssueForm({ ...issueForm, assignee_id: event.target.value })} style={ui.input}><option value="">Unassigned</option>{teamMembers.map((member) => <option key={member.id} value={member.id}>{member.full_name || member.username}</option>)}</select></div><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><button type="button" className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(false)} style={ui.secondaryButton}>Cancel</button><button className="ui-btn-polish ui-focus-ring" type="submit" style={ui.primaryButton}>{isCreatingIssue ? "Creating..." : "Create Issue"}</button></div></form></Modal> : null}
+        {showCreateIssue ? <Modal title="Create Issue" onClose={() => setShowCreateIssue(false)} palette={palette}><form onSubmit={handleCreateIssue} style={{ display: "grid", gap: 14 }}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Issue title</label><input required value={issueForm.title} onChange={(event) => setIssueForm({ ...issueForm, title: event.target.value })} style={ui.input} placeholder="Issue title" /></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Description</label><textarea rows={4} value={issueForm.description} onChange={(event) => setIssueForm({ ...issueForm, description: event.target.value })} style={{ ...ui.input, resize: "vertical" }} placeholder="Describe the work" /></div><div style={ui.twoCol}><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Priority</label><select value={issueForm.priority} onChange={(event) => setIssueForm({ ...issueForm, priority: event.target.value })} style={ui.input}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="highest">Highest</option></select></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Sprint</label><select value={issueForm.sprint_id} onChange={(event) => setIssueForm({ ...issueForm, sprint_id: event.target.value })} style={ui.input}><option value="">No Sprint</option>{sprints.map((sprint) => <option key={sprint.id} value={sprint.id}>{sprint.name}</option>)}</select></div></div><div style={{ display: "grid", gap: 8 }}><label style={fieldLabel(palette)}>Assignee</label><select value={issueForm.assignee_id} onChange={(event) => setIssueForm({ ...issueForm, assignee_id: event.target.value })} style={ui.input}><option value="">Unassigned</option>{teamMembers.map((member) => <option key={member.id} value={member.id}>{member.full_name || member.username}</option>)}</select></div><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><button type="button" className="ui-btn-polish ui-focus-ring" onClick={() => setShowCreateIssue(false)} style={ui.secondaryButton}>Cancel</button><button className="ui-btn-polish ui-focus-ring" type="submit" style={ui.primaryButton}>{isCreatingIssue ? "Creating..." : "Create Issue"}</button></div></form></Modal> : null}
 
         {showDeleteConfirm ? <Modal title="Delete Project" onClose={() => setShowDeleteConfirm(false)} palette={palette}><p style={{ margin: 0, color: palette.muted, fontSize: 14, lineHeight: 1.6 }}>This removes the project workspace permanently. Make sure any linked sprint or issue work has been moved or closed first.</p><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><button className="ui-btn-polish ui-focus-ring" onClick={() => setShowDeleteConfirm(false)} style={ui.secondaryButton}>Cancel</button><button className="ui-btn-polish ui-focus-ring" onClick={handleDeleteProject} style={{ border: `1px solid ${palette.danger}`, borderRadius: 999, padding: "10px 16px", background: palette.accentSoft, color: palette.danger, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{isDeleting ? "Deleting..." : "Delete Project"}</button></div></Modal> : null}
       </div>

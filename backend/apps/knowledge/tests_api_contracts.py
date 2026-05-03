@@ -312,6 +312,19 @@ class KnowledgeApiContractTests(TestCase):
         self.assertTrue(any(item["id"] == self.integration_pr.id for item in payload["results"]["pull_requests"]))
         self.assertTrue(any(item["id"] == self.integration_commit.id for item in payload["results"]["commits"]))
 
+    def test_onboarding_returns_ai_workspace_progress(self):
+        response = self.client.get("/api/knowledge/onboarding/")
+
+        self.assertEqual(response.status_code, 200)
+        progress = response.data.get("onboarding_progress") or {}
+        self.assertIn("completed_steps", progress)
+        self.assertIn("total_steps", progress)
+        self.assertIn("percent", progress)
+        checklist = progress.get("checklist") or []
+        self.assertTrue(checklist)
+        self.assertTrue(any(item.get("id") == "ask_recall" for item in checklist))
+        self.assertTrue(any(item.get("href") == "/business/tasks" for item in checklist))
+
     def test_search_respects_type_filters(self):
         response = self.client.post(
             "/api/knowledge/search/",

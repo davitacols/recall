@@ -96,6 +96,9 @@ def stripe_webhook(request):
         sub = Subscription.objects.filter(organization_id=org_id).select_related('plan').first()
         if sub:
             sub.stripe_customer_id = session.get('customer') or sub.stripe_customer_id
+            sub.stripe_subscription_id = session.get('subscription') or sub.stripe_subscription_id
+            sub.billing_provider = 'stripe'
+            sub.paypal_subscription_id = ''
             sub.status = 'active'
             if plan:
                 sub.plan = plan

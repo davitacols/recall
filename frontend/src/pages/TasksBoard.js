@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import {
   WorkspaceEmptyState,
@@ -7,11 +7,13 @@ import {
   WorkspacePanel,
   WorkspaceToolbar,
 } from "../components/WorkspaceChrome";
+import AIAssistant from "../components/AIAssistant";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { createPlainTextPreview } from "../utils/textPreview";
 
 export default function TasksBoard() {
+  const location = useLocation();
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
@@ -28,6 +30,7 @@ export default function TasksBoard() {
     conversation_id: "",
     decision_id: "",
   });
+  const highlightedTaskId = useMemo(() => new URLSearchParams(location.search).get("task"), [location.search]);
 
   const columns = useMemo(
     () => [
@@ -120,6 +123,21 @@ export default function TasksBoard() {
     } catch (error) {
       console.error("Error updating task:", error);
     }
+  };
+
+  const handleApplyTaskAI = ({ kind, summary, actionItems }) => {
+    setFormData((current) => {
+      if (kind === "summary" && summary) {
+        return { ...current, description: summary };
+      }
+      if (kind === "actions" && Array.isArray(actionItems) && actionItems.length > 0) {
+        return {
+          ...current,
+          description: `${current.description || ""}${current.description ? "\n\n" : ""}AI suggested next actions:\n${actionItems.map((item) => `- ${item}`).join("\n")}`,
+        };
+      }
+      return current;
+    });
   };
 
   const totalTasks = columns.reduce((acc, col) => acc + (board[col.key]?.length || 0), 0);
@@ -284,8 +302,8 @@ export default function TasksBoard() {
                         className="ui-card-lift ui-smooth"
                         style={{
                           ...taskCard,
-                          border: `1px solid ${palette.border}`,
-                          background: palette.cardAlt,
+                          border: highlightedTaskId === String(task.id) ? `2px solid ${palette.info}` : `1px solid ${palette.border}`,
+                          background: highlightedTaskId === String(task.id) ? palette.accentSoft : palette.cardAlt,
                         }}
                       >
                         <div style={taskHead}>
@@ -341,6 +359,11 @@ export default function TasksBoard() {
               <p style={{ ...modalCopy, color: palette.muted }}>
                 Keep the title crisp and the description useful enough that someone else could pick it up without asking for more context.
               </p>
+              <AIAssistant
+                content={`${formData.title || ""}\n\n${formData.description || ""}`}
+                contentType="task"
+                onApply={handleApplyTaskAI}
+              />
               <form onSubmit={handleSubmit} style={formStack}>
                 <input
                   required

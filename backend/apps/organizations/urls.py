@@ -38,7 +38,7 @@ from .public_views import partner_inquiries, partner_inquiry_detail, user_feedba
 from .ai_enhancements import (
     auto_summarize, smart_suggestions, sentiment_analysis, auto_tag, batch_ai_process, apply_ai_to_item
 )
-from . import subscription_views, stripe_views, ai_views, enterprise_views, import_export_views
+from . import subscription_views, stripe_views, paypal_views, ai_views, enterprise_views, import_export_views
 
 urlpatterns = [
     path('partner-inquiries/', partner_inquiries, name='partner-inquiries'),
@@ -158,6 +158,10 @@ urlpatterns = [
     path('stripe/portal/', stripe_views.create_portal_session),
     path('stripe/webhook/', stripe_views.stripe_webhook),
     path('stripe/status/', stripe_views.subscription_status),
+
+    # PayPal Payment
+    path('paypal/config/', paypal_views.paypal_checkout_config),
+    path('paypal/activate/', paypal_views.activate_paypal_subscription),
     
     # AI Features
     path('ai/summary/', ai_views.generate_summary),

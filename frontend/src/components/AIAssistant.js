@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { SparklesIcon } from "@heroicons/react/24/outline";
+import { ClipboardDocumentListIcon, PencilSquareIcon, SparklesIcon, TagIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { aiButtonPrimary, aiButtonSecondary, aiCard, aiInput, getAIPalette } from "./aiUi";
 
@@ -14,7 +14,7 @@ export default function AIAssistant({ content, contentType = "conversation", onA
   const [tags, setTags] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
 
-  if (!content) return null;
+  if (!String(content || "").trim()) return null;
 
   const postAI = async (path, body) => {
     const token = localStorage.getItem("token");
@@ -45,9 +45,6 @@ export default function AIAssistant({ content, contentType = "conversation", onA
       setTags(tagData.tags || []);
       setShowPanel(true);
 
-      if (onApply) {
-        onApply({ summary: summaryData.summary, suggestions: suggestionsData.suggestions, actionItems: actionData.action_items, tags: tagData.tags });
-      }
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -69,7 +66,7 @@ export default function AIAssistant({ content, contentType = "conversation", onA
             <Section title="Related Topics" palette={palette}>
               <ul style={list}>
                 {suggestions.map((item, i) => (
-                  <li key={i} style={li}><span style={dot}>•</span><span>{item}</span></li>
+                  <li key={i} style={li}><span style={dot}>-</span><span>{item}</span></li>
                 ))}
               </ul>
             </Section>
@@ -79,7 +76,7 @@ export default function AIAssistant({ content, contentType = "conversation", onA
             <Section title="Action Items" palette={palette}>
               <ul style={list}>
                 {actionItems.map((item, i) => (
-                  <li key={i} style={li}><span style={dot}>•</span><span>{item}</span></li>
+                  <li key={i} style={li}><span style={dot}>-</span><span>{item}</span></li>
                 ))}
               </ul>
             </Section>
@@ -96,6 +93,26 @@ export default function AIAssistant({ content, contentType = "conversation", onA
               </div>
             </Section>
           )}
+
+          {onApply && (summary || actionItems.length > 0 || tags.length > 0) ? (
+            <div style={{ padding: 10, borderTop: `1px solid ${palette.border}`, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {summary ? (
+                <button onClick={() => onApply({ kind: "summary", summary, suggestions, actionItems, tags })} style={aiButtonSecondary(palette)}>
+                  <PencilSquareIcon style={{ width: 14, height: 14 }} /> Use summary
+                </button>
+              ) : null}
+              {actionItems.length > 0 ? (
+                <button onClick={() => onApply({ kind: "actions", summary, suggestions, actionItems, tags })} style={aiButtonSecondary(palette)}>
+                  <ClipboardDocumentListIcon style={{ width: 14, height: 14 }} /> Append actions
+                </button>
+              ) : null}
+              {tags.length > 0 ? (
+                <button onClick={() => onApply({ kind: "tags", summary, suggestions, actionItems, tags })} style={aiButtonSecondary(palette)}>
+                  <TagIcon style={{ width: 14, height: 14 }} /> Use tags
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
           <div style={{ padding: 10, borderTop: `1px solid ${palette.border}` }}>
             <button onClick={() => setShowPanel(false)} style={aiButtonSecondary(palette)}>Close</button>

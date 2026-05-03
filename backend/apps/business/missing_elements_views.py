@@ -456,6 +456,18 @@ def slot_task(request):
             'message': 'No available slot found in the requested window.',
         })
 
+    task.scheduled_start = slot_start
+    task.scheduled_end = slot_end
+    task.scheduled_duration_minutes = duration_minutes
+    task.due_date = slot_start.date()
+    task.save(update_fields=[
+        'scheduled_start',
+        'scheduled_end',
+        'scheduled_duration_minutes',
+        'due_date',
+        'updated_at',
+    ])
+
     return Response({
         'task_id': task.id,
         'assigned_to': target_user.id,
@@ -464,6 +476,14 @@ def slot_task(request):
             'start': slot_start,
             'end': slot_end,
             'duration_minutes': duration_minutes,
+        },
+        'task': {
+            'id': task.id,
+            'title': task.title,
+            'due_date': task.due_date,
+            'scheduled_start': task.scheduled_start,
+            'scheduled_end': task.scheduled_end,
+            'scheduled_duration_minutes': task.scheduled_duration_minutes,
         },
     })
 

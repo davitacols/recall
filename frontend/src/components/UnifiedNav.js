@@ -277,15 +277,6 @@ export default function UnifiedNav({
   const primaryItems = [homeItem, ...workstreamGroups];
   const appsActive = openDropdown === "Apps" || isNavItemActive(location.pathname, appsItem);
   const askRecallActive = isHrefActive(location.pathname, askRecallItem.href);
-  const activeUtilityItem =
-    utilityItems.find((item) => isHrefActive(location.pathname, item.href)) || null;
-  const activePrimaryItem = askRecallActive
-    ? askRecallItem
-    : appsActive
-      ? appsItem
-      : primaryItems.find((item) => isNavItemActive(location.pathname, item)) || homeItem;
-  const currentContextItem = activeUtilityItem || activePrimaryItem;
-
   const activeSubnav = useMemo(() => {
     if (!openDropdown) return null;
 
@@ -449,7 +440,7 @@ export default function UnifiedNav({
               <span style={{ ...railItemLabel, color: palette.text }}>
                 {item.name}
               </span>
-              {summary ? (
+              {summary && item.name === "Home" ? (
                 <span style={{ ...railItemMeta, color: active ? palette.textSubtle : palette.muted }}>
                   {summary}
                 </span>
@@ -625,16 +616,6 @@ export default function UnifiedNav({
                     }}
                   >
                     {workspaceModeLabel}
-                  </span>
-                  <span
-                    style={{
-                      ...brandMetaPill,
-                      color: palette.text,
-                      border: `1px solid ${palette.activeBorder}`,
-                      background: palette.accentSoft,
-                    }}
-                  >
-                    {currentContextItem?.name || "Workspace"}
                   </span>
                 </span>
               </span>
@@ -1122,7 +1103,7 @@ const sidebar = {
   left: 0,
   bottom: 0,
   display: "grid",
-  gap: 10,
+  gap: 12,
   zIndex: 70,
   backdropFilter: "blur(18px)",
   overflow: "hidden",
@@ -1132,9 +1113,9 @@ const brandPanel = {
   display: "flex",
   alignItems: "center",
   gap: 12,
-  borderRadius: 20,
-  padding: "12px 12px 10px",
-  minHeight: 76,
+  borderRadius: 18,
+  padding: "12px",
+  minHeight: 68,
 };
 
 const brandLink = {
@@ -1168,7 +1149,7 @@ const brandMarkShell = {
 const brandText = {
   minWidth: 0,
   display: "grid",
-  gap: 4,
+  gap: 3,
 };
 
 const brandEyebrow = {
@@ -1192,7 +1173,7 @@ const brandTitle = {
 const brandMetaRow = {
   display: "flex",
   alignItems: "center",
-  gap: 6,
+  gap: 5,
   flexWrap: "wrap",
 };
 
@@ -1200,8 +1181,8 @@ const brandMetaPill = {
   display: "inline-flex",
   alignItems: "center",
   borderRadius: 999,
-  padding: "4px 8px",
-  fontSize: 10,
+  padding: "3px 7px",
+  fontSize: 9.5,
   fontWeight: 700,
   lineHeight: 1,
 };
@@ -1222,8 +1203,8 @@ const featureCard = {
   gap: 10,
   alignItems: "center",
   textDecoration: "none",
-  borderRadius: 18,
-  padding: "12px 12px 11px",
+  borderRadius: 16,
+  padding: "10px 11px",
 };
 
 const featureIconShell = {
@@ -1375,18 +1356,18 @@ const navScrollArea = {
   overflowX: "hidden",
   display: "grid",
   alignContent: "start",
-  gap: 8,
-  paddingRight: 2,
-  paddingBottom: 8,
+  gap: 10,
+  paddingRight: 4,
+  paddingBottom: 10,
   overscrollBehavior: "contain",
   scrollbarGutter: "stable",
 };
 
 const navSectionCard = {
-  borderRadius: 18,
-  padding: "10px",
+  borderRadius: 16,
+  padding: "8px",
   display: "grid",
-  gap: 8,
+  gap: 7,
 };
 
 const navSectionHeader = {
@@ -1407,7 +1388,7 @@ const navSectionEyebrow = {
 
 const navSectionBody = {
   display: "grid",
-  gap: 6,
+  gap: 4,
 };
 
 const railItemButton = {
@@ -1415,10 +1396,10 @@ const railItemButton = {
   width: "100%",
   display: "flex",
   alignItems: "center",
-  gap: 10,
-  minHeight: 54,
-  borderRadius: 15,
-  padding: "9px 10px",
+  gap: 9,
+  minHeight: 44,
+  borderRadius: 12,
+  padding: "7px 8px",
   textAlign: "left",
   cursor: "pointer",
   textDecoration: "none",
@@ -1427,18 +1408,18 @@ const railItemButton = {
 
 const railItemAccent = {
   position: "absolute",
-  left: 8,
-  top: 10,
-  bottom: 10,
+  left: 6,
+  top: 9,
+  bottom: 9,
   width: 3,
   borderRadius: 999,
   transition: "opacity 0.18s ease",
 };
 
 const railIconShell = {
-  width: 32,
-  height: 32,
-  borderRadius: 12,
+  width: 30,
+  height: 30,
+  borderRadius: 10,
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
@@ -1447,69 +1428,69 @@ const railIconShell = {
 const railItemBody = {
   minWidth: 0,
   display: "grid",
-  gap: 3,
+  gap: 2,
   flex: 1,
 };
 
 const railItemLabel = {
-  fontSize: 13,
+  fontSize: 13.5,
   fontWeight: 700,
   lineHeight: 1.15,
 };
 
 const railItemMeta = {
-  fontSize: 10.5,
+  fontSize: 10,
   lineHeight: 1.28,
 };
 
 const railItemTail = {
-  display: "grid",
-  justifyItems: "end",
-  gap: 6,
+  display: "flex",
+  alignItems: "center",
+  gap: 5,
   flexShrink: 0,
   marginLeft: "auto",
 };
 
 const railCount = {
-  minWidth: 24,
-  height: 20,
+  minWidth: 22,
+  height: 18,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
   borderRadius: 999,
-  padding: "0 7px",
-  fontSize: 10,
+  padding: "0 6px",
+  fontSize: 9.5,
   fontWeight: 700,
   lineHeight: 1,
 };
 
 const footerStack = {
   display: "grid",
-  gap: 8,
+  gap: 10,
   paddingTop: 10,
-  marginTop: 2,
+  marginTop: 4,
 };
 
 const utilityList = {
   display: "grid",
-  gap: 6,
+  gap: 4,
 };
 
 const utilityItemButton = {
   width: "100%",
   display: "flex",
-  alignItems: "flex-start",
-  gap: 10,
-  padding: "9px 10px",
-  minHeight: 46,
-  borderRadius: 14,
+  alignItems: "center",
+  gap: 9,
+  padding: "7px 8px",
+  minHeight: 42,
+  borderRadius: 12,
   textDecoration: "none",
   transition: "background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease",
 };
 
 const utilityIconShell = {
-  width: 30,
-  height: 30,
+  width: 28,
+  height: 28,
   display: "grid",
   placeItems: "center",
   borderRadius: 10,
@@ -1530,6 +1511,7 @@ const utilityItemLabel = {
 };
 
 const utilityItemMeta = {
+  display: "none",
   fontSize: 10.5,
   lineHeight: 1.28,
 };

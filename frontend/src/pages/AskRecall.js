@@ -121,6 +121,7 @@ function toThreadEntry(result) {
     confidence: Number(result.confidence || 0),
     confidenceBand: result.confidenceBand || getConfidenceLabel(result.confidence || 0).toLowerCase(),
     responseMode: result.responseMode || 'answer',
+    assistantMode: result.assistantMode || 'answer',
     riskStatus: result.riskStatus || 'unknown',
     evidenceCount: Number(result.evidenceCount || 0),
     coverageScore: Number(result.coverageScore || 0),
@@ -555,6 +556,30 @@ function buildAgentStatus(result) {
     };
   }
 
+  if (responseMode === 'task_priority') {
+    return {
+      tone: 'success',
+      badge: 'Task ranking',
+      threadLabel: 'Prioritized work',
+      headline: 'Ask Recall ranked your current tasks',
+      summary: `This answer ranked your assigned open tasks using priority, due date pressure, and current status.`,
+      requestState: 'success',
+      requestMessage: 'Ask Recall prioritized your assigned tasks.',
+    };
+  }
+
+  if (responseMode === 'issue_priority') {
+    return {
+      tone: 'success',
+      badge: 'Issue ranking',
+      threadLabel: 'Prioritized issues',
+      headline: 'Ask Recall ranked project issues',
+      summary: 'This answer ranked project issues using priority, due date pressure, owner gaps, and stale in-flight work.',
+      requestState: 'success',
+      requestMessage: 'Ask Recall prioritized the project issue queue.',
+    };
+  }
+
   return {
     tone: 'warn',
     badge: 'Grounded mode',
@@ -658,17 +683,60 @@ export default function AskRecall() {
   const [executing, setExecuting] = useState(false);
   const [requestState, setRequestState] = useState('idle');
   const [requestMessage, setRequestMessage] = useState('');
+  const [assistantActionState, setAssistantActionState] = useState({ busy: '', items: [] });
+  const [assistantMode, setAssistantMode] = useState('answer');
 
-  const suggestedQuestions = [
-    'Where is execution risk highest this week?',
-    'What decisions are blocking delivery?',
-    'Which high-priority tasks should we reassign now?',
-    'What should leadership resolve in the next 24 hours?',
-    'What active goals are related to onboarding?',
-    'Summarize recent decisions about API migration.',
-    'Tell me about the Talking Stage sprint in the Justice App project.',
-    'Which integrations are connected to this workspace?',
+  const assistantModes = [
+    {
+      id: 'answer',
+      label: 'Answer',
+      title: 'Ask a workspace question',
+      helper: 'I will ground the answer in records, cite context, and suggest follow-ups.',
+      placeholder: 'Example: What decisions are blocking the Justice App release?',
+      prompts: [
+        'Where is execution risk highest this week?',
+        'What decisions are blocking delivery?',
+        'What changed most recently across projects?',
+      ],
+    },
+    {
+      id: 'plan',
+      label: 'Plan',
+      title: 'Plan the next move',
+      helper: 'I will turn workspace signals into a practical sequence of next actions.',
+      placeholder: 'Example: Build a plan to unblock the current sprint.',
+      prompts: [
+        'Build a 24-hour plan to reduce delivery risk.',
+        'What should leadership resolve next?',
+        'Create a recovery plan for overdue work.',
+      ],
+    },
+    {
+      id: 'draft',
+      label: 'Draft',
+      title: 'Draft from context',
+      helper: 'I will help turn records into summaries, updates, decisions, or briefs.',
+      placeholder: 'Example: Draft a leadership update from recent project activity.',
+      prompts: [
+        'Draft a leadership update from recent decisions and blockers.',
+        'Summarize recent decisions about API migration.',
+        'Write a concise project status update.',
+      ],
+    },
+    {
+      id: 'route',
+      label: 'Navigate',
+      title: 'Find the right surface',
+      helper: 'I will route you to the right Knoledgr page or record.',
+      placeholder: 'Example: Take me to service desk requests that need attention.',
+      prompts: [
+        'Open the service desk queue.',
+        'Show me team health.',
+        'Where do I manage dashboards?',
+      ],
+    },
   ];
+  const activeAssistantMode = assistantModes.find((mode) => mode.id === assistantMode) || assistantModes[0];
 
   const mapResponseToViewModel = (payload) => {
     const howTo = getContextualHowTo(payload?.query);
@@ -721,6 +789,7 @@ export default function AskRecall() {
         payload.confidence_band || getConfidenceLabel(payload.confidence || 0).toLowerCase(),
       responseMode:
         howTo && payload?.response_mode === 'navigation' ? 'guidance' : (payload.response_mode || 'diagnosis'),
+      assistantMode: payload.assistant_mode || 'answer',
       evidenceCount: payload.evidence_count ?? 0,
       sourceTypes: payload.source_types || [],
       freshnessDays: payload.freshness_days ?? null,
@@ -802,6 +871,7 @@ export default function AskRecall() {
       confidence: total > 0 ? Math.min(90, 62 + recCount * 4) : 28,
       confidenceBand: getConfidenceLabel(total > 0 ? Math.min(90, 62 + recCount * 4) : 28).toLowerCase(),
       responseMode: total > 0 ? 'answer' : 'needs_evidence',
+      assistantMode,
       evidenceCount: total,
       sourceTypes: [
         ...(conversations.length > 0 ? ['conversation'] : []),
@@ -899,12 +969,14 @@ export default function AskRecall() {
     };
   };
 
-  const queryCopilot = async ({ execute = false, confirmExecute = false, question = query } = {}) => {
+  const queryCopilot = async ({ execute = false, confirmExecute = false, question = query, mode = assistantMode } = {}) => {
     const activeQuestion = String(question || '').trim();
+    const activeMode = mode || assistantMode;
     try {
       const contextualHowTo = getContextualHowTo(activeQuestion);
       const response = await api.post('/api/knowledge/ai/copilot/', {
         query: activeQuestion,
+        assistant_mode: activeMode,
         thread_context: buildThreadContextPayload(threadEntries),
         execute,
         confirm_execute: execute ? confirmExecute : false,
@@ -935,19 +1007,24 @@ export default function AskRecall() {
     }
   };
 
-  const runAnalysis = async (question) => {
+  const runAnalysis = async (question, options = {}) => {
     const activeQuestion = String(question || '').trim();
     if (!activeQuestion || loading || executing) return;
+    const activeMode = options.mode || assistantMode;
 
     setQuery(activeQuestion);
+    if (activeMode !== assistantMode) {
+      setAssistantMode(activeMode);
+    }
     setLoading(true);
     setRequestState('loading');
     setRequestMessage('Working through your workspace...');
 
     try {
-      const data = await queryCopilot({ execute: false, question: activeQuestion });
+      const data = await queryCopilot({ execute: false, question: activeQuestion, mode: activeMode });
       const agentStatus = buildAgentStatus(data);
       setResults(data);
+      setAssistantActionState({ busy: '', items: [] });
       rememberThreadEntry(toThreadEntry(data));
       setRequestState(agentStatus.requestState);
       setRequestMessage(agentStatus.requestMessage);
@@ -1033,6 +1110,7 @@ export default function AskRecall() {
       const data = await queryCopilot({ execute: true, confirmExecute: true });
       const agentStatus = buildAgentStatus(data);
       setResults(data);
+      setAssistantActionState({ busy: '', items: [] });
       rememberThreadEntry(toThreadEntry(data));
       setRequestState(agentStatus.requestState);
       setRequestMessage(
@@ -1049,6 +1127,40 @@ export default function AskRecall() {
       setRequestMessage(detail);
     } finally {
       setExecuting(false);
+    }
+  };
+
+  const handleAssistantAction = async (action) => {
+    if (!results || assistantActionState.busy) return;
+
+    setAssistantActionState((current) => ({ ...current, busy: action }));
+    setRequestState('loading');
+    setRequestMessage(action === 'create_tasks' ? 'Creating tasks from the assistant plan...' : 'Saving the draft as a document...');
+
+    try {
+      const response = await api.post('/api/knowledge/ai/copilot/actions/', {
+        action,
+        assistant_mode: results.assistantMode || assistantMode,
+        query: results.question || query,
+        answer: results.answer || '',
+        next_actions: results.nextActions || [],
+      });
+      const createdItems = response.data?.created_items || [];
+      setAssistantActionState({ busy: '', items: createdItems });
+      setRequestState('success');
+      setRequestMessage(
+        action === 'create_tasks'
+          ? `Created ${createdItems.length} task${createdItems.length === 1 ? '' : 's'} from this plan.`
+          : 'Saved this draft as a Knoledgr document.'
+      );
+    } catch (error) {
+      const detail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.error ||
+        'Unable to create the assistant artifact right now.';
+      setAssistantActionState((current) => ({ ...current, busy: '' }));
+      setRequestState('error');
+      setRequestMessage(detail);
     }
   };
 
@@ -1131,6 +1243,23 @@ export default function AskRecall() {
     !lowEvidence &&
     !isNavigationIntent;
   const canRunAutonomousFixes = hasAutonomousPlan && canManageAutonomousFixes;
+  const canCreatePlanTasks = hasAutonomousPlan && !loading && !executing && !assistantActionState.busy;
+  const canSaveDraftDocument =
+    hasCurrentResults &&
+    !lowEvidence &&
+    !isNavigationIntent &&
+    (results?.assistantMode === 'draft' || results?.responseMode === 'draft') &&
+    !loading &&
+    !executing &&
+    !assistantActionState.busy;
+  const canSavePlanDocument =
+    hasCurrentResults &&
+    !lowEvidence &&
+    !isNavigationIntent &&
+    (results?.assistantMode === 'plan' || results?.responseMode === 'diagnosis' || results?.responseMode === 'task_priority' || results?.responseMode === 'issue_priority') &&
+    !loading &&
+    !executing &&
+    !assistantActionState.busy;
   const canSubmit = !!query.trim() && !loading && !executing;
   const visibleThreadEntries = threadEntries.slice(-4);
   const agentStatus = results ? buildAgentStatus(results) : null;
@@ -1152,7 +1281,7 @@ export default function AskRecall() {
       ? 'Ask Recall can see operating signals, but it still needs more linked workspace evidence before it can rank the best move confidently.'
         : 'Ask Recall needs a clearer workspace handle here. Mention a project, sprint, issue, decision, document, or teammate and it will pull the newest linked context.'
     : '';
-  const starterPrompts = suggestedQuestions.slice(0, 6);
+  const starterPrompts = activeAssistantMode.prompts;
 
   const quickToolLinks =
     results?.toolLinks?.length
@@ -1171,9 +1300,9 @@ export default function AskRecall() {
       <WorkspaceHero
         palette={palette}
         darkMode={darkMode}
-        eyebrow="Workspace Agent"
+        eyebrow="AI Assistant"
         title="Ask Recall"
-        description="Knoledgr agent for grounded answers, routing, and safe next moves across your workspace."
+        description="A workspace assistant that answers, plans, drafts, routes, and helps turn Knoledgr context into next moves."
         actions={
           <button
             type="button"
@@ -1197,13 +1326,13 @@ export default function AskRecall() {
             <WorkspacePanel
               palette={palette}
               eyebrow="Assistant Thread"
-              title={results ? (isConversationMode ? 'Start from the workspace' : 'Keep working in one thread') : 'Ask a workspace question'}
+              title={results ? (isConversationMode ? 'Start from the workspace' : 'Keep working in one thread') : activeAssistantMode.title}
               description={
               results
                 ? isConversationMode
                   ? 'Ask about a specific project, sprint, decision, document, or teammate and Ask Recall will pull it into the thread.'
                   : 'Ask a follow-up, open the linked record, or run the next safe move from here.'
-                : 'The strongest answers come from naming the exact project, sprint, decision, document, or teammate.'
+                : activeAssistantMode.helper
             }
             action={
               <span style={pillStyle(palette, loading ? 'info' : hasCurrentResults ? 'success' : 'default')}>
@@ -1213,24 +1342,36 @@ export default function AskRecall() {
             >
               <div style={noteStyle(palette, agentStatus ? agentStatus.tone : 'info')}>
                 <strong style={{ display: 'block', marginBottom: 4, fontSize: 12, color: palette.text }}>
-                  {agentStatus ? agentStatus.headline : 'Ask Recall runs in two layers'}
+                  {agentStatus ? agentStatus.headline : 'Ask Recall is ready to assist'}
                 </strong>
                 <span>
                   {agentStatus
                     ? agentStatus.summary
-                    : 'Ask Recall handles grounded synthesis when the workspace evidence is strong enough. It also uses routing and evidence-first rescue modes so it can still help when the prompt is vague or the primary copilot path is unavailable.'}
+                    : 'Ask a question, request a plan, draft an update, or ask where to go. I will use workspace evidence when it exists and guide you to the right surface when it does not.'}
                 </span>
               </div>
 
               <div style={consoleSurfaceStyle(palette, darkMode)}>
                 <div style={{ display: 'grid', gap: 4 }}>
                 <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: palette.muted }}>
-                  Compose
+                  Assistant Mode
                 </span>
-                <strong style={{ fontSize: 14, color: palette.text }}>What should Knoledgr figure out?</strong>
+                <strong style={{ fontSize: 14, color: palette.text }}>{activeAssistantMode.title}</strong>
                 <span style={{ fontSize: 12, color: palette.muted, lineHeight: 1.6 }}>
-                  Use natural language and name the thing that should exist in the workspace.
+                  {activeAssistantMode.helper}
                 </span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                  {assistantModes.map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => setAssistantMode(mode.id)}
+                      style={assistantModeButtonStyle(palette, assistantMode === mode.id)}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <form onSubmit={handleSearch} style={{ display: 'grid', gap: 12 }}>
@@ -1249,7 +1390,7 @@ export default function AskRecall() {
                       if (canSubmit) e.currentTarget.form?.requestSubmit();
                     }
                   }}
-                  placeholder="Example: What decisions are blocking the Justice App release?"
+                  placeholder={activeAssistantMode.placeholder}
                   rows={5}
                   style={{
                     ...inputStyle(palette),
@@ -1276,6 +1417,36 @@ export default function AskRecall() {
                         style={buttonGhost(palette, executing || loading || !canRunAutonomousFixes)}
                       >
                         {executing ? 'Executing...' : 'Run fixes'}
+                      </button>
+                    ) : null}
+                    {hasAutonomousPlan ? (
+                      <button
+                        type="button"
+                        onClick={() => handleAssistantAction('create_tasks')}
+                        disabled={!canCreatePlanTasks}
+                        style={buttonGhost(palette, !canCreatePlanTasks)}
+                      >
+                        {assistantActionState.busy === 'create_tasks' ? 'Creating tasks...' : 'Create tasks'}
+                      </button>
+                    ) : null}
+                    {canSaveDraftDocument ? (
+                      <button
+                        type="button"
+                        onClick={() => handleAssistantAction('create_draft')}
+                        disabled={!canSaveDraftDocument}
+                        style={buttonGhost(palette, !canSaveDraftDocument)}
+                      >
+                        {assistantActionState.busy === 'create_draft' ? 'Saving draft...' : 'Save as document'}
+                      </button>
+                    ) : null}
+                    {canSavePlanDocument ? (
+                      <button
+                        type="button"
+                        onClick={() => handleAssistantAction('create_plan_document')}
+                        disabled={!canSavePlanDocument}
+                        style={buttonGhost(palette, !canSavePlanDocument)}
+                      >
+                        {assistantActionState.busy === 'create_plan_document' ? 'Saving memo...' : 'Save plan memo'}
                       </button>
                     ) : null}
                   </div>
@@ -1453,6 +1624,57 @@ export default function AskRecall() {
           </WorkspacePanel>
         </div>
 
+        <div style={laneStyle('0 1 320px')}>
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Assistant Skills"
+            title="What I can help with"
+            description="Use Ask Recall like a teammate who knows the workspace, not just a search box."
+          >
+            <div style={{ display: 'grid', gap: 8 }}>
+              {assistantModes.map((mode) => (
+                <button
+                  key={`skill-${mode.id}`}
+                  type="button"
+                  onClick={() => {
+                    setAssistantMode(mode.id);
+                    setQuery(mode.prompts[0]);
+                  }}
+                  style={assistantSkillCardStyle(palette, assistantMode === mode.id)}
+                >
+                  <strong style={{ color: palette.text, fontSize: 13 }}>{mode.label}</strong>
+                  <span style={{ color: palette.muted, fontSize: 12, lineHeight: 1.5 }}>{mode.helper}</span>
+                </button>
+              ))}
+            </div>
+          </WorkspacePanel>
+
+          <WorkspacePanel
+            palette={palette}
+            eyebrow="Fast Actions"
+            title="Ask me to do this"
+            description="These prompts turn the assistant toward execution."
+          >
+            <div style={{ display: 'grid', gap: 8 }}>
+              {[
+                { label: 'Prioritize my next three tasks.', mode: 'plan' },
+                { label: 'Draft a status update for leadership.', mode: 'draft' },
+                { label: 'Find stale decisions that need review.', mode: 'answer' },
+                { label: 'What should we automate next?', mode: 'plan' },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => runAnalysis(item.label, { mode: item.mode })}
+                  style={buttonGhost(palette)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </WorkspacePanel>
+        </div>
+
       </section>
 
       {results && !loading ? (
@@ -1582,6 +1804,27 @@ export default function AskRecall() {
             </WorkspacePanel>
           ) : null}
 
+          {assistantActionState.items.length > 0 ? (
+            <WorkspacePanel
+              palette={palette}
+              eyebrow="Created"
+              title="Assistant artifacts"
+              description="Ask Recall created these workspace items from the current answer."
+            >
+              <div style={{ display: 'grid', gap: 8 }}>
+                {assistantActionState.items.map((item) => (
+                  <a
+                    key={`${item.type}-${item.id}`}
+                    href={item.url}
+                    style={{ ...buttonGhost(palette), textDecoration: 'none', justifyContent: 'flex-start' }}
+                  >
+                    {titleCase(item.type)}: {item.title}
+                  </a>
+                ))}
+              </div>
+            </WorkspacePanel>
+          ) : null}
+
           {results.sources.length > 0 ? (
             <WorkspacePanel
               palette={palette}
@@ -1649,6 +1892,32 @@ function inputStyle(palette) {
     padding: '12px 14px',
     fontSize: 14,
     outline: 'none',
+  };
+}
+
+function assistantModeButtonStyle(palette, active = false) {
+  return {
+    border: `1px solid ${active ? palette.info : palette.border}`,
+    borderRadius: 999,
+    background: active ? palette.accentSoft : palette.cardAlt,
+    color: active ? palette.info : palette.text,
+    padding: '7px 11px',
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: 'pointer',
+  };
+}
+
+function assistantSkillCardStyle(palette, active = false) {
+  return {
+    border: `1px solid ${active ? palette.info : palette.border}`,
+    borderRadius: 16,
+    background: active ? palette.accentSoft : palette.cardAlt,
+    padding: 12,
+    textAlign: 'left',
+    cursor: 'pointer',
+    display: 'grid',
+    gap: 5,
   };
 }
 

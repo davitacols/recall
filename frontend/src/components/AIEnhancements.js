@@ -1,8 +1,18 @@
 import React, { useMemo, useState } from "react";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { useToast } from "./Toast";
-import { ArrowPathIcon, FaceSmileIcon, LightBulbIcon, SparklesIcon, TagIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { aiButtonPrimary, aiButtonSecondary, aiCard, aiInput, getAIPalette } from "./aiUi";
+import {
+  ArrowPathIcon,
+  ChatBubbleLeftRightIcon,
+  ClipboardDocumentListIcon,
+  FaceSmileIcon,
+  LightBulbIcon,
+  PencilSquareIcon,
+  SparklesIcon,
+  TagIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { aiButtonPrimary, aiButtonSecondary, aiCard, getAIPalette } from "./aiUi";
 
 export function AIEnhancementButton({ content, title, type = "conversation", onResult, documentId }) {
   const { darkMode } = useTheme();
@@ -47,7 +57,7 @@ export function AIEnhancementButton({ content, title, type = "conversation", onR
       const data = await res.json();
 
       if (res.ok) {
-        onResult?.(feature, data);
+        onResult?.(feature, { ...data, feature });
         success(`AI ${feature} completed`);
       } else {
         error(data.error || "AI processing failed");
@@ -63,17 +73,17 @@ export function AIEnhancementButton({ content, title, type = "conversation", onR
     <div style={{ position: "relative" }}>
       <button onClick={() => setShowMenu((prev) => !prev)} disabled={loading} style={{ ...aiButtonPrimary(), opacity: loading ? 0.7 : 1 }}>
         {loading ? <ArrowPathIcon style={{ width: 14, height: 14 }} className="animate-spin" /> : <SparklesIcon style={{ width: 14, height: 14 }} />}
-        AI
+        AI Actions
       </button>
 
       {showMenu && (
         <div style={{ ...aiCard(palette), position: "absolute", top: "calc(100% + 6px)", right: 0, width: 210, zIndex: 30, padding: 6 }}>
-          <MenuAction label="Auto-Summarize" icon={SparklesIcon} onClick={() => processAI("summarize")} />
+          <MenuAction label="Draft Summary" icon={PencilSquareIcon} onClick={() => processAI("summarize")} />
           <MenuAction label="Generate Tags" icon={TagIcon} onClick={() => processAI("tags")} />
-          <MenuAction label="Sentiment Analysis" icon={FaceSmileIcon} onClick={() => processAI("sentiment")} />
-          <MenuAction label="Smart Suggestions" icon={LightBulbIcon} onClick={() => processAI("suggestions")} />
+          <MenuAction label="Read Tone" icon={FaceSmileIcon} onClick={() => processAI("sentiment")} />
+          <MenuAction label="Suggest Next Moves" icon={LightBulbIcon} onClick={() => processAI("suggestions")} />
           <hr style={{ border: 0, borderTop: `1px solid ${palette.border}`, margin: "6px 0" }} />
-          <MenuAction label="Process All" icon={SparklesIcon} onClick={() => processAI("batch")} strong />
+          <MenuAction label="Run Full Pass" icon={SparklesIcon} onClick={() => processAI("batch")} strong />
         </div>
       )}
     </div>
@@ -82,13 +92,20 @@ export function AIEnhancementButton({ content, title, type = "conversation", onR
 
 function MenuAction({ label, icon: Icon, onClick, strong = false }) {
   return (
-    <button onClick={onClick} style={{ width: "100%", border: "none", background: "transparent", borderRadius: 8, padding: "8px 10px", display: "flex", gap: 8, alignItems: "center", cursor: "pointer", color: "#d9cdbf", fontWeight: strong ? 700 : 500, fontSize: 12 }}>
+    <button onClick={onClick} style={{ width: "100%", border: "none", background: "transparent", borderRadius: 8, padding: "8px 10px", display: "flex", gap: 8, alignItems: "center", cursor: "pointer", color: "var(--ui-text)", fontWeight: strong ? 700 : 500, fontSize: 12 }}>
       <Icon style={{ width: 14, height: 14 }} /> {label}
     </button>
   );
 }
 
-export function AIResultsPanel({ results, onClose }) {
+export function AIResultsPanel({
+  results,
+  onClose,
+  onApplySummary,
+  onApplyTags,
+  onAppendActions,
+  askHref,
+}) {
   const { darkMode } = useTheme();
   const palette = useMemo(() => getAIPalette(darkMode), [darkMode]);
 
@@ -121,11 +138,16 @@ export function AIResultsPanel({ results, onClose }) {
 
   if (!results) return null;
 
+  const hasSummary = Boolean(results.summary);
+  const hasTags = Array.isArray(results.tags) && results.tags.length > 0;
+  const hasActions = Array.isArray(results.actions) && results.actions.length > 0;
+  const canApply = hasSummary || hasTags || hasActions || askHref;
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
       <div style={{ ...aiCard(palette), width: "min(780px,100%)", maxHeight: "80vh", overflow: "hidden", transform: `translate(${position.x}px, ${position.y}px)` }}>
         <div onMouseDown={handleMouseDown} style={{ padding: 14, borderBottom: `1px solid ${palette.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: isDragging ? "grabbing" : "grab" }}>
-          <h2 style={{ margin: 0, fontSize: 18, color: palette.text, display: "inline-flex", alignItems: "center", gap: 8 }}><SparklesIcon style={{ width: 18, height: 18 }} /> AI Insights</h2>
+          <h2 style={{ margin: 0, fontSize: 18, color: palette.text, display: "inline-flex", alignItems: "center", gap: 8 }}><SparklesIcon style={{ width: 18, height: 18 }} /> AI Workspace Actions</h2>
           <button onClick={onClose} style={{ ...aiButtonSecondary(palette), padding: "6px 8px" }}><XMarkIcon style={{ width: 14, height: 14 }} /></button>
         </div>
 
@@ -135,6 +157,33 @@ export function AIResultsPanel({ results, onClose }) {
           {results.sentiment && <Block title="Sentiment" body={<Sentiment results={results} />} />}
           {results.suggestions?.length > 0 && <Block title="Suggestions" body={<List items={results.suggestions} />} />}
           {results.actions?.length > 0 && <Block title="Actions" body={<List items={results.actions} checked />} />}
+          {canApply ? (
+            <section style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 10 }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 13, color: palette.text }}>Use This</h3>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {hasSummary && onApplySummary ? (
+                  <button onClick={() => onApplySummary(results.summary)} style={aiButtonSecondary(palette)}>
+                    <PencilSquareIcon style={{ width: 14, height: 14 }} /> Use summary
+                  </button>
+                ) : null}
+                {hasTags && onApplyTags ? (
+                  <button onClick={() => onApplyTags(results.tags)} style={aiButtonSecondary(palette)}>
+                    <TagIcon style={{ width: 14, height: 14 }} /> Apply tags
+                  </button>
+                ) : null}
+                {hasActions && onAppendActions ? (
+                  <button onClick={() => onAppendActions(results.actions)} style={aiButtonSecondary(palette)}>
+                    <ClipboardDocumentListIcon style={{ width: 14, height: 14 }} /> Append actions
+                  </button>
+                ) : null}
+                {askHref ? (
+                  <a href={askHref} style={{ ...aiButtonSecondary(palette), textDecoration: "none" }}>
+                    <ChatBubbleLeftRightIcon style={{ width: 14, height: 14 }} /> Continue in Ask Recall
+                  </a>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
         </div>
 
         <div style={{ padding: 12, borderTop: `1px solid ${palette.border}`, display: "flex", justifyContent: "flex-end" }}>
@@ -160,7 +209,7 @@ function TagList({ tags }) {
 
 function Sentiment({ results }) {
   return (
-    <div style={{ display: "grid", gap: 4, fontSize: 12, color: "#d9cdbf" }}>
+    <div style={{ display: "grid", gap: 4, fontSize: 12, color: "var(--ui-text)" }}>
       <p style={{ margin: 0 }}><b>Sentiment:</b> {results.sentiment}</p>
       {results.confidence !== undefined && <p style={{ margin: 0 }}><b>Confidence:</b> {(results.confidence * 100).toFixed(0)}%</p>}
       {results.tone && <p style={{ margin: 0 }}><b>Tone:</b> {results.tone}</p>}
@@ -173,8 +222,8 @@ function List({ items, checked = false }) {
   return (
     <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 6 }}>
       {items.map((item, i) => (
-        <li key={i} style={{ display: "grid", gridTemplateColumns: "12px 1fr", gap: 6, fontSize: 12, color: "#d9cdbf" }}>
-          <span style={{ color: checked ? "#6ee7b7" : "var(--app-warning)" }}>{checked ? "?" : "•"}</span>
+        <li key={i} style={{ display: "grid", gridTemplateColumns: "12px 1fr", gap: 6, fontSize: 12, color: "var(--ui-text)" }}>
+          <span style={{ color: checked ? "var(--ui-accent)" : "var(--app-warning)" }}>-</span>
           <span>{item}</span>
         </li>
       ))}
@@ -182,7 +231,7 @@ function List({ items, checked = false }) {
   );
 }
 
-const p = { margin: 0, fontSize: 13, color: "#d9cdbf", lineHeight: 1.5 };
+const p = { margin: 0, fontSize: 13, color: "var(--ui-text)", lineHeight: 1.5 };
 
 export function QuickAIButton({ itemType, itemId, onComplete }) {
   const { darkMode } = useTheme();

@@ -2,14 +2,16 @@ from unittest.mock import Mock, patch
 
 from django.test import TestCase
 from django.utils import timezone
+from datetime import timedelta
 from rest_framework.test import APIClient
 
-from apps.agile.models import Project
+from apps.agile.models import Board, Column, Issue, Project
 from apps.agile.models import Release, Sprint
 from apps.organizations.auditlog_models import AuditLog
 from apps.organizations.models import Organization, User
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
+from apps.business.models import Task
 from apps.business.document_models import Document
 
 
@@ -74,6 +76,260 @@ class AGICopilotContractTests(TestCase):
         self.assertIsNotNone(log)
         self.assertEqual((log.details or {}).get("query"), "where is risk?")
         self.assertTrue(bool((log.details or {}).get("answer_preview")))
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    def test_route_assistant_mode_returns_navigation_links(self, build_plan, _rate_limit):
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 82.0,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "dashboards", "assistant_mode": "route"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("assistant_mode"), "route")
+        self.assertEqual(response.data.get("response_mode"), "navigation")
+        self.assertTrue(response.data.get("tool_links"))
+        self.assertIn("Open the most relevant workspace surface.", response.data.get("follow_up_questions") or [])
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    @patch("apps.knowledge.ai_intelligence.get_search_engine")
+    @patch("apps.knowledge.ai_intelligence._generate_llm_copilot_answer", return_value=None)
+    def test_plan_assistant_mode_uses_diagnosis_interventions(self, _llm_answer, get_search_engine, build_plan, _rate_limit):
+        search_engine = Mock()
+        search_engine.search.return_value = {
+            "conversations": [],
+            "decisions": [],
+            "total": 0,
+        }
+        get_search_engine.return_value = search_engine
+
+        build_plan.return_value = {
+            "status": "watch",
+            "readiness_score": 68.0,
+            "interventions": [
+                {
+                    "id": "decision:7",
+                    "kind": "decision_resolution",
+                    "title": "Resolve decision: Pricing launch",
+                    "impact": "high",
+                    "confidence": 81,
+                    "reason": "Decision is blocking readiness",
+                    "url": "/decisions",
+                }
+            ],
+            "learning_model": {},
+            "counts": {"unresolved_decisions": 1, "active_blockers": 0, "high_priority_unassigned_tasks": 0},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "summarize launch readiness", "assistant_mode": "plan"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("assistant_mode"), "plan")
+        self.assertIn("Assistant plan", response.data.get("answer", ""))
+        self.assertTrue(response.data.get("recommended_interventions"))
+        self.assertIn("Turn the strongest step into tasks.", response.data.get("follow_up_questions") or [])
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    def test_copilot_action_creates_tasks_from_plan(self, _rate_limit):
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/actions/",
+            {
+                "action": "create_tasks",
+                "assistant_mode": "plan",
+                "query": "Build a recovery plan",
+                "answer": "Assistant plan\n- Step 1: Resolve the launch decision.",
+                "next_actions": [
+                    {
+                        "title": "Resolve launch decision",
+                        "impact": "high",
+                        "confidence": 83,
+                        "reason": "Decision is blocking launch readiness",
+                        "href": "/decisions",
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data.get("created_count"), 1)
+        self.assertIn("?task=", response.data["created_items"][0]["url"])
+        task = Task.objects.get(organization=self.org, title="Resolve launch decision")
+        self.assertEqual(task.priority, "high")
+        self.assertEqual(task.assigned_to, self.user)
+        self.assertIn("Build a recovery plan", task.description)
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    def test_copilot_action_creates_draft_document(self, _rate_limit):
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/actions/",
+            {
+                "action": "create_draft",
+                "assistant_mode": "draft",
+                "query": "Draft leadership update",
+                "answer": "Draft\n\nLaunch is on track with one open decision.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        document = Document.objects.get(organization=self.org, title__startswith="Ask Recall draft")
+        self.assertEqual(document.document_type, "report")
+        self.assertIn("Launch is on track", document.content)
+        self.assertIn("ai-draft", document.tags)
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    def test_copilot_action_creates_plan_document(self, _rate_limit):
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/actions/",
+            {
+                "action": "create_plan_document",
+                "assistant_mode": "plan",
+                "query": "Plan launch recovery",
+                "answer": "Assistant plan\n- Step 1: Resolve the launch decision.",
+                "next_actions": [{"title": "Resolve launch decision", "reason": "Decision is blocking launch"}],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        document = Document.objects.get(organization=self.org, title__startswith="Ask Recall execution memo")
+        self.assertIn("Plan actions", document.content)
+        self.assertIn("execution-plan", document.tags)
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    def test_copilot_prioritizes_current_user_tasks(self, build_plan, _rate_limit):
+        other_user = User.objects.create_user(
+            username="other_owner",
+            email="other@example.com",
+            password="pass1234",
+            organization=self.org,
+            role="member",
+        )
+        today = timezone.localdate()
+        Task.objects.create(
+            organization=self.org,
+            title="Low value future task",
+            priority="low",
+            status="todo",
+            assigned_to=self.user,
+            due_date=today + timedelta(days=20),
+        )
+        urgent = Task.objects.create(
+            organization=self.org,
+            title="Urgent launch handoff",
+            priority="high",
+            status="in_progress",
+            assigned_to=self.user,
+            due_date=today,
+        )
+        Task.objects.create(
+            organization=self.org,
+            title="Other person's task",
+            priority="high",
+            status="in_progress",
+            assigned_to=other_user,
+            due_date=today,
+        )
+        Task.objects.create(
+            organization=self.org,
+            title="Already done",
+            priority="high",
+            status="done",
+            assigned_to=self.user,
+            due_date=today,
+        )
+        build_plan.return_value = {
+            "status": "stable",
+            "readiness_score": 80,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "Prioritize my next three tasks", "assistant_mode": "plan"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "task_priority")
+        self.assertIn("Urgent launch handoff", response.data.get("answer", ""))
+        self.assertNotIn("Other person's task", response.data.get("answer", ""))
+        self.assertNotIn("Already done", response.data.get("answer", ""))
+        self.assertEqual((response.data.get("sources") or {}).get("tasks")[0]["id"], urgent.id)
+        self.assertEqual(response.data.get("recommended_interventions"), [])
+
+    @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
+    @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")
+    def test_copilot_prioritizes_project_issues(self, build_plan, _rate_limit):
+        project = Project.objects.create(
+            organization=self.org,
+            name="Atlas Delivery",
+            key="ATLS",
+            lead=self.user,
+        )
+        board = Board.objects.create(organization=self.org, project=project, name="Atlas Board")
+        column = Column.objects.create(board=board, name="To Do", order=0)
+        urgent = Issue.objects.create(
+            organization=self.org,
+            project=project,
+            board=board,
+            column=column,
+            key="ATLS-1",
+            title="Restore release pipeline",
+            reporter=self.user,
+            priority="highest",
+            status="in_progress",
+            due_date=timezone.localdate(),
+        )
+        Issue.objects.create(
+            organization=self.org,
+            project=project,
+            board=board,
+            column=column,
+            key="ATLS-2",
+            title="Already shipped",
+            reporter=self.user,
+            priority="highest",
+            status="done",
+            due_date=timezone.localdate(),
+        )
+        build_plan.return_value = {
+            "status": "watch",
+            "readiness_score": 70,
+            "interventions": [],
+            "learning_model": {},
+            "counts": {},
+        }
+
+        response = self.client.post(
+            "/api/knowledge/ai/copilot/",
+            {"query": "Prioritize issues in Atlas Delivery and build a sprint recovery plan", "assistant_mode": "plan"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("response_mode"), "issue_priority")
+        self.assertIn("Restore release pipeline", response.data.get("answer", ""))
+        self.assertNotIn("Already shipped", response.data.get("answer", ""))
+        self.assertEqual((response.data.get("sources") or {}).get("issues")[0]["id"], urgent.id)
 
     @patch("apps.knowledge.ai_intelligence.check_rate_limit", return_value=True)
     @patch("apps.knowledge.ai_intelligence._build_chief_of_staff_plan")

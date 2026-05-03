@@ -5,6 +5,7 @@ from rest_framework import status
 from django.conf import settings
 from django.utils import timezone
 from .subscription_models import Plan, Subscription, Invoice, UsageLog
+from .paypal_service import get_checkout_support_by_plan as get_paypal_checkout_support_by_plan
 from .subscription_entitlements import (
     FEATURE_MIN_PLAN,
     PLAN_ORDER,
@@ -16,12 +17,37 @@ from .subscription_entitlements import (
 )
 
 
-def _checkout_support_by_plan():
+def _stripe_checkout_support_by_plan():
     return {
         'starter': bool(getattr(settings, 'STRIPE_STARTER_PRICE_ID', '')),
         'professional': bool(getattr(settings, 'STRIPE_PROFESSIONAL_PRICE_ID', '')),
         'enterprise': bool(getattr(settings, 'STRIPE_ENTERPRISE_PRICE_ID', '')),
     }
+
+
+def _combined_checkout_support_by_plan():
+    stripe_support = _stripe_checkout_support_by_plan()
+    paypal_support = get_paypal_checkout_support_by_plan()
+    return {
+        plan_name: bool(stripe_support.get(plan_name) or paypal_support.get(plan_name))
+        for plan_name in set(stripe_support) | set(paypal_support)
+    }
+
+
+def _resolve_billing_provider(sub, stripe_support, paypal_support):
+    if sub.billing_provider == 'stripe' and (sub.stripe_customer_id or any(stripe_support.values())):
+        return 'stripe'
+    if sub.billing_provider == 'paypal' and (sub.paypal_subscription_id or any(paypal_support.values())):
+        return 'paypal'
+    if sub.stripe_customer_id:
+        return 'stripe'
+    if sub.paypal_subscription_id:
+        return 'paypal'
+    if any(paypal_support.values()):
+        return 'paypal'
+    if any(stripe_support.values()):
+        return 'stripe'
+    return 'manual'
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -29,7 +55,9 @@ def plans_list(request):
     ensure_default_plans()
     plans = list(Plan.objects.filter(is_active=True))
     plans.sort(key=lambda plan: PLAN_ORDER.get(plan.name, 999))
-    checkout_support = _checkout_support_by_plan()
+    stripe_support = _stripe_checkout_support_by_plan()
+    paypal_support = get_paypal_checkout_support_by_plan()
+    checkout_support = _combined_checkout_support_by_plan()
     data = [{
         'id': p.id,
         'name': p.name,
@@ -41,6 +69,10 @@ def plans_list(request):
         'features_included': [k for k, enabled in (p.features or {}).items() if enabled],
         'is_free': p.name == 'free',
         'checkout_supported': checkout_support.get(p.name, False),
+        'checkout_providers': {
+            'stripe': stripe_support.get(p.name, False),
+            'paypal': paypal_support.get(p.name, False),
+        },
     } for p in plans]
     return Response(data)
 
@@ -51,6 +83,9 @@ def subscription_detail(request):
         ensure_default_plans()
         sub = get_or_create_subscription(request.user.organization)
         seat_summary = get_subscription_seat_summary(sub)
+        stripe_support = _stripe_checkout_support_by_plan()
+        paypal_support = get_paypal_checkout_support_by_plan()
+        provider = _resolve_billing_provider(sub, stripe_support, paypal_support)
         sub.user_count = seat_summary['active_users']
         sub.save(update_fields=['user_count', 'updated_at'])
         return Response({
@@ -76,10 +111,24 @@ def subscription_detail(request):
             'can_upload': sub.can_upload,
             'seat_summary': seat_summary,
             'billing': {
-                'provider': 'stripe',
-                'checkout_supported': _checkout_support_by_plan(),
-                'portal_enabled': bool(sub.stripe_customer_id),
-                'has_payment_profile': bool(sub.stripe_customer_id),
+                'provider': provider,
+                'checkout_supported': _combined_checkout_support_by_plan(),
+                'portal_enabled': provider == 'stripe' and bool(sub.stripe_customer_id),
+                'has_payment_profile': bool(sub.stripe_customer_id or sub.paypal_subscription_id),
+                'providers': {
+                    'stripe': {
+                        'checkout_supported': stripe_support,
+                        'enabled': any(stripe_support.values()),
+                        'portal_enabled': bool(sub.stripe_customer_id),
+                        'has_payment_profile': bool(sub.stripe_customer_id),
+                    },
+                    'paypal': {
+                        'checkout_supported': paypal_support,
+                        'enabled': any(paypal_support.values()),
+                        'portal_enabled': False,
+                        'has_payment_profile': bool(sub.paypal_subscription_id),
+                    },
+                },
             },
         })
     except Subscription.DoesNotExist:
@@ -100,6 +149,25 @@ def upgrade_plan(request):
         else:
             plan = Plan.objects.get(id=plan_id)
         sub = get_or_create_subscription(request.user.organization)
+        current_rank = PLAN_ORDER.get(sub.plan.name, 0)
+        target_rank = PLAN_ORDER.get(plan.name, 0)
+        provider = sub.billing_provider
+        if provider not in ['stripe', 'paypal']:
+            if sub.stripe_customer_id:
+                provider = 'stripe'
+            elif sub.paypal_subscription_id:
+                provider = 'paypal'
+        if target_rank <= current_rank and (sub.stripe_customer_id or sub.paypal_subscription_id):
+            if provider == 'stripe':
+                return Response(
+                    {'error': 'Use the billing portal to downgrade or cancel Stripe-managed plans.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if provider == 'paypal':
+                return Response(
+                    {'error': 'Manage PayPal subscription downgrades or cancellations in PayPal first, then refresh this workspace.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         sub.plan = plan
         if sub.status in ['expired', 'canceled', 'past_due']:
             sub.status = 'active'

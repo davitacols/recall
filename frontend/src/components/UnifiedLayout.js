@@ -11,11 +11,11 @@ import { formatWorkspaceName } from "./unifiedNavConfig";
 
 const SIDEBAR_STORAGE_KEY = "unifiedSidebarWidth";
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "unifiedSidebarCollapsed";
-const SIDEBAR_WIDTH_DEFAULT = 272;
-const SIDEBAR_WIDTH_COLLAPSED = 84;
-const SIDEBAR_WIDTH_MIN = 224;
-const SIDEBAR_WIDTH_MAX = 384;
-const SUBNAV_WIDTH = 248;
+const SIDEBAR_WIDTH_DEFAULT = 304;
+const SIDEBAR_WIDTH_COLLAPSED = 76;
+const SIDEBAR_WIDTH_MIN = 264;
+const SIDEBAR_WIDTH_MAX = 424;
+const SUBNAV_WIDTH = 272;
 const ASK_FAB_STORAGE_KEY = "askRecallFabPosV1";
 const ASK_FAB_WIDTH = 132;
 const ASK_FAB_HEIGHT = 44;
@@ -1076,7 +1076,7 @@ function getPageMeta(pathname) {
       prefix: "/ask",
       title: "Ask Recall",
       section: "Workspace AI",
-      description: "Query memory, execution, and team context from one connected copilot surface.",
+      description: "Ask, summarize, draft, and reason over team context from one grounded AI surface.",
     },
     {
       prefix: "/conversations",
@@ -1133,10 +1133,46 @@ function getPageMeta(pathname) {
       description: "Manage follow-through with enough context to keep execution grounded.",
     },
     {
+      prefix: "/business/journeys",
+      title: "Journeys",
+      section: "Business",
+      description: "Map workflows from signal to decision to delivered outcome.",
+    },
+    {
+      prefix: "/business/calendar",
+      title: "Calendar",
+      section: "Business",
+      description: "Find time, connect calendars, and slot real work into the week.",
+    },
+    {
+      prefix: "/business/team-health",
+      title: "Team Health",
+      section: "Business",
+      description: "Review load, sentiment, and burnout risk before execution slips.",
+    },
+    {
       prefix: "/business/documents",
       title: "Documents",
       section: "Memory",
       description: "Keep the source record close to the work so teams can trace what matters quickly.",
+    },
+    {
+      prefix: "/service-desk",
+      title: "Service Desk",
+      section: "Execution",
+      description: "Capture support, access, bug, incident, and change requests in one queue.",
+    },
+    {
+      prefix: "/analytics",
+      title: "Analytics",
+      section: "Workspace",
+      description: "Review workspace metrics, briefing signals, and recent activity.",
+    },
+    {
+      prefix: "/dashboards",
+      title: "Dashboards",
+      section: "Workspace",
+      description: "Create reusable dashboards for briefing, business, and timeline signals.",
     },
     {
       prefix: "/sprint",
@@ -1187,8 +1223,8 @@ function getPageMeta(pathname) {
   if (pathname === "/" || pathname === "/dashboard") {
     return {
       title: "Dashboard",
-      section: "Overview",
-      description: "Track context, execution, and recent decisions across the workspace at a glance.",
+      section: "AI Workspace",
+      description: "Track live context, execution, and grounded AI signals across the workspace.",
     };
   }
   return {

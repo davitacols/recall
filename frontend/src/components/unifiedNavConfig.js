@@ -8,12 +8,15 @@ import {
   DocumentCheckIcon,
   DocumentTextIcon,
   FlagIcon,
+  HeartIcon,
   HomeIcon,
   MagnifyingGlassIcon,
   RocketLaunchIcon,
   SparklesIcon,
   Squares2X2Icon,
+  TicketIcon,
   UserCircleIcon,
+  RectangleGroupIcon,
 } from "@heroicons/react/24/outline";
 
 export function getAppLaunchTarget(app) {
@@ -69,40 +72,40 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
     name: "Home",
     href: "/dashboard",
     icon: HomeIcon,
-    summary: "Dashboards, priorities, and the workspace pulse",
+    summary: "AI workspace, priorities, and live team context",
   };
 
   const askRecallItem = {
     name: "Ask Recall",
     href: "/ask",
     icon: SparklesIcon,
-    description: "Query workspace memory, decisions, and execution context with AI.",
-    summary: "Query memory, work, and decisions from one prompt.",
+    description: "Ask, summarize, draft, and reason over workspace memory with grounded AI.",
+    summary: "AI assistant for memory, work, and decisions.",
   };
 
   const workstreamGroupsBase = [
     {
       name: "Knowledge",
       icon: Squares2X2Icon,
-      summary: "Search, graph, and analytics for team memory",
+      summary: "The context engine behind grounded AI",
       items: [
         {
           name: "Search",
           href: "/knowledge",
           icon: MagnifyingGlassIcon,
-          description: "Look up decisions, documents, and captured context",
+          description: "Find the source context behind AI answers",
         },
         {
           name: "Graph",
           href: "/knowledge/graph",
           icon: CubeIcon,
-          description: "Trace relationships across people, work, and memory",
+          description: "Trace the context graph AI uses to reason",
         },
         {
           name: "Analytics",
           href: "/knowledge/analytics",
           icon: ChartBarIcon,
-          description: "Measure coverage, freshness, and knowledge flow",
+          description: "Measure AI context coverage, freshness, and flow",
         },
       ],
     },
@@ -153,6 +156,30 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
           href: "/business/tasks",
           icon: ClipboardDocumentListIcon,
           description: "Move day-to-day execution and ownership forward",
+        },
+        {
+          name: "Journeys",
+          href: "/business/journeys",
+          icon: Squares2X2Icon,
+          description: "Map work from signal to decision to delivered outcome",
+        },
+        {
+          name: "Calendar",
+          href: "/business/calendar",
+          icon: CalendarIcon,
+          description: "Find time, connect calendars, and slot work into the week",
+        },
+        {
+          name: "Team Health",
+          href: "/business/team-health",
+          icon: HeartIcon,
+          description: "Review load, sentiment, and burnout risk signals",
+        },
+        {
+          name: "Service Desk",
+          href: "/service-desk",
+          icon: TicketIcon,
+          description: "Capture support, access, bug, incident, and change requests",
         },
         {
           name: "Sprints",
@@ -230,7 +257,7 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
               return {
                 ...group,
                 items: group.items.filter((item) =>
-                  ["/projects", "/business/goals", "/business/tasks"].includes(item.href)
+                  ["/projects", "/business/goals", "/business/tasks", "/business/calendar", "/service-desk"].includes(item.href)
                 ),
               };
             }
@@ -286,6 +313,22 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
       icon: CubeIcon,
       description: "Connected tools, credentials, and service setup.",
     },
+    ...(user?.role === "admin"
+      ? [
+          {
+            name: "Analytics",
+            href: "/analytics",
+            icon: ChartBarIcon,
+            description: "Workspace metrics, briefing signals, and activity trends.",
+          },
+          {
+            name: "Dashboards",
+            href: "/dashboards",
+            icon: RectangleGroupIcon,
+            description: "Reusable dashboard views for operating reviews.",
+          },
+        ]
+      : []),
   ];
 
   const bottomNavItems = [
@@ -301,7 +344,7 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
       path: "/projects",
       icon: RocketLaunchIcon,
       label: "Execute",
-      match: ["/projects", "/business/goals", "/business/tasks", "/sprint-history", "/sprints", "/sprint"],
+      match: ["/projects", "/business/goals", "/business/tasks", "/business/journeys", "/business/calendar", "/business/team-health", "/service-desk", "/sprint-history", "/sprints", "/sprint"],
     },
   ];
 

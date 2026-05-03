@@ -77,14 +77,14 @@ function useForceLightMode() {
 }
 
 const showcaseFrames = [
-  { label: "Ask Recall", text: "Grounded answers from workspace history.", src: "/assets/trac10.png" },
-  { label: "Knowledge Graph", text: "Connected records across decisions, docs, and work.", src: "/assets/trac3.png" },
+  { label: "Ask Recall", text: "AI answers grounded in workspace history.", src: "/assets/trac10.png" },
+  { label: "Knowledge Graph", text: "The context engine behind grounded AI.", src: "/assets/trac3.png" },
 ];
 
 const showcaseNotes = [
-  "One entry flow for sign in, sign up, and workspace access.",
-  "Google, password, and Turnstile stay in the same calm surface.",
-  "Recovery and invite pages now follow the same public design system.",
+  "One entry flow for the team's AI workspace.",
+  "Google, password, and Turnstile keep access calm and secure.",
+  "Ask Recall, Decisions, and Knowledge Graph stay connected from the first session.",
 ];
 
 const showcaseOrbitFrames = [
@@ -337,7 +337,7 @@ function Login() {
         >
           <div className="auth-showcase-top">
             <button type="button" onClick={() => navigate("/")} className="auth-brand">
-              <BrandLogo tone="warm" size="lg" />
+              <BrandLogo tone="blueLight" size="lg" />
             </button>
             <Link to="/docs" className="auth-showcase-link">
               Documentation
@@ -345,10 +345,10 @@ function Login() {
           </div>
 
           <div className="auth-showcase-copy">
-            <p className="auth-kicker">Decision memory for teams</p>
-            <h1 className="auth-headline">Access the record without losing the thread.</h1>
+            <p className="auth-kicker">AI workspace for teams</p>
+            <h1 className="auth-headline">Access the assistant that knows the work.</h1>
             <p className="auth-copy">
-              Sign in, create a workspace, or join an invite from one cleaner entry point that keeps the product front and center.
+              Sign in, create a workspace, or join an invite to use AI grounded in your team's decisions, documents, and execution context.
             </p>
           </div>
 
@@ -419,8 +419,8 @@ function Login() {
               </h2>
               <p>
                 {isLogin
-                  ? "Continue where your team stopped, with the context trail still intact."
-                  : "Create an account, name the workspace, and start building the team's shared decision memory."}
+                  ? "Continue with an AI workspace that keeps the team's context trail intact."
+                  : "Create an account, name the workspace, and start building the team's AI-readable operating memory."}
               </p>
             </header>
 

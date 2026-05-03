@@ -268,6 +268,14 @@ STRIPE_STARTER_PRICE_ID = config('STRIPE_STARTER_PRICE_ID', default='')
 STRIPE_PROFESSIONAL_PRICE_ID = config('STRIPE_PROFESSIONAL_PRICE_ID', default='')
 STRIPE_ENTERPRISE_PRICE_ID = config('STRIPE_ENTERPRISE_PRICE_ID', default='')
 
+# PayPal Configuration
+PAYPAL_CLIENT_ID = config('PAYPAL_CLIENT_ID', default='').strip()
+PAYPAL_CLIENT_SECRET = config('PAYPAL_CLIENT_SECRET', default='').strip()
+PAYPAL_API_BASE = config('PAYPAL_API_BASE', default='https://api-m.sandbox.paypal.com').strip()
+PAYPAL_STARTER_PLAN_ID = config('PAYPAL_STARTER_PLAN_ID', default='').strip()
+PAYPAL_PROFESSIONAL_PLAN_ID = config('PAYPAL_PROFESSIONAL_PLAN_ID', default='').strip()
+PAYPAL_ENTERPRISE_PLAN_ID = config('PAYPAL_ENTERPRISE_PLAN_ID', default='').strip()
+
 # Vector Database
 CHROMA_PERSIST_DIRECTORY = config('CHROMA_PERSIST_DIRECTORY', default='./chroma_db')
 

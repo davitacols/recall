@@ -18,6 +18,7 @@ import DecisionIllustration from "../components/DecisionIllustration";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
 import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import AIAssistant from "../components/AIAssistant";
 import api from "../services/api";
 import { createPlainTextPreview } from "../utils/textPreview";
 import { buildAskRecallPath } from "../utils/askRecall";
@@ -267,6 +268,26 @@ function DecisionDetail() {
       setReplayError(error?.response?.data?.error || "Failed to create follow-up tasks from simulation.");
     } finally {
       setReplayTaskSaving(false);
+    }
+  };
+
+  const handleApplyDecisionAI = ({ kind, summary, actionItems }) => {
+    if (kind === "summary" && summary) {
+      setOutcomeForm((prev) => ({
+        ...prev,
+        outcome_notes: prev.outcome_notes
+          ? `${prev.outcome_notes}\n\nAI summary:\n${summary}`
+          : summary,
+      }));
+      setActiveTab("outcome");
+      return;
+    }
+    if (kind === "actions" && Array.isArray(actionItems) && actionItems.length > 0) {
+      setOutcomeForm((prev) => ({
+        ...prev,
+        lessons_learned: `${prev.lessons_learned || ""}${prev.lessons_learned ? "\n\n" : ""}AI suggested follow-up:\n${actionItems.map((item) => `- ${item}`).join("\n")}`,
+      }));
+      setActiveTab("outcome");
     }
   };
 
@@ -524,6 +545,12 @@ function DecisionDetail() {
                   </button>
                 ) : null}
               </div>
+
+              <AIAssistant
+                content={`${decision.title || ""}\n\n${decision.description || ""}\n\n${decision.rationale || ""}`}
+                contentType="decision"
+                onApply={handleApplyDecisionAI}
+              />
             </section>
 
             <section

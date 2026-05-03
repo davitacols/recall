@@ -31,12 +31,14 @@ class IssueSerializer(serializers.ModelSerializer):
     assignee_name = serializers.CharField(source='assignee.get_full_name', read_only=True)
     reporter_name = serializers.CharField(source='reporter.get_full_name', read_only=True)
     subtask_count = serializers.SerializerMethodField()
+    assignee_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    sprint_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     
     class Meta:
         model = Issue
         fields = ['id', 'key', 'title', 'description', 'issue_type', 'priority', 'status', 'assignee', 'assignee_name', 
                   'reporter', 'reporter_name', 'story_points', 'sprint', 'parent_issue', 'subtask_count', 'due_date', 
-                  'in_backlog', 'created_at', 'updated_at', 'status_changed_at']
+                  'in_backlog', 'created_at', 'updated_at', 'status_changed_at', 'assignee_id', 'sprint_id']
         read_only_fields = ['id', 'key', 'created_at', 'updated_at', 'status_changed_at']
     
     def get_subtask_count(self, obj):

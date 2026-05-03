@@ -276,9 +276,10 @@ def get_dashboard(request, dashboard_id):
     except Dashboard.DoesNotExist:
         return Response({'error': 'Dashboard not found'}, status=status.HTTP_404_NOT_FOUND)
     
-    widgets = list(DashboardWidget.objects.filter(dashboard=dashboard).values(
+    widget_configs = list(DashboardWidget.objects.filter(dashboard=dashboard).values(
         'id', 'widget_type', 'title', 'config', 'position_x', 'position_y', 'width', 'height'
     ))
+    widgets = widget_configs or dashboard.widgets
     
     return Response({
         'id': dashboard.id,

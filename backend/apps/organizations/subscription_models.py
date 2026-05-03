@@ -28,10 +28,16 @@ class Subscription(models.Model):
         ('canceled', 'Canceled'),
         ('expired', 'Expired'),
     ]
+    BILLING_PROVIDERS = [
+        ('manual', 'Manual'),
+        ('stripe', 'Stripe'),
+        ('paypal', 'PayPal'),
+    ]
     
     organization = models.OneToOneField('organizations.Organization', on_delete=models.CASCADE, related_name='subscription')
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='trial')
+    billing_provider = models.CharField(max_length=20, choices=BILLING_PROVIDERS, default='manual')
     user_count = models.IntegerField(default=0)
     storage_used_mb = models.BigIntegerField(default=0)
     
@@ -42,6 +48,7 @@ class Subscription(models.Model):
     
     stripe_customer_id = models.CharField(max_length=255, blank=True)
     stripe_subscription_id = models.CharField(max_length=255, blank=True)
+    paypal_subscription_id = models.CharField(max_length=255, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

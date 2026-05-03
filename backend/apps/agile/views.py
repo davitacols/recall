@@ -58,6 +58,129 @@ def _resolve_issue_by_ref(organization, issue_ref):
         if matches.count() == 1:
             return matches.first()
 
+
+def _issue_urgency_score(issue, today):
+    priority_weight = {
+        'highest': 90,
+        'high': 72,
+        'medium': 45,
+        'low': 22,
+        'lowest': 10,
+    }
+    status_weight = {
+        'in_progress': 18,
+        'in_review': 16,
+        'testing': 14,
+        'todo': 10,
+        'backlog': 4,
+    }
+    score = priority_weight.get(str(issue.priority or '').lower(), 30)
+    score += status_weight.get(str(issue.status or '').lower(), 8)
+    if not issue.assignee_id:
+        score += 18
+    if issue.due_date:
+        days = (issue.due_date - today).days
+        if days < 0:
+            score += 34 + min(20, abs(days))
+        elif days == 0:
+            score += 30
+        elif days <= 3:
+            score += 18
+        elif days <= 7:
+            score += 10
+    if issue.status in {'in_progress', 'in_review', 'testing'} and issue.status_changed_at:
+        age_days = max(0, (timezone.now() - issue.status_changed_at).days)
+        if age_days >= 7:
+            score += 16
+        elif age_days >= 3:
+            score += 8
+    return score
+
+
+def _project_command_center(project):
+    today = timezone.localdate()
+    issues = list(project.issues.select_related('assignee', 'sprint').all()[:300])
+    open_issues = [issue for issue in issues if issue.status != 'done']
+    completed_count = len([issue for issue in issues if issue.status == 'done'])
+    blocked_count = Blocker.objects.filter(organization=project.organization, sprint__project=project, status='active').count()
+    unassigned_count = len([issue for issue in open_issues if not issue.assignee_id])
+    overdue_count = len([issue for issue in open_issues if issue.due_date and issue.due_date < today])
+    in_progress_count = len([issue for issue in open_issues if issue.status in {'in_progress', 'in_review', 'testing'}])
+    active_sprints = project.sprints.filter(status='active').count()
+    risk_score = 100
+    risk_score -= min(30, blocked_count * 8)
+    risk_score -= min(24, overdue_count * 6)
+    risk_score -= min(20, unassigned_count * 4)
+    if project.issues.count() and completed_count == 0:
+        risk_score -= 10
+    if not active_sprints:
+        risk_score -= 8
+    risk_score = max(5, min(100, risk_score))
+    if risk_score >= 76:
+        posture = 'healthy'
+    elif risk_score >= 52:
+        posture = 'watch'
+    else:
+        posture = 'at_risk'
+
+    ranked = sorted(open_issues, key=lambda item: (-_issue_urgency_score(item, today), item.due_date or today + timedelta(days=365), item.id))[:5]
+    priority_issues = []
+    for index, issue in enumerate(ranked, start=1):
+        due_label = 'No due date'
+        if issue.due_date:
+            days = (issue.due_date - today).days
+            if days < 0:
+                due_label = f'{abs(days)} day(s) overdue'
+            elif days == 0:
+                due_label = 'Due today'
+            elif days == 1:
+                due_label = 'Due tomorrow'
+            else:
+                due_label = f'Due in {days} day(s)'
+        reason_bits = [issue.priority or 'medium', issue.status or 'todo', due_label]
+        if not issue.assignee_id:
+            reason_bits.append('unassigned')
+        priority_issues.append({
+            'rank': index,
+            'id': issue.id,
+            'key': issue.key,
+            'title': issue.title,
+            'priority': issue.priority,
+            'status': issue.status,
+            'assignee_name': issue.assignee.get_full_name() if issue.assignee else None,
+            'sprint_name': issue.sprint.name if issue.sprint else None,
+            'due_date': issue.due_date,
+            'score': _issue_urgency_score(issue, today),
+            'reason': ', '.join(reason_bits),
+            'url': f'/issues/{issue.id}',
+        })
+
+    recommendations = []
+    if blocked_count:
+        recommendations.append({'label': 'Clear active blockers', 'detail': f'{blocked_count} active blocker(s) are attached to this project.', 'href': '/blockers'})
+    if overdue_count:
+        recommendations.append({'label': 'Recover overdue issues', 'detail': f'{overdue_count} open issue(s) are past due.', 'href': f'/projects/{project.id}/backlog'})
+    if unassigned_count:
+        recommendations.append({'label': 'Assign owners', 'detail': f'{unassigned_count} open issue(s) need an assignee.', 'href': f'/projects/{project.id}'})
+    if not active_sprints:
+        recommendations.append({'label': 'Start sprint rhythm', 'detail': 'No active sprint is currently carrying the project.', 'href': f'/projects/{project.id}/manage'})
+    if not recommendations:
+        recommendations.append({'label': 'Keep flow visible', 'detail': 'Project delivery signals look stable. Review priority issues and keep scope current.', 'href': f'/projects/{project.id}'})
+
+    return {
+        'risk_score': risk_score,
+        'posture': posture,
+        'blocked_count': blocked_count,
+        'overdue_count': overdue_count,
+        'unassigned_count': unassigned_count,
+        'in_progress_count': in_progress_count,
+        'completed_count': completed_count,
+        'open_count': len(open_issues),
+        'active_sprints': active_sprints,
+        'priority_issues': priority_issues,
+        'recommendations': recommendations[:4],
+    }
+
     return None
 
 
@@ -264,6 +387,7 @@ def project_detail(request, project_id):
 
     boards = project.boards.prefetch_related('columns__issues').all()
     sprints = project.sprints.all().order_by('-start_date')
+    command_center = _project_command_center(project)
 
     board_data = [{
         'id': b.id,
@@ -290,7 +414,10 @@ def project_detail(request, project_id):
         'boards': board_data,
         'sprints': sprint_serializer.data,
         'issue_count': project.issues.count(),
-        'sprint_count': project.sprints.count()
+        'active_issues': command_center.get('open_count', 0),
+        'completed_issues': command_center.get('completed_count', 0),
+        'sprint_count': project.sprints.count(),
+        'command_center': command_center,
     })
 
 @api_view(['DELETE'])
@@ -449,7 +576,21 @@ def issues(request, project_id):
             column = board.columns.first()
             issue_count = project.issues.count() + 1
             issue_key = f"{project.key}-{issue_count}"
-            
+
+            assignee = None
+            assignee_id = serializer.validated_data.get('assignee_id')
+            if assignee_id:
+                assignee = User.objects.filter(id=assignee_id, organization=org).first()
+                if not assignee:
+                    return Response({'error': 'Invalid assignee_id for this organization'}, status=400)
+
+            sprint = None
+            sprint_id = serializer.validated_data.get('sprint_id')
+            if sprint_id:
+                sprint = Sprint.objects.filter(id=sprint_id, organization=org, project=project).first()
+                if not sprint:
+                    return Response({'error': 'Sprint not found in this project'}, status=400)
+
             issue = Issue.objects.create(
                 organization=org,
                 project=project,
@@ -462,9 +603,9 @@ def issues(request, project_id):
                 priority=serializer.validated_data.get('priority', 'medium'),
                 status='todo',
                 reporter=request.user,
-                assignee_id=serializer.validated_data.get('assignee_id'),
+                assignee=assignee,
                 story_points=serializer.validated_data.get('story_points'),
-                sprint_id=serializer.validated_data.get('sprint_id'),
+                sprint=sprint,
                 due_date=serializer.validated_data.get('due_date')
             )
             

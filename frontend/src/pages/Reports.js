@@ -22,31 +22,6 @@ function normalizeItems(payload) {
   return [];
 }
 
-function generateMockBurndown(total = 50) {
-  const actualSeries = [50, 48, 44, 42, 38, 33, 29, 21, 15, 8, 3];
-  return {
-    data: actualSeries.map((actual, index) => ({
-      day: index,
-      ideal: Math.max(0, total - (total / (actualSeries.length - 1)) * index),
-      actual,
-    })),
-    total,
-  };
-}
-
-function generateMockVelocity() {
-  return {
-    sprints: [
-      { name: "Sprint 1", committed: 30, completed: 27 },
-      { name: "Sprint 2", committed: 34, completed: 31 },
-      { name: "Sprint 3", committed: 36, completed: 35 },
-      { name: "Sprint 4", committed: 38, completed: 36 },
-      { name: "Sprint 5", committed: 42, completed: 39 },
-    ],
-    average: 34,
-  };
-}
-
 function formatDateRange(sprint) {
   if (!sprint?.start_date || !sprint?.end_date) return "Dates unavailable";
   const start = new Date(sprint.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -282,10 +257,10 @@ export default function Reports() {
         });
 
         const velocityResponse = await api.get(`/api/agile/projects/${selectedProject}/velocity/`).catch(() => null);
-        setVelocity(velocityResponse?.data || generateMockVelocity());
+        setVelocity(velocityResponse?.data || null);
       } catch (requestError) {
         console.error("Failed to fetch reports context:", requestError);
-        setVelocity(generateMockVelocity());
+        setVelocity(null);
       } finally {
         setReportLoading(false);
       }
@@ -304,10 +279,10 @@ export default function Reports() {
       setReportLoading(true);
       try {
         const response = await api.get(`/api/agile/sprints/${selectedSprint}/burndown/`).catch(() => null);
-        setBurndown(response?.data || generateMockBurndown());
+        setBurndown(response?.data || null);
       } catch (requestError) {
         console.error("Failed to fetch burndown:", requestError);
-        setBurndown(generateMockBurndown());
+        setBurndown(null);
       } finally {
         setReportLoading(false);
       }
@@ -350,7 +325,7 @@ export default function Reports() {
         variant="execution"
         eyebrow="Delivery Reporting"
         title="Reports and Analytics"
-        description="Track sprint progress, velocity, and delivery momentum from a cleaner reporting surface that works even when the underlying agile data is sparse."
+        description="Track sprint progress, velocity, and delivery momentum from live agile data. Empty states are shown when the workspace has not generated reporting data yet."
         stats={heroStats}
         aside={
           <div

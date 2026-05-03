@@ -14,7 +14,7 @@ from collections import Counter
 from apps.conversations.models import Conversation
 from apps.decisions.models import Decision
 from apps.knowledge.unified_models import ContentLink, UnifiedActivity
-from apps.agile.models import Blocker, Project, Release, Sprint
+from apps.agile.models import Blocker, Issue, Project, Release, Sprint
 from apps.organizations.auditlog_models import AuditLog
 from apps.notifications.utils import create_notification
 from apps.users.auth_utils import check_rate_limit
@@ -375,6 +375,39 @@ def _detect_copilot_query_mode(query):
     if operational_tokens.intersection(cleaned_tokens):
         return 'diagnosis'
     return 'answer'
+
+
+def _normalize_assistant_mode(value):
+    mode = str(value or 'answer').strip().lower()
+    return mode if mode in {'answer', 'plan', 'draft', 'route'} else 'answer'
+
+
+def _query_mode_for_assistant_mode(query_mode, assistant_mode):
+    if assistant_mode == 'plan':
+        return 'diagnosis'
+    return query_mode or 'answer'
+
+
+def _detect_user_task_prioritization(query):
+    text = str(query or '').strip().lower()
+    if not text:
+        return False
+    if 'my' not in text and 'me' not in text:
+        return False
+    return (
+        ('task' in text or 'tasks' in text or 'todo' in text or 'work' in text)
+        and any(term in text for term in ['prioritize', 'priority', 'next three', 'next 3', 'focus', 'what should i'])
+    )
+
+
+def _detect_project_issue_prioritization(query):
+    text = str(query or '').strip().lower()
+    if not text:
+        return False
+    return (
+        ('issue' in text or 'issues' in text or 'sprint recovery' in text or 'project work' in text)
+        and any(term in text for term in ['prioritize', 'priority', 'rank', 'recovery', 'what should'])
+    )
 
 
 def _detect_conversational_opener(query):
@@ -1313,6 +1346,485 @@ def _build_answer_text(query, search_data, plan, evidence_contract):
     ).strip()
 
 
+def _format_assistant_mode_answer(
+    answer_text,
+    assistant_mode,
+    query,
+    search_data,
+    plan,
+    evidence_contract,
+    recommended_interventions,
+):
+    mode = _normalize_assistant_mode(assistant_mode)
+    if mode == 'draft':
+        records = list(_iter_source_records(search_data, limit_per_bucket=3))
+        source_lines = []
+        for item in records[:3]:
+            title = str(item.get('title') or '').strip()
+            record_type = str(item.get('type') or 'record').strip()
+            if title:
+                source_lines.append(f'- {record_type.title()}: {title}')
+        if not source_lines:
+            source_lines.append('- No directly matched source record yet.')
+
+        return (
+            f'Draft\n\n'
+            f'{answer_text}\n\n'
+            f'Source basis:\n'
+            f'{chr(10).join(source_lines)}\n\n'
+            'Use this as a workspace-grounded first draft and review it before sending.'
+        ).strip()
+
+    if mode == 'plan':
+        selected = _select_relevant_interventions(query, recommended_interventions, limit=3)
+        if not selected:
+            selected = list(recommended_interventions or [])[:3]
+
+        action_lines = []
+        for index, item in enumerate(selected, start=1):
+            title = str(item.get('title') or 'Review the highest-risk workspace item').strip()
+            reason = str(item.get('reason') or '').strip()
+            action_lines.append(f'- Step {index}: {title}' + (f' because {reason.rstrip(".")}.' if reason else '.'))
+
+        if not action_lines:
+            missing = evidence_contract.get('missing_evidence') or []
+            missing_text = missing[0].rstrip('.') if missing else 'the workspace needs a clearer linked project, task, decision, or blocker'
+            action_lines = [
+                f'- Step 1: Clarify the target workspace record because {missing_text}.',
+                '- Step 2: Link the most relevant project, task, decision, blocker, document, or teammate.',
+                '- Step 3: Ask Ask Recall to rerun the plan once the evidence is connected.',
+            ]
+
+        readiness = plan.get('readiness_score')
+        readiness_line = (
+            f'Organizational readiness is {plan.get("status")} with score {readiness}.'
+            if readiness is not None
+            else f'Organizational readiness is {plan.get("status") or "watch"}.'
+        )
+        return (
+            f'{answer_text}\n\n'
+            f'Assistant plan\n'
+            f'- {readiness_line}\n'
+            f'{chr(10).join(action_lines)}'
+        ).strip()
+
+    return answer_text
+
+
+def _apply_assistant_mode_followups(follow_up_questions, assistant_mode, query):
+    mode = _normalize_assistant_mode(assistant_mode)
+    mode_questions = []
+    if mode == 'plan':
+        mode_questions = [
+            'Turn the strongest step into tasks.',
+            'What is the safest plan for the next 24 hours?',
+        ]
+    elif mode == 'draft':
+        mode_questions = [
+            'Draft this as a leadership update.',
+            'Turn this into a decision brief.',
+        ]
+    elif mode == 'route':
+        mode_questions = [
+            'Open the most relevant workspace surface.',
+            'Where should I manage the related work?',
+        ]
+
+    seen = set()
+    merged = []
+    for question_text in [*mode_questions, *(follow_up_questions or [])]:
+        text = str(question_text or '').strip()
+        key = text.lower()
+        if not text or key in seen or key == str(query or '').strip().lower():
+            continue
+        seen.add(key)
+        merged.append(text)
+    return merged[:4]
+
+
+def _response_mode_for_assistant_mode(response_mode, assistant_mode):
+    mode = _normalize_assistant_mode(assistant_mode)
+    if response_mode == 'needs_evidence':
+        return response_mode
+    if mode == 'draft':
+        return 'draft'
+    if mode == 'plan':
+        return 'diagnosis'
+    return response_mode
+
+
+def _task_due_label(task, now):
+    if not getattr(task, 'due_date', None):
+        return 'no due date'
+    today = timezone.localdate(now)
+    delta = (task.due_date - today).days
+    if delta < 0:
+        return f'{abs(delta)} day(s) overdue'
+    if delta == 0:
+        return 'due today'
+    if delta == 1:
+        return 'due tomorrow'
+    return f'due in {delta} day(s)'
+
+
+def _rank_user_tasks(user, now, limit=8):
+    if Task is None or not user:
+        return []
+
+    tasks = list(
+        Task.objects.filter(
+            organization=user.organization,
+            assigned_to=user,
+        )
+        .exclude(status='done')
+        .order_by('due_date', '-created_at')[:80]
+    )
+    today = timezone.localdate(now)
+    priority_weight = {'high': 60, 'medium': 35, 'low': 15}
+    status_weight = {'in_progress': 22, 'todo': 12}
+
+    ranked = []
+    for task in tasks:
+        score = priority_weight.get(str(task.priority or '').lower(), 20)
+        score += status_weight.get(str(task.status or '').lower(), 8)
+        if task.due_date:
+            days = (task.due_date - today).days
+            if days < 0:
+                score += 45 + min(20, abs(days))
+            elif days == 0:
+                score += 38
+            elif days <= 2:
+                score += 28
+            elif days <= 7:
+                score += 16
+        if task.scheduled_start:
+            score += 8
+        ranked.append((score, task))
+
+    ranked.sort(key=lambda row: (-row[0], row[1].due_date or today + timedelta(days=365), row[1].id))
+    return [{'score': score, 'task': task} for score, task in ranked[:limit]]
+
+
+def _issue_due_label(issue, now):
+    if not getattr(issue, 'due_date', None):
+        return 'no due date'
+    today = timezone.localdate(now)
+    delta = (issue.due_date - today).days
+    if delta < 0:
+        return f'{abs(delta)} day(s) overdue'
+    if delta == 0:
+        return 'due today'
+    if delta == 1:
+        return 'due tomorrow'
+    return f'due in {delta} day(s)'
+
+
+def _rank_agile_issues(issues, now, limit=8):
+    today = timezone.localdate(now)
+    priority_weight = {'highest': 82, 'high': 66, 'medium': 42, 'low': 20, 'lowest': 8}
+    status_weight = {'in_progress': 22, 'in_review': 18, 'testing': 16, 'todo': 12, 'backlog': 5}
+    ranked = []
+    for issue in issues:
+        score = priority_weight.get(str(issue.priority or '').lower(), 28)
+        score += status_weight.get(str(issue.status or '').lower(), 8)
+        if not issue.assignee_id:
+            score += 18
+        if issue.due_date:
+            days = (issue.due_date - today).days
+            if days < 0:
+                score += 42 + min(22, abs(days))
+            elif days == 0:
+                score += 34
+            elif days <= 3:
+                score += 22
+            elif days <= 7:
+                score += 12
+        if issue.status_changed_at:
+            age_days = max(0, (now - issue.status_changed_at).days)
+            if issue.status in {'in_progress', 'in_review', 'testing'} and age_days >= 5:
+                score += 14
+        ranked.append((score, issue))
+    ranked.sort(key=lambda row: (-row[0], row[1].due_date or today + timedelta(days=365), row[1].id))
+    return [{'score': score, 'issue': issue} for score, issue in ranked[:limit]]
+
+
+def _resolve_project_from_query(org, query):
+    text = str(query or '').strip().lower()
+    if not text:
+        return None
+    projects = Project.objects.filter(organization=org).select_related('lead').order_by('-updated_at')[:80]
+    exact = None
+    fuzzy = None
+    for project in projects:
+        name = str(project.name or '').lower()
+        key = str(project.key or '').lower()
+        if key and key in text:
+            exact = project
+            break
+        if name and name in text:
+            exact = project
+            break
+        name_tokens = [part for part in name.replace('-', ' ').split() if len(part) >= 4]
+        if not fuzzy and name_tokens and any(part in text for part in name_tokens):
+            fuzzy = project
+    return exact or fuzzy or Project.objects.filter(organization=org).order_by('-updated_at').first()
+
+
+def _build_user_task_priority_payload(request, org, user, query, assistant_mode, now):
+    ranked = _rank_user_tasks(user, now, limit=8)
+    top = ranked[:3]
+    plan = _build_chief_of_staff_plan(org, now, user=user)
+
+    if not top:
+        answer = (
+            'You do not have open assigned tasks right now. '
+            'Create or assign tasks in the Task Board, then Ask Recall can rank the next three by urgency and execution risk.'
+        )
+        confidence = 72
+        task_sources = []
+        tool_links = [{'id': 'tasks', 'label': 'Task Board', 'url': '/business/tasks', 'reason': 'Create or assign work before prioritizing.'}]
+    else:
+        lines = []
+        task_sources = []
+        tool_links = []
+        for index, item in enumerate(top, start=1):
+            task = item['task']
+            due = _task_due_label(task, now)
+            reason_parts = [f'{task.priority or "medium"} priority', due, str(task.status or 'todo').replace('_', ' ')]
+            lines.append(
+                f'{index}. {task.title} - {", ".join(part for part in reason_parts if part)}.'
+            )
+            task_url = f'/business/tasks?task={task.id}'
+            task_sources.append({
+                'id': task.id,
+                'title': task.title,
+                'content_preview': task.description or f'{task.priority or "medium"} priority task, {due}.',
+                'status': task.status,
+                'priority': task.priority,
+                'due_date': task.due_date,
+                'created_at': task.created_at,
+                'url': task_url,
+                'owner_name': user.get_full_name() or user.username,
+            })
+            tool_links.append({
+                'id': f'task-{task.id}',
+                'label': task.title,
+                'url': task_url,
+                'reason': f'Rank #{index}: {", ".join(reason_parts)}.',
+            })
+
+        answer = (
+            'Your next three tasks should be:\n'
+            + '\n'.join(lines)
+            + '\n\nI ranked these using assigned ownership, priority, due date pressure, and current status.'
+        )
+        confidence = min(94, 70 + len(top) * 6)
+
+    evidence_contract = _build_evidence_contract({'tasks': task_sources, 'total': len(task_sources)}, now)
+    response_payload = {
+        'analysis_id': str(uuid4()),
+        'query': query,
+        'assistant_mode': assistant_mode,
+        'answer': answer,
+        'answer_engine': 'rules',
+        'confidence': confidence,
+        'confidence_band': _confidence_band(confidence),
+        'response_mode': 'task_priority',
+        'evidence_count': evidence_contract.get('evidence_count', len(task_sources)),
+        'source_types': evidence_contract.get('source_types', ['task'] if task_sources else []),
+        'freshness_days': evidence_contract.get('freshness_days'),
+        'coverage_score': 88 if task_sources else 35,
+        'missing_evidence': [] if task_sources else ['No open assigned tasks were found for your user.'],
+        'evidence_breakdown': [{'type': 'task', 'label': 'tasks', 'count': len(task_sources)}] if task_sources else [],
+        'citations': _rank_source_citations({'tasks': task_sources, 'total': len(task_sources)}, query),
+        'credibility_summary': 'This ranking uses your open assigned tasks in this organization.',
+        'answer_foundation': [
+            'Only tasks assigned to the current user and organization were considered.',
+            'Done tasks were excluded from the ranking.',
+            'Priority, due date pressure, and in-progress status increase rank.',
+        ],
+        'follow_up_questions': [
+            'Show me the details behind the top task.',
+            'Draft a status update for these priorities.',
+            'Create a recovery plan for overdue tasks.',
+        ],
+        'tool_links': tool_links,
+        'risk_status': plan.get('status'),
+        'readiness_score': plan.get('readiness_score'),
+        'learning_model': plan.get('learning_model', {}),
+        'counts': plan.get('counts', {}),
+        'sources': _copilot_sources_payload({'tasks': task_sources, 'total': len(task_sources)}),
+        'recommended_interventions': [],
+        'requires_approval_for_execution': False,
+        'execution': {'performed': False, 'dry_run': True, 'result': None},
+        'generated_at': now.isoformat(),
+    }
+    _log_copilot_query(request, org, user, query, response_payload)
+    return response_payload
+
+
+def _build_project_issue_priority_payload(request, org, user, query, assistant_mode, now):
+    project = _resolve_project_from_query(org, query)
+    plan = _build_chief_of_staff_plan(org, now, user=user)
+    if not project:
+        response_payload = {
+            'analysis_id': str(uuid4()),
+            'query': query,
+            'assistant_mode': assistant_mode,
+            'answer': 'I could not find a project to prioritize yet. Create a project or mention an existing project name or key.',
+            'answer_engine': 'rules',
+            'confidence': 40,
+            'confidence_band': _confidence_band(40),
+            'response_mode': 'needs_evidence',
+            'evidence_count': 0,
+            'source_types': [],
+            'freshness_days': None,
+            'coverage_score': 0,
+            'missing_evidence': ['No project matched this agile prioritization request.'],
+            'evidence_breakdown': [],
+            'citations': [],
+            'credibility_summary': 'No project record was available for issue prioritization.',
+            'answer_foundation': ['Ask Recall needs a project name or key to rank issues.'],
+            'follow_up_questions': ['Which project should I prioritize?', 'Create a project first.'],
+            'tool_links': [{'id': 'projects', 'label': 'Projects', 'url': '/projects', 'reason': 'Create or select a project.'}],
+            'risk_status': plan.get('status'),
+            'readiness_score': plan.get('readiness_score'),
+            'learning_model': plan.get('learning_model', {}),
+            'counts': plan.get('counts', {}),
+            'sources': _copilot_sources_payload({}),
+            'recommended_interventions': [],
+            'requires_approval_for_execution': False,
+            'execution': {'performed': False, 'dry_run': True, 'result': None},
+            'generated_at': now.isoformat(),
+        }
+        _log_copilot_query(request, org, user, query, response_payload)
+        return response_payload
+
+    issues = list(
+        Issue.objects.filter(organization=org, project=project)
+        .exclude(status='done')
+        .select_related('assignee', 'sprint')
+        .order_by('-updated_at')[:120]
+    )
+    ranked = _rank_agile_issues(issues, now, limit=8)
+    top = ranked[:5]
+    issue_sources = []
+    tool_links = []
+    if top:
+        answer_lines = []
+        for index, item in enumerate(top[:3], start=1):
+            issue = item['issue']
+            due = _issue_due_label(issue, now)
+            owner = issue.assignee.get_full_name() if issue.assignee else 'unassigned'
+            answer_lines.append(
+                f'{index}. {issue.key} - {issue.title}: {issue.priority or "medium"} priority, {due}, {owner}.'
+            )
+        answer = (
+            f'For {project.name}, prioritize these issues next:\n'
+            + '\n'.join(answer_lines)
+            + '\n\nI ranked them using priority, due date pressure, owner gaps, current status, and stale in-flight work.'
+        )
+        for index, item in enumerate(top, start=1):
+            issue = item['issue']
+            issue_url = f'/issues/{issue.id}'
+            issue_sources.append({
+                'id': issue.id,
+                'title': issue.title,
+                'key': issue.key,
+                'status': issue.status,
+                'priority': issue.priority,
+                'created_at': issue.created_at,
+                'updated_at': issue.updated_at,
+                'due_date': issue.due_date,
+                'url': issue_url,
+                'project_name': project.name,
+                'sprint_name': issue.sprint.name if issue.sprint else '',
+                'owner_name': issue.assignee.get_full_name() if issue.assignee else '',
+                'content_preview': issue.description or f'{issue.priority or "medium"} priority issue in {project.name}.',
+            })
+            tool_links.append({
+                'id': f'issue-{issue.id}',
+                'label': f'{issue.key}: {issue.title}',
+                'url': issue_url,
+                'reason': f'Rank #{index}: {issue.priority or "medium"} priority, {_issue_due_label(issue, now)}.',
+            })
+        confidence = min(94, 68 + len(top) * 5)
+    else:
+        answer = f'{project.name} has no open issues to prioritize right now. Create backlog or sprint issues to start recovery planning.'
+        confidence = 72
+
+    search_data = {'issues': issue_sources, 'projects': [{'id': project.id, 'title': project.name, 'url': f'/projects/{project.id}', 'created_at': project.created_at}], 'total': len(issue_sources) + 1}
+    evidence_contract = _build_evidence_contract(search_data, now)
+    response_payload = {
+        'analysis_id': str(uuid4()),
+        'query': query,
+        'assistant_mode': assistant_mode,
+        'answer': answer,
+        'answer_engine': 'rules',
+        'confidence': confidence,
+        'confidence_band': _confidence_band(confidence),
+        'response_mode': 'issue_priority',
+        'evidence_count': evidence_contract.get('evidence_count', len(issue_sources) + 1),
+        'source_types': evidence_contract.get('source_types', ['project', 'issue']),
+        'freshness_days': evidence_contract.get('freshness_days'),
+        'coverage_score': 86 if issue_sources else 42,
+        'missing_evidence': [] if issue_sources else ['No open issues were found for this project.'],
+        'evidence_breakdown': _build_evidence_breakdown(search_data),
+        'citations': _rank_source_citations(search_data, query),
+        'credibility_summary': f'This ranking uses open issues in {project.name}.',
+        'answer_foundation': [
+            f'Project matched: {project.name} ({project.key}).',
+            'Done issues were excluded from ranking.',
+            'Priority, due date, owner gaps, and stale in-flight status increase rank.',
+        ],
+        'follow_up_questions': [
+            f'Create a recovery plan for {project.name}.',
+            f'Which blockers affect {project.name}?',
+            f'Draft a status update for {project.name}.',
+        ],
+        'tool_links': tool_links or [{'id': 'project', 'label': project.name, 'url': f'/projects/{project.id}', 'reason': 'Open the project command center.'}],
+        'risk_status': plan.get('status'),
+        'readiness_score': plan.get('readiness_score'),
+        'learning_model': plan.get('learning_model', {}),
+        'counts': plan.get('counts', {}),
+        'sources': _copilot_sources_payload(search_data),
+        'recommended_interventions': [],
+        'requires_approval_for_execution': False,
+        'execution': {'performed': False, 'dry_run': True, 'result': None},
+        'generated_at': now.isoformat(),
+    }
+    _log_copilot_query(request, org, user, query, response_payload)
+    return response_payload
+
+
+def _trim_action_text(value, fallback='', max_length=255):
+    text = ' '.join(str(value or fallback or '').strip().split())
+    if len(text) <= max_length:
+        return text
+    return text[: max(0, max_length - 1)].rstrip() + '...'
+
+
+def _priority_from_assistant_action(action):
+    impact = str((action or {}).get('impact') or '').strip().lower()
+    priority_score = _safe_int((action or {}).get('priority_score'), 0)
+    if impact in {'critical', 'high'} or priority_score >= 80:
+        return 'high'
+    if impact == 'low' or priority_score <= 35:
+        return 'low'
+    return 'medium'
+
+
+def _assistant_action_source_line(query, answer):
+    query_text = _trim_action_text(query, 'Ask Recall request', max_length=220)
+    answer_text = str(answer or '').strip()
+    if len(answer_text) > 900:
+        answer_text = answer_text[:900].rstrip() + '...'
+    return (
+        f'Created by Ask Recall from request: "{query_text}".\n\n'
+        f'Assistant context:\n{answer_text}'
+    ).strip()
+
+
 def _apply_thread_resolution_to_foundation(answer_foundation, thread_resolution):
     lines = list(answer_foundation or [])
     anchor = (thread_resolution or {}).get('anchor') or {}
@@ -1533,6 +2045,7 @@ def _log_copilot_query(request, org, user, query, response_payload):
             details={
                 'analysis_id': response_payload.get('analysis_id'),
                 'query': str(query or '').strip()[:500],
+                'assistant_mode': response_payload.get('assistant_mode'),
                 'response_mode': response_payload.get('response_mode'),
                 'confidence_band': response_payload.get('confidence_band'),
                 'evidence_count': response_payload.get('evidence_count'),
@@ -2873,7 +3386,8 @@ def agi_copilot(request):
 
     try:
         execute = bool(request.data.get('execute', False))
-        query_mode = _detect_copilot_query_mode(query)
+        assistant_mode = _normalize_assistant_mode(request.data.get('assistant_mode'))
+        query_mode = _query_mode_for_assistant_mode(_detect_copilot_query_mode(query), assistant_mode)
         if execute:
             if query_mode != 'diagnosis':
                 return Response({'error': 'Execution is only available for operational diagnosis requests'}, status=400)
@@ -2891,7 +3405,7 @@ def agi_copilot(request):
         thread_context = _sanitize_thread_context(request.data.get('thread_context'))
         disable_navigation = bool(request.data.get('disable_navigation', False))
         query_lower = query.lower()
-        explicit_navigation = any(
+        explicit_navigation = assistant_mode == 'route' or any(
             phrase in query_lower
             for phrase in [
                 'open ',
@@ -2902,7 +3416,12 @@ def agi_copilot(request):
                 'which page',
             ]
         )
-        navigation_intent = None if (disable_navigation or not explicit_navigation) else _detect_navigation_intent(query)
+        if disable_navigation or not explicit_navigation:
+            navigation_intent = None
+        elif assistant_mode == 'route':
+            navigation_intent = True
+        else:
+            navigation_intent = _detect_navigation_intent(query)
         if navigation_intent:
             plan = _build_chief_of_staff_plan(org, now, user=user)
             tool_links = _build_navigation_links(query)
@@ -2913,6 +3432,7 @@ def agi_copilot(request):
                 response_payload = {
                     'analysis_id': str(uuid4()),
                     'query': query,
+                    'assistant_mode': assistant_mode,
                     'answer': 'I interpreted this as a navigation request. Use these links to open the right workspace directly.',
                     'answer_engine': 'rules',
                     'confidence': confidence,
@@ -2927,7 +3447,7 @@ def agi_copilot(request):
                     'citations': [],
                     'credibility_summary': 'Navigation requests do not use workspace evidence.',
                     'answer_foundation': ['This request was treated as navigation, so Ask Recall did not retrieve workspace evidence.'],
-                    'follow_up_questions': [],
+                    'follow_up_questions': _apply_assistant_mode_followups([], assistant_mode, query),
                     'tool_links': tool_links,
                     'risk_status': plan.get('status'),
                     'readiness_score': plan.get('readiness_score'),
@@ -2951,6 +3471,7 @@ def agi_copilot(request):
             response_payload = {
                 'analysis_id': str(uuid4()),
                 'query': query,
+                'assistant_mode': assistant_mode,
                 'answer': _build_conversational_answer(query),
                 'answer_engine': 'rules',
                 'confidence': 86,
@@ -2988,6 +3509,12 @@ def agi_copilot(request):
             }
             _log_copilot_query(request, org, user, query, response_payload)
             return Response(response_payload)
+
+        if _detect_user_task_prioritization(query):
+            return Response(_build_user_task_priority_payload(request, org, user, query, assistant_mode, now))
+
+        if _detect_project_issue_prioritization(query):
+            return Response(_build_project_issue_priority_payload(request, org, user, query, assistant_mode, now))
 
         search_engine = get_search_engine()
         search_data = search_engine.search(query, org.id, filters={}, limit=6)
@@ -3041,6 +3568,7 @@ def agi_copilot(request):
             plan=plan,
             recommended_interventions=recommended_for_response,
         )
+        follow_up_questions = _apply_assistant_mode_followups(follow_up_questions, assistant_mode, query)
         llm_answer = _generate_llm_copilot_answer(
             query=query,
             query_mode=query_mode,
@@ -3065,6 +3593,15 @@ def agi_copilot(request):
                 evidence_contract=evidence_contract,
                 recommended_interventions=recommended_for_response,
             )
+        answer_text = _format_assistant_mode_answer(
+            answer_text=answer_text,
+            assistant_mode=assistant_mode,
+            query=query,
+            search_data=search_data,
+            plan=plan,
+            evidence_contract=evidence_contract,
+            recommended_interventions=recommended_for_response,
+        )
 
         low_evidence_mode = (
             evidence_contract.get('evidence_count', 0) == 0
@@ -3079,10 +3616,12 @@ def agi_copilot(request):
 
         confidence_band = _confidence_band(confidence)
         response_mode = 'needs_evidence' if low_evidence_mode else query_mode
+        response_mode = _response_mode_for_assistant_mode(response_mode, assistant_mode)
 
         response_payload = {
             'analysis_id': str(uuid4()),
             'query': query,
+            'assistant_mode': assistant_mode,
             'answer': answer_text,
             'answer_engine': answer_engine,
             'confidence': confidence,
@@ -3138,6 +3677,173 @@ def agi_copilot(request):
         return Response(response_payload)
     except Exception as exc:
         return Response({'error': 'agi_copilot_failed', 'detail': str(exc)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def agi_copilot_actions(request):
+    try:
+        org = request.user.organization
+    except Exception:
+        return Response({'error': 'User organization is not configured'}, status=400)
+
+    user = request.user
+    if not check_rate_limit(f"agi_copilot_actions:{user.id}", limit=120, window=3600):
+        return Response({'error': 'Too many assistant action requests'}, status=429)
+
+    if Task is None or Document is None:
+        return Response({'error': 'Assistant workspace actions are unavailable'}, status=503)
+
+    action = str(request.data.get('action') or '').strip().lower()
+    query = str(request.data.get('query') or '').strip()
+    answer = str(request.data.get('answer') or '').strip()
+    assistant_mode = _normalize_assistant_mode(request.data.get('assistant_mode'))
+    created_items = []
+
+    if action == 'create_tasks':
+        raw_actions = request.data.get('next_actions') or request.data.get('recommended_interventions') or []
+        if not isinstance(raw_actions, list):
+            return Response({'error': 'next_actions must be an array'}, status=400)
+
+        seen_titles = set()
+        source_description = _assistant_action_source_line(query, answer)
+        for index, item in enumerate(raw_actions[:5], start=1):
+            if not isinstance(item, dict):
+                continue
+            title = _trim_action_text(item.get('title'), f'Follow up on Ask Recall step {index}')
+            title_key = title.lower()
+            if not title or title_key in seen_titles:
+                continue
+            seen_titles.add(title_key)
+
+            reason = str(item.get('reason') or '').strip()
+            description_parts = [source_description]
+            if reason:
+                description_parts.append(f'Why this matters: {reason}')
+            if item.get('href'):
+                description_parts.append(f'Related workspace link: {item.get("href")}')
+
+            task = Task.objects.create(
+                organization=org,
+                title=title,
+                description='\n\n'.join(description_parts),
+                status='todo',
+                priority=_priority_from_assistant_action(item),
+                assigned_to=user,
+            )
+            created_items.append({
+                'type': 'task',
+                'id': task.id,
+                'title': task.title,
+                'url': f'/business/tasks?task={task.id}',
+            })
+
+        if not created_items:
+            return Response({'error': 'No assistant plan actions were available to create tasks'}, status=400)
+
+    elif action == 'create_draft':
+        if not answer:
+            return Response({'error': 'answer is required to create a draft'}, status=400)
+
+        title = _trim_action_text(
+            request.data.get('title'),
+            f'Ask Recall draft: {query or "workspace update"}',
+            max_length=180,
+        )
+        content = (
+            f'{answer.strip()}\n\n'
+            f'---\n'
+            f'Generated from Ask Recall request: {query or "Untitled request"}\n'
+            'Review before sharing.'
+        ).strip()
+        document = Document.objects.create(
+            organization=org,
+            title=title,
+            description='AI-assisted workspace draft created from Ask Recall.',
+            document_type='report',
+            content=content,
+            created_by=user,
+            updated_by=user,
+            tags=['ask-recall', 'ai-draft'],
+        )
+        created_items.append({
+            'type': 'document',
+            'id': document.id,
+            'title': document.title,
+            'url': f'/business/documents/{document.id}',
+        })
+
+    elif action == 'create_plan_document':
+        if not answer:
+            return Response({'error': 'answer is required to save a plan'}, status=400)
+
+        title = _trim_action_text(
+            request.data.get('title'),
+            f'Ask Recall execution memo: {query or "workspace plan"}',
+            max_length=180,
+        )
+        action_lines = []
+        raw_actions = request.data.get('next_actions') or []
+        if isinstance(raw_actions, list):
+            for index, item in enumerate(raw_actions[:8], start=1):
+                if not isinstance(item, dict):
+                    continue
+                label = _trim_action_text(item.get('title'), f'Step {index}', max_length=180)
+                reason = str(item.get('reason') or '').strip()
+                action_lines.append(f'{index}. {label}' + (f' - {reason}' if reason else ''))
+
+        content_parts = [
+            answer.strip(),
+            'Generated from Ask Recall execution planning.',
+            f'Request: {query or "Untitled request"}',
+        ]
+        if action_lines:
+            content_parts.append('Plan actions:\n' + '\n'.join(action_lines))
+        content_parts.append('Review owners, dates, and dependencies before sharing.')
+
+        document = Document.objects.create(
+            organization=org,
+            title=title,
+            description='AI-assisted execution memo created from an Ask Recall plan.',
+            document_type='report',
+            content='\n\n'.join(content_parts),
+            created_by=user,
+            updated_by=user,
+            tags=['ask-recall', 'execution-plan'],
+        )
+        created_items.append({
+            'type': 'document',
+            'id': document.id,
+            'title': document.title,
+            'url': f'/business/documents/{document.id}',
+        })
+
+    else:
+        return Response({'error': 'Unsupported assistant action'}, status=400)
+
+    payload = {
+        'action': action,
+        'assistant_mode': assistant_mode,
+        'created_count': len(created_items),
+        'created_items': created_items,
+    }
+    try:
+        AuditLog.log(
+            organization=org,
+            user=user,
+            action='create',
+            resource_type='agi_copilot_action',
+            details={
+                'action': action,
+                'assistant_mode': assistant_mode,
+                'query': query[:500],
+                'created_items': created_items,
+            },
+            request=request,
+        )
+    except Exception:
+        pass
+    return Response(payload, status=201)
 
 
 @api_view(['POST'])

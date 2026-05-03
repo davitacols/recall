@@ -24,6 +24,7 @@ import IssueAttachments from "../components/IssueAttachments";
 import WatchButton from "../components/WatchButton";
 import { TimeEstimate, TimeTracker } from "../components/TimeTracker";
 import { WorkspaceEmptyState, WorkspacePanel } from "../components/WorkspaceChrome";
+import AIAssistant from "../components/AIAssistant";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import { buildAskRecallPath } from "../utils/askRecall";
@@ -185,6 +186,22 @@ function IssueDetail() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleApplyIssueAI = ({ kind, summary, actionItems }) => {
+    setFormData((current) => {
+      if (kind === "summary" && summary) {
+        return { ...current, description: summary };
+      }
+      if (kind === "actions" && Array.isArray(actionItems) && actionItems.length > 0) {
+        return {
+          ...current,
+          description: `${current.description || issue.description || ""}${current.description || issue.description ? "\n\n" : ""}AI suggested next actions:\n${actionItems.map((item) => `- ${item}`).join("\n")}`,
+        };
+      }
+      return current;
+    });
+    setEditing(true);
   };
 
   const handleDelete = async () => {
@@ -420,6 +437,12 @@ function IssueDetail() {
               title="Issue brief"
               description="Keep the problem statement and implementation notes readable instead of burying them under metadata."
             >
+              <AIAssistant
+                content={`${issue.title || ""}\n\n${editing ? formData.description || "" : issue.description || ""}`}
+                contentType="issue"
+                onApply={handleApplyIssueAI}
+              />
+
               {!editing ? (
                 <p style={{ ...descriptionText, color: palette.muted }}>
                   {issue.description || "No description provided yet."}

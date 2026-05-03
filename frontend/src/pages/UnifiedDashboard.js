@@ -12,7 +12,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import MissionControlPanel from "../components/MissionControlPanel";
-import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel } from "../components/WorkspaceChrome";
+import { WorkspaceEmptyState, WorkspacePanel } from "../components/WorkspaceChrome";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { buildApiUrl } from "../utils/apiBase";
@@ -272,6 +272,67 @@ function PriorityCard({ title, value, helper, note, to, tone, palette, icon: Ico
   );
 }
 
+function FlowRow({ item, palette, tone = "var(--ui-accent)" }) {
+  const body = (
+    <>
+      <div style={{ minWidth: 0, display: "grid", gap: 5 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          {item.key ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: tone }}>{item.key}</span> : null}
+          {item.status ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.muted }}>{item.status}</span> : null}
+        </div>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 750, lineHeight: 1.38, color: palette.text }}>{item.title}</p>
+        {item.meta ? <p style={{ margin: 0, fontSize: 11, lineHeight: 1.45, color: palette.muted }}>{item.meta}</p> : null}
+      </div>
+      <ArrowRightIcon style={{ ...icon14, color: palette.muted, flexShrink: 0 }} />
+    </>
+  );
+
+  if (item.to) {
+    return (
+      <Link className="ui-card-lift ui-smooth ui-focus-ring" to={item.to} style={{ ...flowRow, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text }}>
+        {body}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="ui-card-lift ui-smooth" style={{ ...flowRow, border: `1px solid ${palette.border}`, background: palette.panel }}>
+      {body}
+    </div>
+  );
+}
+
+function FlowLaneCard({ lane, palette }) {
+  const Icon = lane.icon;
+  return (
+    <article style={{ ...flowLaneCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+      <header style={flowLaneHeader}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+          <span style={{ ...laneIcon, width: 30, height: 30, border: `1px solid ${palette.border}`, background: lane.bg, color: lane.tone }}>
+            <Icon style={{ width: 16, height: 16 }} />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ ...microLabel, color: palette.muted }}>{lane.label}</p>
+            <h3 style={{ margin: "3px 0 0", fontSize: 15, lineHeight: 1.16, color: palette.text }}>{lane.title}</h3>
+          </div>
+        </div>
+        <span style={{ ...flowCount, border: `1px solid ${palette.border}`, color: lane.tone, background: palette.panelAlt }}>
+          {lane.count}
+        </span>
+      </header>
+      <div style={{ display: "grid", gap: 8 }}>
+        {lane.items.length ? (
+          lane.items.map((item) => <FlowRow key={`${lane.title}-${item.id || item.title}`} item={item} palette={palette} tone={lane.tone} />)
+        ) : (
+          <div style={{ ...flowEmpty, border: `1px dashed ${palette.border}`, color: palette.muted }}>
+            {lane.empty}
+          </div>
+        )}
+      </div>
+    </article>
+  );
+}
+
 export default function UnifiedDashboard() {
   const { darkMode } = useTheme();
   const { user } = useAuth();
@@ -324,6 +385,9 @@ export default function UnifiedDashboard() {
       card: "var(--ui-panel)",
       panelAlt: "var(--ui-panel-alt)",
       cardAlt: "var(--ui-panel-alt)",
+      panelGlass: darkMode
+        ? "linear-gradient(180deg, rgba(29, 24, 21, 0.96), rgba(18, 24, 38, 0.9))"
+        : "linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(239, 246, 255, 0.78))",
       border: "var(--ui-border)",
       text: "var(--ui-text)",
       muted: "var(--ui-muted)",
@@ -481,7 +545,6 @@ export default function UnifiedDashboard() {
   const sprintProgress = sprintTotal > 0 ? Math.round((sprintCompleted / sprintTotal) * 100) : 0;
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   const featuredActivity = timeline[0] || null;
-  const signalStream = featuredActivity ? timeline.slice(1, 7) : [];
   const workspaceBriefingSummary = workspaceBriefing.summary || emptyWorkspaceBriefing.summary;
   const workspaceChangedItems = workspaceBriefing.what_changed || [];
   const workspaceAttentionItems = workspaceBriefing.needs_attention || [];
@@ -789,47 +852,6 @@ export default function UnifiedDashboard() {
     stats.activity,
   ]);
 
-  const heroStats = [
-    {
-      label: "Signals",
-      value: stats.activity || 0,
-      helper: featuredActivity
-        ? `${humanizeActivityType(featuredActivity)} is the freshest workspace signal`
-        : "No new activity is competing for attention yet",
-      tone: palette.accent,
-    },
-    {
-      label: "Sprint lane",
-      value: currentSprint ? `${sprintProgress}%` : "Idle",
-      helper: currentSprint
-        ? `${sprintBlocked} blocked and ${sprintInProgress} active in ${currentSprint.name}`
-        : "Activate a sprint to surface live delivery signals",
-      tone: sprintBlocked > 0 ? palette.warn : palette.good,
-    },
-    {
-      label: "Follow-through",
-      value: pendingOutcomeMeta.total,
-      helper: pendingOutcomeMeta.overdue > 0
-        ? `${pendingOutcomeMeta.overdue} reviews are overdue`
-        : "No overdue reviews are stacking up",
-      tone: pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good,
-    },
-    {
-      label: "Drift",
-      value: driftMeta.total,
-      helper: driftMeta.critical > 0
-        ? `${driftMeta.critical} critical alerts need a decision owner`
-        : "No critical drift is active right now",
-      tone: driftMeta.critical > 0 ? palette.accent : palette.info,
-    },
-  ];
-
-  const dashboardActions = roleProfile.commandDeck.slice(0, 3).map((card, index) => ({
-    label: card.title,
-    to: card.to,
-    primary: index === 0,
-  }));
-
   const personalSummaryCards = [
     {
       label: "Open tasks",
@@ -858,6 +880,111 @@ export default function UnifiedDashboard() {
     },
   ];
 
+  const recentSignalItems = timeline.slice(0, 5).map((activity) => ({
+    id: activity.id,
+    key: humanizeActivityType(activity),
+    title: activity.title || getActivitySummary(activity),
+    meta: `${formatDateLabel(activity.created_at)} | ${getActivitySummary(activity)}`,
+    to: getActivityUrl(activity),
+  }));
+
+  const assignedFlowItems = assignedTasks.slice(0, 4).map((task) => ({
+    id: task.id,
+    key: task.key || "Task",
+    status: formatStatusLabel(task.status),
+    title: task.title,
+    meta: task.decision_title || task.goal_title || task.conversation_title || (task.due_date ? `Due ${formatDateLabel(task.due_date)}` : "Assigned to your lane"),
+    to: "/business/tasks",
+  }));
+
+  const activeFlowItems = watchedIssues.slice(0, 4).map((issue) => ({
+    id: issue.id,
+    key: issue.key || "Issue",
+    status: formatStatusLabel(issue.status),
+    title: issue.title,
+    meta: issue.project_name || issue.sprint_name || `Updated ${formatDateLabel(issue.updated_at)}`,
+    to: `/issues/${issue.id}`,
+  }));
+
+  const reviewFlowItems = pendingOutcomeReviews.slice(0, 4).map((item) => ({
+    id: item.id,
+    key: item.is_overdue ? "Overdue" : "Review",
+    status: item.is_overdue ? `${item.days_overdue}d late` : "Scheduled",
+    title: item.title,
+    meta: "Decision outcome review",
+    to: `/decisions/${item.id}`,
+  }));
+
+  const learnedFlowItems = [
+    ...relevantDecisions.slice(0, 2).map((decision) => ({
+      id: `decision-${decision.id}`,
+      key: "Decision",
+      status: formatStatusLabel(decision.status),
+      title: decision.title,
+      meta: decision.conversation_title || decision.decision_maker_name || `Created ${formatDateLabel(decision.created_at)}`,
+      to: `/decisions/${decision.id}`,
+    })),
+    ...recentAskRecallQueries.slice(0, 2).map((queryItem) => ({
+      id: `recall-${queryItem.id}`,
+      key: "Recall",
+      status: `${Math.round(queryItem.coverage_score || 0)}% coverage`,
+      title: queryItem.query,
+      meta: `${queryItem.evidence_count} evidence item${queryItem.evidence_count === 1 ? "" : "s"}`,
+      to: `/ask?q=${encodeURIComponent(queryItem.query)}&autorun=1`,
+    })),
+  ].slice(0, 4);
+
+  const flowLanes = [
+    {
+      label: "Queue",
+      title: "To pick up",
+      count: assignedFlowItems.length || personalCounts.assigned_open_tasks || 0,
+      items: assignedFlowItems,
+      empty: "No assigned work is waiting in your lane.",
+      icon: QueueListIcon,
+      tone: palette.accent,
+      bg: palette.accentSoft,
+    },
+    {
+      label: "Flow",
+      title: "In motion",
+      count: activeFlowItems.length || sprintInProgress || 0,
+      items: activeFlowItems,
+      empty: "No watched issues are moving right now.",
+      icon: BoltIcon,
+      tone: palette.info,
+      bg: "rgba(22,154,166,0.12)",
+    },
+    {
+      label: "Review",
+      title: "Needs decision",
+      count: reviewFlowItems.length || pendingOutcomeMeta.total || 0,
+      items: reviewFlowItems,
+      empty: "No decision reviews are waiting.",
+      icon: ExclamationTriangleIcon,
+      tone: pendingOutcomeMeta.overdue ? palette.warn : palette.good,
+      bg: "rgba(221,176,93,0.12)",
+    },
+    {
+      label: "Memory",
+      title: "Learned lately",
+      count: learnedFlowItems.length || personalCounts.relevant_decisions || 0,
+      items: learnedFlowItems,
+      empty: "Recent decisions and Recall answers will collect here.",
+      icon: SparklesIcon,
+      tone: palette.good,
+      bg: "rgba(67,193,142,0.12)",
+    },
+  ];
+
+  const operatingMetrics = [
+    { label: "Workspace signals", value: stats.activity || 0, helper: "7-day activity", tone: palette.accent },
+    { label: "Sprint progress", value: currentSprint ? `${sprintProgress}%` : "No sprint", helper: currentSprint?.name || "No active sprint", tone: sprintBlocked ? palette.warn : palette.good },
+    { label: "Blocked", value: sprintBlocked, helper: `${sprintInProgress} in progress`, tone: sprintBlocked ? palette.warn : palette.good },
+    { label: "Open reviews", value: pendingOutcomeMeta.total, helper: `${pendingOutcomeMeta.overdue} overdue`, tone: pendingOutcomeMeta.overdue ? palette.warn : palette.info },
+    { label: "Decision drift", value: driftMeta.total, helper: `${driftMeta.critical} critical`, tone: driftMeta.critical ? palette.warn : palette.info },
+  ];
+
   if (loading) {
     return (
       <div style={loadingWrap}>
@@ -866,8 +993,8 @@ export default function UnifiedDashboard() {
             <div style={{ ...loadingOrb, background: palette.ctaGradient }}><span className="spinner" aria-hidden="true" /></div>
             <div>
               <p style={{ ...microLabel, color: palette.muted }}>Dashboard Sync</p>
-              <p style={loadingTitle}>Hydrating your command center</p>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>Pulling activity, decisions, outcomes, and sprint signals</p>
+              <p style={loadingTitle}>Hydrating your AI workspace</p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>Pulling activity, decisions, outcomes, and grounded AI signals</p>
             </div>
           </div>
         </div>
@@ -876,751 +1003,205 @@ export default function UnifiedDashboard() {
   }
 
   return (
-    <div style={pageStyle}>
-      <WorkspaceHero
-        palette={palette}
-        darkMode={darkMode}
-        variant="execution"
-        eyebrow={`${workspaceName} | ${todayLabel}`}
-        title={roleProfile.title}
-        description={roleProfile.description}
-        stats={heroStats}
-        actions={dashboardActions.map((action) => (
-          <Link
-            key={action.label}
-            className="ui-btn-polish ui-focus-ring"
-            to={action.to}
-            style={action.primary ? primaryButton(palette) : secondaryButton(palette)}
-          >
-            {action.label}
-          </Link>
-        ))}
-        aside={(
-          <article
-            className="ui-card-lift ui-smooth"
-            style={{
-              ...spotlightCard,
-              border: `1px solid ${palette.border}`,
-              background: `linear-gradient(180deg, ${palette.card}, ${palette.cardAlt})`,
-            }}
-          >
-            <div style={{ display: "grid", gap: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <p style={{ ...microLabel, color: palette.muted }}>Operating snapshot</p>
-                  <h2 style={{ ...spotlightTitle, color: palette.text }}>
-                    {currentSprint?.name || "Workspace status"}
-                  </h2>
-                </div>
-                <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
-                  {roleProfile.badge}
-                </span>
-              </div>
-              <p style={{ ...bodyCopy, color: palette.muted }}>
-                {currentSprint
-                  ? `${sprintCompleted} of ${sprintTotal} sprint items are done. The snapshot below keeps the active delivery pressure visible without leaving the dashboard.`
-                  : "No sprint is active yet, so this card stays focused on workspace pressure instead of delivery cadence."}
-              </p>
-            </div>
-
-            <div style={snapshotMetricGrid}>
-              {currentSprint ? (
-                <>
-                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Completion</p>
-                    <p style={{ ...snapshotMetricValue, color: palette.accent }}>{sprintProgress}%</p>
-                  </div>
-                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Blocked</p>
-                    <p style={{ ...snapshotMetricValue, color: sprintBlocked > 0 ? palette.warn : palette.good }}>{sprintBlocked}</p>
-                  </div>
-                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>In progress</p>
-                    <p style={{ ...snapshotMetricValue, color: palette.text }}>{sprintInProgress}</p>
-                  </div>
-                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Sprint items</p>
-                    <p style={{ ...snapshotMetricValue, color: palette.text }}>{sprintTotal}</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Signals</p>
-                    <p style={{ ...snapshotMetricValue, color: palette.accent }}>{stats.activity}</p>
-                  </div>
-                  <div style={{ ...snapshotMetricCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                    <p style={{ ...snapshotMetricLabel, color: palette.muted }}>Reviews</p>
-                    <p style={{ ...snapshotMetricValue, color: pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.text }}>{pendingOutcomeMeta.total}</p>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <p style={{ ...spotlightNote, color: palette.text }}>{note}</p>
-
-            {currentSprint ? (
-              <>
-                <div style={spotlightProgressTrack}>
-                  <div
-                    style={{
-                      ...spotlightProgressFill,
-                      width: `${sprintProgress}%`,
-                      background: palette.ctaGradient,
-                    }}
-                  />
-                </div>
-                <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>
-                  Open Sprint Board
-                </Link>
-              </>
-            ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={chipRow}>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                    Mode | {experienceMode}
-                  </span>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                    {stats.activity} signals this week
-                  </span>
-                </div>
-                <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={secondaryButton(palette)}>
-                  Plan Sprint Work
-                </Link>
-              </div>
-            )}
-          </article>
-        )}
-      />
-
-      <section
-        className="ui-enter"
-        style={{
-          "--ui-delay": "120ms",
-          display: "grid",
-          gap: 14,
-          gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.12fr) minmax(320px,0.88fr)",
-        }}
-      >
-        <WorkspacePanel
-          palette={palette}
-          darkMode={darkMode}
-          variant="execution"
-          eyebrow="Today"
-          title={roleProfile.focusTitle}
-          description="Start with the live risk picture, then move into the next decision or lane without opening half the product."
-        >
-          <div style={{ display: "grid", gap: 14 }}>
-            <div style={{ ...briefingBand, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent }}>
-                    {roleProfile.badge}
-                  </span>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                    {workspaceName}
-                  </span>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                    Mode | {experienceMode}
-                  </span>
-                </div>
-                <p style={{ ...caption, color: palette.muted, maxWidth: 380 }}>{note}</p>
-              </div>
-
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-                {roleProfile.focusItems.map((item) => (
-                  <div key={item} style={{ ...focusCard, border: `1px solid ${palette.border}`, background: palette.panel }}>
-                    <span style={{ ...focusDot, background: palette.accent }} />
-                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{item}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-              <PriorityCard
-                title="Outcome Reviews"
-                value={`${pendingOutcomeMeta.overdue} overdue`}
-                helper={`${pendingOutcomeMeta.total} reviews are still open in the queue.`}
-                note={pendingOutcomeMeta.overdue > 0 ? "Nudge owners before this slips another day." : "Follow-through looks stable right now."}
-                to="/decisions?outcome=pending"
-                tone={pendingOutcomeMeta.overdue > 0 ? palette.warn : palette.good}
-                palette={palette}
-                icon={QueueListIcon}
-              />
-              <PriorityCard
-                title="Decision Drift"
-                value={`${driftMeta.critical} critical`}
-                helper={`${driftMeta.high} additional high-severity alerts are in the stack.`}
-                note={driftMeta.critical > 0 ? "Revisit assumptions before more execution compounds." : "Decision set is currently stable."}
-                to="/decisions"
-                tone={driftMeta.critical > 0 ? palette.accent : palette.info}
-                palette={palette}
-                icon={SparklesIcon}
-              />
-              <PriorityCard
-                title="Sprint Risk"
-                value={`${sprintBlocked} blocked`}
-                helper={`${sprintInProgress} work items are actively moving through delivery.`}
-                note={sprintBlocked > 0 ? "Clear blockers before planning more scope." : "Delivery lane is moving without visible blockage."}
-                to="/sprint"
-                tone={sprintBlocked > 0 ? palette.warn : palette.good}
-                palette={palette}
-                icon={BoltIcon}
-              />
-            </div>
+    <div style={dynamicPage}>
+      <section className="ui-enter" style={{ ...dynamicHero, gridTemplateColumns: isNarrow ? "1fr" : dynamicHero.gridTemplateColumns, border: `1px solid ${palette.border}`, background: palette.panelGlass }}>
+        <div style={dynamicHeroCopy}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.accent, background: palette.accentSoft }}>
+              {roleProfile.badge}
+            </span>
+            <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
+              {workspaceName}
+            </span>
+            <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.muted }}>
+              {todayLabel}
+            </span>
           </div>
-        </WorkspacePanel>
-
-        <WorkspacePanel
-          palette={palette}
-          darkMode={darkMode}
-          variant="memory"
-          eyebrow="Command deck"
-          title="Re-enter the workspace with less scanning"
-          description="The fastest doors back into the most useful parts of the product right now."
-        >
-          <div style={{ display: "grid", gap: 10 }}>
-            {roleProfile.commandDeck.map((card) => (
-              <CommandCard key={card.title} {...card} palette={palette} />
-            ))}
+          <div style={{ display: "grid", gap: 8 }}>
+            <h2 style={{ ...dynamicHeroTitle, color: palette.text }}>Today&apos;s AI work system</h2>
+            <p style={{ ...bodyCopy, maxWidth: 760, color: palette.muted }}>
+              {workspaceBriefingSummary.headline || "Knoledgr turns team memory, decisions, and execution into an AI workspace that knows what changed and what should happen next."}
+            </p>
           </div>
-        </WorkspacePanel>
-      </section>
-
-      <section className="ui-enter" style={{ "--ui-delay": "135ms" }}>
-        <WorkspacePanel
-          palette={palette}
-          darkMode={darkMode}
-          variant="memory"
-          eyebrow="Workspace briefing"
-          title="See what shifted, what needs attention, and where to move next."
-          description={
-            workspaceBriefingSummary.headline ||
-            "Get one grounded scan of fresh signals, active pressure, and the shortest next moves across the workspace."
-          }
-          action={(
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              onClick={fetchDashboardData}
-              style={{ ...secondaryButton(palette), cursor: "pointer" }}
-            >
-              Refresh briefing
+          <div style={chipRow}>
+            <Link className="ui-btn-polish ui-focus-ring" to="/sprint" style={primaryButton(palette)}>
+              Open board
+            </Link>
+            <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={secondaryButton(palette)}>
+              Ask Recall
+            </Link>
+            <button className="ui-btn-polish ui-focus-ring" onClick={fetchDashboardData} style={{ ...secondaryButton(palette), cursor: "pointer" }}>
+              Refresh
             </button>
-          )}
-        >
-          <div style={{ display: "grid", gap: 14 }}>
-            <div style={{ ...briefingSummaryBand, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-              <div style={{ display: "grid", gap: 6 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                  <p style={{ ...microLabel, color: palette.muted }}>Briefing summary</p>
-                  <span style={{ ...roleChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                    {formatDateLabel(workspaceBriefing.generated_at)}
-                  </span>
-                </div>
-                <p style={{ ...bodyCopy, color: palette.text }}>
-                  {workspaceBriefingSummary.scan_note || "Read the change layer first, then step into the most useful next move."}
-                </p>
-              </div>
-
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-                <SummaryCard label="What changed" value={workspaceBriefingSummary.changed_count || 0} tone={palette.info} palette={palette} />
-                <SummaryCard label="Needs attention" value={workspaceBriefingSummary.attention_count || 0} tone={palette.warn} palette={palette} />
-                <SummaryCard label="Next moves" value={workspaceBriefingSummary.action_count || 0} tone={palette.accent} palette={palette} />
-              </div>
-            </div>
-
-            {workspaceBriefingQuiet ? (
-              <WorkspaceEmptyState
-                palette={palette}
-                darkMode={darkMode}
-                variant="memory"
-                title="The workspace is quiet right now."
-                description="No fresh briefing items are active yet. New documents, decisions, conversations, or delivery changes will show up here automatically."
-              />
-            ) : (
-              <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
-                <BriefingLane
-                  title="What changed"
-                  description="The newest records and shifts worth absorbing before you go deeper."
-                  items={workspaceChangedItems.slice(0, 3)}
-                  emptyMessage="Nothing new has landed in the workspace yet."
-                  palette={palette}
-                  icon={EyeIcon}
-                />
-                <BriefingLane
-                  title="Needs attention"
-                  description="Pressure points where ambiguity, risk, or stalled delivery are starting to matter."
-                  items={workspaceAttentionItems.slice(0, 3)}
-                  emptyMessage="No immediate pressure points are surfacing right now."
-                  palette={palette}
-                  icon={ExclamationTriangleIcon}
-                />
-                <BriefingLane
-                  title="Suggested next moves"
-                  description="The fastest grounded actions back into the workspace without opening every surface."
-                  items={workspaceActionItems.slice(0, 3)}
-                  emptyMessage="There is no obvious next move to surface yet."
-                  palette={palette}
-                  icon={CpuChipIcon}
-                />
-              </div>
-            )}
           </div>
-        </WorkspacePanel>
+        </div>
+
+        <aside style={{ ...dynamicHeroAside, border: `1px solid ${palette.border}`, background: palette.card }}>
+          <p style={{ ...microLabel, color: palette.muted }}>Live pressure</p>
+          <p style={{ ...spotlightNote, color: palette.text }}>{note}</p>
+          <div style={spotlightProgressTrack}>
+            <div style={{ ...spotlightProgressFill, width: `${currentSprint ? sprintProgress : Math.min(100, stats.activity * 8)}%`, background: palette.ctaGradient }} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+            <SummaryCard label="Done" value={sprintCompleted} tone={palette.good} palette={palette} />
+            <SummaryCard label="Moving" value={sprintInProgress} tone={palette.info} palette={palette} />
+            <SummaryCard label="Blocked" value={sprintBlocked} tone={sprintBlocked ? palette.warn : palette.good} palette={palette} />
+          </div>
+        </aside>
       </section>
 
-      <section className="ui-enter" style={{ "--ui-delay": "145ms" }}>
+      <section className="ui-enter" style={{ "--ui-delay": "80ms", ...metricStrip }}>
+        {operatingMetrics.map((metric) => (
+          <article key={metric.label} className="ui-card-lift ui-smooth" style={{ ...metricCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <p style={{ ...microLabel, color: palette.muted }}>{metric.label}</p>
+            <p style={{ ...summaryValue, color: metric.tone }}>{metric.value}</p>
+            <p style={{ ...caption, color: palette.muted }}>{metric.helper}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="ui-enter" style={{ "--ui-delay": "120ms", display: "grid", gap: 12 }}>
+        <div style={sectionHeaderRow}>
+          <div>
+            <p style={{ ...microLabel, color: palette.muted }}>Workflow board</p>
+            <h2 style={{ ...sectionTitle, color: palette.text }}>Move work from queue to memory</h2>
+          </div>
+          <Link className="ui-btn-polish ui-focus-ring" to="/business/tasks" style={secondaryButton(palette)}>
+            View all work
+          </Link>
+        </div>
+        <div style={{ ...flowBoardGrid, gridTemplateColumns: isNarrow ? "1fr" : "repeat(4, minmax(220px, 1fr))" }}>
+          {flowLanes.map((lane) => (
+            <FlowLaneCard key={lane.title} lane={lane} palette={palette} />
+          ))}
+        </div>
+      </section>
+
+      <section className="ui-enter" style={{ "--ui-delay": "155ms", display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0, 1.15fr) minmax(340px, 0.85fr)" }}>
         <WorkspacePanel
           palette={palette}
           darkMode={darkMode}
           variant="memory"
-          eyebrow={roleProfile.personalPanel.eyebrow}
+          eyebrow="Workspace stream"
+          title="What changed and what to do next"
+          description={workspaceBriefingSummary.scan_note || "A compact live stream of workspace changes, pressure points, and recommended next moves."}
+        >
+          {workspaceBriefingQuiet ? (
+            <WorkspaceEmptyState
+              palette={palette}
+              darkMode={darkMode}
+              variant="memory"
+              title="The workspace stream is quiet."
+              description="New decisions, documents, conversations, and delivery changes will fill this stream automatically."
+            />
+          ) : (
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+              <BriefingLane title="Changed" description="New context worth absorbing." items={workspaceChangedItems.slice(0, 3)} emptyMessage="No changes yet." palette={palette} icon={EyeIcon} />
+              <BriefingLane title="Attention" description="Risk, ambiguity, or stalled flow." items={workspaceAttentionItems.slice(0, 3)} emptyMessage="No pressure points." palette={palette} icon={ExclamationTriangleIcon} />
+              <BriefingLane title="Next" description="The shortest grounded moves." items={workspaceActionItems.slice(0, 3)} emptyMessage="No next move surfaced." palette={palette} icon={CpuChipIcon} />
+            </div>
+          )}
+        </WorkspacePanel>
+
+        <aside style={{ display: "grid", gap: 12, alignContent: "start" }}>
+          <WorkspacePanel
+            palette={palette}
+            darkMode={darkMode}
+            variant="execution"
+            eyebrow="Automation"
+            title="Follow-through controls"
+            description="Run the next operational move without digging through the decision hub."
+            action={<Link className="ui-btn-polish ui-focus-ring" to="/decisions?outcome=pending" style={secondaryButton(palette)}>Open reviews</Link>}
+          >
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+              <SummaryCard label="Pending" value={pendingOutcomeMeta.total} tone={palette.info} palette={palette} />
+              <SummaryCard label="Overdue" value={pendingOutcomeMeta.overdue} tone={pendingOutcomeMeta.overdue ? palette.warn : palette.good} palette={palette} />
+            </div>
+            {canManageOutcomeFlow ? (
+              <div style={chipRow}>
+                <button className="ui-btn-polish ui-focus-ring" onClick={sendOutcomeReminders} disabled={notifyingOutcomes || pendingOutcomeMeta.overdue === 0} style={{ ...secondaryButton(palette), cursor: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? "not-allowed" : "pointer", opacity: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? 0.6 : 1 }}>
+                  {notifyingOutcomes ? "Sending..." : "Send reminders"}
+                </button>
+                <button className="ui-btn-polish ui-focus-ring" onClick={runFollowUpOrchestrator} disabled={orchestratingOutcomes} style={{ ...primaryButton(palette), border: "none", cursor: orchestratingOutcomes ? "not-allowed" : "pointer", opacity: orchestratingOutcomes ? 0.6 : 1 }}>
+                  {orchestratingOutcomes ? "Running..." : "Create follow-ups"}
+                </button>
+              </div>
+            ) : (
+              <p style={{ ...caption, color: palette.muted }}>Admins and managers can run reminders and follow-up generation from here.</p>
+            )}
+          </WorkspacePanel>
+
+          <WorkspacePanel
+            palette={palette}
+            darkMode={darkMode}
+            variant="memory"
+            eyebrow="Command"
+            title="Fast paths"
+            description="Jump into the work surface that matches the live signal."
+          >
+            <div style={{ display: "grid", gap: 9 }}>
+              {roleProfile.commandDeck.map((card) => (
+                <CommandCard key={card.title} {...card} palette={palette} />
+              ))}
+            </div>
+          </WorkspacePanel>
+        </aside>
+      </section>
+
+      <section className="ui-enter" style={{ "--ui-delay": "190ms", display: "grid", gap: 12, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0, 0.9fr) minmax(0, 1.1fr)" }}>
+        <WorkspacePanel
+          palette={palette}
+          darkMode={darkMode}
+          variant="memory"
+          eyebrow="Personal lane"
           title={roleProfile.personalPanel.title}
           description={roleProfile.personalPanel.description}
           action={<Link className="ui-btn-polish ui-focus-ring" to="/business/tasks" style={secondaryButton(palette)}>{roleProfile.personalPanel.actionLabel}</Link>}
         >
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
-            <SummaryCard label="Open tasks" value={personalCounts.assigned_open_tasks || 0} tone={palette.accent} palette={palette} />
-            <SummaryCard label="Watchlist" value={personalCounts.watched_issues || 0} tone={palette.info} palette={palette} />
-            <SummaryCard label="Saved" value={personalCounts.bookmarked_conversations || 0} tone={palette.good} palette={palette} />
-            <SummaryCard label="Decisions" value={personalCounts.relevant_decisions || 0} tone={palette.warn} palette={palette} />
-            <SummaryCard label="Recent threads" value={personalCounts.recent_conversations || 0} tone={palette.text} palette={palette} />
-            <SummaryCard label="Ask Recall" value={personalCounts.recent_ask_recall_queries || 0} tone={palette.accent} palette={palette} />
+            {personalSummaryCards.map((item) => (
+              <SummaryCard key={item.label} label={item.label} value={item.value} tone={item.tone} palette={palette} />
+            ))}
           </div>
-
           {personalLaneQuiet ? (
-            <WorkspaceEmptyState
-              palette={palette}
-              darkMode={darkMode}
-              variant="memory"
-              title={roleProfile.personalPanel.emptyTitle}
-              description={roleProfile.personalPanel.emptyDescription}
-              action={<Link className="ui-btn-polish ui-focus-ring" to="/business/tasks" style={primaryButton(palette)}>{roleProfile.personalPanel.actionLabel}</Link>}
-            />
+            <WorkspaceEmptyState palette={palette} darkMode={darkMode} variant="memory" title={roleProfile.personalPanel.emptyTitle} description={roleProfile.personalPanel.emptyDescription} />
           ) : (
-            <div style={{ display: "grid", gap: 14 }}>
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(112px, 1fr))" }}>
-                {personalSummaryCards.map((item) => (
-                  <SummaryCard
-                    key={item.label}
-                    label={item.label}
-                    value={item.value}
-                    tone={item.tone}
-                    palette={palette}
-                  />
-                ))}
-              </div>
-
-              <div style={{ display: "grid", gap: 14, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1fr) minmax(0,1fr)" }}>
-                <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.accent }}>
-                        <QueueListIcon style={icon14} />
-                      </span>
-                      <p style={{ ...microLabel, color: palette.muted }}>Execution lane</p>
-                    </div>
-                    <p style={{ ...caption, color: palette.muted }}>
-                      The assigned tasks and watched issues closest to your actual delivery lane.
-                    </p>
-                  </div>
-
-                  <div style={laneSectionBlock}>
-                    <div style={laneSectionHeader}>
-                      <span style={{ ...microLabel, color: palette.muted }}>Assigned work</span>
-                      <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                        {personalCounts.assigned_tasks || 0}
-                      </span>
-                    </div>
-                    {assignedTasks.length ? (
-                      <div style={{ display: "grid", gap: 10 }}>
-                        {assignedTasks.slice(0, 3).map((task) => (
-                          <Link key={task.id} className="ui-card-lift ui-smooth ui-focus-ring" to="/business/tasks" style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                            <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{task.title}</p>
-                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.accent }}>{formatStatusLabel(task.status)}</span>
-                                <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(task.priority)}</span>
-                              </div>
-                              <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
-                                {task.decision_title || task.goal_title || task.conversation_title || (task.due_date ? `Due ${formatDateLabel(task.due_date)}` : "Open task in your work queue")}
-                              </p>
-                            </div>
-                            <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ ...caption, color: palette.muted, margin: 0 }}>
-                        No tasks are directly assigned to you right now.
-                      </p>
-                    )}
-                  </div>
-
-                  <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
-
-                  <div style={laneSectionBlock}>
-                    <div style={laneSectionHeader}>
-                      <span style={{ ...microLabel, color: palette.muted }}>Watched issues</span>
-                      <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                        {personalCounts.watched_issues || 0}
-                      </span>
-                    </div>
-                    {watchedIssues.length ? (
-                      <div style={{ display: "grid", gap: 10 }}>
-                        {watchedIssues.slice(0, 3).map((issue) => (
-                          <Link key={issue.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/issues/${issue.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                            <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{issue.key ? `${issue.key} | ${issue.title}` : issue.title}</p>
-                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.info }}>{formatStatusLabel(issue.status)}</span>
-                                {issue.project_name ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{issue.project_name}</span> : null}
-                              </div>
-                              <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
-                                {issue.sprint_name || `Updated ${formatDateLabel(issue.updated_at)}`}
-                              </p>
-                            </div>
-                            <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ ...caption, color: palette.muted, margin: 0 }}>
-                        No watched issues are in your lane yet.
-                      </p>
-                    )}
-                  </div>
-                </article>
-
-                <article className="ui-card-lift ui-smooth" style={{ ...laneCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ ...laneIcon, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.warn }}>
-                        <SparklesIcon style={icon14} />
-                      </span>
-                      <p style={{ ...microLabel, color: palette.muted }}>Context memory</p>
-                    </div>
-                    <p style={{ ...caption, color: palette.muted }}>
-                      Decisions, saved conversations, and recent Recall prompts that help you regain context quickly.
-                    </p>
-                  </div>
-
-                  <div style={laneSectionBlock}>
-                    <div style={laneSectionHeader}>
-                      <span style={{ ...microLabel, color: palette.muted }}>Decision memory</span>
-                      <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                        {personalCounts.relevant_decisions || 0}
-                      </span>
-                    </div>
-                    {relevantDecisions.length ? (
-                      <div style={{ display: "grid", gap: 10 }}>
-                        {relevantDecisions.slice(0, 3).map((decision) => (
-                          <Link key={decision.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/decisions/${decision.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                            <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{decision.title}</p>
-                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.warn }}>{formatStatusLabel(decision.status)}</span>
-                                {decision.impact_level ? <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>{formatStatusLabel(decision.impact_level)}</span> : null}
-                              </div>
-                              <p style={{ margin: 0, fontSize: 11, lineHeight: 1.55, color: palette.muted }}>
-                                {decision.conversation_title || decision.decision_maker_name || `Created ${formatDateLabel(decision.created_at)}`}
-                              </p>
-                            </div>
-                            <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ ...caption, color: palette.muted, margin: 0 }}>
-                        No directly relevant decisions are in your lane yet.
-                      </p>
-                    )}
-                  </div>
-
-                  <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
-
-                  <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                    <div style={laneSectionBlock}>
-                      <div style={laneSectionHeader}>
-                        <span style={{ ...microLabel, color: palette.muted }}>Saved context</span>
-                        <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                          {personalCounts.bookmarked_conversations || 0}
-                        </span>
-                      </div>
-                      {bookmarkedConversations.length ? (
-                        <div style={{ display: "grid", gap: 10 }}>
-                          {bookmarkedConversations.slice(0, 2).map((bookmark) => (
-                            <Link key={bookmark.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/conversations/${bookmark.conversation_id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                              <div style={{ minWidth: 0, display: "grid", gap: 4 }}>
-                                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, lineHeight: 1.45 }}>{bookmark.conversation_title || "Saved conversation"}</p>
-                                <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: palette.muted }}>
-                                  {bookmark.note || `Saved ${formatDateLabel(bookmark.created_at)}`}
-                                </p>
-                              </div>
-                              <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                            </Link>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ ...caption, color: palette.muted, margin: 0 }}>
-                          No saved conversations are pinned in your lane yet.
-                        </p>
-                      )}
-                    </div>
-
-                    <div style={laneSectionBlock}>
-                      <div style={laneSectionHeader}>
-                        <span style={{ ...microLabel, color: palette.muted }}>Recent threads</span>
-                        <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                          {personalCounts.recent_conversations || 0}
-                        </span>
-                      </div>
-                      {recentConversations.length ? (
-                        <div style={{ display: "grid", gap: 10 }}>
-                          {recentConversations.slice(0, 2).map((conversation) => (
-                            <Link key={conversation.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/conversations/${conversation.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}>
-                              <div style={{ minWidth: 0, display: "grid", gap: 4 }}>
-                                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, lineHeight: 1.45 }}>{conversation.title}</p>
-                                <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: palette.muted }}>
-                                  {formatDateLabel(conversation.created_at)}
-                                </p>
-                              </div>
-                              <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                            </Link>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ ...caption, color: palette.muted, margin: 0 }}>
-                          No recent conversation threads are linked to you yet.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ ...railDivider, borderTop: `1px solid ${palette.border}` }} />
-
-                  <div style={laneSectionBlock}>
-                    <div style={laneSectionHeader}>
-                      <span style={{ ...microLabel, color: palette.muted }}>Ask Recall memory</span>
-                      <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.text }}>
-                        {personalCounts.recent_ask_recall_queries || 0}
-                      </span>
-                    </div>
-                    {recentAskRecallQueries.length ? (
-                      <div style={{ display: "grid", gap: 10 }}>
-                        {recentAskRecallQueries.slice(0, 2).map((queryItem) => (
-                          <Link
-                            key={queryItem.id}
-                            className="ui-card-lift ui-smooth ui-focus-ring"
-                            to={`/ask?q=${encodeURIComponent(queryItem.query)}&autorun=1`}
-                            state={{ askRecallSnapshot: queryItem }}
-                            style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, alignItems: "flex-start" }}
-                          >
-                            <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{queryItem.query}</p>
-                              {queryItem.answer_preview ? (
-                                <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: palette.muted }}>
-                                  {queryItem.answer_preview}
-                                </p>
-                              ) : null}
-                              <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: palette.muted }}>
-                                {queryItem.evidence_count} evidence item{queryItem.evidence_count === 1 ? "" : "s"} | {Math.round(queryItem.coverage_score || 0)}% coverage
-                              </p>
-                            </div>
-                            <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                          </Link>
-                        ))}
-                        <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={secondaryButton(palette)}>
-                          Open Ask Recall
-                        </Link>
-                      </div>
-                    ) : (
-                      <div style={{ display: "grid", gap: 10 }}>
-                        <p style={{ ...caption, color: palette.muted, margin: 0 }}>
-                          Your recent Ask Recall prompts will appear here after you use the copilot.
-                        </p>
-                        <Link className="ui-btn-polish ui-focus-ring" to="/ask" style={secondaryButton(palette)}>
-                          Open Ask Recall
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                </article>
-              </div>
+            <div style={{ display: "grid", gap: 9 }}>
+              {[...assignedFlowItems, ...activeFlowItems, ...learnedFlowItems].slice(0, 6).map((item) => (
+                <FlowRow key={`personal-${item.id || item.title}`} item={item} palette={palette} />
+              ))}
             </div>
           )}
         </WorkspacePanel>
-      </section>
 
-      <section className="ui-enter" style={{ "--ui-delay": "170ms", display: "grid", gap: 14, gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1.18fr) minmax(320px,0.82fr)" }}>
         <WorkspacePanel
           palette={palette}
           darkMode={darkMode}
           variant="memory"
           eyebrow={roleProfile.signalPanel.eyebrow}
-          title={roleProfile.signalPanel.title}
-          description={roleProfile.signalPanel.description}
+          title="Live activity stream"
+          description="Fresh context stays readable and linked instead of becoming a static report."
           action={<Link className="ui-btn-polish ui-focus-ring" to="/activity" style={secondaryButton(palette)}>{roleProfile.signalPanel.actionLabel}</Link>}
         >
-          {timeline.length === 0 ? (
-            <WorkspaceEmptyState
-              palette={palette}
-              darkMode={darkMode}
-              variant="memory"
-              title={roleProfile.signalPanel.emptyTitle}
-              description={roleProfile.signalPanel.emptyDescription}
-              action={<Link className="ui-btn-polish ui-focus-ring" to="/activity" style={primaryButton(palette)}>{roleProfile.signalPanel.emptyActionLabel}</Link>}
-            />
-          ) : (
-            <div style={{ display: "grid", gap: 12 }}>
-              {featuredActivity ? (
-                <Link
-                  className="ui-card-lift ui-smooth ui-focus-ring"
-                  to={getActivityUrl(featuredActivity)}
-                  style={{ ...featureCard, border: `1px solid ${palette.border}`, background: palette.card }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ ...typeChip, border: `1px solid ${palette.border}`, color: palette.accent }}>{humanizeActivityType(featuredActivity)}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: palette.muted }}>{formatDateLabel(featuredActivity.created_at)}</span>
-                  </div>
-                  <h3 style={{ ...sectionTitle, margin: 0, fontSize: 26, color: palette.text }}>{featuredActivity.title}</h3>
-                  <p style={{ ...bodyCopy, color: palette.muted }}>{getActivitySummary(featuredActivity)}</p>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: palette.text }}>Open signal <ArrowRightIcon style={icon14} /></span>
-                </Link>
-              ) : null}
-
-              {signalStream.length ? (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {signalStream.map((activity) => (
-                    <Link
-                      key={activity.id}
-                      className="ui-card-lift ui-smooth ui-focus-ring"
-                      to={getActivityUrl(activity)}
-                      style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}
-                    >
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                          <span style={{ ...microLabel, color: palette.accent }}>{humanizeActivityType(activity)}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: palette.muted }}>{formatDateLabel(activity.created_at)}</span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: 14, fontWeight: 600, lineHeight: 1.45, color: palette.text }}>{activity.title}</p>
-                      </div>
-                      <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-
+          {recentSignalItems.length ? (
+            <div style={{ display: "grid", gap: 9 }}>
+              {recentSignalItems.map((item) => (
+                <FlowRow key={`signal-${item.id || item.title}`} item={item} palette={palette} tone={palette.info} />
+              ))}
               {hasMore ? (
                 <button className="ui-btn-polish ui-focus-ring" onClick={() => setPage((current) => current + 1)} style={{ ...primaryButton(palette), border: "none", width: "fit-content", cursor: "pointer" }}>
-                  Load more signals
+                  Load more
                 </button>
               ) : null}
             </div>
+          ) : (
+            <WorkspaceEmptyState palette={palette} darkMode={darkMode} variant="memory" title={roleProfile.signalPanel.emptyTitle} description={roleProfile.signalPanel.emptyDescription} />
           )}
         </WorkspacePanel>
-
-        <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
-          <WorkspacePanel
-            palette={palette}
-            darkMode={darkMode}
-            variant="execution"
-            eyebrow={roleProfile.outcomePanel.eyebrow}
-            title={roleProfile.outcomePanel.title}
-            description={roleProfile.outcomePanel.description}
-            action={<Link className="ui-btn-polish ui-focus-ring" to="/decisions?outcome=pending" style={secondaryButton(palette)}>{roleProfile.outcomePanel.actionLabel}</Link>}
-          >
-            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
-              <SummaryCard label="Pending" value={pendingOutcomeMeta.total} tone={palette.info} palette={palette} />
-              <SummaryCard label="Overdue" value={pendingOutcomeMeta.overdue} tone={pendingOutcomeMeta.overdue ? palette.warn : palette.good} palette={palette} />
-            </div>
-
-            {pendingOutcomeReviews.length ? (
-              <div style={{ display: "grid", gap: 10 }}>
-                {pendingOutcomeReviews.slice(0, 4).map((item) => (
-                  <Link key={item.id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/decisions/${item.id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{item.title}</p>
-                      <p style={{ margin: "4px 0 0", fontSize: 11, lineHeight: 1.5, color: palette.muted }}>{item.is_overdue ? `${item.days_overdue} days overdue` : "Scheduled review pending"}</p>
-                    </div>
-                    <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <WorkspaceEmptyState palette={palette} darkMode={darkMode} variant="execution" title={roleProfile.outcomePanel.emptyTitle} description={roleProfile.outcomePanel.emptyDescription} />
-            )}
-
-            {canManageOutcomeFlow ? (
-              <div style={chipRow}>
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  onClick={sendOutcomeReminders}
-                  disabled={notifyingOutcomes || pendingOutcomeMeta.overdue === 0}
-                  style={{ ...secondaryButton(palette), cursor: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? "not-allowed" : "pointer", opacity: notifyingOutcomes || pendingOutcomeMeta.overdue === 0 ? 0.6 : 1 }}
-                >
-                  {notifyingOutcomes ? "Sending..." : "Send Reminders"}
-                </button>
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  onClick={runFollowUpOrchestrator}
-                  disabled={orchestratingOutcomes}
-                  style={{ ...primaryButton(palette), border: "none", cursor: orchestratingOutcomes ? "not-allowed" : "pointer", opacity: orchestratingOutcomes ? 0.6 : 1 }}
-                >
-                  {orchestratingOutcomes ? "Running..." : "Create Follow-ups"}
-                </button>
-              </div>
-            ) : (
-              <p style={{ ...caption, color: palette.muted }}>
-                Outcome reminder automation is available to workspace admins and managers. Contributors can still inspect the queue and follow the linked decisions.
-              </p>
-            )}
-          </WorkspacePanel>
-
-          <WorkspacePanel
-            palette={palette}
-            darkMode={darkMode}
-            variant="execution"
-            eyebrow={roleProfile.driftPanel.eyebrow}
-            title={roleProfile.driftPanel.title}
-            description={roleProfile.driftPanel.description}
-            action={<Link className="ui-btn-polish ui-focus-ring" to="/decisions" style={secondaryButton(palette)}>{roleProfile.driftPanel.actionLabel}</Link>}
-          >
-            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))" }}>
-              <SummaryCard label="Alerts" value={driftMeta.total} tone={palette.info} palette={palette} />
-              <SummaryCard label="Critical" value={driftMeta.critical} tone={driftMeta.critical ? palette.warn : palette.good} palette={palette} />
-              <SummaryCard label="High" value={driftMeta.high} tone={driftMeta.high ? palette.accent : palette.info} palette={palette} />
-            </div>
-
-            {driftAlerts.length ? (
-              <div style={{ display: "grid", gap: 10 }}>
-                {driftAlerts.slice(0, 4).map((item) => (
-                  <Link key={item.decision_id} className="ui-card-lift ui-smooth ui-focus-ring" to={`/decisions/${item.decision_id}`} style={{ ...listCard, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{item.title}</p>
-                      <p style={{ margin: "4px 0 0", fontSize: 11, lineHeight: 1.5, color: palette.muted }}>{item.severity} severity with drift score {item.drift_score}</p>
-                    </div>
-                    <ArrowRightIcon style={{ ...icon14, flexShrink: 0, color: palette.muted }} />
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <WorkspaceEmptyState palette={palette} darkMode={darkMode} variant="execution" title={roleProfile.driftPanel.emptyTitle} description={roleProfile.driftPanel.emptyDescription} />
-            )}
-          </WorkspacePanel>
-        </aside>
       </section>
 
       <section className="ui-enter" style={{ "--ui-delay": "220ms" }}>
-        <WorkspacePanel
-          palette={palette}
-          darkMode={darkMode}
-          variant="execution"
-          eyebrow={roleProfile.missionPanel.eyebrow}
-          title={roleProfile.missionPanel.title}
-          description={roleProfile.missionPanel.description}
-        >
+        <WorkspacePanel palette={palette} darkMode={darkMode} variant="execution" eyebrow={roleProfile.missionPanel.eyebrow} title={roleProfile.missionPanel.title} description={roleProfile.missionPanel.description}>
           <MissionControlPanel />
         </WorkspacePanel>
       </section>
@@ -1666,6 +1247,20 @@ function secondaryButton(palette) {
 }
 
 const pageStyle = { position: "relative", padding: "clamp(10px, 1.8vw, 18px)", display: "grid", gap: 12 };
+const dynamicPage = { position: "relative", padding: "clamp(10px, 1.5vw, 18px)", display: "grid", gap: 12 };
+const dynamicHero = { borderRadius: 18, padding: "clamp(16px, 2.4vw, 26px)", display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 1.25fr) minmax(300px, 0.75fr)", alignItems: "stretch", overflow: "hidden" };
+const dynamicHeroCopy = { display: "grid", gap: 14, alignContent: "center", minWidth: 0 };
+const dynamicHeroTitle = { margin: 0, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: "clamp(2rem, 4vw, 4.6rem)", lineHeight: 0.92, letterSpacing: "-0.055em" };
+const dynamicHeroAside = { borderRadius: 16, padding: 14, display: "grid", gap: 12, alignContent: "start", minWidth: 0 };
+const metricStrip = { display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" };
+const metricCard = { borderRadius: 14, padding: 12, display: "grid", gap: 5, minHeight: 104 };
+const sectionHeaderRow = { display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap" };
+const flowBoardGrid = { display: "grid", gap: 10, alignItems: "stretch" };
+const flowLaneCard = { borderRadius: 14, padding: 10, display: "grid", gap: 10, alignContent: "start", minHeight: 280 };
+const flowLaneHeader = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 };
+const flowCount = { minWidth: 30, height: 30, borderRadius: 999, display: "grid", placeItems: "center", fontSize: 12, fontWeight: 800, flexShrink: 0 };
+const flowRow = { borderRadius: 10, padding: 10, minHeight: 86, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, textDecoration: "none" };
+const flowEmpty = { borderRadius: 10, padding: 12, fontSize: 12, lineHeight: 1.55, minHeight: 86, display: "grid", alignItems: "center" };
 const sectionTitle = { margin: 0, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 22, lineHeight: 1.08, letterSpacing: "-0.035em" };
 const bodyCopy = { margin: 0, fontSize: 13, lineHeight: 1.65 };
 const caption = { margin: 0, fontSize: 12, lineHeight: 1.6 };

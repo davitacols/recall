@@ -293,6 +293,22 @@ function ConversationDetail() {
     setEditContent(nextDraft.content);
   };
 
+  const handleApplyConversationAI = ({ kind, summary, actionItems }) => {
+    const baseTitle = conversation?.title || "";
+    const baseContent = conversation?.content || "";
+    const aiBlock =
+      kind === "summary" && summary
+        ? `\n\nAI summary:\n${summary}`
+        : kind === "actions" && Array.isArray(actionItems) && actionItems.length > 0
+          ? `\n\nAI suggested next actions:\n${actionItems.map((item) => `- ${item}`).join("\n")}`
+          : "";
+
+    if (!aiBlock) return;
+    resetDraftHistory(baseTitle, `${baseContent}${aiBlock}`);
+    setIsEditingPost(true);
+    addToast("AI draft added to the conversation editor", "success");
+  };
+
   const handleUndoDraft = () => {
     if (!isEditingPost || draftHistory.length === 0) return;
 
@@ -1151,7 +1167,7 @@ function ConversationDetail() {
           </section>
 
           <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
-            <AIAssistant content={conversation?.content} contentType="conversation" />
+            <AIAssistant content={conversation?.content} contentType="conversation" onApply={handleApplyConversationAI} />
           </section>
 
           <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "240ms" }}>

@@ -1118,6 +1118,7 @@ def memory_score(request):
 def onboarding_package(request):
     """Generate onboarding package for new employees"""
     org = request.user.organization
+    user = request.user
     
     # Get key decisions
     key_decisions = Decision.objects.filter(
@@ -1152,6 +1153,49 @@ def onboarding_package(request):
             keyword_counts[keyword] = keyword_counts.get(keyword, 0) + 1
     
     trending = sorted(keyword_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    task_count = Task.objects.filter(organization=org).count() if Task is not None else 0
+    assigned_task_count = Task.objects.filter(organization=org, assigned_to=user).exclude(status='done').count() if Task is not None else 0
+    document_count = Document.objects.filter(organization=org).count() if Document is not None else 0
+    decision_count = Decision.objects.filter(organization=org).count()
+    conversation_count = Conversation.objects.filter(organization=org).count()
+    integration_count = 0
+    try:
+        integration_count += getattr(org, 'github_integrations', None).count() if hasattr(org, 'github_integrations') else 0
+        integration_count += getattr(org, 'jira_integrations', None).count() if hasattr(org, 'jira_integrations') else 0
+        integration_count += getattr(org, 'slack_integrations', None).count() if hasattr(org, 'slack_integrations') else 0
+    except Exception:
+        integration_count = 0
+    checklist = [
+        {
+            'id': 'ask_recall',
+            'label': 'Ask Recall has workspace context',
+            'description': 'Create at least one conversation, decision, task, or document so answers have evidence.',
+            'complete': any([conversation_count, decision_count, task_count, document_count]),
+            'href': '/ask',
+        },
+        {
+            'id': 'tasks',
+            'label': 'Execution work exists',
+            'description': 'Create or assign tasks so Ask Recall can prioritize next work.',
+            'complete': assigned_task_count > 0 or task_count > 0,
+            'href': '/business/tasks',
+        },
+        {
+            'id': 'documents',
+            'label': 'Knowledge is captured',
+            'description': 'Save drafts, procedures, reports, or plans into Documents.',
+            'complete': document_count > 0,
+            'href': '/business/documents',
+        },
+        {
+            'id': 'integrations',
+            'label': 'Work sources are connected',
+            'description': 'Connect GitHub, Jira, Slack, or calendar sources when available.',
+            'complete': integration_count > 0,
+            'href': '/integrations',
+        },
+    ]
+    completed_steps = len([item for item in checklist if item['complete']])
     
     return Response({
         'key_decisions': [{
@@ -1175,6 +1219,12 @@ def onboarding_package(request):
             'created_at': c.created_at
         } for c in recent_updates],
         'trending_topics': [{'topic': t[0], 'count': t[1]} for t in trending],
+        'onboarding_progress': {
+            'completed_steps': completed_steps,
+            'total_steps': len(checklist),
+            'percent': round((completed_steps / max(1, len(checklist))) * 100),
+            'checklist': checklist,
+        },
         'organization_name': org.name
     })
 

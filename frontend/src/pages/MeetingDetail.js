@@ -72,6 +72,22 @@ export default function MeetingDetail() {
     }
   };
 
+  const handleApplyMeetingAI = ({ kind, summary, actionItems }) => {
+    setFormData((current) => {
+      if (kind === "summary" && summary) {
+        return { ...current, description: summary };
+      }
+      if (kind === "actions" && Array.isArray(actionItems) && actionItems.length > 0) {
+        return {
+          ...current,
+          notes: `${current.notes || ""}${current.notes ? "\n\n" : ""}AI suggested next actions:\n${actionItems.map((item) => `- ${item}`).join("\n")}`,
+        };
+      }
+      return current;
+    });
+    setEditing(true);
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: palette.text }}>
@@ -97,7 +113,7 @@ export default function MeetingDetail() {
 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 340px", gap: 10 }}>
           <section style={{ borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
-            <AIAssistant content={meeting?.notes} contentType="meeting" />
+            <AIAssistant content={meeting?.notes} contentType="meeting" onApply={handleApplyMeetingAI} />
 
             {editing ? (
               <form onSubmit={handleUpdate} style={{ display: "grid", gap: 8, marginTop: 10 }}>

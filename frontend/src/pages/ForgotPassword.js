@@ -63,7 +63,7 @@ function ForgotPassword() {
         <aside className="authp-aside">
           <div className="authp-top">
             <button type="button" onClick={() => navigate("/")} className="authp-brand">
-              <BrandLogo tone="warm" size="lg" />
+              <BrandLogo tone="blueLight" size="lg" />
             </button>
             <Link to="/docs" className="authp-top-link">
               Documentation

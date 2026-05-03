@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpenIcon, CheckCircleIcon, ClockIcon, LightBulbIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowRightIcon,
+  BookOpenIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  LightBulbIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
@@ -61,16 +68,97 @@ function Onboarding() {
       >
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <BookOpenIcon style={{ width: 18, height: 18, color: palette.text }} />
-            <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700, color: palette.muted }}>WELCOME BRIEF</p>
+            <SparklesIcon style={{ width: 18, height: 18, color: palette.text }} />
+            <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700, color: palette.muted }}>AI WORKSPACE BRIEF</p>
           </div>
           <h1 style={{ margin: 0, fontSize: "clamp(1.12rem,2.1vw,1.58rem)", color: palette.text }}>
-            Welcome to {data.organization_name}
+            Start with Ask Recall, then turn answers into work.
           </h1>
-          <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>Everything you need to get started quickly.</p>
+          <p style={{ margin: 0, fontSize: 13, color: palette.muted, maxWidth: 680, lineHeight: 1.6 }}>
+            Knoledgr helps {data.organization_name} answer from workspace context, draft updates, plan next moves, and route people to the right surface.
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+            <Link to="/ask" style={{ ...ui.primaryButton, textDecoration: "none" }}>
+              <SparklesIcon style={{ width: 14, height: 14 }} />
+              Open Ask Recall
+            </Link>
+            <Link to="/business/tasks" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
+              Review tasks
+              <ArrowRightIcon style={{ width: 14, height: 14 }} />
+            </Link>
+          </div>
         </div>
         <BrandedTechnicalIllustration darkMode={darkMode} compact />
       </section>
+
+      {data.onboarding_progress ? (
+        <Section title="Setup Progress" icon={CheckCircleIcon} palette={palette} subtitle="Make Knoledgr useful as an assistant by giving it real workspace context.">
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <strong style={{ color: palette.text, fontSize: 14 }}>
+                {data.onboarding_progress.completed_steps} of {data.onboarding_progress.total_steps} foundations ready
+              </strong>
+              <span style={{ color: palette.muted, fontSize: 12, fontWeight: 800 }}>{data.onboarding_progress.percent}% complete</span>
+            </div>
+            <div style={{ height: 10, borderRadius: 999, background: palette.cardAlt, overflow: "hidden", border: `1px solid ${palette.border}` }}>
+              <div style={{ width: `${data.onboarding_progress.percent}%`, height: "100%", background: palette.ctaGradient || palette.accent }} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 8 }}>
+              {(data.onboarding_progress.checklist || []).map((item) => (
+                <Link key={item.id} to={item.href} style={{ textDecoration: "none" }}>
+                  <article style={{ border: `1px solid ${item.complete ? palette.success : palette.border}`, borderRadius: 12, padding: 12, background: item.complete ? palette.successSoft || palette.cardAlt : palette.card, display: "grid", gap: 7, minHeight: 120 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, color: item.complete ? palette.success : palette.text, fontSize: 12, fontWeight: 800 }}>
+                      <CheckCircleIcon style={{ width: 15, height: 15 }} />
+                      {item.complete ? "Ready" : "Next"}
+                    </span>
+                    <h3 style={{ margin: 0, color: palette.text, fontSize: 14 }}>{item.label}</h3>
+                    <p style={{ margin: 0, color: palette.muted, fontSize: 12, lineHeight: 1.5 }}>{item.description}</p>
+                  </article>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </Section>
+      ) : null}
+
+      <Section title="Your AI Workspace Flow" icon={BookOpenIcon} palette={palette} subtitle="The shortest useful path through Knoledgr.">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8 }}>
+          {[
+            {
+              title: "Ask",
+              body: "Use Ask Recall for answers, drafts, plans, and navigation grounded in workspace records.",
+              href: "/ask?q=What should I focus on next?&autorun=1",
+            },
+            {
+              title: "Plan",
+              body: "Convert operational signals into tasks, owners, and the next safest sequence of work.",
+              href: "/business/tasks",
+            },
+            {
+              title: "Capture",
+              body: "Save drafts, reports, procedures, and working knowledge into Documents.",
+              href: "/business/documents",
+            },
+            {
+              title: "Operate",
+              body: "Use dashboards, service desk, team health, and calendar views to keep work moving.",
+              href: "/service-desk",
+            },
+          ].map((item) => (
+            <Link key={item.title} to={item.href} style={{ textDecoration: "none" }}>
+              <article style={{ border: `1px solid ${palette.border}`, borderRadius: 12, padding: 12, background: palette.card, minHeight: 132, display: "grid", alignContent: "space-between", gap: 10 }}>
+                <div style={{ display: "grid", gap: 5 }}>
+                  <h3 style={{ margin: 0, fontSize: 15, color: palette.text }}>{item.title}</h3>
+                  <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.55 }}>{item.body}</p>
+                </div>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: palette.accent }}>
+                  Open surface <ArrowRightIcon style={{ width: 13, height: 13 }} />
+                </span>
+              </article>
+            </Link>
+          ))}
+        </div>
+      </Section>
 
       <Section title="Key Decisions" icon={CheckCircleIcon} palette={palette} subtitle="Important decisions that shape how we work.">
         <div style={{ display: "grid", gap: 8 }}>

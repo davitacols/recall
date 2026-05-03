@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowPathIcon,
@@ -12,6 +12,7 @@ import {
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
@@ -40,6 +41,7 @@ const PLAN_HIGHLIGHTS = {
   professional: ["Decision-grade workflows", "Analytics and AI operating layer", "API and priority support"],
   enterprise: ["Identity and governance", "Custom rollout support", "Enterprise security and procurement"],
 };
+const PAYPAL_SDK_SCRIPT_ID = "paypal-js-sdk";
 
 function formatMoney(value) {
   return new Intl.NumberFormat("en-US", {
@@ -61,6 +63,35 @@ function comparePlans(left, right) {
 function isLocalBillingEnvironment() {
   if (typeof window === "undefined") return false;
   return process.env.NODE_ENV !== "production" || ["localhost", "127.0.0.1"].includes(window.location.hostname);
+}
+
+function loadPayPalSdk(clientId) {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("PayPal checkout is only available in the browser."));
+  }
+  if (!clientId) {
+    return Promise.reject(new Error("PayPal client ID is missing from the frontend environment."));
+  }
+  if (window.paypal?.Buttons) {
+    return Promise.resolve(window.paypal);
+  }
+
+  return new Promise((resolve, reject) => {
+    const existingScript = document.getElementById(PAYPAL_SDK_SCRIPT_ID);
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(window.paypal), { once: true });
+      existingScript.addEventListener("error", () => reject(new Error("Unable to load the PayPal checkout SDK.")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = PAYPAL_SDK_SCRIPT_ID;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons&vault=true&intent=subscription`;
+    script.async = true;
+    script.onload = () => resolve(window.paypal);
+    script.onerror = () => reject(new Error("Unable to load the PayPal checkout SDK."));
+    document.body.appendChild(script);
+  });
 }
 
 function planSupports(plan, featureKey) {
@@ -117,9 +148,10 @@ function UpgradeCue({ palette, icon: Icon, title, body }) {
   );
 }
 
-function PlanCard({ palette, ui, plan, currentPlanName, actionState, handlePlanAction }) {
+function PlanCard({ palette, ui, plan, currentPlanName, actionState, handlePlanAction, canManageBilling }) {
   const isCurrent = plan.name === currentPlanName;
   const isBusy = actionState.loading && actionState.plan === plan.name;
+  const isDisabled = isCurrent || isBusy || !canManageBilling;
   const currentRank = PLAN_ORDER[currentPlanName] || 0;
   const isUpgrade = (PLAN_ORDER[plan.name] || 0) > currentRank;
   const isRecommended = plan.name === "professional";
@@ -189,11 +221,11 @@ function PlanCard({ palette, ui, plan, currentPlanName, actionState, handlePlanA
       <button
         className="ui-btn-polish ui-focus-ring"
         onClick={() => handlePlanAction(plan)}
-        disabled={isCurrent || isBusy}
+        disabled={isDisabled}
         style={{
           ...(plan.name === "professional" ? ui.primaryButton : ui.secondaryButton),
           justifyContent: "center",
-          opacity: isCurrent || isBusy ? 0.7 : 1,
+          opacity: isDisabled ? 0.7 : 1,
         }}
       >
         {isBusy ? (
@@ -203,7 +235,9 @@ function PlanCard({ palette, ui, plan, currentPlanName, actionState, handlePlanA
         ) : (
           <ArrowTopRightOnSquareIcon style={{ width: 14, height: 14 }} />
         )}
-        {isCurrent
+        {!canManageBilling
+          ? "Admins manage billing"
+          : isCurrent
           ? "Current plan"
           : plan.name === "enterprise"
             ? "Talk to sales"
@@ -220,20 +254,29 @@ function PlanCard({ palette, ui, plan, currentPlanName, actionState, handlePlanA
 export default function Subscription() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const { darkMode } = useTheme();
   const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
   const ui = useMemo(() => getProjectUi(palette), [palette]);
+  const canManageBilling = user?.role === "admin";
+  const paypalClientId = (process.env.REACT_APP_PAYPAL_CLIENT_ID || "").trim();
 
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [conversion, setConversion] = useState(null);
   const [stripeStatus, setStripeStatus] = useState(null);
+  const [paypalConfig, setPaypalConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(null);
   const [error, setError] = useState("");
   const [actionState, setActionState] = useState({ loading: false, plan: "", error: "" });
   const [billingBusy, setBillingBusy] = useState(false);
+  const [paypalBusy, setPaypalBusy] = useState(false);
+  const [paypalError, setPaypalError] = useState("");
+  const [paypalPendingPlan, setPaypalPendingPlan] = useState(null);
+  const paypalButtonHostRef = useRef(null);
+  const paypalButtonsRef = useRef(null);
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -246,17 +289,18 @@ export default function Subscription() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [canManageBilling]);
 
   const fetchData = async () => {
     setLoading(true);
     setError("");
-    const [subRes, planRes, invoiceRes, conversionRes, stripeRes] = await Promise.allSettled([
+    const [subRes, planRes, invoiceRes, conversionRes, stripeRes, paypalRes] = await Promise.allSettled([
       api.get("/api/organizations/subscription/"),
       api.get("/api/organizations/plans/"),
       api.get("/api/organizations/invoices/"),
       api.get("/api/organizations/subscription/conversion/"),
       api.get("/api/organizations/stripe/status/"),
+      canManageBilling ? api.get("/api/organizations/paypal/config/") : Promise.resolve({ data: null }),
     ]);
 
     if (subRes.status === "fulfilled") setSubscription(subRes.value.data || null);
@@ -268,6 +312,7 @@ export default function Subscription() {
     setInvoices(invoiceRes.status === "fulfilled" ? invoiceRes.value.data || [] : []);
     setConversion(conversionRes.status === "fulfilled" ? conversionRes.value.data || null : null);
     setStripeStatus(stripeRes.status === "fulfilled" ? stripeRes.value.data || null : null);
+    setPaypalConfig(paypalRes.status === "fulfilled" ? paypalRes.value.data || null : null);
     setLoading(false);
   };
 
@@ -277,7 +322,11 @@ export default function Subscription() {
   };
 
   const handlePlanAction = async (plan) => {
-    if (!subscription || actionState.loading || plan.name === subscription.plan.name) return;
+    if (!subscription || actionState.loading || paypalBusy || plan.name === subscription.plan.name) return;
+    if (!canManageBilling) {
+      setActionState({ loading: false, plan: "", error: "Only workspace admins can change billing." });
+      return;
+    }
     if (plan.name === "enterprise") {
       navigate("/enterprise");
       return;
@@ -286,12 +335,33 @@ export default function Subscription() {
     const currentRank = PLAN_ORDER[subscription.plan.name] || 0;
     const nextRank = PLAN_ORDER[plan.name] || 0;
     const directSwitch = plan.name === "free" || nextRank <= currentRank;
+    const provider = subscription?.billing?.provider || "manual";
     setActionState({ loading: true, plan: plan.name, error: "" });
+    setPaypalError("");
 
     try {
+      if (directSwitch && subscription?.billing?.has_payment_profile) {
+        if (provider === "stripe") {
+          throw new Error("Use the billing portal to downgrade or cancel Stripe-managed plans.");
+        }
+        if (provider === "paypal") {
+          throw new Error("Manage PayPal subscription downgrades or cancellations in PayPal first, then refresh this workspace.");
+        }
+      }
       if (directSwitch) {
+        setPaypalPendingPlan(null);
         await switchPlanDirect(plan);
         setNotice({ tone: "success", text: `${plan.display_name} is now active for this workspace.` });
+      } else if (provider === "paypal") {
+        const planId = paypalConfig?.plan_ids?.[plan.name];
+        if (!paypalClientId || !planId) {
+          throw new Error("PayPal checkout is not configured for this plan yet.");
+        }
+        setPaypalPendingPlan(plan);
+        setNotice({
+          tone: "info",
+          text: `Finish ${plan.display_name} in PayPal. The workspace plan updates after server-side verification.`,
+        });
       } else {
         const response = await api.post("/api/organizations/stripe/checkout/", {
           plan: plan.name,
@@ -309,7 +379,7 @@ export default function Subscription() {
           await switchPlanDirect(plan);
           setNotice({
             tone: "info",
-            text: `${plan.display_name} was applied directly because Stripe checkout is not configured in this environment.`,
+            text: `${plan.display_name} was applied directly because billing checkout is not configured in this environment.`,
           });
           setActionState({ loading: false, plan: "", error: "" });
           return;
@@ -328,6 +398,106 @@ export default function Subscription() {
 
     setActionState({ loading: false, plan: "", error: "" });
   };
+
+  useEffect(() => {
+    if (!paypalPendingPlan || !canManageBilling) return undefined;
+
+    const planId = paypalConfig?.plan_ids?.[paypalPendingPlan.name];
+    const host = paypalButtonHostRef.current;
+    if (!paypalClientId || !planId || !host) return undefined;
+
+    let active = true;
+    host.innerHTML = "";
+
+    const renderButtons = async () => {
+      try {
+        const paypal = await loadPayPalSdk(paypalClientId);
+        if (!active || !paypal?.Buttons || !paypalButtonHostRef.current) return;
+
+        if (paypalButtonsRef.current?.close) {
+          try {
+            paypalButtonsRef.current.close();
+          } catch (closeError) {
+            // Ignore stale button cleanup failures.
+          }
+        }
+
+        const buttons = paypal.Buttons({
+          style: {
+            layout: "vertical",
+            shape: "rect",
+            label: "subscribe",
+          },
+          createSubscription(data, actions) {
+            return actions.subscription.create({
+              plan_id: planId,
+            });
+          },
+          async onApprove(data) {
+            if (!active) return;
+            setPaypalBusy(true);
+            setPaypalError("");
+            try {
+              await api.post("/api/organizations/paypal/activate/", {
+                plan: paypalPendingPlan.name,
+                subscription_id: data.subscriptionID,
+              });
+              setPaypalPendingPlan(null);
+              setNotice({
+                tone: "success",
+                text: `${paypalPendingPlan.display_name} is now active via PayPal.`,
+              });
+              await fetchData();
+            } catch (approveError) {
+              const message =
+                approveError?.response?.data?.error ||
+                approveError?.message ||
+                "PayPal checkout was approved, but the workspace plan could not be activated.";
+              setPaypalError(message);
+            } finally {
+              if (active) setPaypalBusy(false);
+            }
+          },
+          onCancel() {
+            if (!active) return;
+            setNotice({
+              tone: "warn",
+              text: "PayPal checkout was canceled. The workspace plan did not change.",
+            });
+          },
+          onError(buttonError) {
+            if (!active) return;
+            setPaypalError(buttonError?.message || "Unable to start PayPal checkout.");
+          },
+        });
+
+        paypalButtonsRef.current = buttons;
+        if (typeof buttons.isEligible === "function" && !buttons.isEligible()) {
+          setPaypalError("PayPal checkout is not eligible in this browser session.");
+          return;
+        }
+        await buttons.render(paypalButtonHostRef.current);
+      } catch (sdkError) {
+        if (!active) return;
+        setPaypalError(sdkError?.message || "Unable to load PayPal checkout.");
+      }
+    };
+
+    renderButtons();
+
+    return () => {
+      active = false;
+      if (paypalButtonsRef.current?.close) {
+        try {
+          paypalButtonsRef.current.close();
+        } catch (closeError) {
+          // Ignore cleanup issues during rerender/unmount.
+        }
+      }
+      paypalButtonsRef.current = null;
+      if (host) host.innerHTML = "";
+    };
+  }, [canManageBilling, paypalClientId, paypalConfig, paypalPendingPlan]);
 
   const handleBillingPortal = async () => {
     setBillingBusy(true);
@@ -366,6 +536,7 @@ export default function Subscription() {
   }
 
   const currentPlan = subscription.plan;
+  const activeBillingProvider = subscription?.billing?.provider || "manual";
   const currentUsers = Number(subscription.user_count || 0);
   const seatSummary = subscription.seat_summary || {};
   const seatLimit = seatSummary.seat_limit;
@@ -374,7 +545,7 @@ export default function Subscription() {
   const monthlyRunRate = Number(currentPlan.price_per_user || 0) * currentUsers;
   const storageUsedGb = Number(subscription.storage_used_mb || 0) / 1024;
   const storageProgress = Math.min(Number(subscription.storage_percentage || 0), 100);
-  const hasBillingPortal = Boolean(subscription?.billing?.portal_enabled || stripeStatus?.has_subscription);
+  const hasBillingPortal = activeBillingProvider === "stripe" && Boolean(subscription?.billing?.portal_enabled || stripeStatus?.has_subscription);
   const recommendedPlan = plans.find((plan) => plan.name === conversion?.recommended_plan) || plans.find((plan) => plan.name === "professional");
   const matrixColumns = `minmax(0,1.5fr) repeat(${Math.max(plans.length, 1)}, minmax(78px, 0.7fr))`;
   const topNudges = (conversion?.nudges || []).slice(0, 3);
@@ -419,7 +590,7 @@ export default function Subscription() {
         }
         actions={
           <>
-            {hasBillingPortal ? (
+            {canManageBilling && hasBillingPortal ? (
               <button className="ui-btn-polish ui-focus-ring" onClick={handleBillingPortal} disabled={billingBusy} style={ui.primaryButton}>
                 <CreditCardIcon style={{ width: 14, height: 14 }} />
                 {billingBusy ? "Opening..." : "Manage Billing"}
@@ -441,6 +612,16 @@ export default function Subscription() {
         <div style={{ display: "grid", gap: 10 }}>
           {notice ? <Banner palette={palette} tone={notice.tone} text={notice.text} /> : null}
           {actionState.error ? <Banner palette={palette} tone="danger" text={actionState.error} /> : null}
+          {!canManageBilling ? (
+            <Banner palette={palette} tone="info" text="Only workspace admins can change plans or open billing checkout." />
+          ) : null}
+          {canManageBilling && activeBillingProvider === "paypal" ? (
+            <Banner
+              palette={palette}
+              tone="info"
+              text="PayPal is the active self-serve billing provider for this workspace. Paid plan changes are verified server-side after PayPal approval."
+            />
+          ) : null}
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>
               Upgrade nudges now come from actual usage: members, invites, storage, sprint workflows, and decision tooling.
@@ -452,6 +633,46 @@ export default function Subscription() {
           </div>
         </div>
       </WorkspaceToolbar>
+
+      {paypalPendingPlan ? (
+        <WorkspacePanel
+          palette={palette}
+          eyebrow="PayPal Checkout"
+          title={`Finish ${paypalPendingPlan.display_name} in PayPal`}
+          description="Use the PayPal subscription button below. Once PayPal approves the subscription, the workspace plan is verified on the server before the billing state refreshes."
+        >
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>
+                Plan target: <strong>{paypalPendingPlan.display_name}</strong>
+              </p>
+              <button
+                className="ui-btn-polish ui-focus-ring"
+                onClick={() => {
+                  setPaypalPendingPlan(null);
+                  setPaypalError("");
+                }}
+                disabled={paypalBusy}
+                style={ui.secondaryButton}
+              >
+                Cancel
+              </button>
+            </div>
+            {paypalError ? <Banner palette={palette} tone="danger" text={paypalError} /> : null}
+            {paypalBusy ? <Banner palette={palette} tone="info" text="Finalizing PayPal approval and refreshing workspace billing…" /> : null}
+            <div
+              ref={paypalButtonHostRef}
+              style={{
+                minHeight: 48,
+                borderRadius: 18,
+                border: `1px dashed ${palette.border}`,
+                background: palette.cardAlt,
+                padding: 12,
+              }}
+            />
+          </div>
+        </WorkspacePanel>
+      ) : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(320px,0.8fr)", gap: 14 }}>
         <WorkspacePanel
@@ -523,6 +744,7 @@ export default function Subscription() {
               currentPlanName={currentPlan.name}
               actionState={actionState}
               handlePlanAction={handlePlanAction}
+              canManageBilling={canManageBilling}
             />
           ))}
         </div>

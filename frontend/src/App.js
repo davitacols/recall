@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { GlobalSearch } from "./components/GlobalSearch";
@@ -13,81 +13,115 @@ import { ToastProvider } from "./components/Toast";
 import UnifiedLayout from "./components/UnifiedLayout";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ThemeProvider } from "./utils/ThemeAndAccessibility";
-import AcceptInvite from "./pages/AcceptInvite";
-import ActivityFeed from "./pages/ActivityFeed";
-import AdvancedSearch from "./pages/AdvancedSearch";
-import APIKeys from "./pages/APIKeys";
-import AskRecall from "./pages/AskRecall";
-import AuditLogs from "./pages/AuditLogs";
-import AutomationRules from "./pages/AutomationRules";
-import Backlog from "./pages/Backlog";
-import BlockerTracker from "./pages/BlockerTracker";
-import Bookmarks from "./pages/Bookmarks";
-import Conversations from "./pages/Conversations";
-import ConversationDetail from "./pages/ConversationDetail";
-import CreateConversation from "./pages/CreateConversation";
-import CurrentSprint from "./pages/CurrentSprint";
-import DataExport from "./pages/DataExport";
-import Decisions from "./pages/Decisions";
-import DecisionDetail from "./pages/DecisionDetail";
-import DecisionProposals from "./pages/DecisionProposals";
-import DocumentDetail from "./pages/DocumentDetail";
-import Documentation from "./pages/Documentation";
-import Documents from "./pages/Documents";
-import Drafts from "./pages/Drafts";
-import Enterprise from "./pages/Enterprise";
-import Feedback from "./pages/Feedback";
-import FeedbackInbox from "./pages/FeedbackInbox";
-import Files from "./pages/Files";
-import ForgotPassword from "./pages/ForgotPassword";
-import GoalDetail from "./pages/GoalDetail";
-import Goals from "./pages/Goals";
-import Homepage from "./pages/Homepage";
-import ImportExport from "./pages/ImportExport";
-import Insights from "./pages/Insights";
-import Integrations from "./pages/Integrations";
-import IssueDetail from "./pages/IssueDetail";
-import IssueTemplates from "./pages/IssueTemplates";
-import KanbanBoard from "./pages/KanbanBoardFull";
-import Knowledge from "./pages/Knowledge";
-import KnowledgeAnalytics from "./pages/KnowledgeAnalytics";
-import KnowledgeBase from "./pages/KnowledgeBase";
-import KnowledgeGraph from "./pages/KnowledgeGraph";
-import KnowledgeHealthDashboard from "./pages/KnowledgeHealthDashboard";
-import Login from "./pages/Login";
-import MeetingDetail from "./pages/MeetingDetail";
-import Meetings from "./pages/Meetings";
-import NotificationSettings from "./pages/NotificationSettings";
-import Notifications from "./pages/Notifications";
-import Onboarding from "./pages/Onboarding";
-import Partners from "./pages/Partners";
-import PartnerInbox from "./pages/PartnerInbox";
-import PrivacyEnterprise from "./pages/PrivacyEnterprise";
-import Profile from "./pages/Profile";
-import ProjectDetail from "./pages/ProjectDetail";
-import ProjectManagement from "./pages/ProjectManagement";
-import ProjectRoadmap from "./pages/ProjectRoadmap";
-import Projects from "./pages/Projects";
-import Proposals from "./pages/Proposals";
-import Releases from "./pages/Releases";
-import Reports from "./pages/Reports";
-import ResetPassword from "./pages/ResetPassword";
-import RetrospectiveDetail from "./pages/RetrospectiveDetail";
-import RetrospectiveMemory from "./pages/RetrospectiveMemory";
-import SavedFilters from "./pages/SavedFilters";
-import Security from "./pages/Security";
-import SecurityAnnex from "./pages/SecurityAnnex";
-import Settings from "./pages/Settings";
-import SprintDetail from "./pages/SprintDetail";
-import SprintHistory from "./pages/SprintHistory";
-import SprintManagement from "./pages/SprintManagement";
-import StaffInvitations from "./pages/StaffInvitations";
-import Subscription from "./pages/Subscription";
-import TasksBoard from "./pages/TasksBoard";
-import TeamManagement from "./pages/TeamManagement";
-import Templates from "./pages/Templates";
-import TermsEnterprise from "./pages/TermsEnterprise";
-import UnifiedDashboard from "./pages/UnifiedDashboard";
+
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
+const ActivityFeed = lazy(() => import("./pages/ActivityFeed"));
+const AdvancedSearch = lazy(() => import("./pages/AdvancedSearch"));
+const APIKeys = lazy(() => import("./pages/APIKeys"));
+const AskRecall = lazy(() => import("./pages/AskRecall"));
+const AuditLogs = lazy(() => import("./pages/AuditLogs"));
+const AutomationRules = lazy(() => import("./pages/AutomationRules"));
+const Backlog = lazy(() => import("./pages/Backlog"));
+const BlockerTracker = lazy(() => import("./pages/BlockerTracker"));
+const Bookmarks = lazy(() => import("./pages/Bookmarks"));
+const Conversations = lazy(() => import("./pages/Conversations"));
+const ConversationDetail = lazy(() => import("./pages/ConversationDetail"));
+const CreateConversation = lazy(() => import("./pages/CreateConversation"));
+const CurrentSprint = lazy(() => import("./pages/CurrentSprint"));
+const DataExport = lazy(() => import("./pages/DataExport"));
+const Decisions = lazy(() => import("./pages/Decisions"));
+const DecisionDetail = lazy(() => import("./pages/DecisionDetail"));
+const DecisionProposals = lazy(() => import("./pages/DecisionProposals"));
+const DocumentDetail = lazy(() => import("./pages/DocumentDetail"));
+const Documentation = lazy(() => import("./pages/Documentation"));
+const Documents = lazy(() => import("./pages/Documents"));
+const Drafts = lazy(() => import("./pages/Drafts"));
+const Enterprise = lazy(() => import("./pages/Enterprise"));
+const Feedback = lazy(() => import("./pages/Feedback"));
+const FeedbackInbox = lazy(() => import("./pages/FeedbackInbox"));
+const Files = lazy(() => import("./pages/Files"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const GoalDetail = lazy(() => import("./pages/GoalDetail"));
+const Goals = lazy(() => import("./pages/Goals"));
+const Homepage = lazy(() => import("./pages/Homepage"));
+const ImportExport = lazy(() => import("./pages/ImportExport"));
+const Insights = lazy(() => import("./pages/Insights"));
+const Integrations = lazy(() => import("./pages/Integrations"));
+const IssueDetail = lazy(() => import("./pages/IssueDetail"));
+const IssueTemplates = lazy(() => import("./pages/IssueTemplates"));
+const KanbanBoard = lazy(() => import("./pages/KanbanBoardFull"));
+const Knowledge = lazy(() => import("./pages/Knowledge"));
+const KnowledgeAnalytics = lazy(() => import("./pages/KnowledgeAnalytics"));
+const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
+const KnowledgeGraph = lazy(() => import("./pages/KnowledgeGraph"));
+const KnowledgeHealthDashboard = lazy(() => import("./pages/KnowledgeHealthDashboard"));
+const Login = lazy(() => import("./pages/Login"));
+const MeetingDetail = lazy(() => import("./pages/MeetingDetail"));
+const Meetings = lazy(() => import("./pages/Meetings"));
+const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Partners = lazy(() => import("./pages/Partners"));
+const PartnerInbox = lazy(() => import("./pages/PartnerInbox"));
+const PrivacyEnterprise = lazy(() => import("./pages/PrivacyEnterprise"));
+const Profile = lazy(() => import("./pages/Profile"));
+const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
+const ProjectManagement = lazy(() => import("./pages/ProjectManagement"));
+const ProjectRoadmap = lazy(() => import("./pages/ProjectRoadmap"));
+const Projects = lazy(() => import("./pages/Projects"));
+const Proposals = lazy(() => import("./pages/Proposals"));
+const Releases = lazy(() => import("./pages/Releases"));
+const Reports = lazy(() => import("./pages/Reports"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const RetrospectiveDetail = lazy(() => import("./pages/RetrospectiveDetail"));
+const RetrospectiveMemory = lazy(() => import("./pages/RetrospectiveMemory"));
+const SavedFilters = lazy(() => import("./pages/SavedFilters"));
+const Security = lazy(() => import("./pages/Security"));
+const SecurityAnnex = lazy(() => import("./pages/SecurityAnnex"));
+const Settings = lazy(() => import("./pages/Settings"));
+const SprintDetail = lazy(() => import("./pages/SprintDetail"));
+const SprintHistory = lazy(() => import("./pages/SprintHistory"));
+const SprintManagement = lazy(() => import("./pages/SprintManagement"));
+const StaffInvitations = lazy(() => import("./pages/StaffInvitations"));
+const Subscription = lazy(() => import("./pages/Subscription"));
+const TasksBoard = lazy(() => import("./pages/TasksBoard"));
+const TeamManagement = lazy(() => import("./pages/TeamManagement"));
+const Templates = lazy(() => import("./pages/Templates"));
+const TermsEnterprise = lazy(() => import("./pages/TermsEnterprise"));
+const UnifiedDashboard = lazy(() => import("./pages/UnifiedDashboard"));
+
+const lazyMvpSurface = (exportName) =>
+  lazy(() => import("./pages/MvpSurfaces").then((module) => ({ default: module[exportName] })));
+
+const AnalyticsOverview = lazyMvpSurface("AnalyticsOverview");
+const BusinessCalendar = lazyMvpSurface("BusinessCalendar");
+const BusinessJourneys = lazyMvpSurface("BusinessJourneys");
+const DashboardDetail = lazyMvpSurface("DashboardDetail");
+const Dashboards = lazyMvpSurface("Dashboards");
+const JourneyDetail = lazyMvpSurface("JourneyDetail");
+const ServiceDesk = lazyMvpSurface("ServiceDesk");
+const TeamHealth = lazyMvpSurface("TeamHealth");
+
+function RouteLoading() {
+  return (
+    <div style={{ minHeight: "45vh", display: "grid", placeItems: "center", padding: 32 }}>
+      <div style={{ display: "grid", gap: 10, justifyItems: "center", color: "#2563eb" }}>
+        <div
+          aria-hidden="true"
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: "50%",
+            border: "3px solid rgba(37, 99, 235, 0.18)",
+            borderTopColor: "#2563eb",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>Loading workspace</span>
+      </div>
+    </div>
+  );
+}
 
 function ProtectedRoute({ children, adminOnly = false, staffOnly = false }) {
   const { user } = useAuth();
@@ -224,10 +258,11 @@ const APP_ROUTES = [
   { path: "/business/templates", element: <Templates /> },
   { path: "/business/documents", element: <Documents /> },
   { path: "/business/documents/:id", element: <DocumentDetail /> },
-  { path: "/business/journeys", element: <Navigate to="/projects" replace /> },
-  { path: "/business/calendar", element: <Navigate to="/business/tasks" replace /> },
-  { path: "/business/team-health", element: <Navigate to="/dashboard" replace /> },
-  { path: "/service-desk", element: <Navigate to="/projects" replace /> },
+  { path: "/business/journeys", element: <BusinessJourneys /> },
+  { path: "/business/journeys/:id", element: <JourneyDetail /> },
+  { path: "/business/calendar", element: <BusinessCalendar /> },
+  { path: "/business/team-health", element: <TeamHealth /> },
+  { path: "/service-desk", element: <ServiceDesk /> },
   { path: "/security", element: <Security /> },
 ];
 
@@ -237,12 +272,13 @@ const ADMIN_ROUTES = [
   { path: "/integrations", element: <Integrations /> },
   { path: "/integrations/github", element: <Navigate to="/integrations" replace /> },
   { path: "/integrations-manage", element: <Navigate to="/integrations" replace /> },
-  { path: "/analytics", element: <Navigate to="/dashboard" replace /> },
+  { path: "/analytics", element: <AnalyticsOverview /> },
   { path: "/team", element: <TeamManagement /> },
   { path: "/automation", element: <AutomationRules /> },
   { path: "/workflows", element: <Navigate to="/automation" replace /> },
   { path: "/reports", element: <Reports /> },
-  { path: "/dashboards", element: <Navigate to="/reports" replace /> },
+  { path: "/dashboards", element: <Dashboards /> },
+  { path: "/dashboards/:id", element: <DashboardDetail /> },
   { path: "/api-keys", element: <APIKeys /> },
   { path: "/audit-logs", element: <AuditLogs /> },
   { path: "/export", element: <DataExport /> },
@@ -331,21 +367,23 @@ function AppContent() {
         />
       ) : null}
 
-      <Routes>
-        {PUBLIC_ROUTES.map(renderRoute)}
+      <Suspense fallback={<RouteLoading />}>
+        <Routes>
+          {PUBLIC_ROUTES.map(renderRoute)}
 
-        <Route element={<AppLayoutRoute />}>
-          {APP_ROUTES.map(renderRoute)}
-          <Route element={<AdminOnlyRoute />}>
-            {ADMIN_ROUTES.map(renderRoute)}
+          <Route element={<AppLayoutRoute />}>
+            {APP_ROUTES.map(renderRoute)}
+            <Route element={<AdminOnlyRoute />}>
+              {ADMIN_ROUTES.map(renderRoute)}
+            </Route>
+            <Route element={<StaffOnlyRoute />}>
+              {STAFF_ROUTES.map(renderRoute)}
+            </Route>
           </Route>
-          <Route element={<StaffOnlyRoute />}>
-            {STAFF_ROUTES.map(renderRoute)}
-          </Route>
-        </Route>
 
-        <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

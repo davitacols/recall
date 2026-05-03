@@ -217,6 +217,44 @@ export default function DocumentDetail() {
     }
   };
 
+  const handleUseAiSummary = (summary) => {
+    if (!summary) return;
+    setFormData((current) => ({ ...current, description: summary }));
+    setEditing(true);
+    success("AI summary added as a draft description");
+  };
+
+  const handleApplyAiTags = (tags) => {
+    setFormData((current) => ({
+      ...current,
+      tags: Array.from(
+        new Set(
+          [...(Array.isArray(current.tags) ? current.tags : []), ...(tags || [])]
+            .map((tag) => String(tag || "").trim().replace(/^#/, "").toLowerCase())
+            .filter(Boolean)
+        )
+      ),
+    }));
+    setEditing(true);
+    success("AI tags added to the draft");
+  };
+
+  const handleAppendAiActions = (actions) => {
+    if (!Array.isArray(actions) || actions.length === 0) return;
+    const actionHtml = [
+      "<h3>AI suggested next actions</h3>",
+      "<ul>",
+      ...actions.map((item) => `<li>${String(item).replace(/[<>]/g, "")}</li>`),
+      "</ul>",
+    ].join("");
+    setFormData((current) => ({
+      ...current,
+      content: `${current.content || ""}${current.content ? "<p></p>" : ""}${actionHtml}`,
+    }));
+    setEditing(true);
+    success("AI actions appended to the draft");
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -315,6 +353,9 @@ export default function DocumentDetail() {
               <span style={heroChip(palette)}>{readingStateLabel} mode</span>
               <span style={heroChip(palette)}>Version {versionLabel}</span>
               <span style={heroChip(palette)}>{fileStateLabel}</span>
+              {(documentRecord.tags || []).slice(0, 4).map((tag) => (
+                <span key={tag} style={heroChip(palette)}>#{tag}</span>
+              ))}
             </div>
           </section>
 
@@ -362,6 +403,25 @@ export default function DocumentDetail() {
                         ))}
                       </select>
                     </div>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <label style={fieldLabel(palette)}>Tags</label>
+                    <input
+                      type="text"
+                      value={Array.isArray(formData.tags) ? formData.tags.join(", ") : ""}
+                      onChange={(event) =>
+                        setFormData({
+                          ...formData,
+                          tags: event.target.value
+                            .split(",")
+                            .map((tag) => tag.trim().replace(/^#/, "").toLowerCase())
+                            .filter(Boolean),
+                        })
+                      }
+                      style={ui.input}
+                      placeholder="policy, onboarding, customer-context"
+                    />
                   </div>
 
                   <div style={editorNoteCard(palette)}>
@@ -578,7 +638,14 @@ export default function DocumentDetail() {
         </div>
       </div>
 
-      <AIResultsPanel results={aiResults} onClose={() => setAiResults(null)} />
+      <AIResultsPanel
+        results={aiResults}
+        onClose={() => setAiResults(null)}
+        onApplySummary={handleUseAiSummary}
+        onApplyTags={handleApplyAiTags}
+        onAppendActions={handleAppendAiActions}
+        askHref={buildAskRecallPath(documentAskRecallQuestion)}
+      />
     </div>
   );
 }

@@ -102,6 +102,9 @@ def tasks_list(request):
             'conversation': {'id': t.conversation.id, 'title': t.conversation.title} if t.conversation else None,
             'decision': {'id': t.decision.id, 'title': t.decision.title} if t.decision else None,
             'due_date': t.due_date,
+            'scheduled_start': t.scheduled_start,
+            'scheduled_end': t.scheduled_end,
+            'scheduled_duration_minutes': t.scheduled_duration_minutes,
             'created_at': t.created_at,
         } for t in tasks]
         return Response(data)
@@ -123,6 +126,9 @@ def tasks_list(request):
             conversation=resolved['conversation'],
             decision=resolved['decision'],
             due_date=request.data.get('due_date'),
+            scheduled_start=request.data.get('scheduled_start'),
+            scheduled_end=request.data.get('scheduled_end'),
+            scheduled_duration_minutes=request.data.get('scheduled_duration_minutes'),
         )
         
         # Notify assignee
@@ -160,6 +166,9 @@ def task_detail(request, pk):
             'goal': {'id': task.goal.id, 'title': task.goal.title} if task.goal else None,
             'meeting': {'id': task.meeting.id, 'title': task.meeting.title} if task.meeting else None,
             'due_date': task.due_date,
+            'scheduled_start': task.scheduled_start,
+            'scheduled_end': task.scheduled_end,
+            'scheduled_duration_minutes': task.scheduled_duration_minutes,
             'completed_at': task.completed_at,
             'created_at': task.created_at,
         })
@@ -176,6 +185,12 @@ def task_detail(request, pk):
         task.status = request.data.get('status', task.status)
         task.priority = request.data.get('priority', task.priority)
         task.due_date = request.data.get('due_date', task.due_date)
+        if 'scheduled_start' in request.data:
+            task.scheduled_start = request.data.get('scheduled_start') or None
+        if 'scheduled_end' in request.data:
+            task.scheduled_end = request.data.get('scheduled_end') or None
+        if 'scheduled_duration_minutes' in request.data:
+            task.scheduled_duration_minutes = request.data.get('scheduled_duration_minutes') or None
         if 'assigned_to_id' in request.data:
             task.assigned_to = resolved['assigned_to']
         if 'goal_id' in request.data:
@@ -229,6 +244,9 @@ def tasks_board(request):
             'priority': task.priority,
             'assigned_to': {'id': task.assigned_to.id, 'full_name': task.assigned_to.full_name} if task.assigned_to else None,
             'due_date': task.due_date,
+            'scheduled_start': task.scheduled_start,
+            'scheduled_end': task.scheduled_end,
+            'scheduled_duration_minutes': task.scheduled_duration_minutes,
         })
     
     return Response(board)

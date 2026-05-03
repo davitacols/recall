@@ -2,6 +2,8 @@ import React from "react";
 
 const tones = {
   warm: { text: "#171513" },
+  blue: { text: "#171513" },
+  blueLight: { text: "#f8fafc" },
   dark: { text: "var(--app-text, #f5ede1)" },
   light: { text: "#f7f2e8" },
 };
@@ -13,9 +15,9 @@ function getSizeTokens(size) {
 }
 
 function getWordmarkSrc(tone) {
-  return tone === "light"
-    ? "/brand/knoledgr-brandlogo-light.svg"
-    : "/brand/knoledgr-brandlogo.svg";
+  if (tone === "blueLight") return "/brand/knoledgr-brandlogo-blue-light.svg";
+  if (tone === "blue") return "/brand/knoledgr-brandlogo-blue.svg";
+  return tone === "light" ? "/brand/knoledgr-brandlogo-light.svg" : "/brand/knoledgr-brandlogo.svg";
 }
 
 export default function BrandLogo({

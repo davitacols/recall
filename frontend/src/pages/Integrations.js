@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  ClipboardCheck,
+  GitBranch,
+  RadioTower,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 
-import GitHubIntegrationWorkspace from "../components/integrations/GitHubIntegrationWorkspace";
 import api from "../services/api";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 
@@ -659,6 +668,60 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
   );
   const activeSummary = providerSummaries.find((provider) => provider.key === active) || null;
   const isFocusedGitHub = focusedProvider === "github";
+  const totalReadySteps = providerSummaries.reduce((sum, provider) => sum + provider.completedSteps, 0);
+  const totalSetupSteps = providerSummaries.reduce((sum, provider) => sum + provider.totalSteps, 0);
+  const setupProgress = totalSetupSteps ? Math.round((totalReadySteps / totalSetupSteps) * 100) : 0;
+  const repoOwner = github?.repo_owner || githubForm.repo_owner;
+  const repoName = github?.repo_name || githubForm.repo_name;
+  const repoSlug = github?.repo_slug || (hasText(repoOwner) && hasText(repoName) ? `${repoOwner}/${repoName}` : null);
+  const webhookObservability = github?.webhook_observability;
+  const processedCount = webhookObservability?.recent_processed_count || 0;
+  const failedCount = webhookObservability?.recent_failure_count || 0;
+  const deliveryState = processedCount
+    ? `${processedCount} processed`
+    : webhookObservability?.recent_deliveries?.length
+      ? "Needs review"
+      : "Waiting";
+  const hubSignals = [
+    {
+      label: "Repository",
+      value: repoSlug || "Choose repo",
+      detail: "One trusted source of engineering truth",
+      icon: GitBranch,
+    },
+    {
+      label: "Webhook",
+      value: deliveryState,
+      detail: failedCount ? `${failedCount} recent failure${failedCount === 1 ? "" : "s"}` : "Push and PR events",
+      icon: RadioTower,
+    },
+    {
+      label: "Readiness",
+      value: `${setupProgress}%`,
+      detail: `${totalReadySteps}/${totalSetupSteps || 0} setup checks ready`,
+      icon: ClipboardCheck,
+    },
+  ];
+  const teamPaths = [
+    {
+      title: "Admin",
+      detail: "Saves repo access and keeps credentials owned by the workspace.",
+      done: Boolean(github?.configured) || hasText(githubForm.access_token),
+      icon: ShieldCheck,
+    },
+    {
+      title: "Repo owner",
+      detail: "Adds the webhook once, then checks delivery health when events arrive.",
+      done: Boolean(processedCount),
+      icon: RadioTower,
+    },
+    {
+      title: "Engineers",
+      detail: "Use decision IDs in PRs and commits so work links itself.",
+      done: Boolean(githubForm.auto_link_prs),
+      icon: GitBranch,
+    },
+  ];
   const tone = useMemo(
     () =>
       darkMode
@@ -696,8 +759,6 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
           },
     [darkMode]
   );
-  const connectionSetupIntro =
-    "Use the GitHub setup flow below to save the repository, reveal the payload URL, and confirm one real webhook delivery.";
   const handleProviderSelect = (providerKey) => {
     setActive(providerKey);
   };
@@ -714,45 +775,41 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
     }
   };
 
-  const handleTest = async () => {
+  const handleConnectAndVerify = async () => {
+    setSaving(true);
     setTesting(true);
     setFlash(null);
     try {
-      await api.post(`/api/integrations/test/${active}/`);
-      setFlash({ type: "success", text: `${activeProvider?.name} test passed.` });
-      setTestResults((prev) => ({
-        ...prev,
-        [active]: buildTestGuidance(active, true, activeForm, activeData),
-      }));
-    } catch (error) {
-      const detail =
-        error?.response?.data?.detail ||
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        "";
-      setFlash({
-        type: "error",
-        text: detail ? `${activeProvider?.name} test failed: ${detail}` : `${activeProvider?.name} test failed.`,
-      });
-      setTestResults((prev) => ({
-        ...prev,
-        [active]: buildTestGuidance(active, false, activeForm, activeData, detail),
-      }));
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    setFlash(null);
-    try {
       const response = await api.post("/api/integrations/fresh/github/config/", githubForm);
+      const nextGithub = response?.data?.github || github;
       if (response?.data?.github) {
         setGithub(response.data.github);
       }
-      await fetchIntegrations();
-      setFlash({ type: "success", text: `${activeProvider?.name} settings saved.` });
+
+      try {
+        await api.post(`/api/integrations/test/${active}/`);
+        setTestResults((prev) => ({
+          ...prev,
+          [active]: buildTestGuidance(active, true, activeForm, nextGithub),
+        }));
+        setFlash({ type: "success", text: `${activeProvider?.name} is connected and verified.` });
+      } catch (testError) {
+        const detail =
+          testError?.response?.data?.detail ||
+          testError?.response?.data?.message ||
+          testError?.response?.data?.error ||
+          "";
+        setTestResults((prev) => ({
+          ...prev,
+          [active]: buildTestGuidance(active, false, activeForm, nextGithub, detail),
+        }));
+        setFlash({
+          type: "error",
+          text: detail
+            ? `${activeProvider?.name} details were stored, but verification needs attention: ${detail}`
+            : `${activeProvider?.name} details were stored, but verification needs attention.`,
+        });
+      }
     } catch (error) {
       const detail =
         error?.response?.data?.detail ||
@@ -761,10 +818,11 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
         "";
       setFlash({
         type: "error",
-        text: detail ? `${activeProvider?.name} save failed: ${detail}` : `Failed to save ${activeProvider?.name} settings.`,
+        text: detail ? `${activeProvider?.name} connection failed: ${detail}` : `Failed to connect ${activeProvider?.name}.`,
       });
     } finally {
       setSaving(false);
+      setTesting(false);
     }
   };
 
@@ -908,47 +966,19 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
         {activeTestResult ? <TestResultCard testResult={activeTestResult} darkMode={darkMode} /> : null}
 
         <section className={tone.shellMain}>
-          <div className={`flex flex-wrap items-end justify-between gap-4 border-b pb-4 ${darkMode ? "border-stone-700" : "border-stone-200"}`}>
-            <div>
-              <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${tone.muted}`}>GitHub workspace</p>
-              <h3 className={`mt-1 text-lg font-bold ${tone.text}`}>Configure GitHub</h3>
-            </div>
-            <div className="flex flex-col items-start gap-3 sm:items-end">
-              <p className={`max-w-xl text-sm ${tone.subtext}`}>
-                Use the setup flow below to connect the repo, reveal the webhook payload URL, and validate one real delivery before relying on engineering signals.
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => setGithubForm((prev) => ({ ...prev, enabled: !prev.enabled }))}
-                  className={`rounded-lg px-3 py-2 text-xs font-semibold border ${
-                    githubForm.enabled
-                      ? darkMode
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                        : "border-emerald-300 bg-emerald-50 text-emerald-700"
-                      : darkMode
-                        ? "border-stone-600 bg-stone-900 text-stone-200"
-                        : "border-stone-300 bg-white text-stone-700"
-                  }`}
-                >
-                  {githubForm.enabled ? "Disable" : "Enable"}
-                </button>
-                <button onClick={handleTest} disabled={testing} className={tone.testBtn}>
-                  {testing ? "Testing..." : "Test"}
-                </button>
-                <button onClick={handleSave} disabled={saving} className={tone.saveBtn}>
-                  {saving ? "Saving..." : "Save GitHub"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <GitHubConfig
+          <GitHubConnectConsole
             value={githubForm}
             status={github}
             onChange={setGithubForm}
             darkMode={darkMode}
-            onSave={handleSave}
-            saving={saving}
+            onConnect={handleConnectAndVerify}
+            onToggleEnabled={toggleEnabled}
+            busy={saving || testing}
+            activeSummary={activeSummary}
+            setupProgress={setupProgress}
+            deliveryState={deliveryValue}
+            testResult={activeTestResult}
+            guide={activeGuide}
           />
         </section>
       </div>
@@ -958,139 +988,38 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
   return (
     <div className="space-y-6">
       <section className={`${tone.hero} overflow-hidden`}>
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
-          <div className="space-y-5">
-              <div>
-                <p className={tone.heroEyebrow}>Integrations Hub</p>
-                <h1 className={tone.heroTitle}>Connect GitHub without guesswork</h1>
-                <p className={tone.heroText}>
-                  Keep the integration layer focused on GitHub with clear credentials, exact webhook values to copy, validation steps, and live health checks.
-                </p>
-              </div>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <Stat label="Providers" value={`${visibleProviderSummaries.length}`} tone={tone} />
-              <Stat label="Connected" value={`${connectedCount}`} tone={tone} />
-              <Stat label="Ready Steps" value={`${providerSummaries.reduce((sum, provider) => sum + provider.completedSteps, 0)}`} tone={tone} />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_420px]">
+          <div className="space-y-6">
+            <div>
+              <p className={tone.heroEyebrow}>Integrations Hub</p>
+              <h1 className={tone.heroTitle}>Team integrations that feel handled</h1>
+              <p className={tone.heroText}>
+                Connect GitHub once, validate the signal path, and give every team role a clear next move.
+              </p>
             </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              {hubSignals.map((signal) => (
+                <SignalTile key={signal.label} signal={signal} darkMode={darkMode} />
+              ))}
+            </div>
+
             <div className="grid gap-3 lg:grid-cols-3">
-              {visibleProviderSummaries.map((provider) => (
-                <button
-                  key={provider.key}
-                  type="button"
-                  onClick={() => handleProviderSelect(provider.key)}
-                  className={`rounded-2xl border p-4 text-left transition ${
-                    provider.key === active
-                      ? darkMode
-                        ? "border-emerald-500 bg-emerald-500/10"
-                        : "border-stone-900 bg-white shadow-[0_16px_40px_rgba(28,25,23,0.08)]"
-                      : darkMode
-                        ? "border-stone-700 bg-stone-900/70 hover:border-stone-500"
-                        : "border-white/70 bg-white/80 hover:border-stone-300"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{provider.name}</p>
-                      <p className={`mt-1 text-xs uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-                        {provider.category}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                        provider.connected
-                          ? darkMode
-                            ? "bg-emerald-500/20 text-emerald-200"
-                            : "bg-emerald-100 text-emerald-700"
-                          : darkMode
-                            ? "bg-stone-800 text-stone-300"
-                            : "bg-stone-100 text-stone-600"
-                      }`}
-                    >
-                      {provider.connected ? "Live" : "Needs setup"}
-                    </span>
-                  </div>
-                  <p className={`mt-3 text-sm ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{provider.desc}</p>
-                  <div className={`mt-4 h-2 overflow-hidden rounded-full ${darkMode ? "bg-stone-800" : "bg-stone-200"}`}>
-                    <div
-                      className={`h-full rounded-full ${
-                        provider.connected ? "bg-emerald-500" : darkMode ? "bg-stone-500" : "bg-stone-400"
-                      }`}
-                      style={{ width: `${(provider.completedSteps / provider.totalSteps) * 100}%` }}
-                    />
-                  </div>
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <p className={`text-xs ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-                        {provider.completedSteps}/{provider.totalSteps} steps ready
-                      </p>
-                      <p className={`text-xs font-medium ${darkMode ? "text-stone-300" : "text-stone-700"}`}>
-                        {provider.key === "github" ? "Open workspace" : provider.lastTest ? provider.lastTest.title : provider.nextAction}
-                      </p>
-                    </div>
-                  </button>
+              {teamPaths.map((path) => (
+                <TeamPathTile key={path.title} item={path} darkMode={darkMode} />
               ))}
             </div>
           </div>
 
-          <div
-            className={`rounded-[28px] border p-5 ${
-              darkMode
-                ? "border-stone-700 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_transparent_55%),linear-gradient(180deg,rgba(28,25,23,0.95),rgba(17,24,39,0.92))]"
-                : "border-white/70 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.22),_transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(255,251,235,0.9))] shadow-[0_24px_60px_rgba(28,25,23,0.08)]"
-            }`}
-            >
-              <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-                Selected Integration
-              </p>
-              <h2 className={`mt-3 text-2xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
-                {activeProvider?.name} setup
-              </h2>
-              <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
-                {activeGuide.nextAction?.detail || activeProvider?.desc}
-            </p>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <SignalCard
-                label="Connection State"
-                value={activeSummary?.connected ? "Connected" : "Setup in progress"}
-                darkMode={darkMode}
-              />
-              <SignalCard
-                label="Setup Progress"
-                value={`${activeSummary?.completedSteps || 0}/${activeSummary?.totalSteps || 0} steps`}
-                darkMode={darkMode}
-              />
-              <SignalCard
-                label="Latest Test"
-                value={activeTestResult ? activeTestResult.title : "Not run yet"}
-                darkMode={darkMode}
-              />
-              <SignalCard
-                label="Next Move"
-                value={activeGuide.nextAction?.title || "Review setup"}
-                darkMode={darkMode}
-              />
-            </div>
-
-            <div className="mt-5 space-y-2">
-              <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
-                What To Do Next
-              </p>
-              {[
-                activeGuide.nextAction?.detail || "Use the assistant to finish the next missing step.",
-                activeTestResult?.detail || "Run Test after saving to turn configuration into validated setup.",
-                activeGuide.verification?.[0] || "Verify at least one real workflow before calling the integration ready.",
-              ].map((note) => (
-                <div
-                  key={note}
-                  className={`rounded-xl border px-3 py-3 text-sm ${
-                    darkMode ? "border-stone-700 bg-stone-900/80 text-stone-200" : "border-stone-200 bg-white/90 text-stone-700"
-                  }`}
-                >
-                  {note}
-                </div>
-              ))}
-            </div>
-          </div>
+          <IntegrationMap
+            darkMode={darkMode}
+            setupProgress={setupProgress}
+            connectedCount={connectedCount}
+            providerCount={visibleProviderSummaries.length}
+            activeProvider={activeProvider}
+            activeSummary={activeSummary}
+            activeTestResult={activeTestResult}
+          />
         </div>
       </section>
 
@@ -1110,221 +1039,109 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
         </div>
       ) : null}
 
-      <section className="grid gap-4 2xl:grid-cols-[320px_minmax(0,1fr)]">
+      <section className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
         <aside className="space-y-4">
           <div className={tone.shellAside}>
-            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Git Integration</p>
-            <div className="space-y-3">
-              {visibleProviderSummaries.map((provider) => {
-                const isActive = provider.key === active;
-                return (
-                  <button
-                    key={provider.key}
-                    type="button"
-                    onClick={() => handleProviderSelect(provider.key)}
-                    className={`w-full rounded-2xl border p-4 text-left transition ${
-                      isActive
-                        ? darkMode
-                          ? "border-emerald-500 bg-emerald-500/10"
-                          : "border-stone-900 bg-stone-900 text-white"
-                        : darkMode
-                          ? "border-stone-700 bg-stone-900 hover:border-stone-500"
-                          : "border-stone-200 bg-white hover:border-stone-300"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className={`text-sm font-semibold ${isActive && !darkMode ? "text-white" : darkMode ? "text-stone-100" : "text-stone-900"}`}>
-                          {provider.name}
-                        </p>
-                        <p className={`mt-1 text-[11px] uppercase tracking-[0.14em] ${isActive && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-500"}`}>
-                          {provider.category}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                          provider.connected
-                            ? isActive && !darkMode
-                              ? "bg-white/15 text-white"
-                              : darkMode
-                                ? "bg-emerald-500/20 text-emerald-200"
-                                : "bg-emerald-100 text-emerald-700"
-                            : isActive && !darkMode
-                              ? "bg-white/10 text-stone-100"
-                              : darkMode
-                                ? "bg-stone-800 text-stone-300"
-                                : "bg-stone-100 text-stone-600"
-                        }`}
-                      >
-                        {provider.connected ? "Live" : "Setup"}
-                      </span>
-                    </div>
-                    <p className={`mt-3 text-sm ${isActive && !darkMode ? "text-stone-100" : darkMode ? "text-stone-300" : "text-stone-600"}`}>
-                      {provider.desc}
-                    </p>
-                    <div className={`mt-4 h-2 overflow-hidden rounded-full ${darkMode ? "bg-stone-800" : isActive && !darkMode ? "bg-white/15" : "bg-stone-200"}`}>
-                      <div
-                        className={`h-full rounded-full ${provider.connected ? "bg-emerald-500" : isActive && !darkMode ? "bg-white" : darkMode ? "bg-stone-500" : "bg-stone-400"}`}
-                        style={{ width: `${(provider.completedSteps / provider.totalSteps) * 100}%` }}
-                      />
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <p className={`text-xs ${isActive && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-500"}`}>
-                        {provider.completedSteps}/{provider.totalSteps} steps ready
-                      </p>
-                      <p className={`text-xs font-medium ${isActive && !darkMode ? "text-white" : darkMode ? "text-stone-200" : "text-stone-700"}`}>
-                        {provider.key === "github" ? "Open workspace" : provider.lastTest ? (provider.lastTest.state === "success" ? "Test passed" : "Needs attention") : "Not tested"}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="flex items-center justify-between gap-3 px-2 pb-3">
+              <div>
+                <p className={`text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Providers</p>
+                <p className={`mt-1 text-sm ${tone.subtext}`}>Choose the signal source to configure.</p>
+              </div>
+              <span
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${
+                  darkMode ? "border-stone-700 bg-stone-800 text-stone-200" : "border-stone-200 bg-stone-50 text-stone-700"
+                }`}
+              >
+                <Activity size={18} />
+              </span>
             </div>
-          </div>
-
-          <div className={tone.shellAside}>
-            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Setup Rules</p>
-            <div className="space-y-2">
-              {[
-                "Save credentials or URLs before running the first validation test.",
-                "Use the assistant to finish the next missing step instead of filling everything blindly.",
-                "Enable a provider only after the test passes and one real workflow looks correct.",
-              ].map((note) => (
-                <div
-                  key={note}
-                  className={`rounded-xl border px-3 py-3 text-sm ${
-                    darkMode ? "border-stone-700 bg-stone-900 text-stone-300" : "border-stone-200 bg-stone-50 text-stone-700"
-                  }`}
-                >
-                  {note}
-                </div>
+            <div className="space-y-3">
+              {visibleProviderSummaries.map((provider) => (
+                <ProviderSelectCard
+                  key={provider.key}
+                  provider={provider}
+                  active={provider.key === active}
+                  darkMode={darkMode}
+                  onClick={() => handleProviderSelect(provider.key)}
+                />
               ))}
             </div>
           </div>
 
           <div className={tone.shellAside}>
-            <p className={`px-3 pb-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Current Signal</p>
-            <div className="grid gap-3">
-              <SignalCard
-                label="Active Provider"
-                value={activeProvider?.name || "-"}
-                darkMode={darkMode}
-              />
-              <SignalCard
-                label="Status"
-                value={activeSummary?.statusLabel || "Review setup"}
-                darkMode={darkMode}
-              />
-              <SignalCard
-                label="Latest Test"
-                value={activeTestResult ? activeTestResult.title : "Not run yet"}
-                darkMode={darkMode}
-              />
+            <p className={`px-2 text-xs font-semibold uppercase tracking-wider ${tone.muted}`}>Rollout rhythm</p>
+            <div className="mt-3 space-y-2">
+              {[
+                { label: "Configure", done: activeSummary?.completedSteps > 0 },
+                { label: "Validate", done: Boolean(activeTestResult) || processedCount > 0 },
+                { label: "Share with team", done: processedCount > 0 && Boolean(githubForm.auto_link_prs) },
+              ].map((item, index) => (
+                <div
+                  key={item.label}
+                  className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${
+                    item.done
+                      ? darkMode
+                        ? "border-emerald-500/30 bg-emerald-500/10"
+                        : "border-emerald-200 bg-emerald-50"
+                      : darkMode
+                        ? "border-stone-700 bg-stone-900"
+                        : "border-stone-200 bg-stone-50"
+                  }`}
+                >
+                  <span
+                    className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                      item.done
+                        ? darkMode
+                          ? "bg-emerald-500/20 text-emerald-200"
+                          : "bg-emerald-100 text-emerald-700"
+                        : darkMode
+                          ? "bg-stone-800 text-stone-400"
+                          : "bg-white text-stone-500"
+                    }`}
+                  >
+                    {item.done ? <CheckCircle2 size={15} /> : index + 1}
+                  </span>
+                  <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.label}</p>
+                </div>
+              ))}
             </div>
           </div>
         </aside>
 
         <div className="space-y-4">
           <section className={tone.shellMain}>
-            <div
-              className={`rounded-[24px] border p-5 ${
-                darkMode
-                  ? "border-stone-700 bg-[linear-gradient(135deg,rgba(31,41,55,0.75),rgba(17,24,39,0.88))]"
-                  : "border-stone-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(250,245,237,0.96))]"
-              }`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className={`text-xs uppercase tracking-widest ${tone.muted}`}>{activeProvider?.category}</p>
-                  <h2 className={`mt-1 text-2xl font-black ${tone.text}`}>{activeProvider?.name} setup</h2>
-                  <p className={`mt-2 max-w-3xl text-sm leading-6 ${tone.subtext}`}>{activeProvider?.desc}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={toggleEnabled}
-                    className={`rounded-lg px-3 py-2 text-xs font-semibold border ${
-                      activeData?.enabled
-                        ? darkMode
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                          : "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : darkMode
-                          ? "border-stone-600 bg-stone-900 text-stone-200"
-                          : "border-stone-300 bg-white text-stone-700"
-                    }`}
-                  >
-                    {activeData?.enabled ? "Disable" : "Enable"}
-                  </button>
-                  <button onClick={handleTest} disabled={testing} className={tone.testBtn}>
-                    {testing ? "Testing..." : "Test"}
-                  </button>
-                  <button onClick={handleSave} disabled={saving} className={tone.saveBtn}>
-                    {saving ? "Saving..." : "Save"}
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3 md:grid-cols-4">
-                <SignalCard
-                  label="Setup Progress"
-                  value={`${activeSummary?.completedSteps || 0}/${activeSummary?.totalSteps || 0} steps`}
-                  darkMode={darkMode}
-                />
-                <SignalCard
-                  label="Connection"
-                  value={activeSummary?.connected ? "Connected" : "Not connected"}
-                  darkMode={darkMode}
-                />
-                <SignalCard
-                  label="Latest Test"
-                  value={activeTestResult ? activeTestResult.title : "Not run yet"}
-                  darkMode={darkMode}
-                />
-                <SignalCard
-                  label="Next Step"
-                  value={activeGuide.nextAction?.title || "Review setup"}
-                  darkMode={darkMode}
-                />
-              </div>
-            </div>
-          </section>
-
-          <IntegrationAssistant
-            providerName={activeProvider?.name}
-            guide={activeGuide}
-            darkMode={darkMode}
-            testResult={activeTestResult}
-          />
-
-          <section className={tone.shellMain}>
-            <div className={`flex flex-wrap items-end justify-between gap-4 border-b pb-4 ${darkMode ? "border-stone-700" : "border-stone-200"}`}>
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${tone.muted}`}>Setup</p>
-                <h3 className={`mt-1 text-lg font-bold ${tone.text}`}>Configure {activeProvider?.name}</h3>
-              </div>
-              <div className="flex flex-col items-start gap-3 sm:items-end">
-                <p className={`max-w-xl text-sm ${tone.subtext}`}>
-                  {connectionSetupIntro}
+                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${tone.muted}`}>{activeProvider?.category}</p>
+                <h2 className={`mt-1 text-2xl font-black ${tone.text}`}>{activeProvider?.name} command center</h2>
+                <p className={`mt-2 max-w-3xl text-sm leading-6 ${tone.subtext}`}>
+                  {activeGuide.nextAction?.title || "Review setup"}: {activeGuide.nextAction?.detail || activeProvider?.desc}
                 </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={handleTest} disabled={testing} className={tone.testBtn}>
-                    {testing ? "Testing..." : "Test"}
-                  </button>
-                  <button onClick={handleSave} disabled={saving} className={tone.saveBtn}>
-                    {saving ? "Saving..." : `Save ${activeProvider?.name}`}
-                  </button>
-                </div>
               </div>
             </div>
 
-            <GitHubIntegrationWorkspace
-              value={githubForm}
-              status={github}
-              onChange={setGithubForm}
-              darkMode={darkMode}
-              onSave={handleSave}
-              saving={saving}
-            />
+            <div className="mt-5 grid gap-3 md:grid-cols-4">
+              <SignalCard label="Setup" value={`${activeSummary?.completedSteps || 0}/${activeSummary?.totalSteps || 0}`} darkMode={darkMode} />
+              <SignalCard label="Connection" value={activeSummary?.connected ? "Connected" : "Not connected"} darkMode={darkMode} />
+              <SignalCard label="Test" value={activeTestResult ? activeTestResult.title : "Not run"} darkMode={darkMode} />
+              <SignalCard label="Delivery" value={deliveryState} darkMode={darkMode} />
+            </div>
           </section>
+
+          <GitHubConnectConsole
+            value={githubForm}
+            status={github}
+            onChange={setGithubForm}
+            darkMode={darkMode}
+            onConnect={handleConnectAndVerify}
+            onToggleEnabled={toggleEnabled}
+            busy={saving || testing}
+            activeSummary={activeSummary}
+            setupProgress={setupProgress}
+            deliveryState={deliveryState}
+            testResult={activeTestResult}
+            guide={activeGuide}
+          />
         </div>
       </section>
     </div>
@@ -1337,6 +1154,792 @@ function Stat({ label, value, tone }) {
       <p className={tone.cardValue}>{value}</p>
       <p className={tone.cardLabel}>{label}</p>
     </div>
+  );
+}
+
+function GitHubConnectConsole({
+  value,
+  status,
+  onChange,
+  darkMode,
+  onConnect,
+  onToggleEnabled,
+  busy,
+  activeSummary,
+  setupProgress,
+  deliveryState,
+  testResult,
+  guide,
+}) {
+  const [copied, setCopied] = useState("");
+  const [activeStep, setActiveStep] = useState("repo");
+  const repoOwner = status?.repo_owner || value.repo_owner;
+  const repoName = status?.repo_name || value.repo_name;
+  const repoSlug = status?.repo_slug || (hasText(repoOwner) && hasText(repoName) ? `${repoOwner}/${repoName}` : "");
+  const rawWebhookUrl = status?.webhook_readiness?.webhook_url || "";
+  const webhookUrlIsLocal = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::|\/)/i.test(rawWebhookUrl);
+  const webhookUrl = rawWebhookUrl && !webhookUrlIsLocal ? rawWebhookUrl : "";
+  const webhookDisplay = webhookUrl || (rawWebhookUrl && webhookUrlIsLocal ? "Public API URL needed" : "Connect once to reveal this");
+  const processedCount = status?.webhook_observability?.recent_processed_count || 0;
+  const connectionReady = Boolean(status?.configured) || hasText(value.access_token);
+  const secretReady = Boolean(status?.has_webhook_secret) || hasText(value.webhook_secret);
+  const repoReady = hasText(repoOwner) && hasText(repoName);
+  const actionLabel = busy ? "Securing connection..." : setupProgress >= 80 ? "Reconnect and verify" : "Connect and verify";
+  const inputClass = `mt-2 w-full rounded-xl border px-3 py-3 text-sm outline-none transition ${
+    darkMode
+      ? "border-stone-700 bg-stone-950 text-stone-100 placeholder:text-stone-500 focus:border-emerald-400"
+      : "border-stone-200 bg-white text-stone-900 placeholder:text-stone-400 focus:border-stone-900"
+  }`;
+  const labelClass = `text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`;
+
+  const update = (field, fieldValue) => {
+    onChange((prev) => ({ ...prev, [field]: fieldValue }));
+  };
+
+  const copyValue = async (label, copyText) => {
+    if (!copyText || !navigator?.clipboard?.writeText) return;
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopied(label);
+      window.setTimeout(() => {
+        setCopied((current) => (current === label ? "" : current));
+      }, 1400);
+    } catch {
+      setCopied("");
+    }
+  };
+
+  const setupCards = [
+    {
+      id: "repo",
+      title: "Repository",
+      detail: repoSlug || "Choose the GitHub owner and repository.",
+      done: repoReady,
+      icon: GitBranch,
+    },
+    {
+      id: "secure",
+      title: "Credentials",
+      detail: connectionReady ? "Access token is ready." : "Add a token with repository read access.",
+      done: connectionReady,
+      icon: ShieldCheck,
+    },
+    {
+      id: "webhook",
+      title: "Webhook",
+      detail: processedCount
+        ? `${processedCount} processed deliveries.`
+        : webhookUrl
+          ? "Payload URL is ready to copy."
+          : rawWebhookUrl && webhookUrlIsLocal
+            ? "Localhost cannot receive GitHub webhook deliveries."
+            : "Connect once to reveal the payload URL.",
+      done: Boolean(processedCount || webhookUrl),
+      icon: RadioTower,
+    },
+    {
+      id: "launch",
+      title: "Launch",
+      detail: value.enabled ? "Automation is on for the team." : "Turn automation on when the setup is verified.",
+      done: Boolean(value.enabled && (processedCount || testResult?.state === "success")),
+      icon: Users,
+    },
+  ];
+  const activeStepIndex = Math.max(0, setupCards.findIndex((card) => card.id === activeStep));
+  const currentStep = setupCards[activeStepIndex] || setupCards[0];
+  const nextStep = setupCards[Math.min(activeStepIndex + 1, setupCards.length - 1)];
+  const previousStep = setupCards[Math.max(activeStepIndex - 1, 0)];
+  const goNext = () => setActiveStep(nextStep.id);
+  const goPrevious = () => setActiveStep(previousStep.id);
+
+  return (
+    <section
+      className={`rounded-[28px] border p-5 ${
+        darkMode
+          ? "border-stone-700 bg-[linear-gradient(135deg,rgba(28,25,23,0.96),rgba(15,23,42,0.94))]"
+          : "border-stone-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(240,253,244,0.92))]"
+      }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className={labelClass}>Guided GitHub connection</p>
+          <h3 className={`mt-2 text-2xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
+            One clean flow from repo to team signal
+          </h3>
+          <p className={`mt-2 max-w-3xl text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
+            Add the repository details, connect once, then use the webhook packet below to finish the GitHub side.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleEnabled}
+            className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+              value.enabled
+                ? darkMode
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                  : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                : darkMode
+                  ? "border-stone-600 bg-stone-900 text-stone-200"
+                  : "border-stone-300 bg-white text-stone-700"
+            }`}
+          >
+            {value.enabled ? "Automation on" : "Automation off"}
+          </button>
+          <button
+            type="button"
+            onClick={onConnect}
+            disabled={busy}
+            className={`rounded-xl border px-4 py-2 text-xs font-semibold disabled:opacity-60 ${
+              darkMode
+                ? "border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-500"
+                : "border-stone-900 bg-stone-900 text-white hover:bg-stone-800"
+            }`}
+          >
+            {actionLabel}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <div className="space-y-4">
+          <div className={`rounded-2xl border p-3 ${darkMode ? "border-stone-700 bg-stone-900/75" : "border-white bg-white/90"}`}>
+            <div className="grid gap-2 md:grid-cols-4">
+              {setupCards.map((card, index) => {
+                const Icon = card.icon;
+                const selected = card.id === activeStep;
+                return (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={() => setActiveStep(card.id)}
+                    className={`rounded-xl border p-3 text-left transition ${
+                      selected
+                        ? darkMode
+                          ? "border-emerald-500 bg-emerald-500/10"
+                          : "border-stone-900 bg-stone-900 text-white"
+                        : card.done
+                          ? darkMode
+                            ? "border-emerald-500/20 bg-emerald-500/10"
+                            : "border-emerald-200 bg-emerald-50"
+                          : darkMode
+                            ? "border-stone-700 bg-stone-950 hover:border-stone-500"
+                            : "border-stone-200 bg-stone-50 hover:border-stone-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${
+                          selected && !darkMode
+                            ? "bg-white/15 text-white"
+                            : card.done
+                              ? darkMode
+                                ? "bg-emerald-500/20 text-emerald-200"
+                                : "bg-white text-emerald-700"
+                              : darkMode
+                                ? "bg-stone-800 text-stone-300"
+                                : "bg-white text-stone-600"
+                        }`}
+                      >
+                        <Icon size={16} />
+                      </span>
+                      <span className={`text-xs font-bold ${selected && !darkMode ? "text-white" : darkMode ? "text-stone-300" : "text-stone-600"}`}>
+                        {card.done ? <CheckCircle2 size={15} /> : index + 1}
+                      </span>
+                    </div>
+                    <p className={`mt-3 text-sm font-bold ${selected && !darkMode ? "text-white" : darkMode ? "text-stone-100" : "text-stone-900"}`}>
+                      {card.title}
+                    </p>
+                    <p className={`mt-1 line-clamp-2 text-xs leading-5 ${selected && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-600"}`}>
+                      {card.detail}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${darkMode ? "border-stone-700 bg-stone-900/75" : "border-white bg-white/90"}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className={labelClass}>Step {activeStepIndex + 1} of {setupCards.length}</p>
+                <h4 className={`mt-1 text-xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{currentStep.title}</h4>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  currentStep.done
+                    ? darkMode
+                      ? "bg-emerald-500/15 text-emerald-200"
+                      : "bg-emerald-100 text-emerald-700"
+                    : darkMode
+                      ? "bg-stone-800 text-stone-300"
+                      : "bg-stone-100 text-stone-600"
+                }`}
+              >
+                {currentStep.done ? "Ready" : "Needs input"}
+              </span>
+            </div>
+
+            {activeStep === "repo" ? (
+              <div className="mt-5 space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label>
+                    <span className={labelClass}>Owner</span>
+                    <input
+                      id="github-repo-owner"
+                      value={value.repo_owner}
+                      onChange={(event) => update("repo_owner", event.target.value)}
+                      placeholder="your-org"
+                      className={inputClass}
+                    />
+                  </label>
+                  <label>
+                    <span className={labelClass}>Repository</span>
+                    <input
+                      id="github-repo-name"
+                      value={value.repo_name}
+                      onChange={(event) => update("repo_name", event.target.value)}
+                      placeholder="product-app"
+                      className={inputClass}
+                    />
+                  </label>
+                </div>
+                <PreviewStrip
+                  darkMode={darkMode}
+                  label="Repository preview"
+                  value={repoSlug || "No repository selected yet"}
+                  helper="This is the exact owner/repo Knoledgr will use for validation and webhook guidance."
+                />
+              </div>
+            ) : null}
+
+            {activeStep === "secure" ? (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className={labelClass}>Access token</span>
+                  <input
+                    id="github-access-token"
+                    type="password"
+                    value={value.access_token}
+                    onChange={(event) => update("access_token", event.target.value)}
+                    placeholder={status?.configured ? "Token stored. Add a new one to replace it." : "Paste GitHub token"}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className={labelClass}>Webhook secret</span>
+                  <input
+                    id="github-webhook-secret"
+                    type="password"
+                    value={value.webhook_secret}
+                    onChange={(event) => update("webhook_secret", event.target.value)}
+                    placeholder={status?.has_webhook_secret ? "Secret stored. Add a new one to replace it." : "Use a strong shared secret"}
+                    className={inputClass}
+                  />
+                </label>
+                <PreviewStrip
+                  darkMode={darkMode}
+                  label="Security state"
+                  value={`${connectionReady ? "Token ready" : "Token missing"} · ${secretReady ? "Secret ready" : "Secret missing"}`}
+                  helper="Stored values are kept masked. Enter a new value only when you want to replace it."
+                />
+              </div>
+            ) : null}
+
+            {activeStep === "webhook" ? (
+              <div className="mt-5 space-y-3">
+                {[
+                  ["Payload URL", webhookDisplay],
+                  ["Content type", "application/json"],
+                  ["Events", "push, pull_request"],
+                ].map(([label, display]) => (
+                  <CopyRow
+                    key={label}
+                    darkMode={darkMode}
+                    label={label}
+                    value={display}
+                    disabled={display.startsWith("Connect") || display.startsWith("Public")}
+                    copied={copied === label}
+                    onCopy={() => copyValue(label, display)}
+                  />
+                ))}
+                <PreviewStrip
+                  darkMode={darkMode}
+                  label="Delivery monitor"
+                  value={deliveryState}
+                  helper={
+                    webhookUrlIsLocal
+                      ? "Set PUBLIC_API_URL to the deployed API domain before copying a GitHub webhook URL."
+                      : processedCount
+                        ? "GitHub is already sending usable events."
+                        : "After the webhook is added in GitHub, trigger a push or PR event."
+                  }
+                />
+              </div>
+            ) : null}
+
+            {activeStep === "launch" ? (
+              <div className="mt-5 space-y-4">
+                <div className={`rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className={`text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Team automation</p>
+                      <p className={`mt-1 text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>
+                        Enable after connection and webhook delivery are verified.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onToggleEnabled}
+                      className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+                        value.enabled
+                          ? darkMode
+                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                            : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                          : darkMode
+                            ? "border-stone-600 bg-stone-900 text-stone-200"
+                            : "border-stone-300 bg-white text-stone-700"
+                      }`}
+                    >
+                      {value.enabled ? "Automation on" : "Automation off"}
+                    </button>
+                  </div>
+                </div>
+                <label className={`flex items-center justify-between gap-3 rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"}`}>
+                  <span>
+                    <span className={`block text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Auto-link PRs</span>
+                    <span className={`mt-1 block text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>
+                      PR titles, branches, and commits can attach to decisions automatically.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(value.auto_link_prs)}
+                    onChange={(event) => update("auto_link_prs", event.target.checked)}
+                    className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            <div className={`mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4 ${darkMode ? "border-stone-700" : "border-stone-200"}`}>
+              <button
+                type="button"
+                onClick={goPrevious}
+                disabled={activeStepIndex === 0}
+                className={`rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-40 ${
+                  darkMode ? "border-stone-600 text-stone-200 hover:bg-stone-800" : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                }`}
+              >
+                Back
+              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {activeStepIndex < setupCards.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+                      darkMode ? "border-stone-600 text-stone-100 hover:bg-stone-800" : "border-stone-300 bg-white text-stone-800 hover:bg-stone-100"
+                    }`}
+                  >
+                    Next: {nextStep.title}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onConnect}
+                  disabled={busy}
+                  className={`rounded-xl border px-4 py-2 text-xs font-semibold disabled:opacity-60 ${
+                    darkMode
+                      ? "border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-500"
+                      : "border-stone-900 bg-stone-900 text-white hover:bg-stone-800"
+                  }`}
+                >
+                  {actionLabel}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className={`rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-900/75" : "border-white bg-white/90"}`}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className={labelClass}>Setup health</p>
+                <p className={`mt-1 text-3xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{setupProgress}%</p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${darkMode ? "bg-stone-800 text-stone-200" : "bg-stone-100 text-stone-700"}`}>
+                {activeSummary?.connected ? "Connected" : "In progress"}
+              </span>
+            </div>
+            <div className={`mt-4 h-2 overflow-hidden rounded-full ${darkMode ? "bg-stone-800" : "bg-stone-200"}`}>
+              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${setupProgress}%` }} />
+            </div>
+            <div className="mt-4 grid gap-2">
+              {setupCards.map((card) => {
+                const Icon = card.icon;
+                return (
+                  <div
+                    key={card.title}
+                    className={`flex items-start gap-3 rounded-xl border px-3 py-3 ${
+                      card.done
+                        ? darkMode
+                          ? "border-emerald-500/25 bg-emerald-500/10"
+                          : "border-emerald-200 bg-emerald-50"
+                        : darkMode
+                          ? "border-stone-700 bg-stone-950"
+                          : "border-stone-200 bg-stone-50"
+                    }`}
+                  >
+                    <Icon size={17} className={card.done ? "text-emerald-500" : darkMode ? "text-stone-400" : "text-stone-500"} />
+                    <div>
+                      <p className={`text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{card.title}</p>
+                      <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-stone-400" : "text-stone-600"}`}>{card.detail}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={`rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-900/75" : "border-white bg-white/90"}`}>
+            <p className={labelClass}>Webhook packet</p>
+            <div className="mt-3 space-y-2">
+              {[
+                ["Payload URL", webhookDisplay],
+                ["Content type", "application/json"],
+                ["Events", "push, pull_request"],
+                ["Delivery state", deliveryState],
+              ].map(([label, display]) => (
+                <div
+                  key={label}
+                  className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-3 ${
+                    darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className={labelClass}>{label}</p>
+                    <p className={`mt-1 truncate text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{display}</p>
+                  </div>
+                  {label !== "Delivery state" && display && !display.startsWith("Connect") && !display.startsWith("Public") ? (
+                    <button
+                      type="button"
+                      onClick={() => copyValue(label, display)}
+                      className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                        darkMode ? "border-stone-600 text-stone-200 hover:bg-stone-800" : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                      }`}
+                    >
+                      {copied === label ? "Copied" : "Copy"}
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={`mt-4 rounded-2xl border px-4 py-3 ${darkMode ? "border-stone-700 bg-stone-900/70" : "border-stone-200 bg-white/80"}`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className={`text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
+              {testResult ? testResult.title : guide?.nextAction?.title || "Ready for a clean connection"}
+            </p>
+            <p className={`mt-1 text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>
+              {testResult ? testResult.detail : guide?.nextAction?.detail || "Connect and verify when the repository details are ready."}
+            </p>
+          </div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={Boolean(value.auto_link_prs)}
+              onChange={(event) => update("auto_link_prs", event.target.checked)}
+              className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span className={`text-sm font-semibold ${darkMode ? "text-stone-200" : "text-stone-700"}`}>Auto-link PRs</span>
+          </label>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PreviewStrip({ darkMode, label, value, helper }) {
+  return (
+    <div className={`rounded-xl border px-3 py-3 ${darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+        {label}
+      </p>
+      <p className={`mt-1 break-words text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
+      <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-stone-400" : "text-stone-600"}`}>{helper}</p>
+    </div>
+  );
+}
+
+function CopyRow({ darkMode, label, value, disabled, copied, onCopy }) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-3 ${
+        darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"
+      }`}
+    >
+      <div className="min-w-0">
+        <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+          {label}
+        </p>
+        <p className={`mt-1 truncate text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
+      </div>
+      {!disabled ? (
+        <button
+          type="button"
+          onClick={onCopy}
+          className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+            darkMode ? "border-stone-600 text-stone-200 hover:bg-stone-800" : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+          }`}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function SignalTile({ signal, darkMode }) {
+  const Icon = signal.icon;
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        darkMode
+          ? "border-stone-700 bg-stone-900/80"
+          : "border-white/80 bg-white/85 shadow-[0_16px_40px_rgba(28,25,23,0.06)]"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${
+            darkMode ? "bg-stone-800 text-emerald-200" : "bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          <Icon size={18} />
+        </span>
+        <span className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-500" : "text-stone-400"}`}>
+          Live
+        </span>
+      </div>
+      <p className={`mt-4 text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+        {signal.label}
+      </p>
+      <p className={`mt-1 truncate text-lg font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{signal.value}</p>
+      <p className={`mt-1 text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>{signal.detail}</p>
+    </div>
+  );
+}
+
+function TeamPathTile({ item, darkMode }) {
+  const Icon = item.icon;
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        item.done
+          ? darkMode
+            ? "border-emerald-500/30 bg-emerald-500/10"
+            : "border-emerald-200 bg-emerald-50/80"
+          : darkMode
+            ? "border-stone-700 bg-stone-900/70"
+            : "border-white/80 bg-white/75"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${
+            item.done
+              ? darkMode
+                ? "bg-emerald-500/20 text-emerald-200"
+                : "bg-white text-emerald-700"
+              : darkMode
+                ? "bg-stone-800 text-stone-300"
+                : "bg-stone-100 text-stone-600"
+          }`}
+        >
+          <Icon size={17} />
+        </span>
+        <span
+          className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            item.done
+              ? darkMode
+                ? "bg-emerald-500/15 text-emerald-200"
+                : "bg-emerald-100 text-emerald-700"
+              : darkMode
+                ? "bg-stone-800 text-stone-300"
+                : "bg-stone-100 text-stone-600"
+          }`}
+        >
+          {item.done ? "Ready" : "Next"}
+        </span>
+      </div>
+      <p className={`mt-3 text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.title}</p>
+      <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{item.detail}</p>
+    </div>
+  );
+}
+
+function IntegrationMap({
+  darkMode,
+  setupProgress,
+  connectedCount,
+  providerCount,
+  activeProvider,
+  activeSummary,
+  activeTestResult,
+}) {
+  const ringStyle = {
+    background: `conic-gradient(${darkMode ? "#34d399" : "#059669"} ${setupProgress * 3.6}deg, ${
+      darkMode ? "rgba(68,64,60,0.9)" : "rgba(231,229,228,0.95)"
+    } 0deg)`,
+  };
+
+  return (
+    <div
+      className={`rounded-[28px] border p-5 ${
+        darkMode
+          ? "border-stone-700 bg-[linear-gradient(180deg,rgba(28,25,23,0.96),rgba(12,18,26,0.94))]"
+          : "border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(240,253,244,0.9))] shadow-[0_24px_60px_rgba(28,25,23,0.08)]"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+            Integration map
+          </p>
+          <h2 className={`mt-2 text-xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Signal path</h2>
+        </div>
+        <div className="grid h-24 w-24 place-items-center rounded-full p-2" style={ringStyle}>
+          <div className={`grid h-full w-full place-items-center rounded-full ${darkMode ? "bg-stone-950" : "bg-white"}`}>
+            <span className={`text-xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{setupProgress}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3">
+        {[
+          { label: "Provider", value: activeProvider?.name || "GitHub", icon: GitBranch },
+          { label: "Connected", value: `${connectedCount}/${providerCount}`, icon: CheckCircle2 },
+          { label: "Latest test", value: activeTestResult ? activeTestResult.title : "Not run", icon: Activity },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.label}
+              className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+                darkMode ? "border-stone-700 bg-stone-900/85" : "border-stone-200 bg-white/85"
+              }`}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                    darkMode ? "bg-stone-800 text-stone-200" : "bg-stone-100 text-stone-700"
+                  }`}
+                >
+                  <Icon size={16} />
+                </span>
+                <div className="min-w-0">
+                  <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                    {item.label}
+                  </p>
+                  <p className={`truncate text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.value}</p>
+                </div>
+              </div>
+              <ArrowRight size={16} className={darkMode ? "text-stone-500" : "text-stone-400"} />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={`mt-5 rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-900/70" : "border-stone-200 bg-white/80"}`}>
+        <div className="flex items-center gap-3">
+          <span
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${
+              darkMode ? "bg-emerald-500/15 text-emerald-200" : "bg-emerald-100 text-emerald-700"
+            }`}
+          >
+            <Users size={18} />
+          </span>
+          <div>
+            <p className={`text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Team handoff</p>
+            <p className={`text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>
+              {activeSummary?.nextAction || "Finish setup, then share the workflow."}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProviderSelectCard({ provider, active, darkMode, onClick }) {
+  const progress = provider.totalSteps ? Math.round((provider.completedSteps / provider.totalSteps) * 100) : 0;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full rounded-2xl border p-4 text-left transition ${
+        active
+          ? darkMode
+            ? "border-emerald-500 bg-emerald-500/10"
+            : "border-stone-900 bg-stone-900 text-white"
+          : darkMode
+            ? "border-stone-700 bg-stone-900 hover:border-stone-500"
+            : "border-stone-200 bg-white hover:border-stone-300"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className={`text-sm font-semibold ${active && !darkMode ? "text-white" : darkMode ? "text-stone-100" : "text-stone-900"}`}>
+            {provider.name}
+          </p>
+          <p className={`mt-1 text-[11px] uppercase tracking-[0.14em] ${active && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-500"}`}>
+            {provider.category}
+          </p>
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            provider.connected
+              ? active && !darkMode
+                ? "bg-white/15 text-white"
+                : darkMode
+                  ? "bg-emerald-500/20 text-emerald-200"
+                  : "bg-emerald-100 text-emerald-700"
+              : active && !darkMode
+                ? "bg-white/10 text-stone-100"
+                : darkMode
+                  ? "bg-stone-800 text-stone-300"
+                  : "bg-stone-100 text-stone-600"
+          }`}
+        >
+          {provider.connected ? "Live" : "Setup"}
+        </span>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <div className={`h-2 flex-1 overflow-hidden rounded-full ${darkMode ? "bg-stone-800" : active && !darkMode ? "bg-white/15" : "bg-stone-200"}`}>
+          <div
+            className={`h-full rounded-full ${provider.connected ? "bg-emerald-500" : active && !darkMode ? "bg-white" : darkMode ? "bg-stone-500" : "bg-stone-400"}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className={`text-xs font-semibold ${active && !darkMode ? "text-white" : darkMode ? "text-stone-300" : "text-stone-700"}`}>
+          {progress}%
+        </span>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <p className={`text-xs ${active && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-500"}`}>
+          {provider.completedSteps}/{provider.totalSteps} checks
+        </p>
+        <p className={`truncate text-xs font-medium ${active && !darkMode ? "text-white" : darkMode ? "text-stone-200" : "text-stone-700"}`}>
+          {provider.key === "github" ? "Open workspace" : provider.nextAction}
+        </p>
+      </div>
+    </button>
   );
 }
 

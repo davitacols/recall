@@ -9,15 +9,9 @@ const tones = {
 };
 
 function getSizeTokens(size) {
-  if (size === "sm") return { mark: 22, text: 16, gap: 8, wordmarkWidth: 118 };
-  if (size === "lg") return { mark: 34, text: 24, gap: 11, wordmarkWidth: 176 };
-  return { mark: 28, text: 20, gap: 10, wordmarkWidth: 148 };
-}
-
-function getWordmarkSrc(tone) {
-  if (tone === "blueLight") return "/brand/knoledgr-brandlogo-blue-light.svg";
-  if (tone === "blue") return "/brand/knoledgr-brandlogo-blue.svg";
-  return tone === "light" ? "/brand/knoledgr-brandlogo-light.svg" : "/brand/knoledgr-brandlogo.svg";
+  if (size === "sm") return { mark: 22, text: 16, gap: 8 };
+  if (size === "lg") return { mark: 34, text: 24, gap: 11 };
+  return { mark: 28, text: 20, gap: 10 };
 }
 
 export default function BrandLogo({
@@ -33,7 +27,7 @@ export default function BrandLogo({
 }) {
   const color = tones[tone] || tones.warm;
   const token = getSizeTokens(size);
-  const useWordmarkAsset = showText && label === "Knoledgr" && tone !== "dark";
+  const invertMark = tone === "blueLight" || tone === "dark" || tone === "light";
   const content = (
     <span
       style={{
@@ -44,51 +38,35 @@ export default function BrandLogo({
         ...style,
       }}
     >
-      {useWordmarkAsset ? (
-        <img
-          src={getWordmarkSrc(tone)}
-          alt={label}
-          width={token.wordmarkWidth}
+      <img
+        src="/logo/logo-mark.png"
+        alt={showText ? "" : label}
+        aria-hidden={showText ? "true" : undefined}
+        width={token.mark}
+        height={token.mark}
+        style={{
+          width: token.mark,
+          height: token.mark,
+          display: "block",
+          flexShrink: 0,
+          objectFit: "contain",
+          filter: invertMark ? "brightness(0) invert(1)" : "none",
+        }}
+      />
+      {showText ? (
+        <span
           style={{
-            width: token.wordmarkWidth,
-            height: "auto",
-            display: "block",
-            flexShrink: 0,
-            maxWidth: "100%",
+            fontSize: token.text,
+            fontWeight: textWeight,
+            lineHeight: 0.94,
+            color: color.text,
+            fontFamily: '"League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            whiteSpace: "nowrap",
           }}
-        />
-      ) : (
-        <>
-          <img
-            src="/brand/knoledgr-brandmark.svg"
-            alt={showText ? "" : label}
-            aria-hidden={showText ? "true" : undefined}
-            width={token.mark}
-            height={token.mark}
-            style={{
-              width: token.mark,
-              height: token.mark,
-              display: "block",
-              flexShrink: 0,
-            }}
-          />
-          {showText ? (
-            <span
-              style={{
-                fontSize: token.text,
-                fontWeight: textWeight,
-                lineHeight: 0.94,
-                letterSpacing: "-0.055em",
-                color: color.text,
-                fontFamily: '"League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                whiteSpace: "nowrap",
-              }}
-            >
-              {label}
-            </span>
-          ) : null}
-        </>
-      )}
+        >
+          {label}
+        </span>
+      ) : null}
     </span>
   );
 

@@ -187,6 +187,105 @@ function SummaryCard({ label, value, tone, palette }) {
   );
 }
 
+function HealthRing({ value, label, helper, tone, palette }) {
+  const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+  return (
+    <div style={healthRingWrap}>
+      <div
+        style={{
+          ...healthRing,
+          background: `conic-gradient(${tone} ${safeValue * 3.6}deg, ${palette.border} 0deg)`,
+        }}
+      >
+        <div style={{ ...healthRingInner, background: palette.card }}>
+          <span style={{ ...healthRingValue, color: palette.text }}>{safeValue}%</span>
+        </div>
+      </div>
+      <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: palette.text }}>{label}</p>
+        <p style={{ ...caption, color: palette.muted }}>{helper}</p>
+      </div>
+    </div>
+  );
+}
+
+function MiniBars({ values, tone, palette }) {
+  return (
+    <div aria-hidden="true" style={miniBars}>
+      {values.map((value, index) => (
+        <span
+          key={`${value}-${index}`}
+          style={{
+            ...miniBar,
+            height: `${Math.max(16, Math.min(100, value))}%`,
+            background: index === values.length - 1 ? tone : palette.border,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function VisualMetricCard({ label, value, helper, tone, palette, bars }) {
+  return (
+    <article className="ui-card-lift ui-smooth" style={{ ...metricCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+        <div style={{ display: "grid", gap: 5, minWidth: 0 }}>
+          <p style={{ ...microLabel, color: palette.muted }}>{label}</p>
+          <p style={{ ...summaryValue, color: tone }}>{value}</p>
+          <p style={{ ...caption, color: palette.muted }}>{helper}</p>
+        </div>
+        <MiniBars values={bars} tone={tone} palette={palette} />
+      </div>
+    </article>
+  );
+}
+
+function HeroSignalMap({ palette, metrics, sprintProgress, note }) {
+  const nodes = [
+    { label: "Work", value: metrics.sprintTotal, tone: palette.info, x: "12%", y: "18%" },
+    { label: "Risk", value: metrics.blocked, tone: metrics.blocked ? palette.warn : palette.good, x: "74%", y: "15%" },
+    { label: "Review", value: metrics.reviews, tone: metrics.overdue ? palette.warn : palette.accent, x: "82%", y: "70%" },
+    { label: "Memory", value: metrics.signals, tone: palette.good, x: "13%", y: "72%" },
+  ];
+
+  return (
+    <div style={signalMapShell}>
+      <div style={{ ...signalMapGrid, backgroundImage: `linear-gradient(${palette.border} 1px, transparent 1px), linear-gradient(90deg, ${palette.border} 1px, transparent 1px)` }} />
+      <div style={{ ...signalMapGlow, background: palette.ctaGradient }} />
+      <div style={{ ...signalConnector, left: "22%", top: "29%", width: "54%", transform: "rotate(-2deg)", background: palette.border }} />
+      <div style={{ ...signalConnector, left: "29%", top: "37%", width: "46%", transform: "rotate(42deg)", background: palette.border }} />
+      <div style={{ ...signalConnector, left: "23%", top: "70%", width: "54%", transform: "rotate(-6deg)", background: palette.border }} />
+      <div style={{ ...signalCore, border: `1px solid ${palette.border}`, background: palette.card }}>
+        <HealthRing
+          value={sprintProgress || Math.min(100, metrics.signals * 8)}
+          label={sprintProgress ? "Sprint health" : "Signal density"}
+          helper={note}
+          tone={metrics.blocked || metrics.overdue ? palette.warn : palette.good}
+          palette={palette}
+        />
+      </div>
+      {nodes.map((node) => (
+        <div
+          key={node.label}
+          style={{
+            ...signalNode,
+            left: node.x,
+            top: node.y,
+            border: `1px solid ${palette.border}`,
+            background: palette.panel,
+            color: palette.text,
+          }}
+        >
+          <span style={{ ...signalNodeDot, background: node.tone, boxShadow: `0 0 0 7px ${palette.accentSoft}` }} />
+          <span style={{ ...microLabel, color: palette.muted }}>{node.label}</span>
+          <strong style={{ color: node.tone }}>{node.value}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CommandCard({ title, description, metric, to, palette, icon: Icon }) {
   return (
     <Link
@@ -306,6 +405,7 @@ function FlowLaneCard({ lane, palette }) {
   const Icon = lane.icon;
   return (
     <article style={{ ...flowLaneCard, border: `1px solid ${palette.border}`, background: palette.card }}>
+      <div style={{ ...laneAccentBar, background: lane.tone }} />
       <header style={flowLaneHeader}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
           <span style={{ ...laneIcon, width: 30, height: 30, border: `1px solid ${palette.border}`, background: lane.bg, color: lane.tone }}>
@@ -978,12 +1078,19 @@ export default function UnifiedDashboard() {
   ];
 
   const operatingMetrics = [
-    { label: "Workspace signals", value: stats.activity || 0, helper: "7-day activity", tone: palette.accent },
-    { label: "Sprint progress", value: currentSprint ? `${sprintProgress}%` : "No sprint", helper: currentSprint?.name || "No active sprint", tone: sprintBlocked ? palette.warn : palette.good },
-    { label: "Blocked", value: sprintBlocked, helper: `${sprintInProgress} in progress`, tone: sprintBlocked ? palette.warn : palette.good },
-    { label: "Open reviews", value: pendingOutcomeMeta.total, helper: `${pendingOutcomeMeta.overdue} overdue`, tone: pendingOutcomeMeta.overdue ? palette.warn : palette.info },
-    { label: "Decision drift", value: driftMeta.total, helper: `${driftMeta.critical} critical`, tone: driftMeta.critical ? palette.warn : palette.info },
+    { label: "Workspace signals", value: stats.activity || 0, helper: "7-day activity", tone: palette.accent, bars: [22, 36, 44, 58, Math.min(100, (stats.activity || 0) * 10)] },
+    { label: "Sprint progress", value: currentSprint ? `${sprintProgress}%` : "No sprint", helper: currentSprint?.name || "No active sprint", tone: sprintBlocked ? palette.warn : palette.good, bars: [18, 30, 44, 60, sprintProgress || 20] },
+    { label: "Blocked", value: sprintBlocked, helper: `${sprintInProgress} in progress`, tone: sprintBlocked ? palette.warn : palette.good, bars: [12, 16, 22, 28, Math.min(100, sprintBlocked * 24)] },
+    { label: "Open reviews", value: pendingOutcomeMeta.total, helper: `${pendingOutcomeMeta.overdue} overdue`, tone: pendingOutcomeMeta.overdue ? palette.warn : palette.info, bars: [24, 30, 36, 44, Math.min(100, pendingOutcomeMeta.total * 18)] },
+    { label: "Decision drift", value: driftMeta.total, helper: `${driftMeta.critical} critical`, tone: driftMeta.critical ? palette.warn : palette.info, bars: [18, 22, 26, 30, Math.min(100, driftMeta.total * 20)] },
   ];
+  const heroSignalMetrics = {
+    signals: stats.activity || 0,
+    sprintTotal: sprintTotal || 0,
+    blocked: sprintBlocked || 0,
+    reviews: pendingOutcomeMeta.total || 0,
+    overdue: pendingOutcomeMeta.overdue || 0,
+  };
 
   if (loading) {
     return (
@@ -1018,9 +1125,9 @@ export default function UnifiedDashboard() {
             </span>
           </div>
           <div style={{ display: "grid", gap: 8 }}>
-            <h2 style={{ ...dynamicHeroTitle, color: palette.text }}>Today&apos;s AI work system</h2>
+            <h2 style={{ ...dynamicHeroTitle, color: palette.text }}>Workspace command view</h2>
             <p style={{ ...bodyCopy, maxWidth: 760, color: palette.muted }}>
-              {workspaceBriefingSummary.headline || "Knoledgr turns team memory, decisions, and execution into an AI workspace that knows what changed and what should happen next."}
+              {workspaceBriefingSummary.headline || "A live operating board for work, decisions, memory, and risk."}
             </p>
           </div>
           <div style={chipRow}>
@@ -1037,26 +1144,13 @@ export default function UnifiedDashboard() {
         </div>
 
         <aside style={{ ...dynamicHeroAside, border: `1px solid ${palette.border}`, background: palette.card }}>
-          <p style={{ ...microLabel, color: palette.muted }}>Live pressure</p>
-          <p style={{ ...spotlightNote, color: palette.text }}>{note}</p>
-          <div style={spotlightProgressTrack}>
-            <div style={{ ...spotlightProgressFill, width: `${currentSprint ? sprintProgress : Math.min(100, stats.activity * 8)}%`, background: palette.ctaGradient }} />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-            <SummaryCard label="Done" value={sprintCompleted} tone={palette.good} palette={palette} />
-            <SummaryCard label="Moving" value={sprintInProgress} tone={palette.info} palette={palette} />
-            <SummaryCard label="Blocked" value={sprintBlocked} tone={sprintBlocked ? palette.warn : palette.good} palette={palette} />
-          </div>
+          <HeroSignalMap palette={palette} metrics={heroSignalMetrics} sprintProgress={sprintProgress} note={note} />
         </aside>
       </section>
 
       <section className="ui-enter" style={{ "--ui-delay": "80ms", ...metricStrip }}>
         {operatingMetrics.map((metric) => (
-          <article key={metric.label} className="ui-card-lift ui-smooth" style={{ ...metricCard, border: `1px solid ${palette.border}`, background: palette.card }}>
-            <p style={{ ...microLabel, color: palette.muted }}>{metric.label}</p>
-            <p style={{ ...summaryValue, color: metric.tone }}>{metric.value}</p>
-            <p style={{ ...caption, color: palette.muted }}>{metric.helper}</p>
-          </article>
+          <VisualMetricCard key={metric.label} {...metric} palette={palette} />
         ))}
       </section>
 
@@ -1248,15 +1342,29 @@ function secondaryButton(palette) {
 
 const pageStyle = { position: "relative", padding: "clamp(10px, 1.8vw, 18px)", display: "grid", gap: 12 };
 const dynamicPage = { position: "relative", padding: "clamp(10px, 1.5vw, 18px)", display: "grid", gap: 12 };
-const dynamicHero = { borderRadius: 18, padding: "clamp(16px, 2.4vw, 26px)", display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 1.25fr) minmax(300px, 0.75fr)", alignItems: "stretch", overflow: "hidden" };
+const dynamicHero = { borderRadius: 18, padding: "clamp(16px, 2.4vw, 26px)", display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 0.9fr) minmax(360px, 1.1fr)", alignItems: "stretch", overflow: "hidden" };
 const dynamicHeroCopy = { display: "grid", gap: 14, alignContent: "center", minWidth: 0 };
 const dynamicHeroTitle = { margin: 0, fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: "clamp(2rem, 4vw, 4.6rem)", lineHeight: 0.92, letterSpacing: "-0.055em" };
 const dynamicHeroAside = { borderRadius: 16, padding: 14, display: "grid", gap: 12, alignContent: "start", minWidth: 0 };
+const signalMapShell = { position: "relative", minHeight: 310, borderRadius: 14, overflow: "hidden", display: "grid", placeItems: "center" };
+const signalMapGrid = { position: "absolute", inset: 0, backgroundSize: "34px 34px", opacity: 0.38 };
+const signalMapGlow = { position: "absolute", width: "44%", aspectRatio: "1 / 1", borderRadius: 999, opacity: 0.16, filter: "blur(22px)" };
+const signalConnector = { position: "absolute", height: 2, borderRadius: 999, transformOrigin: "left center", opacity: 0.8 };
+const signalCore = { position: "relative", zIndex: 2, width: "min(260px, 74%)", borderRadius: 18, padding: 14, boxShadow: "var(--ui-shadow-sm)" };
+const signalNode = { position: "absolute", zIndex: 3, width: 92, minHeight: 72, borderRadius: 14, padding: 10, display: "grid", gap: 5, boxShadow: "var(--ui-shadow-sm)" };
+const signalNodeDot = { width: 10, height: 10, borderRadius: 999 };
+const healthRingWrap = { display: "grid", gridTemplateColumns: "76px minmax(0, 1fr)", gap: 12, alignItems: "center" };
+const healthRing = { width: 76, height: 76, borderRadius: 999, padding: 7, flexShrink: 0 };
+const healthRingInner = { width: "100%", height: "100%", borderRadius: 999, display: "grid", placeItems: "center" };
+const healthRingValue = { fontFamily: 'var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 24, fontWeight: 800, lineHeight: 1 };
 const metricStrip = { display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" };
-const metricCard = { borderRadius: 14, padding: 12, display: "grid", gap: 5, minHeight: 104 };
+const metricCard = { borderRadius: 14, padding: 12, display: "grid", gap: 5, minHeight: 112 };
+const miniBars = { width: 46, height: 58, display: "flex", gap: 4, alignItems: "flex-end", flexShrink: 0 };
+const miniBar = { width: 6, borderRadius: 999, minHeight: 10 };
 const sectionHeaderRow = { display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap" };
 const flowBoardGrid = { display: "grid", gap: 10, alignItems: "stretch" };
-const flowLaneCard = { borderRadius: 14, padding: 10, display: "grid", gap: 10, alignContent: "start", minHeight: 280 };
+const flowLaneCard = { position: "relative", overflow: "hidden", borderRadius: 14, padding: "14px 10px 10px", display: "grid", gap: 10, alignContent: "start", minHeight: 280 };
+const laneAccentBar = { position: "absolute", top: 0, left: 0, right: 0, height: 4 };
 const flowLaneHeader = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 };
 const flowCount = { minWidth: 30, height: 30, borderRadius: 999, display: "grid", placeItems: "center", fontSize: 12, fontWeight: 800, flexShrink: 0 };
 const flowRow = { borderRadius: 10, padding: 10, minHeight: 86, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, textDecoration: "none" };

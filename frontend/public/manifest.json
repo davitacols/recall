@@ -4,15 +4,15 @@
   "description": "Decision memory, linked execution, and searchable team context in one workspace",
   "icons": [
     {
-      "src": "/brand/knoledgr-app-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/logo/logo-app.png",
+      "sizes": "400x400",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/brand/knoledgr-touch-icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
+      "src": "/logo/favicon-visible.png",
+      "type": "image/png",
+      "sizes": "32x32",
       "purpose": "any"
     }
   ],
@@ -35,14 +35,14 @@
       "short_name": "Dashboard",
       "description": "View your dashboard",
       "url": "/dashboard",
-      "icons": [{ "src": "/brand/knoledgr-brandmark.svg", "sizes": "any" }]
+      "icons": [{ "src": "/logo/favicon-visible.png", "sizes": "32x32", "type": "image/png" }]
     },
     {
       "name": "New Conversation",
       "short_name": "New",
       "description": "Start a new conversation",
       "url": "/conversations/new",
-      "icons": [{ "src": "/brand/knoledgr-brandmark.svg", "sizes": "any" }]
+      "icons": [{ "src": "/logo/favicon-visible.png", "sizes": "32x32", "type": "image/png" }]
     }
   ]
 }

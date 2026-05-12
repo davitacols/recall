@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import json
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.db import DatabaseError
 from django.test import TestCase, override_settings
@@ -304,6 +304,29 @@ class GitHubEndpointTests(TestCase):
         self.integration.refresh_from_db()
         self.assertEqual(self.integration.repo_owner, "acme")
         self.assertEqual(self.integration.repo_name, "platform-api")
+
+    @patch("apps.integrations.views.requests.get")
+    def test_legacy_github_test_returns_specific_repository_access_error(self, mock_get):
+        mock_get.return_value = Mock(status_code=404, json=Mock(return_value={"message": "Not Found"}))
+
+        response = self.client.post("/api/integrations/test/github/")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("could not find that repository", response.data["error"])
+        mock_get.assert_called_once()
+
+    @patch("apps.integrations.views.requests.get")
+    def test_legacy_github_test_returns_success_with_repo_metadata(self, mock_get):
+        mock_get.return_value = Mock(
+            status_code=200,
+            json=Mock(return_value={"name": "justice-app", "full_name": "acme/justice-app"}),
+        )
+
+        response = self.client.post("/api/integrations/test/github/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["repo"], "justice-app")
+        self.assertEqual(response.data["repo_full_name"], "acme/justice-app")
 
     def test_decision_link_pr_endpoint_now_persists_tracked_pull_request(self):
         response = self.client.post(

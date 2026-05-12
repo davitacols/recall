@@ -20,7 +20,7 @@ import { getAvatarUrl } from "../utils/avatarUtils";
 import { ListSkeleton } from "../components/Skeleton";
 import { NoData, NoResults } from "../components/EmptyState";
 import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
+import { WorkspaceHero } from "../components/WorkspaceChrome";
 import { buildAskRecallPath } from "../utils/askRecall";
 import { createPlainTextPreview, hasMeaningfulText } from "../utils/textPreview";
 
@@ -240,50 +240,26 @@ function Conversations() {
         }
       />
 
-      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
-        <div style={toolbarLayout}>
-          <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Thread Control</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>Keep the next response and next route visible</h2>
-            <p style={{ ...toolbarCopy, color: palette.muted }}>
-              Triage the live discussion first, then use the routing deck to move useful threads into decisions, tasks, meetings, or longer-term context.
-            </p>
-          </div>
+      <section style={{ ...conversationShell, gridTemplateColumns: isMobile ? "1fr" : conversationShell.gridTemplateColumns }}>
+        <main style={{ display: "grid", gap: 14, minWidth: 0 }}>
+          <article style={{ ...streamControls, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <div style={{ display: "grid", gap: 4 }}>
+              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Conversation stream</p>
+              <h2 style={{ ...toolbarTitle, color: palette.text }}>Find the thread, then move it forward</h2>
+            </div>
 
-          <div style={{ ...conversationCommandGrid, gridTemplateColumns: isMobile ? "1fr" : conversationCommandGrid.gridTemplateColumns }}>
-            <article
-              style={{
-                ...commandCard,
-                border: `1px solid ${palette.border}`,
-                background: palette.card,
-              }}
-            >
-              <div style={commandCardHead}>
-                <div style={{ display: "grid", gap: 4 }}>
-                  <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Filter threads</p>
-                  <h3 style={{ ...commandCardTitle, color: palette.text }}>Shape the conversation queue</h3>
-                </div>
-                <div style={toolbarChipRail}>
-                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {filteredConversations.length} visible
-                  </span>
-                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {typeCounts[filterType] || 0} in current type
-                  </span>
-                </div>
-              </div>
+            <div style={{ ...searchWrap, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
+              <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
+              <input
+                type="text"
+                placeholder="Search conversations"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                style={{ ...searchInput, color: palette.text }}
+              />
+            </div>
 
-              <div style={{ ...searchWrap, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <MagnifyingGlassIcon style={{ ...icon16, color: palette.muted }} />
-                <input
-                  type="text"
-                  placeholder="Search titles, summaries, or thread content"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  style={{ ...searchInput, color: palette.text }}
-                />
-              </div>
-
+            <div style={{ ...filterRow, justifyContent: isMobile ? "flex-start" : "space-between" }}>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {["all", "question", "discussion", "decision", "blocker"].map((type) => (
                   <button
@@ -295,19 +271,18 @@ function Conversations() {
                       ...typeChip,
                       border: `1px solid ${filterType === type ? palette.accent : palette.border}`,
                       color: filterType === type ? palette.accent : palette.text,
-                      background: filterType === type ? palette.accentSoft : palette.card,
+                      background: filterType === type ? palette.accentSoft : palette.cardAlt,
                     }}
                   >
                     {type} ({typeCounts[type] || 0})
                   </button>
                 ))}
               </div>
-
-              <div style={{ ...searchRail, gridTemplateColumns: isMobile ? "1fr" : "auto auto minmax(0, 1fr)" }}>
-                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...sortSelect, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt, width: isMobile ? "100%" : "fit-content" }}>
-                  <option value="recent">Sort: Most Recent</option>
-                  <option value="replies">Sort: Most Replies</option>
-                  <option value="views">Sort: Most Views</option>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...sortSelect, border: `1px solid ${palette.border}`, color: palette.text, background: palette.cardAlt }}>
+                  <option value="recent">Most recent</option>
+                  <option value="replies">Most replies</option>
+                  <option value="views">Most views</option>
                 </select>
                 <button
                   className="ui-btn-polish ui-focus-ring"
@@ -318,113 +293,90 @@ function Conversations() {
                   }}
                   style={threadSecondaryButton(palette)}
                 >
-                  Reset view
+                  Reset
                 </button>
-                <div style={toolbarChipRail}>
-                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {averageReplies} avg replies
-                  </span>
-                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {followUpCount} need response
-                  </span>
-                </div>
               </div>
-            </article>
+            </div>
+          </article>
 
-            <article
-              style={{
-                ...commandCard,
-                border: `1px solid ${palette.border}`,
-                background: palette.card,
-              }}
-            >
-              <div style={commandCardHead}>
-                <div style={{ display: "grid", gap: 4 }}>
-                  <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Route discussion</p>
-                  <h3 style={{ ...commandCardTitle, color: palette.text }}>Push good threads into the next system</h3>
-                </div>
-                <div style={toolbarChipRail}>
-                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {documentedThreads} documented
-                  </span>
-                  <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {thisWeekCount} this week
-                  </span>
-                </div>
-              </div>
+          {filteredConversations.length === 0 ? (
+            searchQuery ? (
+              <NoResults searchTerm={searchQuery} onClear={() => setSearchQuery("")} />
+            ) : (
+              <NoData type="conversations" onCreate={() => navigate("/conversations/new")} />
+            )
+          ) : (
+            <div style={{ display: "grid", gap: 18 }}>
+              {needsFollowUpItems.length ? (
+                <ConversationSection
+                  title="Needs response"
+                  description="Threads missing replies or written context."
+                  items={needsFollowUpItems}
+                  navigate={navigate}
+                  palette={palette}
+                  isMobile={isMobile}
+                  deleteConversation={deleteConversation}
+                />
+              ) : null}
 
-              <section style={{ ...statsGrid, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                <StatCard label="Threads" value={conversations.length} palette={palette} />
-                <StatCard label="Needs response" value={followUpCount} palette={palette} />
-                <StatCard label="Documented" value={documentedThreads} palette={palette} />
-                <StatCard label="Avg replies" value={averageReplies} palette={palette} />
-              </section>
+              <ConversationSection
+                title={needsFollowUpItems.length ? "Open conversation stream" : "All conversations"}
+                description={
+                  needsFollowUpItems.length
+                    ? "Everything below already has some signal and can be routed when ready."
+                    : "Browse the full workspace discussion history."
+                }
+                items={needsFollowUpItems.length ? stableThreads : filteredConversations}
+                navigate={navigate}
+                palette={palette}
+                isMobile={isMobile}
+                deleteConversation={deleteConversation}
+              />
+            </div>
+          )}
+        </main>
 
-              <section style={{ ...featureRail, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                {linkedFeatures.map((feature) => {
-                  const Icon = feature.icon;
-                  return (
-                    <Link
-                      key={feature.label}
-                      to={feature.to}
-                      className="ui-card-lift ui-smooth"
-                      style={{
-                        ...featureCard,
-                        border: `1px solid ${palette.border}`,
-                        background: palette.cardAlt,
-                      }}
-                    >
-                      <span style={{ ...featureIconWrap, background: palette.card }}>
-                        <Icon style={icon16} />
-                      </span>
-                      <div>
-                        <p style={{ margin: 0, color: palette.text, fontSize: 13, fontWeight: 700 }}>{feature.label}</p>
-                        <p style={{ margin: "4px 0 0", color: palette.muted, fontSize: 12 }}>{feature.helper}</p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </section>
-            </article>
-          </div>
-        </div>
-      </WorkspaceToolbar>
+        <aside style={{ display: "grid", gap: 14, alignContent: "start" }}>
+          <article style={{ ...sidePanel, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Today</p>
+            <div style={{ ...statsGrid, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+              <StatCard label="Visible" value={filteredConversations.length} palette={palette} />
+              <StatCard label="Need response" value={followUpCount} palette={palette} />
+              <StatCard label="Avg replies" value={averageReplies} palette={palette} />
+              <StatCard label="This week" value={thisWeekCount} palette={palette} />
+            </div>
+          </article>
 
-      {filteredConversations.length === 0 ? (
-        searchQuery ? (
-          <NoResults searchTerm={searchQuery} onClear={() => setSearchQuery("")} />
-        ) : (
-          <NoData type="conversations" onCreate={() => navigate("/conversations/new")} />
-        )
-      ) : (
-        <div style={{ display: "grid", gap: 14 }}>
-          {needsFollowUpItems.length ? (
-            <ConversationSection
-              title="Needs response"
-              description="These threads either lack replies or still need stronger written context."
-              items={needsFollowUpItems}
-              navigate={navigate}
-              palette={palette}
-              isMobile={isMobile}
-              deleteConversation={deleteConversation}
-            />
-          ) : null}
-
-          <ConversationSection
-            title={needsFollowUpItems.length ? "Conversation atlas" : "All conversations"}
-            description={
-              needsFollowUpItems.length
-                ? "The rest of the discussion workspace already has enough signal to route into decisions, tasks, or deeper review."
-                : "Use the conversation atlas to move from thread to decision, execution, and context recovery."
-            }
-            items={needsFollowUpItems.length ? stableThreads : filteredConversations}
-            navigate={navigate}
-            palette={palette}
-            isMobile={isMobile}
-            deleteConversation={deleteConversation}
-          />
-        </div>
-      )}
+          <article style={{ ...sidePanel, border: `1px solid ${palette.border}`, background: palette.card }}>
+            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Route thread</p>
+            <section style={featureRail}>
+              {linkedFeatures.slice(0, 4).map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <Link
+                    key={feature.label}
+                    to={feature.to}
+                    className="ui-card-lift ui-smooth"
+                    style={{
+                      ...featureCard,
+                      border: `1px solid ${palette.border}`,
+                      background: palette.cardAlt,
+                    }}
+                  >
+                    <span style={{ ...featureIconWrap, background: palette.card }}>
+                      <Icon style={icon16} />
+                    </span>
+                    <div>
+                      <p style={{ margin: 0, color: palette.text, fontSize: 13, fontWeight: 700 }}>{feature.label}</p>
+                      <p style={{ margin: "4px 0 0", color: palette.muted, fontSize: 12 }}>{feature.helper}</p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </section>
+          </article>
+        </aside>
+      </section>
     </div>
   );
 }
@@ -507,7 +459,7 @@ function ConversationSection({ title, description, items, navigate, palette, isM
                 style={threadSecondaryButton(palette)}
               >
                 <DocumentCheckIcon style={icon14} />
-                Decision queue
+                Decision
               </button>
               <button
                 type="button"
@@ -519,11 +471,10 @@ function ConversationSection({ title, description, items, navigate, palette, isM
                 style={threadSecondaryButton(palette)}
               >
                 <ClipboardDocumentListIcon style={icon14} />
-                Task board
+                Task
               </button>
-              <button className="ui-btn-polish ui-focus-ring" onClick={(event) => deleteConversation(conversation.id, event)} style={threadDangerButton(palette)}>
+              <button className="ui-btn-polish ui-focus-ring" onClick={(event) => deleteConversation(conversation.id, event)} style={threadIconDangerButton()}>
                 <TrashIcon style={icon14} />
-                Delete
               </button>
             </div>
           </article>
@@ -633,16 +584,62 @@ function threadDangerButton() {
   };
 }
 
+function threadIconDangerButton() {
+  return {
+    borderRadius: 10,
+    border: `1px solid var(--app-danger-border)`,
+    padding: "8px",
+    fontSize: 12,
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    background: "transparent",
+    color: "var(--app-danger)",
+    cursor: "pointer",
+    minHeight: 38,
+  };
+}
+
 const page = {
   width: "100%",
   display: "grid",
+  gap: 18,
+};
+
+const conversationShell = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) 330px",
+  gap: 18,
+  alignItems: "start",
+};
+
+const streamControls = {
+  borderRadius: 20,
+  padding: 16,
+  display: "grid",
+  gap: 14,
+};
+
+const filterRow = {
+  display: "flex",
   gap: 12,
+  flexWrap: "wrap",
+  alignItems: "center",
+};
+
+const sidePanel = {
+  borderRadius: 20,
+  padding: 16,
+  display: "grid",
+  gap: 14,
 };
 
 const featureRail = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: 8,
+  gridTemplateColumns: "1fr",
+  gap: 10,
 };
 
 const conversationCommandGrid = {
@@ -744,15 +741,15 @@ const searchRail = {
 
 const listWrap = {
   display: "grid",
-  gap: 10,
+  gap: 12,
 };
 
 const conversationCard = {
-  borderRadius: 16,
-  padding: 14,
+  borderRadius: 20,
+  padding: 18,
   display: "grid",
-  gridTemplateColumns: "minmax(0,1fr) 220px",
-  gap: 14,
+  gridTemplateColumns: "minmax(0,1fr) 132px",
+  gap: 18,
   cursor: "pointer",
 };
 
@@ -787,11 +784,11 @@ const threadMetaChip = {
 
 const conversationSummary = {
   margin: 0,
-  fontSize: 12,
-  lineHeight: 1.55,
+  fontSize: 13,
+  lineHeight: 1.65,
   display: "-webkit-box",
   overflow: "hidden",
-  WebkitLineClamp: 3,
+  WebkitLineClamp: 2,
   WebkitBoxOrient: "vertical",
 };
 

@@ -262,6 +262,85 @@ function GitHubActivityRow({ item, darkMode }) {
   );
 }
 
+function TeamRolloutCard({ darkMode, items, message }) {
+  return (
+    <GitHubPanel
+      eyebrow="Team rollout"
+      title="Make GitHub useful for the whole team"
+      description="A low-friction rollout plan for admins, repo owners, engineers, and leads so the integration becomes a habit instead of another setup chore."
+      darkMode={darkMode}
+      action={<CopyShortcutButton label="Copy team message" value={message} darkMode={darkMode} />}
+    >
+      <div className="grid gap-3 lg:grid-cols-4">
+        {items.map((item) => (
+          <div
+            key={item.title}
+            className={`rounded-[14px] border px-4 py-4 ${
+              item.done
+                ? darkMode
+                  ? "border-emerald-500/30 bg-emerald-500/10"
+                  : "border-emerald-200 bg-emerald-50/80"
+                : darkMode
+                  ? "border-stone-700 bg-stone-950/70"
+                  : "border-stone-200 bg-stone-50/70"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                {item.role}
+              </p>
+              <span
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                  item.done
+                    ? darkMode
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                      : "border-emerald-200 bg-white text-emerald-800"
+                    : darkMode
+                      ? "border-stone-600 bg-stone-900 text-stone-300"
+                      : "border-stone-200 bg-white text-stone-600"
+                }`}
+              >
+                {item.done ? "Ready" : "Next"}
+              </span>
+            </div>
+            <p className={`mt-3 text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.title}</p>
+            <p className={`mt-2 text-xs leading-5 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </GitHubPanel>
+  );
+}
+
+function SetupConfidenceCard({ darkMode, score, label, detail }) {
+  const ringTone = score >= 80 ? "#10b981" : score >= 55 ? "#38bdf8" : "#f59e0b";
+  return (
+    <div
+      className={`rounded-[18px] border p-4 ${
+        darkMode ? "border-stone-700 bg-stone-950/70" : "border-stone-200 bg-stone-50/70"
+      }`}
+    >
+      <div className="flex items-center gap-4">
+        <div
+          className="grid h-[86px] w-[86px] shrink-0 place-items-center rounded-full p-2"
+          style={{ background: `conic-gradient(${ringTone} ${score * 3.6}deg, ${darkMode ? "#3f3f46" : "#e7e5e4"} 0deg)` }}
+        >
+          <div className={`grid h-full w-full place-items-center rounded-full ${darkMode ? "bg-stone-950" : "bg-white"}`}>
+            <span className={`text-xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{score}%</span>
+          </div>
+        </div>
+        <div className="min-w-0">
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+            Setup confidence
+          </p>
+          <p className={`mt-2 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{label}</p>
+          <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{detail}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GitHubIntegrationWorkspace({
   value,
   status,
@@ -351,6 +430,34 @@ export default function GitHubIntegrationWorkspace({
       tone: processedCount ? "emerald" : hasDeliveries ? "amber" : hasWebhookReady ? "sky" : "slate",
     },
   ];
+  const completedSetupCount = [
+    connectionReady,
+    hasSecret,
+    hasWebhookReady,
+    hasDeliveries,
+    processedCount > 0,
+  ].filter(Boolean).length;
+  const setupScore = Math.round((completedSetupCount / 5) * 100);
+  const confidenceLabel =
+    processedCount > 0
+      ? "Team-ready"
+      : hasDeliveries
+        ? "Receiving traffic"
+        : hasWebhookReady
+          ? "Ready for GitHub"
+          : connectionReady && hasSecret
+            ? "Save to reveal webhook"
+            : "Guided setup";
+  const confidenceDetail =
+    processedCount > 0
+      ? "GitHub is connected, webhook traffic is processed, and code work can start linking back to decisions."
+      : hasDeliveries
+        ? "GitHub is reaching Knoledgr. Review recent deliveries before the team depends on timelines."
+        : hasWebhookReady
+          ? "The Knoledgr side is ready. Add the webhook in GitHub and trigger one push or pull request event."
+          : connectionReady && hasSecret
+            ? "The repo and shared secret are present. Save once so Knoledgr can generate the payload URL."
+            : "Start with the repository URL and token. The flow will reveal each next step as the setup becomes safer.";
   const nextActionTitle = !connectionReady
     ? "Save the repository target"
     : !hasSecret
@@ -410,6 +517,40 @@ export default function GitHubIntegrationWorkspace({
       copyValue: "DECISION-123, RECALL-123, #123",
     },
   ];
+  const teamRolloutItems = [
+    {
+      role: "Admin",
+      title: "Connect one trusted repository",
+      detail: repoSlug ? `${repoSlug} is the shared source for this workspace.` : "Choose the repository your team actually reviews and ships from.",
+      done: connectionReady,
+    },
+    {
+      role: "Repo owner",
+      title: "Add the webhook once",
+      detail: hasWebhookReady ? "Use the copied payload URL, JSON content type, push and pull_request events." : "Save the setup first, then paste the generated payload URL into GitHub.",
+      done: hasDeliveries,
+    },
+    {
+      role: "Engineers",
+      title: "Use one linking habit",
+      detail: "Put DECISION-123, RECALL-123, or #123 in PR titles, branches, or commit messages.",
+      done: Boolean(value.auto_link_prs),
+    },
+    {
+      role: "Leads",
+      title: "Watch delivery health",
+      detail: processedCount ? `${processedCount} recent deliveries processed successfully.` : "Check the monitor after the first push or pull request lands.",
+      done: processedCount > 0,
+    },
+  ];
+  const teamRolloutMessage = `GitHub is being connected to Knoledgr for ${repoSlug || "our main repository"}.
+
+What the team should do:
+1. Repo owner: add the Knoledgr webhook in GitHub with content type application/json and events push + pull_request.
+2. Engineers: include DECISION-123, RECALL-123, or #123 in PR titles, branches, or commit messages.
+3. Leads: check Knoledgr's GitHub delivery monitor after the first push or pull request.
+
+Goal: PRs and commits stay linked to decisions automatically, so nobody has to chase implementation context manually.`;
 
   const applyParsedRepoReference = () => {
     if (!parsedRepoReference) return;
@@ -506,34 +647,44 @@ export default function GitHubIntegrationWorkspace({
               <StatusPill label="Webhook" value={hasWebhookReady ? "Ready to copy" : "Save first"} tone={hasWebhookReady ? "sky" : "slate"} darkMode={darkMode} />
             </div>
           </div>
-          <div className={`rounded-[14px] border p-4 ${readinessTone}`}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-80">Current readiness</p>
-            <p className="mt-2 text-base font-semibold">{readiness?.label || "Finish the saved setup before GitHub can send events"}</p>
-            <p className="mt-2 text-sm leading-6">
-              {readiness?.detail ||
-                "Save the repository and webhook secret first. Then paste the payload URL into GitHub, use application/json, and subscribe to push plus pull_request."}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {webhookUrl ? <CopyShortcutButton label="Copy payload URL" value={webhookUrl} darkMode={darkMode} /> : null}
-              {webhookSettingsUrl ? (
-                <a
-                  href={webhookSettingsUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                    darkMode
-                      ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
-                      : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
-                  }`}
-                >
-                  Open webhook settings
-                </a>
-              ) : null}
-              <StatusPill label="Processed" value={processedCount} tone={processedCount > 0 ? "emerald" : "slate"} darkMode={darkMode} />
+          <div className="grid gap-3">
+            <SetupConfidenceCard
+              darkMode={darkMode}
+              score={setupScore}
+              label={confidenceLabel}
+              detail={confidenceDetail}
+            />
+            <div className={`rounded-[14px] border p-4 ${readinessTone}`}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-80">Current readiness</p>
+              <p className="mt-2 text-base font-semibold">{readiness?.label || "Finish the saved setup before GitHub can send events"}</p>
+              <p className="mt-2 text-sm leading-6">
+                {readiness?.detail ||
+                  "Save the repository and webhook secret first. Then paste the payload URL into GitHub, use application/json, and subscribe to push plus pull_request."}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {webhookUrl ? <CopyShortcutButton label="Copy payload URL" value={webhookUrl} darkMode={darkMode} /> : null}
+                {webhookSettingsUrl ? (
+                  <a
+                    href={webhookSettingsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      darkMode
+                        ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
+                        : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                    }`}
+                  >
+                    Open webhook settings
+                  </a>
+                ) : null}
+                <StatusPill label="Processed" value={processedCount} tone={processedCount > 0 ? "emerald" : "slate"} darkMode={darkMode} />
+              </div>
             </div>
           </div>
         </div>
       </section>
+
+      <TeamRolloutCard darkMode={darkMode} items={teamRolloutItems} message={teamRolloutMessage} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
         <div className="space-y-4">

@@ -18,6 +18,25 @@ from apps.users.auth_utils import check_rate_limit, validate_email
 url_validator = URLValidator()
 
 
+def _github_connection_error(response):
+    try:
+        message = (response.json() or {}).get("message", "")
+    except ValueError:
+        message = ""
+
+    if response.status_code == 401:
+        return "GitHub rejected the token. Paste a valid token with repository read access."
+    if response.status_code == 403:
+        return message or "GitHub denied access. Check token scopes, SSO authorization, and repository permissions."
+    if response.status_code == 404:
+        return "GitHub could not find that repository for this token. Check the owner, repo name, and token access."
+    if response.status_code == 429:
+        return "GitHub rate-limited this verification. Wait a moment and try again."
+    if response.status_code >= 500:
+        return "GitHub is temporarily unavailable. Try verification again shortly."
+    return message or f"GitHub returned HTTP {response.status_code} during verification."
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def slack_integration(request):
@@ -137,16 +156,26 @@ def test_integration(request, integration_type):
         try:
             github = GitHubIntegration.objects.get(organization=request.user.organization)
             url = f"https://api.github.com/repos/{github.repo_owner}/{github.repo_name}"
-            headers = {"Authorization": f"token {github.get_access_token()}"}
+            headers = {
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {github.get_access_token()}",
+                "X-GitHub-Api-Version": "2022-11-28",
+            }
             response = requests.get(url, headers=headers, timeout=5)
             if response.status_code == 200:
                 repo = response.json()
-                return Response({"message": "GitHub connected", "repo": repo.get("name")})
-            return Response({"error": "Failed to connect"}, status=400)
+                return Response(
+                    {
+                        "message": "GitHub connected",
+                        "repo": repo.get("name"),
+                        "repo_full_name": repo.get("full_name"),
+                    }
+                )
+            return Response({"error": _github_connection_error(response)}, status=400)
         except GitHubIntegration.DoesNotExist:
             return Response({"error": "GitHub not configured"}, status=400)
-        except Exception:
-            return Response({"error": "Failed to connect"}, status=400)
+        except requests.RequestException:
+            return Response({"error": "Could not reach GitHub. Check network access and try again."}, status=400)
 
     if integration_type == "jira":
         try:

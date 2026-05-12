@@ -4,7 +4,8 @@ import { findDocumentationPageBySlug } from "../content/documentationPages";
 
 const BRAND = "Knoledgr";
 const SITE_URL = "https://knoledgr.com";
-const DEFAULT_IMAGE = `${SITE_URL}/brand/knoledgr-social-card.svg`;
+const LOGO_IMAGE = `${SITE_URL}/logo/logo-app.png`;
+const DEFAULT_IMAGE = LOGO_IMAGE;
 const DEFAULT_DESCRIPTION =
   "Knoledgr connects conversations, decisions, projects, and documents so teams keep context and move faster.";
 
@@ -43,7 +44,7 @@ function resolveMeta(pathname) {
           "@type": "Organization",
           name: BRAND,
           url: SITE_URL,
-          logo: `${SITE_URL}/brand/knoledgr-app-icon.svg`,
+          logo: LOGO_IMAGE,
         },
         {
           "@context": "https://schema.org",
@@ -99,7 +100,7 @@ function resolveMeta(pathname) {
             name: BRAND,
             logo: {
               "@type": "ImageObject",
-              url: `${SITE_URL}/brand/knoledgr-app-icon.svg`,
+              url: LOGO_IMAGE,
             },
           },
         },
@@ -310,12 +311,12 @@ export default function SeoManager() {
     setOrCreateMeta('meta[property="og:description"]', { property: "og:description", content: meta.description });
     setOrCreateMeta('meta[property="og:url"]', { property: "og:url", content: canonicalUrl });
     setOrCreateMeta('meta[property="og:image"]', { property: "og:image", content: DEFAULT_IMAGE });
-    setOrCreateMeta('meta[property="og:image:alt"]', { property: "og:image:alt", content: `${BRAND} social card` });
+    setOrCreateMeta('meta[property="og:image:alt"]', { property: "og:image:alt", content: `${BRAND} logo` });
     setOrCreateMeta('meta[name="twitter:card"]', { name: "twitter:card", content: "summary_large_image" });
     setOrCreateMeta('meta[name="twitter:title"]', { name: "twitter:title", content: meta.title });
     setOrCreateMeta('meta[name="twitter:description"]', { name: "twitter:description", content: meta.description });
     setOrCreateMeta('meta[name="twitter:image"]', { name: "twitter:image", content: DEFAULT_IMAGE });
-    setOrCreateMeta('meta[name="twitter:image:alt"]', { name: "twitter:image:alt", content: `${BRAND} social card` });
+    setOrCreateMeta('meta[name="twitter:image:alt"]', { name: "twitter:image:alt", content: `${BRAND} logo` });
     setOrCreateLink('link[rel="canonical"]', { rel: "canonical", href: canonicalUrl });
     setStructuredData(meta.structuredData);
   }, [pathname]);

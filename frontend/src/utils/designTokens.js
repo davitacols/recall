@@ -6,32 +6,32 @@
  */
 
 export const colors = {
-  background: "#F6F1E8",
-  surface: "#FFFCF8",
-  surfaceAlt: "#F1E9DD",
-  paper: "#FBF7F0",
-  primary: "#1F1A17",
-  secondary: "#6E655B",
-  border: "rgba(58, 47, 38, 0.12)",
-  borderStrong: "rgba(58, 47, 38, 0.2)",
+  background: "#EAF0F8",
+  surface: "#FFFFFF",
+  surfaceAlt: "#E0E8F3",
+  paper: "#F8FBFF",
+  primary: "#0F172A",
+  secondary: "#526176",
+  border: "rgba(21, 42, 74, 0.2)",
+  borderStrong: "rgba(21, 42, 74, 0.3)",
 
-  accent: "#2E63D0",
-  accentLight: "rgba(46, 99, 208, 0.1)",
-  accentDark: "#1F4DAF",
+  accent: "#1D4ED8",
+  accentLight: "rgba(29, 78, 216, 0.13)",
+  accentDark: "#1E40AF",
 
-  sage: "#41705D",
-  sageLight: "rgba(65, 112, 93, 0.12)",
-  amber: "#A87439",
-  amberLight: "rgba(168, 116, 57, 0.12)",
+  sage: "#247857",
+  sageLight: "rgba(36, 120, 87, 0.12)",
+  amber: "#9A5E1E",
+  amberLight: "rgba(154, 94, 30, 0.12)",
 
-  success: "#2F7F5F",
-  successLight: "rgba(47, 127, 95, 0.12)",
-  critical: "#C8565D",
-  criticalLight: "rgba(200, 86, 93, 0.12)",
-  warning: "#A87439",
-  warningLight: "rgba(168, 116, 57, 0.12)",
-  info: "#2E63D0",
-  infoLight: "rgba(46, 99, 208, 0.12)",
+  success: "#247857",
+  successLight: "rgba(36, 120, 87, 0.12)",
+  critical: "#B83E54",
+  criticalLight: "rgba(184, 62, 84, 0.11)",
+  warning: "#9A5E1E",
+  warningLight: "rgba(154, 94, 30, 0.12)",
+  info: "#1D4ED8",
+  infoLight: "rgba(29, 78, 216, 0.13)",
 };
 
 export const spacing = {
@@ -71,11 +71,11 @@ export const typography = {
 
 export const shadows = {
   none: "none",
-  sm: "0 8px 20px rgba(40, 31, 24, 0.06)",
-  md: "0 18px 38px rgba(40, 31, 24, 0.08)",
-  lg: "0 28px 60px rgba(40, 31, 24, 0.1)",
-  xl: "0 36px 84px rgba(40, 31, 24, 0.14)",
-  focus: "0 0 0 4px rgba(46, 99, 208, 0.14)",
+  sm: "0 8px 20px rgba(15, 23, 42, 0.1)",
+  md: "0 18px 38px rgba(15, 23, 42, 0.12)",
+  lg: "0 28px 60px rgba(15, 23, 42, 0.16)",
+  xl: "0 36px 84px rgba(15, 23, 42, 0.2)",
+  focus: "0 0 0 4px rgba(29, 78, 216, 0.16)",
 };
 
 export const radius = {
@@ -89,7 +89,7 @@ export const components = {
   button: {
     primary: {
       background: colors.accent,
-      text: "#F9F6F0",
+    text: "#F9F6F0",
       hover: colors.accentDark,
       radius: radius.full,
       padding: "10px 18px",
@@ -142,7 +142,7 @@ export const components = {
       color: colors.accent,
     },
     hoverItem: {
-      background: "#F4EEE4",
+      background: "#E0E8F3",
     },
   },
 };

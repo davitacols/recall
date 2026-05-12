@@ -193,33 +193,21 @@ export default function Projects() {
   const operationsAside = (
     <div
       style={{
-        ...asideCard,
+        ...portfolioMapCard,
         border: `1px solid ${palette.border}`,
         background: palette.cardAlt,
       }}
     >
-      <p style={{ ...asideEyebrow, color: palette.muted }}>Portfolio pulse</p>
-      <h3 style={{ ...asideTitle, color: palette.text }}>
-        {attentionProjects.length
-          ? "Tighten ownership and written context before execution fans out."
-          : "The current portfolio is shaped well enough to move straight into delivery."}
-      </h3>
-      <p style={{ ...asideBody, color: palette.muted }}>
-        {attentionProjects.length
-          ? `${attentionProjects.length} workspaces still need cleanup so handoffs, planning reviews, and sprint setup stay clear.`
-          : `${readyProjects.length} workspaces already have a visible lead and enough brief context to act as a stable front door into execution.`}
-      </p>
-      <div style={{ ...asideMetricGrid, gridTemplateColumns: isPhone ? "minmax(0, 1fr)" : asideMetricGrid.gridTemplateColumns }}>
-        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Ready</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{readyProjects.length}</p>
-        </div>
-        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Needs shaping</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{attentionProjects.length}</p>
-        </div>
-      </div>
-      <div style={safeStyle(asideCoverageStack)}>
+      <PortfolioMap
+        palette={palette}
+        ready={readyProjects.length}
+        attention={attentionProjects.length}
+        leadGaps={leadGaps}
+        briefGaps={briefGaps}
+        leadCoverage={leadCoverage}
+        briefCoverage={briefCoverage}
+      />
+      <div style={safeStyle(portfolioMapMeters)}>
         <CoverageMeter palette={palette} label="Lead coverage" value={leadCoverage} tone={palette.accent} />
         <CoverageMeter palette={palette} label="Brief coverage" value={briefCoverage} tone={palette.success} />
       </div>
@@ -735,6 +723,55 @@ function PortfolioSignalCard({ palette, icon: Icon, label, value, helper, highli
   );
 }
 
+function PortfolioMap({ palette, ready, attention, leadGaps, briefGaps, leadCoverage, briefCoverage }) {
+  const portfolioHealth = Math.round((leadCoverage + briefCoverage) / 2);
+  const nodes = [
+    { label: "Ready", value: ready, tone: palette.success, x: "12%", y: "18%" },
+    { label: "Lead", value: leadGaps, tone: leadGaps ? palette.warn : palette.success, x: "70%", y: "16%" },
+    { label: "Brief", value: briefGaps, tone: briefGaps ? palette.warn : palette.success, x: "76%", y: "70%" },
+    { label: "Shape", value: attention, tone: attention ? palette.warn : palette.accent, x: "14%", y: "72%" },
+  ];
+
+  return (
+    <div style={safeStyle(portfolioMap)}>
+      <div style={{ ...portfolioMapGrid, backgroundImage: `linear-gradient(${palette.border} 1px, transparent 1px), linear-gradient(90deg, ${palette.border} 1px, transparent 1px)` }} />
+      <div style={{ ...portfolioMapGlow, background: palette.ctaGradient }} />
+      <div style={{ ...portfolioMapConnector, left: "22%", top: "31%", width: "52%", transform: "rotate(-4deg)", background: palette.border }} />
+      <div style={{ ...portfolioMapConnector, left: "31%", top: "42%", width: "44%", transform: "rotate(40deg)", background: palette.border }} />
+      <div style={{ ...portfolioMapConnector, left: "25%", top: "72%", width: "52%", transform: "rotate(-3deg)", background: palette.border }} />
+      <div style={{ ...portfolioCore, border: `1px solid ${palette.border}`, background: palette.card }}>
+        <div
+          style={{
+            ...portfolioCoreRing,
+            background: `conic-gradient(${attention ? palette.warn : palette.success} ${portfolioHealth * 3.6}deg, ${palette.progressTrack} 0deg)`,
+          }}
+        >
+          <div style={{ ...portfolioCoreInner, background: palette.card }}>
+            <span style={{ ...portfolioCoreValue, color: palette.text }}>{portfolioHealth}%</span>
+            <span style={{ ...portfolioCoreLabel, color: palette.muted }}>Health</span>
+          </div>
+        </div>
+      </div>
+      {nodes.map((node) => (
+        <div
+          key={node.label}
+          style={{
+            ...portfolioNode,
+            left: node.x,
+            top: node.y,
+            border: `1px solid ${palette.border}`,
+            background: palette.card,
+          }}
+        >
+          <span style={{ ...portfolioNodeDot, background: node.tone, boxShadow: `0 0 0 7px ${palette.accentSoft}` }} />
+          <span style={{ ...portfolioNodeLabel, color: palette.muted }}>{node.label}</span>
+          <strong style={{ ...portfolioNodeValue, color: node.tone }}>{node.value}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PortfolioSection({
   palette,
   title,
@@ -856,6 +893,15 @@ function PortfolioSection({
                 background: palette.card,
               }}
             >
+              <div style={{ ...projectReadinessBar, background: palette.progressTrack }}>
+                <span
+                  style={{
+                    ...projectReadinessFill,
+                    width: `${project.hasBrief && project.hasLead ? 100 : project.hasBrief || project.hasLead ? 58 : 22}%`,
+                    background: project.needsAttention ? palette.warn : palette.success,
+                  }}
+                />
+              </div>
               <div
                 style={{
                   ...projectCardTop,
@@ -1038,6 +1084,122 @@ const asideCoverageStack = {
   gap: 8,
 };
 
+const portfolioMapCard = {
+  minWidth: 280,
+  borderRadius: 16,
+  padding: 12,
+  display: "grid",
+  gap: 12,
+};
+
+const portfolioMap = {
+  position: "relative",
+  minHeight: 260,
+  borderRadius: 14,
+  overflow: "hidden",
+  display: "grid",
+  placeItems: "center",
+};
+
+const portfolioMapGrid = {
+  position: "absolute",
+  inset: 0,
+  backgroundSize: "32px 32px",
+  opacity: 0.34,
+};
+
+const portfolioMapGlow = {
+  position: "absolute",
+  width: "48%",
+  aspectRatio: "1 / 1",
+  borderRadius: 999,
+  opacity: 0.16,
+  filter: "blur(20px)",
+};
+
+const portfolioMapConnector = {
+  position: "absolute",
+  height: 2,
+  borderRadius: 999,
+  transformOrigin: "left center",
+  opacity: 0.78,
+};
+
+const portfolioCore = {
+  position: "relative",
+  zIndex: 2,
+  width: 126,
+  height: 126,
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  boxShadow: "var(--ui-shadow-sm)",
+};
+
+const portfolioCoreRing = {
+  width: 98,
+  height: 98,
+  borderRadius: 999,
+  padding: 8,
+};
+
+const portfolioCoreInner = {
+  width: "100%",
+  height: "100%",
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  alignContent: "center",
+};
+
+const portfolioCoreValue = {
+  fontSize: 24,
+  fontWeight: 800,
+  lineHeight: 1,
+};
+
+const portfolioCoreLabel = {
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const portfolioNode = {
+  position: "absolute",
+  zIndex: 3,
+  width: 78,
+  minHeight: 66,
+  borderRadius: 14,
+  padding: 9,
+  display: "grid",
+  gap: 4,
+  boxShadow: "var(--ui-shadow-sm)",
+};
+
+const portfolioNodeDot = {
+  width: 9,
+  height: 9,
+  borderRadius: 999,
+};
+
+const portfolioNodeLabel = {
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const portfolioNodeValue = {
+  fontSize: 18,
+  lineHeight: 1,
+};
+
+const portfolioMapMeters = {
+  display: "grid",
+  gap: 8,
+};
+
 const asideMetric = {
   borderRadius: 18,
   padding: "10px 12px",
@@ -1131,6 +1293,8 @@ const buttonRow = {
 };
 
 const projectCard = {
+  position: "relative",
+  overflow: "hidden",
   borderRadius: 18,
   padding: 18,
   cursor: "pointer",
@@ -1138,6 +1302,21 @@ const projectCard = {
   gap: 14,
   minHeight: 268,
   boxShadow: "none",
+};
+
+const projectReadinessBar = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  height: 5,
+  overflow: "hidden",
+};
+
+const projectReadinessFill = {
+  display: "block",
+  height: "100%",
+  borderRadius: "0 999px 999px 0",
 };
 
 const projectCardTop = {

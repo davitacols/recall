@@ -1,675 +1,579 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
-import { colors, spacing, shadows, radius, motion } from '../utils/designTokens';
-import { XMarkIcon, UserIcon, CheckIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ArrowTopRightOnSquareIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  EyeIcon,
+  PencilIcon,
+  ShareIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import api from "../services/api";
+import {
+  Avatar,
+  Badge,
+  Breadcrumb,
+  Button,
+  IconButton,
+  Lozenge,
+  SectionMessage,
+} from "./atlas";
 
+const STATUS_OPTIONS = [
+  { value: "backlog", label: "Backlog" },
+  { value: "todo", label: "To Do" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "in_review", label: "In Review" },
+  { value: "testing", label: "Testing" },
+  { value: "done", label: "Done" },
+];
+
+const PRIORITIES = ["lowest", "low", "medium", "high", "highest"];
+
+function formatLabel(value) {
+  return value ? String(value).replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "—";
+}
+
+/**
+ * IssueDetail — slide-over Jira issue panel.
+ * Used by KanbanBoard. The full-page version lives at pages/IssueDetail.js.
+ */
 function IssueDetail({ issueId, onClose, onUpdate }) {
   const [issue, setIssue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState([]);
   const [sprints, setSprints] = useState([]);
-  const [showAssigneeMenu, setShowAssigneeMenu] = useState(false);
-  const [showSprintMenu, setShowSprintMenu] = useState(false);
-  const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
   const [editingDescription, setEditingDescription] = useState(false);
-
-  const statusOptions = ['todo', 'in_progress', 'in_review', 'done'];
+  const [descDraft, setDescDraft] = useState("");
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [openSelect, setOpenSelect] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchIssue();
-    fetchTeamMembers();
-    
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
+    fetchTeam();
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [issueId, onClose]);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [issueId]);
 
   useEffect(() => {
-    if (issue?.project_id) {
-      fetchSprints();
-    }
+    if (issue?.project_id) fetchSprints(issue.project_id);
   }, [issue?.project_id]);
 
   const fetchIssue = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const response = await api.get(`/api/agile/issues/${issueId}/`);
-      setIssue(response.data);
-    } catch (error) {
-      console.error('Failed to fetch issue:', error);
+      const { data } = await api.get(`/api/agile/issues/${issueId}/`);
+      setIssue(data);
+      setTitleDraft(data?.title || "");
+      setDescDraft(data?.description || "");
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to load issue");
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchTeamMembers = async () => {
+  const fetchTeam = async () => {
     try {
-      const response = await api.get('/api/auth/team/');
-      setTeamMembers(response.data);
-    } catch (error) {
-      console.error('Failed to fetch team members:', error);
-    }
+      const { data } = await api.get("/api/auth/team/");
+      setTeamMembers(Array.isArray(data) ? data : data?.results || []);
+    } catch (_) {}
   };
 
-  const fetchSprints = async () => {
+  const fetchSprints = async (projectId) => {
     try {
-      const response = await api.get(`/api/agile/projects/${issue.project_id}/sprints/`);
-      setSprints(response.data);
-    } catch (error) {
-      console.error('Failed to fetch sprints:', error);
-    }
+      const { data } = await api.get(`/api/agile/projects/${projectId}/sprints/`);
+      setSprints(Array.isArray(data) ? data : data?.results || []);
+    } catch (_) {}
   };
 
-  const handleAssign = async (userId) => {
+  const patch = async (payload) => {
     try {
-      await api.put(`/api/agile/issues/${issueId}/`, {
-        assignee_id: userId
-      });
-      setShowAssigneeMenu(false);
-      fetchIssue();
+      await api.put(`/api/agile/issues/${issueId}/`, payload);
+      await fetchIssue();
       onUpdate?.();
-    } catch (error) {
-      console.error('Failed to assign issue:', error);
+      setOpenSelect(null);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Update failed");
     }
   };
 
-  const handleAssignSprint = async (sprintId) => {
+  const submitComment = async (e) => {
+    e?.preventDefault();
+    if (!comment.trim()) return;
+    setSubmitting(true);
     try {
-      await api.put(`/api/agile/issues/${issueId}/`, {
-        sprint_id: sprintId
-      });
-      setShowSprintMenu(false);
-      fetchIssue();
-      onUpdate?.();
-    } catch (error) {
-      console.error('Failed to assign sprint:', error);
+      await api.post(`/api/agile/issues/${issueId}/comments/`, { body: comment.trim() });
+      setComment("");
+      await fetchIssue();
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Comment failed");
+    } finally {
+      setSubmitting(false);
     }
   };
-
-  const handleUpdateStatus = async (newStatus) => {
-    try {
-      await api.put(`/api/agile/issues/${issueId}/`, {
-        status: newStatus
-      });
-      setShowStatusMenu(false);
-      fetchIssue();
-      onUpdate?.();
-    } catch (error) {
-      console.error('Failed to update status:', error);
-    }
-  };
-
-  const handleUpdateTitle = async (newTitle) => {
-    if (!newTitle.trim()) return;
-    try {
-      await api.put(`/api/agile/issues/${issueId}/`, {
-        title: newTitle
-      });
-      setEditingTitle(false);
-      fetchIssue();
-      onUpdate?.();
-    } catch (error) {
-      console.error('Failed to update title:', error);
-    }
-  };
-
-  const handleUpdateDescription = async (newDescription) => {
-    try {
-      await api.put(`/api/agile/issues/${issueId}/`, {
-        description: newDescription
-      });
-      setEditingDescription(false);
-      fetchIssue();
-      onUpdate?.();
-    } catch (error) {
-      console.error('Failed to update description:', error);
-    }
-  };
-
-  const getSprintStatus = (sprint) => {
-    const today = new Date();
-    const start = new Date(sprint.start_date);
-    const end = new Date(sprint.end_date);
-    
-    if (today < start) return 'upcoming';
-    if (today > end) return 'completed';
-    return 'active';
-  };
-
-  const activeSprints = sprints.filter(s => getSprintStatus(s) === 'active');
-  const upcomingSprints = sprints.filter(s => getSprintStatus(s) === 'upcoming');
 
   if (loading) {
-    return (
-      <>
-        <div
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            zIndex: 39
-          }}
-        />
-        <div style={{
-          position: 'absolute',
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: '100%',
-          backgroundColor: colors.surface,
-          borderLeft: `1px solid ${colors.border}`,
-          boxShadow: shadows.lg,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 40
-        }}>
-          <div style={{ width: '24px', height: '24px', border: '2px solid var(--app-border)', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        </div>
-      </>
-    );
+    return <SlideOver onClose={onClose}><div style={{ padding: 32 }}>Loading…</div></SlideOver>;
   }
-
   if (!issue) return null;
 
+  const assigneeName = issue.assignee_name || issue.assignee || "Unassigned";
+
+  return (
+    <SlideOver onClose={onClose}>
+      <header style={panelHeader}>
+        <Breadcrumb
+          items={[
+            { label: "Projects", to: "/projects" },
+            { label: issue.project_name || issue.project_slug || "Project" },
+            { label: issue.key || `#${issue.id}` },
+          ]}
+        />
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <Button appearance="subtle" iconBefore={<ArrowTopRightOnSquareIcon style={{ width: 14, height: 14 }} />}
+            onClick={() => { window.location.href = `/issues/${issueId}`; }}
+          >
+            Open full view
+          </Button>
+          <Button appearance="subtle" iconBefore={<EyeIcon style={{ width: 14, height: 14 }} />}>Watch</Button>
+          <Button appearance="subtle" iconBefore={<ShareIcon style={{ width: 14, height: 14 }} />}>Share</Button>
+          <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
+        </div>
+      </header>
+
+      <div style={panelBody}>
+        <section style={mainColumn}>
+          {error ? <SectionMessage tone="error">{error}</SectionMessage> : null}
+
+          {editingTitle ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                autoFocus
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                className="atlas-input"
+                style={{ fontSize: 20, height: 40 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { patch({ title: titleDraft }); setEditingTitle(false); }
+                  if (e.key === "Escape") setEditingTitle(false);
+                }}
+              />
+              <Button appearance="primary" onClick={() => { patch({ title: titleDraft }); setEditingTitle(false); }}>
+                <CheckIcon style={{ width: 14, height: 14 }} />
+              </Button>
+            </div>
+          ) : (
+            <h1
+              onClick={() => setEditingTitle(true)}
+              style={{ ...issueTitle, cursor: "text" }}
+              title="Click to edit"
+            >
+              {issue.title}
+            </h1>
+          )}
+
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <Button appearance="default" size="sm" iconBefore={<span style={{ fontSize: 12 }}>+</span>}>Attach</Button>
+            <Button appearance="default" size="sm">Add a child issue</Button>
+            <Button appearance="default" size="sm">Link issue</Button>
+          </div>
+
+          <FieldBlock label="Description">
+            {editingDescription ? (
+              <>
+                <textarea
+                  value={descDraft}
+                  onChange={(e) => setDescDraft(e.target.value)}
+                  className="atlas-input"
+                  rows={6}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <Button appearance="primary" onClick={() => { patch({ description: descDraft }); setEditingDescription(false); }}>Save</Button>
+                  <Button appearance="subtle" onClick={() => { setDescDraft(issue.description || ""); setEditingDescription(false); }}>Cancel</Button>
+                </div>
+              </>
+            ) : (
+              <div
+                onClick={() => setEditingDescription(true)}
+                style={{
+                  padding: "8px 0",
+                  fontSize: 14,
+                  lineHeight: 1.4286,
+                  color: issue.description ? "var(--app-text)" : "var(--app-text-disabled)",
+                  cursor: "text",
+                  whiteSpace: "pre-wrap",
+                  minHeight: 32,
+                }}
+              >
+                {issue.description || "Add a description…"}
+              </div>
+            )}
+          </FieldBlock>
+
+          <FieldBlock label="Activity">
+            <div className="atlas-tab-row" style={{ marginBottom: 12 }}>
+              <button className="atlas-tab" aria-selected="true">Comments</button>
+              <button className="atlas-tab">History</button>
+              <button className="atlas-tab">Worklog</button>
+            </div>
+            <form onSubmit={submitComment} style={{ marginBottom: 16 }}>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add a comment…"
+                className="atlas-input"
+                rows={3}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                <Button type="button" appearance="subtle" onClick={() => setComment("")}>Cancel</Button>
+                <Button appearance="primary" type="submit" isDisabled={submitting || !comment.trim()}>
+                  {submitting ? "Saving…" : "Save"}
+                </Button>
+              </div>
+            </form>
+            <div>
+              {(issue.comments || []).map((c) => (
+                <div key={c.id} style={commentItem}>
+                  <Avatar name={c.author_name || c.author || "User"} size="sm" />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13 }}>
+                      <strong>{c.author_name || c.author || "User"}</strong>
+                      <span style={{ color: "var(--app-muted)", marginLeft: 8 }}>
+                        {c.created_at ? new Date(c.created_at).toLocaleString() : ""}
+                      </span>
+                    </div>
+                    <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--app-text)" }}>{c.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </FieldBlock>
+        </section>
+
+        <aside style={sideColumn}>
+          <DetailField label="Status">
+            <SelectButton
+              value={formatLabel(issue.status)}
+              isOpen={openSelect === "status"}
+              onToggle={() => setOpenSelect(openSelect === "status" ? null : "status")}
+              renderValue={() => <Lozenge status={issue.status} />}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectOption key={opt.value} onSelect={() => patch({ status: opt.value })}>
+                  <Lozenge status={opt.value} />
+                </SelectOption>
+              ))}
+            </SelectButton>
+          </DetailField>
+
+          <DetailField label="Assignee">
+            <SelectButton
+              value={assigneeName}
+              isOpen={openSelect === "assignee"}
+              onToggle={() => setOpenSelect(openSelect === "assignee" ? null : "assignee")}
+              renderValue={() => (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <Avatar name={assigneeName} size="sm" />
+                  <span>{assigneeName}</span>
+                </span>
+              )}
+            >
+              <SelectOption onSelect={() => patch({ assignee_id: null })}>Unassigned</SelectOption>
+              {teamMembers.map((m) => (
+                <SelectOption key={m.id} onSelect={() => patch({ assignee_id: m.id })}>
+                  <Avatar name={m.full_name || m.email || ""} size="sm" />
+                  <span>{m.full_name || m.email}</span>
+                </SelectOption>
+              ))}
+            </SelectButton>
+          </DetailField>
+
+          <DetailField label="Reporter">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+              <Avatar name={issue.reporter_name || issue.reporter || "—"} size="sm" />
+              {issue.reporter_name || issue.reporter || "—"}
+            </span>
+          </DetailField>
+
+          <DetailField label="Priority">
+            <SelectButton
+              value={formatLabel(issue.priority)}
+              isOpen={openSelect === "priority"}
+              onToggle={() => setOpenSelect(openSelect === "priority" ? null : "priority")}
+            >
+              {PRIORITIES.map((p) => (
+                <SelectOption key={p} onSelect={() => patch({ priority: p })}>
+                  {formatLabel(p)}
+                </SelectOption>
+              ))}
+            </SelectButton>
+          </DetailField>
+
+          <DetailField label="Labels">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {(issue.labels || []).map((l) => (
+                <Lozenge key={l} variant="default">{l}</Lozenge>
+              ))}
+              {!(issue.labels || []).length ? <span style={mutedValue}>None</span> : null}
+            </div>
+          </DetailField>
+
+          <DetailField label="Sprint">
+            <SelectButton
+              value={issue.sprint_name || "None"}
+              isOpen={openSelect === "sprint"}
+              onToggle={() => setOpenSelect(openSelect === "sprint" ? null : "sprint")}
+            >
+              <SelectOption onSelect={() => patch({ sprint_id: null })}>None</SelectOption>
+              {sprints.map((s) => (
+                <SelectOption key={s.id} onSelect={() => patch({ sprint_id: s.id })}>
+                  {s.name}
+                </SelectOption>
+              ))}
+            </SelectButton>
+          </DetailField>
+
+          <DetailField label="Story points">
+            <input
+              type="number"
+              defaultValue={issue.story_points || ""}
+              onBlur={(e) => {
+                const v = e.target.value === "" ? null : Number(e.target.value);
+                if (v !== issue.story_points) patch({ story_points: v });
+              }}
+              className="atlas-input"
+              style={{ width: 80 }}
+            />
+          </DetailField>
+
+          <DetailField label="Due date">
+            <input
+              type="date"
+              defaultValue={issue.due_date ? String(issue.due_date).slice(0, 10) : ""}
+              onChange={(e) => patch({ due_date: e.target.value || null })}
+              className="atlas-input"
+              style={{ width: 160 }}
+            />
+          </DetailField>
+
+          <div style={createdMeta}>
+            <p>Created {issue.created_at ? new Date(issue.created_at).toLocaleString() : "—"}</p>
+            <p>Updated {issue.updated_at ? new Date(issue.updated_at).toLocaleString() : "—"}</p>
+          </div>
+        </aside>
+      </div>
+    </SlideOver>
+  );
+}
+
+function SlideOver({ children, onClose }) {
   return (
     <>
       <div
         onClick={onClose}
         style={{
-          position: 'absolute',
+          position: "fixed",
           inset: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.3)',
-          zIndex: 39
+          background: "var(--app-overlay)",
+          zIndex: 199,
         }}
       />
-      <div style={{
-        position: 'absolute',
-        right: 0,
-        top: 0,
-        bottom: 0,
-        width: '100%',
-        backgroundColor: colors.surface,
-        borderLeft: `1px solid ${colors.border}`,
-        boxShadow: shadows.lg,
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 40,
-        overflowY: 'auto'
-      }}>
-        <div style={{
-          padding: spacing.lg,
-          borderBottom: `1px solid ${colors.border}`,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexShrink: 0
-        }}>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary }}>
-            {issue.key}
-          </span>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: colors.secondary,
-              padding: '4px',
-              transition: motion.fast
-            }}
-            onMouseEnter={(e) => e.target.style.color = colors.primary}
-            onMouseLeave={(e) => e.target.style.color = colors.secondary}
-          >
-            <XMarkIcon style={{ width: '20px', height: '20px' }} />
-          </button>
-        </div>
-
-        <div style={{ padding: spacing.lg, flex: 1 }}>
-          {editingTitle ? (
-            <input
-              type="text"
-              defaultValue={issue.title}
-              onBlur={(e) => handleUpdateTitle(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleUpdateTitle(e.target.value)}
-              style={{
-                width: '100%',
-                fontSize: '18px',
-                fontWeight: 600,
-                color: colors.primary,
-                border: `1px solid ${colors.border}`,
-                padding: spacing.sm,
-                borderRadius: radius.md,
-                marginBottom: spacing.lg
-              }}
-              autoFocus
-            />
-          ) : (
-            <h2
-              onClick={() => setEditingTitle(true)}
-              style={{
-                fontSize: '18px',
-                fontWeight: 600,
-                color: colors.primary,
-                marginBottom: spacing.lg,
-                cursor: 'pointer',
-                padding: spacing.sm,
-                borderRadius: radius.md,
-                transition: motion.fast
-              }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-            >
-              {issue.title}
-            </h2>
-          )}
-
-          <div style={{ marginBottom: spacing.xl }}>
-            <h3 style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, textTransform: 'uppercase', marginBottom: spacing.md }}>
-              Details
-            </h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
-              <div style={{ position: 'relative' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, display: 'block', marginBottom: spacing.sm }}>
-                  Status
-                </label>
-                <button
-                  onClick={() => setShowStatusMenu(!showStatusMenu)}
-                  style={{
-                    width: '100%',
-                    padding: spacing.md,
-                    backgroundColor: colors.background,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    color: colors.primary,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: motion.fast,
-                    textTransform: 'capitalize'
-                  }}
-                >
-                  {issue.status.replace('_', ' ')}
-                </button>
-
-                {showStatusMenu && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    marginTop: spacing.sm,
-                    backgroundColor: colors.surface,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    boxShadow: shadows.lg,
-                    zIndex: 50
-                  }}>
-                    {statusOptions.map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => handleUpdateStatus(status)}
-                        style={{
-                          width: '100%',
-                          padding: spacing.md,
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          color: colors.primary,
-                          transition: motion.fast,
-                          borderBottom: `1px solid ${colors.border}`,
-                          textTransform: 'capitalize',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        <span>{status.replace('_', ' ')}</span>
-                        {issue.status === status && <CheckIcon style={{ width: '16px', height: '16px', color: '#10B981' }} />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, display: 'block', marginBottom: spacing.sm }}>
-                  Priority
-                </label>
-                <div style={{
-                  padding: spacing.md,
-                  backgroundColor: colors.background,
-                  borderRadius: radius.md,
-                  fontSize: '14px',
-                  color: colors.primary,
-                  textTransform: 'capitalize'
-                }}>
-                  {issue.priority}
-                </div>
-              </div>
-
-              <div style={{ position: 'relative' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, display: 'block', marginBottom: spacing.sm }}>
-                  Assignee
-                </label>
-                <button
-                  onClick={() => setShowAssigneeMenu(!showAssigneeMenu)}
-                  style={{
-                    width: '100%',
-                    padding: spacing.md,
-                    backgroundColor: colors.background,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    color: colors.primary,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: spacing.sm,
-                    transition: motion.fast
-                  }}
-                >
-                  <UserIcon style={{ width: '16px', height: '16px' }} />
-                  {issue.assignee || 'Unassigned'}
-                </button>
-
-                {showAssigneeMenu && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    marginTop: spacing.sm,
-                    backgroundColor: colors.surface,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    boxShadow: shadows.lg,
-                    zIndex: 50,
-                    maxHeight: '300px',
-                    overflowY: 'auto'
-                  }}>
-                    <button
-                      onClick={() => handleAssign(null)}
-                      style={{
-                        width: '100%',
-                        padding: spacing.md,
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        color: colors.primary,
-                        transition: motion.fast,
-                        borderBottom: `1px solid ${colors.border}`
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                    >
-                      Unassigned
-                    </button>
-                    {teamMembers.map((member) => (
-                      <button
-                        key={member.id}
-                        onClick={() => handleAssign(member.id)}
-                        style={{
-                          width: '100%',
-                          padding: spacing.md,
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          color: colors.primary,
-                          transition: motion.fast,
-                          borderBottom: `1px solid ${colors.border}`
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        {member.full_name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ position: 'relative' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, display: 'block', marginBottom: spacing.sm }}>
-                  Sprint
-                </label>
-                <button
-                  onClick={() => setShowSprintMenu(!showSprintMenu)}
-                  style={{
-                    width: '100%',
-                    padding: spacing.md,
-                    backgroundColor: colors.background,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    color: colors.primary,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: motion.fast,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <span>{issue.sprint || 'No Sprint'}</span>
-                  {issue.sprint && <CheckIcon style={{ width: '16px', height: '16px', color: '#10B981' }} />}
-                </button>
-
-                {showSprintMenu && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    marginTop: spacing.sm,
-                    backgroundColor: colors.surface,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    boxShadow: shadows.lg,
-                    zIndex: 50,
-                    maxHeight: '400px',
-                    overflowY: 'auto'
-                  }}>
-                    <button
-                      onClick={() => handleAssignSprint(null)}
-                      style={{
-                        width: '100%',
-                        padding: spacing.md,
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        color: colors.primary,
-                        transition: motion.fast,
-                        borderBottom: `1px solid ${colors.border}`
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                    >
-                      No Sprint
-                    </button>
-
-                    {activeSprints.length > 0 && (
-                      <>
-                        <div style={{
-                          padding: `${spacing.sm} ${spacing.md}`,
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          color: colors.secondary,
-                          textTransform: 'uppercase',
-                          backgroundColor: colors.background
-                        }}>
-                          Active
-                        </div>
-                        {activeSprints.map((sprint) => (
-                          <button
-                            key={sprint.id}
-                            onClick={() => handleAssignSprint(sprint.id)}
-                            style={{
-                              width: '100%',
-                              padding: spacing.md,
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              textAlign: 'left',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              color: colors.primary,
-                              transition: motion.fast,
-                              borderBottom: `1px solid ${colors.border}`,
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center'
-                            }}
-                            onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                            onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                          >
-                            <span>{sprint.name}</span>
-                            {issue.sprint === sprint.name && <CheckIcon style={{ width: '16px', height: '16px', color: '#10B981' }} />}
-                          </button>
-                        ))}
-                      </>
-                    )}
-
-                    {upcomingSprints.length > 0 && (
-                      <>
-                        <div style={{
-                          padding: `${spacing.sm} ${spacing.md}`,
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          color: colors.secondary,
-                          textTransform: 'uppercase',
-                          backgroundColor: colors.background
-                        }}>
-                          Upcoming
-                        </div>
-                        {upcomingSprints.map((sprint) => (
-                          <button
-                            key={sprint.id}
-                            onClick={() => handleAssignSprint(sprint.id)}
-                            style={{
-                              width: '100%',
-                              padding: spacing.md,
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              textAlign: 'left',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              color: colors.primary,
-                              transition: motion.fast,
-                              borderBottom: `1px solid ${colors.border}`,
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center'
-                            }}
-                            onMouseEnter={(e) => e.target.style.backgroundColor = colors.background}
-                            onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                          >
-                            <span>{sprint.name}</span>
-                            {issue.sprint === sprint.name && <CheckIcon style={{ width: '16px', height: '16px', color: '#10B981' }} />}
-                          </button>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {issue.story_points && (
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, display: 'block', marginBottom: spacing.sm }}>
-                    Story Points
-                  </label>
-                  <div style={{
-                    padding: spacing.md,
-                    backgroundColor: colors.background,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    color: colors.primary
-                  }}>
-                    {issue.story_points}
-                  </div>
-                </div>
-              )}
-
-              {issue.due_date && (
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, display: 'block', marginBottom: spacing.sm }}>
-                    Due Date
-                  </label>
-                  <div style={{
-                    padding: spacing.md,
-                    backgroundColor: colors.background,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    color: colors.primary
-                  }}>
-                    {new Date(issue.due_date).toLocaleDateString()}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {issue.description && (
-            <div>
-              <h3 style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, textTransform: 'uppercase', marginBottom: spacing.md }}>
-                Description
-              </h3>
-              {editingDescription ? (
-                <textarea
-                  defaultValue={issue.description}
-                  onBlur={(e) => handleUpdateDescription(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: spacing.md,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    color: colors.primary,
-                    fontFamily: 'inherit',
-                    minHeight: '100px',
-                    marginBottom: spacing.lg
-                  }}
-                  autoFocus
-                />
-              ) : (
-                <div
-                  onClick={() => setEditingDescription(true)}
-                  style={{
-                    padding: spacing.md,
-                    backgroundColor: colors.background,
-                    borderRadius: radius.md,
-                    fontSize: '14px',
-                    color: colors.primary,
-                    cursor: 'pointer',
-                    minHeight: '60px',
-                    transition: motion.fast
-                  }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#F1F5F9'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = colors.background}
-                >
-                  {issue.description || 'Add description...'}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      <aside
+        role="dialog"
+        aria-modal="true"
+        style={{
+          position: "fixed",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: "min(1100px, 100vw)",
+          background: "var(--app-surface)",
+          borderLeft: "1px solid var(--app-border)",
+          boxShadow: "var(--ui-shadow-lg)",
+          zIndex: 200,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {children}
+      </aside>
     </>
   );
 }
+
+function FieldBlock({ label, children }) {
+  return (
+    <div style={{ marginTop: 24 }}>
+      <p style={fieldLabelInline}>{label}</p>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function DetailField({ label, children }) {
+  return (
+    <div style={detailRow}>
+      <p style={detailLabel}>{label}</p>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function SelectButton({ value, renderValue, isOpen, onToggle, children }) {
+  return (
+    <div style={{ position: "relative" }}>
+      <button type="button" onClick={onToggle} style={selectButtonStyle}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          {renderValue ? renderValue() : value}
+        </span>
+        <ChevronDownIcon style={{ width: 12, height: 12, color: "var(--app-muted)", flexShrink: 0 }} />
+      </button>
+      {isOpen ? <div style={selectMenu}>{children}</div> : null}
+    </div>
+  );
+}
+
+function SelectOption({ children, onSelect }) {
+  return (
+    <button type="button" onClick={onSelect} style={selectOption}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>{children}</span>
+    </button>
+  );
+}
+
+const panelHeader = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 16,
+  padding: "12px 24px",
+  borderBottom: "1px solid var(--app-border)",
+  flexShrink: 0,
+};
+
+const panelBody = {
+  flex: 1,
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) 320px",
+  overflowY: "auto",
+};
+
+const mainColumn = {
+  padding: "20px 32px",
+  borderRight: "1px solid var(--app-border-subtle)",
+  minWidth: 0,
+};
+
+const sideColumn = {
+  padding: "20px 24px",
+  background: "var(--app-surface)",
+};
+
+const issueTitle = {
+  margin: 0,
+  fontSize: 22,
+  lineHeight: 1.2,
+  fontWeight: 500,
+  color: "var(--app-text)",
+  letterSpacing: "-0.008em",
+};
+
+const fieldLabelInline = {
+  margin: "0 0 8px",
+  fontSize: 12,
+  fontWeight: 600,
+  color: "var(--app-muted)",
+};
+
+const detailRow = {
+  display: "grid",
+  gridTemplateColumns: "100px 1fr",
+  alignItems: "center",
+  gap: 8,
+  padding: "6px 0",
+};
+
+const detailLabel = {
+  margin: 0,
+  fontSize: 12,
+  color: "var(--app-muted)",
+  fontWeight: 500,
+};
+
+const mutedValue = {
+  color: "var(--app-text-disabled)",
+  fontSize: 13,
+};
+
+const selectButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 6,
+  width: "100%",
+  height: 28,
+  padding: "0 6px",
+  background: "transparent",
+  border: "2px solid transparent",
+  borderRadius: 3,
+  color: "var(--app-text)",
+  fontSize: 13,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const selectMenu = {
+  position: "absolute",
+  top: "calc(100% + 2px)",
+  left: 0,
+  right: 0,
+  background: "var(--app-surface-overlay)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  boxShadow: "var(--ui-shadow-md)",
+  padding: 4,
+  zIndex: 50,
+  maxHeight: 240,
+  overflowY: "auto",
+};
+
+const selectOption = {
+  display: "block",
+  width: "100%",
+  textAlign: "left",
+  padding: "6px 8px",
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  borderRadius: 3,
+  fontSize: 13,
+  color: "var(--app-text)",
+  fontFamily: "inherit",
+};
+
+const commentItem = {
+  display: "flex",
+  gap: 8,
+  padding: "8px 0",
+  borderBottom: "1px solid var(--app-border-subtle)",
+};
+
+const createdMeta = {
+  marginTop: 24,
+  paddingTop: 12,
+  borderTop: "1px solid var(--app-border-subtle)",
+  fontSize: 12,
+  color: "var(--app-muted)",
+};
 
 export default IssueDetail;

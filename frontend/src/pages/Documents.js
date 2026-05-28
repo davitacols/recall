@@ -1,40 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowRightIcon,
-  ArrowTopRightOnSquareIcon,
   DocumentTextIcon,
-  FunnelIcon,
   MagnifyingGlassIcon,
   PlusIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import {
-  WorkspaceEmptyState,
-  WorkspaceHero,
-  WorkspaceToolbar,
-} from "../components/WorkspaceChrome";
 import { useToast } from "../components/Toast";
-import { useTheme } from "../utils/ThemeAndAccessibility";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { buildAskRecallPath } from "../utils/askRecall";
-import RichTextEditor from "../components/RichTextEditor";
+import {
+  Avatar,
+  Badge,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  Field,
+  IconButton,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+  Tabs,
+} from "../components/atlas";
 
-const DOC_TYPES = ["all", "policy", "procedure", "guide", "report", "other"];
+const DOC_TYPES = [
+  { id: "all", label: "All" },
+  { id: "policy", label: "Policies" },
+  { id: "procedure", label: "Procedures" },
+  { id: "guide", label: "Guides" },
+  { id: "report", label: "Reports" },
+  { id: "other", label: "Other" },
+];
 
-function toDocDate(doc) {
-  const value = doc.updated_at || doc.created_at;
-  if (!value) return "";
-  const dt = new Date(value);
-  return Number.isNaN(dt.getTime()) ? "" : dt.toLocaleDateString();
-}
-
-function formatTypeLabel(value) {
-  if (!value) return "Other";
-  return value.charAt(0).toUpperCase() + value.slice(1);
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function stripHtml(value) {
@@ -45,111 +45,84 @@ function stripHtml(value) {
 export default function Documents() {
   const navigate = useNavigate();
   const { success, error } = useToast();
-  const { darkMode } = useTheme();
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [busySearch, setBusySearch] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [showViewer, setShowViewer] = useState(false);
-  const [viewerUrl, setViewerUrl] = useState("");
   const [query, setQuery] = useState("");
+  const [busySearch, setBusySearch] = useState(false);
   const [typeFilter, setTypeFilter] = useState("all");
   const [sortMode, setSortMode] = useState("recent");
+  const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     document_type: "other",
     content: "",
-    tags: [],
   });
   const [uploadFile, setUploadFile] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const closeViewer = () => {
-    if (viewerUrl) {
-      URL.revokeObjectURL(viewerUrl);
-    }
-    setViewerUrl("");
-    setShowViewer(false);
-  };
+  const [viewerUrl, setViewerUrl] = useState("");
+  const [showViewer, setShowViewer] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
+    return () => {
+      if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(
-    () => () => {
-      if (viewerUrl) {
-        URL.revokeObjectURL(viewerUrl);
-      }
-    },
-    [viewerUrl]
-  );
+  const apiBase = process.env.REACT_APP_API_URL || "";
+  const authHeaders = () => {
+    const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load documents");
-      }
+      const res = await fetch(`${apiBase}/api/business/documents/`, { headers: authHeaders() });
+      if (!res.ok) throw new Error("Failed to load documents");
       const payload = await res.json();
-      setDocuments(Array.isArray(payload) ? payload : []);
+      setDocuments(Array.isArray(payload) ? payload : payload?.results || []);
     } catch (err) {
       setDocuments([]);
-      error(err.message || "Couldn't load documents.");
+      error?.(err.message || "Couldn't load documents.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = async (forcedQuery = query) => {
-    const trimmed = (forcedQuery || "").trim();
-    if (!trimmed) {
-      fetchDocuments();
-      return;
-    }
+  const handleSearch = async (raw = query) => {
+    const trimmed = (raw || "").trim();
+    if (!trimmed) return fetchDocuments();
     setBusySearch(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/search/?q=${encodeURIComponent(trimmed)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Search failed");
-      }
+      const res = await fetch(
+        `${apiBase}/api/business/documents/search/?q=${encodeURIComponent(trimmed)}`,
+        { headers: authHeaders() }
+      );
+      if (!res.ok) throw new Error("Search failed");
       const payload = await res.json();
-      setDocuments(Array.isArray(payload) ? payload : []);
+      setDocuments(Array.isArray(payload) ? payload : payload?.results || []);
     } catch (err) {
       setDocuments([]);
-      error(err.message || "Couldn't search documents right now.");
+      error?.(err.message || "Couldn't search documents right now.");
     } finally {
       setBusySearch(false);
     }
   };
 
-  const handleOpenDocument = async (doc) => {
+  const handleOpen = async (doc) => {
     if (doc.has_file) {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/${doc.id}/file/`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await fetch(`${apiBase}/api/business/documents/${doc.id}/file/`, {
+          headers: authHeaders(),
         });
-        if (!res.ok) {
-          throw new Error("Failed to open file");
-        }
+        if (!res.ok) throw new Error("Failed to open file");
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         if (doc.file_type?.includes("pdf")) {
-          if (viewerUrl) {
-            URL.revokeObjectURL(viewerUrl);
-          }
+          if (viewerUrl) URL.revokeObjectURL(viewerUrl);
           setViewerUrl(url);
           setShowViewer(true);
           return;
@@ -160,7 +133,7 @@ export default function Documents() {
         anchor.click();
         URL.revokeObjectURL(url);
       } catch (_) {
-        error("Couldn't open the document file.");
+        error?.("Couldn't open the document file.");
       }
       return;
     }
@@ -171,16 +144,15 @@ export default function Documents() {
     event.preventDefault();
     setSubmitting(true);
     try {
-      const token = localStorage.getItem("token");
       const payload = new FormData();
       payload.append("title", formData.title);
       payload.append("description", formData.description);
       payload.append("document_type", formData.document_type);
       payload.append("content", formData.content);
       if (uploadFile) payload.append("file", uploadFile);
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/documents/`, {
+      const res = await fetch(`${apiBase}/api/business/documents/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(),
         body: payload,
       });
       if (!res.ok) {
@@ -188,977 +160,404 @@ export default function Documents() {
         throw new Error(body.error || "Failed to create document");
       }
       setShowModal(false);
-      setFormData({ title: "", description: "", document_type: "other", content: "", tags: [] });
+      setFormData({ title: "", description: "", document_type: "other", content: "" });
       setUploadFile(null);
       await fetchDocuments();
-      success("Document created");
+      success?.("Page created");
     } catch (err) {
-      error(err.message || "Couldn't create document.");
+      error?.(err.message || "Couldn't create document.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const viewDocuments = useMemo(() => {
-    const filtered = documents.filter((doc) => typeFilter === "all" || doc.document_type === typeFilter);
-    const sorted = [...filtered];
-    sorted.sort((a, b) => {
-      if (sortMode === "title") {
-        return String(a.title || "").localeCompare(String(b.title || ""));
-      }
-      return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
+  const visibleDocs = useMemo(() => {
+    const filtered = documents.filter((d) => typeFilter === "all" || d.document_type === typeFilter);
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortMode === "title") return String(a.title || "").localeCompare(String(b.title || ""));
+      const ad = a.updated_at || a.created_at || 0;
+      const bd = b.updated_at || b.created_at || 0;
+      return new Date(bd) - new Date(ad);
     });
     return sorted;
   }, [documents, typeFilter, sortMode]);
 
-  const statTotal = documents.length;
-  const statWithFiles = documents.filter((doc) => doc.has_file).length;
-  const statPolicies = documents.filter((doc) => doc.document_type === "policy").length;
-  const statRecentlyUpdated = documents.filter((doc) => {
-    const raw = doc.updated_at || doc.created_at;
-    if (!raw) return false;
-    const timestamp = new Date(raw).getTime();
-    if (Number.isNaN(timestamp)) return false;
-    return Date.now() - timestamp <= 1000 * 60 * 60 * 24 * 30;
-  }).length;
-  const hasAnyDocuments = documents.length > 0;
-
-  const handleResetFilters = () => {
-    setQuery("");
-    setTypeFilter("all");
-    setSortMode("recent");
-    fetchDocuments();
-  };
-
-  const heroStats = [
-    {
-      label: "Library",
-      value: statTotal,
-      helper: "Visible knowledge assets",
-      tone: palette.accent,
-    },
-    {
-      label: "File-backed",
-      value: statWithFiles,
-      helper: "Records with attached source files",
-      tone: palette.text,
-    },
-    {
-      label: "Policies",
-      value: statPolicies,
-      helper: "Policy records in the library",
-      tone: palette.warn,
-    },
-    {
-      label: "Updated 30d",
-      value: statRecentlyUpdated,
-      helper: "Recently refreshed documents",
-      tone: palette.success,
-    },
-  ];
-
-  const libraryAside = (
-    <div
-      style={{
-        ...asideCard,
-        border: `1px solid ${palette.border}`,
-        background: darkMode
-          ? "linear-gradient(160deg, rgba(32,27,23,0.9), rgba(22,18,15,0.82))"
-          : "linear-gradient(160deg, rgba(255,252,248,0.96), rgba(244,237,226,0.88))",
-      }}
-    >
-      <p style={{ ...asideEyebrow, color: palette.muted }}>Library Health</p>
-      <h3 style={{ ...asideTitle, color: palette.text }}>Keep the source record close to the work.</h3>
-      <p style={{ ...asideBody, color: palette.muted }}>
-        Policies, procedures, reports, and guides should be easy to open, easy to search, and easy to trust.
-      </p>
-      <div style={asideMetricRail}>
-        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Policies</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{statPolicies}</p>
-        </div>
-        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Recent</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{statRecentlyUpdated}</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (loading) {
-    return (
-      <div style={{ display: "grid", gap: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-          {[1, 2, 3, 4].map((item) => (
-            <div
-              key={item}
-              style={{
-                borderRadius: 24,
-                height: 150,
-                background: palette.card,
-                border: `1px solid ${palette.border}`,
-                opacity: 0.76,
-                boxShadow: "var(--ui-shadow-sm)",
-              }}
-            />
-          ))}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 12 }}>
-          {[1, 2, 3].map((item) => (
-            <div
-              key={`card-${item}`}
-              style={{
-                borderRadius: 24,
-                minHeight: 240,
-                background: palette.card,
-                border: `1px solid ${palette.border}`,
-                opacity: 0.72,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const typeTabs = DOC_TYPES.map((t) => ({
+    id: t.id,
+    label: t.label,
+    count: t.id === "all" ? documents.length : documents.filter((d) => d.document_type === t.id).length,
+  }));
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <WorkspaceHero
-        palette={palette}
-        darkMode={darkMode}
-        eyebrow="Memory"
-        title="Documents"
-        description="Policies, procedures, guides, and reports stay readable, searchable, and connected to the work they support."
-        stats={heroStats}
-        aside={libraryAside}
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[
+          { label: "Knoledgr", to: "/" },
+          { label: "Documents" },
+        ]}
+        title="Pages"
+        subtitle="Working documents, guides, and policies for this workspace."
         actions={
           <>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowModal(true)} style={docPrimaryButton(palette)}>
-              <PlusIcon style={icon14} /> New Document
-            </button>
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              onClick={() => navigate(buildAskRecallPath("Which recent documents should I review first, and what changed most recently?"))}
-              style={docSecondaryButton(palette)}
+            <Button appearance="subtle" onClick={() => navigate("/business/templates")}>
+              Templates
+            </Button>
+            <Button
+              appearance="primary"
+              iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />}
+              onClick={() => setShowModal(true)}
             >
-              <SparklesIcon style={icon14} /> Ask Recall
-            </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={fetchDocuments} style={docSecondaryButton(palette)}>
-              Refresh Library
-            </button>
+              Create page
+            </Button>
           </>
         }
+        style={{ padding: "24px 0 0", background: "transparent" }}
       />
 
-      <WorkspaceToolbar palette={palette}>
-        <div style={controlDeck}>
-          <section className="ui-card-lift ui-smooth" style={{ ...controlCard, border: `1px solid ${palette.border}`, background: palette.card }}>
-            <div style={toolbarIntro}>
-              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Library Control</p>
-              <h2 style={{ ...toolbarTitle, color: palette.text }}>Search the library, then jump straight into the right source record</h2>
-              <p style={{ ...toolbarCopy, color: palette.muted }}>
-                Keep search, reset, and live library state in one place so the page feels more like a document desk and less like stacked filters.
-              </p>
-            </div>
+      <div style={{ marginTop: 16 }}>
+        <Tabs tabs={typeTabs} value={typeFilter} onChange={setTypeFilter} />
+      </div>
 
-            <div style={toolbarMetaRail}>
-              <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                Showing {viewDocuments.length}
-              </span>
-              {query.trim() ? (
-                <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                  Query "{query.trim()}"
-                </span>
-              ) : null}
-              <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                <ShieldCheckIcon style={icon14} /> {statPolicies} policy records
-              </span>
-            </div>
-
-            <div style={searchRail}>
-              <div style={{ position: "relative", flex: "1 1 360px", minWidth: 0 }}>
-                <MagnifyingGlassIcon style={{ ...searchIcon, color: palette.muted }} />
-                <input
-                  className="ui-focus-ring"
-                  type="text"
-                  placeholder="Search title, description, or document content..."
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && handleSearch()}
-                  style={{ ...ui.input, paddingLeft: 38 }}
-                />
-              </div>
-
-              <button
-                onClick={() => handleSearch()}
-                className="ui-btn-polish ui-focus-ring"
-                style={{ ...docPrimaryButton(palette), minWidth: 112, opacity: busySearch ? 0.7 : 1 }}
-                disabled={busySearch}
-              >
-                {busySearch ? "Searching..." : "Search"}
-              </button>
-
-              <button onClick={handleResetFilters} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
-                Reset
-              </button>
-            </div>
-          </section>
-
-          <section className="ui-card-lift ui-smooth" style={{ ...controlCard, border: `1px solid ${palette.border}`, background: palette.card }}>
-            <div style={toolbarIntro}>
-              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Filter and Pace</p>
-              <h2 style={{ ...controlSubTitle, color: palette.text }}>Narrow by type and sort the reading order</h2>
-            </div>
-
-            <div style={filterGrid}>
-              <div style={{ position: "relative" }}>
-                <FunnelIcon style={{ ...filterIcon, color: palette.muted }} />
-                <select className="ui-focus-ring" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} style={{ ...ui.input, width: "100%", paddingLeft: 34 }}>
-                  {DOC_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type === "all" ? "All Types" : formatTypeLabel(type)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <select className="ui-focus-ring" value={sortMode} onChange={(event) => setSortMode(event.target.value)} style={{ ...ui.input, width: "100%" }}>
-                <option value="recent">Recent first</option>
-                <option value="title">Title</option>
-              </select>
-            </div>
-
-            <div style={controlMetricGrid}>
-              <div style={{ ...controlMetricCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <p style={{ ...controlMetricLabel, color: palette.muted }}>Library</p>
-                <p style={{ ...controlMetricValue, color: palette.text }}>{statTotal}</p>
-              </div>
-              <div style={{ ...controlMetricCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <p style={{ ...controlMetricLabel, color: palette.muted }}>File-backed</p>
-                <p style={{ ...controlMetricValue, color: palette.text }}>{statWithFiles}</p>
-              </div>
-              <div style={{ ...controlMetricCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <p style={{ ...controlMetricLabel, color: palette.muted }}>Policies</p>
-                <p style={{ ...controlMetricValue, color: palette.text }}>{statPolicies}</p>
-              </div>
-              <div style={{ ...controlMetricCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                <p style={{ ...controlMetricLabel, color: palette.muted }}>Updated 30d</p>
-                <p style={{ ...controlMetricValue, color: palette.text }}>{statRecentlyUpdated}</p>
-              </div>
-            </div>
-          </section>
+      <div style={toolbar}>
+        <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
+          <MagnifyingGlassIcon style={searchIcon} />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSearch(query);
+            }}
+            placeholder="Search pages…"
+            className="atlas-input"
+            style={{ paddingLeft: 32 }}
+          />
         </div>
-      </WorkspaceToolbar>
+        <Button appearance="subtle" onClick={() => handleSearch(query)} isDisabled={busySearch}>
+          {busySearch ? "Searching…" : "Search"}
+        </Button>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: 12, color: "var(--app-muted)" }}>Sort:</span>
+        <select
+          value={sortMode}
+          onChange={(e) => setSortMode(e.target.value)}
+          className="atlas-input"
+          style={{ width: 160 }}
+        >
+          <option value="recent">Recently updated</option>
+          <option value="title">Title (A–Z)</option>
+        </select>
+      </div>
 
-      {viewDocuments.length === 0 ? (
-        <WorkspaceEmptyState
-          palette={palette}
-          title={hasAnyDocuments ? "No documents match these filters" : "Build the team library"}
-          description={
-            hasAnyDocuments
-              ? "Try resetting the search or changing the type filter to widen the library view."
-              : "Upload a policy, capture a runbook, or start a working draft so your team can retrieve context faster."
-          }
-          action={
-            <button
-              onClick={hasAnyDocuments ? handleResetFilters : () => setShowModal(true)}
-              className="ui-btn-polish ui-focus-ring"
-              style={docPrimaryButton(palette)}
-            >
-              {hasAnyDocuments ? "Reset Filters" : "Create First Document"}
-            </button>
+      {loading ? (
+        <SkeletonTable />
+      ) : visibleDocs.length === 0 ? (
+        <EmptyState
+          icon={<DocumentTextIcon style={{ width: "100%", height: "100%" }} />}
+          title="No pages yet"
+          description="Create a page to capture team knowledge, or upload a file your team can find later."
+          primaryAction={
+            <Button appearance="primary" onClick={() => setShowModal(true)}>
+              Create page
+            </Button>
           }
         />
       ) : (
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(310px,1fr))", gap: 14 }}>
-          {viewDocuments.map((doc) => {
-            const excerpt = stripHtml(doc.description || doc.content || "");
-            return (
-              <article
-                key={doc.id}
-                className="ui-card-lift ui-smooth"
-                style={{
-                  ...documentCard,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.card,
-                }}
-              >
-                <div style={documentCardTop}>
-                  <span
-                    style={{
-                      ...documentIcon,
-                      background: palette.accentSoft,
-                      color: palette.accent,
-                    }}
-                  >
-                    <DocumentTextIcon style={{ width: 18, height: 18 }} />
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ ...cardEyebrow, color: palette.muted }}>Knowledge Asset</p>
-                    <h3 style={{ ...cardTitle, color: palette.text }}>{doc.title || "Untitled document"}</h3>
-                  </div>
-                  <span style={{ ...typeChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {formatTypeLabel(doc.document_type)}
-                  </span>
-                </div>
-
-                <p style={{ ...cardDescription, color: palette.muted }}>
-                  {excerpt || "No summary yet. Open the document to add context, source material, or internal guidance."}
-                </p>
-
-                <div style={chipRail}>
-                  <span style={{ ...miniChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {doc.has_file ? "File-backed" : "Editor-only"}
-                  </span>
-                  {doc.file_name ? (
-                    <span style={{ ...miniChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.muted }}>
-                      {doc.file_name}
+        <div style={tableWrap}>
+          <table style={tableStyle}>
+            <thead>
+              <tr style={tableHeadRow}>
+                <th style={{ ...th, width: "50%" }}>Title</th>
+                <th style={th}>Type</th>
+                <th style={th}>Owner</th>
+                <th style={th}>Updated</th>
+                <th style={{ ...th, textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleDocs.map((doc) => (
+                <tr key={doc.id} style={tableRow}>
+                  <td style={td}>
+                    <button type="button" onClick={() => handleOpen(doc)} style={titleButton}>
+                      <DocumentTextIcon style={{ width: 16, height: 16, color: "var(--b400)", flexShrink: 0 }} />
+                      <span style={{ minWidth: 0 }}>
+                        <span style={titleText}>{doc.title || "Untitled"}</span>
+                        {doc.description ? (
+                          <span style={excerptText}>{stripHtml(doc.description).slice(0, 140)}</span>
+                        ) : null}
+                      </span>
+                    </button>
+                  </td>
+                  <td style={td}>
+                    <Lozenge>{doc.document_type || "other"}</Lozenge>
+                  </td>
+                  <td style={td}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <Avatar size="sm" name={doc.created_by_name || doc.owner || "—"} />
+                      <span style={{ fontSize: 13, color: "var(--app-text)" }}>
+                        {doc.created_by_name || doc.owner || "—"}
+                      </span>
                     </span>
-                  ) : null}
-                </div>
-
-                <div style={{ ...documentFooter, borderTop: `1px solid ${palette.border}` }}>
-                  <div>
-                    <p style={{ ...footerLabel, color: palette.muted }}>Updated</p>
-                    <p style={{ ...footerValue, color: palette.text }}>{toDocDate(doc) || "Unknown"}</p>
-                  </div>
-
-                  <div style={documentActionRail}>
-                    <button
-                      onClick={() => {
-                        navigate(`/business/documents/${doc.id}`);
-                      }}
-                      className="ui-btn-polish ui-focus-ring"
-                      style={docSecondaryButton(palette)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleOpenDocument(doc)}
-                      className="ui-btn-polish ui-focus-ring"
-                      style={docPrimaryButton(palette)}
-                    >
-                      {doc.has_file ? "Open file" : "Open document"}
-                      {doc.has_file ? <ArrowTopRightOnSquareIcon style={icon12} /> : <ArrowRightIcon style={icon12} />}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </section>
+                  </td>
+                  <td style={td}>
+                    <span style={{ fontSize: 13, color: "var(--app-muted)" }}>{formatDate(doc.updated_at || doc.created_at)}</span>
+                  </td>
+                  <td style={{ ...td, textAlign: "right" }}>
+                    <Button appearance="subtle" size="sm" onClick={() => handleOpen(doc)}>
+                      Open
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {showViewer ? (
-        <div
-          style={viewerOverlay}
-          onClick={closeViewer}
-        >
-          <div
-            style={{ ...viewerCard, border: `1px solid ${palette.border}`, background: palette.card }}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div style={viewerHeader}>
-              <div>
-                <p style={{ ...viewerEyebrow, color: palette.muted }}>Preview</p>
-                <p style={{ ...viewerTitle, color: palette.text }}>Document file viewer</p>
-              </div>
-              <button className="ui-btn-polish ui-focus-ring" onClick={closeViewer} style={docSecondaryButton(palette)}>
-                Close
-              </button>
+      {showModal ? (
+        <Modal onClose={() => setShowModal(false)} title="Create page">
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Field label="Title" isRequired>
+              <input
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="atlas-input"
+                required
+                autoFocus
+              />
+            </Field>
+            <Field label="Description">
+              <input
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="atlas-input"
+              />
+            </Field>
+            <Field label="Type">
+              <select
+                value={formData.document_type}
+                onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
+                className="atlas-input"
+              >
+                {DOC_TYPES.filter((t) => t.id !== "all").map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Content">
+              <textarea
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                className="atlas-input"
+                rows={6}
+              />
+            </Field>
+            <Field label="File (optional)">
+              <input
+                type="file"
+                onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                style={{ fontSize: 14 }}
+              />
+            </Field>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+              <Button type="button" appearance="subtle" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" appearance="primary" isDisabled={submitting}>
+                {submitting ? "Creating…" : "Create"}
+              </Button>
             </div>
-            <iframe src={viewerUrl} title="Document preview" style={{ width: "100%", height: "100%", border: "none", borderRadius: 20, background: palette.cardAlt }} />
-          </div>
-        </div>
+          </form>
+        </Modal>
       ) : null}
 
-      {showModal
-        ? createPortal(
-            <div style={modalOverlay} onClick={() => setShowModal(false)}>
-              <div
-                style={{ ...modalCard, border: `1px solid ${palette.border}`, background: palette.card }}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div style={modalHeader}>
-                  <div>
-                    <p style={{ ...modalEyebrow, color: palette.muted }}>Create Knowledge Asset</p>
-                    <h2 style={{ ...modalTitle, color: palette.text }}>Create Document</h2>
-                    <p style={{ ...modalBody, color: palette.muted }}>
-                      Add a rich-text note, attach a source file, or combine both so teams can recover the record behind their work.
-                    </p>
-                  </div>
-                  <button onClick={() => setShowModal(false)} className="ui-btn-polish ui-focus-ring" style={docIconButton(palette)}>
-                    <XMarkIcon style={{ width: 16, height: 16 }} />
-                  </button>
-                </div>
-
-                <div style={modalLayout}>
-                  <form onSubmit={handleSubmit} style={formStack}>
-                    <input
-                      required
-                      placeholder="Document title"
-                      value={formData.title}
-                      onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-                      className="ui-focus-ring"
-                      style={ui.input}
-                    />
-
-                    <div style={ui.twoCol}>
-                      <select
-                        value={formData.document_type}
-                        onChange={(event) => setFormData({ ...formData, document_type: event.target.value })}
-                        className="ui-focus-ring"
-                        style={ui.input}
-                      >
-                        <option value="policy">Policy</option>
-                        <option value="procedure">Procedure</option>
-                        <option value="guide">Guide</option>
-                        <option value="report">Report</option>
-                        <option value="other">Other</option>
-                      </select>
-
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.txt,.md"
-                        onChange={(event) => setUploadFile(event.target.files?.[0] || null)}
-                        className="ui-focus-ring"
-                        style={ui.input}
-                      />
-                    </div>
-
-                    <textarea
-                      rows={3}
-                      placeholder="Short description"
-                      value={formData.description}
-                      onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-                      className="ui-focus-ring"
-                      style={{ ...ui.input, resize: "vertical" }}
-                    />
-
-                    <div>
-                      <p style={{ ...editorLabel, color: palette.muted }}>Document Content</p>
-                      <RichTextEditor
-                        value={formData.content}
-                        onChange={(value) => setFormData({ ...formData, content: value })}
-                        placeholder="Write your document content..."
-                        darkMode={darkMode}
-                      />
-                    </div>
-
-                    <div style={buttonRow}>
-                      <button type="button" onClick={() => setShowModal(false)} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
-                        Cancel
-                      </button>
-                      <button type="submit" className="ui-btn-polish ui-focus-ring" style={{ ...docPrimaryButton(palette), opacity: submitting ? 0.7 : 1 }} disabled={submitting}>
-                        {submitting ? "Creating..." : "Create"}
-                      </button>
-                    </div>
-                  </form>
-
-                  <aside style={{ ...modalGuideCard, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-                    <p style={{ ...modalEyebrow, color: palette.muted }}>Publishing Guide</p>
-                    <h3 style={{ margin: 0, fontSize: 20, lineHeight: 1.08, color: palette.text }}>
-                      Keep each document easy to trust, skim, and retrieve later
-                    </h3>
-                    <div style={modalGuideList}>
-                      <div style={modalGuideItem}>
-                        <p style={{ ...modalGuideLabel, color: palette.muted }}>Title</p>
-                        <p style={{ ...modalGuideCopy, color: palette.text }}>Name the document the way the team would actually search for it later.</p>
-                      </div>
-                      <div style={modalGuideItem}>
-                        <p style={{ ...modalGuideLabel, color: palette.muted }}>Type</p>
-                        <p style={{ ...modalGuideCopy, color: palette.text }}>Use the most operationally honest category so filters stay useful.</p>
-                      </div>
-                      <div style={modalGuideItem}>
-                        <p style={{ ...modalGuideLabel, color: palette.muted }}>Summary</p>
-                        <p style={{ ...modalGuideCopy, color: palette.text }}>Write a short description that helps someone decide whether to open the full record.</p>
-                      </div>
-                    </div>
-                  </aside>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+      {showViewer && viewerUrl ? (
+        <Modal
+          onClose={() => {
+            URL.revokeObjectURL(viewerUrl);
+            setViewerUrl("");
+            setShowViewer(false);
+          }}
+          title="Document preview"
+          width={960}
+        >
+          <iframe
+            src={viewerUrl}
+            title="Document preview"
+            style={{ width: "100%", height: "70vh", border: "none", borderRadius: 3, background: "var(--n10)" }}
+          />
+        </Modal>
+      ) : null}
     </div>
   );
 }
 
-const toolbarIntro = {
-  display: "grid",
-  gap: 4,
-};
+function Modal({ children, onClose, title, width = 560 }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
-const toolbarEyebrow = {
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
+  return (
+    <>
+      <div onClick={onClose} style={modalBackdrop} />
+      <div role="dialog" aria-modal="true" style={{ ...modalShell, width }}>
+        <div style={modalHeader}>
+          <h2 style={modalTitle}>{title}</h2>
+          <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
+        </div>
+        <div style={modalBody}>{children}</div>
+      </div>
+    </>
+  );
+}
 
-const toolbarTitle = {
-  margin: 0,
-  fontSize: 24,
-  lineHeight: 1.02,
-};
+function SkeletonTable() {
+  return (
+    <div style={tableWrap}>
+      <div style={{ padding: 12 }}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} style={{ height: 36, background: "var(--n20)", borderRadius: 3, marginBottom: 6 }} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
-const controlSubTitle = {
-  margin: 0,
-  fontSize: 20,
-  lineHeight: 1.08,
-};
-
-const toolbarCopy = {
-  margin: 0,
-  fontSize: 13,
-  lineHeight: 1.6,
-  maxWidth: 760,
-};
-
-const toolbarMetaRail = {
+const toolbar = {
   display: "flex",
+  alignItems: "center",
   gap: 8,
-  flexWrap: "wrap",
-};
-
-const toolbarMetaChip = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
-const controlDeck = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
-  gap: 12,
-};
-
-const controlCard = {
-  borderRadius: 22,
-  padding: 16,
-  display: "grid",
-  gap: 14,
-  boxShadow: "var(--ui-shadow-xs)",
-};
-
-const filterGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
-  gap: 10,
-};
-
-const controlMetricGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))",
-  gap: 10,
-};
-
-const controlMetricCard = {
-  borderRadius: 16,
-  padding: "12px 12px 10px",
-  display: "grid",
-  gap: 4,
-};
-
-const controlMetricLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-};
-
-const controlMetricValue = {
-  margin: 0,
-  fontSize: 20,
-  fontWeight: 700,
-  lineHeight: 1,
-};
-
-const searchRail = {
-  display: "flex",
-  gap: 10,
-  flexWrap: "wrap",
-  alignItems: "center",
+  padding: "16px 0",
 };
 
 const searchIcon = {
+  position: "absolute",
+  left: 8,
+  top: 8,
   width: 16,
   height: 16,
-  position: "absolute",
-  left: 12,
-  top: "50%",
-  transform: "translateY(-50%)",
+  color: "var(--app-muted)",
+  pointerEvents: "none",
 };
 
-const filterIcon = {
-  width: 14,
-  height: 14,
-  position: "absolute",
-  left: 12,
-  top: "50%",
-  transform: "translateY(-50%)",
+const tableWrap = {
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  overflow: "hidden",
 };
 
-const asideCard = {
-  minWidth: 240,
-  borderRadius: 24,
-  padding: 16,
-  display: "grid",
-  gap: 10,
+const tableStyle = {
+  width: "100%",
+  borderCollapse: "collapse",
 };
 
-const asideEyebrow = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
+const tableHeadRow = {
+  background: "var(--app-surface-alt)",
 };
 
-const asideTitle = {
-  margin: 0,
-  fontSize: 20,
-  lineHeight: 1.04,
-};
-
-const asideBody = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.6,
-};
-
-const asideMetricRail = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 8,
-};
-
-const asideMetric = {
-  borderRadius: 18,
-  padding: "10px 12px",
-  display: "grid",
-  gap: 3,
-};
-
-const asideMetricLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-};
-
-const asideMetricValue = {
-  margin: 0,
-  fontSize: 18,
-  fontWeight: 700,
-  lineHeight: 1,
-};
-
-const documentCard = {
-  borderRadius: 26,
-  padding: 20,
-  display: "grid",
-  gap: 14,
-  minHeight: 278,
-  boxShadow: "var(--ui-shadow-sm)",
-};
-
-const documentCardTop = {
-  display: "grid",
-  gridTemplateColumns: "auto 1fr auto",
-  gap: 12,
-  alignItems: "start",
-};
-
-const documentIcon = {
-  width: 48,
-  height: 48,
-  borderRadius: 16,
-  display: "grid",
-  placeItems: "center",
-  flexShrink: 0,
-};
-
-const cardEyebrow = {
-  margin: "0 0 6px",
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const cardTitle = {
-  margin: 0,
-  fontSize: 22,
-  lineHeight: 1.05,
-};
-
-const typeChip = {
-  borderRadius: 12,
-  padding: "7px 10px",
+const th = {
+  textAlign: "left",
   fontSize: 11,
   fontWeight: 700,
-  whiteSpace: "nowrap",
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  color: "var(--app-muted)",
+  padding: "10px 16px",
+  borderBottom: "1px solid var(--app-border)",
 };
 
-const cardDescription = {
-  margin: 0,
+const tableRow = {
+  borderBottom: "1px solid var(--app-border-subtle)",
+};
+
+const td = {
+  padding: "12px 16px",
   fontSize: 14,
-  lineHeight: 1.68,
-  minHeight: 72,
+  color: "var(--app-text)",
+  verticalAlign: "middle",
 };
 
-const chipRail = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const miniChip = {
+const titleButton = {
   display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 12,
-  padding: "7px 10px",
-  fontSize: 11,
-  fontWeight: 700,
-};
-
-const documentFooter = {
-  marginTop: "auto",
-  paddingTop: 14,
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "flex-end",
-  flexWrap: "wrap",
-};
-
-const footerLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-};
-
-const footerValue = {
-  margin: "6px 0 0",
-  fontSize: 14,
-  fontWeight: 700,
-};
-
-const documentActionRail = {
-  display: "flex",
+  alignItems: "flex-start",
   gap: 8,
-  flexWrap: "wrap",
-  alignItems: "center",
+  padding: 0,
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  textAlign: "left",
+  font: "inherit",
+  color: "inherit",
+  maxWidth: "100%",
 };
 
-const viewerOverlay = {
+const titleText = {
+  display: "block",
+  fontSize: 14,
+  fontWeight: 600,
+  color: "var(--app-link)",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  maxWidth: 480,
+};
+
+const excerptText = {
+  display: "block",
+  marginTop: 2,
+  fontSize: 12,
+  color: "var(--app-muted)",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  maxWidth: 480,
+};
+
+const modalBackdrop = {
   position: "fixed",
   inset: 0,
-  zIndex: 140,
-  background: "rgba(14, 10, 8, 0.42)",
-  backdropFilter: "blur(10px)",
-  display: "grid",
-  placeItems: "center",
-  padding: 18,
+  background: "var(--app-overlay)",
+  zIndex: 199,
 };
 
-const viewerCard = {
-  width: "min(1180px,100%)",
-  height: "min(92vh,100%)",
-  borderRadius: 28,
-  boxShadow: "var(--ui-shadow-lg)",
-  padding: 14,
-  display: "grid",
-  gridTemplateRows: "auto 1fr",
-};
-
-const viewerHeader = {
+const modalShell = {
+  position: "fixed",
+  top: "10vh",
+  left: "50%",
+  transform: "translateX(-50%)",
+  maxWidth: "calc(100vw - 32px)",
+  maxHeight: "80vh",
   display: "flex",
-  justifyContent: "space-between",
-  gap: 10,
-  alignItems: "center",
-  marginBottom: 10,
-};
-
-const viewerEyebrow = {
-  margin: 0,
-  fontSize: 11,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-  fontWeight: 700,
-};
-
-const viewerTitle = {
-  margin: "6px 0 0",
-  fontSize: 15,
-  fontWeight: 700,
-};
-
-const modalOverlay = {
-  position: "fixed",
-  inset: 0,
-  zIndex: 150,
-  background: "rgba(14, 10, 8, 0.42)",
-  backdropFilter: "blur(10px)",
-  display: "grid",
-  placeItems: "center",
-  padding: 16,
-};
-
-const modalCard = {
-  width: "min(900px,100%)",
-  maxHeight: "92vh",
-  overflowY: "auto",
-  borderRadius: 28,
-  padding: 22,
+  flexDirection: "column",
+  background: "var(--app-surface-overlay)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 6,
   boxShadow: "var(--ui-shadow-lg)",
-};
-
-const modalLayout = {
-  marginTop: 16,
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
-  gap: 14,
-  alignItems: "start",
+  zIndex: 200,
+  overflow: "hidden",
 };
 
 const modalHeader = {
   display: "flex",
+  alignItems: "center",
   justifyContent: "space-between",
-  gap: 10,
-  alignItems: "flex-start",
-};
-
-const modalEyebrow = {
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
+  padding: "16px 20px",
+  borderBottom: "1px solid var(--app-border)",
 };
 
 const modalTitle = {
-  margin: "8px 0 0",
-  fontSize: 28,
-  lineHeight: 1.02,
+  margin: 0,
+  fontSize: 16,
+  fontWeight: 600,
+  color: "var(--app-text)",
 };
 
 const modalBody = {
-  margin: "8px 0 0",
-  fontSize: 13,
-  lineHeight: 1.6,
+  padding: 20,
+  overflowY: "auto",
 };
-
-const formStack = {
-  display: "grid",
-  gap: 12,
-};
-
-const editorLabel = {
-  margin: "0 0 8px",
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const buttonRow = {
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: 8,
-  marginTop: 6,
-  flexWrap: "wrap",
-};
-
-const modalGuideCard = {
-  borderRadius: 20,
-  padding: 16,
-  display: "grid",
-  gap: 14,
-};
-
-const modalGuideList = {
-  display: "grid",
-  gap: 10,
-};
-
-const modalGuideItem = {
-  borderRadius: 16,
-  padding: "12px 12px 10px",
-  background: "rgba(255,255,255,0.32)",
-  display: "grid",
-  gap: 4,
-};
-
-const modalGuideLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-};
-
-const modalGuideCopy = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.6,
-};
-
-function docButtonBase(palette) {
-  return {
-    minHeight: 40,
-    padding: "0 14px",
-    borderRadius: 12,
-    fontSize: 13,
-    fontWeight: 700,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    cursor: "pointer",
-    textDecoration: "none",
-    whiteSpace: "nowrap",
-    border: `1px solid ${palette.border}`,
-  };
-}
-
-function docPrimaryButton(palette) {
-  return {
-    ...docButtonBase(palette),
-    border: "1px solid transparent",
-    background: palette.ctaGradient,
-    color: palette.buttonText,
-  };
-}
-
-function docSecondaryButton(palette) {
-  return {
-    ...docButtonBase(palette),
-    background: palette.cardAlt,
-    color: palette.text,
-  };
-}
-
-function docIconButton(palette) {
-  return {
-    ...docSecondaryButton(palette),
-    width: 40,
-    minWidth: 40,
-    padding: 0,
-  };
-}
-
-const icon14 = { width: 14, height: 14 };
-const icon12 = { width: 12, height: 12 };

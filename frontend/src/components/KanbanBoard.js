@@ -1,8 +1,87 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import api from '../services/api';
-import { colors, spacing, radius, shadows, motion } from '../utils/designTokens';
-import IssueDetail from './IssueDetail';
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import {
+  AdjustmentsHorizontalIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  Bars3Icon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ExclamationTriangleIcon,
+  EllipsisHorizontalIcon,
+  PlusIcon,
+  StarIcon,
+} from "@heroicons/react/24/outline";
+import api from "../services/api";
+import {
+  Avatar,
+  Badge,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  IconButton,
+  Lozenge,
+  SectionMessage,
+} from "./atlas";
+import { statusToLozenge } from "../utils/designTokens";
+import IssueDetail from "./IssueDetail";
+
+const PRIORITY_COLORS = {
+  highest: "var(--r500)",
+  high: "var(--r400)",
+  medium: "var(--y400)",
+  low: "var(--g400)",
+  lowest: "var(--g500)",
+};
+
+const STATUS_MAP = {
+  "to do": "todo",
+  todo: "todo",
+  "in progress": "in_progress",
+  "in review": "in_review",
+  review: "in_review",
+  testing: "testing",
+  done: "done",
+  backlog: "backlog",
+};
+
+function priorityArrow(p) {
+  const key = String(p || "").toLowerCase();
+  if (["highest", "high"].includes(key)) {
+    return <ArrowUpIcon style={{ width: 12, height: 12, color: PRIORITY_COLORS[key] || "var(--r400)" }} />;
+  }
+  if (["low", "lowest"].includes(key)) {
+    return <ArrowDownIcon style={{ width: 12, height: 12, color: PRIORITY_COLORS[key] || "var(--g400)" }} />;
+  }
+  return <Bars3Icon style={{ width: 12, height: 12, color: PRIORITY_COLORS.medium }} />;
+}
+
+function typeBadge(type) {
+  const t = String(type || "task").toLowerCase();
+  const map = {
+    bug: { bg: "var(--r400)", icon: <ExclamationTriangleIcon style={{ width: 10, height: 10, color: "#FFFFFF" }} /> },
+    story: { bg: "var(--g400)", icon: <CheckCircleIcon style={{ width: 10, height: 10, color: "#FFFFFF" }} /> },
+    task: { bg: "var(--b400)", icon: <CheckCircleIcon style={{ width: 10, height: 10, color: "#FFFFFF" }} /> },
+    epic: { bg: "var(--p400)", icon: <CheckCircleIcon style={{ width: 10, height: 10, color: "#FFFFFF" }} /> },
+  };
+  const entry = map[t] || map.task;
+  return (
+    <span
+      title={t}
+      style={{
+        width: 16,
+        height: 16,
+        borderRadius: 3,
+        background: entry.bg,
+        display: "inline-grid",
+        placeItems: "center",
+        flexShrink: 0,
+      }}
+    >
+      {entry.icon}
+    </span>
+  );
+}
 
 function KanbanBoard() {
   const { boardId } = useParams();
@@ -11,28 +90,31 @@ function KanbanBoard() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draggedIssue, setDraggedIssue] = useState(null);
+  const [dragOverColumn, setDragOverColumn] = useState(null);
   const [selectedIssueId, setSelectedIssueId] = useState(null);
-  const [moveError, setMoveError] = useState('');
+  const [moveError, setMoveError] = useState("");
+  const [onlyMine, setOnlyMine] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchBoard();
   }, [boardId]);
 
   const fetchBoard = async () => {
+    setLoading(true);
     try {
       const res = await api.get(`/api/agile/boards/${boardId}/`);
       setBoard(res.data);
       setColumns(res.data.columns || []);
-      
-      const allIssues = [];
-      res.data.columns.forEach(col => {
-        col.issues.forEach(issue => {
-          allIssues.push({ ...issue, column_id: col.id });
+      const flat = [];
+      (res.data.columns || []).forEach((col) => {
+        (col.issues || []).forEach((issue) => {
+          flat.push({ ...issue, column_id: col.id });
         });
       });
-      setIssues(allIssues);
-    } catch (error) {
-      console.error('Failed to fetch board:', error);
+      setIssues(flat);
+    } catch (err) {
+      console.error("Failed to fetch board:", err);
     } finally {
       setLoading(false);
     }
@@ -40,206 +122,248 @@ function KanbanBoard() {
 
   const handleDragStart = (e, issue) => {
     setDraggedIssue(issue);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e, columnId) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = "move";
+    setDragOverColumn(columnId);
   };
+
+  const handleDragLeave = () => setDragOverColumn(null);
 
   const handleDrop = async (e, columnId) => {
     e.preventDefault();
+    setDragOverColumn(null);
     if (!draggedIssue) return;
 
-    const statusMap = {
-      'to do': 'todo',
-      'todo': 'todo',
-      'in progress': 'in_progress',
-      'in review': 'in_review',
-      'review': 'in_review',
-      'testing': 'testing',
-      'done': 'done',
-      'backlog': 'backlog',
-    };
-
-    const column = columns.find(c => c.id === columnId);
-    const newStatus = statusMap[String(column?.name || '').trim().toLowerCase()];
+    const column = columns.find((c) => c.id === columnId);
+    const newStatus = STATUS_MAP[String(column?.name || "").trim().toLowerCase()];
     if (!newStatus) {
-      setMoveError(`Cannot move to "${column?.name || 'unknown'}": unsupported column status mapping.`);
+      setMoveError(`Cannot move to "${column?.name || "unknown"}": unsupported column status mapping.`);
       setDraggedIssue(null);
       return;
     }
     if (newStatus === draggedIssue.status) {
-      setMoveError('');
+      setMoveError("");
       setDraggedIssue(null);
       return;
     }
 
+    setMoveError("");
+    const transitionComment = `Moved via board to ${column?.name || "column"}`;
     try {
-      setMoveError('');
-      const transitionComment = `Moved via board to ${column?.name || 'column'}`;
       try {
         const validation = await api.post(`/api/agile/issues/${draggedIssue.id}/validate-transition/`, {
           status: newStatus,
           transition_comment: transitionComment,
         });
         if (validation?.data?.valid === false) {
-          const details = validation.data.errors?.join(', ') || validation.data.message || 'Invalid workflow transition';
+          const details = validation.data.errors?.join(", ") || validation.data.message || "Invalid workflow transition";
           setMoveError(details);
           setDraggedIssue(null);
           return;
         }
-      } catch {
-        // Validation endpoint is optional across deployments; fallback to direct update.
+      } catch (_) {
+        // optional endpoint
       }
-
       await api.put(`/api/agile/issues/${draggedIssue.id}/`, {
         status: newStatus,
         transition_comment: transitionComment,
       });
-      
       setDraggedIssue(null);
       await fetchBoard();
-    } catch (error) {
-      console.error('Failed to move issue:', error);
-      const responseData = error?.response?.data;
+    } catch (err) {
+      const responseData = err?.response?.data;
       const details =
-        responseData?.errors?.join(', ') ||
+        responseData?.errors?.join(", ") ||
         responseData?.error ||
         responseData?.message ||
-        'Failed to move issue.';
+        "Failed to move issue.";
       setMoveError(details);
+      setDraggedIssue(null);
     }
   };
 
-  const getIssuesForColumn = (columnId) => {
-    return issues.filter(i => i.column_id === columnId);
-  };
+  const visibleIssues = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return issues.filter((iss) => {
+      if (onlyMine && iss.assignee_id && iss.assignee_id !== window.__currentUserId) return false;
+      if (!q) return true;
+      const hay = `${iss.key || ""} ${iss.title || ""} ${iss.summary || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [issues, search, onlyMine]);
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid var(--app-border)', borderTop: '2px solid #0F172A', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-      </div>
-    );
-  }
-
-  if (!board) {
-    return <div>Board not found</div>;
-  }
+  const issuesForColumn = (columnId) => visibleIssues.filter((i) => i.column_id === columnId);
 
   const handleCreateIssue = () => {
     window.location.href = `/issues/new?boardId=${boardId}`;
   };
 
-  return (
-    <div>
-      {moveError && (
-        <div style={{ marginBottom: spacing.md, padding: `${spacing.sm} ${spacing.md}`, borderRadius: radius.md, border: '1px solid var(--app-danger-border)', backgroundColor: 'var(--app-danger-soft)', color: 'var(--app-danger)', fontSize: '12px' }}>
-          {moveError}
+  if (loading) {
+    return (
+      <div style={{ padding: 32 }}>
+        <div style={{ height: 40, width: 240, background: "var(--n30)", borderRadius: 4, marginBottom: 16 }} />
+        <div style={{ display: "flex", gap: 12 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} style={{ flex: 1, height: 380, background: "var(--n20)", borderRadius: 4 }} />
+          ))}
         </div>
-      )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 700, color: colors.primary, margin: 0 }}>
-          {board.name}
-        </h1>
-        <button
-          onClick={handleCreateIssue}
-          style={{
-            padding: `${spacing.sm} ${spacing.lg}`,
-            backgroundColor: colors.primary,
-            color: colors.surface,
-            fontSize: '14px',
-            fontWeight: 500,
-            border: 'none',
-            borderRadius: radius.md,
-            cursor: 'pointer',
-            transition: motion.fast,
-            boxShadow: shadows.sm
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = '#1a1f35';
-            e.target.style.boxShadow = shadows.md;
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = colors.primary;
-            e.target.style.boxShadow = shadows.sm;
-          }}
-        >
-          + New Issue
-        </button>
+      </div>
+    );
+  }
+
+  if (!board) {
+    return (
+      <div style={{ padding: 32 }}>
+        <EmptyState title="Board not found" description="Check the URL or pick a board from your projects list." />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "0 32px 32px", display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      {/* Header */}
+      <div style={{ padding: "24px 0 12px" }}>
+        <Breadcrumb
+          items={[
+            { label: "Projects", to: "/projects" },
+            { label: board.project_name || board.project_slug || "Project" },
+            { label: board.name },
+          ]}
+        />
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, marginTop: 4 }}>
+          <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.16, margin: 0, color: "var(--app-text)" }}>
+              {board.name}
+            </h1>
+            <IconButton
+              icon={<StarIcon style={{ width: 16, height: 16 }} />}
+              label="Star board"
+              size={28}
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Button appearance="subtle" iconBefore={<AdjustmentsHorizontalIcon style={{ width: 14, height: 14 }} />}>
+              Group
+            </Button>
+            <Button
+              appearance="primary"
+              iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />}
+              onClick={handleCreateIssue}
+            >
+              Create
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${columns.length}, 1fr)`,
-        gap: spacing.lg,
-        overflowX: 'auto',
-        paddingBottom: spacing.lg
-      }}>
-        {columns.map(column => (
-          <div
-            key={column.id}
-            style={{
-              backgroundColor: colors.background,
-              borderRadius: radius.md,
-              border: `1px solid ${colors.border}`,
-              minWidth: '300px',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            <div style={{
-              padding: spacing.lg,
-              borderBottom: `1px solid ${colors.border}`,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <h3 style={{ fontSize: '14px', fontWeight: 600, color: colors.primary, margin: 0 }}>
-                {column.name}
-              </h3>
-              <span style={{
-                fontSize: '12px',
-                fontWeight: 600,
-                color: colors.secondary,
-                backgroundColor: colors.surface,
-                padding: `${spacing.sm} ${spacing.md}`,
-                borderRadius: radius.md
-              }}>
-                {getIssuesForColumn(column.id).length}
-              </span>
-            </div>
-
-            <div
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, column.id)}
+      {/* Filter bar */}
+      <div style={filterBar}>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search this board"
+          className="atlas-input"
+          style={{ width: 220 }}
+        />
+        <span style={{ display: "flex", marginLeft: 8 }}>
+          {[1, 2, 3].map((i) => (
+            <span
+              key={i}
               style={{
-                flex: 1,
-                padding: spacing.md,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: spacing.md,
-                minHeight: '400px',
-                backgroundColor: draggedIssue ? colors.accentLight : 'transparent',
-                transition: 'background-color 0.2s'
+                width: 28,
+                height: 28,
+                marginLeft: -6,
+                borderRadius: "50%",
+                border: "2px solid var(--app-surface)",
+                background: ["#0052CC", "#00875A", "#5243AA"][i - 1],
+                display: "inline-grid",
+                placeItems: "center",
+                color: "#FFFFFF",
+                fontWeight: 700,
+                fontSize: 11,
               }}
             >
-              {getIssuesForColumn(column.id).map(issue => (
-                <IssueCard
-                  key={issue.id}
-                  issue={issue}
-                  onDragStart={handleDragStart}
-                  onClick={() => setSelectedIssueId(issue.id)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+              {String.fromCharCode(64 + i)}
+            </span>
+          ))}
+        </span>
+        <Button
+          appearance={onlyMine ? "primary" : "subtle"}
+          size="sm"
+          onClick={() => setOnlyMine((v) => !v)}
+        >
+          Only my issues
+        </Button>
+        <Button appearance="subtle" size="sm" iconAfter={<ChevronDownIcon style={{ width: 12, height: 12 }} />}>
+          Epic
+        </Button>
+        <Button appearance="subtle" size="sm" iconAfter={<ChevronDownIcon style={{ width: 12, height: 12 }} />}>
+          Type
+        </Button>
+        <span style={{ flex: 1 }} />
+        <IconButton icon={<EllipsisHorizontalIcon style={{ width: 16, height: 16 }} />} label="Board actions" />
       </div>
 
-      {selectedIssueId && (
+      {moveError ? (
+        <SectionMessage tone="error" style={{ marginBottom: 12 }}>
+          {moveError}
+        </SectionMessage>
+      ) : null}
+
+      {/* Columns */}
+      <div style={boardScroll}>
+        <div style={{ ...columnRow, gridTemplateColumns: `repeat(${columns.length}, minmax(272px, 1fr))` }}>
+          {columns.map((column) => {
+            const list = issuesForColumn(column.id);
+            const wip = column.wip_limit || column.wipLimit || null;
+            const overWip = wip && list.length > wip;
+            const isOver = dragOverColumn === column.id;
+            return (
+              <div
+                key={column.id}
+                style={{
+                  ...columnStyle,
+                  background: isOver ? "var(--b50)" : "var(--app-surface-alt)",
+                }}
+              >
+                <div style={columnHeader}>
+                  <span style={columnTitle}>
+                    {column.name}
+                  </span>
+                  <span style={{ ...columnCount, color: overWip ? "var(--r500)" : "var(--app-muted)" }}>
+                    {list.length}{wip ? ` / ${wip}` : ""}
+                  </span>
+                </div>
+                <div
+                  onDragOver={(e) => handleDragOver(e, column.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, column.id)}
+                  style={columnBody}
+                >
+                  {list.map((issue) => (
+                    <IssueCard
+                      key={issue.id}
+                      issue={issue}
+                      onDragStart={handleDragStart}
+                      onClick={() => setSelectedIssueId(issue.id)}
+                    />
+                  ))}
+                  {list.length === 0 ? (
+                    <div style={emptyColumn}>Drop issues here</div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {selectedIssueId ? (
         <IssueDetail
           issueId={selectedIssueId}
           onClose={() => {
@@ -248,68 +372,160 @@ function KanbanBoard() {
           }}
           onUpdate={fetchBoard}
         />
-      )}
+      ) : null}
     </div>
   );
 }
 
 function IssueCard({ issue, onDragStart, onClick }) {
-  const statusColors = {
-    todo: '#6B7280',
-    in_progress: '#F59E0B',
-    in_review: '#3B82F6',
-    done: '#10B981'
-  };
-
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, issue)}
       onClick={onClick}
-      style={{
-        padding: spacing.md,
-        backgroundColor: colors.surface,
-        border: `1px solid ${colors.border}`,
-        borderRadius: radius.md,
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-        boxShadow: shadows.sm,
-        borderLeft: `3px solid ${statusColors[issue.status] || colors.primary}`
-      }}
+      style={cardStyle}
       onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = shadows.md;
-        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = "var(--ui-shadow-md)";
+        e.currentTarget.style.background = "var(--app-surface-hover, var(--app-surface))";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = shadows.sm;
-        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = "var(--ui-shadow-sm)";
+        e.currentTarget.style.background = "var(--app-surface)";
       }}
     >
-      <div style={{ fontSize: '12px', fontWeight: 600, color: colors.secondary, marginBottom: '4px' }}>
-        {issue.key}
-      </div>
-      <div style={{ fontSize: '13px', fontWeight: 500, color: colors.primary, marginBottom: spacing.sm }}>
-        {issue.title}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: '11px', color: colors.secondary }}>
-          {issue.assignee ? `👤 ${issue.assignee}` : 'Unassigned'}
+      <p style={cardSummary}>{issue.title || issue.summary}</p>
+      {Array.isArray(issue.labels) && issue.labels.length ? (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
+          {issue.labels.slice(0, 3).map((l) => (
+            <Lozenge key={l} variant="default">
+              {l}
+            </Lozenge>
+          ))}
         </div>
-        {issue.story_points && (
-          <div style={{
-            fontSize: '11px',
-            fontWeight: 600,
-            backgroundColor: colors.background,
-            padding: `2px ${spacing.sm}`,
-            borderRadius: '2px',
-            color: colors.primary
-          }}>
-            {issue.story_points}pts
-          </div>
-        )}
+      ) : null}
+      <div style={cardFooter}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          {typeBadge(issue.issue_type || issue.type)}
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--app-muted)", fontFamily: "var(--font-mono)" }}>
+            {issue.key || `#${issue.id}`}
+          </span>
+          {priorityArrow(issue.priority)}
+        </div>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {issue.story_points ? (
+            <span style={storyPoints}>{issue.story_points}</span>
+          ) : null}
+          <Avatar size="small" name={issue.assignee_name || issue.assignee || "Unassigned"} src={issue.assignee_avatar} />
+        </div>
       </div>
     </div>
   );
 }
+
+const filterBar = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "8px 0 16px",
+};
+
+const boardScroll = {
+  flex: 1,
+  overflowX: "auto",
+  paddingBottom: 16,
+};
+
+const columnRow = {
+  display: "grid",
+  gap: 8,
+  alignItems: "start",
+};
+
+const columnStyle = {
+  borderRadius: 4,
+  background: "var(--app-surface-alt)",
+  border: "1px solid transparent",
+  display: "flex",
+  flexDirection: "column",
+  maxHeight: "calc(100vh - 240px)",
+  minHeight: 200,
+};
+
+const columnHeader = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "8px 12px",
+  gap: 8,
+};
+
+const columnTitle = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  color: "var(--app-muted)",
+};
+
+const columnCount = {
+  fontSize: 11,
+  fontWeight: 700,
+};
+
+const columnBody = {
+  flex: 1,
+  padding: "4px 8px 8px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  overflowY: "auto",
+};
+
+const cardStyle = {
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 3,
+  padding: "10px 12px",
+  cursor: "pointer",
+  boxShadow: "var(--ui-shadow-sm)",
+  transition: "box-shadow 100ms ease, transform 100ms ease",
+};
+
+const cardSummary = {
+  margin: "0 0 8px",
+  fontSize: 14,
+  lineHeight: 1.4286,
+  color: "var(--app-text)",
+};
+
+const cardFooter = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+};
+
+const storyPoints = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minWidth: 20,
+  height: 20,
+  padding: "0 6px",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--n700)",
+  background: "var(--n30)",
+  borderRadius: 10,
+};
+
+const emptyColumn = {
+  padding: "16px 8px",
+  textAlign: "center",
+  fontSize: 12,
+  color: "var(--app-text-disabled)",
+  border: "1px dashed var(--app-border)",
+  borderRadius: 3,
+};
 
 export default KanbanBoard;

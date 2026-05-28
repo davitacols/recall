@@ -1,989 +1,514 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-  ArrowPathIcon,
-  ArrowTopRightOnSquareIcon,
-  BeakerIcon,
-  ChartBarIcon,
-  FunnelIcon,
+  ChatBubbleLeftIcon,
+  ClockIcon,
+  CubeIcon,
+  DocumentTextIcon,
+  ExclamationTriangleIcon,
   MagnifyingGlassIcon,
-  ShareIcon,
+  PlusIcon,
   SparklesIcon,
-  Squares2X2Icon,
-  XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useTheme } from "../utils/ThemeAndAccessibility";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import api from "../services/api";
-import BM25 from "../utils/bm25";
-import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
-import { createPlainTextPreview } from "../utils/textPreview";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+  Tabs,
+} from "../components/atlas";
 
-const QUICK_QUERIES = [
-  "architecture tradeoffs",
-  "sprint blockers",
-  "api design changes",
-  "security risk decisions",
-  "incident response timeline",
+const TYPE_FACETS = [
+  { id: "all", label: "All" },
+  { id: "documents", label: "Pages" },
+  { id: "conversations", label: "Conversations" },
+  { id: "decisions", label: "Decisions" },
+  { id: "issues", label: "Issues" },
 ];
 
-const TYPE_OPTIONS = [
-  { key: "conversation", label: "Conversations" },
-  { key: "decision", label: "Decisions" },
-  { key: "goal", label: "Goals" },
-  { key: "task", label: "Tasks" },
-  { key: "meeting", label: "Meetings" },
-  { key: "document", label: "Documents" },
-];
+function timeAgo(input) {
+  if (!input) return "—";
+  const d = new Date(input);
+  if (isNaN(d.getTime())) return "—";
+  const sec = Math.max(1, Math.round((Date.now() - d.getTime()) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
-const LABELS = {
-  conversation: "Conversation",
-  decision: "Decision",
-  goal: "Goal",
-  meeting: "Meeting",
-  document: "Document",
-  task: "Task",
-  unknown: "Other",
-};
-
-function normalizeSearchResponse(response) {
-  const payload = response?.data?.data || response?.data?.results || response?.data || [];
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object") return [];
-
-  const bucketToType = {
-    conversations: "conversation",
-    decisions: "decision",
-    goals: "goal",
-    tasks: "task",
-    meetings: "meeting",
-    documents: "document",
+function kindMeta(kind) {
+  const map = {
+    document: { icon: DocumentTextIcon, color: "var(--b400)" },
+    page: { icon: DocumentTextIcon, color: "var(--b400)" },
+    conversation: { icon: ChatBubbleLeftIcon, color: "var(--t400)" },
+    decision: { icon: SparklesIcon, color: "var(--p400)" },
+    issue: { icon: ExclamationTriangleIcon, color: "var(--y400)" },
+    project: { icon: CubeIcon, color: "var(--g400)" },
   };
-
-  const flat = [];
-  Object.entries(bucketToType).forEach(([bucket, type]) => {
-    const items = Array.isArray(payload[bucket]) ? payload[bucket] : [];
-    items.forEach((item) => flat.push({ ...item, type: item.type || type }));
-  });
-  return flat;
+  return map[String(kind || "").toLowerCase()] || map.document;
 }
 
-function normalizeTrendingResponse(response) {
-  const payload = response?.data?.data || response?.data?.results || response?.data || [];
-  return Array.isArray(payload) ? payload : [];
-}
-
-function itemType(item) {
-  return item.content_type || item.type || "unknown";
-}
-
-function itemDate(item) {
-  return item.updated_at || item.created_at || item.date || "";
-}
-
-function itemPreview(item) {
-  return createPlainTextPreview(
-    item.content_preview || item.summary || item.content || item.description,
-    "No preview available.",
-    200
-  );
-}
-
-function itemRoute(item) {
-  if (item.url) return item.url;
-  const type = itemType(item);
-  if (type === "conversation") return `/conversations/${item.id}`;
-  if (type === "decision") return `/decisions/${item.id}`;
-  if (type === "goal") return `/business/goals/${item.id}`;
-  if (type === "meeting") return `/business/meetings/${item.id}`;
-  if (type === "document") return `/business/documents/${item.id}`;
-  if (type === "task") return "/business/tasks";
-  return null;
-}
-
-function graphHrefForItem(item) {
-  const params = new URLSearchParams();
-  params.set("focus_type", itemType(item));
-  params.set("focus_id", String(item.id));
-  return `/knowledge/graph?${params.toString()}`;
-}
-
-function FeatureLink({ to, icon: Icon, label }) {
-  return (
-    <Link
-      to={to}
-      className="ui-btn-polish"
-      style={{
-        borderRadius: 8,
-        border: "1px solid var(--app-border-strong)",
-        background: "var(--app-panel)",
-        color: "var(--app-muted)",
-        textDecoration: "none",
-        padding: "7px 9px",
-        fontSize: 11,
-        fontWeight: 700,
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-      }}
-    >
-      <Icon style={{ width: 14, height: 14 }} />
-      {label}
-    </Link>
-  );
-}
-
-function StatCard({ label, value, helper, tone, palette }) {
-  return (
-    <article style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 12 }}>
-      <p style={{ margin: "0 0 3px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: palette.muted }}>{label}</p>
-      <p style={{ margin: "0 0 3px", fontSize: 22, fontWeight: 700, lineHeight: 1.05, color: tone }}>{value}</p>
-      <p style={{ margin: 0, fontSize: 11, lineHeight: 1.45, color: palette.muted }}>{helper}</p>
-    </article>
-  );
+function kindToHref(item) {
+  const k = String(item.kind || item.content_type || "").toLowerCase();
+  if (k.includes("conversation")) return `/conversations/${item.id}`;
+  if (k.includes("decision")) return `/decisions/${item.id}`;
+  if (k.includes("issue")) return `/issues/${item.id}`;
+  if (k.includes("document") || k.includes("page")) return `/business/documents/${item.id}`;
+  return item.url || "#";
 }
 
 export default function Knowledge() {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { darkMode } = useTheme();
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
+  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const initialQuery = params.get("q") || "";
 
-  const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState([]);
-  const [stats, setStats] = useState({
-    total_items: 0,
-    this_week: 0,
-    total_searches: 0,
-    type_counts: {},
-  });
   const [trending, setTrending] = useState([]);
-  const [searched, setSearched] = useState(Boolean(searchParams.get("q")));
+  const [stats, setStats] = useState({});
+  const [suggestions, setSuggestions] = useState([]);
+  const [activeFacet, setActiveFacet] = useState("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [sortMode, setSortMode] = useState("relevance");
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchTypes, setSearchTypes] = useState(() => {
-    const raw = searchParams.get("types");
-    return raw ? raw.split(",").map((item) => item.trim()).filter(Boolean) : [];
-  });
-  const [insights, setInsights] = useState({
-    summary: { memory_gaps_count: 0, forgotten_count: 0, faq_count: 0 },
-    memory_gaps: [],
-    forgotten: [],
-    faq: [],
-  });
 
-  const syncSearchParams = (nextQuery, nextTypes) => {
-    const params = {};
-    if (nextQuery) params.q = nextQuery;
-    if (nextTypes.length) params.types = nextTypes.join(",");
-    setSearchParams(params, { replace: true });
-  };
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      api.get("/api/knowledge/stats/").catch(() => ({ data: {} })),
+      api.get("/api/knowledge/trending/").catch(() => ({ data: [] })),
+    ]).then(([statsRes, trendRes]) => {
+      if (!mounted) return;
+      setStats(statsRes?.data || {});
+      setTrending(Array.isArray(trendRes?.data) ? trendRes.data : trendRes?.data?.results || []);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  const runSearch = async (text, explicitTypes = searchTypes, syncUrl = true) => {
-    const trimmed = (text || "").trim();
-    if (!trimmed) return;
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    const handle = setTimeout(() => runSearch(query), 240);
+    return () => clearTimeout(handle);
+  }, [query, activeFacet]);
 
+  const runSearch = async (q) => {
     setLoading(true);
     setError("");
-    setShowSuggestions(false);
-
     try {
-      const filters = explicitTypes.length ? { types: explicitTypes } : {};
-      const response = await api.post("/api/knowledge/search/", { query: trimmed, filters });
-      const items = normalizeSearchResponse(response);
-      const docs = items.map((item) => ({
-        id: `${itemType(item)}_${item.id}`,
-        title: item.title || "Untitled",
-        text: `${item.title || ""} ${itemPreview(item)}`,
-        ...item,
-      }));
-      const ranked = items.length
-        ? new BM25(docs).search(trimmed).map((result) => ({ ...result.doc, bm25_score: result.score }))
-        : [];
-
-      setResults(ranked);
-      setSearched(true);
-      if (syncUrl) syncSearchParams(trimmed, explicitTypes);
-    } catch {
-      setResults([]);
-      setSearched(true);
-      setError("Search failed. Try again.");
+      const filters = activeFacet === "all" ? {} : { kinds: [activeFacet] };
+      const { data } = await api.post("/api/knowledge/search/", { query: q, filters });
+      setResults(data?.results || data?.hits || []);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Search failed");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const loadTop = async () => {
-      const [statsResponse, trendResponse, insightsResponse] = await Promise.all([
-        api.get("/api/knowledge/stats/").catch(() => ({ data: {} })),
-        api.get("/api/knowledge/trending/").catch(() => ({ data: [] })),
-        api.get("/api/knowledge/insights/overview/").catch(() => ({ data: {} })),
-      ]);
-
-      const statsPayload = statsResponse?.data?.data || statsResponse?.data || {};
-      setStats({
-        total_items: statsPayload.total_items || 0,
-        this_week: statsPayload.this_week || 0,
-        total_searches: statsPayload.total_searches || 0,
-        type_counts: statsPayload.type_counts || {},
-      });
-      setTrending(normalizeTrendingResponse(trendResponse).slice(0, 8));
-
-      const insightsPayload = insightsResponse?.data || {};
-      setInsights({
-        summary: insightsPayload.summary || { memory_gaps_count: 0, forgotten_count: 0, faq_count: 0 },
-        memory_gaps: Array.isArray(insightsPayload.memory_gaps) ? insightsPayload.memory_gaps : [],
-        forgotten: Array.isArray(insightsPayload.forgotten) ? insightsPayload.forgotten : [],
-        faq: Array.isArray(insightsPayload.faq) ? insightsPayload.faq : [],
-      });
-    };
-
-    loadTop();
-  }, []);
-
-  useEffect(() => {
-    const presetQuery = searchParams.get("q");
-    const presetTypes = (searchParams.get("types") || "").split(",").map((item) => item.trim()).filter(Boolean);
-    if (!presetQuery) return;
-    setQuery(presetQuery);
-    setSearchTypes(presetTypes);
-    runSearch(presetQuery, presetTypes, false);
-  }, []);
-
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (trimmed.length < 2) {
+  const handleSuggest = async (e) => {
+    const v = e.target.value;
+    setQuery(v);
+    if (!v.trim()) {
       setSuggestions([]);
-      return undefined;
+      return;
     }
-
-    const timer = setTimeout(async () => {
-      try {
-        const response = await api.get("/api/knowledge/search/suggestions/", { params: { q: trimmed } });
-        setSuggestions(Array.isArray(response?.data?.suggestions) ? response.data.suggestions : []);
-      } catch {
-        setSuggestions([]);
-      }
-    }, 180);
-
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const toggleSearchType = (typeKey) => {
-    setSearchTypes((previous) =>
-      previous.includes(typeKey)
-        ? previous.filter((item) => item !== typeKey)
-        : [...previous, typeKey]
-    );
+    try {
+      const { data } = await api.get("/api/knowledge/search/suggestions/", { params: { q: v } });
+      setSuggestions(Array.isArray(data) ? data : data?.results || []);
+    } catch (_) {}
   };
 
-  const clearSearch = () => {
-    setQuery("");
-    setResults([]);
-    setSearched(false);
-    setError("");
-    setTypeFilter("all");
-    setSortMode("relevance");
-    setSuggestions([]);
-    setSearchTypes([]);
-    setSearchParams({}, { replace: true });
-  };
-
-  const resultTypes = useMemo(() => {
-    const counts = {};
-    results.forEach((item) => {
-      const type = itemType(item);
-      counts[type] = (counts[type] || 0) + 1;
-    });
-    return [{ key: "all", label: "All", count: results.length }].concat(
-      Object.entries(counts).map(([key, count]) => ({ key, label: LABELS[key] || key, count }))
-    );
-  }, [results]);
-
-  const resultOverview = useMemo(() => {
-    const counts = {};
-    results.forEach((item) => {
-      const type = itemType(item);
-      counts[type] = (counts[type] || 0) + 1;
-    });
-    const topType = Object.entries(counts).sort((left, right) => right[1] - left[1])[0];
-    return {
-      total: results.length,
-      topType: topType ? `${LABELS[topType[0]] || topType[0]} (${topType[1]})` : "No results",
-      activeSources: searchTypes.length ? searchTypes.length : TYPE_OPTIONS.length,
-    };
-  }, [results, searchTypes]);
-
-  const viewResults = useMemo(() => {
-    const filtered = results.filter((item) => typeFilter === "all" || itemType(item) === typeFilter);
-    if (sortMode === "latest") {
-      return [...filtered].sort((left, right) => new Date(itemDate(right) || 0) - new Date(itemDate(left) || 0));
-    }
-    return [...filtered].sort(
-      (left, right) => Number(right.bm25_score || right.relevance_score || 0) - Number(left.bm25_score || left.relevance_score || 0)
-    );
-  }, [results, sortMode, typeFilter]);
-  const newestTrending = trending[0] || null;
-  const commandSummary = searched
-    ? `Searching ${searchTypes.length ? searchTypes.length : TYPE_OPTIONS.length} source types for "${query}".`
-    : "Search across conversations, decisions, goals, tasks, meetings, and documents from one command surface.";
+  const facetTabs = useMemo(
+    () =>
+      TYPE_FACETS.map((f) => ({
+        id: f.id,
+        label: f.label,
+        count:
+          f.id === "all"
+            ? results.length
+            : results.filter((r) => String(r.kind || "").toLowerCase().includes(f.id.slice(0, -1))).length,
+      })),
+    [results]
+  );
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={ui.container}>
-        <WorkspaceHero
-          palette={palette}
-          darkMode={darkMode}
-          eyebrow="Workspace Memory"
-          title="Knowledge"
-          description="Search the memory layer, pivot into graph context, and spot missing knowledge before it turns into repeated work."
-          stats={[
-            { label: "Searchable items", value: stats.total_items, helper: "Indexed records across the workspace." },
-            { label: "This week", value: stats.this_week, helper: "New knowledge added recently." },
-            { label: "Memory gaps", value: insights.summary.memory_gaps_count, helper: "Repeated topics still missing durable decisions." },
-            { label: "Search demand", value: stats.total_searches, helper: "Total searches run through the knowledge layer." },
-          ]}
-          aside={
-            <div
-              style={{
-                ...knowledgeSpotlight,
-                border: `1px solid ${palette.border}`,
-                background: palette.card,
-              }}
-            >
-              <p style={{ ...knowledgeSpotlightEyebrow, color: palette.muted }}>Trending now</p>
-              <h3 style={{ margin: 0, fontSize: 18, lineHeight: 1.1, color: palette.text }}>
-                {newestTrending?.topic || newestTrending?.title || "No trending topic yet"}
-              </h3>
-              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
-                {newestTrending
-                  ? `Use this as a jump point into the knowledge graph or run it as a search query to recover nearby context.`
-                  : "Run a search or explore the graph to start building a more visible memory layer."}
-              </p>
-              {newestTrending ? (
-                <div style={knowledgeSpotlightMeta}>
-                  <span style={{ ...knowledgeSpotlightChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {newestTrending.count ? `${newestTrending.count} mentions` : "Trending topic"}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          }
-          actions={
-            <>
-              <button
-                type="button"
-                onClick={() => navigate("/knowledge/graph")}
-                className="ui-btn-polish"
-                style={ui.secondaryButton}
-              >
-                <Squares2X2Icon style={{ width: 15, height: 15 }} />
-                Explore Graph
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/knowledge/analytics")}
-                className="ui-btn-polish"
-                style={ui.secondaryButton}
-              >
-                <ChartBarIcon style={{ width: 15, height: 15 }} />
-                Analytics
-              </button>
-            </>
-          }
-        />
-
-        <WorkspaceToolbar palette={palette}>
-          <div style={knowledgeToolbarLayout}>
-            <div style={knowledgeToolbarIntro}>
-              <p style={{ ...knowledgeToolbarEyebrow, color: palette.muted }}>Search Surface</p>
-              <h2 style={{ ...knowledgeToolbarTitle, color: palette.text }}>Search once, then pivot into graph, analytics, or health</h2>
-              <p style={{ ...knowledgeToolbarCopy, color: palette.muted }}>{commandSummary}</p>
-            </div>
-            <div style={knowledgeToolbarChipRail}>
-              <span style={{ ...knowledgeToolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {searchTypes.length ? `${searchTypes.length} source filters active` : "All source types"}
-              </span>
-              <span style={{ ...knowledgeToolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {searched ? `${viewResults.length} visible results` : `${trending.length} trending topics`}
-              </span>
-              <span style={{ ...knowledgeToolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {sortMode === "latest" ? "Latest first" : "Relevance first"}
-              </span>
-            </div>
-          </div>
-        </WorkspaceToolbar>
-
-        <section
-          className="ui-enter"
-          style={{
-            ...commandStudio,
-            border: `1px solid ${palette.border}`,
-            background: palette.card,
-          }}
-        >
-          <div style={commandStudioHeader}>
-            <div>
-              <p style={{ ...knowledgeToolbarEyebrow, color: palette.muted, margin: 0 }}>Prompt Studio</p>
-              <h2 style={{ margin: "4px 0 4px", color: palette.text, fontSize: 22, lineHeight: 1.08 }}>Run a grounded workspace query</h2>
-              <p style={{ margin: 0, color: palette.muted, fontSize: 12, lineHeight: 1.6 }}>
-                Search for decisions, blockers, experts, artifacts, or context trails, then branch into graph or downstream records.
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <FeatureLink to="/knowledge/graph" icon={ShareIcon} label="Graph" />
-              <FeatureLink to="/knowledge/analytics" icon={ChartBarIcon} label="Analytics" />
-              <FeatureLink to="/knowledge-health" icon={BeakerIcon} label="Health" />
-            </div>
-          </div>
-
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              runSearch(query);
-            }}
-            style={{
-              borderRadius: 14,
-              border: `1px solid ${palette.border}`,
-              background: palette.cardAlt,
-              padding: 8,
-              display: "grid",
-              gridTemplateColumns: "minmax(0,1fr) auto auto",
-              gap: 8,
-              alignItems: "start",
-            }}
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[
+          { label: "Knoledgr", to: "/" },
+          { label: "Knowledge" },
+        ]}
+        title="Search team memory"
+        subtitle="Find pages, conversations, decisions, and issues across this workspace."
+        actions={
+          <Button
+            appearance="primary"
+            iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />}
+            onClick={() => (window.location.href = "/business/documents?new=1")}
           >
-            <div style={{ position: "relative" }}>
-              <MagnifyingGlassIcon style={{ width: 16, height: 16, position: "absolute", left: 12, top: 14, color: palette.muted }} />
-              <input
-                className="ui-focus-ring"
-                value={query}
-                onFocus={() => setShowSuggestions(true)}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setShowSuggestions(true);
-                }}
-                placeholder="Search for prior decisions, blockers, owners, or implementation context..."
-                style={{ ...ui.input, paddingLeft: 35, paddingRight: 34 }}
-              />
-              {query ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery("");
-                    setSuggestions([]);
-                  }}
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: 10,
-                    border: "none",
-                    background: "transparent",
-                    color: palette.muted,
-                    cursor: "pointer",
-                  }}
-                >
-                  <XMarkIcon style={{ width: 16, height: 16 }} />
-                </button>
-              ) : null}
-              {showSuggestions && suggestions.length > 0 ? (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 8px)",
-                    left: 0,
-                    right: 0,
-                    zIndex: 5,
-                    borderRadius: 12,
-                    border: `1px solid ${palette.border}`,
-                    background: palette.card,
-                    boxShadow: "var(--ui-shadow-lg)",
-                    overflow: "hidden",
-                  }}
-                >
-                  {suggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      onClick={() => {
-                        setQuery(suggestion);
-                        runSearch(suggestion);
-                      }}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        border: "none",
-                        background: "transparent",
-                        color: palette.text,
-                        padding: "11px 12px",
-                        fontSize: 13,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            <button
-              type="submit"
-              disabled={loading || !query.trim()}
-              className="ui-btn-polish"
-              style={{ ...ui.primaryButton, minWidth: 122, justifyContent: "center", opacity: loading || !query.trim() ? 0.65 : 1 }}
-            >
-              <SparklesIcon style={{ width: 15, height: 15 }} />
-              {loading ? "Searching..." : "Search"}
-            </button>
-            <button
-              type="button"
-              disabled={!query.trim()}
-              onClick={() => navigate(`/knowledge/graph?q=${encodeURIComponent(query.trim())}${searchTypes.length ? `&types=${encodeURIComponent(searchTypes.join(","))}` : ""}`)}
-              className="ui-btn-polish"
-              style={{ ...ui.secondaryButton, minWidth: 144, justifyContent: "center", opacity: query.trim() ? 1 : 0.6 }}
-            >
-              <Squares2X2Icon style={{ width: 15, height: 15 }} />
-              Explore Graph
-            </button>
-          </form>
+            Create page
+          </Button>
+        }
+        style={{ padding: "24px 0 0", background: "transparent" }}
+      />
 
-          <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {QUICK_QUERIES.map((quickQuery) => (
+      {/* Search box */}
+      <div style={{ marginTop: 16, position: "relative" }}>
+        <MagnifyingGlassIcon style={searchIcon} />
+        <input
+          autoFocus
+          value={query}
+          onChange={handleSuggest}
+          placeholder="Search across pages, conversations, decisions, and issues…"
+          className="atlas-input"
+          style={{ height: 44, fontSize: 16, paddingLeft: 40 }}
+        />
+        {suggestions.length && query ? (
+          <div style={suggestionsBox}>
+            {suggestions.slice(0, 8).map((s, i) => (
               <button
-                key={quickQuery}
+                key={s.id || i}
                 type="button"
-                onClick={() => {
-                  setQuery(quickQuery);
-                  runSearch(quickQuery);
-                }}
-                className="ui-btn-polish ui-focus-ring"
-                  style={{
-                    border: `1px solid ${palette.border}`,
-                    borderRadius: 999,
-                    background: palette.cardAlt,
-                    color: palette.muted,
-                    fontSize: 12,
-                    padding: "5px 9px",
-                    cursor: "pointer",
-                  }}
-                >
-                {quickQuery}
+                onClick={() => { setQuery(s.text || s.value || s.title || ""); setSuggestions([]); }}
+                style={suggestionItem}
+              >
+                <MagnifyingGlassIcon style={{ width: 14, height: 14, color: "var(--app-muted)" }} />
+                <span>{s.text || s.value || s.title}</span>
               </button>
             ))}
           </div>
+        ) : null}
+      </div>
 
-          <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: palette.muted, display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <FunnelIcon style={{ width: 14, height: 14 }} />
-              Search Sources
-            </span>
-            {TYPE_OPTIONS.map((option) => {
-              const active = searchTypes.includes(option.key);
-              return (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => toggleSearchType(option.key)}
-                  className="ui-btn-polish ui-focus-ring"
-                  style={{
-                    borderRadius: 999,
-                    border: `1px solid ${active ? palette.accent : palette.border}`,
-                    background: active ? (darkMode ? "rgba(96,165,250,0.12)" : "#eaf2ff") : palette.cardAlt,
-                    color: active ? palette.text : palette.muted,
-                    padding: "6px 10px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-            {searchTypes.length ? (
-              <button type="button" onClick={() => setSearchTypes([])} className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, padding: "7px 11px", fontSize: 12 }}>
-                Reset sources
-              </button>
-            ) : null}
-          </div>
+      <div style={{ marginTop: 16 }}>
+        <Tabs tabs={facetTabs} value={activeFacet} onChange={setActiveFacet} />
+      </div>
 
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 32, marginTop: 16 }}>
+        <section>
+          {query.trim() ? (
+            loading ? (
+              <SkeletonRows />
+            ) : results.length ? (
+              <ul style={resultList}>
+                {results.map((item, idx) => <ResultRow key={item.id || idx} item={item} />)}
+              </ul>
+            ) : (
+              <EmptyState
+                icon={<MagnifyingGlassIcon style={{ width: "100%", height: "100%" }} />}
+                title={`No results for "${query}"`}
+                description="Try different keywords, or remove the type filter to broaden the search."
+              />
+            )
+          ) : (
+            <BrowseTiles />
+          )}
         </section>
 
-        {!searched ? (
-          <>
-            <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10, marginBottom: 14 }}>
-              <StatCard label="Searchable Items" value={stats.total_items} helper="Records discoverable from the workspace" tone="var(--app-info)" palette={palette} />
-              <StatCard label="Indexed This Week" value={stats.this_week} helper="New knowledge added in the last 7 days" tone="var(--app-success)" palette={palette} />
-              <StatCard label="Total Searches" value={stats.total_searches} helper="Team search demand across the knowledge layer" tone="var(--app-warning)" palette={palette} />
-              <StatCard label="Memory Gaps" value={insights.summary.memory_gaps_count} helper="Repeated topics still missing durable decisions" tone="var(--app-danger)" palette={palette} />
-              <StatCard label="Forgotten Decisions" value={insights.summary.forgotten_count} helper="Older decisions not being referenced recently" tone="var(--app-warning)" palette={palette} />
-              <StatCard label="FAQ Items" value={insights.summary.faq_count} helper="Resolved questions converted into reusable answers" tone="var(--app-info)" palette={palette} />
-            </section>
+        <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <SidebarCard title="Workspace memory">
+            <StatLine label="Pages" value={stats?.documents || stats?.pages || 0} />
+            <StatLine label="Conversations" value={stats?.conversations || 0} />
+            <StatLine label="Decisions" value={stats?.decisions || 0} />
+            <StatLine label="Issues" value={stats?.issues || 0} />
+          </SidebarCard>
 
-            {Object.keys(stats.type_counts || {}).length ? (
-              <section style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 12, marginBottom: 14 }}>
-                <h2 style={{ margin: "0 0 10px", fontSize: 16, color: palette.text }}>Knowledge mix</h2>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {Object.entries(stats.type_counts).map(([key, value]) => (
-                    <span
-                      key={key}
-                      style={{
-                        borderRadius: 999,
-                        border: `1px solid ${palette.border}`,
-                        background: palette.cardAlt,
-                        color: palette.text,
-                        padding: "6px 10px",
-                        fontSize: 11,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {LABELS[key] || key} {value}
+          <SidebarCard title="Trending" to="/knowledge/analytics">
+            {trending.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 13, color: "var(--app-muted)" }}>No signals yet.</p>
+            ) : (
+              trending.slice(0, 5).map((t, i) => {
+                const Icon = kindMeta(t.kind).icon;
+                return (
+                  <Link key={t.id || i} to={kindToHref(t)} style={trendingItem}>
+                    <Icon style={{ width: 14, height: 14, color: kindMeta(t.kind).color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {t.title || t.summary || "Untitled"}
                     </span>
-                  ))}
-                </div>
-              </section>
-            ) : null}
+                    <Badge>{t.score || t.views || 1}</Badge>
+                  </Link>
+                );
+              })
+            )}
+          </SidebarCard>
 
-            {trending.length ? (
-              <section style={{ display: "grid", gap: 12, marginBottom: 14 }}>
-                <div style={sectionIntro}>
-                  <div>
-                    <p style={{ ...knowledgeToolbarEyebrow, color: palette.muted, margin: 0 }}>Discovery</p>
-                    <h2 style={{ ...sectionTitle, color: palette.text }}>Trending topics</h2>
-                  </div>
-                  <p style={{ ...sectionCopy, color: palette.muted }}>
-                    Use trending themes as fast jump points into search and graph exploration.
-                  </p>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
-                  {trending.map((topic, index) => {
-                    const label = topic.topic || topic.title || "Untitled";
-                    return (
-                      <button
-                        key={`${label}_${index}`}
-                        type="button"
-                        onClick={() => {
-                          setQuery(label);
-                          runSearch(label);
-                        }}
-                        className="ui-card-lift ui-smooth"
-                        style={{
-                          ...trendCard,
-                          border: `1px solid ${palette.border}`,
-                          background: palette.card,
-                        }}
-                      >
-                        <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: palette.text }}>{label}</p>
-                        <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                          {topic.count ? `${topic.count} mentions in current activity.` : "Use as a jump point into the workspace memory layer."}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            ) : null}
-
-            {(insights.memory_gaps.length || insights.forgotten.length || insights.faq.length) ? (
-              <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 10, marginBottom: 14 }}>
-                <article style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }}>
-                  <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Top memory gaps</h3>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {insights.memory_gaps.slice(0, 4).map((gap) => (
-                      <button
-                        key={gap.topic}
-                        type="button"
-                        onClick={() => {
-                          setQuery(gap.topic);
-                          runSearch(gap.topic);
-                        }}
-                        style={{ textAlign: "left", border: "none", background: "transparent", padding: 0, cursor: "pointer" }}
-                      >
-                        <p style={{ margin: "0 0 2px", fontSize: 13, color: palette.text }}>{gap.topic}</p>
-                        <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>{gap.discussion_count} repeated discussions</p>
-                      </button>
-                    ))}
-                  </div>
-                </article>
-
-                <article style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }}>
-                  <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>Forgotten decisions</h3>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {insights.forgotten.slice(0, 4).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => navigate(`/decisions/${item.id}`)}
-                        style={{ textAlign: "left", border: "none", background: "transparent", padding: 0, cursor: "pointer" }}
-                      >
-                        <p style={{ margin: "0 0 2px", fontSize: 13, color: palette.text }}>{item.title}</p>
-                        <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>{item.days_old} days old | {item.impact_level}</p>
-                      </button>
-                    ))}
-                  </div>
-                </article>
-
-                <article style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }}>
-                  <h3 style={{ margin: "0 0 8px", fontSize: 14, color: palette.text }}>FAQ coverage</h3>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {insights.faq.slice(0, 4).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          setQuery(item.question);
-                          runSearch(item.question);
-                        }}
-                        style={{ textAlign: "left", border: "none", background: "transparent", padding: 0, cursor: "pointer" }}
-                      >
-                        <p style={{ margin: "0 0 2px", fontSize: 13, color: palette.text }}>{item.question}</p>
-                        <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>{item.reply_count} replies | {item.view_count} views</p>
-                      </button>
-                    ))}
-                  </div>
-                </article>
-              </section>
-            ) : null}
-          </>
-        ) : (
-            <section style={{ display: "grid", gap: 12 }}>
-              <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
-                <StatCard label="Results" value={resultOverview.total} helper={`Search results for "${query}"`} tone="var(--app-info)" palette={palette} />
-                <StatCard label="Top Source" value={resultOverview.topType} helper="Dominant record type in this result set" tone="var(--app-success)" palette={palette} />
-                <StatCard label="Active Sources" value={resultOverview.activeSources} helper="Source types included in this search" tone="var(--app-warning)" palette={palette} />
-              </section>
-
-              <section style={{ borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: 18, color: palette.text }}>{viewResults.length} result{viewResults.length === 1 ? "" : "s"} for "{query}"</h2>
-                  <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>
-                    Filter within the current result set or open the graph around the query.
-                  </p>
-                  {error ? <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--app-danger)" }}>{error}</p> : null}
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} style={{ ...ui.input, width: "auto", minWidth: 120, padding: "8px 10px" }}>
-                    {resultTypes.map((item) => (
-                      <option key={item.key} value={item.key}>{item.label} ({item.count})</option>
-                    ))}
-                  </select>
-                  <select value={sortMode} onChange={(event) => setSortMode(event.target.value)} style={{ ...ui.input, width: "auto", minWidth: 120, padding: "8px 10px" }}>
-                    <option value="relevance">Sort: Relevance</option>
-                    <option value="latest">Sort: Latest</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/knowledge/graph?q=${encodeURIComponent(query.trim())}${searchTypes.length ? `&types=${encodeURIComponent(searchTypes.join(","))}` : ""}`)}
-                    className="ui-btn-polish"
-                    style={ui.secondaryButton}
-                  >
-                    <Squares2X2Icon style={{ width: 15, height: 15 }} />
-                    Query graph
-                  </button>
-                  <button type="button" onClick={clearSearch} className="ui-btn-polish" style={ui.secondaryButton}>
-                    <ArrowPathIcon style={{ width: 15, height: 15 }} />
-                    New search
-                  </button>
-                </div>
-              </div>
-
-                {viewResults.length === 0 ? (
-                  <div style={{ borderRadius: 12, border: `1px dashed ${palette.border}`, padding: 18, textAlign: "center", color: palette.muted, fontSize: 13 }}>
-                    No matching records. Try broader terms, remove some source filters, or search the graph instead.
-                  </div>
-                ) : (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {viewResults.map((item, index) => {
-                      const route = itemRoute(item);
-                      const type = itemType(item);
-                      const preview = itemPreview(item);
-                      return (
-                        <article
-                          key={`${type}_${item.id}_${index}`}
-                          className="ui-card-lift ui-smooth"
-                          style={{ borderRadius: 14, border: `1px solid ${palette.border}`, background: palette.card, padding: 14 }}
-                        >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                            <span
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 700,
-                                borderRadius: 999,
-                                padding: "3px 8px",
-                                color: palette.muted,
-                                border: `1px solid ${palette.border}`,
-                                background: palette.cardAlt,
-                              }}
-                            >
-                              {LABELS[type] || "Other"}
-                            </span>
-                            {Number.isFinite(item.bm25_score) ? <span style={{ fontSize: 11, color: palette.muted }}>Score {Number(item.bm25_score).toFixed(2)}</span> : null}
-                            {item.status ? <span style={{ fontSize: 11, color: palette.muted }}>Status {item.status}</span> : null}
-                          </div>
-                          <span style={{ fontSize: 11, color: palette.muted }}>
-                            {itemDate(item) ? new Date(itemDate(item)).toLocaleDateString() : ""}
-                          </span>
-                        </div>
-
-                          <h3 style={{ margin: "0 0 6px", color: palette.text, fontSize: 16 }}>{item.title || "Untitled"}</h3>
-                          <p style={{ margin: 0, color: palette.muted, fontSize: 13, lineHeight: 1.65 }}>
-                            {preview}
-                          </p>
-
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-                          {route ? (
-                            <Link to={route} className="ui-btn-polish" style={{ ...ui.primaryButton, textDecoration: "none" }}>
-                              Open item
-                              <ArrowTopRightOnSquareIcon style={{ width: 12, height: 12 }} />
-                            </Link>
-                          ) : null}
-                          <Link to={graphHrefForItem(item)} className="ui-btn-polish" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
-                            <ShareIcon style={{ width: 14, height: 14 }} />
-                            Explore neighborhood
-                          </Link>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          </section>
-        )}
+          <SidebarCard title="Tips">
+            <p style={tipsCopy}>
+              Use <kbd style={kbd}>"</kbd> for exact phrases. Type <kbd style={kbd}>type:page</kbd> or <kbd style={kbd}>owner:me</kbd> to filter.
+            </p>
+          </SidebarCard>
+        </aside>
       </div>
     </div>
   );
 }
 
-const knowledgeSpotlight = {
-  minWidth: 240,
-  borderRadius: 16,
-  padding: 14,
-  display: "grid",
-  gap: 8,
+function ResultRow({ item }) {
+  const k = kindMeta(item.kind || item.content_type);
+  const Icon = k.icon;
+  const href = kindToHref(item);
+  return (
+    <li style={resultItem}>
+      <Link to={href} style={{ display: "flex", gap: 12, padding: "12px 16px", color: "inherit", textDecoration: "none" }}>
+        <span style={{ width: 18, height: 18, flexShrink: 0, color: k.color, marginTop: 2 }}>
+          <Icon style={{ width: 18, height: 18 }} />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={resultTitle}>{item.title || item.summary || "Untitled"}</span>
+            {item.kind ? <Lozenge>{item.kind}</Lozenge> : null}
+            {item.status ? <Lozenge status={item.status} /> : null}
+          </div>
+          {item.snippet || item.description ? (
+            <p style={resultSnippet}>{(item.snippet || item.description || "").slice(0, 220)}</p>
+          ) : null}
+          <div style={resultMeta}>
+            <span>{item.project_name || item.project_slug || "Workspace"}</span>
+            <span>·</span>
+            <span>{item.author_name || item.created_by_name || "—"}</span>
+            <span>·</span>
+            <span>{timeAgo(item.updated_at || item.created_at)}</span>
+          </div>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+function BrowseTiles() {
+  const tiles = [
+    { icon: DocumentTextIcon, title: "Pages", description: "Working documents & wikis", to: "/business/documents", color: "var(--b400)" },
+    { icon: ChatBubbleLeftIcon, title: "Conversations", description: "Threads & follow-ups", to: "/conversations", color: "var(--t400)" },
+    { icon: SparklesIcon, title: "Decisions", description: "Committed choices & rationale", to: "/decisions", color: "var(--p400)" },
+    { icon: ExclamationTriangleIcon, title: "Issues", description: "Tasks, bugs, stories", to: "/projects", color: "var(--y400)" },
+    { icon: ClockIcon, title: "Recent", description: "Latest activity", to: "/dashboard", color: "var(--n400)" },
+    { icon: SparklesIcon, title: "Ask Recall", description: "Grounded AI answers", to: "/ask", color: "var(--g400)" },
+  ];
+  return (
+    <div style={tilesGrid}>
+      {tiles.map((t) => {
+        const Icon = t.icon;
+        return (
+          <Link key={t.title} to={t.to} style={tile}>
+            <span style={{ ...tileIcon, color: t.color }}>
+              <Icon style={{ width: 20, height: 20 }} />
+            </span>
+            <div>
+              <p style={tileTitle}>{t.title}</p>
+              <p style={tileDesc}>{t.description}</p>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function SidebarCard({ title, to, children }) {
+  return (
+    <div className="atlas-card" style={{ padding: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 16px",
+          borderBottom: "1px solid var(--app-border-subtle)",
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--app-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          {title}
+        </span>
+        {to ? (
+          <Link to={to} style={{ fontSize: 12, color: "var(--app-link)", textDecoration: "none" }}>
+            View all
+          </Link>
+        ) : null}
+      </div>
+      <div style={{ padding: "12px 16px" }}>{children}</div>
+    </div>
+  );
+}
+
+function StatLine({ label, value }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
+      <span style={{ color: "var(--app-muted)" }}>{label}</span>
+      <strong style={{ color: "var(--app-text)" }}>{value}</strong>
+    </div>
+  );
+}
+
+function SkeletonRows() {
+  return (
+    <ul style={resultList}>
+      {[0, 1, 2].map((i) => (
+        <li key={i} style={{ ...resultItem, padding: 16 }}>
+          <div style={{ height: 14, background: "var(--n30)", borderRadius: 3, width: "60%", marginBottom: 8 }} />
+          <div style={{ height: 12, background: "var(--n20)", borderRadius: 3, width: "90%" }} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const searchIcon = {
+  position: "absolute",
+  left: 12,
+  top: 14,
+  width: 18,
+  height: 18,
+  color: "var(--app-muted)",
+  pointerEvents: "none",
 };
 
-const knowledgeSpotlightEyebrow = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
+const suggestionsBox = {
+  position: "absolute",
+  top: "calc(100% + 4px)",
+  left: 0,
+  right: 0,
+  background: "var(--app-surface-overlay)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  boxShadow: "var(--ui-shadow-md)",
+  padding: 4,
+  zIndex: 60,
 };
 
-const knowledgeSpotlightMeta = {
+const suggestionItem = {
   display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const knowledgeSpotlightChip = {
-  display: "inline-flex",
   alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 11,
-  fontWeight: 700,
-};
-
-const knowledgeToolbarLayout = {
-  display: "grid",
-  gap: 10,
-};
-
-const knowledgeToolbarIntro = {
-  display: "grid",
-  gap: 4,
-};
-
-const knowledgeToolbarEyebrow = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const knowledgeToolbarTitle = {
-  margin: 0,
-  fontSize: 20,
-  lineHeight: 1.08,
-};
-
-const knowledgeToolbarCopy = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.55,
-  maxWidth: 760,
-};
-
-const knowledgeToolbarChipRail = {
-  display: "flex",
   gap: 8,
-  flexWrap: "wrap",
-};
-
-const knowledgeToolbarChip = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 11,
-  fontWeight: 700,
-};
-
-const commandStudio = {
-  borderRadius: 16,
-  padding: 14,
-  marginBottom: 14,
-  display: "grid",
-  gap: 12,
-};
-
-const commandStudioHeader = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "start",
-  flexWrap: "wrap",
-};
-
-const sectionIntro = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "end",
-  flexWrap: "wrap",
-};
-
-const sectionTitle = {
-  margin: "4px 0 0",
-  fontSize: 20,
-  lineHeight: 1.08,
-};
-
-const sectionCopy = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.55,
-  maxWidth: 620,
-};
-
-const trendCard = {
-  borderRadius: 14,
-  padding: 12,
-  textAlign: "left",
-  display: "grid",
-  gap: 5,
+  width: "100%",
+  padding: "8px 12px",
+  background: "transparent",
+  border: "none",
   cursor: "pointer",
+  textAlign: "left",
+  fontSize: 14,
+  color: "var(--app-text)",
+  fontFamily: "inherit",
+  borderRadius: 3,
+};
+
+const resultList = {
+  listStyle: "none",
+  margin: 0,
+  padding: 0,
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  overflow: "hidden",
+};
+
+const resultItem = {
+  borderBottom: "1px solid var(--app-border-subtle)",
+};
+
+const resultTitle = {
+  fontSize: 14,
+  fontWeight: 600,
+  color: "var(--app-text)",
+};
+
+const resultSnippet = {
+  margin: "4px 0 0",
+  fontSize: 13,
+  color: "var(--app-muted)",
+  lineHeight: 1.4286,
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+
+const resultMeta = {
+  marginTop: 6,
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  fontSize: 12,
+  color: "var(--app-muted)",
+};
+
+const tilesGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 12,
+};
+
+const tile = {
+  display: "flex",
+  gap: 12,
+  padding: "16px",
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  textDecoration: "none",
+  color: "var(--app-text)",
+  transition: "background 100ms ease",
+};
+
+const tileIcon = {
+  flexShrink: 0,
+  display: "inline-flex",
+  width: 36,
+  height: 36,
+  background: "var(--app-surface-alt)",
+  borderRadius: 4,
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const tileTitle = {
+  margin: 0,
+  fontSize: 14,
+  fontWeight: 600,
+};
+
+const tileDesc = {
+  margin: "2px 0 0",
+  fontSize: 12,
+  color: "var(--app-muted)",
+};
+
+const trendingItem = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "6px 0",
+  fontSize: 13,
+  color: "var(--app-text)",
+  textDecoration: "none",
+  borderBottom: "1px solid var(--app-border-subtle)",
+};
+
+const tipsCopy = {
+  margin: 0,
+  fontSize: 12,
+  color: "var(--app-muted)",
+  lineHeight: 1.55,
+};
+
+const kbd = {
+  fontFamily: "var(--font-mono)",
+  fontSize: 11,
+  background: "var(--n20)",
+  border: "1px solid var(--app-border-subtle)",
+  borderRadius: 3,
+  padding: "0 4px",
+  color: "var(--app-text)",
 };

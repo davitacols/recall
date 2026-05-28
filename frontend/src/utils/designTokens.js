@@ -411,7 +411,7 @@ export function statusToLozenge(status) {
   return "default";
 }
 
-export default {
+const designTokens = {
   colors,
   colorsDark,
   spacing,
@@ -432,3 +432,5 @@ export default {
   P,
   T,
 };
+
+export default designTokens;

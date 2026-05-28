@@ -215,9 +215,9 @@ export default function IssueDetailPage() {
 
           <FieldBlock label="Activity">
             <div className="atlas-tab-row" style={{ marginBottom: 12 }}>
-              <button className="atlas-tab" aria-selected="true">Comments</button>
-              <button className="atlas-tab">History</button>
-              <button className="atlas-tab">Worklog</button>
+              <button className="atlas-tab atlas-tab--active" role="tab" aria-controls="tab-comments">Comments</button>
+              <button className="atlas-tab" role="tab" aria-controls="tab-history">History</button>
+              <button className="atlas-tab" role="tab" aria-controls="tab-worklog">Worklog</button>
             </div>
             <form onSubmit={submitComment} style={{ marginBottom: 16 }}>
               <textarea

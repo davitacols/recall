@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLongRightIcon,
@@ -124,6 +124,26 @@ export default function Homepage() {
   const { user } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const appEntryHref = user ? "/dashboard" : "/login";
+  const hero3dRef = useRef(null);
+
+  const onHeroMove = (e) => {
+    const el = hero3dRef.current;
+    if (!el) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5;
+    const py = (e.clientY - r.top) / r.height - 0.5;
+    el.style.setProperty("--rx", `${px * 16}deg`);
+    el.style.setProperty("--ry", `${-py * 12}deg`);
+    el.style.setProperty("--px", `${px * 18}px`);
+  };
+  const onHeroLeave = () => {
+    const el = hero3dRef.current;
+    if (!el) return;
+    el.style.setProperty("--rx", "0deg");
+    el.style.setProperty("--ry", "0deg");
+    el.style.setProperty("--px", "0px");
+  };
 
   useEffect(() => {
     const savedTheme = document.documentElement.getAttribute("data-theme");
@@ -167,6 +187,8 @@ export default function Homepage() {
       <main>
         {/* ---------- Hero ---------- */}
         <section className="hp-hero">
+          <div className="hp-orb hp-orb-a" aria-hidden="true" />
+          <div className="hp-orb hp-orb-b" aria-hidden="true" />
           <div className="hp-container hp-hero-inner">
             <Link to="/ask" className="hp-hero-badge">
               <span className="hp-hero-badge-pill">New</span>
@@ -196,9 +218,28 @@ export default function Homepage() {
             </ul>
           </div>
 
-          <div className="hp-hero-shot" aria-hidden="true">
-            <AskMock />
-            <div className="hp-hero-glow" />
+          <div
+            className="hp-hero-3d"
+            ref={hero3dRef}
+            onPointerMove={onHeroMove}
+            onPointerLeave={onHeroLeave}
+            aria-hidden="true"
+          >
+            <div className="hp-hero-stage">
+              <div className="hp-hero-tilt">
+                <div className="hp-hero-glow" />
+                <div className="hp-hero-card"><AskMock /></div>
+                <span className="hp-float hp-float-a">
+                  <CheckCircleIcon aria-hidden="true" /> Decided · DEC-128
+                </span>
+                <span className="hp-float hp-float-b">
+                  <SparklesIcon aria-hidden="true" /> 3 sources cited
+                </span>
+                <span className="hp-float hp-float-c">
+                  <LinkIcon aria-hidden="true" /> Sprint 42 retro
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="hp-container hp-works">

@@ -133,10 +133,10 @@ export default function Login() {
       {/* Mode tabs */}
       {!inviteToken ? (
         <div className="atlas-tab-row" style={{ marginBottom: 24 }}>
-          <button type="button" className="atlas-tab" aria-selected={mode === "login"} onClick={() => setMode("login")}>
+          <button type="button" className="atlas-tab" aria-pressed={mode === "login"} onClick={() => setMode("login")}>
             Sign in
           </button>
-          <button type="button" className="atlas-tab" aria-selected={mode === "signup"} onClick={() => setMode("signup")}>
+          <button type="button" className="atlas-tab" aria-pressed={mode === "signup"} onClick={() => setMode("signup")}>
             Create workspace
           </button>
         </div>

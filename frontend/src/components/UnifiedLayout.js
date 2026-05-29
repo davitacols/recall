@@ -3,10 +3,10 @@ import AtlasTopNav from "./AtlasTopNav";
 import UnifiedNav from "./UnifiedNav";
 import { MobileNav } from "./MobileNav";
 
-const SIDEBAR_W = 240;
-const SIDEBAR_W_COLLAPSED = 56;
+const SIDEBAR_W = 248;
+const SIDEBAR_W_COLLAPSED = 60;
 const SIDEBAR_COLLAPSED_KEY = "atlasSidebarCollapsed";
-const TOPNAV_H = 56;
+const TOPNAV_H = 60;
 
 /**
  * UnifiedLayout — Atlassian-style app shell.
@@ -77,7 +77,7 @@ export default function UnifiedLayout({ children }) {
         style={{
           paddingLeft: contentLeftPad,
           minHeight: `calc(100vh - ${TOPNAV_H}px)`,
-          transition: "padding-left 180ms cubic-bezier(0.2, 0, 0, 1)",
+          transition: "padding-left 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
           paddingBottom: isMobile ? 80 : 0,
         }}
       >

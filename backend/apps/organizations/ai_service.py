@@ -7,7 +7,7 @@ class AIService:
     def generate_summary(content, content_type='conversation'):
         """Generate automatic summary of content"""
         try:
-            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0, max_retries=1)
             
             prompt = f"""Summarize this {content_type} in 2-3 concise sentences. Focus on key points and decisions.
 
@@ -17,7 +17,7 @@ Content:
 Summary:"""
             
             message = client.messages.create(
-                model="claude-3-haiku-20240307",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=200,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -30,7 +30,7 @@ Summary:"""
     def suggest_related_content(content, content_type='conversation'):
         """Suggest related conversations, decisions, or knowledge articles"""
         try:
-            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0, max_retries=1)
             
             prompt = f"""Based on this {content_type}, suggest 3 relevant topics or questions that should be explored or documented.
 
@@ -40,7 +40,7 @@ Content:
 Suggestions (one per line):"""
             
             message = client.messages.create(
-                model="claude-3-haiku-20240307",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=150,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -54,7 +54,7 @@ Suggestions (one per line):"""
     def extract_action_items(content):
         """Extract action items from meeting notes or conversations"""
         try:
-            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0, max_retries=1)
             
             prompt = f"""Extract action items from this content. List each action item on a new line starting with "- ".
 
@@ -64,7 +64,7 @@ Content:
 Action Items:"""
             
             message = client.messages.create(
-                model="claude-3-haiku-20240307",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=300,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -78,7 +78,7 @@ Action Items:"""
     def suggest_tags(content):
         """Suggest relevant tags for content"""
         try:
-            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0, max_retries=1)
             
             prompt = f"""Suggest 3-5 relevant tags for this content. Return only comma-separated tags.
 
@@ -88,7 +88,7 @@ Content:
 Tags:"""
             
             message = client.messages.create(
-                model="claude-3-haiku-20240307",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=50,
                 messages=[{"role": "user", "content": prompt}]
             )

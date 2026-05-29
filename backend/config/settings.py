@@ -240,7 +240,7 @@ CLAUDE_API_KEY = config('CLAUDE_API_KEY', default='').strip()
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default=CLAUDE_API_KEY).strip()
 CLAUDE_MODEL = (
     config('CLAUDE_MODEL', default='').strip()
-    or config('ANTHROPIC_MODEL', default='claude-3-5-sonnet-20241022').strip()
+    or config('ANTHROPIC_MODEL', default='claude-sonnet-4-6').strip()
 )
 
 # Bot protection (Cloudflare Turnstile)

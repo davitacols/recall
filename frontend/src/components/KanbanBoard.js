@@ -280,7 +280,7 @@ function KanbanBoard() {
                 marginLeft: -6,
                 borderRadius: "50%",
                 border: "2px solid var(--app-surface)",
-                background: ["#0052CC", "#00875A", "#5243AA"][i - 1],
+                background: ["#5E6AD2", "#3FB68B", "#8A63D2"][i - 1],
                 display: "inline-grid",
                 placeItems: "center",
                 color: "#FFFFFF",

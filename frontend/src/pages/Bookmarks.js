@@ -1,198 +1,136 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BookmarkIcon,
-  ChatBubbleLeftRightIcon,
-  ClockIcon,
+  ChatBubbleLeftIcon,
 } from "@heroicons/react/24/outline";
-import { useTheme } from "../utils/ThemeAndAccessibility";
 import api from "../services/api";
 import {
-  WorkspaceEmptyState,
-  WorkspaceHero,
-  WorkspacePanel,
-} from "../components/WorkspaceChrome";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+  Avatar,
+  Button,
+  EmptyState,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+} from "../components/atlas";
 
-function normalizeBookmarks(payload) {
-  if (Array.isArray(payload?.results)) return payload.results;
-  if (Array.isArray(payload)) return payload;
-  return [];
+function timeAgo(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  const sec = Math.max(1, Math.round((Date.now() - d.getTime()) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function toDisplayDate(value) {
-  if (!value) return "Recently saved";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Recently saved";
-  return parsed.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function stripHtml(value) {
+  if (!value) return "";
+  return String(value).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 export default function Bookmarks() {
-  const { darkMode } = useTheme();
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-
-  const [bookmarks, setBookmarks] = useState([]);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchBookmarks = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const response = await api.get("/api/conversations/bookmarks/");
-        setBookmarks(normalizeBookmarks(response?.data));
-      } catch (requestError) {
-        console.error("Failed to fetch bookmarks:", requestError);
-        setError("We could not load bookmarked conversations right now.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBookmarks();
+    let mounted = true;
+    api.get("/api/conversations/bookmarks/")
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res.data?.results) ? res.data.results : Array.isArray(res.data) ? res.data : [];
+        setItems(list);
+      })
+      .catch((err) => mounted && setError(err?.response?.data?.detail || err?.message || "Failed to load bookmarks"))
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
   }, []);
 
-  const notedBookmarks = bookmarks.filter((bookmark) => Boolean(bookmark.note)).length;
-  const latestSaved = bookmarks[0]?.created_at || null;
-
   return (
-    <div style={{ ...ui.container, display: "grid", gap: 14 }}>
-      <WorkspaceHero
-        palette={palette}
-        darkMode={darkMode}
-        eyebrow="Saved Conversations"
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Bookmarks" }]}
         title="Bookmarks"
-        description="Keep important conversations close so decisions, discoveries, and unresolved threads stay one click away from the team that needs them."
-        stats={[
-          { label: "Saved", value: bookmarks.length, helper: "Bookmarked conversations ready for quick recall", tone: palette.info },
-          { label: "With Notes", value: notedBookmarks, helper: "Bookmarks carrying extra personal context", tone: palette.accent },
-          { label: "Latest Save", value: latestSaved ? toDisplayDate(latestSaved) : "--", helper: "Most recent bookmark activity", tone: palette.success },
-        ]}
+        subtitle="Conversations and pages you've saved for later."
+        style={{ padding: "24px 0 0", background: "transparent" }}
       />
 
-      <WorkspacePanel
-        palette={palette}
-        eyebrow="Conversation Library"
-        title="Bookmarked conversations"
-        description="Each bookmark keeps the conversation title, type, and any saved note together so re-entry is fast."
-      >
-        {loading ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                style={{
-                  minHeight: 124,
-                  borderRadius: 18,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.cardAlt,
-                  opacity: 0.7,
-                }}
-              />
-            ))}
-          </div>
-        ) : null}
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
 
-        {!loading && error ? (
-          <WorkspaceEmptyState
-            palette={palette}
-            title="Bookmarks are unavailable"
-            description={error}
-          />
-        ) : null}
-
-        {!loading && !error && bookmarks.length === 0 ? (
-          <WorkspaceEmptyState
-            palette={palette}
-            title="No bookmarks yet"
-            description="Save conversations for quick access later and they will appear here."
-            action={
-              <Link to="/conversations" className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, textDecoration: "none" }}>
-                Browse Conversations
-              </Link>
-            }
-          />
-        ) : null}
-
-        {!loading && !error && bookmarks.length > 0 ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            {bookmarks.map((bookmark) => (
-              <Link
-                key={bookmark.id}
-                to={`/conversations/${bookmark.conversation_id}`}
-                className="ui-card-lift ui-smooth ui-focus-ring"
-                style={{
-                  textDecoration: "none",
-                  borderRadius: 20,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.cardAlt,
-                  padding: 16,
-                  display: "grid",
-                  gap: 12,
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <div
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 14,
-                        background: palette.accentSoft,
-                        color: palette.info,
-                        display: "grid",
-                        placeItems: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <BookmarkIcon style={{ width: 18, height: 18 }} />
-                    </div>
-                    <div style={{ display: "grid", gap: 6 }}>
-                      <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2, letterSpacing: "-0.03em", color: palette.text }}>
-                        {bookmark.conversation_title || "Untitled conversation"}
-                      </h3>
-                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
-                        {bookmark.note || "Open the conversation to review the saved context."}
-                      </p>
-                    </div>
+      {loading ? (
+        <div style={{ marginTop: 16 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ height: 56, background: "var(--n20)", borderRadius: 4, marginBottom: 6 }} />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={<BookmarkIcon style={{ width: "100%", height: "100%" }} />}
+          title="No bookmarks yet"
+          description="Save a conversation or page to find it again quickly."
+        />
+      ) : (
+        <ul style={list}>
+          {items.map((b) => (
+            <li key={b.id} style={listItem}>
+              <Link to={`/conversations/${b.id}`} style={rowLink}>
+                <Avatar size="md" name={b.author_name || b.created_by_name || "User"} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={titleText}>{b.title || "Untitled"}</span>
+                    {b.post_type ? <Lozenge>{b.post_type}</Lozenge> : null}
                   </div>
-                  <span
-                    style={{
-                      padding: "5px 10px",
-                      borderRadius: 999,
-                      border: `1px solid ${palette.border}`,
-                      color: palette.muted,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {bookmark.conversation_type || "Conversation"}
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: palette.muted }}>
-                    <ClockIcon style={{ width: 14, height: 14 }} />
-                    Saved {toDisplayDate(bookmark.created_at)}
-                  </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: palette.link }}>
-                    <ChatBubbleLeftRightIcon style={{ width: 14, height: 14 }} />
-                    Open conversation
-                  </span>
+                  {b.summary || b.content ? (
+                    <p style={excerpt}>{stripHtml(b.summary || b.content).slice(0, 180)}</p>
+                  ) : null}
+                  <p style={meta}>
+                    {b.author_name || "Anonymous"} · saved {timeAgo(b.bookmarked_at || b.created_at)}
+                  </p>
                 </div>
               </Link>
-            ))}
-          </div>
-        ) : null}
-      </WorkspacePanel>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
+
+const list = {
+  listStyle: "none",
+  margin: "16px 0 0",
+  padding: 0,
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  overflow: "hidden",
+};
+
+const listItem = { borderBottom: "1px solid var(--app-border-subtle)" };
+
+const rowLink = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 12,
+  padding: "12px 16px",
+  textDecoration: "none",
+  color: "inherit",
+};
+
+const titleText = { fontSize: 14, fontWeight: 600, color: "var(--app-link)" };
+const excerpt = {
+  margin: "4px 0 0",
+  fontSize: 13,
+  color: "var(--app-muted)",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+const meta = { margin: "6px 0 0", fontSize: 12, color: "var(--app-muted)" };

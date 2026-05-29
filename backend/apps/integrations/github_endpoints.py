@@ -181,7 +181,7 @@ def handle_push_event(data, integration):
     return Response({"message": "Commits processed", "processed_commits": processed_count}, status=status.HTTP_200_OK)
 
 
-@api_view(["GET", "POST"])
+@api_view(["GET", "POST", "DELETE"])
 @permission_classes([IsAuthenticated])
 def github_config(request):
     """Canonical GitHub integration configuration and health endpoint."""
@@ -189,6 +189,18 @@ def github_config(request):
 
     if request.method == "GET":
         return Response(serialize_github_config(config, request=request))
+
+    if request.method == "DELETE":
+        if not check_rate_limit(f"github_disconnect:{request.user.id}", limit=30, window=3600):
+            return Response({"error": "Too many requests"}, status=429)
+        if config:
+            config.delete()
+        return Response(
+            {
+                "message": "GitHub integration disconnected",
+                "github": serialize_github_config(None, request=request),
+            }
+        )
 
     if not check_rate_limit(f"github_config:{request.user.id}", limit=60, window=3600):
         return Response({"error": "Too many requests"}, status=429)

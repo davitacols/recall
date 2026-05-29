@@ -1,318 +1,160 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   ArrowDownTrayIcon,
-  ChatBubbleLeftRightIcon,
   DocumentIcon,
-  FolderIcon,
-  LinkIcon,
+  DocumentTextIcon,
+  PhotoIcon,
+  PaperClipIcon,
 } from "@heroicons/react/24/outline";
-import { useTheme } from "../utils/ThemeAndAccessibility";
 import api from "../services/api";
 import {
-  WorkspaceEmptyState,
-  WorkspaceHero,
-  WorkspacePanel,
-  WorkspaceToolbar,
-} from "../components/WorkspaceChrome";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+  Avatar,
+  Button,
+  EmptyState,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+} from "../components/atlas";
 
-function normalizeDocuments(payload) {
-  if (Array.isArray(payload?.results)) return payload.results;
-  if (Array.isArray(payload)) return payload;
-  return [];
+function timeAgo(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  const sec = Math.max(1, Math.round((Date.now() - d.getTime()) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function formatFileSize(bytes) {
-  const value = Number(bytes || 0);
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+function formatBytes(bytes) {
+  if (!bytes || isNaN(bytes)) return "—";
+  const units = ["B", "KB", "MB", "GB"];
+  let n = Number(bytes);
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i += 1;
+  }
+  return `${n.toFixed(n >= 10 ? 0 : 1)} ${units[i]}`;
 }
 
-function toDisplayDate(value) {
-  if (!value) return "Recently uploaded";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Recently uploaded";
-  return parsed.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function fileIcon(type) {
+  const t = String(type || "").toLowerCase();
+  if (t.includes("image")) return { icon: PhotoIcon, color: "var(--p400)" };
+  if (t.includes("pdf") || t.includes("doc") || t.includes("text")) return { icon: DocumentTextIcon, color: "var(--b400)" };
+  return { icon: DocumentIcon, color: "var(--n300)" };
 }
 
 export default function Files() {
-  const { darkMode } = useTheme();
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-
-  const [documents, setDocuments] = useState([]);
+  const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchDocuments = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const response = await api.get("/api/conversations/documents/all/");
-        setDocuments(normalizeDocuments(response?.data));
-      } catch (requestError) {
-        console.error("Failed to fetch files:", requestError);
-        setError("We could not load the shared file index right now.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDocuments();
+    let mounted = true;
+    api.get("/api/conversations/documents/all/")
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res.data?.results) ? res.data.results : Array.isArray(res.data) ? res.data : [];
+        setFiles(list);
+      })
+      .catch((err) => mounted && setError(err?.response?.data?.detail || err?.message || "Failed to load files"))
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
   }, []);
 
-  const totalBytes = documents.reduce((sum, doc) => sum + Number(doc?.file_size || 0), 0);
-  const filesWithComments = documents.filter((doc) => Boolean(doc?.comment)).length;
-  const newestFile = documents[0]?.created_at || null;
-
-  const stats = [
-    {
-      label: "Files",
-      value: documents.length,
-      helper: "Conversation attachments indexed across the workspace",
-      tone: palette.info,
-    },
-    {
-      label: "Stored",
-      value: formatFileSize(totalBytes),
-      helper: "Combined file size for the current file list",
-      tone: palette.accent,
-    },
-    {
-      label: "Annotated",
-      value: filesWithComments,
-      helper: newestFile ? `Latest upload ${toDisplayDate(newestFile)}` : "Comments help preserve upload context",
-      tone: palette.success,
-    },
-  ];
-
   return (
-    <div style={{ ...ui.container, display: "grid", gap: 14 }}>
-      <WorkspaceHero
-        palette={palette}
-        darkMode={darkMode}
-        eyebrow="Shared Assets"
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Files" }]}
         title="Files"
-        description="Browse uploaded files with the conversation context that explains why they matter, who shared them, and when they entered the project memory."
-        stats={stats}
-        aside={
-          <div
-            style={{
-              minWidth: 220,
-              borderRadius: 20,
-              border: `1px solid ${palette.border}`,
-              background: palette.cardAlt,
-              padding: 14,
-              display: "grid",
-              gap: 8,
-            }}
-          >
-            <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 800, color: palette.muted }}>
-              Index Scope
-            </p>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>
-              This view surfaces conversation attachments so teams can re-open source files without retracing the thread that introduced them.
-            </p>
-          </div>
-        }
+        subtitle="Attachments shared across conversations and pages."
+        style={{ padding: "24px 0 0", background: "transparent" }}
       />
 
-      <WorkspaceToolbar palette={palette}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 10px",
-              borderRadius: 14,
-              border: `1px solid ${palette.border}`,
-              background: palette.cardAlt,
-              color: palette.muted,
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            <FolderIcon style={{ width: 16, height: 16 }} />
-            Uploaded files appear here automatically
-          </div>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 10px",
-              borderRadius: 14,
-              border: `1px solid ${palette.border}`,
-              background: palette.cardAlt,
-              color: palette.muted,
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            <ChatBubbleLeftRightIcon style={{ width: 16, height: 16 }} />
-            Keep comments on uploads so future teams know what changed
-          </div>
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
+
+      {loading ? (
+        <div style={{ marginTop: 16 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ height: 48, background: "var(--n20)", borderRadius: 4, marginBottom: 6 }} />
+          ))}
         </div>
-      </WorkspaceToolbar>
-
-      <WorkspacePanel
-        palette={palette}
-        eyebrow="Library"
-        title={documents.length ? `${documents.length} indexed files` : "Shared file library"}
-        description="Every card keeps the attachment, comment, uploader, and timestamp together so a download still has context."
-      >
-        {loading ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                style={{
-                  minHeight: 124,
-                  borderRadius: 18,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.cardAlt,
-                  opacity: 0.7,
-                }}
-              />
-            ))}
-          </div>
-        ) : null}
-
-        {!loading && error ? (
-          <WorkspaceEmptyState
-            palette={palette}
-            title="The file index is unavailable"
-            description={error}
-          />
-        ) : null}
-
-        {!loading && !error && documents.length === 0 ? (
-          <WorkspaceEmptyState
-            palette={palette}
-            title="No files yet"
-            description="Files attached to conversations will collect here automatically once the team starts sharing assets."
-          />
-        ) : null}
-
-        {!loading && !error && documents.length > 0 ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            {documents.map((doc) => (
-              <article
-                key={doc.id}
-                className="ui-card-lift ui-smooth"
-                style={{
-                  border: `1px solid ${palette.border}`,
-                  borderRadius: 20,
-                  padding: 16,
-                  background: palette.cardAlt,
-                  display: "grid",
-                  gap: 12,
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", minWidth: 0 }}>
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 14,
-                        background: palette.accentSoft,
-                        color: palette.info,
-                        display: "grid",
-                        placeItems: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <DocumentIcon style={{ width: 20, height: 20 }} />
-                    </div>
-                    <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                      <a
-                        href={doc.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: palette.text,
-                          fontSize: 17,
-                          fontWeight: 800,
-                          letterSpacing: "-0.03em",
-                          textDecoration: "none",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {doc.filename || "Untitled file"}
-                      </a>
-                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
-                        {doc.comment || "No upload note was captured for this file."}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <a
-                      href={doc.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ui-btn-polish ui-focus-ring"
-                      style={{
-                        ...ui.secondaryButton,
-                        textDecoration: "none",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <LinkIcon style={{ width: 15, height: 15 }} />
-                      Open
-                    </a>
-                    <a
-                      href={doc.file_url}
-                      download
-                      className="ui-btn-polish ui-focus-ring"
-                      style={{
-                        ...ui.primaryButton,
-                        textDecoration: "none",
-                      }}
-                    >
-                      <ArrowDownTrayIcon style={{ width: 15, height: 15 }} />
-                      Download
-                    </a>
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {[
-                    `Size ${formatFileSize(doc.file_size)}`,
-                    `Uploaded by ${doc.uploaded_by || "Unknown"}`,
-                    toDisplayDate(doc.created_at),
-                  ].map((label) => (
-                    <span
-                      key={label}
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: 999,
-                        border: `1px solid ${palette.border}`,
-                        background: palette.card,
-                        color: palette.muted,
-                        fontSize: 12,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </WorkspacePanel>
+      ) : files.length === 0 ? (
+        <EmptyState
+          icon={<PaperClipIcon style={{ width: "100%", height: "100%" }} />}
+          title="No files yet"
+          description="When teammates attach files, they'll appear here."
+        />
+      ) : (
+        <div style={tableWrap}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "var(--app-surface-alt)" }}>
+                <th style={th}>Name</th>
+                <th style={th}>Type</th>
+                <th style={th}>Size</th>
+                <th style={th}>Uploaded by</th>
+                <th style={th}>When</th>
+                <th style={{ ...th, textAlign: "right" }} />
+              </tr>
+            </thead>
+            <tbody>
+              {files.map((f) => {
+                const meta = fileIcon(f.file_type || f.mime_type);
+                const Icon = meta.icon;
+                return (
+                  <tr key={f.id} style={{ borderBottom: "1px solid var(--app-border-subtle)" }}>
+                    <td style={td}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <Icon style={{ width: 16, height: 16, color: meta.color, flexShrink: 0 }} />
+                        <Link
+                          to={f.url || f.file_url || `/conversations/${f.conversation_id || f.parent_id}`}
+                          style={{ color: "var(--app-link)", textDecoration: "none", fontWeight: 500 }}
+                        >
+                          {f.file_name || f.title || "Untitled"}
+                        </Link>
+                      </span>
+                    </td>
+                    <td style={td}>
+                      <Lozenge>{f.file_type?.split("/")?.[1] || f.file_type || "file"}</Lozenge>
+                    </td>
+                    <td style={td}>
+                      <span style={{ fontSize: 13, color: "var(--app-muted)" }}>{formatBytes(f.file_size || f.size)}</span>
+                    </td>
+                    <td style={td}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <Avatar size="sm" name={f.uploaded_by_name || f.created_by_name || "User"} />
+                        <span style={{ fontSize: 13 }}>{f.uploaded_by_name || f.created_by_name || "—"}</span>
+                      </span>
+                    </td>
+                    <td style={td}>
+                      <span style={{ fontSize: 13, color: "var(--app-muted)" }}>{timeAgo(f.created_at || f.uploaded_at)}</span>
+                    </td>
+                    <td style={{ ...td, textAlign: "right" }}>
+                      {f.url || f.file_url ? (
+                        <Button appearance="subtle" size="sm" iconBefore={<ArrowDownTrayIcon style={{ width: 12, height: 12 }} />} onClick={() => window.open(f.url || f.file_url)}>
+                          Download
+                        </Button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
+
+const tableWrap = { marginTop: 16, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, overflow: "hidden" };
+const th = { textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--app-muted)", padding: "10px 16px", borderBottom: "1px solid var(--app-border)" };
+const td = { padding: "10px 16px", fontSize: 14, color: "var(--app-text)", verticalAlign: "middle" };

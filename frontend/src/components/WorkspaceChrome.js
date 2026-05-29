@@ -109,12 +109,12 @@ export function WorkspaceToolbar({ palette, variant = "default", darkMode, child
         border: `1px solid ${palette.border}`,
         background: execution
           ? darkMode
-            ? "linear-gradient(150deg, rgba(26, 22, 18, 0.94), rgba(34, 29, 25, 0.86))"
-            : "linear-gradient(150deg, rgba(255, 252, 248, 0.98), rgba(245, 239, 229, 0.9))"
+            ? "linear-gradient(150deg, rgba(15, 16, 17, 0.94), rgba(24, 25, 27, 0.86))"
+            : "linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(241, 242, 246, 0.9))"
           : memory
             ? darkMode
-              ? "linear-gradient(150deg, rgba(18, 22, 30, 0.94), rgba(25, 31, 42, 0.88))"
-              : "linear-gradient(150deg, rgba(248, 251, 255, 0.98), rgba(238, 245, 252, 0.94))"
+              ? "linear-gradient(150deg, rgba(15, 16, 20, 0.94), rgba(27, 28, 46, 0.88))"
+              : "linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(238, 239, 252, 0.94))"
           : palette.card,
       }}
     >

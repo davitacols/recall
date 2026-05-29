@@ -11,14 +11,14 @@ const sizes = {
 
 function hashColor(seed) {
   const palettes = [
-    ["#0052CC", "#FFFFFF"],
-    ["#00875A", "#FFFFFF"],
-    ["#DE350B", "#FFFFFF"],
-    ["#5243AA", "#FFFFFF"],
-    ["#00A3BF", "#FFFFFF"],
-    ["#FF8B00", "#FFFFFF"],
-    ["#172B4D", "#FFFFFF"],
-    ["#6554C0", "#FFFFFF"],
+    ["#5E6AD2", "#FFFFFF"],
+    ["#3FB68B", "#FFFFFF"],
+    ["#E5677A", "#FFFFFF"],
+    ["#8A63D2", "#FFFFFF"],
+    ["#4BA3C7", "#FFFFFF"],
+    ["#E0913A", "#FFFFFF"],
+    ["#23262F", "#FFFFFF"],
+    ["#6E76E0", "#FFFFFF"],
   ];
   let h = 0;
   const str = String(seed || "");

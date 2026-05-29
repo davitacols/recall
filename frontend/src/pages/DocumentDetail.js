@@ -1,112 +1,107 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useTheme } from "../utils/ThemeAndAccessibility";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { useToast } from "../components/Toast";
-import { MentionInput } from "../components/MentionInput";
-import { AIEnhancementButton, AIResultsPanel } from "../components/AIEnhancements";
-import { WorkspaceHero, WorkspacePanel } from "../components/WorkspaceChrome";
-import RichTextEditor from "../components/RichTextEditor";
-import RichTextRenderer from "../components/RichTextRenderer";
-import { buildAskRecallPath } from "../utils/askRecall";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowDownTrayIcon,
-  ArrowLeftIcon,
-  DocumentTextIcon,
+  ChatBubbleLeftIcon,
+  EyeIcon,
   PencilIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
+  ShareIcon,
   TrashIcon,
-  UserCircleIcon,
 } from "@heroicons/react/24/outline";
+import { useToast } from "../components/Toast";
+import {
+  Avatar,
+  Breadcrumb,
+  Button,
+  Field,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+} from "../components/atlas";
 
-const DOCUMENT_TYPES = ["policy", "procedure", "guide", "report", "other"];
+const DOC_TYPES = [
+  { id: "policy", label: "Policy" },
+  { id: "procedure", label: "Procedure" },
+  { id: "guide", label: "Guide" },
+  { id: "report", label: "Report" },
+  { id: "other", label: "Other" },
+];
 
-function formatTypeLabel(value) {
-  if (!value) return "Other";
-  return value.charAt(0).toUpperCase() + value.slice(1);
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function SnapshotTile({ label, value, palette }) {
-  return (
-    <div style={{ borderRadius: 18, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 14 }}>
-      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>{label}</p>
-      <p style={{ margin: "6px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{value}</p>
-    </div>
-  );
+function deriveHeadings(html) {
+  if (!html) return [];
+  const headings = [];
+  const re = /<h([1-3])[^>]*>(.*?)<\/h\1>/gi;
+  let match;
+  while ((match = re.exec(html))) {
+    const text = match[2].replace(/<[^>]+>/g, "").trim();
+    if (text) headings.push({ level: Number(match[1]), text });
+  }
+  return headings;
 }
 
 export default function DocumentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { darkMode } = useTheme();
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-  const { success, error } = useToast();
+  const toast = useToast?.() || { success: () => {}, error: () => {} };
+  const apiBase = process.env.REACT_APP_API_URL || "";
 
-  const [documentRecord, setDocumentRecord] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState({});
-  const [fileUrl, setFileUrl] = useState("");
+  const [doc, setDoc] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
-  const [aiResults, setAiResults] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", document_type: "other", content: "" });
+  const [fileUrl, setFileUrl] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8000";
+  const authHeaders = () => {
+    const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   useEffect(() => {
     fetchDocument();
     fetchComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  useEffect(
-    () => () => {
-      if (fileUrl) {
-        URL.revokeObjectURL(fileUrl);
-      }
-    },
-    [fileUrl]
-  );
+  useEffect(() => () => {
+    if (fileUrl) URL.revokeObjectURL(fileUrl);
+  }, [fileUrl]);
 
   const fetchDocument = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${apiBase}/api/business/documents/${id}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load document");
-      }
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/`, { headers: authHeaders() });
+      if (!res.ok) throw new Error("Failed to load document");
       const data = await res.json();
-      setDocumentRecord(data);
-      setFormData(data);
-      setFileUrl((current) => {
-        if (current) {
-          URL.revokeObjectURL(current);
-        }
-        return "";
+      setDoc(data);
+      setForm({
+        title: data.title || "",
+        description: data.description || "",
+        document_type: data.document_type || "other",
+        content: data.content || "",
       });
-
       if (data.has_file) {
-        try {
-          const fileRes = await fetch(`${apiBase}/api/business/documents/${id}/file/`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!fileRes.ok) {
-            throw new Error("Failed to load attached file");
-          }
+        const fileRes = await fetch(`${apiBase}/api/business/documents/${id}/file/`, { headers: authHeaders() });
+        if (fileRes.ok) {
           const blob = await fileRes.blob();
-          const url = URL.createObjectURL(blob);
-          setFileUrl(url);
-        } catch (fileError) {
-          error(fileError.message || "Failed to load attached file");
+          if (fileUrl) URL.revokeObjectURL(fileUrl);
+          setFileUrl(URL.createObjectURL(blob));
         }
       }
     } catch (err) {
-      console.error("Error:", err);
-      setDocumentRecord(null);
-      error("Failed to load document");
+      setError(err.message || "Failed to load document");
+      setDoc(null);
     } finally {
       setLoading(false);
     }
@@ -114,803 +109,305 @@ export default function DocumentDetail() {
 
   const fetchComments = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${apiBase}/api/business/documents/${id}/comments/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load comments");
-      }
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/comments/`, { headers: authHeaders() });
+      if (!res.ok) return;
       const data = await res.json();
       setComments(Array.isArray(data) ? data : []);
+    } catch (_) {}
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    try {
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/comments/`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newComment }),
+      });
+      if (!res.ok) throw new Error("Failed to add comment");
+      const data = await res.json();
+      setComments((c) => [...c, data]);
+      setNewComment("");
+      toast.success?.("Comment added");
     } catch (err) {
-      console.error("Error:", err);
-      error("Failed to load comments");
+      toast.error?.(err.message);
     }
   };
 
-  const handleAddComment = async (event) => {
-    event.preventDefault();
-    if (!newComment.trim()) return;
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setBusy(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${apiBase}/api/business/documents/${id}/comments/`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content: newComment }),
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/`, {
+        method: "PUT",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       });
-      if (!res.ok) {
-        throw new Error("Failed to add comment");
-      }
-      const data = await res.json();
-      setComments((current) => [...current, data]);
-      setNewComment("");
-      success("Comment added");
+      if (!res.ok) throw new Error("Failed to update document");
+      setEditing(false);
+      await fetchDocument();
+      toast.success?.("Page updated");
     } catch (err) {
-      error("Failed to add comment");
+      toast.error?.(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this page?")) return;
+    try {
+      const res = await fetch(`${apiBase}/api/business/documents/${id}/`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast.success?.("Page deleted");
+      navigate("/business/documents");
+    } catch (err) {
+      toast.error?.(err.message);
     }
   };
 
   const handleExportPDF = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${apiBase}/api/organizations/pdf/document/${id}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to export PDF");
-      }
+      const res = await fetch(`${apiBase}/api/organizations/pdf/document/${id}/`, { headers: authHeaders() });
+      if (!res.ok) throw new Error("Failed to export PDF");
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const anchor = window.document.createElement("a");
       anchor.href = url;
-      anchor.download = `${documentRecord.title}.pdf`;
+      anchor.download = `${doc?.title || "document"}.pdf`;
       anchor.click();
-      window.URL.revokeObjectURL(url);
-      success("PDF downloaded");
+      URL.revokeObjectURL(url);
+      toast.success?.("PDF downloaded");
     } catch (err) {
-      error("Failed to export PDF");
+      toast.error?.(err.message);
     }
   };
 
-  const handleUpdate = async (event) => {
-    event.preventDefault();
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${apiBase}/api/business/documents/${id}/`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        throw new Error("Failed to update document");
-      }
-      setEditing(false);
-      fetchDocument();
-      success("Document updated successfully");
-    } catch (err) {
-      error("Failed to update document");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm("Delete this document?")) return;
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${apiBase}/api/business/documents/${id}/`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to delete document");
-      }
-      success("Document deleted");
-      navigate("/business/documents");
-    } catch (err) {
-      error("Failed to delete document");
-    }
-  };
-
-  const handleUseAiSummary = (summary) => {
-    if (!summary) return;
-    setFormData((current) => ({ ...current, description: summary }));
-    setEditing(true);
-    success("AI summary added as a draft description");
-  };
-
-  const handleApplyAiTags = (tags) => {
-    setFormData((current) => ({
-      ...current,
-      tags: Array.from(
-        new Set(
-          [...(Array.isArray(current.tags) ? current.tags : []), ...(tags || [])]
-            .map((tag) => String(tag || "").trim().replace(/^#/, "").toLowerCase())
-            .filter(Boolean)
-        )
-      ),
-    }));
-    setEditing(true);
-    success("AI tags added to the draft");
-  };
-
-  const handleAppendAiActions = (actions) => {
-    if (!Array.isArray(actions) || actions.length === 0) return;
-    const actionHtml = [
-      "<h3>AI suggested next actions</h3>",
-      "<ul>",
-      ...actions.map((item) => `<li>${String(item).replace(/[<>]/g, "")}</li>`),
-      "</ul>",
-    ].join("");
-    setFormData((current) => ({
-      ...current,
-      content: `${current.content || ""}${current.content ? "<p></p>" : ""}${actionHtml}`,
-    }));
-    setEditing(true);
-    success("AI actions appended to the draft");
-  };
+  const headings = useMemo(() => deriveHeadings(doc?.content || ""), [doc?.content]);
 
   if (loading) {
+    return <div style={{ padding: 32, color: "var(--app-muted)" }}>Loading page…</div>;
+  }
+  if (!doc) {
     return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-        <div style={{ width: 32, height: 32, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+      <div style={{ padding: 32 }}>
+        <SectionMessage tone="error" title="Page not found">
+          {error || "We couldn't find that page."}
+        </SectionMessage>
       </div>
     );
   }
-
-  if (!documentRecord) {
-    return (
-      <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-        <div style={ambientLayer} />
-        <div style={{ ...ui.container, position: "relative", zIndex: 1 }}>
-          <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={{ ...docSecondaryButton(palette), marginBottom: 14 }}>
-            <ArrowLeftIcon style={{ width: 14, height: 14 }} /> All Documents
-          </button>
-          <section className="ui-card-lift ui-smooth" style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.card, padding: "40px 22px", textAlign: "center", boxShadow: "var(--ui-shadow-xs)" }}>
-            <DocumentTextIcon style={{ width: 44, height: 44, color: palette.muted, margin: "0 auto 12px" }} />
-            <h1 style={{ margin: 0, color: palette.text, fontSize: 24 }}>Document not found</h1>
-          </section>
-        </div>
-      </div>
-    );
-  }
-
-  const updatedAt = documentRecord.updated_at ? new Date(documentRecord.updated_at).toLocaleDateString() : "N/A";
-  const createdAt = documentRecord.created_at ? new Date(documentRecord.created_at).toLocaleDateString() : "N/A";
-  const typeLabel = formatTypeLabel(documentRecord.document_type || "other");
-  const versionLabel = documentRecord.version || "-";
-  const documentAskRecallQuestion = `Summarize the document "${documentRecord.title}" and tell me what I should pay attention to first.`;
-  const heroStats = [
-    { label: "Version", value: versionLabel, helper: "Current published revision." },
-    { label: "Updated", value: updatedAt, helper: "Latest recorded change." },
-    { label: "Comments", value: `${comments.length}`, helper: "Discussion attached to this record." },
-  ];
-  const readingStateLabel = editing ? "Editing" : "Reading";
-  const modeGuidance = editing
-    ? "You are actively editing the document record. Save when the structure and wording are aligned."
-    : "Read the file, review the written body, and move into comments without losing the document snapshot.";
-  const fileStateLabel = documentRecord.has_file ? "Attached file" : "Inline record";
-  const ownershipLabel = documentRecord.updated_by?.full_name || documentRecord.created_by?.full_name || "Unknown";
 
   return (
-    <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-      <div style={ambientLayer} />
-      <div style={{ ...ui.container, position: "relative", zIndex: 1, display: "grid", gap: 16 }}>
-        <WorkspaceHero
-          palette={palette}
-          darkMode={darkMode}
-          eyebrow="Document Workspace"
-          title={documentRecord.title}
-          description={documentRecord.description || "Keep file context, document content, and team comments in one structured page."}
-          stats={heroStats}
-          aside={
-            <div style={{ display: "grid", gap: 10, justifyItems: "end" }}>
-              <span style={heroChip(palette)}>
-                <ShieldCheckIcon style={{ width: 14, height: 14 }} /> {typeLabel}
-              </span>
-              <span style={heroChip(palette)}>{documentRecord.has_file ? "File-backed" : "Editor-only"}</span>
-            </div>
-          }
-          actions={
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[
+          { label: "Knoledgr", to: "/" },
+          { label: "Pages", to: "/business/documents" },
+          { label: doc.title || "Untitled" },
+        ]}
+        title={doc.title || "Untitled"}
+        subtitle={
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <Avatar size="sm" name={doc.created_by_name || doc.owner || "User"} />
+            <span>{doc.created_by_name || doc.owner || "Unknown"}</span>
+            <span style={{ color: "var(--app-text-disabled)" }}>·</span>
+            <span>Last updated {formatDate(doc.updated_at || doc.created_at)}</span>
+            <Lozenge>{doc.document_type || "other"}</Lozenge>
+          </span>
+        }
+        actions={
+          editing ? (
             <>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/business/documents")} style={docSecondaryButton(palette)}>
-                <ArrowLeftIcon style={{ width: 14, height: 14 }} />
-                All Documents
-              </button>
-              <button onClick={handleExportPDF} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
-                <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
-                Export PDF
-              </button>
-              <button onClick={() => navigate(buildAskRecallPath(documentAskRecallQuestion))} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
-                <SparklesIcon style={{ width: 14, height: 14 }} />
-                Ask Recall
-              </button>
-              {!editing ? (
-                <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={docPrimaryButton(palette)}>
-                  <PencilIcon style={{ width: 14, height: 14 }} />
-                  Edit Document
-                </button>
-              ) : null}
+              <Button appearance="subtle" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button appearance="primary" onClick={handleSave} isDisabled={busy}>{busy ? "Saving…" : "Save"}</Button>
             </>
-          }
-        />
+          ) : (
+            <>
+              <Button appearance="subtle" iconBefore={<EyeIcon style={{ width: 14, height: 14 }} />}>Watch</Button>
+              <Button appearance="subtle" iconBefore={<ShareIcon style={{ width: 14, height: 14 }} />}>Share</Button>
+              <Button appearance="subtle" iconBefore={<ArrowDownTrayIcon style={{ width: 14, height: 14 }} />} onClick={handleExportPDF}>
+                Export PDF
+              </Button>
+              <Button appearance="default" iconBefore={<PencilIcon style={{ width: 14, height: 14 }} />} onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+            </>
+          )
+        }
+        style={{ padding: "24px 0 0", background: "transparent" }}
+      />
 
-        <section style={documentOverviewDeck}>
-          <section className="ui-card-lift ui-smooth" style={{ ...overviewLeadCard(palette), background: palette.card }}>
-            <div style={{ display: "grid", gap: 8 }}>
-              <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Reading Room</p>
-              <h2 style={detailTitle(palette)}>Keep the file, written body, and team commentary in one editorial surface</h2>
-              <p style={detailBody(palette)}>
-                This page is now organized around one primary reading flow. Open the attached file, scan the written body, and move into comments or Ask Recall without bouncing between disconnected cards.
-              </p>
-            </div>
-            <div style={detailChipRail}>
-              <span style={heroChip(palette)}>{readingStateLabel} mode</span>
-              <span style={heroChip(palette)}>Version {versionLabel}</span>
-              <span style={heroChip(palette)}>{fileStateLabel}</span>
-              {(documentRecord.tags || []).slice(0, 4).map((tag) => (
-                <span key={tag} style={heroChip(palette)}>#{tag}</span>
-              ))}
-            </div>
-          </section>
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
 
-          <section className="ui-card-lift ui-smooth" style={{ ...overviewRailCard(palette), background: palette.card }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <p style={{ ...sideTitle(palette), marginBottom: 0 }}>Record Pulse</p>
-              <h2 style={detailSubTitle(palette)}>{readingStateLabel} with the latest document state in view</h2>
-              <p style={detailBody(palette)}>{modeGuidance}</p>
-            </div>
-            <div style={detailMetricGrid}>
-              <SnapshotTile label="Type" value={typeLabel} palette={palette} />
-              <SnapshotTile label="Updated" value={updatedAt} palette={palette} />
-              <SnapshotTile label="Comments" value={`${comments.length}`} palette={palette} />
-              <SnapshotTile label="Owner" value={ownershipLabel} palette={palette} />
-            </div>
-          </section>
-        </section>
-
-        <div className="ui-enter" style={{ ...documentWorkbench, "--ui-delay": "90ms" }}>
-          <main style={{ flex: "1 1 760px", minWidth: 0, display: "grid", gap: 14 }}>
-            <WorkspacePanel
-              palette={palette}
-              eyebrow={editing ? "Editing Session" : "Reading Room"}
-              title={editing ? "Shape the document before you save it back to the record" : "Document body, file preview, and record context"}
-              description={
-                editing
-                  ? "Edit the title, summary, type, and rich text content in one focused workspace."
-                  : "The reading lane keeps the summary, file preview, and written body in a single calm scan order."
-              }
-            >
-              {editing ? (
-                <form onSubmit={handleUpdate} style={{ display: "grid", gap: 14 }}>
-                  <div style={editorTopGrid}>
-                    <div style={{ display: "grid", gap: 8 }}>
-                      <label style={fieldLabel(palette)}>Title</label>
-                      <input type="text" value={formData.title || ""} onChange={(event) => setFormData({ ...formData, title: event.target.value })} style={ui.input} />
+      <div style={pageGrid}>
+        <article style={articleColumn}>
+          {editing ? (
+            <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <Field label="Title" isRequired>
+                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="atlas-input" required />
+              </Field>
+              <Field label="Description">
+                <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="atlas-input" />
+              </Field>
+              <Field label="Type">
+                <select value={form.document_type} onChange={(e) => setForm({ ...form, document_type: e.target.value })} className="atlas-input">
+                  {DOC_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Content" helpText="HTML or plain text. A rich editor will land here in a later pass.">
+                <textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="atlas-input" rows={18} />
+              </Field>
+            </form>
+          ) : (
+            <>
+              {doc.description ? (
+                <p style={{ margin: "0 0 16px", fontSize: 16, color: "var(--app-muted)", lineHeight: 1.5 }}>{doc.description}</p>
+              ) : null}
+              {doc.has_file && fileUrl ? (
+                <div style={{ marginBottom: 24, border: "1px solid var(--app-border)", borderRadius: 4, overflow: "hidden" }}>
+                  {doc.file_type?.includes("pdf") ? (
+                    <iframe src={fileUrl} title={doc.file_name || "Attached file"} style={{ width: "100%", height: 480, border: "none", background: "var(--n10)" }} />
+                  ) : (
+                    <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ fontWeight: 600 }}>{doc.file_name}</span>
+                      <Button appearance="subtle" size="sm" onClick={() => window.open(fileUrl)}>Open</Button>
                     </div>
-                    <div style={{ display: "grid", gap: 8 }}>
-                      <label style={fieldLabel(palette)}>Document Type</label>
-                      <select value={formData.document_type || "other"} onChange={(event) => setFormData({ ...formData, document_type: event.target.value })} style={ui.input}>
-                        {DOCUMENT_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {formatTypeLabel(type)}
-                          </option>
-                        ))}
-                      </select>
+                  )}
+                </div>
+              ) : null}
+              {doc.content ? (
+                <div className="atlas-article" dangerouslySetInnerHTML={{ __html: doc.content }} />
+              ) : (
+                <p style={{ color: "var(--app-text-disabled)", fontSize: 14 }}>This page has no content yet.</p>
+              )}
+            </>
+          )}
+
+          <section style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid var(--app-border-subtle)" }}>
+            <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600 }}>
+              Comments
+              <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: "var(--app-muted)" }}>{comments.length}</span>
+            </h2>
+            <form onSubmit={handleAddComment} style={{ marginBottom: 16 }}>
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Leave a comment…"
+                className="atlas-input"
+                rows={3}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                <Button appearance="primary" type="submit" isDisabled={!newComment.trim()}>Save</Button>
+              </div>
+            </form>
+            <div>
+              {comments.map((c) => (
+                <div key={c.id} style={{ display: "flex", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--app-border-subtle)" }}>
+                  <Avatar size="sm" name={c.author_name || c.user_name || "User"} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13 }}>
+                      <strong>{c.author_name || c.user_name || "User"}</strong>
+                      <span style={{ marginLeft: 8, color: "var(--app-muted)" }}>{formatDate(c.created_at)}</span>
                     </div>
-                  </div>
-
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <label style={fieldLabel(palette)}>Tags</label>
-                    <input
-                      type="text"
-                      value={Array.isArray(formData.tags) ? formData.tags.join(", ") : ""}
-                      onChange={(event) =>
-                        setFormData({
-                          ...formData,
-                          tags: event.target.value
-                            .split(",")
-                            .map((tag) => tag.trim().replace(/^#/, "").toLowerCase())
-                            .filter(Boolean),
-                        })
-                      }
-                      style={ui.input}
-                      placeholder="policy, onboarding, customer-context"
-                    />
-                  </div>
-
-                  <div style={editorNoteCard(palette)}>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Editing Guidance</p>
-                    <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.7, color: palette.text }}>
-                      Tighten the summary first, then update the long-form body. This keeps the document readable in both the library view and the detail page.
+                    <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--app-text)", whiteSpace: "pre-wrap" }}>
+                      {c.content || c.body}
                     </p>
                   </div>
-
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <label style={fieldLabel(palette)}>Description</label>
-                    <textarea rows={4} value={formData.description || ""} onChange={(event) => setFormData({ ...formData, description: event.target.value })} style={{ ...ui.input, resize: "vertical" }} />
-                  </div>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <label style={fieldLabel(palette)}>Content</label>
-                    <RichTextEditor value={formData.content || ""} onChange={(value) => setFormData({ ...formData, content: value })} placeholder="Write document content..." darkMode={darkMode} />
-                  </div>
-                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                    <button type="button" onClick={() => setEditing(false)} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
-                      Cancel
-                    </button>
-                    <button type="submit" className="ui-btn-polish ui-focus-ring" style={docPrimaryButton(palette)}>
-                      Save Changes
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div style={{ display: "grid", gap: 16 }}>
-                  <div style={summaryStage(palette)}>
-                    <div style={{ display: "grid", gap: 8 }}>
-                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Record Summary</p>
-                      <h3 style={{ margin: 0, fontSize: 24, lineHeight: 1.05, color: palette.text }}>
-                        {documentRecord.description || "This document does not have a summary yet."}
-                      </h3>
-                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: palette.muted }}>
-                        Use the file preview and document body below to review the full record, then move to Ask Recall or comments from the side rail if you need follow-through.
-                      </p>
-                    </div>
-                    <div style={summaryMetaGrid}>
-                      <SnapshotTile label="Type" value={typeLabel} palette={palette} />
-                      <SnapshotTile label="Version" value={versionLabel} palette={palette} />
-                      <SnapshotTile label="Created" value={createdAt} palette={palette} />
-                      <SnapshotTile label="File" value={fileStateLabel} palette={palette} />
-                    </div>
-                  </div>
-
-                  {documentRecord.has_file && fileUrl && (
-                    <section style={contentCard(palette)}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
-                        <div style={{ display: "grid", gap: 4 }}>
-                          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Attached File</p>
-                          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.text }}>{documentRecord.file_name || "Document file"}</p>
-                          <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                            {documentRecord.file_type?.includes("pdf") ? "Preview the file inline without leaving the document workspace." : "Download the source file to review the original artifact."}
-                          </p>
-                        </div>
-                        {!documentRecord.file_type?.includes("pdf") && (
-                          <a href={fileUrl} download={documentRecord.file_name} style={docSecondaryButton(palette)}>
-                            <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
-                            Download File
-                          </a>
-                        )}
-                      </div>
-                      {documentRecord.file_type?.includes("pdf") ? (
-                        <iframe src={fileUrl} style={{ width: "100%", height: 600, border: `1px solid ${palette.border}`, borderRadius: 20, background: palette.card }} title="Document Preview" />
-                      ) : (
-                        <div style={mutedCallout(palette)}>
-                          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>This file is attached to the document and ready to download.</p>
-                        </div>
-                      )}
-                    </section>
-                  )}
-
-                  {!documentRecord.has_file && documentRecord.file_url && (
-                    <div style={warningCallout}>
-                      <p style={{ margin: 0, fontSize: 13, color: "var(--app-warning)", fontWeight: 700 }}>Legacy file storage detected</p>
-                      <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.6, color: "var(--app-warning)" }}>
-                        This document references older file storage. Re-upload the file to restore inline preview and current download handling.
-                      </p>
-                    </div>
-                  )}
-
-                  <section style={contentCard(palette)}>
-                    <div style={{ display: "grid", gap: 4, marginBottom: 12 }}>
-                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Document Body</p>
-                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: palette.muted }}>
-                        Long-form content lives here so the page can behave like a document first and metadata record second.
-                      </p>
-                    </div>
-                    {documentRecord.content ? (
-                      <div style={articleSurface(palette)}>
-                        <RichTextRenderer content={documentRecord.content} darkMode={darkMode} />
-                      </div>
-                    ) : (
-                      <div style={mutedCallout(palette)}>
-                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>No document content has been added yet.</p>
-                      </div>
-                    )}
-                  </section>
                 </div>
-              )}
-            </WorkspacePanel>
-          </main>
+              ))}
+              {comments.length === 0 ? <p style={{ fontSize: 13, color: "var(--app-muted)" }}>No comments yet.</p> : null}
+            </div>
+          </section>
+        </article>
 
-          <aside style={{ flex: "0 1 340px", minWidth: "min(100%, 320px)", display: "grid", gap: 14, alignContent: "start" }}>
-            <WorkspacePanel palette={palette} eyebrow="Record Lens" title="Document Snapshot" description="Key metadata stays visible without competing with the reading lane.">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
-                <SnapshotTile label="Type" value={typeLabel} palette={palette} />
-                <SnapshotTile label="Version" value={versionLabel} palette={palette} />
-                <SnapshotTile label="Created" value={createdAt} palette={palette} />
-                <SnapshotTile label="Updated" value={updatedAt} palette={palette} />
-              </div>
-            </WorkspacePanel>
+        <aside style={sidePanel}>
+          <div style={{ padding: 16 }}>
+            <h3 style={panelTitle}>Page info</h3>
+            <DetailRow label="Type" value={<Lozenge>{doc.document_type || "other"}</Lozenge>} />
+            <DetailRow label="Author" value={
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Avatar size="sm" name={doc.created_by_name || doc.owner || ""} />
+                <span style={{ fontSize: 13 }}>{doc.created_by_name || doc.owner || "—"}</span>
+              </span>
+            } />
+            <DetailRow label="Created" value={<span style={{ fontSize: 13, color: "var(--app-text)" }}>{formatDate(doc.created_at)}</span>} />
+            <DetailRow label="Updated" value={<span style={{ fontSize: 13, color: "var(--app-text)" }}>{formatDate(doc.updated_at)}</span>} />
+            {Array.isArray(doc.tags) && doc.tags.length ? (
+              <DetailRow
+                label="Tags"
+                value={
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {doc.tags.map((t) => <Lozenge key={t}>{t}</Lozenge>)}
+                  </div>
+                }
+              />
+            ) : null}
+          </div>
 
-            <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
-              <h3 style={sideTitle(palette)}>Ownership And Timeline</h3>
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={ownershipRow(palette)}>
-                  <span style={avatarChip(palette)}>
-                    <UserCircleIcon style={{ width: 16, height: 16 }} />
+          {headings.length ? (
+            <div style={{ padding: "0 16px 16px" }}>
+              <h3 style={{ ...panelTitle, marginBottom: 4 }}>On this page</h3>
+              <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {headings.map((h, i) => (
+                  <span key={i} style={{ fontSize: 13, color: "var(--app-muted)", paddingLeft: (h.level - 1) * 12 }}>
+                    {h.text}
                   </span>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Created by</p>
-                    <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{documentRecord.created_by?.full_name || "Unknown"}</p>
-                  </div>
-                </div>
-                <div style={ownershipRow(palette)}>
-                  <span style={avatarChip(palette)}>
-                    <UserCircleIcon style={{ width: 16, height: 16 }} />
-                  </span>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Last updated by</p>
-                    <p style={{ margin: "5px 0 0", fontSize: 14, fontWeight: 700, color: palette.text }}>{documentRecord.updated_by?.full_name || "Unknown"}</p>
-                  </div>
-                </div>
-                <div style={timelineStrip(palette)}>
-                  <div style={{ display: "grid", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Created</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>{createdAt}</span>
-                  </div>
-                  <div style={{ display: "grid", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>Updated</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>{updatedAt}</span>
-                  </div>
-                </div>
-              </div>
-            </section>
+                ))}
+              </nav>
+            </div>
+          ) : null}
 
-            <section className="ui-card-lift ui-smooth" style={sideCard(palette)}>
-              <h3 style={sideTitle(palette)}>Work With This Record</h3>
-              <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
-                Ask Recall for a summary, use AI tools, update the document, or remove it from the library from one compact action stack.
-              </p>
-              <div style={detailActionStack}>
-                <AIEnhancementButton
-                  content={documentRecord.content || documentRecord.description || ""}
-                  title={documentRecord.title}
-                  type="document"
-                  documentId={documentRecord.id}
-                  onResult={(feature, data) => setAiResults(data)}
-                />
-                <button onClick={() => navigate(buildAskRecallPath(documentAskRecallQuestion))} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
-                  <SparklesIcon style={{ width: 14, height: 14 }} />
-                  Ask Recall
-                </button>
-                <button onClick={() => setEditing(true)} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
-                  <PencilIcon style={{ width: 14, height: 14 }} />
-                  Edit
-                </button>
-                <button onClick={handleExportPDF} className="ui-btn-polish ui-focus-ring" style={docSecondaryButton(palette)}>
-                  <ArrowDownTrayIcon style={{ width: 14, height: 14 }} />
-                  Export PDF
-                </button>
-                <button onClick={handleDelete} className="ui-btn-polish ui-focus-ring" style={docDangerButton(palette, darkMode)}>
-                  <TrashIcon style={{ width: 14, height: 14 }} />
-                  Delete
-                </button>
-              </div>
-            </section>
-
-            {!editing && (
-              <WorkspacePanel
-                palette={palette}
-                eyebrow="Discussion"
-                title={`Comments (${comments.length})`}
-                description="Keep lightweight discussion close to the record without pushing the document body out of view."
-              >
-                <form onSubmit={handleAddComment} style={{ marginBottom: 16, display: "grid", gap: 10 }}>
-                  <MentionInput value={newComment} onChange={setNewComment} placeholder="Add a comment... (Type @ to mention someone)" rows={3} darkMode={darkMode} />
-                  <button type="submit" disabled={!newComment.trim()} className="ui-btn-polish ui-focus-ring" style={{ ...docPrimaryButton(palette), opacity: !newComment.trim() ? 0.65 : 1 }}>
-                    Post Comment
-                  </button>
-                </form>
-
-                <div style={{ display: "grid", gap: 10 }}>
-                  {comments.map((comment) => (
-                    <div key={comment.id} style={commentCard(palette)}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: palette.text }}>{comment.user?.full_name || comment.user?.username || "Unknown"}</span>
-                        <span style={{ fontSize: 11, color: palette.muted }}>{new Date(comment.created_at).toLocaleString()}</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted, whiteSpace: "pre-wrap" }}>{comment.content}</p>
-                    </div>
-                  ))}
-                  {comments.length === 0 ? (
-                    <div style={emptyDiscussionState(palette)}>
-                      <p style={{ margin: 0, fontSize: 13, color: palette.muted }}>No comments yet. Be the first to add context.</p>
-                    </div>
-                  ) : null}
-                </div>
-              </WorkspacePanel>
-            )}
-          </aside>
-        </div>
+          <div style={{ padding: 16, borderTop: "1px solid var(--app-border-subtle)" }}>
+            <Button appearance="danger" size="sm" iconBefore={<TrashIcon style={{ width: 12, height: 12 }} />} onClick={handleDelete}>
+              Delete page
+            </Button>
+          </div>
+        </aside>
       </div>
-
-      <AIResultsPanel
-        results={aiResults}
-        onClose={() => setAiResults(null)}
-        onApplySummary={handleUseAiSummary}
-        onApplyTags={handleApplyAiTags}
-        onAppendActions={handleAppendAiActions}
-        askHref={buildAskRecallPath(documentAskRecallQuestion)}
-      />
     </div>
   );
 }
 
-const ambientLayer = {
-  position: "fixed",
-  inset: 0,
-  pointerEvents: "none",
-  background:
-    "radial-gradient(circle at 8% 4%, rgba(59,130,246,0.12), transparent 34%), radial-gradient(circle at 86% 12%, rgba(16,185,129,0.08), transparent 28%), radial-gradient(circle at 52% 0%, rgba(99,102,241,0.06), transparent 24%)",
-};
+function DetailRow({ label, value }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", alignItems: "center", padding: "6px 0", gap: 8 }}>
+      <span style={{ fontSize: 12, color: "var(--app-muted)" }}>{label}</span>
+      <div>{value}</div>
+    </div>
+  );
+}
 
-const fieldLabel = (palette) => ({
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-  color: palette.muted,
-});
-
-const heroChip = (palette) => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  padding: "8px 12px",
-  border: `1px solid ${palette.border}`,
-  background: palette.cardAlt,
-  color: palette.text,
-  fontSize: 12,
-  fontWeight: 700,
-});
-
-const sideCard = (palette) => ({
-  borderRadius: 24,
-  border: `1px solid ${palette.border}`,
-  background: palette.card,
-  padding: 18,
-  boxShadow: "var(--ui-shadow-xs)",
-});
-
-const sideTitle = (palette) => ({
-  margin: "0 0 14px",
-  fontSize: 13,
-  fontWeight: 700,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: palette.muted,
-});
-
-const documentOverviewDeck = {
+const pageGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
-  gap: 14,
-};
-
-const documentWorkbench = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 14,
+  gridTemplateColumns: "minmax(0, 1fr) 280px",
+  gap: 32,
+  marginTop: 16,
   alignItems: "start",
 };
 
-const overviewLeadCard = (palette) => ({
-  borderRadius: 24,
-  border: `1px solid ${palette.border}`,
-  padding: "18px 20px",
-  display: "grid",
-  gap: 14,
-  boxShadow: "var(--ui-shadow-xs)",
-});
-
-const overviewRailCard = (palette) => ({
-  borderRadius: 24,
-  border: `1px solid ${palette.border}`,
-  padding: "18px",
-  display: "grid",
-  gap: 14,
-  boxShadow: "var(--ui-shadow-xs)",
-});
-
-const editorTopGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-  gap: 12,
+const articleColumn = {
+  maxWidth: 760,
+  fontSize: 15,
+  lineHeight: 1.55,
+  color: "var(--app-text)",
 };
 
-const summaryMetaGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
-  gap: 10,
+const sidePanel = {
+  background: "var(--app-surface-alt)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
 };
 
-const detailTitle = (palette) => ({
-  margin: 0,
-  fontSize: 24,
-  lineHeight: 1.04,
-  color: palette.text,
-});
-
-const detailSubTitle = (palette) => ({
-  margin: 0,
-  fontSize: 20,
-  lineHeight: 1.08,
-  color: palette.text,
-});
-
-const detailBody = (palette) => ({
-  margin: 0,
-  fontSize: 13,
-  lineHeight: 1.65,
-  color: palette.muted,
-});
-
-const detailChipRail = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
+const panelTitle = {
+  margin: "0 0 8px",
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+  color: "var(--app-muted)",
 };
-
-const detailMetricGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
-  gap: 10,
-};
-
-const detailActionStack = {
-  display: "grid",
-  gap: 10,
-};
-
-const summaryStage = (palette) => ({
-  borderRadius: 24,
-  border: `1px solid ${palette.border}`,
-  background: `linear-gradient(180deg, ${palette.cardAlt}, ${palette.card})`,
-  padding: "18px 18px 16px",
-  display: "grid",
-  gap: 16,
-});
-
-const contentCard = (palette) => ({
-  borderRadius: 22,
-  border: `1px solid ${palette.border}`,
-  background: palette.cardAlt,
-  padding: 18,
-  display: "grid",
-  gap: 14,
-});
-
-const mutedCallout = (palette) => ({
-  borderRadius: 18,
-  border: `1px solid ${palette.border}`,
-  background: palette.card,
-  padding: 14,
-});
-
-const editorNoteCard = (palette) => ({
-  borderRadius: 18,
-  border: `1px solid ${palette.border}`,
-  background: palette.cardAlt,
-  padding: 14,
-});
-
-const warningCallout = {
-  borderRadius: 18,
-  border: "1px solid rgba(245,158,11,0.4)",
-  background: "rgba(245,158,11,0.1)",
-  padding: 16,
-};
-
-const articleSurface = (palette) => ({
-  borderRadius: 20,
-  border: `1px solid ${palette.border}`,
-  background: palette.card,
-  padding: "18px clamp(14px,2vw,24px)",
-});
-
-const avatarChip = (palette) => ({
-  width: 36,
-  height: 36,
-  borderRadius: 12,
-  display: "grid",
-  placeItems: "center",
-  background: palette.accentSoft,
-  color: palette.accent,
-});
-
-const ownershipRow = (palette) => ({
-  display: "flex",
-  gap: 10,
-  alignItems: "center",
-  borderRadius: 16,
-  border: `1px solid ${palette.border}`,
-  background: palette.cardAlt,
-  padding: 12,
-});
-
-const timelineStrip = (palette) => ({
-  display: "grid",
-  gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-  gap: 10,
-  borderRadius: 16,
-  border: `1px solid ${palette.border}`,
-  background: palette.cardAlt,
-  padding: 12,
-});
-
-const commentCard = (palette) => ({
-  borderRadius: 18,
-  border: `1px solid ${palette.border}`,
-  background: palette.cardAlt,
-  padding: 14,
-  display: "grid",
-  gap: 8,
-});
-
-const emptyDiscussionState = (palette) => ({
-  borderRadius: 18,
-  border: `1px dashed ${palette.border}`,
-  background: palette.cardAlt,
-  padding: "24px 14px",
-  textAlign: "center",
-});
-
-function docButtonBase(palette) {
-  return {
-    minHeight: 40,
-    padding: "0 14px",
-    borderRadius: 12,
-    fontSize: 13,
-    fontWeight: 700,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    cursor: "pointer",
-    textDecoration: "none",
-    whiteSpace: "nowrap",
-    border: `1px solid ${palette.border}`,
-  };
-}
-
-function docPrimaryButton(palette) {
-  return {
-    ...docButtonBase(palette),
-    border: "1px solid transparent",
-    background: palette.ctaGradient,
-    color: palette.buttonText,
-  };
-}
-
-function docSecondaryButton(palette) {
-  return {
-    ...docButtonBase(palette),
-    background: palette.cardAlt,
-    color: palette.text,
-  };
-}
-
-function docDangerButton(palette, darkMode) {
-  return {
-    ...docButtonBase(palette),
-    border: `1px solid ${darkMode ? "rgba(238,146,153,0.34)" : "rgba(200,86,93,0.24)"}`,
-    background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)",
-    color: palette.danger,
-  };
-}

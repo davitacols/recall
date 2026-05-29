@@ -1,1321 +1,239 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  ArrowPathIcon,
-  ArrowRightIcon,
-  CheckBadgeIcon,
-  ClockIcon,
-  FunnelIcon,
-  ListBulletIcon,
+  DocumentCheckIcon,
   MagnifyingGlassIcon,
   PlusIcon,
-  RocketLaunchIcon,
   SparklesIcon,
-  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
-import {
-  WorkspaceEmptyState,
-  WorkspaceHero,
-  WorkspacePanel,
-  WorkspaceToolbar,
-} from "../components/WorkspaceChrome";
-import { useTheme } from "../utils/ThemeAndAccessibility";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { buildAskRecallPath } from "../utils/askRecall";
 import api from "../services/api";
-import { useAuth } from "../hooks/useAuth";
-import { createPlainTextPreview } from "../utils/textPreview";
+import {
+  Avatar,
+  Button,
+  EmptyState,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+  Tabs,
+} from "../components/atlas";
 
-function Decisions() {
-  const { darkMode } = useTheme();
+const STATUS_TABS = [
+  { id: "all", label: "All" },
+  { id: "proposed", label: "Proposed" },
+  { id: "under_review", label: "Under review" },
+  { id: "approved", label: "Approved" },
+  { id: "implemented", label: "Implemented" },
+];
+
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function stripHtml(value) {
+  if (!value) return "";
+  return String(value).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function statusToVariant(status) {
+  const s = String(status || "").toLowerCase();
+  if (s === "proposed") return "new";
+  if (s === "under_review") return "inprogress";
+  if (s === "approved") return "success";
+  if (s === "implemented") return "success";
+  if (s === "rejected" || s === "cancelled") return "removed";
+  return "default";
+}
+
+export default function Decisions() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [viewMode, setViewMode] = useState("list");
-  const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState("recent");
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState("all");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("recent");
 
   useEffect(() => {
-    fetchDecisions();
-  }, []);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    let mounted = true;
+    api.get("/api/decisions/")
+      .then((res) => {
+        if (!mounted) return;
+        const data = res.data?.data || res.data?.results || res.data || [];
+        setDecisions(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        setError(err?.response?.data?.detail || err?.message || "Failed to load decisions");
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const nextQuery = params.get("q") || "";
-    const nextSort = params.get("sort");
     const nextStatus = params.get("status");
-
-    setQuery(nextQuery);
-    setSortBy(nextSort === "oldest" || nextSort === "title" ? nextSort : "recent");
-    setFilter(nextStatus || "all");
+    if (nextStatus && STATUS_TABS.some((t) => t.id === nextStatus)) setTab(nextStatus);
+    const nextQuery = params.get("q") || "";
+    if (nextQuery) setSearch(nextQuery);
   }, [location.search]);
 
-  const fetchDecisions = async () => {
-    try {
-      const response = await api.get("/api/decisions/");
-      const data = response.data.data || response.data.results || response.data || [];
-      const decisionsArray = Array.isArray(data) ? data : [];
-      setDecisions(decisionsArray.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
-    } catch (error) {
-      console.error("Failed to fetch decisions:", error);
-      setDecisions([]);
-    } finally {
-      setLoading(false);
+  const visible = useMemo(() => {
+    let list = decisions;
+    if (tab !== "all") list = list.filter((d) => (d.status || "").toLowerCase() === tab);
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter((d) => {
+        const hay = `${d.title || ""} ${d.summary || ""} ${d.rationale || ""}`.toLowerCase();
+        return hay.includes(q);
+      });
     }
-  };
+    if (sort === "recent") list = [...list].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    if (sort === "oldest") list = [...list].sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    if (sort === "title") list = [...list].sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
+    return list;
+  }, [decisions, tab, search, sort]);
 
-  const statusConfig = useMemo(
-    () => ({
-      proposed: {
-        label: "Proposed",
-        tone: darkMode
-          ? { bg: "rgba(210,168,106,0.14)", border: "rgba(210,168,106,0.28)", text: "#f4d3a4" }
-          : { bg: "rgba(168,116,57,0.1)", border: "rgba(168,116,57,0.22)", text: "#8c5f2f" },
-      },
-      under_review: {
-        label: "Under Review",
-        tone: darkMode
-          ? { bg: "rgba(154,185,255,0.14)", border: "rgba(154,185,255,0.3)", text: "#d7e3ff" }
-          : { bg: "rgba(46,99,208,0.08)", border: "rgba(46,99,208,0.18)", text: "#2e63d0" },
-      },
-      approved: {
-        label: "Approved",
-        tone: darkMode
-          ? { bg: "rgba(121,200,159,0.14)", border: "rgba(121,200,159,0.3)", text: "#bcebcf" }
-          : { bg: "rgba(47,127,95,0.08)", border: "rgba(47,127,95,0.18)", text: "#2f7f5f" },
-      },
-      implemented: {
-        label: "Implemented",
-        tone: darkMode
-          ? { bg: "rgba(238,229,216,0.08)", border: "rgba(238,229,216,0.18)", text: "#f5efe6" }
-          : { bg: "rgba(31,26,23,0.06)", border: "rgba(58,47,38,0.14)", text: "#1f1a17" },
-      },
-      default: {
-        label: "Proposed",
-        tone: darkMode
-          ? { bg: "rgba(210,168,106,0.14)", border: "rgba(210,168,106,0.28)", text: "#f4d3a4" }
-          : { bg: "rgba(168,116,57,0.1)", border: "rgba(168,116,57,0.22)", text: "#8c5f2f" },
-      },
-    }),
-    [darkMode]
-  );
-
-  const impactTone = darkMode
-    ? { bg: "rgba(245,239,230,0.05)", border: "rgba(245,239,230,0.18)", text: "#d8cdbf" }
-    : { bg: "rgba(31,26,23,0.05)", border: "rgba(58,47,38,0.12)", text: "#5b5148" };
-
-  const decisionRouteParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const mineOnly = decisionRouteParams.get("mine") === "1";
-  const queueMode = decisionRouteParams.get("queue") || "";
-  const currentUserNames = useMemo(() => {
-    const fullName =
-      user?.full_name ||
-      [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim() ||
-      "";
-    return [fullName, user?.username, user?.email]
-      .filter(Boolean)
-      .map((value) => String(value).trim().toLowerCase())
-      .filter(Boolean);
-  }, [user]);
-
-  const filteredDecisions = useMemo(() => {
-    const loweredQuery = query.trim().toLowerCase();
-    const filtered = decisions.filter((decision) => {
-      const ownerName = String(decision.decision_maker_name || decision.decision_maker || "").trim().toLowerCase();
-      const matchesMine = !mineOnly || currentUserNames.includes(ownerName);
-      const matchesQueue = queueMode !== "review" ? true : ["proposed", "under_review"].includes(decision.status);
-      const matchesFilter = filter === "all" ? true : decision.status === filter;
-      const haystack = `${decision.title || ""} ${decision.description || ""} ${decision.decision_maker_name || ""}`.toLowerCase();
-      const matchesQuery = loweredQuery ? haystack.includes(loweredQuery) : true;
-      return matchesMine && matchesQueue && matchesFilter && matchesQuery;
-    });
-
-    const sorted = [...filtered];
-    if (sortBy === "recent") sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    if (sortBy === "oldest") sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    if (sortBy === "title") sorted.sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
-    return sorted;
-  }, [currentUserNames, decisions, filter, mineOnly, query, queueMode, sortBy]);
-
-  const statusCounts = decisions.reduce((acc, decision) => {
-    acc[decision.status] = (acc[decision.status] || 0) + 1;
-    return acc;
-  }, {});
-  const approvalRate = decisions.length ? Math.round(((statusCounts.approved || 0) / decisions.length) * 100) : 0;
-  const implementedRate = decisions.length ? Math.round(((statusCounts.implemented || 0) / decisions.length) * 100) : 0;
-  const reviewQueue = (statusCounts.proposed || 0) + (statusCounts.under_review || 0);
-  const recentCount = decisions.filter((decision) => {
-    const timestamp = new Date(decision.created_at).getTime();
-    if (Number.isNaN(timestamp)) return false;
-    return Date.now() - timestamp <= 1000 * 60 * 60 * 24 * 30;
-  }).length;
-  const visibleRatio = decisions.length ? Math.round((filteredDecisions.length / decisions.length) * 100) : 0;
-  const implementedCount = statusCounts.implemented || 0;
-  const queueChipLabel = queueMode === "review" ? "My review queue" : mineOnly ? "My decisions" : null;
-  const hasRouteFocus = Boolean(location.search);
-  const enrichedDecisions = useMemo(
-    () =>
-      filteredDecisions.map((decision) => ({
-        ...decision,
-        summary: createPlainTextPreview(
-          decision.description,
-          "Open the record to capture the actual decision statement, rationale, and implementation follow-through.",
-          180
-        ),
-        ownerLabel: decision.decision_maker_name || "Unknown",
-        createdLabel: formatDate(decision.created_at),
-      })),
-    [filteredDecisions]
-  );
-  const focusedQueue = useMemo(
-    () => enrichedDecisions.filter((decision) => ["proposed", "under_review"].includes(decision.status)),
-    [enrichedDecisions]
-  );
-  const archivedFlow = useMemo(
-    () => enrichedDecisions.filter((decision) => !["proposed", "under_review"].includes(decision.status)),
-    [enrichedDecisions]
-  );
-  const newestDecision = enrichedDecisions[0] || null;
-  const descriptionCoverage = decisions.length
-    ? Math.round((decisions.filter((decision) => String(decision.description || "").trim()).length / decisions.length) * 100)
-    : 0;
-
-  const decisionStats = [
-    {
-      label: "Recorded",
-      value: decisions.length,
-      helper: "Decision records in the workspace",
-      tone: palette.accent,
-    },
-    {
-      label: "Review Queue",
-      value: reviewQueue,
-      helper: "Proposals still moving toward a call",
-      tone: statusConfig.under_review.tone.text,
-    },
-    {
-      label: "Approved",
-      value: `${approvalRate}%`,
-      helper: `${statusCounts.approved || 0} approved decisions`,
-      tone: statusConfig.approved.tone.text,
-    },
-    {
-      label: "Implemented",
-      value: `${implementedRate}%`,
-      helper: `${implementedCount} moved into delivery`,
-      tone: palette.text,
-    },
-  ];
-
-  const reviewAside = (
-    <div
-      style={{
-        ...decisionAsideCard,
-        border: `1px solid ${palette.border}`,
-        background: palette.card,
-      }}
-    >
-      <p style={{ ...decisionAsideEyebrow, color: palette.muted }}>Decision Flow</p>
-      <h3 style={{ ...decisionAsideTitle, color: palette.text }}>Keep rationale and rollout attached.</h3>
-      <p style={{ ...decisionAsideBody, color: palette.muted }}>
-        {recentCount} new records landed in the last 30 days, and {reviewQueue} still need active attention.
-      </p>
-      <div style={decisionAsideMetrics}>
-        <div style={{ ...decisionAsideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...decisionAsideMetricLabel, color: palette.muted }}>Visible</p>
-          <p style={{ ...decisionAsideMetricValue, color: palette.text }}>{visibleRatio}%</p>
-        </div>
-        <div style={{ ...decisionAsideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...decisionAsideMetricLabel, color: palette.muted }}>Recent</p>
-          <p style={{ ...decisionAsideMetricValue, color: palette.text }}>{recentCount}</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  const statusLabel = (status) => statusConfig[status]?.label || statusConfig.default.label;
-
-  if (loading) {
-    return (
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-          {[1, 2, 3, 4].map((item) => (
-            <div
-              key={item}
-              style={{
-                borderRadius: 16,
-                height: 150,
-                background: palette.card,
-                border: `1px solid ${palette.border}`,
-                opacity: 0.76,
-              }}
-            />
-          ))}
-        </div>
-        <div style={{ borderRadius: 18, height: 420, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
-      </div>
-    );
-  }
+  const tabs = STATUS_TABS.map((t) => ({
+    id: t.id,
+    label: t.label,
+    count: t.id === "all" ? decisions.length : decisions.filter((d) => (d.status || "").toLowerCase() === t.id).length,
+  }));
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <WorkspaceHero
-        palette={palette}
-        darkMode={darkMode}
-        variant="memory"
-        eyebrow="Workspace Memory"
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Decisions" }]}
         title="Decisions"
-        description="Capture proposals, approvals, and implementation moves in one place so teams can recover the reasoning behind what changed."
-        stats={decisionStats}
-        aside={reviewAside}
+        subtitle="Track committed choices, rationale, and impact across the workspace."
         actions={
           <>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations/new")} style={ui.primaryButton}>
-              <PlusIcon style={icon14} /> Capture Decision
-            </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decision-proposals")} style={ui.secondaryButton}>
-              Decision Proposals
-            </button>
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              onClick={() => navigate(buildAskRecallPath("Which decisions need review or follow-up right now?"))}
-              style={ui.secondaryButton}
+            <Button appearance="subtle" iconBefore={<SparklesIcon style={{ width: 14, height: 14 }} />} onClick={() => navigate("/decision-proposals")}>
+              Proposals
+            </Button>
+            <Button
+              appearance="primary"
+              iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />}
+              onClick={() => navigate("/decisions/new")}
             >
-              <SparklesIcon style={icon14} /> Ask Recall
-            </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecisions} style={ui.secondaryButton}>
-              <ArrowPathIcon style={icon14} /> Refresh
-            </button>
+              New decision
+            </Button>
           </>
         }
+        style={{ padding: "24px 0 0", background: "transparent" }}
       />
 
-      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
-        <div style={toolbarLayout}>
-          <div style={toolbarIntro}>
-            <p style={{ ...toolbarEyebrow, color: palette.muted }}>Decision Control</p>
-            <h2 style={{ ...toolbarTitle, color: palette.text }}>Work the queue first, then browse the memory</h2>
-            <p style={{ ...toolbarCopy, color: palette.muted }}>
-              Tune the view around review pressure, then use the stage board to see whether decisions are still forming, approved, or already moving through delivery.
-            </p>
-          </div>
+      <div style={{ marginTop: 16 }}>
+        <Tabs tabs={tabs} value={tab} onChange={setTab} />
+      </div>
 
-          <div style={{ ...decisionCommandGrid, gridTemplateColumns: isMobile ? "1fr" : decisionCommandGrid.gridTemplateColumns }}>
-            <article
-              style={{
-                ...commandCard,
-                border: `1px solid ${palette.border}`,
-                background: palette.card,
-              }}
-            >
-              <div style={commandCardHead}>
-                <div style={{ display: "grid", gap: 4 }}>
-                  <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Filter the record</p>
-                  <h3 style={{ ...commandCardTitle, color: palette.text }}>Shape what the team sees right now</h3>
-                </div>
-                <div style={toolbarMetaRail}>
-                  {queueChipLabel ? (
-                    <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.accent }}>
-                      {queueChipLabel}
-                    </span>
-                  ) : null}
-                  <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {filteredDecisions.length} visible
-                  </span>
-                  <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {viewMode === "grid" ? "Grid view" : "List view"}
-                  </span>
-                </div>
-              </div>
-
-              <div style={filterRail}>
-                {["all", "proposed", "under_review", "approved", "implemented"].map((status) => {
-                  const active = filter === status;
-                  return (
-                    <button
-                      key={status}
-                      className="ui-btn-polish ui-focus-ring"
-                      onClick={() => setFilter(status)}
-                      style={{
-                        ...filterPill,
-                        border: `1px solid ${active ? palette.accent : palette.border}`,
-                        background: active ? palette.accentSoft : palette.card,
-                        color: active ? palette.accent : palette.text,
-                      }}
-                    >
-                      <FunnelIcon style={icon12} />
-                      {status === "all" ? "All" : statusLabel(status)}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div style={{ ...searchRail, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) auto auto" }}>
-                <div style={{ position: "relative", minWidth: 0 }}>
-                  <MagnifyingGlassIcon style={{ ...searchIcon, color: palette.muted }} />
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search titles, descriptions, or owners..."
-                    className="ui-focus-ring"
-                    style={{ ...ui.input, paddingLeft: 38 }}
-                  />
-                </div>
-
-                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} style={{ ...ui.input, width: isMobile ? "100%" : 160 }}>
-                  <option value="recent">Recent first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="title">Title</option>
-                </select>
-
-                <div style={viewToggle}>
-                  <button
-                    className="ui-btn-polish ui-focus-ring"
-                    onClick={() => setViewMode("grid")}
-                    style={{
-                      ...toggleButton,
-                      background: viewMode === "grid" ? palette.accentSoft : "transparent",
-                      color: viewMode === "grid" ? palette.accent : palette.muted,
-                    }}
-                    aria-label="Grid view"
-                  >
-                    <Squares2X2Icon style={icon14} />
-                  </button>
-                  <button
-                    className="ui-btn-polish ui-focus-ring"
-                    onClick={() => setViewMode("list")}
-                    style={{
-                      ...toggleButton,
-                      background: viewMode === "list" ? palette.accentSoft : "transparent",
-                      color: viewMode === "list" ? palette.accent : palette.muted,
-                    }}
-                    aria-label="List view"
-                  >
-                    <ListBulletIcon style={icon14} />
-                  </button>
-                </div>
-              </div>
-
-              <div style={toolbarMetaRail}>
-                {hasRouteFocus ? (
-                  <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={{ ...ui.secondaryButton, paddingInline: 12 }}>
-                    Clear focus
-                  </button>
-                ) : null}
-                <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                  {implementedCount} implemented
-                </span>
-                <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                  {descriptionCoverage}% documented
-                </span>
-              </div>
-            </article>
-
-            <article
-              style={{
-                ...commandCard,
-                border: `1px solid ${palette.border}`,
-                background: palette.card,
-              }}
-            >
-              <div style={commandCardHead}>
-                <div style={{ display: "grid", gap: 4 }}>
-                  <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Stage board</p>
-                  <h3 style={{ ...commandCardTitle, color: palette.text }}>See where decisions are forming or shipping</h3>
-                </div>
-                <div style={toolbarSummary}>
-                  <p style={{ ...toolbarSummaryLabel, color: palette.muted }}>Queue</p>
-                  <p style={{ ...toolbarSummaryValue, color: palette.text }}>{reviewQueue}</p>
-                </div>
-              </div>
-
-              <div style={stageLaneGrid}>
-                <StageLaneCard
-                  label="Proposed"
-                  value={statusCounts.proposed || 0}
-                  helper="Fresh calls waiting for their first real review."
-                  palette={palette}
-                  tone={statusConfig.proposed.tone}
-                />
-                <StageLaneCard
-                  label="Under review"
-                  value={statusCounts.under_review || 0}
-                  helper="Active evaluations before the team lands the call."
-                  palette={palette}
-                  tone={statusConfig.under_review.tone}
-                />
-                <StageLaneCard
-                  label="Approved"
-                  value={statusCounts.approved || 0}
-                  helper="Settled decisions that should stay easy to recover."
-                  palette={palette}
-                  tone={statusConfig.approved.tone}
-                />
-                <StageLaneCard
-                  label="Implemented"
-                  value={implementedCount}
-                  helper="Calls already visible in execution and rollout work."
-                  palette={palette}
-                  tone={statusConfig.implemented.tone}
-                />
-              </div>
-            </article>
-          </div>
+      <div style={toolbar}>
+        <div style={{ position: "relative", maxWidth: 360, flex: 1 }}>
+          <MagnifyingGlassIcon style={searchIcon} />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search decisions"
+            className="atlas-input"
+            style={{ paddingLeft: 32 }}
+          />
         </div>
-      </WorkspaceToolbar>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: 12, color: "var(--app-muted)" }}>Sort:</span>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} className="atlas-input" style={{ width: 160 }}>
+          <option value="recent">Most recent</option>
+          <option value="oldest">Oldest first</option>
+          <option value="title">Title (A–Z)</option>
+        </select>
+      </div>
 
-      {decisions.length ? (
-        <section style={{ ...decisionOverviewGrid, gridTemplateColumns: isMobile ? "1fr" : decisionOverviewGrid.gridTemplateColumns }}>
-          <WorkspacePanel
-            palette={palette}
-            darkMode={darkMode}
-            variant="memory"
-            eyebrow="Decision spotlight"
-            title={newestDecision?.title || "Decision stream"}
-            description={newestDecision?.summary || "Capture the next decision to build the memory layer."}
-            action={
-              newestDecision ? (
-                <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate(`/decisions/${newestDecision.id}`)} style={ui.secondaryButton}>
-                  Open latest <ArrowRightIcon style={icon12} />
-                </button>
-              ) : null
-            }
-          >
-            {newestDecision ? (
-              <>
-                <div style={decisionSpotlightMeta}>
-                  <Badge text={statusLabel(newestDecision.status)} tone={statusConfig[newestDecision.status]?.tone || statusConfig.default.tone} />
-                  <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {newestDecision.ownerLabel}
-                  </span>
-                  <span style={{ ...toolbarMetaChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                    {newestDecision.createdLabel}
-                  </span>
-                </div>
-                <div style={decisionSignalGrid}>
-                  <SignalCard
-                    palette={palette}
-                    label="Queue attention"
-                    value={reviewQueue}
-                    helper="Decisions still moving toward a final call."
-                  />
-                  <SignalCard
-                    palette={palette}
-                    label="Description coverage"
-                    value={`${descriptionCoverage}%`}
-                    helper="Records already carrying a written decision statement."
-                  />
-                  <SignalCard
-                    palette={palette}
-                    label="Implemented"
-                    value={implementedCount}
-                    helper="Records already moved into delivery."
-                  />
-                </div>
-              </>
-            ) : null}
-          </WorkspacePanel>
+      {error ? <SectionMessage tone="error" style={{ marginBottom: 16 }}>{error}</SectionMessage> : null}
 
-          <WorkspacePanel
-            palette={palette}
-            darkMode={darkMode}
-            variant="memory"
-            eyebrow="Operating guide"
-            title="Move proposals into durable memory"
-            description="A good decisions page should help the team act on the unresolved calls first, then preserve the settled ones with enough rationale to trust later."
-          >
-            <div style={guideStack}>
-              <GuideRow
-                icon={ClockIcon}
-                label="Review the unstable calls first"
-                text={`${reviewQueue} records are still proposed or under review, so they should lead the first scan.`}
-                palette={palette}
-                tone={statusConfig.under_review.tone}
-              />
-              <GuideRow
-                icon={CheckBadgeIcon}
-                label="Keep the rationale complete"
-                text={`${descriptionCoverage}% of the record currently carries written context, so missing descriptions are still the easiest memory gap to close.`}
-                palette={palette}
-                tone={statusConfig.approved.tone}
-              />
-              <GuideRow
-                icon={RocketLaunchIcon}
-                label="Watch the handoff into execution"
-                text={`${implementedCount} decisions have already crossed into implementation, which is where follow-through becomes more important than debate.`}
-                palette={palette}
-                tone={statusConfig.implemented.tone}
-              />
-            </div>
-          </WorkspacePanel>
-        </section>
-      ) : null}
-
-      {filteredDecisions.length === 0 ? (
-        <WorkspaceEmptyState
-          palette={palette}
-          darkMode={darkMode}
-          variant="memory"
-          title={decisions.length === 0 ? "Start the decision record" : "No decisions match this view"}
-          description={
-            decisions.length === 0
-              ? "Capture the next proposal, approval, or implementation move so the team can trace what changed."
-              : "Try adjusting the search, widening the filter, or changing the sort order to bring more records back into view."
-          }
-          action={
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              onClick={() =>
-                decisions.length === 0
-                  ? navigate("/conversations/new")
-                  : (setFilter("all"), setQuery(""), setSortBy("recent"))
-              }
-              style={ui.primaryButton}
-            >
-              {decisions.length === 0 ? "Capture Decision" : "Reset Filters"}
-            </button>
-          }
+      {loading ? (
+        <SkeletonTable />
+      ) : visible.length === 0 ? (
+        <EmptyState
+          icon={<DocumentCheckIcon style={{ width: "100%", height: "100%" }} />}
+          title={tab === "all" ? "No decisions yet" : "No decisions in this state"}
+          description="Capture a decision to record the rationale and lock in the outcome."
+          primaryAction={<Button appearance="primary" onClick={() => navigate("/decisions/new")}>New decision</Button>}
         />
-      ) : viewMode === "grid" ? (
-        <div style={{ display: "grid", gap: 14 }}>
-          {focusedQueue.length ? (
-            <DecisionSection
-              title="Review now"
-              description="These records are still forming and deserve the first scan before the team drops into historical browsing."
-              decisions={focusedQueue}
-              palette={palette}
-              statusLabel={statusLabel}
-              statusConfig={statusConfig}
-              impactTone={impactTone}
-              onOpen={(id) => navigate(`/decisions/${id}`)}
-            />
-          ) : null}
-          <DecisionSection
-            title={focusedQueue.length ? "Decision memory" : "All decisions"}
-            description={
-              focusedQueue.length
-                ? "The rest of the record is already approved or implemented and can be treated like the calmer memory layer."
-                : "Every decision record in the current view."
-            }
-            decisions={focusedQueue.length ? archivedFlow : enrichedDecisions}
-            palette={palette}
-            statusLabel={statusLabel}
-            statusConfig={statusConfig}
-            impactTone={impactTone}
-            onOpen={(id) => navigate(`/decisions/${id}`)}
-          />
-        </div>
       ) : (
-        <div style={{ display: "grid", gap: 14 }}>
-          {focusedQueue.length ? (
-            <DecisionListSection
-              title="Review now"
-              description="The review queue comes first so proposals and under-review records are easier to work through."
-              decisions={focusedQueue}
-              palette={palette}
-              darkMode={darkMode}
-              statusLabel={statusLabel}
-              statusConfig={statusConfig}
-              impactTone={impactTone}
-              onOpen={(id) => navigate(`/decisions/${id}`)}
-            />
-          ) : null}
-          <DecisionListSection
-            title={focusedQueue.length ? "Decision memory" : "All decisions"}
-            description={
-              focusedQueue.length
-                ? "Approved and implemented records stay visible below the queue as the historical memory layer."
-                : "Browse the current decision memory without an active review split."
-            }
-            decisions={focusedQueue.length ? archivedFlow : enrichedDecisions}
-            palette={palette}
-            darkMode={darkMode}
-            statusLabel={statusLabel}
-            statusConfig={statusConfig}
-            impactTone={impactTone}
-            onOpen={(id) => navigate(`/decisions/${id}`)}
-          />
+        <div style={tableWrap}>
+          <table style={tableStyle}>
+            <thead>
+              <tr style={tableHeadRow}>
+                <th style={{ ...th, width: "45%" }}>Title</th>
+                <th style={th}>Status</th>
+                <th style={th}>Owner</th>
+                <th style={th}>Impact</th>
+                <th style={th}>Decided</th>
+                <th style={{ ...th, textAlign: "right" }} />
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((d) => (
+                <tr key={d.id} style={tableRow}>
+                  <td style={td}>
+                    <Link to={`/decisions/${d.id}`} style={titleLink}>
+                      <span style={titleText}>{d.title || "Untitled decision"}</span>
+                      {d.summary ? <span style={excerptText}>{stripHtml(d.summary).slice(0, 160)}</span> : null}
+                    </Link>
+                  </td>
+                  <td style={td}>
+                    <Lozenge variant={statusToVariant(d.status)}>{(d.status || "proposed").replace(/_/g, " ")}</Lozenge>
+                  </td>
+                  <td style={td}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <Avatar size="sm" name={d.owner_name || d.author_name || d.created_by_name || "—"} />
+                      <span style={{ fontSize: 13, color: "var(--app-text)" }}>{d.owner_name || d.author_name || d.created_by_name || "—"}</span>
+                    </span>
+                  </td>
+                  <td style={td}>
+                    {d.impact ? <Lozenge>{d.impact}</Lozenge> : <span style={{ color: "var(--app-text-disabled)", fontSize: 13 }}>—</span>}
+                  </td>
+                  <td style={td}>
+                    <span style={{ fontSize: 13, color: "var(--app-muted)" }}>{formatDate(d.decided_at || d.updated_at || d.created_at)}</span>
+                  </td>
+                  <td style={{ ...td, textAlign: "right" }}>
+                    <Button appearance="subtle" size="sm" onClick={() => navigate(`/decisions/${d.id}`)}>Open</Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
 }
 
-function DecisionGridCard({ decision, palette, statusLabel, statusTone, impactTone, onOpen }) {
+function SkeletonTable() {
   return (
-    <article
-      className="ui-card-lift ui-smooth"
-      onClick={onOpen}
-      style={{
-        borderRadius: 16,
-        border: `1px solid ${palette.border}`,
-        background: palette.card,
-        padding: 14,
-        cursor: "pointer",
-        display: "grid",
-        gap: 12,
-        minHeight: 220,
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-        <div style={{ minWidth: 0 }}>
-          <p style={{ ...cardEyebrow, color: palette.muted }}>Decision Record</p>
-          <h3 style={{ ...cardTitle, color: palette.text }}>{decision.title || "Untitled decision"}</h3>
-        </div>
-        <span style={{ ...dateChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.muted }}>
-          {formatDate(decision.created_at)}
-        </span>
-      </div>
-
-      <div style={decisionBadgeRail}>
-        <Badge text={statusLabel} tone={statusTone} />
-        <Badge text={(decision.impact_level || "medium").toUpperCase()} tone={impactTone} />
-      </div>
-
-      <p style={{ ...cardDescription, color: palette.muted }}>
-        {decision.summary || "No description provided yet. Open the record to add rationale, context, and follow-through."}
-      </p>
-
-      <div style={{ ...decisionFoot, borderTop: `1px solid ${palette.border}` }}>
-        <div>
-          <p style={{ ...cardLabel, color: palette.muted }}>Owner</p>
-          <p style={{ ...cardOwner, color: palette.text }}>{decision.ownerLabel || decision.decision_maker_name || "Unknown"}</p>
-        </div>
-        <span style={{ ...openLink, color: palette.accent }}>
-          Open decision <ArrowRightIcon style={icon12} />
-        </span>
-      </div>
-    </article>
-  );
-}
-
-function DecisionSection({ title, description, decisions, palette, statusLabel, statusConfig, impactTone, onOpen }) {
-  if (!decisions.length) return null;
-  return (
-    <section style={{ display: "grid", gap: 12 }}>
-      <div style={sectionIntro}>
-        <div>
-          <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Decision Section</p>
-          <h2 style={{ ...sectionTitle, color: palette.text }}>{title}</h2>
-        </div>
-        <p style={{ ...sectionCopy, color: palette.muted }}>{description}</p>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14 }}>
-        {decisions.map((decision) => (
-          <DecisionGridCard
-            key={decision.id}
-            decision={decision}
-            palette={palette}
-            statusLabel={statusLabel(decision.status)}
-            statusTone={statusConfig[decision.status]?.tone || statusConfig.default.tone}
-            impactTone={impactTone}
-            onOpen={() => onOpen(decision.id)}
-          />
+    <div style={tableWrap}>
+      <div style={{ padding: 12 }}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} style={{ height: 36, background: "var(--n20)", borderRadius: 3, marginBottom: 6 }} />
         ))}
       </div>
-    </section>
-  );
-}
-
-function DecisionListSection({ title, description, decisions, palette, darkMode, statusLabel, statusConfig, impactTone, onOpen }) {
-  if (!decisions.length) return null;
-  return (
-    <section style={{ display: "grid", gap: 12 }}>
-      <div style={sectionIntro}>
-        <div>
-          <p style={{ ...toolbarEyebrow, color: palette.muted, margin: 0 }}>Decision Section</p>
-          <h2 style={{ ...sectionTitle, color: palette.text }}>{title}</h2>
-        </div>
-        <p style={{ ...sectionCopy, color: palette.muted }}>{description}</p>
-      </div>
-      <div style={{ display: "grid", gap: 12 }}>
-        {decisions.map((decision) => (
-          <WorkspacePanel
-            key={decision.id}
-            palette={palette}
-            darkMode={darkMode}
-            variant="memory"
-            title={decision.title || "Untitled decision"}
-            eyebrow="Decision Record"
-            description={decision.summary || "No description provided yet."}
-            action={<DecisionActionRail palette={palette} decision={decision} onOpen={() => onOpen(decision.id)} />}
-          >
-            <div style={decisionListRow}>
-              <div style={decisionBadgeRail}>
-                <Badge text={statusLabel(decision.status)} tone={statusConfig[decision.status]?.tone || statusConfig.default.tone} />
-                <Badge text={(decision.impact_level || "medium").toUpperCase()} tone={impactTone} />
-                <Badge text={`Owner ${decision.ownerLabel || "Unknown"}`} tone={{ bg: palette.cardAlt, border: palette.border, text: palette.text }} />
-              </div>
-              <div style={decisionMetaRail}>
-                <span style={{ color: palette.muted }}>{decision.createdLabel}</span>
-                <button className="ui-btn-polish ui-focus-ring" onClick={() => onOpen(decision.id)} style={decisionLinkButton(palette)}>
-                  Open decision <ArrowRightIcon style={icon12} />
-                </button>
-              </div>
-            </div>
-          </WorkspacePanel>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function SignalCard({ palette, label, value, helper }) {
-  return (
-    <article
-      className="ui-card-lift ui-smooth"
-      style={{ ...signalCard, border: `1px solid ${palette.border}`, background: palette.card }}
-    >
-      <p style={{ ...signalLabel, color: palette.muted }}>{label}</p>
-      <p style={{ ...signalValue, color: palette.text }}>{value}</p>
-      <p style={{ ...signalHelper, color: palette.muted }}>{helper}</p>
-    </article>
-  );
-}
-
-function StageLaneCard({ label, value, helper, tone, palette }) {
-  return (
-    <article
-      className="ui-card-lift ui-smooth"
-      style={{
-        ...stageLaneCard,
-        border: `1px solid ${tone.border}`,
-        background: tone.bg,
-      }}
-    >
-      <p style={{ ...stageLaneLabel, color: tone.text }}>{label}</p>
-      <p style={{ ...stageLaneValue, color: tone.text }}>{value}</p>
-      <p style={{ ...stageLaneHelper, color: palette.muted }}>{helper}</p>
-    </article>
-  );
-}
-
-function GuideRow({ icon: Icon, label, text, palette, tone }) {
-  return (
-    <article
-      style={{
-        ...guideRow,
-        border: `1px solid ${palette.border}`,
-        background: palette.cardAlt,
-      }}
-    >
-      <span
-        style={{
-          ...guideIcon,
-          background: tone.bg,
-          color: tone.text,
-          border: `1px solid ${tone.border}`,
-        }}
-      >
-        <Icon style={icon14} />
-      </span>
-      <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-        <p style={{ ...guideLabel, color: palette.text }}>{label}</p>
-        <p style={{ ...guideCopy, color: palette.muted }}>{text}</p>
-      </div>
-    </article>
-  );
-}
-
-function DecisionActionRail({ palette, decision, onOpen }) {
-  return (
-    <div style={decisionActionRail}>
-      <Badge text={formatDate(decision.created_at)} tone={{ bg: palette.cardAlt, border: palette.border, text: palette.muted }} />
-      <button className="ui-btn-polish ui-focus-ring" onClick={onOpen} style={decisionLinkButton(palette)}>
-        Open decision <ArrowRightIcon style={icon12} />
-      </button>
     </div>
   );
 }
 
-function Badge({ text, tone }) {
-  return (
-    <span
-      style={{
-        border: `1px solid ${tone.border}`,
-        color: tone.text,
-        background: tone.bg,
-        fontSize: 11,
-        fontWeight: 700,
-        borderRadius: 999,
-        padding: "6px 10px",
-        lineHeight: 1.2,
-        display: "inline-flex",
-        alignItems: "center",
-      }}
-    >
-      {text}
-    </span>
-  );
-}
-
-function formatDate(rawDate) {
-  if (!rawDate) return "Unknown date";
-  return new Date(rawDate).toLocaleDateString();
-}
-
-function decisionLinkButton(palette) {
-  return {
-    border: `1px solid ${palette.border}`,
-    borderRadius: 999,
-    padding: "6px 10px",
-    background: palette.cardAlt,
-    color: palette.text,
-    fontSize: 11,
-    fontWeight: 700,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    cursor: "pointer",
-  };
-}
-
-const toolbarLayout = {
-  display: "grid",
-  gap: 10,
-};
-
-const toolbarIntro = {
-  display: "grid",
-  gap: 4,
-};
-
-const toolbarEyebrow = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const toolbarTitle = {
-  margin: 0,
-  fontSize: 20,
-  lineHeight: 1.08,
-};
-
-const toolbarCopy = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.55,
-  maxWidth: 720,
-};
-
-const toolbarMetaRail = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const toolbarMetaChip = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 11,
-  fontWeight: 700,
-};
-
-const decisionCommandGrid = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0,1.08fr) minmax(320px,0.92fr)",
-  gap: 14,
-};
-
-const commandCard = {
-  borderRadius: 18,
-  padding: 14,
-  display: "grid",
-  gap: 12,
-  alignContent: "start",
-};
-
-const commandCardHead = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "start",
-  flexWrap: "wrap",
-};
-
-const commandCardTitle = {
-  margin: 0,
-  fontSize: 18,
-  lineHeight: 1.08,
-};
-
-const decisionOverviewGrid = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0,1.06fr) minmax(300px,0.94fr)",
-  gap: 14,
-};
-
-const decisionSpotlightMeta = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const decisionSignalGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-  gap: 12,
-};
-
-const stageLaneGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
-  gap: 10,
-};
-
-const stageLaneCard = {
-  borderRadius: 16,
-  padding: "12px 12px 11px",
-  display: "grid",
-  gap: 6,
-};
-
-const stageLaneLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const stageLaneValue = {
-  margin: 0,
-  fontSize: 22,
-  lineHeight: 1,
-  fontWeight: 800,
-};
-
-const stageLaneHelper = {
-  margin: 0,
-  fontSize: 11,
-  lineHeight: 1.5,
-};
-
-const signalCard = {
-  borderRadius: 14,
-  padding: 12,
-  display: "grid",
-  gap: 6,
-  alignContent: "start",
-};
-
-const signalLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const signalValue = {
-  margin: 0,
-  fontSize: 22,
-  lineHeight: 1,
-  fontWeight: 700,
-};
-
-const signalHelper = {
-  margin: 0,
-  fontSize: 11,
-  lineHeight: 1.5,
-};
-
-const filterRail = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const filterPill = {
-  borderRadius: 999,
-  padding: "6px 10px",
-  fontSize: 11,
-  fontWeight: 700,
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  cursor: "pointer",
-};
-
-const searchRail = {
-  display: "grid",
-  gap: 10,
-  alignItems: "center",
-};
-
-const searchIcon = {
-  width: 16,
-  height: 16,
-  position: "absolute",
-  left: 12,
-  top: "50%",
-  transform: "translateY(-50%)",
-};
-
-const viewToggle = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 4,
-  borderRadius: 999,
-  padding: 4,
-  background: "var(--ui-panel-alt)",
-  border: "1px solid var(--ui-border)",
-  width: "fit-content",
-};
-
-const toggleButton = {
-  width: 32,
-  height: 32,
-  borderRadius: 999,
-  border: "none",
-  display: "grid",
-  placeItems: "center",
-  cursor: "pointer",
-};
-
-const toolbarSummary = {
-  display: "grid",
-  gap: 2,
-  minWidth: 72,
-};
-
-const toolbarSummaryLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const toolbarSummaryValue = {
-  margin: 0,
-  fontSize: 20,
-  fontWeight: 700,
-  lineHeight: 1,
-};
-
-const decisionAsideCard = {
-  minWidth: 240,
-  borderRadius: 16,
-  padding: 14,
-  display: "grid",
-  gap: 8,
-};
-
-const decisionAsideEyebrow = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const decisionAsideTitle = {
-  margin: 0,
-  fontSize: 18,
-  lineHeight: 1.08,
-};
-
-const decisionAsideBody = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.6,
-};
-
-const decisionAsideMetrics = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 8,
-};
-
-const decisionAsideMetric = {
-  borderRadius: 12,
-  padding: "9px 10px",
-  display: "grid",
-  gap: 3,
-};
-
-const decisionAsideMetricLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const decisionAsideMetricValue = {
-  margin: 0,
-  fontSize: 16,
-  fontWeight: 700,
-  lineHeight: 1,
-};
-
-const decisionBadgeRail = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const cardEyebrow = {
-  margin: "0 0 6px",
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const cardTitle = {
-  margin: 0,
-  fontSize: 18,
-  lineHeight: 1.1,
-};
-
-const dateChip = {
-  fontSize: 10,
-  fontWeight: 700,
-  borderRadius: 999,
-  padding: "5px 9px",
-  whiteSpace: "nowrap",
-};
-
-const cardDescription = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.55,
-};
-
-const decisionFoot = {
-  marginTop: "auto",
-  paddingTop: 12,
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "flex-end",
-  flexWrap: "wrap",
-};
-
-const cardLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const cardOwner = {
-  margin: "4px 0 0",
-  fontSize: 13,
-  fontWeight: 700,
-};
-
-const openLink = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  fontSize: 12,
-  fontWeight: 700,
-};
-
-const sectionIntro = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "end",
-  flexWrap: "wrap",
-};
-
-const sectionTitle = {
-  margin: "4px 0 0",
-  fontSize: 20,
-  lineHeight: 1.08,
-};
-
-const sectionCopy = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.55,
-  maxWidth: 620,
-};
-
-const guideStack = {
-  display: "grid",
-  gap: 10,
-};
-
-const guideRow = {
-  borderRadius: 16,
-  padding: 12,
-  display: "grid",
-  gridTemplateColumns: "auto minmax(0,1fr)",
-  gap: 10,
-  alignItems: "start",
-};
-
-const guideIcon = {
-  width: 34,
-  height: 34,
-  borderRadius: 12,
-  display: "grid",
-  placeItems: "center",
-  flexShrink: 0,
-};
-
-const guideLabel = {
-  margin: 0,
-  fontSize: 13,
-  fontWeight: 700,
-  lineHeight: 1.3,
-};
-
-const guideCopy = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.55,
-};
-
-const decisionListRow = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "center",
-  flexWrap: "wrap",
-};
-
-const decisionMetaRail = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  flexWrap: "wrap",
-};
-
-const decisionActionRail = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "wrap",
-  justifyContent: "flex-end",
-};
-
-const icon14 = { width: 14, height: 14 };
-const icon12 = { width: 12, height: 12 };
-
-export default Decisions;
+const toolbar = { display: "flex", alignItems: "center", gap: 8, padding: "16px 0" };
+const searchIcon = { position: "absolute", left: 8, top: 8, width: 16, height: 16, color: "var(--app-muted)", pointerEvents: "none" };
+const tableWrap = { background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, overflow: "hidden" };
+const tableStyle = { width: "100%", borderCollapse: "collapse" };
+const tableHeadRow = { background: "var(--app-surface-alt)" };
+const th = { textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--app-muted)", padding: "10px 16px", borderBottom: "1px solid var(--app-border)" };
+const tableRow = { borderBottom: "1px solid var(--app-border-subtle)" };
+const td = { padding: "12px 16px", fontSize: 14, color: "var(--app-text)", verticalAlign: "middle" };
+const titleLink = { display: "block", color: "inherit", textDecoration: "none" };
+const titleText = { display: "block", fontSize: 14, fontWeight: 600, color: "var(--app-link)" };
+const excerptText = { display: "block", marginTop: 2, fontSize: 12, color: "var(--app-muted)", maxWidth: 540, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };

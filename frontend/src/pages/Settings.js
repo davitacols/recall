@@ -3,924 +3,591 @@ import {
   BellIcon,
   BuildingOffice2Icon,
   Cog6ToothIcon,
-  MoonIcon,
+  PlusIcon,
   ShieldCheckIcon,
-  SunIcon,
+  TrashIcon,
   UserGroupIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
-import api from "../services/api";
 import { useToast } from "../components/Toast";
+import {
+  Avatar,
+  Button,
+  EmptyState,
+  Field,
+  IconButton,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+} from "../components/atlas";
+
+const ROLES = ["admin", "manager", "contributor", "viewer"];
 
 async function requestWithFallback(requests) {
   let lastError = null;
-  for (let i = 0; i < requests.length; i += 1) {
+  for (const fn of requests) {
     try {
-      return await requests[i]();
-    } catch (error) {
-      lastError = error;
+      return await fn();
+    } catch (err) {
+      lastError = err;
     }
   }
   throw lastError;
 }
 
-function Settings() {
-  const { user, logout, listWorkspaces, requestWorkspaceSwitchCode, switchWorkspace } = useAuth();
+export default function Settings() {
+  const { user } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
-  const { addToast } = useToast();
-  const [isCompact, setIsCompact] = useState(window.innerWidth < 980);
-
-  const [activeSection, setActiveSection] = useState("notifications");
+  const { addToast } = useToast?.() || { addToast: () => {} };
+  const [section, setSection] = useState("notifications");
   const [notifications, setNotifications] = useState({
     mention_notifications: true,
     reply_notifications: true,
     decision_notifications: true,
     digest_frequency: "daily",
   });
-  const [experienceMode, setExperienceMode] = useState("standard");
+  const [experienceMode, setExperienceMode] = useState(
+    typeof window !== "undefined" ? localStorage.getItem("ui_experience_mode") || "standard" : "standard"
+  );
   const [organization, setOrganization] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [pendingInvitations, setPendingInvitations] = useState([]);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("contributor");
-  const [generatedLink, setGeneratedLink] = useState(null);
-  const [resendingInvitationId, setResendingInvitationId] = useState(null);
-  const [workspaces, setWorkspaces] = useState([]);
-  const [workspacePassword, setWorkspacePassword] = useState("");
-  const [requestingCodeOrgSlug, setRequestingCodeOrgSlug] = useState(null);
-  const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
   const [orgName, setOrgName] = useState("");
   const [orgDescription, setOrgDescription] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [signingOutAll, setSigningOutAll] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [invitations, setInvitations] = useState([]);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("contributor");
+  const [showInvite, setShowInvite] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const isAdmin = user?.role === "admin";
+
+  const sections = useMemo(
+    () =>
+      [
+        { id: "notifications", label: "Notifications", icon: BellIcon },
+        { id: "appearance", label: "Appearance", icon: Cog6ToothIcon },
+        isAdmin ? { id: "organization", label: "Organization", icon: BuildingOffice2Icon } : null,
+        isAdmin ? { id: "team", label: "Team", icon: UserGroupIcon } : null,
+        { id: "privacy", label: "Privacy", icon: ShieldCheckIcon },
+      ].filter(Boolean),
+    [isAdmin]
+  );
 
   useEffect(() => {
     fetchSettings();
-    fetchWorkspaces();
-    if (user?.role === "admin") {
+    if (isAdmin) {
       fetchOrganization();
       fetchMembers();
-      fetchPendingInvitations();
+      fetchInvitations();
     }
-  }, [user?.role]);
-
-  useEffect(() => {
-    const onResize = () => setIsCompact(window.innerWidth < 980);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            pageBg: "#0f0b0d",
-            panelBg: "var(--app-surface)",
-            panelAlt: "#1f171c",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "#b8a994",
-            accent: "var(--app-accent)",
-            softAccent: "rgba(255,180,118,0.13)",
-            danger: "var(--app-danger)",
-          }
-        : {
-            pageBg: "var(--app-bg)",
-            panelBg: "var(--app-surface)",
-            panelAlt: "var(--app-surface-alt)",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "#7c6d5a",
-            accent: "var(--app-accent)",
-            softAccent: "rgba(217,105,46,0.11)",
-            danger: "#d14343",
-          },
-    [darkMode]
-  );
-
-  const sections = [
-    { id: "notifications", label: "Notifications", icon: BellIcon },
-    { id: "appearance", label: "Appearance", icon: Cog6ToothIcon },
-    ...(user?.role === "admin"
-      ? [
-          { id: "organization", label: "Organization", icon: BuildingOffice2Icon },
-          { id: "team", label: "Team", icon: UserGroupIcon },
-        ]
-      : []),
-    { id: "privacy", label: "Privacy", icon: ShieldCheckIcon },
-  ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
 
   const fetchSettings = async () => {
     try {
-      const response = await requestWithFallback([
+      const res = await requestWithFallback([
         () => api.get("/api/organizations/settings/notifications/"),
         () => api.get("/api/auth/profile/"),
       ]);
       setNotifications({
-        mention_notifications: response.data.mention_notifications ?? true,
-        reply_notifications: response.data.reply_notifications ?? true,
-        decision_notifications: response.data.decision_notifications ?? true,
-        digest_frequency: response.data.digest_frequency || "daily",
+        mention_notifications: res.data.mention_notifications ?? true,
+        reply_notifications: res.data.reply_notifications ?? true,
+        decision_notifications: res.data.decision_notifications ?? true,
+        digest_frequency: res.data.digest_frequency || "daily",
       });
-      setExperienceMode(response.data.experience_mode || "standard");
-    } catch (error) {
-      addToast("Failed to fetch settings", "error");
+      setExperienceMode(res.data.experience_mode || "standard");
+    } catch (_) {}
+  };
+
+  const saveNotifications = async (next) => {
+    setNotifications(next);
+    try {
+      await requestWithFallback([
+        () => api.put("/api/organizations/settings/notifications/", next),
+        () => api.put("/api/auth/profile/update/", next),
+      ]);
+      addToast?.("Notification settings saved", "success");
+    } catch (_) {
+      addToast?.("Failed to save settings", "error");
     }
   };
 
-  const saveExperienceMode = async (mode) => {
+  const saveExperience = async (mode) => {
     setExperienceMode(mode);
-    localStorage.setItem("ui_experience_mode", mode);
-    window.dispatchEvent(new Event("experience-mode-changed"));
+    try {
+      localStorage.setItem("ui_experience_mode", mode);
+      window.dispatchEvent(new Event("experience-mode-changed"));
+    } catch (_) {}
     try {
       await requestWithFallback([
         () => api.put("/api/organizations/settings/experience/", { experience_mode: mode }),
         () => api.put("/api/organizations/settings/profile/", { experience_mode: mode }),
       ]);
-      addToast("Experience mode updated", "success");
-    } catch (error) {
-      addToast("Failed to update experience mode", "error");
-      fetchSettings();
-    }
-  };
-
-  const saveNotificationSettings = async (updated) => {
-    setNotifications(updated);
-    try {
-      await requestWithFallback([
-        () => api.put("/api/organizations/settings/notifications/", updated),
-        () => api.put("/api/auth/profile/update/", updated),
-      ]);
-    } catch (error) {
-      addToast("Failed to save settings", "error");
-      fetchSettings();
-    }
+    } catch (_) {}
   };
 
   const fetchOrganization = async () => {
     try {
-      const response = await api.get("/api/organizations/me/");
-      setOrganization(response.data || null);
-      setOrgName(response.data?.name || "");
-      setOrgDescription(response.data?.description || "");
-    } catch (error) {
-      addToast("Failed to fetch organization", "error");
-    }
+      const res = await api.get("/api/organizations/me/");
+      setOrganization(res.data);
+      setOrgName(res.data?.name || "");
+      setOrgDescription(res.data?.description || "");
+    } catch (_) {}
   };
 
   const fetchMembers = async () => {
     try {
-      const response = await api.get("/api/organizations/members/");
-      setMembers(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      addToast("Failed to fetch members", "error");
-    }
+      const res = await api.get("/api/organizations/members/");
+      setMembers(Array.isArray(res.data) ? res.data : res.data?.results || []);
+    } catch (_) {}
   };
 
-  const fetchPendingInvitations = async () => {
+  const fetchInvitations = async () => {
     try {
-      const response = await api.get("/api/organizations/settings/invitation-links/");
-      setPendingInvitations(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      setPendingInvitations([]);
+      const res = await api.get("/api/organizations/settings/invitation-links/");
+      setInvitations(Array.isArray(res.data) ? res.data : []);
+    } catch (_) {
+      setInvitations([]);
     }
   };
 
   const saveOrganization = async () => {
-    setLoading(true);
+    setBusy(true);
     try {
-      await api.put("/api/organizations/me/", {
-        name: orgName,
-        description: orgDescription,
-      });
-      addToast("Organization updated", "success");
+      await api.put("/api/organizations/me/", { name: orgName, description: orgDescription });
+      addToast?.("Organization updated", "success");
       await fetchOrganization();
-    } catch (error) {
-      addToast("Failed to update organization", "error");
+    } catch (err) {
+      addToast?.("Failed to update organization", "error");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
-  const inviteMember = async () => {
+  const sendInvite = async () => {
     if (!inviteEmail.trim()) return;
-    setLoading(true);
+    setBusy(true);
     try {
-      const response = await api.post("/api/organizations/invitations/send/", {
-        email: inviteEmail,
-        role: inviteRole,
-      });
-      setGeneratedLink(response.data?.invite_link || null);
+      await api.post("/api/organizations/invitations/send/", { email: inviteEmail, role: inviteRole });
+      addToast?.("Invitation sent", "success");
       setInviteEmail("");
       setInviteRole("contributor");
-      addToast("Invitation sent", "success");
-      fetchPendingInvitations();
-    } catch (error) {
-      addToast("Failed to invite member", "error");
+      setShowInvite(false);
+      await fetchInvitations();
+    } catch (_) {
+      addToast?.("Failed to invite member", "error");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
-  const cancelInvitation = async (invitationId) => {
+  const cancelInvitation = async (id) => {
     try {
-      await api.delete(`/api/organizations/invitations/${invitationId}/revoke/`);
-      addToast("Invitation canceled", "success");
-      setConfirmDelete(null);
-      fetchPendingInvitations();
-    } catch (error) {
-      addToast("Failed to cancel invitation", "error");
+      await api.delete(`/api/organizations/invitations/${id}/revoke/`);
+      addToast?.("Invitation canceled", "success");
+      await fetchInvitations();
+    } catch (_) {
+      addToast?.("Failed to cancel invitation", "error");
     }
   };
 
-  const fetchWorkspaces = async () => {
-    const result = await listWorkspaces();
-    if (!result.success) {
-      return;
-    }
-    const available = Array.isArray(result.data?.workspaces) ? result.data.workspaces : [];
-    setWorkspaces(available);
-  };
-
-  const resendInvitation = async (invitationId) => {
+  const removeMember = async (id) => {
+    if (!window.confirm("Remove this member from the workspace?")) return;
     try {
-      setResendingInvitationId(invitationId);
-      await api.post(`/api/organizations/invitations/${invitationId}/resend/`);
-      addToast("Invitation resent", "success");
-      fetchPendingInvitations();
-    } catch (error) {
-      addToast(error.response?.data?.error || "Failed to resend invitation", "error");
-    } finally {
-      setResendingInvitationId(null);
+      await api.delete(`/api/organizations/members/${id}/`);
+      addToast?.("Member removed", "success");
+      await fetchMembers();
+    } catch (_) {
+      addToast?.("Failed to remove member", "error");
     }
-  };
-
-  const handleSwitchWorkspace = async (orgSlug) => {
-    if (!workspacePassword.trim()) {
-      addToast("Enter the verification code to switch workspace", "error");
-      return;
-    }
-
-    setSwitchingOrgSlug(orgSlug);
-    const result = await switchWorkspace({ org_slug: orgSlug, otp_code: workspacePassword });
-    setSwitchingOrgSlug(null);
-
-    if (!result.success) {
-      addToast(result.error, "error");
-      return;
-    }
-
-    setWorkspacePassword("");
-    addToast(`Switched to ${result.user?.organization_name || orgSlug}`, "success");
-    window.location.href = "/";
-  };
-
-  const handleRequestWorkspaceCode = async (orgSlug) => {
-    setRequestingCodeOrgSlug(orgSlug);
-    const result = await requestWorkspaceSwitchCode({ org_slug: orgSlug });
-    setRequestingCodeOrgSlug(null);
-    if (!result.success) {
-      addToast(result.error, "error");
-      return;
-    }
-    addToast("Verification code sent to your email", "success");
-  };
-
-  const removeMember = async (memberId) => {
-    try {
-      await api.delete(`/api/organizations/members/${memberId}/`);
-      addToast("Member removed", "success");
-      setConfirmDelete(null);
-      fetchMembers();
-    } catch (error) {
-      addToast("Failed to remove member", "error");
-    }
-  };
-
-  const handleLogoutAllDevices = async () => {
-    setSigningOutAll(true);
-    await logout({ allDevices: true });
-    setSigningOutAll(false);
-    window.location.href = "/login";
-  };
-
-  const toggleNotification = (key) => {
-    saveNotificationSettings({ ...notifications, [key]: !notifications[key] });
-  };
-
-  const changeDigest = (value) => {
-    saveNotificationSettings({ ...notifications, digest_frequency: value });
   };
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <section
-        style={{
-          borderRadius: 18,
-          padding: "clamp(16px, 3vw, 24px)",
-          background: `linear-gradient(120deg, ${palette.softAccent}, transparent)`,
-          border: `1px solid ${palette.border}`,
-          display: "grid",
-          gap: 12,
-        }}
-      >
-        <p style={{ margin: 0, color: palette.muted, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          Knoledgr Controls
-        </p>
-        <h1 style={{ margin: 0, color: palette.text, fontSize: "clamp(1.1rem, 2vw, 1.62rem)", lineHeight: 1.1 }}>
-          Settings
-        </h1>
-        <p style={{ margin: 0, color: palette.muted, maxWidth: 760, fontSize: 14 }}>
-          Manage notifications, appearance, organization, and team operations from one place.
-        </p>
-      </section>
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Settings" }]}
+        title="Settings"
+        subtitle="Control workspace configuration, access, and product behavior."
+        style={{ padding: "24px 0 0", background: "transparent" }}
+      />
 
-      <section style={{ display: "grid", gap: 12 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {sections.map((section) => {
-            const Icon = section.icon;
-            const active = section.id === activeSection;
+      <div style={layout}>
+        <nav style={sideNav}>
+          {sections.map((s) => {
+            const Icon = s.icon;
+            const active = section === s.id;
             return (
               <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                style={{
-                  borderRadius: 999,
-                  border: `1px solid ${palette.border}`,
-                  background: active ? palette.panelAlt : "transparent",
-                  color: active ? palette.text : palette.muted,
-                  padding: "9px 12px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  cursor: "pointer",
-                }}
+                key={s.id}
+                type="button"
+                onClick={() => setSection(s.id)}
+                className={`atlas-sidebar-item ${active ? "is-active" : ""}`}
+                style={{ margin: "2px 0", width: "100%", borderRadius: 3 }}
               >
-                <Icon style={{ width: 15, height: 15 }} />
-                {section.label}
+                <Icon style={{ width: 14, height: 14 }} />
+                <span style={{ flex: 1 }}>{s.label}</span>
               </button>
             );
           })}
-        </div>
+        </nav>
 
-        {activeSection === "notifications" && (
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: isCompact ? "minmax(0,1fr)" : "minmax(0,1.2fr) minmax(300px,1fr)" }}>
-            <article style={panel(palette)}>
-              <h2 style={title(palette)}>In-App Alerts</h2>
-              <p style={subtitle(palette)}>Choose what should trigger an in-app and email notification.</p>
-              <div style={{ display: "grid", gap: 8 }}>
-                {[
-                  { key: "mention_notifications", label: "Mentions", desc: "When someone mentions your name." },
-                  { key: "reply_notifications", label: "Replies", desc: "When someone responds to your threads." },
-                  { key: "decision_notifications", label: "Decisions", desc: "When decisions are created or updated." },
-                ].map((item) => (
-                  <div key={item.key} style={row(palette)}>
-                    <div>
-                      <p style={rowLabel(palette)}>{item.label}</p>
-                      <p style={rowDesc(palette)}>{item.desc}</p>
-                    </div>
-                    <button
-                      onClick={() => toggleNotification(item.key)}
-                      style={toggleButton(notifications[item.key], palette)}
-                      aria-label={`Toggle ${item.label}`}
-                    >
-                      <span style={toggleKnob(notifications[item.key])} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </article>
+        <section style={content}>
+          {section === "notifications" ? (
+            <NotificationsSection settings={notifications} onSave={saveNotifications} />
+          ) : null}
+          {section === "appearance" ? (
+            <AppearanceSection
+              darkMode={darkMode}
+              onToggleDark={toggleDarkMode}
+              experienceMode={experienceMode}
+              onSetExperience={saveExperience}
+            />
+          ) : null}
+          {section === "organization" && isAdmin ? (
+            <OrganizationSection
+              organization={organization}
+              orgName={orgName}
+              setOrgName={setOrgName}
+              orgDescription={orgDescription}
+              setOrgDescription={setOrgDescription}
+              onSave={saveOrganization}
+              busy={busy}
+            />
+          ) : null}
+          {section === "team" && isAdmin ? (
+            <TeamSection
+              members={members}
+              invitations={invitations}
+              onInvite={() => setShowInvite(true)}
+              onCancelInvite={cancelInvitation}
+              onRemove={removeMember}
+            />
+          ) : null}
+          {section === "privacy" ? <PrivacySection /> : null}
+        </section>
+      </div>
 
-            <article style={panel(palette)}>
-              <h2 style={title(palette)}>Email Digest</h2>
-              <p style={subtitle(palette)}>Control how often you get email summaries.</p>
-              <div style={{ display: "grid", gap: 7 }}>
-                {["realtime", "hourly", "daily", "weekly", "never"].map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => changeDigest(value)}
-                    style={{
-                      borderRadius: 10,
-                      border: `1px solid ${palette.border}`,
-                      padding: "10px 11px",
-                      textAlign: "left",
-                      background: notifications.digest_frequency === value ? palette.panelAlt : "transparent",
-                      color: notifications.digest_frequency === value ? palette.text : palette.muted,
-                      fontWeight: 700,
-                      textTransform: "capitalize",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-            </article>
-          </div>
-        )}
-
-        {activeSection === "appearance" && (
-          <article style={panel(palette)}>
-            <h2 style={title(palette)}>Theme</h2>
-            <p style={subtitle(palette)}>Use one-click theme switching across all pages.</p>
-            <div style={{ display: "grid", gap: 8, gridTemplateColumns: isCompact ? "minmax(0,1fr)" : "repeat(2,minmax(0,1fr))" }}>
-              <button onClick={() => darkMode && toggleDarkMode()} style={themeCard(!darkMode, palette)}>
-                <SunIcon style={{ width: 18, height: 18 }} />
-                <span>Light Mode</span>
-              </button>
-              <button onClick={() => !darkMode && toggleDarkMode()} style={themeCard(darkMode, palette)}>
-                <MoonIcon style={{ width: 18, height: 18 }} />
-                <span>Dark Mode</span>
-              </button>
-            </div>
-            <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
-              <h3 style={{ margin: 0, fontSize: 15, color: palette.text }}>Workflow complexity</h3>
-              <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                Simple mode trims navigation to core planning and execution pages.
-              </p>
-              <div style={{ display: "grid", gap: 7 }}>
-                {[
-                  { key: "simple", label: "Simple", desc: "Core pages only" },
-                  { key: "standard", label: "Standard", desc: "Balanced default" },
-                  { key: "advanced", label: "Advanced", desc: "Full surface area" },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    onClick={() => saveExperienceMode(item.key)}
-                    style={{
-                      borderRadius: 10,
-                      border: `1px solid ${palette.border}`,
-                      padding: "10px 11px",
-                      textAlign: "left",
-                      background: experienceMode === item.key ? palette.panelAlt : "transparent",
-                      color: experienceMode === item.key ? palette.text : palette.muted,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <div style={{ fontWeight: 700 }}>{item.label}</div>
-                    <div style={{ fontSize: 12, opacity: 0.85 }}>{item.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </article>
-        )}
-
-        {activeSection === "organization" && user?.role === "admin" && (
-          <article style={panel(palette)}>
-            <h2 style={title(palette)}>Organization Profile</h2>
-            <p style={subtitle(palette)}>Update your workspace identity and description.</p>
-            <div style={{ display: "grid", gap: 10 }}>
-              <Input label="Organization Name" value={orgName} onChange={(event) => setOrgName(event.target.value)} palette={palette} />
-              <Input
-                label="Description"
-                as="textarea"
-                rows={4}
-                value={orgDescription}
-                onChange={(event) => setOrgDescription(event.target.value)}
-                palette={palette}
-              />
-              <button
-                onClick={saveOrganization}
-                disabled={loading}
-                style={{
-                  width: "fit-content",
-                  borderRadius: 10,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.accent,
-                  color: "var(--app-button-text)",
-                  padding: "10px 14px",
-                  fontWeight: 700,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.7 : 1,
-                }}
-              >
-                {loading ? "Saving..." : "Save Organization"}
-              </button>
-            </div>
-            {organization && (
-              <p style={{ margin: "10px 0 0", color: palette.muted, fontSize: 12 }}>
-                Workspace slug: {organization.slug || "n/a"}
-              </p>
-            )}
-          </article>
-        )}
-
-        {activeSection === "team" && user?.role === "admin" && (
-          <div style={{ display: "grid", gap: 12 }}>
-            <article style={panel(palette)}>
-              <h2 style={title(palette)}>Invite Team Member</h2>
-              <p style={subtitle(palette)}>Create an invite by email and role.</p>
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: isCompact ? "minmax(0,1fr)" : "minmax(0,1.4fr) minmax(160px,1fr) auto" }}>
-                <Input label="Email" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} palette={palette} />
-                <Input as="select" label="Role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value)} palette={palette}>
-                  <option value="contributor">Contributor</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
-                </Input>
-                <button
-                  onClick={inviteMember}
-                  disabled={loading}
-                  style={{
-                    marginTop: isCompact ? 0 : 26,
-                    height: 40,
-                    borderRadius: 10,
-                    border: `1px solid ${palette.border}`,
-                    background: palette.accent,
-                    color: "var(--app-button-text)",
-                    padding: "0 14px",
-                    fontWeight: 700,
-                    cursor: loading ? "not-allowed" : "pointer",
-                    opacity: loading ? 0.7 : 1,
-                  }}
-                >
-                  Send Invite
-                </button>
-              </div>
-              {generatedLink && (
-                <div style={{ marginTop: 12, borderRadius: 12, border: `1px solid ${palette.border}`, background: palette.panelAlt, padding: 10 }}>
-                  <p style={{ margin: "0 0 6px", color: palette.text, fontWeight: 700 }}>Invitation Link</p>
-                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8 }}>
-                    <input readOnly value={generatedLink} style={linkInput(palette)} />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedLink);
-                        addToast("Link copied", "success");
-                      }}
-                      style={{ ...copyButton(palette), cursor: "pointer" }}
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
-              )}
-            </article>
-
-            {pendingInvitations.length > 0 && (
-              <article style={panel(palette)}>
-                <h2 style={title(palette)}>Pending Invitations ({pendingInvitations.length})</h2>
-                <div style={{ display: "grid", gap: 8 }}>
-                  {pendingInvitations.map((invitation) => (
-                    <div key={invitation.id} style={memberRow(palette)}>
-                      <div>
-                        <p style={rowLabel(palette)}>{invitation.email}</p>
-                        <p style={rowDesc(palette)}>Role: {invitation.role}</p>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <button
-                          onClick={() => resendInvitation(invitation.id)}
-                          disabled={resendingInvitationId === invitation.id}
-                          style={{
-                            ...copyButton(palette),
-                            background: "var(--app-info)",
-                            color: "var(--app-surface-alt)",
-                            cursor: resendingInvitationId === invitation.id ? "not-allowed" : "pointer",
-                            opacity: resendingInvitationId === invitation.id ? 0.6 : 1,
-                          }}
-                        >
-                          {resendingInvitationId === invitation.id ? "Resending..." : "Resend"}
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete({ type: "invitation", id: invitation.id })}
-                          style={dangerButton(palette)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            )}
-
-            <article style={panel(palette)}>
-              <h2 style={title(palette)}>Team Members ({members.length})</h2>
-              <div style={{ display: "grid", gap: 8 }}>
-                {members.map((member) => (
-                  <div key={member.id} style={memberRow(palette)}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={rowLabel(palette)}>{member.full_name || member.username || "Member"}</p>
-                      <p style={rowDesc(palette)}>{member.email}</p>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={chip(palette)}>{member.role}</span>
-                      {member.id !== user?.id && (
-                        <button onClick={() => setConfirmDelete({ type: "member", id: member.id })} style={dangerButton(palette)}>
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </div>
-        )}
-
-        {activeSection === "privacy" && (
-          <article style={panel(palette)}>
-            <h2 style={title(palette)}>Privacy & Data</h2>
-            <p style={subtitle(palette)}>Your data is scoped to your workspace. Contact support for data export and deletion requests.</p>
-            <div style={{ borderTop: `1px solid ${palette.border}`, paddingTop: 10, display: "grid", gap: 10 }}>
-              <h3 style={{ margin: 0, color: palette.text, fontSize: 15 }}>Workspace Switch</h3>
-              <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>
-                Use this to move between organizations tied to your email.
-              </p>
-              <Input
-                label="Verification Code"
-                type="text"
-                value={workspacePassword}
-                onChange={(event) => setWorkspacePassword(event.target.value)}
-                placeholder="Enter 6-digit code"
-                palette={palette}
-              />
-              {workspaces.length <= 1 ? (
-                <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>
-                  No additional workspaces available for this account.
-                </p>
-              ) : (
-                <div style={{ display: "grid", gap: 8 }}>
-                  {workspaces.map((workspace) => {
-                    const isCurrent = workspace.org_slug === user?.organization_slug;
-                    return (
-                      <div key={`${workspace.user_id}-${workspace.org_slug}`} style={memberRow(palette)}>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={rowLabel(palette)}>{workspace.org_name}</p>
-                          <p style={rowDesc(palette)}>
-                            {workspace.org_slug} • {workspace.role}
-                          </p>
-                        </div>
-                        {isCurrent ? (
-                          <span style={chip(palette)}>Current</span>
-                        ) : (
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button
-                              onClick={() => handleRequestWorkspaceCode(workspace.org_slug)}
-                              disabled={requestingCodeOrgSlug === workspace.org_slug}
-                              style={{
-                                ...copyButton(palette),
-                                background: palette.panelAlt,
-                                cursor: requestingCodeOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
-                                opacity: requestingCodeOrgSlug === workspace.org_slug ? 0.6 : 1,
-                              }}
-                            >
-                              {requestingCodeOrgSlug === workspace.org_slug ? "Sending..." : "Send Code"}
-                            </button>
-                            <button
-                              onClick={() => handleSwitchWorkspace(workspace.org_slug)}
-                              disabled={switchingOrgSlug === workspace.org_slug}
-                              style={{
-                                ...copyButton(palette),
-                                cursor: switchingOrgSlug === workspace.org_slug ? "not-allowed" : "pointer",
-                                opacity: switchingOrgSlug === workspace.org_slug ? 0.6 : 1,
-                              }}
-                            >
-                              {switchingOrgSlug === workspace.org_slug ? "Switching..." : "Switch"}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <div style={{ borderTop: `1px solid ${palette.border}`, paddingTop: 10, marginTop: 6 }}>
-                <p style={{ margin: "0 0 8px", color: palette.muted, fontSize: 12 }}>
-                  Security session control.
-                </p>
-                <button
-                  onClick={handleLogoutAllDevices}
-                  disabled={signingOutAll}
-                  style={{
-                    ...dangerButton(palette),
-                    cursor: signingOutAll ? "not-allowed" : "pointer",
-                    opacity: signingOutAll ? 0.7 : 1,
-                  }}
-                >
-                  {signingOutAll ? "Signing out..." : "Sign Out All Devices"}
-                </button>
-              </div>
-            </div>
-          </article>
-        )}
-      </section>
-
-      {confirmDelete && (
-        <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 90, padding: 16 }}>
-          <div style={{ width: "min(460px,100%)", borderRadius: 16, background: palette.panelBg, border: `1px solid ${palette.border}`, padding: 16 }}>
-            <h3 style={{ margin: 0, color: palette.text, fontSize: 20 }}>
-              {confirmDelete.type === "invitation" ? "Cancel Invitation?" : "Remove Member?"}
-            </h3>
-            <p style={{ margin: "6px 0 14px", color: palette.muted, fontSize: 13 }}>
-              {confirmDelete.type === "invitation"
-                ? "This invitation can no longer be used."
-                : "This user will lose access to your workspace."}
-            </p>
+      {showInvite ? (
+        <Modal title="Invite member" onClose={() => setShowInvite(false)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Field label="Email" isRequired>
+              <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="atlas-input" type="email" autoFocus />
+            </Field>
+            <Field label="Role">
+              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="atlas-input">
+                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </Field>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button
-                onClick={() => setConfirmDelete(null)}
-                style={{ borderRadius: 9, border: `1px solid ${palette.border}`, background: "transparent", color: palette.text, padding: "8px 12px", cursor: "pointer" }}
-              >
-                Keep
-              </button>
-              <button
-                onClick={() => {
-                  if (confirmDelete.type === "invitation") {
-                    cancelInvitation(confirmDelete.id);
-                  } else {
-                    removeMember(confirmDelete.id);
-                  }
-                }}
-                style={{ ...dangerButton(palette), padding: "8px 12px" }}
-              >
-                {confirmDelete.type === "invitation" ? "Cancel Invite" : "Remove"}
-              </button>
+              <Button appearance="subtle" onClick={() => setShowInvite(false)}>Cancel</Button>
+              <Button appearance="primary" onClick={sendInvite} isDisabled={busy || !inviteEmail.trim()}>
+                {busy ? "Sending…" : "Send invitation"}
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        </Modal>
+      ) : null}
     </div>
   );
 }
 
-function panel(palette) {
-  return {
-    borderRadius: 16,
-    background: palette.panelBg,
-    border: `1px solid ${palette.border}`,
-    padding: 16,
-    display: "grid",
-    gap: 10,
-  };
-}
-
-function title(palette) {
-  return { margin: 0, color: palette.text, fontSize: 19 };
-}
-
-function subtitle(palette) {
-  return { margin: "0 0 2px", color: palette.muted, fontSize: 13 };
-}
-
-function row(palette) {
-  return {
-    borderRadius: 11,
-    border: `1px solid ${palette.border}`,
-    background: palette.panelAlt,
-    padding: "10px 11px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 8,
-  };
-}
-
-function rowLabel(palette) {
-  return { margin: 0, color: palette.text, fontSize: 14, fontWeight: 700 };
-}
-
-function rowDesc(palette) {
-  return { margin: "2px 0 0", color: palette.muted, fontSize: 12 };
-}
-
-function toggleButton(active, palette) {
-  return {
-    width: 44,
-    height: 24,
-    borderRadius: 999,
-    border: `1px solid ${palette.border}`,
-    background: active ? palette.accent : palette.pageBg,
-    cursor: "pointer",
-    padding: 2,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: active ? "flex-end" : "flex-start",
-  };
-}
-
-function toggleKnob(active) {
-  return {
-    width: 18,
-    height: 18,
-    borderRadius: "50%",
-    background: active ? "var(--app-button-text)" : "var(--app-surface-alt)",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.22)",
-  };
-}
-
-function themeCard(active, palette) {
-  return {
-    borderRadius: 12,
-    border: `1px solid ${palette.border}`,
-    background: active ? palette.panelAlt : "transparent",
-    color: active ? palette.text : palette.muted,
-    padding: "12px 14px",
-    fontWeight: 700,
-    fontSize: 14,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    cursor: "pointer",
-    justifyContent: "center",
-  };
-}
-
-function memberRow(palette) {
-  return {
-    borderRadius: 11,
-    border: `1px solid ${palette.border}`,
-    background: palette.panelAlt,
-    padding: "10px 11px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 8,
-  };
-}
-
-function chip(palette) {
-  return {
-    borderRadius: 999,
-    border: `1px solid ${palette.border}`,
-    color: palette.muted,
-    padding: "4px 8px",
-    fontSize: 11,
-    fontWeight: 800,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-  };
-}
-
-function dangerButton(palette) {
-  return {
-    borderRadius: 9,
-    border: `1px solid ${palette.danger}`,
-    background: "transparent",
-    color: palette.danger,
-    padding: "6px 10px",
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: "pointer",
-  };
-}
-
-function linkInput(palette) {
-  return {
-    borderRadius: 9,
-    border: `1px solid ${palette.border}`,
-    background: palette.pageBg,
-    color: palette.text,
-    padding: "8px 9px",
-    fontSize: 12,
-    width: "100%",
-  };
-}
-
-function copyButton(palette) {
-  return {
-    borderRadius: 9,
-    border: `1px solid ${palette.border}`,
-    background: palette.accent,
-    color: "var(--app-button-text)",
-    padding: "8px 11px",
-    fontWeight: 700,
-  };
-}
-
-function Input({ label, as = "input", palette, children, ...props }) {
-  const style = {
-    width: "100%",
-    borderRadius: 10,
-    border: `1px solid ${palette.border}`,
-    background: palette.panelAlt,
-    color: palette.text,
-    padding: "10px 11px",
-    fontSize: 14,
-    outline: "none",
-  };
-
+function NotificationsSection({ settings, onSave }) {
   return (
-    <label style={{ display: "grid", gap: 6 }}>
-      {label && (
-        <span style={{ color: palette.muted, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-          {label}
-        </span>
-      )}
-      {as === "textarea" ? (
-        <textarea {...props} style={style} />
-      ) : as === "select" ? (
-        <select {...props} style={style}>
-          {children}
+    <Panel title="Notifications" description="Choose which events trigger notifications and how often you receive digests.">
+      <Toggle
+        label="Mention notifications"
+        description="Notify me when someone @mentions me."
+        checked={settings.mention_notifications}
+        onChange={(v) => onSave({ ...settings, mention_notifications: v })}
+      />
+      <Toggle
+        label="Reply notifications"
+        description="Notify me when someone replies to my thread."
+        checked={settings.reply_notifications}
+        onChange={(v) => onSave({ ...settings, reply_notifications: v })}
+      />
+      <Toggle
+        label="Decision notifications"
+        description="Notify me when a decision is committed in this workspace."
+        checked={settings.decision_notifications}
+        onChange={(v) => onSave({ ...settings, decision_notifications: v })}
+      />
+      <Field label="Digest frequency" helpText="How often we email a digest of activity.">
+        <select
+          value={settings.digest_frequency}
+          onChange={(e) => onSave({ ...settings, digest_frequency: e.target.value })}
+          className="atlas-input"
+          style={{ maxWidth: 200 }}
+        >
+          <option value="off">Off</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
         </select>
+      </Field>
+    </Panel>
+  );
+}
+
+function AppearanceSection({ darkMode, onToggleDark, experienceMode, onSetExperience }) {
+  return (
+    <Panel title="Appearance" description="Tune theme and how much complexity the workspace shows you.">
+      <Toggle label="Dark theme" description="Use a darker interface in low-light environments." checked={darkMode} onChange={onToggleDark} />
+      <Field label="Experience mode" helpText="Hide advanced surfaces for a simpler workspace.">
+        <div style={{ display: "flex", gap: 8 }}>
+          {[
+            { id: "simple", label: "Simple", hint: "Hide advanced surfaces" },
+            { id: "standard", label: "Standard", hint: "Default workspace" },
+            { id: "power", label: "Power", hint: "All surfaces enabled" },
+          ].map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => onSetExperience(m.id)}
+              style={{
+                ...modePill,
+                background: experienceMode === m.id ? "var(--b50)" : "var(--app-surface-alt)",
+                borderColor: experienceMode === m.id ? "var(--b400)" : "var(--app-border)",
+                color: experienceMode === m.id ? "var(--b500)" : "var(--app-text)",
+              }}
+            >
+              <strong>{m.label}</strong>
+              <span style={{ marginLeft: 6, fontSize: 11, color: "var(--app-muted)" }}>· {m.hint}</span>
+            </button>
+          ))}
+        </div>
+      </Field>
+    </Panel>
+  );
+}
+
+function OrganizationSection({ organization, orgName, setOrgName, orgDescription, setOrgDescription, onSave, busy }) {
+  return (
+    <Panel title="Organization" description="Edit your workspace identity.">
+      <Field label="Name" isRequired>
+        <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="atlas-input" />
+      </Field>
+      <Field label="Description">
+        <textarea value={orgDescription} onChange={(e) => setOrgDescription(e.target.value)} className="atlas-input" rows={4} />
+      </Field>
+      {organization?.slug ? (
+        <Field label="Slug" helpText="Workspace URL identifier.">
+          <input value={organization.slug} className="atlas-input" disabled />
+        </Field>
+      ) : null}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Button appearance="primary" onClick={onSave} isDisabled={busy || !orgName.trim()}>
+          {busy ? "Saving…" : "Save changes"}
+        </Button>
+      </div>
+    </Panel>
+  );
+}
+
+function TeamSection({ members, invitations, onInvite, onCancelInvite, onRemove }) {
+  return (
+    <Panel
+      title="Team"
+      description="Manage members and pending invitations."
+      action={
+        <Button appearance="primary" iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />} onClick={onInvite}>
+          Invite member
+        </Button>
+      }
+    >
+      <h4 style={subheading}>Members <span style={{ fontWeight: 400, color: "var(--app-muted)" }}>· {members.length}</span></h4>
+      {members.length === 0 ? (
+        <EmptyState title="No members" description="Invite teammates to start collaborating." />
       ) : (
-        <input {...props} style={style} />
+        <div style={tableWrap}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "var(--app-surface-alt)" }}>
+                <th style={th}>Name</th>
+                <th style={th}>Role</th>
+                <th style={th}>Email</th>
+                <th style={{ ...th, textAlign: "right" }} />
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.id || m.user_id} style={{ borderBottom: "1px solid var(--app-border-subtle)" }}>
+                  <td style={td}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <Avatar size="sm" name={m.full_name || m.email} />
+                      <span>{m.full_name || m.email}</span>
+                    </span>
+                  </td>
+                  <td style={td}><Lozenge>{m.role || "contributor"}</Lozenge></td>
+                  <td style={td}><span style={{ color: "var(--app-muted)", fontSize: 13 }}>{m.email}</span></td>
+                  <td style={{ ...td, textAlign: "right" }}>
+                    <Button appearance="subtle" size="sm" onClick={() => onRemove(m.id || m.user_id)}>Remove</Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <h4 style={{ ...subheading, marginTop: 24 }}>Pending invitations <span style={{ fontWeight: 400, color: "var(--app-muted)" }}>· {invitations.length}</span></h4>
+      {invitations.length === 0 ? (
+        <p style={{ fontSize: 13, color: "var(--app-muted)" }}>No pending invitations.</p>
+      ) : (
+        <div style={tableWrap}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "var(--app-surface-alt)" }}>
+                <th style={th}>Email</th>
+                <th style={th}>Role</th>
+                <th style={th}>Sent</th>
+                <th style={{ ...th, textAlign: "right" }} />
+              </tr>
+            </thead>
+            <tbody>
+              {invitations.map((inv) => (
+                <tr key={inv.id} style={{ borderBottom: "1px solid var(--app-border-subtle)" }}>
+                  <td style={td}>{inv.email}</td>
+                  <td style={td}><Lozenge>{inv.role}</Lozenge></td>
+                  <td style={td}><span style={{ color: "var(--app-muted)", fontSize: 13 }}>{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : "—"}</span></td>
+                  <td style={{ ...td, textAlign: "right" }}>
+                    <Button appearance="subtle" size="sm" iconBefore={<TrashIcon style={{ width: 12, height: 12 }} />} onClick={() => onCancelInvite(inv.id)}>
+                      Cancel
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function PrivacySection() {
+  return (
+    <Panel title="Privacy" description="How Knoledgr handles your data.">
+      <SectionMessage tone="info">
+        Your workspace data stays in this tenant. Export or delete it from the Profile page.
+      </SectionMessage>
+    </Panel>
+  );
+}
+
+function Panel({ title, description, action, children }) {
+  return (
+    <div style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, padding: 24 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 8 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: "var(--app-text)" }}>{title}</h2>
+          {description ? <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--app-muted)" }}>{description}</p> : null}
+        </div>
+        {action}
+      </div>
+      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>{children}</div>
+    </div>
+  );
+}
+
+function Toggle({ label, description, checked, onChange }) {
+  return (
+    <label style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, cursor: "pointer", padding: "8px 0", borderBottom: "1px solid var(--app-border-subtle)" }}>
+      <div>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "var(--app-text)" }}>{label}</p>
+        {description ? <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--app-muted)" }}>{description}</p> : null}
+      </div>
+      <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+        <input
+          type="checkbox"
+          checked={!!checked}
+          onChange={(e) => onChange?.(e.target.checked)}
+          style={{ position: "absolute", opacity: 0, width: "100%", height: "100%", margin: 0, cursor: "pointer" }}
+        />
+        <span
+          style={{
+            width: 32,
+            height: 18,
+            borderRadius: 999,
+            background: checked ? "var(--b400)" : "var(--n50)",
+            position: "relative",
+            transition: "background 120ms ease",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              top: 2,
+              left: checked ? 16 : 2,
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              background: "#FFFFFF",
+              transition: "left 120ms ease",
+            }}
+          />
+        </span>
+      </span>
     </label>
   );
 }
 
-export default Settings;
+function Modal({ children, onClose, title, width = 480 }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", zIndex: 199 }} />
+      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 6, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--app-border)" }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
+          <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
+        </div>
+        <div style={{ padding: 20 }}>{children}</div>
+      </div>
+    </>
+  );
+}
+
+const layout = {
+  marginTop: 16,
+  display: "grid",
+  gridTemplateColumns: "220px minmax(0, 1fr)",
+  gap: 24,
+  alignItems: "start",
+};
+
+const sideNav = {
+  position: "sticky",
+  top: 72,
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  padding: 8,
+};
+
+const content = {
+  minWidth: 0,
+};
+
+const modePill = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "8px 12px",
+  border: "1px solid var(--app-border)",
+  borderRadius: 3,
+  background: "var(--app-surface-alt)",
+  fontFamily: "inherit",
+  fontSize: 13,
+  cursor: "pointer",
+};
+
+const tableWrap = { background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, overflow: "hidden", marginTop: 8 };
+const th = { textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--app-muted)", padding: "10px 16px", borderBottom: "1px solid var(--app-border)" };
+const td = { padding: "10px 16px", fontSize: 14, color: "var(--app-text)", verticalAlign: "middle" };
+const subheading = { margin: "16px 0 8px", fontSize: 14, fontWeight: 600, color: "var(--app-text)" };

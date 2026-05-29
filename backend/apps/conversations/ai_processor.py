@@ -5,13 +5,15 @@ from django.conf import settings
 class AIProcessor:
     def __init__(self):
         self.client = anthropic.Anthropic(
-            api_key=settings.ANTHROPIC_API_KEY
+            api_key=settings.ANTHROPIC_API_KEY,
+            timeout=20.0,
+            max_retries=1,
         )
     
     def _call_claude(self, prompt, max_tokens=1000):
         try:
             message = self.client.messages.create(
-                model="claude-3-haiku-20240307",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}]
             )

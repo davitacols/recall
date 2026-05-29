@@ -9,10 +9,10 @@ def generate_sprint_update_summary(title, content):
         return f"Summary: {' '.join(words[:20])}..." if len(words) > 20 else content
     
     try:
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0, max_retries=1)
         
         message = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-haiku-4-5-20251001",
             max_tokens=150,
             messages=[{
                 "role": "user",
@@ -32,10 +32,10 @@ def detect_action_items(content):
         return []
     
     try:
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0, max_retries=1)
         
         message = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-haiku-4-5-20251001",
             max_tokens=200,
             messages=[{
                 "role": "user",
@@ -54,10 +54,10 @@ def generate_retrospective_summary(sprint_name, what_went_well, what_needs_impro
         return "Retrospective completed."
     
     try:
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0, max_retries=1)
         
         message = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-haiku-4-5-20251001",
             max_tokens=300,
             messages=[{
                 "role": "user",

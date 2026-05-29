@@ -11,16 +11,13 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../hooks/useAuth";
-import { Avatar, IconButton, Button } from "./atlas";
+import { Avatar, IconButton } from "./atlas";
 import BrandLogo from "./BrandLogo";
 import { formatWorkspaceName } from "./unifiedNavConfig";
 
 /**
- * AtlasTopNav — Atlassian-style global top bar (56px).
- *
- * Left:   app switcher (9-dot) · brand · "Your work" ▾ · "Projects" ▾ · "Apps" ▾ · "Create"
- * Center: global search
- * Right:  notifications · help · settings · avatar
+ * AtlasTopNav — global top bar.
+ * Pill search, refined icon buttons, charcoal Create CTA, avatar pill with name.
  */
 export default function AtlasTopNav({
   onToggleSidebar,
@@ -32,6 +29,7 @@ export default function AtlasTopNav({
   const location = useLocation();
   const [openMenu, setOpenMenu] = useState(null);
   const [search, setSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -52,6 +50,7 @@ export default function AtlasTopNav({
     (user?.organization_slug ? formatWorkspaceName(user.organization_slug) : "Knoledgr");
 
   const initial = user?.full_name?.charAt(0)?.toUpperCase() || "U";
+  const firstName = user?.full_name?.split(" ")[0] || "Account";
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -61,139 +60,147 @@ export default function AtlasTopNav({
   };
 
   return (
-    <header style={topbarStyle} ref={menuRef}>
-      <div style={leftCluster}>
-        {showSidebarToggle ? (
-          <IconButton
-            icon={<Bars3Icon style={{ width: 18, height: 18 }} />}
-            label="Toggle sidebar"
-            onClick={onToggleSidebar}
-          />
-        ) : null}
-        <Link to="/dashboard" style={brandLink} aria-label="Knoledgr home">
-          <span style={brandMark}>
-            <BrandLogo size={22} />
-          </span>
-          <span style={brandName}>Knoledgr</span>
-        </Link>
+    <>
+      <style>{TOPNAV_STYLES}</style>
+      <header className="atlas-topnav" ref={menuRef}>
+        <div className="atlas-topnav-left">
+          {showSidebarToggle ? (
+            <IconButton
+              icon={<Bars3Icon style={{ width: 18, height: 18 }} />}
+              label="Toggle sidebar"
+              onClick={onToggleSidebar}
+            />
+          ) : null}
+          <Link to="/dashboard" className="atlas-topnav-brand" aria-label="Knoledgr home">
+            <BrandLogo size="sm" tone="blue" showText={false} />
+            <span>Knoledgr</span>
+          </Link>
 
-        <nav style={navLinkRow}>
-          <TopMenu
-            label="Your work"
-            isOpen={openMenu === "work"}
-            onOpen={() => setOpenMenu(openMenu === "work" ? null : "work")}
-            items={[
-              { label: "Assigned to me", to: "/dashboard?tab=assigned" },
-              { label: "Recently viewed", to: "/dashboard?tab=viewed" },
-              { label: "Starred", to: "/dashboard?tab=starred" },
-              { label: "Worked on", to: "/dashboard?tab=worked" },
-              { label: "All boards", to: "/projects" },
-            ]}
-          />
-          <TopMenu
-            label="Projects"
-            isOpen={openMenu === "projects"}
-            onOpen={() => setOpenMenu(openMenu === "projects" ? null : "projects")}
-            items={[
-              { label: "View all projects", to: "/projects" },
-              { label: "Create project", to: "/projects?new=1" },
-            ]}
-          />
-          <TopMenu
-            label="Knowledge"
-            isOpen={openMenu === "knowledge"}
-            onOpen={() => setOpenMenu(openMenu === "knowledge" ? null : "knowledge")}
-            items={[
-              { label: "Search", to: "/knowledge" },
-              { label: "Graph", to: "/knowledge/graph" },
-              { label: "Analytics", to: "/knowledge/analytics" },
-              { label: "Documents", to: "/business/documents" },
-            ]}
-          />
-          <TopMenu
-            label="Apps"
-            isOpen={openMenu === "apps"}
-            onOpen={() => setOpenMenu(openMenu === "apps" ? null : "apps")}
-            items={[
-              { label: "Browse apps", to: "/enterprise" },
-              { label: "Integrations", to: "/integrations" },
-            ]}
-          />
-          <Button
-            appearance="primary"
-            size="sm"
-            iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />}
-            onClick={() => navigate("/projects?new=1")}
-            style={{ marginLeft: 8 }}
-          >
-            Create
-          </Button>
-        </nav>
-      </div>
+          <nav className="atlas-topnav-nav">
+            <TopMenu
+              label="Your work"
+              isOpen={openMenu === "work"}
+              onOpen={() => setOpenMenu(openMenu === "work" ? null : "work")}
+              items={[
+                { label: "Assigned to me", to: "/dashboard?tab=assigned" },
+                { label: "Recently viewed", to: "/dashboard?tab=viewed" },
+                { label: "Starred", to: "/dashboard?tab=starred" },
+                { label: "Worked on", to: "/dashboard?tab=worked" },
+                { label: "All boards", to: "/projects" },
+              ]}
+            />
+            <TopMenu
+              label="Projects"
+              isOpen={openMenu === "projects"}
+              onOpen={() => setOpenMenu(openMenu === "projects" ? null : "projects")}
+              items={[
+                { label: "View all projects", to: "/projects" },
+                { label: "Create project", to: "/projects?new=1" },
+              ]}
+            />
+            <TopMenu
+              label="Knowledge"
+              isOpen={openMenu === "knowledge"}
+              onOpen={() => setOpenMenu(openMenu === "knowledge" ? null : "knowledge")}
+              items={[
+                { label: "Search", to: "/knowledge" },
+                { label: "Graph", to: "/knowledge/graph" },
+                { label: "Analytics", to: "/knowledge/analytics" },
+                { label: "Documents", to: "/business/documents" },
+              ]}
+            />
+            <TopMenu
+              label="Apps"
+              isOpen={openMenu === "apps"}
+              onOpen={() => setOpenMenu(openMenu === "apps" ? null : "apps")}
+              items={[
+                { label: "Browse apps", to: "/enterprise" },
+                { label: "Integrations", to: "/integrations" },
+              ]}
+            />
+          </nav>
+        </div>
 
-      <form onSubmit={handleSearchSubmit} style={searchForm} role="search">
-        <MagnifyingGlassIcon style={searchIcon} />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search"
-          style={searchInput}
-          aria-label="Search"
-        />
-      </form>
+        <form
+          onSubmit={handleSearchSubmit}
+          className={`atlas-topnav-search ${searchFocused ? "is-focused" : ""}`}
+          role="search"
+        >
+          <MagnifyingGlassIcon className="atlas-topnav-search-icon" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder="Search pages, decisions, people…"
+            aria-label="Search"
+          />
+          <kbd className="atlas-topnav-kbd">⌘K</kbd>
+        </form>
 
-      <div style={rightCluster}>
-        <IconButton
-          icon={<SparklesIcon style={{ width: 18, height: 18 }} />}
-          label="Ask Recall"
-          onClick={() => navigate("/ask")}
-        />
-        <IconButton
-          icon={<BellIcon style={{ width: 18, height: 18 }} />}
-          label="Notifications"
-          onClick={() => navigate("/notifications")}
-        />
-        <IconButton
-          icon={<QuestionMarkCircleIcon style={{ width: 18, height: 18 }} />}
-          label="Help"
-          onClick={() => navigate("/docs")}
-        />
-        <IconButton
-          icon={<Cog6ToothIcon style={{ width: 18, height: 18 }} />}
-          label="Settings"
-          onClick={() => navigate("/settings")}
-        />
-        <div style={{ position: "relative" }}>
+        <div className="atlas-topnav-right">
           <button
             type="button"
-            onClick={() => setOpenMenu(openMenu === "profile" ? null : "profile")}
-            style={profileTrigger}
-            aria-label="Account"
+            className="atlas-topnav-create"
+            onClick={() => navigate("/projects?new=1")}
           >
-            <Avatar name={user?.full_name || initial} src={user?.avatar} size="sm" />
+            <PlusIcon style={{ width: 14, height: 14 }} />
+            Create
           </button>
-          {openMenu === "profile" ? (
-            <div style={profileMenu}>
-              <div style={profileMenuHead}>
-                <p style={{ fontWeight: 600, fontSize: 14, color: "var(--app-text)", margin: 0 }}>
-                  {user?.full_name || "User"}
-                </p>
-                <p style={{ marginTop: 2, fontSize: 12, color: "var(--app-muted)" }}>{user?.email}</p>
-                <p style={{ marginTop: 6, fontSize: 11, color: "var(--app-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {workspaceLabel}
-                </p>
+
+          <div className="atlas-topnav-icons">
+            <IconButton
+              icon={<SparklesIcon style={{ width: 18, height: 18 }} />}
+              label="Ask Recall"
+              onClick={() => navigate("/ask")}
+            />
+            <IconButton
+              icon={<BellIcon style={{ width: 18, height: 18 }} />}
+              label="Notifications"
+              onClick={() => navigate("/notifications")}
+            />
+            <IconButton
+              icon={<QuestionMarkCircleIcon style={{ width: 18, height: 18 }} />}
+              label="Help"
+              onClick={() => navigate("/docs")}
+            />
+            <IconButton
+              icon={<Cog6ToothIcon style={{ width: 18, height: 18 }} />}
+              label="Settings"
+              onClick={() => navigate("/settings")}
+            />
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setOpenMenu(openMenu === "profile" ? null : "profile")}
+              className="atlas-topnav-profile"
+              aria-label="Account"
+            >
+              <Avatar name={user?.full_name || initial} src={user?.avatar} size="sm" />
+              <span className="atlas-topnav-profile-name">{firstName}</span>
+              <ChevronDownIcon style={{ width: 12, height: 12, opacity: 0.6 }} />
+            </button>
+            {openMenu === "profile" ? (
+              <div className="atlas-topnav-profile-menu">
+                <div className="atlas-topnav-profile-head">
+                  <p className="atlas-topnav-profile-name-lg">{user?.full_name || "User"}</p>
+                  <p className="atlas-topnav-profile-email">{user?.email}</p>
+                  <p className="atlas-topnav-profile-ws">{workspaceLabel}</p>
+                </div>
+                <MenuItem onClick={() => { setOpenMenu(null); navigate("/profile"); }}>Profile</MenuItem>
+                <MenuItem onClick={() => { setOpenMenu(null); navigate("/settings"); }}>Settings</MenuItem>
+                <MenuItem onClick={() => { setOpenMenu(null); navigate("/notifications"); }}>Notifications</MenuItem>
+                <div className="atlas-topnav-divider" />
+                <MenuItem onClick={logout} danger>Sign out</MenuItem>
               </div>
-              <MenuItem onClick={() => { setOpenMenu(null); navigate("/profile"); }}>Profile</MenuItem>
-              <MenuItem onClick={() => { setOpenMenu(null); navigate("/settings"); }}>Settings</MenuItem>
-              <MenuItem onClick={() => { setOpenMenu(null); navigate("/notifications"); }}>Notifications</MenuItem>
-              <div style={menuDivider} />
-              <MenuItem onClick={logout} danger>Sign out</MenuItem>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
 
@@ -204,18 +211,15 @@ function TopMenu({ label, items, isOpen, onOpen }) {
         type="button"
         onClick={onOpen}
         aria-expanded={isOpen}
-        style={{
-          ...navLinkButton,
-          background: isOpen ? "var(--n30)" : "transparent",
-        }}
+        className={`atlas-topnav-navbtn ${isOpen ? "is-open" : ""}`}
       >
         {label}
-        <ChevronDownIcon style={{ width: 12, height: 12, opacity: 0.7 }} />
+        <ChevronDownIcon style={{ width: 12, height: 12, opacity: 0.6 }} />
       </button>
       {isOpen ? (
-        <div style={topMenuDropdown}>
+        <div className="atlas-topnav-dropdown">
           {items.map((item) => (
-            <Link key={item.to} to={item.to} style={menuItemStyle}>
+            <Link key={item.to} to={item.to} className="atlas-topnav-menuitem">
               {item.label}
             </Link>
           ))}
@@ -230,157 +234,301 @@ function MenuItem({ children, onClick, danger }) {
     <button
       type="button"
       onClick={onClick}
-      style={{
-        ...menuItemStyle,
-        width: "100%",
-        textAlign: "left",
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        color: danger ? "var(--r500)" : "var(--app-text)",
-        fontSize: 14,
-      }}
+      className={`atlas-topnav-menuitem ${danger ? "is-danger" : ""}`}
+      style={{ width: "100%", textAlign: "left", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit" }}
     >
       {children}
     </button>
   );
 }
 
-const topbarStyle = {
-  position: "sticky",
-  top: 0,
-  zIndex: 100,
-  height: "var(--atlas-topnav-h, 56px)",
-  width: "100%",
-  background: "var(--app-surface)",
-  borderBottom: "1px solid var(--app-border)",
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 720px) auto",
-  alignItems: "center",
-  gap: 16,
-  padding: "0 16px",
-};
+const TOPNAV_STYLES = `
+.atlas-topnav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--atlas-topnav-h, 60px);
+  width: 100%;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--app-border);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 540px) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px;
+  font-family: inherit;
+}
 
-const leftCluster = { display: "flex", alignItems: "center", gap: 4, minWidth: 0 };
-const rightCluster = { display: "flex", alignItems: "center", gap: 2, justifySelf: "end" };
+[data-theme="dark"] .atlas-topnav {
+  background: rgba(15, 16, 17, 0.82);
+}
 
-const brandLink = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  textDecoration: "none",
-  color: "var(--app-text)",
-  padding: "0 8px",
-  height: 32,
-  borderRadius: 3,
-};
+.atlas-topnav-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 
-const brandMark = { display: "inline-flex" };
-const brandName = { fontWeight: 600, fontSize: 14, letterSpacing: "-0.005em" };
+.atlas-topnav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: end;
+}
 
-const navLinkRow = { display: "flex", alignItems: "center", gap: 2, marginLeft: 8 };
+.atlas-topnav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px 0 4px;
+  margin-right: 8px;
+  color: var(--app-text);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.012em;
+  border-radius: 8px;
+  transition: background 120ms ease;
+}
+.atlas-topnav-brand:hover { background: var(--app-surface-alt); }
 
-const navLinkButton = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 4,
-  height: 32,
-  padding: "0 8px",
-  background: "transparent",
-  color: "var(--app-text)",
-  border: "none",
-  borderRadius: 3,
-  fontFamily: "inherit",
-  fontSize: 14,
-  fontWeight: 500,
-  cursor: "pointer",
-};
+.atlas-topnav-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+}
 
-const topMenuDropdown = {
-  position: "absolute",
-  top: 36,
-  left: 0,
-  minWidth: 240,
-  background: "var(--app-surface-overlay)",
-  border: "1px solid var(--app-border)",
-  borderRadius: 4,
-  boxShadow: "var(--ui-shadow-md)",
-  padding: "4px 0",
-  zIndex: 110,
-};
+.atlas-topnav-navbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--app-text);
+  border: none;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.atlas-topnav-navbtn:hover { background: var(--app-surface-alt); }
+.atlas-topnav-navbtn.is-open { background: var(--app-surface-alt); color: var(--app-accent); }
 
-const menuItemStyle = {
-  display: "block",
-  padding: "8px 16px",
-  fontSize: 14,
-  color: "var(--app-text)",
-  textDecoration: "none",
-  cursor: "pointer",
-};
+.atlas-topnav-dropdown {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  min-width: 240px;
+  background: var(--app-surface-overlay);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  box-shadow:
+    0 1px 1px rgba(9, 30, 66, 0.04),
+    0 12px 32px -8px rgba(9, 30, 66, 0.18);
+  padding: 6px;
+  z-index: 110;
+}
 
-const menuDivider = {
-  height: 1,
-  background: "var(--app-border-subtle)",
-  margin: "4px 0",
-};
+.atlas-topnav-menuitem {
+  display: block;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--app-text);
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 100ms ease;
+}
+.atlas-topnav-menuitem:hover { background: var(--app-surface-alt); }
+.atlas-topnav-menuitem.is-danger { color: var(--r500); }
 
-const searchForm = {
-  position: "relative",
-  display: "flex",
-  alignItems: "center",
-  justifySelf: "stretch",
-};
+.atlas-topnav-divider {
+  height: 1px;
+  background: var(--app-border-subtle);
+  margin: 6px 4px;
+}
 
-const searchIcon = {
-  position: "absolute",
-  left: 8,
-  width: 16,
-  height: 16,
-  color: "var(--app-muted)",
-  pointerEvents: "none",
-};
+/* ---------- Search ---------- */
 
-const searchInput = {
-  width: "100%",
-  height: 32,
-  paddingLeft: 32,
-  paddingRight: 8,
-  fontSize: 14,
-  background: "var(--n20)",
-  border: "2px solid transparent",
-  borderRadius: 3,
-  color: "var(--app-text)",
-  outline: "none",
-  fontFamily: "inherit",
-};
+.atlas-topnav-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 12px 0 38px;
+  border-radius: 999px;
+  background: var(--app-surface-alt);
+  border: 1px solid transparent;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+.atlas-topnav-search:hover { background: var(--n30); }
+.atlas-topnav-search.is-focused {
+  background: var(--app-surface);
+  border-color: var(--b400);
+  box-shadow: 0 0 0 4px rgba(94, 106, 210, 0.16);
+}
 
-const profileTrigger = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: 32,
-  height: 32,
-  background: "transparent",
-  border: "none",
-  borderRadius: "50%",
-  padding: 0,
-  cursor: "pointer",
-};
+.atlas-topnav-search input {
+  flex: 1;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0;
+}
+.atlas-topnav-search input::placeholder { color: var(--app-text-subtle); font-weight: 400; }
 
-const profileMenu = {
-  position: "absolute",
-  top: 40,
-  right: 0,
-  minWidth: 280,
-  background: "var(--app-surface-overlay)",
-  border: "1px solid var(--app-border)",
-  borderRadius: 4,
-  boxShadow: "var(--ui-shadow-md)",
-  padding: "4px 0",
-  zIndex: 120,
-};
+.atlas-topnav-search-icon {
+  position: absolute;
+  left: 14px;
+  width: 16px;
+  height: 16px;
+  color: var(--app-muted);
+  pointer-events: none;
+}
 
-const profileMenuHead = {
-  padding: "12px 16px",
-  borderBottom: "1px solid var(--app-border-subtle)",
-};
+.atlas-topnav-kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 5px;
+  background: var(--app-surface);
+  color: var(--app-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Right cluster ---------- */
+
+.atlas-topnav-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--app-text);
+  color: var(--app-surface);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+.atlas-topnav-create:hover { transform: translateY(-1px); opacity: 0.92; }
+
+.atlas-topnav-icons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.atlas-topnav-icons::after {
+  content: "";
+  width: 1px;
+  height: 22px;
+  background: var(--app-border-subtle);
+  margin: 0 6px 0 8px;
+}
+
+/* ---------- Profile ---------- */
+
+.atlas-topnav-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px 0 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.atlas-topnav-profile:hover {
+  background: var(--app-surface-alt);
+  border-color: var(--app-border-subtle);
+}
+
+.atlas-topnav-profile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-topnav-profile-menu {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  min-width: 280px;
+  background: var(--app-surface-overlay);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 1px rgba(9, 30, 66, 0.04),
+    0 16px 40px -10px rgba(9, 30, 66, 0.22);
+  padding: 6px;
+  z-index: 120;
+}
+
+.atlas-topnav-profile-head {
+  padding: 12px 14px 14px;
+  border-bottom: 1px solid var(--app-border-subtle);
+  margin-bottom: 6px;
+}
+.atlas-topnav-profile-name-lg {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text);
+}
+.atlas-topnav-profile-email {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--app-muted);
+}
+.atlas-topnav-profile-ws {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--app-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .atlas-topnav { grid-template-columns: auto minmax(0, 1fr) auto; padding: 0 14px; }
+  .atlas-topnav-nav { display: none; }
+  .atlas-topnav-kbd { display: none; }
+}
+
+@media (max-width: 720px) {
+  .atlas-topnav-create span,
+  .atlas-topnav-profile-name { display: none; }
+  .atlas-topnav-icons { gap: 0; }
+}
+`;

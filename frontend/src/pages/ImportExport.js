@@ -1,445 +1,315 @@
-import React, { useState } from 'react';
-import { ArrowUpTrayIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../utils/ThemeAndAccessibility';
+import React, { useState } from "react";
+import {
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  DocumentTextIcon,
+} from "@heroicons/react/24/outline";
+import {
+  Button,
+  Field,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+  Tabs,
+} from "../components/atlas";
 
+const IMPORT_TYPES = [
+  { id: "conversations", label: "Conversations" },
+  { id: "decisions", label: "Decisions" },
+  { id: "documents", label: "Documents" },
+  { id: "tasks", label: "Tasks" },
+];
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const EXPORT_FORMATS = [
+  { id: "json", label: "JSON" },
+  { id: "csv", label: "CSV" },
+];
+
+const PLATFORMS = [
+  { id: "jira", label: "Jira" },
+  { id: "linear", label: "Linear" },
+  { id: "asana", label: "Asana" },
+  { id: "trello", label: "Trello" },
+  { id: "github", label: "GitHub Issues" },
+];
 
 export default function ImportExport() {
-  const { darkMode } = useTheme();
+  const API_BASE = process.env.REACT_APP_API_URL || "";
+  const [tab, setTab] = useState("standard");
+
+  // Standard import/export
+  const [importType, setImportType] = useState("conversations");
+  const [importFile, setImportFile] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  const [exportType, setExportType] = useState("conversations");
+  const [exportFormat, setExportFormat] = useState("json");
   const [exporting, setExporting] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [importType, setImportType] = useState('conversations');
-  const [platformType, setPlatformType] = useState('jira');
-  const [platformProjectName, setPlatformProjectName] = useState('');
+
+  // Platform import
+  const [platform, setPlatform] = useState("jira");
   const [platformFile, setPlatformFile] = useState(null);
+  const [platformProjectName, setPlatformProjectName] = useState("");
   const [includeContext, setIncludeContext] = useState(true);
-  const [importingPlatform, setImportingPlatform] = useState(false);
-  const [previewingPlatform, setPreviewingPlatform] = useState(false);
   const [platformPreview, setPlatformPreview] = useState(null);
-  const [strictPreviewMatch, setStrictPreviewMatch] = useState(true);
-  const [exportType, setExportType] = useState('conversations');
-  const [exportFormat, setExportFormat] = useState('json');
+  const [platformLoading, setPlatformLoading] = useState(false);
+  const [platformImporting, setPlatformImporting] = useState(false);
+  const [error, setError] = useState("");
 
-  const bgColor = darkMode ? 'var(--app-surface)' : 'var(--app-surface-alt)';
-  const textColor = darkMode ? 'var(--app-text)' : 'var(--app-text)';
-  const borderColor = darkMode ? '#292524' : 'var(--app-border)';
-  const secondaryText = darkMode ? 'var(--app-muted)' : 'var(--app-muted)';
-
-  const dataTypes = [
-    { value: 'conversations', label: 'Conversations' },
-    { value: 'decisions', label: 'Decisions' },
-    { value: 'knowledge', label: 'Knowledge Articles' },
-    { value: 'goals', label: 'Goals' },
-    { value: 'meetings', label: 'Meetings' },
-    { value: 'tasks', label: 'Tasks' }
-  ];
-
-  const platformOptions = [
-    { value: 'jira', label: 'Jira' },
-    { value: 'notion', label: 'Notion' },
-    { value: 'github', label: 'GitHub Projects / Kanban' },
-    { value: 'jetbrains_space', label: 'JetBrains Space' }
-  ];
+  const authHeaders = () => {
+    const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   const handleImport = async () => {
-    if (!selectedFile) {
-      alert('Please select a file');
+    if (!importFile) {
+      setError("Please select a file first");
       return;
     }
-
+    setError("");
     setImporting(true);
+    setImportResult(null);
     const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('type', importType);
-
+    formData.append("file", importFile);
+    formData.append("type", importType);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/organizations/import/`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
+      const res = await fetch(`${API_BASE}/api/organizations/import/`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: formData,
       });
-
-      const data = await response.json();
-      if (response.ok) {
-        alert(`Successfully imported ${data.count} records`);
-        setSelectedFile(null);
+      const data = await res.json();
+      if (res.ok) {
+        setImportResult({ ok: true, message: `Successfully imported ${data.count || 0} records.` });
+        setImportFile(null);
       } else {
-        alert(`Error: ${data.error}`);
+        setImportResult({ ok: false, message: data.error || "Import failed" });
       }
-    } catch (error) {
-      alert('Import failed: ' + error.message);
+    } catch (err) {
+      setImportResult({ ok: false, message: err.message });
     } finally {
       setImporting(false);
     }
   };
 
   const handleExport = async () => {
+    setError("");
     setExporting(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
+      const res = await fetch(
         `${API_BASE}/api/organizations/data-export/?type=${exportType}&format=${exportFormat}`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { headers: authHeaders() }
       );
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${exportType}_export.${exportFormat}`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        alert('Export failed');
-      }
-    } catch (error) {
-      alert('Export failed: ' + error.message);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${exportType}_export.${exportFormat}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setExporting(false);
     }
   };
 
-  const handlePlatformImport = async () => {
-    if (!platformFile) {
-      alert('Please select an export file');
-      return;
-    }
-
-    setImportingPlatform(true);
-    const formData = new FormData();
-    formData.append('file', platformFile);
-    formData.append('platform', platformType);
-    formData.append('project_name', platformProjectName);
-    formData.append('include_context', includeContext ? 'true' : 'false');
-    if (strictPreviewMatch) {
-      if (!platformPreview?.preview_hash) {
-        alert('Run preview first before importing with strict preview matching enabled.');
-        setImportingPlatform(false);
-        return;
-      }
-      formData.append('strict_preview', 'true');
-      formData.append('preview_hash', platformPreview.preview_hash);
-    }
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/organizations/import/platform/`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        const issues = data?.result?.issues_imported || 0;
-        const context = data?.result?.context_imported || 0;
-        alert(`Imported workflow successfully. Issues: ${issues}, Context items: ${context}`);
-        setPlatformFile(null);
-        setPlatformProjectName('');
-        setPlatformPreview(null);
-      } else {
-        alert(`Error: ${data.error || 'Import failed'}`);
-      }
-    } catch (error) {
-      alert('Platform import failed: ' + error.message);
-    } finally {
-      setImportingPlatform(false);
-    }
-  };
-
   const handlePlatformPreview = async () => {
     if (!platformFile) {
-      alert('Please select an export file');
+      setError("Select an export file first");
       return;
     }
-
-    setPreviewingPlatform(true);
+    setError("");
+    setPlatformLoading(true);
+    setPlatformPreview(null);
     const formData = new FormData();
-    formData.append('file', platformFile);
-    formData.append('platform', platformType);
-    formData.append('project_name', platformProjectName);
-    formData.append('include_context', includeContext ? 'true' : 'false');
-
+    formData.append("file", platformFile);
+    formData.append("platform", platform);
+    formData.append("project_name", platformProjectName);
+    formData.append("include_context", includeContext ? "true" : "false");
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/organizations/import/platform/preview/`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
+      const res = await fetch(`${API_BASE}/api/organizations/import/platform/preview/`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: formData,
       });
-      const data = await response.json();
-      if (response.ok) {
-        setPlatformPreview(data.preview || null);
+      const data = await res.json();
+      if (res.ok) {
+        setPlatformPreview(data.preview || data);
       } else {
-        alert(`Error: ${data.error || 'Preview failed'}`);
+        setError(data.error || "Preview failed");
       }
-    } catch (error) {
-      alert('Preview failed: ' + error.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
-      setPreviewingPlatform(false);
+      setPlatformLoading(false);
     }
   };
 
+  const handlePlatformImport = async () => {
+    if (!platformFile) {
+      setError("Select an export file first");
+      return;
+    }
+    setError("");
+    setPlatformImporting(true);
+    const formData = new FormData();
+    formData.append("file", platformFile);
+    formData.append("platform", platform);
+    formData.append("project_name", platformProjectName);
+    formData.append("include_context", includeContext ? "true" : "false");
+    try {
+      const res = await fetch(`${API_BASE}/api/organizations/import/platform/`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const issues = data?.result?.issues_imported || 0;
+        const context = data?.result?.context_imported || 0;
+        setImportResult({ ok: true, message: `Imported workflow. Issues: ${issues}, Context: ${context}.` });
+        setPlatformFile(null);
+        setPlatformProjectName("");
+        setPlatformPreview(null);
+      } else {
+        setError(data.error || "Import failed");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPlatformImporting(false);
+    }
+  };
+
+  const tabs = [
+    { id: "standard", label: "Standard" },
+    { id: "platform", label: "From other tool" },
+    { id: "export", label: "Export" },
+  ];
+
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '24px', fontWeight: 600, color: textColor, marginBottom: '24px' }}>Import/Export Data</h1>
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Import / Export" }]}
+        title="Import / Export"
+        subtitle="Bring data in from other tools or take your data with you."
+        tabs={<Tabs tabs={tabs} value={tab} onChange={setTab} />}
+        style={{ padding: "24px 0 0", background: "transparent" }}
+      />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-        {/* Import Section */}
-        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <ArrowUpTrayIcon style={{ width: '20px', height: '20px', color: textColor }} />
-            <div>
-              <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor }}>Import Data</h2>
-              <p style={{ fontSize: '12px', color: secondaryText }}>Upload CSV or JSON files</p>
-            </div>
-          </div>
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
+      {importResult ? (
+        <SectionMessage tone={importResult.ok ? "success" : "error"} style={{ marginTop: 16 }}>
+          {importResult.message}
+        </SectionMessage>
+      ) : null}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Data Type</label>
-              <select
-                value={importType}
-                onChange={(e) => setImportType(e.target.value)}
-                style={{ width: '100%', border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '8px 10px', backgroundColor: bgColor, color: textColor, fontSize: '13px' }}
-              >
-                {dataTypes.map(type => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Select File</label>
-              <input
-                type="file"
-                accept=".csv,.json"
-                onChange={(e) => setSelectedFile(e.target.files[0])}
-                style={{ width: '100%', border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '8px 10px', backgroundColor: bgColor, color: textColor, fontSize: '13px' }}
-              />
-              {selectedFile && (
-                <p style={{ fontSize: '12px', color: secondaryText, marginTop: '6px' }}>
-                  Selected: {selectedFile.name}
-                </p>
-              )}
-            </div>
-
-            <button
-              onClick={handleImport}
-              disabled={importing || !selectedFile}
-              style={{ width: '100%', padding: '10px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: importing || !selectedFile ? 'not-allowed' : 'pointer', opacity: importing || !selectedFile ? 0.5 : 1 }}
-            >
-              {importing ? 'Importing...' : 'Import Data'}
-            </button>
-          </div>
-        </div>
-
-        {/* Export Section */}
-        <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <ArrowDownTrayIcon style={{ width: '20px', height: '20px', color: textColor }} />
-            <div>
-              <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor }}>Export Data</h2>
-              <p style={{ fontSize: '12px', color: secondaryText }}>Download your data</p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Data Type</label>
-              <select
-                value={exportType}
-                onChange={(e) => setExportType(e.target.value)}
-                style={{ width: '100%', border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '8px 10px', backgroundColor: bgColor, color: textColor, fontSize: '13px' }}
-              >
-                {dataTypes.map(type => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Format</label>
-              <select
-                value={exportFormat}
-                onChange={(e) => setExportFormat(e.target.value)}
-                style={{ width: '100%', border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '8px 10px', backgroundColor: bgColor, color: textColor, fontSize: '13px' }}
-              >
-                <option value="json">JSON</option>
-                <option value="csv">CSV</option>
-              </select>
-            </div>
-
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              style={{ width: '100%', padding: '10px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.5 : 1 }}
-            >
-              {exporting ? 'Exporting...' : 'Export Data'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px', marginBottom: '16px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '8px' }}>Platform Migration</h2>
-        <p style={{ fontSize: '12px', color: secondaryText, marginBottom: '16px' }}>
-          Import workflow + project context from Notion, Jira, GitHub Kanban/Projects, or JetBrains Space exports (CSV/JSON).
-        </p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Source Platform</label>
-            <select
-              value={platformType}
-              onChange={(e) => {
-                setPlatformType(e.target.value);
-                setPlatformPreview(null);
-              }}
-              style={{ width: '100%', border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '8px 10px', backgroundColor: bgColor, color: textColor, fontSize: '13px' }}
-            >
-              {platformOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
+      {tab === "standard" ? (
+        <Panel
+          icon={<ArrowUpTrayIcon style={{ width: 20, height: 20 }} />}
+          title="Import data"
+          description="Upload a previously exported JSON or CSV file."
+        >
+          <Field label="Type">
+            <select value={importType} onChange={(e) => setImportType(e.target.value)} className="atlas-input">
+              {IMPORT_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </select>
+          </Field>
+          <Field label="File">
+            <input type="file" accept=".json,.csv" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
+          </Field>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button appearance="primary" onClick={handleImport} isDisabled={importing || !importFile}>
+              {importing ? "Importing…" : "Import"}
+            </Button>
           </div>
+        </Panel>
+      ) : null}
 
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Project Name Override (optional)</label>
-            <input
-              value={platformProjectName}
-              onChange={(e) => {
-                setPlatformProjectName(e.target.value);
-                setPlatformPreview(null);
-              }}
-              placeholder="e.g. Mobile App Revamp"
-              style={{ width: '100%', border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '8px 10px', backgroundColor: bgColor, color: textColor, fontSize: '13px' }}
-            />
+      {tab === "platform" ? (
+        <Panel
+          icon={<DocumentTextIcon style={{ width: 20, height: 20 }} />}
+          title="Import from another tool"
+          description="Bring a Jira / Linear / Asana / Trello / GitHub export into a new project."
+        >
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <Field label="Source">
+              <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="atlas-input">
+                {PLATFORMS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Project name">
+              <input value={platformProjectName} onChange={(e) => setPlatformProjectName(e.target.value)} className="atlas-input" />
+            </Field>
           </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: textColor, marginBottom: '6px' }}>Export File</label>
-            <input
-              type="file"
-              accept=".csv,.json"
-              onChange={(e) => {
-                setPlatformFile(e.target.files[0]);
-                setPlatformPreview(null);
-              }}
-              style={{ width: '100%', border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '8px 10px', backgroundColor: bgColor, color: textColor, fontSize: '13px' }}
-            />
-          </div>
-        </div>
-
-        <div style={{ marginTop: '12px', marginBottom: '14px' }}>
-          <label style={{ fontSize: '13px', color: textColor, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <input
-              type="checkbox"
-              checked={includeContext}
-              onChange={(e) => {
-                setIncludeContext(e.target.checked);
-                setPlatformPreview(null);
-              }}
-            />
-            Import context notes/comments as updates
+          <Field label="Export file">
+            <input type="file" onChange={(e) => setPlatformFile(e.target.files?.[0] || null)} />
+          </Field>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <input type="checkbox" checked={includeContext} onChange={(e) => setIncludeContext(e.target.checked)} />
+            Include context (comments, descriptions, attachments)
           </label>
-        </div>
-
-        <div style={{ marginTop: '-4px', marginBottom: '14px' }}>
-          <label style={{ fontSize: '13px', color: textColor, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <input
-              type="checkbox"
-              checked={strictPreviewMatch}
-              onChange={(e) => setStrictPreviewMatch(e.target.checked)}
-            />
-            Require preview hash match before import (recommended)
-          </label>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button
-            onClick={handlePlatformPreview}
-            disabled={previewingPlatform || !platformFile}
-            style={{ padding: '10px 14px', backgroundColor: 'transparent', color: textColor, border: `1px solid ${borderColor}`, borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: previewingPlatform || !platformFile ? 'not-allowed' : 'pointer', opacity: previewingPlatform || !platformFile ? 0.5 : 1 }}
-          >
-            {previewingPlatform ? 'Previewing...' : 'Preview Mapping'}
-          </button>
-          <button
-            onClick={handlePlatformImport}
-            disabled={importingPlatform || !platformFile || (strictPreviewMatch && !platformPreview?.preview_hash)}
-            style={{ padding: '10px 14px', backgroundColor: 'var(--app-info)', color: 'var(--app-surface-alt)', border: 'none', borderRadius: '5px', fontSize: '13px', fontWeight: 500, cursor: importingPlatform || !platformFile || (strictPreviewMatch && !platformPreview?.preview_hash) ? 'not-allowed' : 'pointer', opacity: importingPlatform || !platformFile || (strictPreviewMatch && !platformPreview?.preview_hash) ? 0.5 : 1 }}
-          >
-            {importingPlatform ? 'Importing Workflow...' : 'Import Platform Workflow'}
-          </button>
-        </div>
-
-        {platformPreview && (
-          <div style={{ marginTop: '14px', borderTop: `1px solid ${borderColor}`, paddingTop: '14px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: textColor, marginBottom: '10px' }}>Preview Result</h3>
-            <p style={{ fontSize: '12px', color: secondaryText, margin: 0 }}>
-              Project: {platformPreview.project_name} | Issues: {platformPreview.issues_detected} | Context items: {platformPreview.context_items_detected}
-            </p>
-            <p style={{ fontSize: '12px', color: secondaryText, marginTop: '6px' }}>
-              Preview hash: {(platformPreview.preview_hash || '').slice(0, 16)}...
-            </p>
-            <p style={{ fontSize: '12px', color: secondaryText, marginTop: '6px' }}>
-              Workflow stages: {(platformPreview.workflow_stages || []).join(', ')}
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px', marginTop: '10px' }}>
-              <div style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '10px' }}>
-                <p style={{ fontSize: '12px', color: textColor, margin: '0 0 6px 0', fontWeight: 600 }}>Status Distribution</p>
-                <pre style={{ margin: 0, fontSize: '11px', color: secondaryText, whiteSpace: 'pre-wrap' }}>{JSON.stringify(platformPreview.status_distribution || {}, null, 2)}</pre>
-              </div>
-              <div style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '10px' }}>
-                <p style={{ fontSize: '12px', color: textColor, margin: '0 0 6px 0', fontWeight: 600 }}>Priority Distribution</p>
-                <pre style={{ margin: 0, fontSize: '11px', color: secondaryText, whiteSpace: 'pre-wrap' }}>{JSON.stringify(platformPreview.priority_distribution || {}, null, 2)}</pre>
-              </div>
-              <div style={{ border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '10px' }}>
-                <p style={{ fontSize: '12px', color: textColor, margin: '0 0 6px 0', fontWeight: 600 }}>Issue Type Distribution</p>
-                <pre style={{ margin: 0, fontSize: '11px', color: secondaryText, whiteSpace: 'pre-wrap' }}>{JSON.stringify(platformPreview.issue_type_distribution || {}, null, 2)}</pre>
-              </div>
-            </div>
-
-            <div style={{ marginTop: '10px' }}>
-              <p style={{ fontSize: '12px', color: textColor, margin: '0 0 6px 0', fontWeight: 600 }}>Sample Mapped Issues</p>
-              <pre style={{ margin: 0, fontSize: '11px', color: secondaryText, whiteSpace: 'pre-wrap' }}>{JSON.stringify(platformPreview.sample_issues || [], null, 2)}</pre>
-            </div>
+          {platformPreview ? (
+            <SectionMessage tone="info" title="Preview">
+              <pre style={{ margin: 0, fontSize: 12, whiteSpace: "pre-wrap", fontFamily: "var(--font-mono)" }}>
+                {JSON.stringify(platformPreview, null, 2)}
+              </pre>
+            </SectionMessage>
+          ) : null}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button appearance="subtle" onClick={handlePlatformPreview} isDisabled={platformLoading || !platformFile}>
+              {platformLoading ? "Previewing…" : "Preview"}
+            </Button>
+            <Button appearance="primary" onClick={handlePlatformImport} isDisabled={platformImporting || !platformFile}>
+              {platformImporting ? "Importing…" : "Import"}
+            </Button>
           </div>
-        )}
-      </div>
+        </Panel>
+      ) : null}
 
-      {/* Migration Guide */}
-      <div style={{ backgroundColor: bgColor, border: `1px solid ${borderColor}`, borderRadius: '5px', padding: '20px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 600, color: textColor, marginBottom: '16px' }}>Migration Support</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div>
-            <h3 style={{ fontSize: '13px', fontWeight: 500, color: textColor }}>Step 1: Export from old system</h3>
-            <p style={{ fontSize: '12px', color: secondaryText }}>Export your data in CSV or JSON format from your current system</p>
+      {tab === "export" ? (
+        <Panel
+          icon={<ArrowDownTrayIcon style={{ width: 20, height: 20 }} />}
+          title="Export data"
+          description="Download your workspace data as JSON or CSV."
+        >
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <Field label="Type">
+              <select value={exportType} onChange={(e) => setExportType(e.target.value)} className="atlas-input">
+                {IMPORT_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Format">
+              <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value)} className="atlas-input">
+                {EXPORT_FORMATS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+              </select>
+            </Field>
           </div>
-          <div>
-            <h3 style={{ fontSize: '13px', fontWeight: 500, color: textColor }}>Step 2: Format data</h3>
-            <p style={{ fontSize: '12px', color: secondaryText }}>You can either use generic CSV/JSON import, or use Platform Migration to auto-map workflow stages and statuses.</p>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button appearance="primary" onClick={handleExport} isDisabled={exporting}>
+              {exporting ? "Exporting…" : "Download"}
+            </Button>
           </div>
-          <div>
-            <h3 style={{ fontSize: '13px', fontWeight: 500, color: textColor }}>Step 3: Import to Recall</h3>
-            <p style={{ fontSize: '12px', color: secondaryText }}>Choose your source platform and upload exported CSV/JSON. Knoledgr will create a project board, issues, and context updates.</p>
-          </div>
-          <div>
-            <h3 style={{ fontSize: '13px', fontWeight: 500, color: textColor }}>Step 4: Verify</h3>
-            <p style={{ fontSize: '12px', color: secondaryText }}>Check imported data in the respective sections</p>
-          </div>
-        </div>
-      </div>
+        </Panel>
+      ) : null}
     </div>
   );
 }
 
-
-
+function Panel({ icon, title, description, children }) {
+  return (
+    <section style={{ marginTop: 16, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, padding: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <span style={{ color: "var(--b400)" }}>{icon}</span>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500 }}>{title}</h2>
+      </div>
+      {description ? <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--app-muted)" }}>{description}</p> : null}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{children}</div>
+    </section>
+  );
+}

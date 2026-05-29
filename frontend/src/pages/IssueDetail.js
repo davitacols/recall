@@ -140,7 +140,12 @@ export default function IssueDetailPage() {
       {error ? <SectionMessage tone="error" style={{ marginBottom: 16 }}>{error}</SectionMessage> : null}
 
       <div style={pageGrid}>
-        <section style={{ minWidth: 0 }}>
+        <section style={mainCard}>
+          <div style={issueMetaRow}>
+            <span style={issueKeyChip}>{issue.key || `#${issue.id}`}</span>
+            <Lozenge status={issue.status} />
+            <span style={issueTypeMeta}>{formatLabel(issue.priority)} priority</span>
+          </div>
           {editingTitle ? (
             <div style={{ display: "flex", gap: 8 }}>
               <input
@@ -163,11 +168,11 @@ export default function IssueDetailPage() {
               onClick={() => setEditingTitle(true)}
               style={{
                 margin: 0,
-                fontSize: 24,
-                fontWeight: 500,
+                fontSize: 26,
+                fontWeight: 640,
                 lineHeight: 1.2,
                 color: "var(--app-text)",
-                letterSpacing: "-0.01em",
+                letterSpacing: "-0.025em",
                 cursor: "text",
               }}
             >
@@ -422,24 +427,63 @@ const pageActionsRow = {
 const pageGrid = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) 320px",
-  gap: 32,
+  gap: 24,
   alignItems: "start",
 };
 
-const sidePanel = {
-  background: "var(--app-surface-alt)",
+const mainCard = {
+  minWidth: 0,
+  background: "var(--app-surface)",
   border: "1px solid var(--app-border)",
-  borderRadius: 4,
-  padding: "16px",
+  borderRadius: 16,
+  padding: 28,
+  boxShadow: "var(--ui-shadow-sm)",
+};
+
+const issueMetaRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  marginBottom: 14,
+};
+
+const issueKeyChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  height: 20,
+  padding: "0 8px",
+  borderRadius: 6,
+  background: "var(--app-surface-alt)",
+  border: "1px solid var(--app-border-subtle)",
+  fontFamily: "var(--font-mono)",
+  fontSize: 12,
+  fontWeight: 600,
+  color: "var(--app-text-subtle)",
+};
+
+const issueTypeMeta = {
+  fontSize: 12.5,
+  color: "var(--app-muted)",
+  fontWeight: 500,
+};
+
+const sidePanel = {
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 16,
+  padding: 18,
+  position: "sticky",
+  top: 76,
+  boxShadow: "var(--ui-shadow-sm)",
 };
 
 const panelTitle = {
-  margin: "0 0 8px",
-  fontSize: 13,
-  fontWeight: 600,
-  color: "var(--app-text)",
+  margin: "0 0 10px",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--app-muted)",
   textTransform: "uppercase",
-  letterSpacing: "0.04em",
+  letterSpacing: "0.05em",
 };
 
 const fieldLabelStyle = {
@@ -457,27 +501,28 @@ const selectButtonStyle = {
   justifyContent: "space-between",
   gap: 6,
   width: "100%",
-  height: 28,
-  padding: "0 6px",
+  height: 32,
+  padding: "0 8px",
   background: "transparent",
-  border: "2px solid transparent",
-  borderRadius: 3,
+  border: "1px solid transparent",
+  borderRadius: 8,
   color: "var(--app-text)",
   fontSize: 13,
   cursor: "pointer",
   fontFamily: "inherit",
+  transition: "background 120ms ease, border-color 120ms ease",
 };
 
 const selectMenuStyle = {
   position: "absolute",
-  top: "calc(100% + 2px)",
+  top: "calc(100% + 4px)",
   left: 0,
   right: 0,
   background: "var(--app-surface-overlay)",
   border: "1px solid var(--app-border)",
-  borderRadius: 4,
-  boxShadow: "var(--ui-shadow-md)",
-  padding: 4,
+  borderRadius: 10,
+  boxShadow: "var(--ui-shadow-lg)",
+  padding: 6,
   zIndex: 50,
   maxHeight: 240,
   overflowY: "auto",
@@ -487,11 +532,11 @@ const selectOptionStyle = {
   display: "block",
   width: "100%",
   textAlign: "left",
-  padding: "6px 8px",
+  padding: "7px 9px",
   background: "transparent",
   border: "none",
   cursor: "pointer",
-  borderRadius: 3,
+  borderRadius: 7,
   fontSize: 13,
   color: "var(--app-text)",
   fontFamily: "inherit",

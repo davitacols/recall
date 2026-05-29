@@ -1,241 +1,155 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  ClockIcon,
-  DocumentDuplicateIcon,
-  PencilSquareIcon,
+  ChatBubbleLeftIcon,
+  PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { useTheme } from "../utils/ThemeAndAccessibility";
 import api from "../services/api";
+import { useToast } from "../components/Toast";
 import {
-  WorkspaceEmptyState,
-  WorkspaceHero,
-  WorkspacePanel,
-} from "../components/WorkspaceChrome";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
+  Button,
+  EmptyState,
+  IconButton,
+  PageHeader,
+  SectionMessage,
+} from "../components/atlas";
 
-function normalizeDrafts(payload) {
-  if (Array.isArray(payload?.results)) return payload.results;
-  if (Array.isArray(payload)) return payload;
-  return [];
+function timeAgo(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  const sec = Math.max(1, Math.round((Date.now() - d.getTime()) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function toDisplayDateTime(value) {
-  if (!value) return "Recently saved";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Recently saved";
-  return parsed.toLocaleString();
+function stripHtml(value) {
+  if (!value) return "";
+  return String(value).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 export default function Drafts() {
-  const { darkMode } = useTheme();
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-
+  const navigate = useNavigate();
+  const toast = useToast?.() || { addToast: () => {} };
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchDrafts();
+    let mounted = true;
+    api.get("/api/conversations/?drafts=true")
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res.data?.results) ? res.data.results : Array.isArray(res.data) ? res.data : [];
+        setDrafts(list);
+      })
+      .catch((err) => mounted && setError(err?.response?.data?.detail || err?.message || "Failed to load drafts"))
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
   }, []);
-
-  const fetchDrafts = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await api.get("/api/conversations/?drafts=true");
-      setDrafts(normalizeDrafts(response?.data));
-    } catch (requestError) {
-      console.error("Failed to fetch drafts:", requestError);
-      setError("We could not load unfinished conversations right now.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this draft?")) return;
     try {
       await api.delete(`/api/conversations/${id}/`);
-      fetchDrafts();
-    } catch (requestError) {
-      console.error("Failed to delete draft:", requestError);
+      setDrafts((prev) => prev.filter((d) => d.id !== id));
+      toast.addToast?.("Draft deleted", "success");
+    } catch (_) {
+      toast.addToast?.("Failed to delete draft", "error");
     }
   };
 
-  const typedDrafts = drafts.reduce((accumulator, draft) => {
-    const key = draft.post_type || "unknown";
-    return {
-      ...accumulator,
-      [key]: (accumulator[key] || 0) + 1,
-    };
-  }, {});
-
   return (
-    <div style={{ ...ui.container, display: "grid", gap: 14 }}>
-      <WorkspaceHero
-        palette={palette}
-        darkMode={darkMode}
-        eyebrow="Unfinished Work"
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Drafts" }]}
         title="Drafts"
-        description="Resume unfinished conversations without losing the original context, writing progress, or the moment the team paused."
-        stats={[
-          { label: "Drafts", value: drafts.length, helper: "Unfinished conversations waiting for completion", tone: palette.info },
-          { label: "Types", value: Object.keys(typedDrafts).length || 0, helper: "Different conversation formats in progress", tone: palette.accent },
-          { label: "Latest Save", value: drafts[0]?.draft_saved_at ? toDisplayDateTime(drafts[0].draft_saved_at) : "--", helper: "Most recent draft activity", tone: palette.success },
-        ]}
+        subtitle="Conversations and posts you haven't published yet."
+        actions={
+          <Button appearance="primary" onClick={() => navigate("/conversations/new")}>
+            New conversation
+          </Button>
+        }
+        style={{ padding: "24px 0 0", background: "transparent" }}
       />
 
-      <WorkspacePanel
-        palette={palette}
-        eyebrow="Resume Queue"
-        title="Draft conversations"
-        description="Each draft card keeps the working title, saved content preview, type, and resume action together."
-      >
-        {loading ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                style={{
-                  minHeight: 138,
-                  borderRadius: 18,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.cardAlt,
-                  opacity: 0.7,
-                }}
-              />
-            ))}
-          </div>
-        ) : null}
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
 
-        {!loading && error ? (
-          <WorkspaceEmptyState
-            palette={palette}
-            title="Drafts are unavailable"
-            description={error}
-          />
-        ) : null}
-
-        {!loading && !error && drafts.length === 0 ? (
-          <WorkspaceEmptyState
-            palette={palette}
-            title="No drafts"
-            description="Your unfinished conversations will appear here so you can pick them back up later."
-            action={
-              <Link to="/conversations/new" className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, textDecoration: "none" }}>
-                Start a Conversation
+      {loading ? (
+        <div style={{ marginTop: 16 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ height: 56, background: "var(--n20)", borderRadius: 4, marginBottom: 6 }} />
+          ))}
+        </div>
+      ) : drafts.length === 0 ? (
+        <EmptyState
+          icon={<ChatBubbleLeftIcon style={{ width: "100%", height: "100%" }} />}
+          title="No drafts"
+          description="When you save a draft conversation, it'll appear here."
+          primaryAction={<Button appearance="primary" onClick={() => navigate("/conversations/new")}>New conversation</Button>}
+        />
+      ) : (
+        <ul style={list}>
+          {drafts.map((d) => (
+            <li key={d.id} style={listItem}>
+              <Link to={`/conversations/${d.id}/edit`} style={rowLink}>
+                <PencilIcon style={{ width: 16, height: 16, color: "var(--y400)", flexShrink: 0, marginTop: 2 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={titleText}>{d.title || "Untitled draft"}</p>
+                  {d.content ? <p style={excerpt}>{stripHtml(d.content).slice(0, 160)}</p> : null}
+                  <p style={meta}>Last edited {timeAgo(d.updated_at || d.created_at)}</p>
+                </div>
+                <IconButton
+                  icon={<TrashIcon style={{ width: 14, height: 14 }} />}
+                  label="Delete"
+                  size={28}
+                  onClick={(e) => { e.preventDefault(); handleDelete(d.id); }}
+                />
               </Link>
-            }
-          />
-        ) : null}
-
-        {!loading && !error && drafts.length > 0 ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            {drafts.map((draft) => (
-              <article
-                key={draft.id}
-                className="ui-card-lift ui-smooth"
-                style={{
-                  borderRadius: 20,
-                  border: `1px solid ${palette.border}`,
-                  background: palette.cardAlt,
-                  padding: 16,
-                  display: "grid",
-                  gap: 12,
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <div
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 14,
-                        background: palette.accentSoft,
-                        color: palette.info,
-                        display: "grid",
-                        placeItems: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <DocumentDuplicateIcon style={{ width: 18, height: 18 }} />
-                    </div>
-                    <div style={{ display: "grid", gap: 6 }}>
-                      <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2, letterSpacing: "-0.03em", color: palette.text }}>
-                        {draft.title || "Untitled draft"}
-                      </h3>
-                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
-                        {draft.content
-                          ? `${String(draft.content).slice(0, 180)}${String(draft.content).length > 180 ? "..." : ""}`
-                          : "Resume this draft to continue writing and finalize the conversation."}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    style={{
-                      padding: "5px 10px",
-                      borderRadius: 999,
-                      border: `1px solid ${palette.border}`,
-                      color: palette.muted,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {draft.post_type || "Draft"}
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: palette.muted }}>
-                    <ClockIcon style={{ width: 14, height: 14 }} />
-                    Last saved {toDisplayDateTime(draft.draft_saved_at || draft.updated_at || draft.created_at)}
-                  </span>
-
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <Link
-                      to={`/conversations/${draft.id}`}
-                      className="ui-btn-polish ui-focus-ring"
-                      style={{
-                        ...ui.primaryButton,
-                        textDecoration: "none",
-                      }}
-                    >
-                      <PencilSquareIcon style={{ width: 15, height: 15 }} />
-                      Resume
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(draft.id)}
-                      className="ui-btn-polish ui-focus-ring"
-                      style={{
-                        border: `1px solid ${palette.danger}`,
-                        background: `${palette.danger}16`,
-                        color: palette.danger,
-                        borderRadius: 14,
-                        padding: "10px 14px",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <TrashIcon style={{ width: 15, height: 15 }} />
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </WorkspacePanel>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
+
+const list = {
+  listStyle: "none",
+  margin: "16px 0 0",
+  padding: 0,
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  overflow: "hidden",
+};
+
+const listItem = { borderBottom: "1px solid var(--app-border-subtle)" };
+
+const rowLink = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 12,
+  padding: "12px 16px",
+  textDecoration: "none",
+  color: "inherit",
+};
+
+const titleText = { margin: 0, fontSize: 14, fontWeight: 600, color: "var(--app-link)" };
+const excerpt = {
+  margin: "4px 0 0",
+  fontSize: 13,
+  color: "var(--app-muted)",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+const meta = { margin: "6px 0 0", fontSize: 12, color: "var(--app-muted)" };

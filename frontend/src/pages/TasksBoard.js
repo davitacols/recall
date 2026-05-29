@@ -1,646 +1,448 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import {
-  WorkspaceEmptyState,
-  WorkspaceHero,
-  WorkspacePanel,
-  WorkspaceToolbar,
-} from "../components/WorkspaceChrome";
-import AIAssistant from "../components/AIAssistant";
-import { useTheme } from "../utils/ThemeAndAccessibility";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { createPlainTextPreview } from "../utils/textPreview";
+  PlusIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import {
+  Avatar,
+  Button,
+  EmptyState,
+  Field,
+  IconButton,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+  Tabs,
+} from "../components/atlas";
+
+const COLUMNS = [
+  { id: "todo", label: "To Do" },
+  { id: "in_progress", label: "In Progress" },
+  { id: "done", label: "Done" },
+];
+
+const PRIORITIES = ["low", "medium", "high", "urgent"];
+
+function formatDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 export default function TasksBoard() {
-  const location = useLocation();
-  const { darkMode } = useTheme();
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-
+  const apiBase = process.env.REACT_APP_API_URL || "";
   const [board, setBoard] = useState({ todo: [], in_progress: [], done: [] });
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("board");
+  const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [draggedTask, setDraggedTask] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     priority: "medium",
     status: "todo",
-    goal_id: "",
-    conversation_id: "",
-    decision_id: "",
+    due_date: "",
   });
-  const highlightedTaskId = useMemo(() => new URLSearchParams(location.search).get("task"), [location.search]);
 
-  const columns = useMemo(
-    () => [
-      {
-        key: "todo",
-        title: "To Do",
-        description: "Tasks staged and ready for someone to pick up.",
-        accent: darkMode ? "#c3cbd8" : "#64748b",
-      },
-      {
-        key: "in_progress",
-        title: "In Progress",
-        description: "Work that is actively moving through execution.",
-        accent: darkMode ? "#9AB9FF" : "#2E63D0",
-      },
-      {
-        key: "done",
-        title: "Done",
-        description: "Completed tasks and resolved execution items.",
-        accent: darkMode ? "#79C89F" : "#2F7F5F",
-      },
-    ],
-    [darkMode]
-  );
+  const authHeaders = () => {
+    const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   useEffect(() => {
     fetchBoard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchBoard = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/board/`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${apiBase}/api/business/tasks/board/`, { headers: authHeaders() });
+      if (!res.ok) throw new Error(`Tasks API returned ${res.status}`);
+      const data = await res.json();
+      setBoard({
+        todo: data.todo || [],
+        in_progress: data.in_progress || [],
+        done: data.done || [],
       });
-      if (!res.ok) {
-        console.error("API Error:", res.status, await res.text());
-        setBoard({ todo: [], in_progress: [], done: [] });
-        return;
-      }
-      setBoard(await res.json());
-    } catch (error) {
-      console.error("Error fetching board:", error);
+    } catch (err) {
+      setError(err.message || "Failed to load tasks");
       setBoard({ todo: [], in_progress: [], done: [] });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
     try {
-      const token = localStorage.getItem("token");
-      await fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/`, {
+      const res = await fetch(`${apiBase}/api/business/tasks/`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
+      if (!res.ok) throw new Error("Failed to create task");
       setShowModal(false);
-      setFormData({
-        title: "",
-        description: "",
-        priority: "medium",
-        status: "todo",
-        goal_id: "",
-        conversation_id: "",
-        decision_id: "",
-      });
-      fetchBoard();
-    } catch (error) {
-      console.error("Error creating task:", error);
+      setFormData({ title: "", description: "", priority: "medium", status: "todo", due_date: "" });
+      await fetchBoard();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const updateTaskStatus = async (taskId, newStatus) => {
+  const updateStatus = async (taskId, newStatus) => {
     try {
-      const token = localStorage.getItem("token");
-      await fetch(`${process.env.REACT_APP_API_URL}/api/business/tasks/${taskId}/`, {
+      await fetch(`${apiBase}/api/business/tasks/${taskId}/`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      fetchBoard();
-    } catch (error) {
-      console.error("Error updating task:", error);
+      await fetchBoard();
+    } catch (err) {
+      setError(err.message);
     }
   };
 
-  const handleApplyTaskAI = ({ kind, summary, actionItems }) => {
-    setFormData((current) => {
-      if (kind === "summary" && summary) {
-        return { ...current, description: summary };
-      }
-      if (kind === "actions" && Array.isArray(actionItems) && actionItems.length > 0) {
-        return {
-          ...current,
-          description: `${current.description || ""}${current.description ? "\n\n" : ""}AI suggested next actions:\n${actionItems.map((item) => `- ${item}`).join("\n")}`,
-        };
-      }
-      return current;
-    });
+  const handleDragStart = (task) => (e) => {
+    setDraggedTask(task);
+    e.dataTransfer.effectAllowed = "move";
   };
 
-  const totalTasks = columns.reduce((acc, col) => acc + (board[col.key]?.length || 0), 0);
-  const inProgressCount = board.in_progress?.length || 0;
-  const doneCount = board.done?.length || 0;
-  const highPriorityCount = columns.reduce(
-    (acc, col) => acc + (board[col.key] || []).filter((task) => String(task.priority || "").toLowerCase() === "high").length,
-    0
-  );
-  const boardPulse =
-    totalTasks === 0
-      ? "The execution board is clear. Add a task when a new operational thread needs tracking."
-      : inProgressCount > doneCount
-        ? "Execution is active right now, with more work moving than completed. Keep the middle lane from becoming a parking lot."
-        : "Closed work is keeping pace with active execution. This board is in a healthy rhythm.";
+  const handleDragOver = (col) => (e) => {
+    e.preventDefault();
+    setDropTarget(col);
+  };
 
-  const executionAside = (
-    <div
-      style={{
-        ...asideCard,
-        border: `1px solid ${palette.border}`,
-        background: darkMode
-          ? "linear-gradient(150deg, rgba(32,27,23,0.92), rgba(22,18,15,0.84))"
-          : "linear-gradient(150deg, rgba(255,252,248,0.98), rgba(244,237,226,0.9))",
-      }}
-    >
-      <p style={{ ...asideEyebrow, color: palette.muted }}>Board Pulse</p>
-      <h3 style={{ ...asideTitle, color: palette.text }}>
-        {totalTasks === 0 ? "Ready for the next task" : `${totalTasks} tasks in flow`}
-      </h3>
-      <p style={{ ...asideCopy, color: palette.muted }}>{boardPulse}</p>
-      <div style={asideMetricGrid}>
-        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>In progress</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{inProgressCount}</p>
-        </div>
-        <div style={{ ...asideMetric, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-          <p style={{ ...asideMetricLabel, color: palette.muted }}>Done</p>
-          <p style={{ ...asideMetricValue, color: palette.text }}>{doneCount}</p>
-        </div>
-      </div>
-    </div>
+  const handleDrop = (col) => async (e) => {
+    e.preventDefault();
+    setDropTarget(null);
+    if (!draggedTask || draggedTask.status === col) return;
+    await updateStatus(draggedTask.id, col);
+    setDraggedTask(null);
+  };
+
+  const allTasks = useMemo(
+    () => [...board.todo, ...board.in_progress, ...board.done].map((t) => ({ ...t, _status: t.status })),
+    [board]
   );
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh" }}>
-        <div style={ui.container}>
-          <div style={columnsGrid}>
-            {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                style={{
-                  borderRadius: 24,
-                  minHeight: 320,
-                  background: palette.card,
-                  border: `1px solid ${palette.border}`,
-                  opacity: 0.72,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const totals = {
+    todo: board.todo.length,
+    in_progress: board.in_progress.length,
+    done: board.done.length,
+    all: allTasks.length,
+  };
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={ui.container}>
-        <WorkspaceHero
-          palette={palette}
-          darkMode={darkMode}
-          variant="execution"
-          eyebrow="Task Execution"
-          title="Tasks Board"
-          description="Run lightweight execution work in one calmer board that keeps movement, priority, and ownership visible."
-          aside={executionAside}
-          stats={[
-            { label: "Total", value: totalTasks, helper: "Tasks across the board." },
-            { label: "To do", value: board.todo?.length || 0, helper: "Tasks waiting to start." },
-            { label: "In progress", value: inProgressCount, helper: "Tasks actively moving." },
-            { label: "High priority", value: highPriorityCount, helper: "Urgent work asking for attention." },
-          ]}
-          actions={
-            <>
-              <Link className="ui-btn-polish ui-focus-ring" to="/projects" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
-                Projects
-              </Link>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowModal(true)} style={ui.primaryButton}>
-                <PlusIcon style={icon14} /> New Task
-              </button>
-            </>
-          }
-        />
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Tasks" }]}
+        title="Tasks"
+        subtitle="Track day-to-day execution with enough context to stay grounded."
+        actions={
+          <Button appearance="primary" iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />} onClick={() => setShowModal(true)}>
+            Create task
+          </Button>
+        }
+        style={{ padding: "24px 0 0", background: "transparent" }}
+      />
 
-        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
-          <div style={toolbarLayout}>
-            <div style={toolbarIntro}>
-              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Execution Guide</p>
-              <h2 style={{ ...toolbarTitle, color: palette.text }}>Keep this board for active operational work, not for long-term backlog parking</h2>
-              <p style={{ ...toolbarCopy, color: palette.muted }}>
-                The board should make it obvious what is ready, what is moving, and what is finished, so small execution work stays easy to review.
-              </p>
-            </div>
-            <div style={toolbarChipRail}>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {board.todo?.length || 0} ready to start
-              </span>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                Move work forward from the middle lane
-              </span>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {doneCount} already closed
-              </span>
-            </div>
-          </div>
-        </WorkspaceToolbar>
+      <div style={toolbar}>
+        <span style={{ display: "flex", gap: 0, border: "1px solid var(--app-border)", borderRadius: 3, overflow: "hidden" }}>
+          <button
+            type="button"
+            onClick={() => setView("board")}
+            aria-pressed={view === "board"}
+            style={{
+              ...viewToggle,
+              background: view === "board" ? "var(--b50)" : "var(--app-surface)",
+              color: view === "board" ? "var(--b500)" : "var(--app-muted)",
+            }}
+          >
+            <Squares2X2Icon style={{ width: 14, height: 14 }} /> Board
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("list")}
+            aria-pressed={view === "list"}
+            style={{
+              ...viewToggle,
+              background: view === "list" ? "var(--b50)" : "var(--app-surface)",
+              color: view === "list" ? "var(--b500)" : "var(--app-muted)",
+              borderLeft: "1px solid var(--app-border)",
+            }}
+          >
+            <ListBulletIcon style={{ width: 14, height: 14 }} /> List
+          </button>
+        </span>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: 12, color: "var(--app-muted)" }}>
+          {totals.all} task{totals.all === 1 ? "" : "s"} · {totals.in_progress} in progress
+        </span>
+      </div>
 
-        <div style={columnsGrid}>
-          {columns.map((column) => {
-            const tasks = board[column.key] || [];
-            const nextStatus = column.key === "todo" ? "in_progress" : "done";
-            const nextStatusLabel = column.key === "todo" ? "In Progress" : "Done";
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
 
+      {loading ? (
+        <div style={{ marginTop: 16, height: 320, background: "var(--n20)", borderRadius: 4 }} />
+      ) : view === "board" ? (
+        <div style={{ ...columnRow }}>
+          {COLUMNS.map((col) => {
+            const tasks = board[col.id] || [];
+            const isOver = dropTarget === col.id;
             return (
-              <WorkspacePanel
-                key={column.key}
-                palette={palette}
-                darkMode={darkMode}
-                variant="execution"
-                eyebrow="Workflow Lane"
-                title={column.title}
-                description={column.description}
-                minHeight={460}
-                action={
-                  <span
-                    style={{
-                      ...laneBadge,
-                      border: `1px solid ${palette.border}`,
-                      background: palette.cardAlt,
-                      color: palette.text,
-                    }}
-                  >
-                    {tasks.length} tasks
-                  </span>
-                }
+              <div
+                key={col.id}
+                onDragOver={handleDragOver(col.id)}
+                onDrop={handleDrop(col.id)}
+                style={{ ...columnStyle, background: isOver ? "var(--b50)" : "var(--app-surface-alt)" }}
               >
-                {tasks.length === 0 ? (
-                  <WorkspaceEmptyState
-                    palette={palette}
-                    darkMode={darkMode}
-                    variant="execution"
-                    title={`No tasks in ${column.title.toLowerCase()}`}
-                    description="Add a new task or move one here when the workflow changes."
-                  />
-                ) : (
-                  <div style={stack}>
-                    {tasks.map((task) => (
-                      <article
-                        key={task.id}
-                        className="ui-card-lift ui-smooth"
-                        style={{
-                          ...taskCard,
-                          border: highlightedTaskId === String(task.id) ? `2px solid ${palette.info}` : `1px solid ${palette.border}`,
-                          background: highlightedTaskId === String(task.id) ? palette.accentSoft : palette.cardAlt,
-                        }}
-                      >
-                        <div style={taskHead}>
-                          <div style={{ minWidth: 0 }}>
-                            <p style={{ ...taskTitle, color: palette.text }}>{task.title}</p>
-                            <p style={{ ...taskBody, color: palette.muted }}>
-                              {createPlainTextPreview(task.description, "No description has been added yet.", 140)}
-                            </p>
-                          </div>
-                          <span
-                            style={{
-                              ...priorityChip,
-                              border: `1px solid ${priorityColor(task.priority, palette)}`,
-                              color: priorityColor(task.priority, palette),
-                            }}
-                          >
-                            {task.priority || "medium"}
-                          </span>
-                        </div>
-
-                        <div style={taskMetaRail}>
-                          <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
-                            {task.assigned_to?.full_name || "Unassigned"}
-                          </span>
-                          <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
-                            {column.title}
-                          </span>
-                        </div>
-
-                        {column.key !== "done" ? (
-                          <button
-                            className="ui-btn-polish ui-focus-ring"
-                            onClick={() => updateTaskStatus(task.id, nextStatus)}
-                            style={{ ...ui.secondaryButton, width: "100%", justifyContent: "center" }}
-                          >
-                            Move to {nextStatusLabel}
-                          </button>
-                        ) : null}
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </WorkspacePanel>
+                <div style={columnHeader}>
+                  <span style={columnTitle}>{col.label}</span>
+                  <span style={columnCount}>{tasks.length}</span>
+                </div>
+                <div style={columnBody}>
+                  {tasks.length === 0 ? (
+                    <div style={emptyColumn}>Drop tasks here</div>
+                  ) : (
+                    tasks.map((t) => <TaskCard key={t.id} task={t} onDragStart={handleDragStart({ ...t, status: col.id })} />)
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>
+      ) : (
+        <ListView tasks={allTasks} onCreate={() => setShowModal(true)} />
+      )}
 
-        {showModal ? (
-          <div style={overlay}>
-            <div style={{ ...modalCard, border: `1px solid ${palette.border}`, background: palette.card }}>
-              <p style={{ ...modalEyebrow, color: palette.muted }}>Create Task</p>
-              <h2 style={{ ...modalTitle, color: palette.text }}>Add operational work to the board</h2>
-              <p style={{ ...modalCopy, color: palette.muted }}>
-                Keep the title crisp and the description useful enough that someone else could pick it up without asking for more context.
-              </p>
-              <AIAssistant
-                content={`${formData.title || ""}\n\n${formData.description || ""}`}
-                contentType="task"
-                onApply={handleApplyTaskAI}
-              />
-              <form onSubmit={handleSubmit} style={formStack}>
-                <input
-                  required
-                  placeholder="Task title"
-                  value={formData.title}
-                  onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-                  className="ui-focus-ring"
-                  style={ui.input}
-                />
-                <textarea
-                  rows={4}
-                  placeholder="Description"
-                  value={formData.description}
-                  onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-                  className="ui-focus-ring"
-                  style={{ ...ui.input, resize: "vertical" }}
-                />
-                <div style={ui.twoCol}>
-                  <select value={formData.priority} onChange={(event) => setFormData({ ...formData, priority: event.target.value })} className="ui-focus-ring" style={ui.input}>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                  <select value={formData.status} onChange={(event) => setFormData({ ...formData, status: event.target.value })} className="ui-focus-ring" style={ui.input}>
-                    <option value="todo">To Do</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="done">Done</option>
-                  </select>
-                </div>
-                <div style={buttonRow}>
-                  <button type="button" onClick={() => setShowModal(false)} className="ui-btn-polish ui-focus-ring" style={ui.secondaryButton}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
-                    Create task
-                  </button>
-                </div>
-              </form>
+      {showModal ? (
+        <Modal title="Create task" onClose={() => setShowModal(false)}>
+          <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Field label="Title" isRequired>
+              <input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="atlas-input" required autoFocus />
+            </Field>
+            <Field label="Description">
+              <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="atlas-input" rows={4} />
+            </Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              <Field label="Status">
+                <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="atlas-input">
+                  {COLUMNS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Priority">
+                <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="atlas-input">
+                  {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </Field>
+              <Field label="Due">
+                <input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} className="atlas-input" />
+              </Field>
             </div>
-          </div>
-        ) : null}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+              <Button type="button" appearance="subtle" onClick={() => setShowModal(false)}>Cancel</Button>
+              <Button type="submit" appearance="primary" isDisabled={submitting || !formData.title.trim()}>{submitting ? "Creating…" : "Create"}</Button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+    </div>
+  );
+}
+
+function TaskCard({ task, onDragStart }) {
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      style={{
+        background: "var(--app-surface)",
+        border: "1px solid var(--app-border)",
+        borderRadius: 3,
+        padding: "10px 12px",
+        cursor: "grab",
+        boxShadow: "var(--ui-shadow-sm)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.4286, color: "var(--app-text)" }}>{task.title}</p>
+      {task.description ? (
+        <p style={{ margin: 0, fontSize: 12, color: "var(--app-muted)", lineHeight: 1.4286, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {task.description}
+        </p>
+      ) : null}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <Lozenge variant={priorityVariant(task.priority)}>{task.priority || "medium"}</Lozenge>
+          {task.due_date ? <span style={{ fontSize: 11, color: "var(--app-muted)" }}>{formatDate(task.due_date)}</span> : null}
+        </span>
+        <Avatar size="sm" name={task.assignee_name || task.owner || "Unassigned"} />
       </div>
     </div>
   );
 }
 
-function priorityColor(priority, palette) {
-  if (priority === "high") return palette.danger;
-  if (priority === "medium") return palette.warn;
-  return palette.info;
+function ListView({ tasks, onCreate }) {
+  if (tasks.length === 0) {
+    return (
+      <EmptyState
+        icon={<Squares2X2Icon style={{ width: "100%", height: "100%" }} />}
+        title="No tasks yet"
+        description="Create your first task to start tracking work."
+        primaryAction={<Button appearance="primary" onClick={onCreate}>Create task</Button>}
+      />
+    );
+  }
+  return (
+    <div style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, overflow: "hidden", marginTop: 8 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr style={{ background: "var(--app-surface-alt)" }}>
+            <th style={th}>Task</th>
+            <th style={th}>Status</th>
+            <th style={th}>Priority</th>
+            <th style={th}>Assignee</th>
+            <th style={th}>Due</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map((t) => (
+            <tr key={t.id} style={{ borderBottom: "1px solid var(--app-border-subtle)" }}>
+              <td style={td}>
+                <p style={{ margin: 0, fontWeight: 500 }}>{t.title}</p>
+                {t.description ? <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--app-muted)" }}>{t.description.slice(0, 120)}</p> : null}
+              </td>
+              <td style={td}><Lozenge status={t._status || t.status} /></td>
+              <td style={td}><Lozenge variant={priorityVariant(t.priority)}>{t.priority || "medium"}</Lozenge></td>
+              <td style={td}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Avatar size="sm" name={t.assignee_name || t.owner || "Unassigned"} />
+                  <span style={{ fontSize: 13 }}>{t.assignee_name || t.owner || "—"}</span>
+                </span>
+              </td>
+              <td style={td}>
+                <span style={{ fontSize: 13, color: "var(--app-muted)" }}>{formatDate(t.due_date) || "—"}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
-const asideCard = {
-  minWidth: 240,
-  borderRadius: 24,
-  padding: 16,
-  display: "grid",
-  gap: 10,
-};
+function Modal({ children, onClose, title, width = 520 }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", zIndex: 199 }} />
+      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 6, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--app-border)" }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
+          <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
+        </div>
+        <div style={{ padding: 20 }}>{children}</div>
+      </div>
+    </>
+  );
+}
 
-const asideEyebrow = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
+function priorityVariant(p) {
+  const k = String(p || "").toLowerCase();
+  if (k === "urgent" || k === "high") return "removed";
+  if (k === "medium") return "moved";
+  return "success";
+}
 
-const asideTitle = {
-  margin: 0,
-  fontSize: 22,
-  lineHeight: 1.04,
-};
-
-const asideCopy = {
-  margin: 0,
-  fontSize: 13,
-  lineHeight: 1.6,
-};
-
-const asideMetricGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+const toolbar = {
+  display: "flex",
+  alignItems: "center",
   gap: 8,
+  padding: "16px 0",
 };
 
-const asideMetric = {
-  borderRadius: 18,
-  padding: "10px 12px",
-  display: "grid",
+const viewToggle = {
+  display: "inline-flex",
+  alignItems: "center",
   gap: 4,
-};
-
-const asideMetricLabel = {
-  margin: 0,
-  fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-};
-
-const asideMetricValue = {
-  margin: 0,
-  fontSize: 20,
-  lineHeight: 1,
-  fontWeight: 800,
-};
-
-const toolbarLayout = {
-  display: "grid",
-  gap: 14,
-};
-
-const toolbarIntro = {
-  display: "grid",
-  gap: 4,
-};
-
-const toolbarEyebrow = {
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const toolbarTitle = {
-  margin: 0,
-  fontSize: 24,
-  lineHeight: 1.04,
-};
-
-const toolbarCopy = {
-  margin: 0,
+  padding: "6px 10px",
+  background: "var(--app-surface)",
+  border: "none",
+  fontFamily: "inherit",
   fontSize: 13,
-  lineHeight: 1.65,
-  maxWidth: 760,
+  fontWeight: 500,
+  cursor: "pointer",
 };
 
-const toolbarChipRail = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const toolbarChip = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
-const columnsGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: 14,
-  marginTop: 14,
-};
-
-const laneBadge = {
-  display: "inline-flex",
-  alignItems: "center",
-  borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 11,
-  fontWeight: 800,
-};
-
-const stack = {
-  display: "grid",
-  gap: 12,
-};
-
-const taskCard = {
-  borderRadius: 22,
-  padding: 16,
-  display: "grid",
-  gap: 12,
-};
-
-const taskHead = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "flex-start",
-};
-
-const taskTitle = {
-  margin: 0,
-  fontSize: 16,
-  fontWeight: 800,
-  letterSpacing: "-0.03em",
-};
-
-const taskBody = {
-  margin: "6px 0 0",
-  fontSize: 13,
-  lineHeight: 1.65,
-};
-
-const priorityChip = {
-  borderRadius: 999,
-  padding: "7px 11px",
-  fontSize: 11,
-  fontWeight: 800,
-  textTransform: "capitalize",
-  whiteSpace: "nowrap",
-};
-
-const taskMetaRail = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const metaChip = {
-  display: "inline-flex",
-  alignItems: "center",
-  borderRadius: 999,
-  padding: "7px 11px",
-  fontSize: 11,
-  fontWeight: 700,
-};
-
-const overlay = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(14, 10, 8, 0.36)",
-  backdropFilter: "blur(8px)",
-  display: "grid",
-  placeItems: "center",
-  zIndex: 120,
-  padding: 16,
-};
-
-const modalCard = {
-  width: "min(560px, 100%)",
-  borderRadius: 28,
-  padding: 22,
-  boxShadow: "var(--ui-shadow-lg)",
-};
-
-const modalEyebrow = {
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const modalTitle = {
-  margin: "6px 0 0",
-  fontSize: 28,
-  lineHeight: 1.02,
-};
-
-const modalCopy = {
-  margin: "8px 0 0",
-  fontSize: 13,
-  lineHeight: 1.6,
-};
-
-const formStack = {
-  marginTop: 16,
-  display: "grid",
-  gap: 10,
-};
-
-const buttonRow = {
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: 8,
+const columnRow = {
   marginTop: 8,
-  flexWrap: "wrap",
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(280px, 1fr))",
+  gap: 8,
 };
 
-const icon14 = { width: 14, height: 14 };
+const columnStyle = {
+  borderRadius: 4,
+  border: "1px solid transparent",
+  display: "flex",
+  flexDirection: "column",
+  minHeight: 400,
+};
+
+const columnHeader = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "8px 12px",
+};
+
+const columnTitle = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  color: "var(--app-muted)",
+};
+
+const columnCount = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--app-muted)",
+};
+
+const columnBody = {
+  flex: 1,
+  padding: "4px 8px 8px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+};
+
+const emptyColumn = {
+  padding: 16,
+  textAlign: "center",
+  fontSize: 12,
+  color: "var(--app-text-disabled)",
+  border: "1px dashed var(--app-border)",
+  borderRadius: 3,
+};
+
+const th = { textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--app-muted)", padding: "10px 16px", borderBottom: "1px solid var(--app-border)" };
+const td = { padding: "10px 16px", fontSize: 14, color: "var(--app-text)", verticalAlign: "middle" };

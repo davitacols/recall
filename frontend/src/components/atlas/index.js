@@ -13,3 +13,4 @@ export { default as SectionMessage } from "./SectionMessage";
 export { default as Avatar } from "./Avatar";
 export { default as EmptyState } from "./EmptyState";
 export { default as Field } from "./Field";
+export { default as AuthLayout } from "./AuthLayout";

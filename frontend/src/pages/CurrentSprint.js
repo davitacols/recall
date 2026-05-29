@@ -1,37 +1,63 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ExclamationTriangleIcon, PlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import {
+  ExclamationTriangleIcon,
+  PlusIcon,
+  RocketLaunchIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import api from "../services/api";
-import { useTheme } from "../utils/ThemeAndAccessibility";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { WorkspaceHero, WorkspaceToolbar } from "../components/WorkspaceChrome";
-import { buildAskRecallPath } from "../utils/askRecall";
+import {
+  Avatar,
+  Button,
+  EmptyState,
+  Field,
+  IconButton,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+} from "../components/atlas";
 
-function CurrentSprint() {
-  const { darkMode } = useTheme();
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function daysLeft(end) {
+  if (!end) return null;
+  const e = new Date(end);
+  if (isNaN(e.getTime())) return null;
+  const diff = Math.ceil((e - Date.now()) / (1000 * 60 * 60 * 24));
+  return diff;
+}
+
+export default function CurrentSprint() {
   const [sprint, setSprint] = useState(null);
   const [blockers, setBlockers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showBlockerModal, setShowBlockerModal] = useState(false);
-
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
+  const [error, setError] = useState("");
+  const [showBlocker, setShowBlocker] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", type: "blocker" });
 
   const fetchSprint = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      const sprintRes = await api.get("/api/agile/current-sprint/");
-      const current = sprintRes.data;
+      const res = await api.get("/api/agile/current-sprint/");
+      const current = res.data;
       setSprint(current);
       if (current?.id) {
         const blockersRes = await api.get(`/api/agile/blockers/?sprint_id=${current.id}`).catch(() => ({ data: [] }));
-        setBlockers(blockersRes.data || []);
+        setBlockers(Array.isArray(blockersRes.data) ? blockersRes.data : blockersRes.data?.results || []);
       } else {
         setBlockers([]);
       }
-    } catch (error) {
-      console.error("Failed to fetch sprint:", error);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to load sprint");
       setSprint(null);
-      setBlockers([]);
     } finally {
       setLoading(false);
     }
@@ -39,266 +65,254 @@ function CurrentSprint() {
 
   useEffect(() => {
     fetchSprint();
-    const interval = setInterval(fetchSprint, 5000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        fetchSprint();
-      }
-    };
-    window.addEventListener("focus", fetchSprint);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", fetchSprint);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
   }, [fetchSprint]);
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-        <div style={spinner} />
-      </div>
-    );
-  }
-
-  if (!sprint) {
-    return (
-      <div style={{ minHeight: "100vh" }}>
-        <div style={ui.container}>
-          <WorkspaceHero
-            palette={palette}
-            darkMode={darkMode}
-            variant="execution"
-            eyebrow="Sprint Center"
-            title="No active sprint"
-            description="Start a sprint in a project to track execution, blockers, delivery rhythm, and outcome velocity from one workspace."
-            stats={[
-              { label: "Blockers", value: 0, helper: "No active sprint context yet." },
-              { label: "Completion", value: "0%", helper: "Sprint completion appears once a sprint is active." },
-            ]}
-            actions={<Link to="/projects" className="ui-btn-polish ui-focus-ring" style={{ ...ui.primaryButton, textDecoration: "none" }}>Go to Projects</Link>}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  const completion = sprint.issue_count > 0 ? Math.round(((sprint.completed || 0) / sprint.issue_count) * 100) : 0;
-  const blockerCount = blockers.length;
-  const sprintPulse =
-    blockerCount > 0
-      ? `${blockerCount} active blocker${blockerCount === 1 ? "" : "s"} need attention before flow feels healthy.`
-      : completion >= 70
-        ? "Sprint is moving well and the blocker lane is clear."
-        : "Delivery is active and the sprint still has room to tighten execution.";
-  const sprintAskRecallQuestion = `What is putting the ${sprint.name} sprint at risk, and what should we fix next?`;
-
-  return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={ui.container}>
-        <WorkspaceHero
-          palette={palette}
-          darkMode={darkMode}
-          variant="execution"
-          eyebrow="Active Sprint"
-          title={sprint.name}
-          description={sprint.goal || "Keep the current sprint moving, surface blockers early, and track completion from one calmer center."}
-          stats={[
-            { label: "Completion", value: `${completion}%`, helper: "Percent of sprint work completed." },
-            { label: "Issues", value: sprint.issue_count || 0, helper: "Tracked items in this sprint." },
-            { label: "In progress", value: sprint.in_progress || 0, helper: "Work currently moving." },
-            { label: "Blockers", value: blockerCount, helper: "Known blockers attached to the sprint." },
-          ]}
-          aside={
-            <div
-              style={{
-                ...spotlightCard,
-                border: `1px solid ${palette.border}`,
-                background: darkMode
-                  ? "linear-gradient(145deg, rgba(30,24,20,0.96), rgba(22,18,15,0.88))"
-                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
-              }}
-            >
-              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Sprint window</p>
-              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
-                {sprint.start_date} - {sprint.end_date}
-              </h3>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{sprintPulse}</p>
-            </div>
-          }
-          actions={
-            <>
-              <Link to={`/projects/${sprint.project_id}`} className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Project</Link>
-              <Link to={buildAskRecallPath(sprintAskRecallQuestion)} className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
-                <SparklesIcon style={{ width: 14, height: 14 }} /> Ask Recall
-              </Link>
-              <Link to="/sprint-management" className="ui-btn-polish ui-focus-ring" style={{ ...ui.secondaryButton, textDecoration: "none" }}>Manage Sprints</Link>
-            </>
-          }
-        />
-
-        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
-          <div style={toolbarLayout}>
-            <div style={toolbarIntro}>
-              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Delivery pulse</p>
-              <h2 style={{ ...toolbarTitle, color: palette.text }}>See progress and friction before you drop into blockers</h2>
-              <p style={{ ...toolbarCopy, color: palette.muted }}>{sprintPulse}</p>
-            </div>
-            <div style={toolbarChipRail}>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {sprint.todo || 0} to do
-              </span>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {sprint.completed || 0} completed
-              </span>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {blockerCount} blockers
-              </span>
-            </div>
-          </div>
-        </WorkspaceToolbar>
-
-        <section style={statsGrid}>
-          <Metric label="Completion" value={`${completion}%`} />
-          <Metric label="Issues" value={sprint.issue_count || 0} />
-          <Metric label="Completed" value={sprint.completed || 0} />
-          <Metric label="In Progress" value={sprint.in_progress || 0} />
-          <Metric label="To Do" value={sprint.todo || 0} />
-        </section>
-
-        <section style={{ ...progressCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-          <div style={progressTrack}>
-            <div style={{ ...progressFill, width: `${completion}%` }} />
-          </div>
-          <p style={{ margin: "8px 0 0", color: palette.muted, fontSize: 12 }}>Sprint completion</p>
-        </section>
-
-        <section style={{ ...listCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-          <div style={sectionHeader}>
-            <h2 style={{ ...h2, color: palette.text, margin: 0 }}>Active Blockers</h2>
-            <button onClick={() => setShowBlockerModal(true)} style={primaryButtonAlt}>
-              <PlusIcon style={icon14} /> Report Blocker
-            </button>
-          </div>
-
-          {blockers.length === 0 ? (
-            <div style={emptyRow}>No active blockers.</div>
-          ) : (
-            <div style={list}>
-              {blockers.map((blocker) => (
-                <article key={blocker.id} style={blockerCard}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <ExclamationTriangleIcon style={{ ...icon16, color: palette.danger }} />
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{blocker.title}</p>
-                  </div>
-                  <p style={{ margin: "6px 0 0", fontSize: 12, color: palette.muted }}>{blocker.description || "No description"}</p>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {showBlockerModal && (
-          <BlockerModal
-            sprintId={sprint.id}
-            onClose={() => setShowBlockerModal(false)}
-            onSubmit={() => {
-              setShowBlockerModal(false);
-              fetchSprint();
-            }}
-            palette={palette}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BlockerModal({ sprintId, onClose, onSubmit, palette }) {
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [type, setType] = useState("technical");
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleAddBlocker = async (e) => {
+    e.preventDefault();
+    if (!sprint?.id) return;
     setSubmitting(true);
     try {
-      await api.post("/api/agile/blockers/", { sprint_id: sprintId, title, description, type });
-      onSubmit();
-    } catch (error) {
-      console.error("Failed to create blocker:", error);
+      await api.post("/api/agile/blockers/", {
+        sprint_id: sprint.id,
+        title: form.title,
+        description: form.description,
+        type: form.type,
+      });
+      setShowBlocker(false);
+      setForm({ title: "", description: "", type: "blocker" });
+      await fetchSprint();
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to add blocker");
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
-    <div style={overlay}>
-      <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-        <h3 style={{ margin: 0, fontSize: 20, color: palette.text }}>Report Blocker</h3>
-        <form onSubmit={handleSubmit} style={formStack}>
-          <input required placeholder="Title" value={title} onChange={(event) => setTitle(event.target.value)} style={ui.input} />
-          <select value={type} onChange={(event) => setType(event.target.value)} style={ui.input}>
-            <option value="technical">Technical</option>
-            <option value="dependency">Dependency</option>
-            <option value="decision">Decision Needed</option>
-            <option value="resource">Resource</option>
-            <option value="external">External</option>
-          </select>
-          <textarea rows={4} placeholder="Description" value={description} onChange={(event) => setDescription(event.target.value)} style={ui.input} />
-          <div style={modalButtons}>
-            <button type="button" onClick={onClose} style={ui.secondaryButton}>Cancel</button>
-            <button type="submit" disabled={submitting} style={ui.primaryButton}>{submitting ? "Reporting..." : "Report"}</button>
-          </div>
-        </form>
+  if (loading) {
+    return <div style={{ padding: 32, color: "var(--app-muted)" }}>Loading sprint…</div>;
+  }
+
+  if (!sprint) {
+    return (
+      <div style={{ padding: "0 32px 32px" }}>
+        <PageHeader
+          breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Current sprint" }]}
+          title="Current sprint"
+          style={{ padding: "24px 0 0", background: "transparent" }}
+        />
+        <EmptyState
+          icon={<RocketLaunchIcon style={{ width: "100%", height: "100%" }} />}
+          title="No active sprint"
+          description="Plan a sprint to start tracking delivery rhythm."
+          primaryAction={<Button appearance="primary" onClick={() => (window.location.href = "/sprint")}>Plan a sprint</Button>}
+        />
       </div>
+    );
+  }
+
+  const remaining = daysLeft(sprint.end_date);
+  const issues = sprint.issues || [];
+  const done = issues.filter((i) => ["done", "closed", "resolved"].includes(String(i.status || "").toLowerCase())).length;
+  const inProgress = issues.filter((i) => ["in_progress", "in_review", "testing"].includes(String(i.status || "").toLowerCase())).length;
+  const todo = issues.length - done - inProgress;
+  const percent = issues.length ? Math.round((done / issues.length) * 100) : 0;
+
+  return (
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Sprints", to: "/sprint" }, { label: sprint.name || "Current" }]}
+        title={
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+            {sprint.name || "Current sprint"}
+            <Lozenge variant="inprogress">Active</Lozenge>
+          </span>
+        }
+        subtitle={sprint.goal || ""}
+        actions={
+          <Button
+            appearance="primary"
+            iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />}
+            onClick={() => setShowBlocker(true)}
+          >
+            Report blocker
+          </Button>
+        }
+        style={{ padding: "24px 0 0", background: "transparent" }}
+      />
+
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
+
+      <div style={statsRow}>
+        <Stat label="To do" value={todo} />
+        <Stat label="In progress" value={inProgress} tone="b400" />
+        <Stat label="Done" value={done} tone="g400" />
+        <Stat label="Days left" value={remaining ?? "—"} />
+        <Stat label="Progress" value={`${percent}%`} />
+      </div>
+
+      <div style={progressTrack}>
+        <div style={{ ...progressFill, width: `${percent}%` }} />
+      </div>
+      <div style={{ marginTop: 4, display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--app-muted)" }}>
+        <span>{formatDate(sprint.start_date)}</span>
+        <span>{formatDate(sprint.end_date)}</span>
+      </div>
+
+      {blockers.length > 0 ? (
+        <SectionMessage
+          tone="warning"
+          title={`${blockers.length} active blocker${blockers.length === 1 ? "" : "s"}`}
+          style={{ marginTop: 16 }}
+        >
+          {blockers.slice(0, 3).map((b) => (
+            <div key={b.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 4 }}>
+              <ExclamationTriangleIcon style={{ width: 14, height: 14, color: "var(--y500)", flexShrink: 0, marginTop: 2 }} />
+              <span style={{ fontSize: 13 }}>
+                <strong>{b.title}</strong>
+                {b.description ? <span style={{ color: "var(--app-muted)" }}> — {b.description}</span> : null}
+              </span>
+            </div>
+          ))}
+        </SectionMessage>
+      ) : null}
+
+      <h2 style={sectionHeading}>Issues in this sprint</h2>
+      {issues.length === 0 ? (
+        <EmptyState title="No issues in this sprint" description="Move issues from the backlog to plan this sprint." />
+      ) : (
+        <div style={listWrap}>
+          {issues.map((iss) => (
+            <Link key={iss.id} to={`/issues/${iss.id}`} style={issueRow}>
+              <span style={keyChip}>{iss.key || `#${iss.id}`}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "var(--app-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {iss.title || iss.summary}
+              </span>
+              <Lozenge status={iss.status} />
+              <Avatar size="sm" name={iss.assignee_name || "Unassigned"} src={iss.assignee_avatar} />
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {showBlocker ? (
+        <Modal title="Report blocker" onClose={() => setShowBlocker(false)}>
+          <form onSubmit={handleAddBlocker} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Field label="Title" isRequired>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="atlas-input" required autoFocus />
+            </Field>
+            <Field label="Description">
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="atlas-input" rows={4} />
+            </Field>
+            <Field label="Type">
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="atlas-input">
+                <option value="blocker">Blocker</option>
+                <option value="risk">Risk</option>
+                <option value="dependency">Dependency</option>
+              </select>
+            </Field>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+              <Button type="button" appearance="subtle" onClick={() => setShowBlocker(false)}>Cancel</Button>
+              <Button type="submit" appearance="primary" isDisabled={submitting || !form.title.trim()}>{submitting ? "Saving…" : "Report"}</Button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
     </div>
   );
 }
 
-function Metric({ label, value }) {
+function Stat({ label, value, tone }) {
+  const color = tone === "b400" ? "var(--b400)" : tone === "g400" ? "var(--g400)" : "var(--app-text)";
   return (
-    <article style={metricCard}>
-      <p style={metricValue}>{value}</p>
-      <p style={metricLabel}>{label}</p>
-    </article>
+    <div style={statCard}>
+      <p style={{ margin: 0, fontSize: 11, color: "var(--app-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 500, color }}>{value}</p>
+    </div>
   );
 }
 
-const spinner = { width: 30, height: 30, border: "2px solid var(--ui-border)", borderTopColor: "var(--ui-accent)", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const h2 = { fontSize: 19 };
-const statsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8, marginBottom: 12 };
-const metricCard = { borderRadius: 0, padding: 12, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)" };
-const metricValue = { margin: 0, fontSize: 26, fontWeight: 800, color: "var(--ui-text)" };
-const metricLabel = { margin: "4px 0 0", fontSize: 12, color: "var(--ui-muted)" };
-const progressCard = { borderRadius: 0, padding: 12, marginBottom: 12 };
-const progressTrack = { width: "100%", height: 10, borderRadius: 999, background: "var(--ui-border)", overflow: "hidden" };
-const progressFill = { height: "100%", background: "linear-gradient(90deg,var(--ui-good),var(--ui-info))" };
-const listCard = { borderRadius: 0, padding: 12 };
-const sectionHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 };
-const list = { display: "grid", gap: 8 };
-const blockerCard = { borderRadius: 0, border: "1px solid var(--ui-border)", background: "var(--ui-panel-alt)", padding: 10 };
-const emptyRow = { borderRadius: 0, border: "1px dashed var(--ui-border)", padding: "14px 10px", fontSize: 13, color: "var(--ui-muted)" };
-const primaryButtonAlt = { border: "none", borderRadius: 0, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "var(--ui-text)", background: "linear-gradient(135deg,#9bd9ff,#6ab8ec)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 };
-const overlay = { position: "fixed", inset: 0, background: "rgba(5,12,20,0.62)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
-const modalCard = { width: "min(560px,100%)", borderRadius: 0, padding: 16 };
-const formStack = { marginTop: 12, display: "grid", gap: 8 };
-const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
-const icon16 = { width: 16, height: 16 };
-const icon14 = { width: 14, height: 14 };
-const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
-const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
-const toolbarLayout = { display: "grid", gap: 14 };
-const toolbarIntro = { display: "grid", gap: 4 };
-const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
-const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
-const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
-const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
+function Modal({ children, onClose, title, width = 520 }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", zIndex: 199 }} />
+      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 6, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--app-border)" }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
+          <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
+        </div>
+        <div style={{ padding: 20 }}>{children}</div>
+      </div>
+    </>
+  );
+}
 
-export default CurrentSprint;
+const statsRow = {
+  marginTop: 16,
+  display: "grid",
+  gridTemplateColumns: "repeat(5, 1fr)",
+  gap: 8,
+};
 
+const statCard = {
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  padding: 16,
+};
 
+const progressTrack = {
+  marginTop: 16,
+  height: 6,
+  background: "var(--n30)",
+  borderRadius: 999,
+  overflow: "hidden",
+};
+
+const progressFill = {
+  height: "100%",
+  background: "linear-gradient(90deg, var(--b400), var(--g400))",
+  transition: "width 240ms cubic-bezier(0.2, 0, 0, 1)",
+};
+
+const sectionHeading = {
+  margin: "32px 0 8px",
+  fontSize: 16,
+  fontWeight: 600,
+  color: "var(--app-text)",
+};
+
+const listWrap = {
+  background: "var(--app-surface)",
+  border: "1px solid var(--app-border)",
+  borderRadius: 4,
+  overflow: "hidden",
+};
+
+const issueRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "10px 16px",
+  borderBottom: "1px solid var(--app-border-subtle)",
+  color: "inherit",
+  textDecoration: "none",
+};
+
+const keyChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  height: 18,
+  padding: "0 6px",
+  background: "var(--n20)",
+  border: "1px solid var(--app-border-subtle)",
+  borderRadius: 3,
+  fontFamily: "var(--font-mono)",
+  fontSize: 11,
+  color: "var(--app-muted)",
+  fontWeight: 600,
+};

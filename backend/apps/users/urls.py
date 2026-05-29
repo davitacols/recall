@@ -3,6 +3,7 @@ from . import views
 from .profile_views import update_profile, change_password, profile_stats
 
 urlpatterns = [
+    path('config/', views.auth_config, name='auth_config'),
     path('login/', views.login, name='login'),
     path('google/', views.google_login, name='google_login'),
     path('logout/', views.logout, name='logout'),

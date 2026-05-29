@@ -399,6 +399,24 @@ def login(request):
                    status=status.HTTP_401_UNAUTHORIZED)
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def auth_config(request):
+    """Public auth configuration the sign-in UI reads to decide which providers to show.
+
+    The Google client ID is a public OAuth identifier (safe to expose); the secret never is.
+    Exposing it here keeps the frontend in sync with the backend's actual config and lets the
+    button hide automatically when Google Sign-In is not enabled.
+    """
+    google_enabled = bool(settings.GOOGLE_OAUTH_ENABLED and settings.GOOGLE_CLIENT_ID)
+    return Response({
+        'google': {
+            'enabled': google_enabled,
+            'client_id': settings.GOOGLE_CLIENT_ID if google_enabled else '',
+        },
+    })
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def google_login(request):

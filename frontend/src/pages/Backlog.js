@@ -1,369 +1,397 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeftIcon, PlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowUpIcon,
+  ArrowDownIcon,
+  Bars3Icon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  PlusIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import api from "../services/api";
-import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
-import { useTheme } from "../utils/ThemeAndAccessibility";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { buildAskRecallPath } from "../utils/askRecall";
-import { createPlainTextPreview } from "../utils/textPreview";
+import {
+  Avatar,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  Field,
+  IconButton,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+} from "../components/atlas";
 
-function Backlog() {
+const PRIORITY_COLORS = {
+  highest: "var(--r500)",
+  high: "var(--r400)",
+  medium: "var(--y400)",
+  low: "var(--g400)",
+  lowest: "var(--g500)",
+};
+
+function priorityIcon(p) {
+  const key = String(p || "").toLowerCase();
+  if (["highest", "high"].includes(key)) return <ArrowUpIcon style={{ width: 12, height: 12, color: PRIORITY_COLORS[key] || "var(--r400)" }} />;
+  if (["low", "lowest"].includes(key)) return <ArrowDownIcon style={{ width: 12, height: 12, color: PRIORITY_COLORS[key] || "var(--g400)" }} />;
+  return <Bars3Icon style={{ width: 12, height: 12, color: PRIORITY_COLORS.medium }} />;
+}
+
+function typeBadge(type) {
+  const t = String(type || "task").toLowerCase();
+  const map = {
+    bug:   { bg: "var(--r400)", icon: <ExclamationTriangleIcon style={{ width: 10, height: 10, color: "#FFFFFF" }} /> },
+    story: { bg: "var(--g400)", icon: <CheckCircleIcon style={{ width: 10, height: 10, color: "#FFFFFF" }} /> },
+    task:  { bg: "var(--b400)", icon: <CheckCircleIcon style={{ width: 10, height: 10, color: "#FFFFFF" }} /> },
+    epic:  { bg: "var(--p400)", icon: <CheckCircleIcon style={{ width: 10, height: 10, color: "#FFFFFF" }} /> },
+  };
+  const e = map[t] || map.task;
+  return (
+    <span title={t} style={{ width: 16, height: 16, borderRadius: 3, background: e.bg, display: "inline-grid", placeItems: "center", flexShrink: 0 }}>
+      {e.icon}
+    </span>
+  );
+}
+
+export default function Backlog() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { darkMode } = useTheme();
-
   const [backlogIssues, setBacklogIssues] = useState([]);
   const [sprints, setSprints] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [draggedIssue, setDraggedIssue] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const [openSections, setOpenSections] = useState({});
   const [showCreate, setShowCreate] = useState(false);
-
-  const [title, setTitle] = useState("");
-  const [issueType, setIssueType] = useState("story");
-  const [priority, setPriority] = useState("medium");
-  const [submitting, setSubmitting] = useState(false);
-
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ title: "", issue_type: "story", priority: "medium" });
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   const fetchData = async () => {
+    setLoading(true);
+    setError("");
     try {
       const [backlogRes, sprintsRes] = await Promise.all([
         api.get(`/api/agile/projects/${projectId}/backlog/`),
         api.get(`/api/agile/projects/${projectId}/sprints/`),
       ]);
-      const issues = (backlogRes.data.issues || []).filter((issue) => !issue.sprint_id);
+      const issues = (backlogRes.data?.issues || backlogRes.data || []).filter((issue) => !issue.sprint_id);
       setBacklogIssues(issues);
-      setSprints(sprintsRes.data || []);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
+      const sprintList = Array.isArray(sprintsRes.data) ? sprintsRes.data : sprintsRes.data?.results || [];
+      setSprints(sprintList);
+      const init = {};
+      sprintList.forEach((s) => { init[`sprint-${s.id}`] = true; });
+      init.backlog = true;
+      setOpenSections((prev) => ({ ...init, ...prev }));
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to load backlog");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDropToSprint = async (sprintId) => {
+  const moveIssueToSprint = async (issue, sprintId) => {
+    try {
+      await api.put(`/api/agile/issues/${issue.id}/`, { sprint_id: sprintId });
+      await fetchData();
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to move issue");
+    }
+  };
+
+  const handleDragStart = (issue) => (e) => {
+    setDraggedIssue(issue);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (target) => (e) => {
+    e.preventDefault();
+    setDropTarget(target);
+  };
+
+  const handleDrop = (target) => async (e) => {
+    e.preventDefault();
     if (!draggedIssue) return;
-    try {
-      await api.put(`/api/agile/issues/${draggedIssue.id}/`, { sprint_id: sprintId });
-      fetchData();
-    } catch (error) {
-      console.error("Failed to move issue:", error);
-    } finally {
-      setDraggedIssue(null);
-      setDropTarget(null);
+    if (target === "backlog") {
+      await moveIssueToSprint(draggedIssue, null);
+    } else if (typeof target === "number") {
+      await moveIssueToSprint(draggedIssue, target);
     }
-  };
-
-  const handleReorderDrop = (targetIssue) => {
-    if (!draggedIssue || draggedIssue.id === targetIssue.id) return;
-    const next = [...backlogIssues];
-    const from = next.findIndex((issue) => issue.id === draggedIssue.id);
-    const to = next.findIndex((issue) => issue.id === targetIssue.id);
-    next.splice(from, 1);
-    next.splice(to, 0, draggedIssue);
-    setBacklogIssues(next);
     setDraggedIssue(null);
+    setDropTarget(null);
   };
 
-  const handleCreateIssue = async (event) => {
-    event.preventDefault();
-    setSubmitting(true);
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setCreating(true);
     try {
-      await api.post(`/api/agile/projects/${projectId}/issues/`, { title, issue_type: issueType, priority });
+      await api.post(`/api/agile/projects/${projectId}/issues/`, form);
       setShowCreate(false);
-      setTitle("");
-      setIssueType("story");
-      setPriority("medium");
-      fetchData();
-    } catch (error) {
-      console.error("Failed to create issue:", error);
+      setForm({ title: "", issue_type: "story", priority: "medium" });
+      await fetchData();
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to create issue");
     } finally {
-      setSubmitting(false);
+      setCreating(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-        <div style={spinner} />
-      </div>
-    );
-  }
+  const toggleSection = (key) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
-  const backlogCount = backlogIssues.length;
-  const highPriorityCount = backlogIssues.filter((issue) => ["highest", "high"].includes(String(issue.priority || "").toLowerCase())).length;
-  const assignedCount = backlogIssues.filter((issue) => Boolean(issue.assignee_name)).length;
-  const activeSprintCount = sprints.filter((sprint) => String(sprint.status || "").toLowerCase() === "active").length;
-  const backlogPulse =
-    backlogCount === 0
-      ? "Backlog is clear and ready for the next planning cycle."
-      : highPriorityCount > 0
-        ? `${highPriorityCount} high-priority issue${highPriorityCount === 1 ? "" : "s"} should be shaped before the next sprint commit.`
-        : "Backlog is populated and ready to be sorted into the next sprint window.";
-  const backlogAskRecallQuestion =
-    backlogCount === 0
-      ? "Is this project backlog truly clear, or is there missing work we should capture before the next sprint?"
-      : highPriorityCount > 0
-        ? "Which backlog issues should we shape or move into the next sprint first?"
-        : "Which backlog issues are most ready to move into the next sprint?";
+  const sprintIssuesFor = (sprintId) => backlogIssues.filter(() => false); // backlogIssues filtered to none-sprint
+  // sprintIssues come from sprints response if returned with issues
+  const sprintWithIssues = useMemo(() => sprints.map((s) => ({ ...s, issues: s.issues || [] })), [sprints]);
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={ui.container}>
-        <button onClick={() => navigate(-1)} style={backButton}>
-          <ArrowLeftIcon style={icon14} /> Back
-        </button>
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[
+          { label: "Projects", to: "/projects" },
+          { label: "Project", to: `/projects/${projectId}` },
+          { label: "Backlog" },
+        ]}
+        title="Backlog"
+        subtitle="Plan upcoming sprints and shape new work."
+        actions={
+          <Button appearance="primary" iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />} onClick={() => setShowCreate(true)}>
+            Create issue
+          </Button>
+        }
+        style={{ padding: "24px 0 0", background: "transparent" }}
+      />
 
-        <WorkspaceHero
-          palette={palette}
-          darkMode={darkMode}
-          variant="execution"
-          eyebrow="Project Backlog"
-          title="Shape the next sprint before work gets noisy"
-          description="Review unplanned work, reorder what matters, and route the strongest candidates into an active sprint without losing context."
-          stats={[
-            { label: "Unplanned", value: backlogCount, helper: "Issues still waiting for sprint routing." },
-            { label: "High priority", value: highPriorityCount, helper: "Urgent items asking for shaping." },
-            { label: "Assigned", value: assignedCount, helper: "Backlog work that already has an assignee." },
-            { label: "Sprints", value: sprints.length, helper: `${activeSprintCount} active sprint${activeSprintCount === 1 ? "" : "s"} available for routing.` },
-          ]}
-          aside={
-            <div
-              style={{
-                ...spotlightCard,
-                border: `1px solid ${palette.border}`,
-                background: darkMode
-                  ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
-                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
-              }}
-            >
-              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Planning pulse</p>
-              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
-                {backlogCount === 0 ? "Backlog clear" : `${backlogCount} issues waiting`}
-              </h3>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{backlogPulse}</p>
-            </div>
-          }
-          actions={
-            <>
-              <button onClick={() => setShowCreate(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
-                <PlusIcon style={icon14} /> New Issue
-              </button>
-              <button
-                onClick={() => navigate(buildAskRecallPath(backlogAskRecallQuestion))}
-                className="ui-btn-polish ui-focus-ring"
-                style={ui.secondaryButton}
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
+
+      {loading ? (
+        <div style={{ marginTop: 16 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ height: 80, background: "var(--n20)", borderRadius: 4, marginBottom: 8 }} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+          {sprintWithIssues.map((sprint) => {
+            const key = `sprint-${sprint.id}`;
+            const open = !!openSections[key];
+            const issues = sprint.issues || [];
+            const isActive = String(sprint.status || "").toLowerCase() === "active" || sprint.is_active;
+            return (
+              <SectionPanel
+                key={key}
+                open={open}
+                onToggle={() => toggleSection(key)}
+                title={sprint.name}
+                lozenge={isActive ? <Lozenge variant="inprogress">Active</Lozenge> : <Lozenge>Planned</Lozenge>}
+                meta={`${issues.length} issue${issues.length === 1 ? "" : "s"}`}
+                dropActive={dropTarget === sprint.id}
+                onDragOver={handleDragOver(sprint.id)}
+                onDrop={handleDrop(sprint.id)}
+                action={isActive ? null : <Button appearance="default" size="sm">Start sprint</Button>}
               >
-                <SparklesIcon style={icon14} /> Ask Recall
-              </button>
-            </>
-          }
-        />
+                {issues.length === 0 ? (
+                  <div style={emptyRow}>Drop issues here to plan this sprint.</div>
+                ) : (
+                  issues.map((iss) => (
+                    <IssueRow
+                      key={iss.id}
+                      issue={iss}
+                      onClick={() => navigate(`/issues/${iss.id}`)}
+                      onDragStart={handleDragStart(iss)}
+                    />
+                  ))
+                )}
+              </SectionPanel>
+            );
+          })}
 
-        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="execution">
-          <div style={toolbarLayout}>
-            <div style={toolbarIntro}>
-              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Planning guide</p>
-              <h2 style={{ ...toolbarTitle, color: palette.text }}>Reorder here, then drag straight into the sprint that should carry the work</h2>
-              <p style={{ ...toolbarCopy, color: palette.muted }}>
-                Keep the backlog focused on work that is shaped enough to start. Use the right rail as the routing surface for upcoming sprint commitments.
-              </p>
-            </div>
-            <div style={toolbarChipRail}>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                Drag to reorder
-              </span>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                Drag right to plan into sprint
-              </span>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {assignedCount} already owned
-              </span>
-            </div>
-          </div>
-        </WorkspaceToolbar>
-
-        <div style={ui.responsiveSplit}>
-          <WorkspacePanel
-            palette={palette}
-            darkMode={darkMode}
-            variant="execution"
-            eyebrow="Backlog atlas"
-            title="Unplanned work queue"
-            description="Reorder issues by priority and readiness before assigning them to a sprint."
-            minHeight={480}
+          <SectionPanel
+            open={!!openSections.backlog}
+            onToggle={() => toggleSection("backlog")}
+            title="Backlog"
+            meta={`${backlogIssues.length} issue${backlogIssues.length === 1 ? "" : "s"}`}
+            dropActive={dropTarget === "backlog"}
+            onDragOver={handleDragOver("backlog")}
+            onDrop={handleDrop("backlog")}
           >
             {backlogIssues.length === 0 ? (
-              <WorkspaceEmptyState
-                palette={palette}
-                darkMode={darkMode}
-                variant="execution"
+              <EmptyState
                 title="Backlog is empty"
-                description="Create the next issue or pull more candidate work into planning."
+                description="Create an issue or move one from an active sprint."
+                primaryAction={<Button appearance="primary" onClick={() => setShowCreate(true)}>Create issue</Button>}
               />
             ) : (
-              <div style={issueList}>
-                {backlogIssues.map((issue, index) => (
-                  <article
-                    key={issue.id}
-                    className="ui-card-lift ui-smooth"
-                    draggable
-                    onDragStart={() => setDraggedIssue(issue)}
-                    onDragEnd={() => setDraggedIssue(null)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => handleReorderDrop(issue)}
-                    onClick={() => navigate(`/issues/${issue.id}`)}
-                    style={{
-                      ...issueCard,
-                      border: `1px solid ${palette.border}`,
-                      background: palette.cardAlt,
-                    }}
-                  >
-                    <div style={issueHead}>
-                      <div style={{ minWidth: 0, display: "grid", gap: 6 }}>
-                        <p style={{ ...issueIndex, color: palette.muted }}>
-                          {index + 1}. {issue.key || `ISS-${issue.id}`}
-                        </p>
-                        <p style={{ ...issueTitle, color: palette.text }}>{issue.title}</p>
-                      </div>
-                      <span style={{ ...priorityBadge, border: `1px solid ${palette.border}`, color: palette.text, background: palette.card }}>
-                        {issue.priority || "medium"}
-                      </span>
-                    </div>
-                    <p style={{ ...issuePreview, color: palette.muted }}>
-                      {createPlainTextPreview(issue.description || issue.summary || "", "No issue brief added yet.", 160)}
-                    </p>
-                    <div style={metaRail}>
-                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
-                        {issue.issue_type || "task"}
-                      </span>
-                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
-                        {issue.assignee_name || "Unassigned"}
-                      </span>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              backlogIssues.map((iss) => (
+                <IssueRow
+                  key={iss.id}
+                  issue={iss}
+                  onClick={() => navigate(`/issues/${iss.id}`)}
+                  onDragStart={handleDragStart(iss)}
+                />
+              ))
             )}
-          </WorkspacePanel>
-
-          <WorkspacePanel
-            palette={palette}
-            darkMode={darkMode}
-            variant="execution"
-            eyebrow="Sprint routing"
-            title="Move into sprint"
-            description="Drop backlog work onto a sprint when the issue is ready to carry into execution."
-            minHeight={480}
-          >
-            {sprints.length === 0 ? (
-              <WorkspaceEmptyState
-                palette={palette}
-                darkMode={darkMode}
-                variant="execution"
-                title="No sprints available"
-                description="Create a sprint in the project first, then route backlog items into it."
-              />
-            ) : (
-              <div style={sprintList}>
-                {sprints.map((sprint) => (
-                  <button
-                    key={sprint.id}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      setDropTarget(sprint.id);
-                    }}
-                    onDragLeave={() => setDropTarget(null)}
-                    onDrop={() => handleDropToSprint(sprint.id)}
-                    style={{
-                      ...sprintDrop,
-                      border: dropTarget === sprint.id ? `1px solid ${palette.success}` : `1px solid ${palette.border}`,
-                      background: dropTarget === sprint.id ? palette.accentSoft : palette.cardAlt,
-                    }}
-                  >
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: palette.text }}>{sprint.name}</p>
-                    <p style={{ margin: "6px 0 0", fontSize: 12, color: palette.muted }}>
-                      {sprint.start_date} - {sprint.end_date}
-                    </p>
-                    <p style={{ margin: "8px 0 0", fontSize: 12, lineHeight: 1.55, color: palette.muted }}>
-                      {sprint.goal || "No sprint goal added yet."}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </WorkspacePanel>
+          </SectionPanel>
         </div>
+      )}
 
-        {showCreate && (
-          <div style={overlay}>
-            <div style={{ ...modalCard, background: palette.card, border: `1px solid ${palette.border}` }}>
-              <h3 style={{ margin: 0, fontSize: 20, color: palette.text }}>Create Issue</h3>
-              <form onSubmit={handleCreateIssue} style={formStack}>
-                <input required placeholder="Issue title" value={title} onChange={(event) => setTitle(event.target.value)} style={ui.input} />
-                <div style={ui.twoCol}>
-                  <select value={issueType} onChange={(event) => setIssueType(event.target.value)} style={ui.input}>
-                    <option value="epic">Epic</option>
-                    <option value="story">Story</option>
-                    <option value="task">Task</option>
-                    <option value="bug">Bug</option>
-                  </select>
-                  <select value={priority} onChange={(event) => setPriority(event.target.value)} style={ui.input}>
-                    <option value="highest">Highest</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                    <option value="lowest">Lowest</option>
-                  </select>
-                </div>
-                <div style={modalButtons}>
-                  <button type="button" onClick={() => setShowCreate(false)} style={ui.secondaryButton}>Cancel</button>
-                  <button type="submit" disabled={submitting} style={ui.primaryButton}>{submitting ? "Creating..." : "Create"}</button>
-                </div>
-              </form>
+      {showCreate ? (
+        <Modal title="Create issue" onClose={() => setShowCreate(false)}>
+          <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Field label="Title" isRequired>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="atlas-input" required autoFocus />
+            </Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <Field label="Type">
+                <select value={form.issue_type} onChange={(e) => setForm({ ...form, issue_type: e.target.value })} className="atlas-input">
+                  {["story", "task", "bug", "epic"].map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </Field>
+              <Field label="Priority">
+                <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="atlas-input">
+                  {["lowest", "low", "medium", "high", "highest"].map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </Field>
             </div>
-          </div>
-        )}
-      </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+              <Button type="button" appearance="subtle" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button type="submit" appearance="primary" isDisabled={creating || !form.title.trim()}>{creating ? "Creating…" : "Create"}</Button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
     </div>
   );
 }
 
-const spinner = { width: 30, height: 30, border: "2px solid var(--app-border-strong)", borderTopColor: "var(--app-info)", borderRadius: "50%", animation: "spin 1s linear infinite" };
-const backButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: "var(--app-muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", marginBottom: 10 };
-const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
-const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
-const toolbarLayout = { display: "grid", gap: 14 };
-const toolbarIntro = { display: "grid", gap: 4 };
-const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
-const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
-const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
-const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
-const issueList = { display: "grid", gap: 12 };
-const issueCard = { borderRadius: 22, padding: 16, display: "grid", gap: 12, cursor: "pointer" };
-const issueHead = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 };
-const issueIndex = { margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" };
-const issueTitle = { margin: 0, fontSize: 16, lineHeight: 1.25, fontWeight: 700 };
-const issuePreview = { margin: 0, fontSize: 13, lineHeight: 1.65 };
-const priorityBadge = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "7px 11px", fontSize: 11, fontWeight: 800, textTransform: "capitalize", whiteSpace: "nowrap" };
-const metaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const metaChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "7px 11px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
-const sprintList = { display: "grid", gap: 10 };
-const sprintDrop = { borderRadius: 20, padding: 14, textAlign: "left", cursor: "pointer", color: "var(--app-text)", display: "grid", gap: 2 };
-const overlay = { position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 };
-const modalCard = { width: "min(520px,100%)", borderRadius: 0, padding: 16 };
-const formStack = { marginTop: 12, display: "grid", gap: 8 };
-const modalButtons = { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 };
-const icon14 = { width: 14, height: 14 };
+function SectionPanel({ open, onToggle, title, lozenge, meta, action, children, dropActive, onDragOver, onDrop }) {
+  return (
+    <section
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      style={{
+        background: "var(--app-surface)",
+        border: "1px solid var(--app-border)",
+        borderRadius: 4,
+        outline: dropActive ? "2px solid var(--b400)" : "none",
+        outlineOffset: -2,
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          background: "transparent",
+          border: "none",
+          padding: "10px 16px",
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          {open ? <ChevronDownIcon style={{ width: 14, height: 14, color: "var(--app-muted)" }} /> : <ChevronRightIcon style={{ width: 14, height: 14, color: "var(--app-muted)" }} />}
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--app-text)" }}>{title}</span>
+          {lozenge}
+          <span style={{ fontSize: 12, color: "var(--app-muted)" }}>{meta}</span>
+        </span>
+        {action}
+      </button>
+      {open ? <div>{children}</div> : null}
+    </section>
+  );
+}
 
-export default Backlog;
+function IssueRow({ issue, onClick, onDragStart }) {
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "8px 16px",
+        borderTop: "1px solid var(--app-border-subtle)",
+        cursor: "pointer",
+      }}
+    >
+      {typeBadge(issue.issue_type || issue.type)}
+      <span style={keyChip}>{issue.key || `#${issue.id}`}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "var(--app-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        {issue.title || issue.summary}
+      </span>
+      <Lozenge status={issue.status} />
+      {priorityIcon(issue.priority)}
+      {issue.story_points ? <span style={storyPoints}>{issue.story_points}</span> : null}
+      <Avatar size="sm" name={issue.assignee_name || "Unassigned"} src={issue.assignee_avatar} />
+    </div>
+  );
+}
 
+function Modal({ children, onClose, title, width = 520 }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", zIndex: 199 }} />
+      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 6, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--app-border)" }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
+          <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
+        </div>
+        <div style={{ padding: 20 }}>{children}</div>
+      </div>
+    </>
+  );
+}
 
+const keyChip = {
+  display: "inline-flex",
+  alignItems: "center",
+  height: 18,
+  padding: "0 6px",
+  background: "var(--n20)",
+  border: "1px solid var(--app-border-subtle)",
+  borderRadius: 3,
+  fontFamily: "var(--font-mono)",
+  fontSize: 11,
+  color: "var(--app-muted)",
+  fontWeight: 600,
+};
+
+const storyPoints = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minWidth: 20,
+  height: 20,
+  padding: "0 6px",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--n700)",
+  background: "var(--n30)",
+  borderRadius: 10,
+};
+
+const emptyRow = {
+  padding: "16px",
+  textAlign: "center",
+  fontSize: 13,
+  color: "var(--app-text-disabled)",
+  borderTop: "1px solid var(--app-border-subtle)",
+};

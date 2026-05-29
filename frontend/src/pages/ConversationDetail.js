@@ -1,18 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeftIcon,
   ArrowDownTrayIcon,
+  ArrowLeftIcon,
   ArrowPathIcon,
-  ArrowUturnLeftIcon,
-  ArrowUturnRightIcon,
   ChatBubbleLeftIcon,
+  ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
   ExclamationTriangleIcon,
   HandThumbUpIcon,
+  LightBulbIcon,
+  MegaphoneIcon,
+  PencilSquareIcon,
   QuestionMarkCircleIcon,
   SparklesIcon,
   StarIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { useToast } from "../components/Toast";
 import api from "../services/api";
@@ -22,102 +27,109 @@ import { getAvatarUrl } from "../utils/avatarUtils";
 import AIAssistant from "../components/AIAssistant";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
-import BrandedTechnicalIllustration from "../components/BrandedTechnicalIllustration";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
 import { buildAskRecallPath } from "../utils/askRecall";
-import { createPlainTextPreview, stripRichTextToPlainText } from "../utils/textPreview";
+import "./ConversationDetail.css";
 
-const ReplyItem = ({ reply, depth = 0, onEdit, onDelete, currentUserId, palette, darkMode }) => {
+const REACTIONS = [
+  { type: "agree", Icon: HandThumbUpIcon, label: "Agree" },
+  { type: "unsure", Icon: QuestionMarkCircleIcon, label: "Unsure" },
+  { type: "concern", Icon: ExclamationTriangleIcon, label: "Concern" },
+];
+
+function typeMeta(postType) {
+  const t = String(postType || "discussion").toLowerCase().replace(/\s+/g, "_");
+  const map = {
+    discussion: { Icon: ChatBubbleLeftRightIcon, color: "#5E6AD2", soft: "rgba(94,106,210,0.12)" },
+    question: { Icon: QuestionMarkCircleIcon, color: "#2FA4B8", soft: "rgba(47,164,184,0.13)" },
+    proposal: { Icon: LightBulbIcon, color: "#8A63D2", soft: "rgba(138,99,210,0.13)" },
+    decision: { Icon: CheckCircleIcon, color: "#2F9E6E", soft: "rgba(47,158,110,0.13)" },
+    update: { Icon: MegaphoneIcon, color: "#C8761E", soft: "rgba(200,118,30,0.13)" },
+  };
+  return map[t] || { Icon: ChatBubbleLeftRightIcon, color: "#5E6AD2", soft: "rgba(94,106,210,0.12)" };
+}
+
+function initial(name) {
+  return String(name || "U").trim().charAt(0).toUpperCase();
+}
+
+function ReplyItem({ reply, depth = 0, onEdit, onDelete, currentUserId, darkMode }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
 
-  const authorName =
-    typeof reply.author === "string" ? reply.author : reply.author?.username || "Unknown";
+  const authorName = typeof reply.author === "string" ? reply.author : reply.author?.username || "Unknown";
   const avatarUrl = getAvatarUrl(reply.author?.avatar || reply.author_avatar);
-  const isReplyOwner = Number(reply.author?.id || reply.author_id) === Number(currentUserId);
+  const isOwner = Number(reply.author?.id || reply.author_id) === Number(currentUserId);
 
-  const handleSave = async () => {
+  const save = async () => {
     await onEdit(reply.id, editContent);
     setIsEditing(false);
   };
 
   return (
-    <div style={{ marginLeft: depth > 0 ? 24 : 0 }}>
-      <article className="ui-card-lift ui-smooth" style={{ ...replyCard, background: palette.panel, border: `1px solid ${palette.border}` }}>
-        <div style={replyHeader}>
-          <div style={replyAuthorWrap}>
-            <div style={avatarSmall}>
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={authorName}
-                  style={avatarImage}
-                  onError={(event) => {
-                    event.target.style.display = "none";
-                    event.target.parentElement.innerHTML = `<span style="color:var(--app-button-text);font-size:12px;font-weight:700;">${authorName
-                      .charAt(0)
-                      .toUpperCase()}</span>`;
-                  }}
-                />
-              ) : (
-                <span style={avatarSmallInitial}>{authorName.charAt(0).toUpperCase()}</span>
-              )}
-            </div>
+    <div className="cd-reply">
+      <div className="cd-reply-inner">
+        <div className="cd-reply-head">
+          <div className="cd-reply-author">
+            <span className="cd-reply-avatar">
+              {avatarUrl ? <img src={avatarUrl} alt={authorName} /> : initial(authorName)}
+            </span>
             <div>
-              <p style={{ ...authorNameStyle, color: palette.text }}>{authorName}</p>
-              <p style={{ ...metaText, color: palette.muted }}>
-                {new Date(reply.created_at).toLocaleDateString()}
-              </p>
+              <div className="cd-reply-name">{authorName}</div>
+              <div className="cd-reply-date">{new Date(reply.created_at).toLocaleDateString()}</div>
             </div>
           </div>
-
-          {isReplyOwner && (
-            <div style={replyActionRow}>
-              <button onClick={() => setIsEditing((value) => !value)} style={inlineAction(palette)}>
+          {isOwner ? (
+            <div className="cd-reply-actions">
+              <button type="button" className="cd-reply-act" onClick={() => setIsEditing((v) => !v)}>
                 {isEditing ? "Cancel" : "Edit"}
               </button>
-              <button onClick={() => onDelete(reply.id)} style={inlineActionDanger(palette)}>
+              <button type="button" className="cd-reply-act danger" onClick={() => onDelete(reply.id)}>
                 Delete
               </button>
             </div>
-          )}
+          ) : null}
         </div>
 
         {isEditing ? (
-          <div>
+          <>
             <textarea
+              className="cd-edit-area"
+              style={{ minHeight: 90 }}
               value={editContent}
-              onChange={(event) => setEditContent(event.target.value)}
+              onChange={(e) => setEditContent(e.target.value)}
               rows={3}
-              style={{ ...textareaInput, border: `1px solid ${palette.border}`, color: palette.text }}
             />
-            <button className="ui-btn-polish ui-focus-ring" onClick={handleSave} style={primaryButton}>
-              Save
-            </button>
-          </div>
+            <div className="cd-edit-actions">
+              <button type="button" className="cd-btn cd-btn-primary" onClick={save}>Save</button>
+            </div>
+          </>
         ) : (
-          <RichTextRenderer content={reply.content} darkMode={darkMode} />
+          <div className="cd-reply-body">
+            <RichTextRenderer content={reply.content} darkMode={darkMode} />
+          </div>
         )}
-      </article>
+      </div>
 
-      {reply.children?.map((child) => (
-        <ReplyItem
-          key={child.id}
-          reply={child}
-          depth={depth + 1}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          currentUserId={currentUserId}
-          palette={palette}
-          darkMode={darkMode}
-        />
-      ))}
+      {reply.children?.length ? (
+        <div className="cd-reply-children">
+          {reply.children.map((child) => (
+            <ReplyItem
+              key={child.id}
+              reply={child}
+              depth={depth + 1}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              currentUserId={currentUserId}
+              darkMode={darkMode}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
-};
+}
 
-function ConversationDetail() {
+export default function ConversationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { darkMode } = useTheme();
@@ -125,99 +137,39 @@ function ConversationDetail() {
 
   const [conversation, setConversation] = useState(null);
   const [replies, setReplies] = useState([]);
+  const [reactions, setReactions] = useState({ reactions: [], user_reaction: null });
   const [newReply, setNewReply] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
   const [isEditingPost, setIsEditingPost] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
-  const draftRef = useRef({ title: "", content: "" });
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const [reactions, setReactions] = useState({ reactions: [], user_reaction: null });
   const [savingPost, setSavingPost] = useState(false);
   const [deletingPost, setDeletingPost] = useState(false);
   const [reactionLoading, setReactionLoading] = useState(false);
-  const [selectedType, setSelectedType] = useState(null);
-  const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    post_type: "",
-    priority: "medium",
-  });
-  const [creating, setCreating] = useState(false);
   const [converting, setConverting] = useState(false);
-  const [bookmarkState, setBookmarkState] = useState({
-    bookmarked: false,
-    bookmarkId: null,
-    loading: false,
-  });
-  const [draftHistory, setDraftHistory] = useState([]);
-  const [draftFuture, setDraftFuture] = useState([]);
   const [exporting, setExporting] = useState(false);
-  const [isNarrow, setIsNarrow] = useState(window.innerWidth < 1080);
-
-  useEffect(() => {
-    const onResize = () => setIsNarrow(window.innerWidth < 1080);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+  const [bookmark, setBookmark] = useState({ on: false, id: null, loading: false });
 
   useEffect(() => {
     const localUser = JSON.parse(localStorage.getItem("user") || "{}");
     setCurrentUserId(localUser.id);
-    if (id !== "new") {
-      fetchConversation();
-      fetchReplies();
-      fetchReactions();
-      fetchBookmarkState();
-    } else {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    draftRef.current = { title: editTitle, content: editContent };
-  }, [editContent, editTitle]);
-
-  useEffect(() => {
-    if (!isEditingPost) return undefined;
-
-    const handleKeyDown = (event) => {
-      const isModifier = event.metaKey || event.ctrlKey;
-      const key = event.key.toLowerCase();
-
-      if (isModifier && !event.shiftKey && key === "z") {
-        event.preventDefault();
-        handleUndoDraft();
-      }
-
-      if (isModifier && (key === "y" || (event.shiftKey && key === "z"))) {
-        event.preventDefault();
-        handleRedoDraft();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isEditingPost, draftFuture.length, draftHistory.length]);
-
-  const palette = useMemo(() => {
-    const basePalette = getProjectPalette(darkMode);
-    return {
-      ...basePalette,
-      panel: basePalette.card,
-      panelAlt: basePalette.cardAlt,
-    };
-  }, [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
+    fetchConversation();
+    fetchReplies();
+    fetchReactions();
+    fetchBookmark();
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchConversation = async () => {
     try {
-      const response = await api.get(`/api/recall/conversations/${id}/`);
-      setConversation(response.data);
-      resetDraftHistory(response.data.title, response.data.content);
-    } catch (error) {
-      console.error("Failed to fetch conversation:", error);
+      const res = await api.get(`/api/recall/conversations/${id}/`);
+      setConversation(res.data);
+      setEditTitle(res.data.title || "");
+      setEditContent(res.data.content || "");
+    } catch (e) {
+      console.error("Failed to fetch conversation:", e);
     } finally {
       setLoading(false);
     }
@@ -225,153 +177,131 @@ function ConversationDetail() {
 
   const fetchReplies = async () => {
     try {
-      const response = await api.get(`/api/recall/conversations/${id}/replies/`);
-      setReplies(response.data);
-    } catch (error) {
-      console.error("Failed to fetch replies:", error);
+      const res = await api.get(`/api/recall/conversations/${id}/replies/`);
+      setReplies(Array.isArray(res.data) ? res.data : res.data?.results || []);
+    } catch (e) {
+      console.error("Failed to fetch replies:", e);
     }
   };
 
   const fetchReactions = async () => {
     try {
-      const response = await api.get(`/api/recall/conversations/${id}/reactions/`);
-      setReactions(response.data);
-    } catch (error) {
-      console.error("Failed to fetch reactions:", error);
+      const res = await api.get(`/api/recall/conversations/${id}/reactions/`);
+      setReactions(res.data || { reactions: [], user_reaction: null });
+    } catch (e) {
+      console.error("Failed to fetch reactions:", e);
     }
   };
 
-  const fetchBookmarkState = async () => {
+  const fetchBookmark = async () => {
     try {
-      const response = await api.get("/api/recall/bookmarks/");
-      const bookmarks = Array.isArray(response.data)
-        ? response.data
-        : Array.isArray(response.data?.results)
-          ? response.data.results
-          : [];
-      const match = bookmarks.find(
-        (bookmark) => Number(bookmark.conversation?.id) === Number(id)
-      );
-
-      setBookmarkState({
-        bookmarked: Boolean(match),
-        bookmarkId: match?.id || null,
-        loading: false,
-      });
-    } catch (error) {
-      console.error("Failed to fetch bookmark state:", error);
-      setBookmarkState((prev) => ({ ...prev, loading: false }));
+      const res = await api.get("/api/recall/bookmarks/");
+      const list = Array.isArray(res.data) ? res.data : res.data?.results || [];
+      const match = list.find((b) => Number(b.conversation?.id) === Number(id));
+      setBookmark({ on: Boolean(match), id: match?.id || null, loading: false });
+    } catch (e) {
+      setBookmark((p) => ({ ...p, loading: false }));
     }
   };
 
-  const resetDraftHistory = (nextTitle = "", nextContent = "") => {
-    setEditTitle(nextTitle);
-    setEditContent(nextContent);
-    setDraftHistory([]);
-    setDraftFuture([]);
+  const buildReplyTree = (items) => {
+    const map = {};
+    const roots = [];
+    items.forEach((r) => { map[r.id] = { ...r, children: [] }; });
+    items.forEach((r) => {
+      if (r.parent_reply && map[r.parent_reply]) map[r.parent_reply].children.push(map[r.id]);
+      else roots.push(map[r.id]);
+    });
+    return roots;
   };
 
-  const beginEditingPost = () => {
-    resetDraftHistory(conversation?.title || "", conversation?.content || "");
-    setIsEditingPost(true);
+  const handleSubmitReply = async (e) => {
+    e.preventDefault();
+    if (!newReply.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.post(`/api/recall/conversations/${id}/replies/`, { content: newReply });
+      setNewReply("");
+      fetchReplies();
+    } catch (err) {
+      console.error("Failed to submit reply:", err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const cancelEditingPost = () => {
-    resetDraftHistory(conversation?.title || "", conversation?.content || "");
-    setIsEditingPost(false);
+  const handleEditReply = async (replyId, content) => {
+    try {
+      await api.put(`/api/recall/conversations/replies/${replyId}/`, { content });
+      fetchReplies();
+    } catch (e) {
+      console.error("Failed to update reply:", e);
+    }
   };
 
-  const updateDraft = (field, value) => {
-    const currentDraft = draftRef.current;
-    const nextDraft = { ...currentDraft, [field]: value };
-
-    if (currentDraft[field] === value) return;
-
-    setDraftHistory((prev) => [...prev.slice(-39), currentDraft]);
-    setDraftFuture([]);
-    setEditTitle(nextDraft.title);
-    setEditContent(nextDraft.content);
+  const handleDeleteReply = async (replyId) => {
+    try {
+      await api.delete(`/api/recall/conversations/replies/${replyId}/`);
+      addToast("Reply deleted", "success");
+      fetchReplies();
+    } catch (e) {
+      addToast("Failed to delete reply", "error");
+    }
   };
 
-  const handleApplyConversationAI = ({ kind, summary, actionItems }) => {
-    const baseTitle = conversation?.title || "";
-    const baseContent = conversation?.content || "";
-    const aiBlock =
-      kind === "summary" && summary
-        ? `\n\nAI summary:\n${summary}`
-        : kind === "actions" && Array.isArray(actionItems) && actionItems.length > 0
-          ? `\n\nAI suggested next actions:\n${actionItems.map((item) => `- ${item}`).join("\n")}`
-          : "";
-
-    if (!aiBlock) return;
-    resetDraftHistory(baseTitle, `${baseContent}${aiBlock}`);
-    setIsEditingPost(true);
-    addToast("AI draft added to the conversation editor", "success");
-  };
-
-  const handleUndoDraft = () => {
-    if (!isEditingPost || draftHistory.length === 0) return;
-
-    const previousDraft = draftHistory[draftHistory.length - 1];
-    setDraftHistory((prev) => prev.slice(0, -1));
-    setDraftFuture((prev) => [draftRef.current, ...prev].slice(0, 40));
-    setEditTitle(previousDraft.title);
-    setEditContent(previousDraft.content);
-  };
-
-  const handleRedoDraft = () => {
-    if (!isEditingPost || draftFuture.length === 0) return;
-
-    const [nextDraft, ...remaining] = draftFuture;
-    setDraftFuture(remaining);
-    setDraftHistory((prev) => [...prev.slice(-39), draftRef.current]);
-    setEditTitle(nextDraft.title);
-    setEditContent(nextDraft.content);
+  const handleReaction = async (type) => {
+    if (reactionLoading) return;
+    const wasSelected = reactions.user_reaction === type;
+    const next = (reactions.reactions || []).map((r) => {
+      if (r.reaction_type === type) return { ...r, count: wasSelected ? r.count - 1 : r.count + 1 };
+      if (r.reaction_type === reactions.user_reaction) return { ...r, count: r.count - 1 };
+      return r;
+    });
+    setReactions({ reactions: next, user_reaction: wasSelected ? null : type });
+    setReactionLoading(true);
+    try {
+      if (wasSelected) await api.delete(`/api/recall/conversations/${id}/reactions/remove/`);
+      else await api.post(`/api/recall/conversations/${id}/reactions/add/`, { reaction_type: type });
+      fetchReactions();
+    } catch (e) {
+      fetchReactions();
+    } finally {
+      setReactionLoading(false);
+    }
   };
 
   const handleToggleBookmark = async () => {
-    setBookmarkState((prev) => ({ ...prev, loading: true }));
-
+    setBookmark((p) => ({ ...p, loading: true }));
     try {
-      if (bookmarkState.bookmarked && bookmarkState.bookmarkId) {
-        await api.delete(`/api/recall/bookmarks/${bookmarkState.bookmarkId}/`);
-        setBookmarkState({ bookmarked: false, bookmarkId: null, loading: false });
+      if (bookmark.on && bookmark.id) {
+        await api.delete(`/api/recall/bookmarks/${bookmark.id}/`);
+        setBookmark({ on: false, id: null, loading: false });
         addToast("Removed from favorites", "success");
       } else {
-        const response = await api.post(`/api/recall/conversations/${id}/bookmark/`, { note: "" });
-        setBookmarkState({
-          bookmarked: true,
-          bookmarkId: response.data?.id || null,
-          loading: false,
-        });
+        const res = await api.post(`/api/recall/conversations/${id}/bookmark/`, { note: "" });
+        setBookmark({ on: true, id: res.data?.id || null, loading: false });
         addToast("Added to favorites", "success");
       }
-    } catch (error) {
-      console.error("Failed to update bookmark:", error);
+    } catch (e) {
       addToast("Failed to update favorites", "error");
-      setBookmarkState((prev) => ({ ...prev, loading: false }));
+      setBookmark((p) => ({ ...p, loading: false }));
     }
   };
 
-  const handleExportConversation = async () => {
+  const handleExport = async () => {
     setExporting(true);
-
     try {
-      const response = await api.get("/api/recall/export/conversation-pdf/", {
-        params: { id },
-        responseType: "blob",
-      });
-      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const res = await api.get("/api/recall/export/conversation-pdf/", { params: { id }, responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
-      link.href = blobUrl;
+      link.href = url;
       link.setAttribute("download", `conversation_${id}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      window.URL.revokeObjectURL(url);
       addToast("Conversation exported", "success");
-    } catch (error) {
-      console.error("Failed to export conversation:", error);
+    } catch (e) {
       addToast("Failed to export conversation", "error");
     } finally {
       setExporting(false);
@@ -383,965 +313,273 @@ function ConversationDetail() {
     try {
       await api.put(`/api/recall/conversations/${id}/`, { title: editTitle, content: editContent });
       setIsEditingPost(false);
-      setDraftHistory([]);
-      setDraftFuture([]);
       fetchConversation();
-    } catch (error) {
-      console.error("Failed to update:", error);
+    } catch (e) {
+      console.error("Failed to update:", e);
     } finally {
       setSavingPost(false);
     }
   };
 
   const handleDeletePost = async () => {
+    if (!window.confirm("Delete this conversation? This cannot be undone.")) return;
     setDeletingPost(true);
     try {
       await api.delete(`/api/recall/conversations/${id}/`);
-      addToast("Conversation deleted successfully", "success");
-      window.location.href = "/conversations";
-    } catch (error) {
-      console.error("Failed to delete:", error);
+      addToast("Conversation deleted", "success");
+      navigate("/conversations");
+    } catch (e) {
       addToast("Failed to delete conversation", "error");
       setDeletingPost(false);
-    }
-  };
-
-  const handleEditReply = async (replyId, content) => {
-    try {
-      await api.put(`/api/recall/conversations/replies/${replyId}/`, { content });
-      fetchReplies();
-    } catch (error) {
-      console.error("Failed to update reply:", error);
-    }
-  };
-
-  const handleDeleteReply = async (replyId) => {
-    try {
-      await api.delete(`/api/recall/conversations/replies/${replyId}/`);
-      addToast("Reply deleted successfully", "success");
-      fetchReplies();
-    } catch (error) {
-      console.error("Failed to delete reply:", error);
-      addToast("Failed to delete reply", "error");
-    }
-  };
-
-  const handleSubmitReply = async (event) => {
-    event.preventDefault();
-    if (!newReply.trim()) return;
-    setSubmitting(true);
-    try {
-      await api.post(`/api/recall/conversations/${id}/replies/`, { content: newReply });
-      setNewReply("");
-      fetchReplies();
-    } catch (error) {
-      console.error("Failed to submit reply:", error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleReaction = async (type) => {
-    if (reactionLoading) return;
-    const wasSelected = reactions.user_reaction === type;
-    const newReactions = reactions.reactions.map((reaction) => {
-      if (reaction.reaction_type === type) {
-        return { ...reaction, count: wasSelected ? reaction.count - 1 : reaction.count + 1 };
-      }
-      if (reaction.reaction_type === reactions.user_reaction) {
-        return { ...reaction, count: reaction.count - 1 };
-      }
-      return reaction;
-    });
-
-    setReactions({ reactions: newReactions, user_reaction: wasSelected ? null : type });
-    setReactionLoading(true);
-
-    try {
-      if (wasSelected) {
-        await api.delete(`/api/recall/conversations/${id}/reactions/remove/`);
-      } else {
-        await api.post(`/api/recall/conversations/${id}/reactions/add/`, { reaction_type: type });
-      }
-      fetchReactions();
-    } catch (error) {
-      console.error("Failed to update reaction:", error);
-      fetchReactions();
-    } finally {
-      setReactionLoading(false);
-    }
-  };
-
-  const handleCreateConversation = async () => {
-    if (!formData.title.trim() || !formData.content.trim() || !formData.post_type) {
-      alert("Please fill in all fields");
-      return;
-    }
-    setCreating(true);
-    try {
-      const response = await api.post("/api/recall/conversations/", formData);
-      navigate(`/conversations/${response.data.id}`);
-    } catch (error) {
-      console.error("Failed to create conversation:", error);
-      alert("Failed to create conversation");
-    } finally {
-      setCreating(false);
     }
   };
 
   const handleConvertToDecision = async () => {
     setConverting(true);
     try {
-      const response = await api.post("/api/decisions/", {
+      const res = await api.post("/api/decisions/", {
         title: conversation.title,
         description: conversation.content,
         status: "proposed",
         context: `Converted from conversation #${id}`,
         conversation_id: id,
       });
-      addToast("Successfully converted to decision", "success");
-      navigate(`/decisions/${response.data.id}`);
-    } catch (error) {
-      console.error("Failed to convert to decision:", error);
+      addToast("Converted to decision", "success");
+      navigate(`/decisions/${res.data.id}`);
+    } catch (e) {
       addToast("Failed to convert to decision", "error");
     } finally {
       setConverting(false);
     }
   };
 
-  const buildReplyTree = (items) => {
-    const map = {};
-    const roots = [];
-    items.forEach((reply) => {
-      map[reply.id] = { ...reply, children: [] };
-    });
-    items.forEach((reply) => {
-      if (reply.parent_reply && map[reply.parent_reply]) {
-        map[reply.parent_reply].children.push(map[reply.id]);
-      } else {
-        roots.push(map[reply.id]);
-      }
-    });
-    return roots;
+  const handleApplyAI = ({ kind, summary, actionItems }) => {
+    const base = conversation?.content || "";
+    const block =
+      kind === "summary" && summary
+        ? `\n\nAI summary:\n${summary}`
+        : kind === "actions" && Array.isArray(actionItems) && actionItems.length
+          ? `\n\nAI suggested next actions:\n${actionItems.map((i) => `- ${i}`).join("\n")}`
+          : "";
+    if (!block) return;
+    setEditTitle(conversation?.title || "");
+    setEditContent(`${base}${block}`);
+    setIsEditingPost(true);
+    addToast("AI draft added to the editor", "success");
   };
 
-  if (id === "new") {
-    return (
-      <div style={{ ...page, display: "grid", gap: 16 }}>
-        <WorkspaceHero
-          palette={palette}
-          darkMode={darkMode}
-          variant="memory"
-          eyebrow="Conversation Composer"
-          title={selectedType ? `Create ${formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}` : "Create New Conversation"}
-          description={selectedType ? "Shape the thread with a clearer title, context, and priority before it lands in the shared stream." : "Choose a conversation type to start from a stronger, more intentional template."}
-          stats={[
-            { label: "Route", value: "New thread", helper: "This page creates a fresh conversation record." },
-            { label: "Priority", value: formData.priority || "medium", helper: "Current urgency setting." },
-          ]}
-          actions={
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/conversations")} style={ui.secondaryButton}>
-              <ArrowLeftIcon style={icon14} /> Back to Conversations
-            </button>
-          }
-        />
-
-        {!selectedType ? (
-          <WorkspacePanel
-            palette={palette}
-            darkMode={darkMode}
-            variant="memory"
-            eyebrow="Thread Types"
-            title="Choose the shape of the conversation"
-            description="Each thread type now reads like a deliberate editorial choice instead of a plain utility card."
-          >
-            <div style={typeGrid}>
-              {[
-                { type: "update", label: "Update", desc: "Team announcements and status updates" },
-                { type: "decision", label: "Decision", desc: "Formal decisions with rationale" },
-                { type: "question", label: "Question", desc: "Questions seeking answers" },
-                { type: "proposal", label: "Proposal", desc: "Proposals for discussion" },
-              ].map(({ type, label, desc }) => (
-                <button
-                  key={type}
-                  className="ui-card-lift ui-smooth"
-                  onClick={() => {
-                    setSelectedType(type);
-                    setFormData({ ...formData, post_type: type });
-                  }}
-                  style={{ ...typeCard, background: palette.panel, border: `1px solid ${palette.border}`, color: palette.text }}
-                >
-                  <p style={typeLabel}>{label}</p>
-                  <p style={{ ...sub, margin: 0, color: palette.muted }}>{desc}</p>
-                </button>
-              ))}
-            </div>
-          </WorkspacePanel>
-        ) : (
-          <>
-            <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{formData.post_type}</span>
-                <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{formData.priority}</span>
-              </div>
-            </WorkspaceToolbar>
-            <WorkspacePanel
-              palette={palette}
-              darkMode={darkMode}
-              variant="memory"
-              eyebrow="Composer"
-              title={`Create ${formData.post_type.charAt(0).toUpperCase() + formData.post_type.slice(1)}`}
-              description="Write the thread with enough context that the team can react, reply, or convert it into a decision later."
-            >
-              <div style={formStack}>
-                <label style={label}>Title</label>
-                <input
-                  value={formData.title}
-                  onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-                  style={{ ...ui.input, background: palette.panelAlt, color: palette.text }}
-                />
-                <label style={label}>Content</label>
-                <textarea
-                  value={formData.content}
-                  onChange={(event) => setFormData({ ...formData, content: event.target.value })}
-                  rows={8}
-                  style={{ ...ui.input, background: palette.panelAlt, color: palette.text, resize: "vertical" }}
-                />
-                <label style={label}>Priority</label>
-                <select
-                  value={formData.priority}
-                  onChange={(event) => setFormData({ ...formData, priority: event.target.value })}
-                  style={{ ...ui.input, background: palette.panelAlt, color: palette.text }}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-                <div style={buttonRow}>
-                  <button onClick={handleCreateConversation} style={ui.primaryButton}>
-                    {creating ? "Creating..." : "Create Conversation"}
-                  </button>
-                  <button onClick={() => setSelectedType(null)} style={ui.secondaryButton}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </WorkspacePanel>
-          </>
-        )}
-      </div>
-    );
-  }
-
   if (loading) {
-    return (
-      <div style={loadingWrap}>
-        <div style={spinner} />
-      </div>
-    );
+    return <div className="cd"><div className="cd-loading"><div className="cd-spinner" /></div></div>;
   }
 
   if (!conversation) {
     return (
-      <div style={loadingWrap}>
-        <WorkspacePanel
-          palette={palette}
-          darkMode={darkMode}
-          variant="memory"
-          eyebrow="Conversation"
-          title="Conversation not found"
-          description="The thread may have been deleted or is no longer available."
-        >
-          <WorkspaceEmptyState
-            palette={palette}
-            darkMode={darkMode}
-            variant="memory"
-            title="No thread to load"
-            description="Return to the conversation workspace to open another discussion."
-            action={
-              <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
-                Back to conversations
-              </Link>
-            }
-          />
-        </WorkspacePanel>
+      <div className="cd">
+        <Link to="/conversations" className="cd-back"><ArrowLeftIcon /> All conversations</Link>
+        <div className="cd-card">
+          <h1 className="cd-title" style={{ fontSize: 20 }}>Conversation not found</h1>
+          <p style={{ color: "var(--app-muted)", marginTop: 8 }}>
+            The thread may have been deleted or is no longer available.
+          </p>
+        </div>
       </div>
     );
   }
 
-  const authorName =
-    typeof conversation.author === "string"
-      ? conversation.author
-      : conversation.author?.username || "Unknown";
+  const authorName = typeof conversation.author === "string" ? conversation.author : conversation.author?.username || "Unknown";
+  const avatarUrl = getAvatarUrl(conversation.author_avatar || conversation.author?.avatar);
   const replyCount = replies.length;
-  const reactionTotal = (reactions.reactions || []).reduce((acc, row) => acc + (row.count || 0), 0);
-  const conversationType = (conversation.post_type || "discussion").replace("_", " ");
+  const reactionTotal = (reactions.reactions || []).reduce((a, r) => a + (r.count || 0), 0);
+  const type = (conversation.post_type || "discussion").replace("_", " ");
+  const { Icon: TypeIcon, color: typeColor, soft: typeSoft } = typeMeta(conversation.post_type);
   const createdLabel = new Date(conversation.created_at).toLocaleDateString();
-  const updatedLabel = conversation.updated_at
-    ? new Date(conversation.updated_at).toLocaleDateString()
-    : createdLabel;
-  const canUndo = isEditingPost && draftHistory.length > 0;
-  const canRedo = isEditingPost && draftFuture.length > 0;
-  const isConversationOwner =
-    Number(conversation.author?.id || conversation.author_id) === Number(currentUserId);
-  const conversationNarrative = stripRichTextToPlainText(conversation.content || "");
-  const threadSummary = createPlainTextPreview(
-    conversation.content,
-    "This thread is still waiting for a fuller written summary.",
-    220
-  );
-  const threadPulseLabel =
-    replyCount >= 6
-      ? "Active thread with meaningful back-and-forth."
-      : replyCount >= 2
-        ? "Conversation is moving and already has responses."
-        : replyCount === 1
-          ? "Early response is in. Good moment to tighten direction."
-          : "Still quiet. This thread may need a stronger follow-up.";
-  const threadActionReadiness =
-    replyCount + reactionTotal >= 6
-      ? "Enough signal is present to convert this into a tracked decision if the team is aligned."
-      : "Keep the thread moving a little longer before locking it into a decision record.";
-  const conversationAskRecallQuestion = `For the conversation titled "${conversation.title || "Untitled conversation"}", what needs a response, decision, or follow-up next?`;
-  const decisionReadinessLabel = replyCount + reactionTotal >= 6 ? "Ready to route" : "Still forming";
-  const nextStepGuidance =
-    replyCount + reactionTotal >= 6
-      ? "Capture the thread into a decision record, then keep comments focused on implementation risk and follow-through."
-      : replyCount === 0
-        ? "The thread needs an opening response to create momentum before it can be routed anywhere meaningful."
-        : "Keep responses coming until the tradeoffs and owner are clear enough to promote into a decision.";
-  const threadMomentumValue = replyCount + reactionTotal;
+  const updatedLabel = conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : createdLabel;
+  const isOwner = Number(conversation.author?.id || conversation.author_id) === Number(currentUserId);
+  const askQuestion = `For the conversation titled "${conversation.title || "Untitled conversation"}", what needs a response, decision, or follow-up next?`;
 
   return (
-    <div style={{ ...page, position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-      <div style={{ ...ambientLayer, background: darkMode ? "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.2), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.16), transparent 30%)" : "radial-gradient(circle at 7% 4%, rgba(59,130,246,0.14), transparent 34%), radial-gradient(circle at 90% 8%, var(--app-success-soft), transparent 30%)" }} />
-      <WorkspaceHero
-        palette={palette}
-        darkMode={darkMode}
-        variant="memory"
-        eyebrow={`Conversation Thread #${id}`}
-        title={conversation.title}
-        description="Track discussion context, reactions, and decisions from one structured workspace."
-        stats={[
-          { label: "Replies", value: `${replyCount}`, helper: "Responses attached to the thread." },
-          { label: "Reactions", value: `${reactionTotal}`, helper: "Signals from the team." },
-          { label: "Updated", value: updatedLabel, helper: "Most recent visible activity." },
-        ]}
-        aside={!isNarrow ? <BrandedTechnicalIllustration darkMode={darkMode} compact /> : null}
-        actions={
-          <>
-            <Link className="ui-btn-polish ui-focus-ring" to="/conversations" style={{ ...ui.secondaryButton, textDecoration: "none" }}>
-              <ArrowLeftIcon style={icon14} /> All Conversations
-            </Link>
-            <button
-              className="ui-btn-polish ui-focus-ring"
-              onClick={() => navigate(buildAskRecallPath(conversationAskRecallQuestion))}
-              style={ui.secondaryButton}
-            >
-              <SparklesIcon style={icon14} /> Ask Recall
-            </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
-              Decision Hub
-            </button>
-            <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={ui.secondaryButton}>
-              Refresh
-            </button>
-          </>
-        }
-      />
+    <div className="cd">
+      <Link to="/conversations" className="cd-back"><ArrowLeftIcon /> All conversations</Link>
 
-      <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
-        <div
-          style={{
-            ...threadControlGrid,
-            gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1.35fr) minmax(300px,0.92fr)",
-          }}
-        >
-          <section
-            className="ui-card-lift ui-smooth"
-            style={{ ...threadCommandCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}
-          >
-            <div style={threadCommandHead}>
-              <p style={{ ...sectionLabel, color: palette.muted }}>Thread control</p>
-              <h2 style={{ ...threadCommandTitle, color: palette.text }}>
-                Route the discussion without losing the conversation that created it
-              </h2>
-              <p style={{ ...threadCommandCopy, color: palette.muted }}>
-                Keep the thread anchored to its owner, signal level, and current route so follow-up work stays tied to the original discussion.
-              </p>
-            </div>
-
-            <div style={threadMetaRail}>
-              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{conversationType}</span>
-              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{authorName}</span>
-              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{replyCount} replies</span>
-              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{reactionTotal} reactions</span>
-              <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>Updated {updatedLabel}</span>
-            </div>
-
-            <div style={threadActionRail}>
-              <QuickLink sourceType="conversations.conversation" sourceId={id} />
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                onClick={handleConvertToDecision}
-                disabled={converting || savingPost || deletingPost}
-                style={ghostSuccessButton}
-              >
-                {converting ? <ArrowPathIcon style={{ ...icon14, animation: "spin 1s linear infinite" }} /> : null}
-                {converting ? "Converting..." : "Convert to Decision"}
-              </button>
-              <button className="ui-btn-polish ui-focus-ring" onClick={fetchConversation} style={ui.secondaryButton}>
-                <ArrowPathIcon style={icon14} /> Refresh thread
-              </button>
-            </div>
-          </section>
-
-          <section
-            className="ui-card-lift ui-smooth"
-            style={{ ...threadCommandCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}
-          >
-            <div style={threadCommandHead}>
-              <p style={{ ...sectionLabel, color: palette.muted }}>Response guide</p>
-              <h2 style={{ ...threadCommandTitle, color: palette.text }}>{decisionReadinessLabel}</h2>
-              <p style={{ ...threadCommandCopy, color: palette.muted }}>{nextStepGuidance}</p>
-            </div>
-
-            <div style={threadGuideGrid}>
-              <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                <p style={{ ...threadGuideLabel, color: palette.muted }}>Pulse</p>
-                <p style={{ ...threadGuideValue, color: palette.text }}>{threadMomentumValue}</p>
-              </div>
-              <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                <p style={{ ...threadGuideLabel, color: palette.muted }}>Updated</p>
-                <p style={{ ...threadGuideValue, color: palette.text }}>{updatedLabel}</p>
-              </div>
-              <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                <p style={{ ...threadGuideLabel, color: palette.muted }}>Replies</p>
-                <p style={{ ...threadGuideValue, color: palette.text }}>{replyCount}</p>
-              </div>
-              <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                <p style={{ ...threadGuideLabel, color: palette.muted }}>Reactions</p>
-                <p style={{ ...threadGuideValue, color: palette.text }}>{reactionTotal}</p>
-              </div>
-            </div>
-          </section>
+      <header className="cd-head">
+        <div className="cd-head-meta">
+          <span className="cd-type-badge" style={{ background: typeSoft, color: typeColor }}>
+            <TypeIcon /> {type}
+          </span>
+          <span style={{ fontSize: 12.5, color: "var(--app-muted)" }}>
+            {replyCount} {replyCount === 1 ? "reply" : "replies"} · {reactionTotal} reactions
+          </span>
         </div>
-      </WorkspaceToolbar>
 
-      <section style={{ ...briefingGrid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1.25fr) minmax(300px,0.85fr)" }}>
-        <article
-          className="ui-card-lift ui-smooth"
-          style={{
-            ...briefingPrimaryCard,
-            border: `1px solid ${palette.border}`,
-            ...memoryHeroSurface(palette, darkMode),
-          }}
-        >
-          <div style={{ display: "grid", gap: 8 }}>
-            <p style={{ ...sectionLabel, color: palette.muted }}>Thread Briefing</p>
-            <h2 style={{ margin: 0, fontSize: "clamp(1.18rem,2vw,1.64rem)", lineHeight: 1.08, color: palette.text }}>
-              {threadSummary}
-            </h2>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>
-              {createPlainTextPreview(
-                conversationNarrative,
-                "Open the full thread below to read the conversation in detail.",
-                320
-              )}
-            </p>
+        {isEditingPost ? (
+          <input className="cd-title-input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+        ) : (
+          <h1 className="cd-title">{conversation.title}</h1>
+        )}
+
+        <div className="cd-byline">
+          <span className="cd-avatar">
+            {avatarUrl ? <img src={avatarUrl} alt={authorName} /> : initial(authorName)}
+          </span>
+          <div>
+            <div className="cd-byline-name">{authorName}</div>
+            <div className="cd-byline-meta">Created {createdLabel} · Updated {updatedLabel}</div>
           </div>
-          <div style={briefingBadgeRow}>
-            <span style={{ ...summaryChip, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text }}>
-              {authorName}
-            </span>
-            <span style={{ ...summaryChip, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text }}>
-              Created {createdLabel}
-            </span>
-            <span style={{ ...summaryChip, border: `1px solid ${palette.border}`, background: palette.panelAlt, color: palette.text }}>
-              Updated {updatedLabel}
-            </span>
-          </div>
-        </article>
+        </div>
 
-        <article className="ui-card-lift ui-smooth" style={{ ...briefingSideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(palette, darkMode) }}>
-          <div style={{ display: "grid", gap: 6 }}>
-            <p style={{ ...sectionLabel, color: palette.muted }}>Conversation posture</p>
-            <h2 style={{ margin: 0, fontSize: "clamp(1.05rem,1.6vw,1.28rem)", lineHeight: 1.15, color: palette.text }}>
-              Read the signal, then decide whether this stays conversational or becomes operational
-            </h2>
-          </div>
-
-          <div style={threadGuideGrid}>
-            <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-              <p style={{ ...threadGuideLabel, color: palette.muted }}>Thread pulse</p>
-              <p style={{ ...threadGuideValue, color: palette.text }}>{threadMomentumValue}</p>
-            </div>
-            <div style={{ ...threadGuideItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-              <p style={{ ...threadGuideLabel, color: palette.muted }}>Decision state</p>
-              <p style={{ ...threadGuideValue, color: palette.text }}>{decisionReadinessLabel}</p>
-            </div>
-          </div>
-
-          <div style={{ ...threadGuideNote, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.text }}>{threadPulseLabel}</p>
-          </div>
-          <div style={{ ...threadGuideNote, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.text }}>{threadActionReadiness}</p>
-          </div>
-        </article>
-      </section>
-
-      <div className="ui-enter" style={{ ...grid, gridTemplateColumns: isNarrow ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", "--ui-delay": "110ms" }}>
-        <div>
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, ...memoryHeroSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "140ms" }}>
-            {isEditingPost ? (
-              <input
-                value={editTitle}
-                onChange={(event) => updateDraft("title", event.target.value)}
-                style={{ ...titleInput, color: palette.text, borderBottom: `1px solid ${palette.border}` }}
-              />
-            ) : (
-              <h1 style={{ ...titleMain, color: palette.text }}>{conversation.title}</h1>
-            )}
-            <div style={heroSignals}>
-              <span style={{ ...signalChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{conversationType}</span>
-              <span style={{ ...signalChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{replyCount} replies</span>
-              <span style={{ ...signalChip, border: `1px solid ${palette.border}`, color: palette.text, background: palette.panelAlt }}>{reactionTotal} reactions</span>
-            </div>
-            <div style={authorRow}>
-              <div style={avatarWrap}>
-                {getAvatarUrl(conversation.author_avatar || conversation.author?.avatar) ? (
-                  <img
-                    src={getAvatarUrl(conversation.author_avatar || conversation.author?.avatar)}
-                    alt={authorName}
-                    style={avatarImage}
-                  />
-                ) : (
-                  <span style={avatarInitial}>{authorName.charAt(0).toUpperCase()}</span>
-                )}
-              </div>
-              <div>
-                <p style={{ ...authorNameStyle, color: palette.text }}>{authorName}</p>
-                <p style={{ ...metaText, color: palette.muted }}>
-                  Created {createdLabel}
-                </p>
-              </div>
-            </div>
-
-            <div style={{ ...actionDeck, borderTop: `1px solid ${palette.border}` }}>
-              <div style={actionDeckHeader}>
-                <div>
-                  <p style={{ ...sectionLabel, color: palette.muted, marginBottom: 4 }}>Operate the thread</p>
-                  <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.5 }}>
-                    Keep the thread personally organized, export it when needed, and use draft controls when you are actively editing.
-                  </p>
-                </div>
-                {isEditingPost ? (
-                  <span style={{ ...heroChip, border: `1px solid ${palette.border}`, color: palette.text, ...memoryInsetSurface(palette, darkMode) }}>
-                    Draft mode
-                  </span>
-                ) : null}
-              </div>
-
-              <div style={threadActionClusters}>
-                <div style={{ ...threadActionCluster, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                  <p style={{ ...threadActionClusterTitle, color: palette.muted }}>Personal workflow</p>
-                  <div style={actionRow}>
-                    <button
-                      className="ui-btn-polish ui-focus-ring"
-                      onClick={handleToggleBookmark}
-                      disabled={bookmarkState.loading}
-                      style={actionButton(palette, bookmarkState.bookmarked
-                        ? {
-                            borderColor: "rgba(202,138,4,0.32)",
-                            background: darkMode ? "rgba(202,138,4,0.16)" : "rgba(234,179,8,0.12)",
-                            color: darkMode ? "#facc15" : "#a16207",
-                          }
-                        : null)}
-                    >
-                      <StarIcon style={icon14} />
-                      {bookmarkState.loading
-                        ? "Saving..."
-                        : bookmarkState.bookmarked
-                          ? "Favorited"
-                          : "Add to Favorites"}
-                    </button>
-
-                    <button
-                      className="ui-btn-polish ui-focus-ring"
-                      onClick={handleExportConversation}
-                      disabled={exporting}
-                      style={actionButton(palette)}
-                    >
-                      <ArrowDownTrayIcon style={icon14} />
-                      {exporting ? "Exporting..." : "Export PDF"}
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ ...threadActionCluster, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                  <p style={{ ...threadActionClusterTitle, color: palette.muted }}>Draft history</p>
-                  <div style={actionRow}>
-                    <button
-                      className="ui-btn-polish ui-focus-ring"
-                      onClick={handleUndoDraft}
-                      disabled={!canUndo}
-                      style={actionButton(palette, null, !canUndo)}
-                      title="Undo draft change"
-                    >
-                      <ArrowUturnLeftIcon style={icon14} />
-                      Undo
-                    </button>
-                    <button
-                      className="ui-btn-polish ui-focus-ring"
-                      onClick={handleRedoDraft}
-                      disabled={!canRedo}
-                      style={actionButton(palette, null, !canRedo)}
-                      title="Redo draft change"
-                    >
-                      <ArrowUturnRightIcon style={icon14} />
-                      Redo
-                    </button>
-                  </div>
-                </div>
-
-                {isConversationOwner ? (
-                  <div style={{ ...threadActionCluster, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                    <p style={{ ...threadActionClusterTitle, color: palette.muted }}>Owner controls</p>
-                    <div style={actionRow}>
-                      <button
-                        className="ui-btn-polish ui-focus-ring"
-                        onClick={isEditingPost ? cancelEditingPost : beginEditingPost}
-                        style={smallOutlineButton(palette)}
-                      >
-                        {isEditingPost ? "Cancel edit" : "Edit"}
-                      </button>
-                      <button
-                        className="ui-btn-polish ui-focus-ring"
-                        onClick={handleDeletePost}
-                        style={smallDangerButton(palette, darkMode)}
-                      >
-                        {deletingPost ? "Deleting..." : "Delete"}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              {isEditingPost ? (
-                <div style={{ ...editingHint, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                  <span style={{ color: palette.text, fontWeight: 700 }}>Draft history is live.</span>
-                  <span style={{ color: palette.muted }}>
-                    Use Undo/Redo here or <strong style={{ color: palette.text }}>Ctrl/Cmd + Z</strong> and <strong style={{ color: palette.text }}>Ctrl/Cmd + Y</strong>.
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "180ms" }}>
-            {!isEditingPost && (
-              <div style={sectionLabelRow}>
-                <p style={{ ...sectionLabel, color: palette.muted }}>Full Thread Record</p>
-              </div>
-            )}
-            {isEditingPost ? (
+        <div className="cd-actions">
+          <button type="button" className="cd-btn cd-btn-primary" onClick={() => navigate(buildAskRecallPath(askQuestion))}>
+            <SparklesIcon /> Ask Recall
+          </button>
+          <button type="button" className="cd-btn" onClick={handleConvertToDecision} disabled={converting}>
+            {converting ? <ArrowPathIcon style={{ animation: "cd-spin 1s linear infinite" }} /> : <CheckCircleIcon />}
+            Convert to decision
+          </button>
+          <button type="button" className={`cd-btn ${bookmark.on ? "is-on" : ""}`} onClick={handleToggleBookmark} disabled={bookmark.loading}>
+            {bookmark.on ? <StarSolidIcon /> : <StarIcon />}
+            {bookmark.on ? "Favorited" : "Favorite"}
+          </button>
+          <button type="button" className="cd-btn" onClick={handleExport} disabled={exporting}>
+            <ArrowDownTrayIcon /> {exporting ? "Exporting…" : "Export"}
+          </button>
+          {isOwner ? (
+            isEditingPost ? (
               <>
-                <textarea
-                  value={editContent}
-                  onChange={(event) => updateDraft("content", event.target.value)}
-                  rows={10}
-                  style={{ ...textareaInput, border: `1px solid ${palette.border}`, color: palette.text }}
-                />
-                <button className="ui-btn-polish ui-focus-ring" onClick={handleEditPost} style={primaryButton}>
-                  {savingPost ? "Saving..." : "Save Changes"}
+                <button type="button" className="cd-btn cd-btn-primary" onClick={handleEditPost} disabled={savingPost}>
+                  {savingPost ? "Saving…" : "Save changes"}
+                </button>
+                <button type="button" className="cd-btn" onClick={() => { setIsEditingPost(false); setEditTitle(conversation.title || ""); setEditContent(conversation.content || ""); }}>
+                  Cancel
                 </button>
               </>
             ) : (
-              <div style={{ ...contentShell, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
+              <>
+                <button type="button" className="cd-btn" onClick={() => setIsEditingPost(true)}>
+                  <PencilSquareIcon /> Edit
+                </button>
+                <button type="button" className="cd-btn cd-btn-danger" onClick={handleDeletePost} disabled={deletingPost}>
+                  <TrashIcon /> Delete
+                </button>
+              </>
+            )
+          ) : null}
+        </div>
+      </header>
+
+      <div className="cd-layout">
+        <div className="cd-main">
+          {/* Original post */}
+          <section className="cd-card">
+            {isEditingPost ? (
+              <textarea className="cd-edit-area" value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={10} />
+            ) : (
+              <div className="cd-content">
                 <RichTextRenderer content={conversation.content} darkMode={darkMode} />
               </div>
             )}
-          </section>
 
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
-            <div style={sectionLabelRow}>
-              <p style={{ ...sectionLabel, color: palette.muted }}>Team Signal</p>
-            </div>
-            <div style={reactionRow}>
-              {[
-                { type: "agree", icon: HandThumbUpIcon, label: "Agree" },
-                { type: "unsure", icon: QuestionMarkCircleIcon, label: "Unsure" },
-                { type: "concern", icon: ExclamationTriangleIcon, label: "Concern" },
-              ].map(({ type, icon: Icon, label }) => (
-                <button
-                  className="ui-btn-polish ui-focus-ring"
-                  key={type}
-                  onClick={() => handleReaction(type)}
-                  style={{
-                    ...reactionButton,
-                    background: reactions.user_reaction === type ? palette.accentSoft : palette.panelAlt,
-                    color: reactions.user_reaction === type ? palette.link : palette.text,
-                    border: `1px solid ${reactions.user_reaction === type ? palette.accent : palette.border}`,
-                  }}
-                >
-                  <Icon style={icon14} />
-                  {label} ({reactions.reactions.find((reaction) => reaction.reaction_type === type)?.count || 0})
-                </button>
-              ))}
+            <div className="cd-reactions">
+              {REACTIONS.map(({ type: rt, Icon, label }) => {
+                const count = (reactions.reactions || []).find((r) => r.reaction_type === rt)?.count || 0;
+                const on = reactions.user_reaction === rt;
+                return (
+                  <button
+                    key={rt}
+                    type="button"
+                    className={`cd-react ${rt} ${on ? "is-on" : ""}`}
+                    onClick={() => handleReaction(rt)}
+                    disabled={reactionLoading}
+                  >
+                    <Icon /> {label} <span className="cd-react-count">{count}</span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...card, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "260ms" }}>
-            <h2 style={{ ...h2, color: palette.text }}>
-              <ChatBubbleLeftIcon style={icon18} /> Replies ({replies.length})
-            </h2>
+          {/* Replies */}
+          <section className="cd-card">
+            <h2 className="cd-replies-head"><ChatBubbleLeftIcon /> Replies ({replyCount})</h2>
 
-            {replies.length === 0 ? (
-              <div style={{ ...emptyState, border: `1px solid ${palette.border}`, color: palette.muted, ...memoryInsetSurface(palette, darkMode) }}>
-                No replies yet. Be the first to comment.
-              </div>
+            {replyCount === 0 ? (
+              <div className="cd-replies-empty">No replies yet. Be the first to respond.</div>
             ) : (
-              <div style={replyList}>
-                {buildReplyTree(replies).map((reply) => (
-                  <ReplyItem
-                    key={reply.id}
-                    reply={reply}
-                    onEdit={handleEditReply}
-                    onDelete={handleDeleteReply}
-                    currentUserId={currentUserId}
-                    palette={palette}
-                    darkMode={darkMode}
-                  />
-                ))}
-              </div>
+              buildReplyTree(replies).map((reply) => (
+                <ReplyItem
+                  key={reply.id}
+                  reply={reply}
+                  onEdit={handleEditReply}
+                  onDelete={handleDeleteReply}
+                  currentUserId={currentUserId}
+                  darkMode={darkMode}
+                />
+              ))
             )}
 
-            <div style={{ ...composer, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-              <p style={{ ...metaText, marginBottom: 8, color: palette.text }}>Add a comment</p>
+            <div className="cd-composer">
+              <p className="cd-composer-label">Add a reply</p>
               <form onSubmit={handleSubmitReply}>
                 <MentionTagInput
                   value={newReply}
-                  onChange={(event) => setNewReply(event.target.value)}
-                  placeholder="Share your thoughts..."
+                  onChange={(e) => setNewReply(e.target.value)}
+                  placeholder="Share your thoughts…"
                   rows={4}
                   darkMode={darkMode}
                 />
-                <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={submitting || !newReply.trim()} style={primaryButton}>
-                  {submitting ? "Posting..." : "Reply"}
-                </button>
+                <div className="cd-edit-actions">
+                  <button type="submit" className="cd-btn cd-btn-primary" disabled={submitting || !newReply.trim()}>
+                    {submitting ? "Posting…" : "Reply"}
+                  </button>
+                </div>
               </form>
             </div>
           </section>
         </div>
 
-        <div style={isNarrow ? railStackMobile : railStack}>
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "200ms" }}>
-            <div style={{ display: "grid", gap: 6, marginBottom: 14 }}>
-              <p style={{ ...sectionLabel, color: palette.muted }}>Thread route</p>
-              <h2 style={{ ...h2, color: palette.text, margin: 0 }}>Keep the signal visible while you read</h2>
-              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.muted }}>{threadActionReadiness}</p>
+        {/* Right rail */}
+        <aside className="cd-rail">
+          <div className="cd-rail-card">
+            <p className="cd-rail-title">Details</p>
+            <div className="cd-details">
+              <div>
+                <div className="cd-detail-label">Type</div>
+                <div className="cd-detail-value">{type}</div>
+              </div>
+              <div>
+                <div className="cd-detail-label">Author</div>
+                <div className="cd-detail-value" style={{ textTransform: "none" }}>{authorName}</div>
+              </div>
+              <div>
+                <div className="cd-detail-label">Replies</div>
+                <div className="cd-detail-value">{replyCount}</div>
+              </div>
+              <div>
+                <div className="cd-detail-label">Reactions</div>
+                <div className="cd-detail-value">{reactionTotal}</div>
+              </div>
+              <div>
+                <div className="cd-detail-label">Created</div>
+                <div className="cd-detail-value" style={{ textTransform: "none" }}>{createdLabel}</div>
+              </div>
+              <div>
+                <div className="cd-detail-label">Updated</div>
+                <div className="cd-detail-value" style={{ textTransform: "none" }}>{updatedLabel}</div>
+              </div>
             </div>
-            <div style={snapshotGrid}>
-              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                <p style={{ ...snapshotLabel, color: palette.muted }}>Type</p>
-                <p style={{ ...snapshotValue, color: palette.text }}>{conversationType}</p>
-              </div>
-              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                <p style={{ ...snapshotLabel, color: palette.muted }}>Replies</p>
-                <p style={{ ...snapshotValue, color: palette.text }}>{replyCount}</p>
-              </div>
-              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                <p style={{ ...snapshotLabel, color: palette.muted }}>Reactions</p>
-                <p style={{ ...snapshotValue, color: palette.text }}>{reactionTotal}</p>
-              </div>
-              <div style={{ ...snapshotItem, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode) }}>
-                <p style={{ ...snapshotLabel, color: palette.muted }}>Updated</p>
-                <p style={{ ...snapshotValue, color: palette.text }}>{updatedLabel}</p>
-              </div>
+            <div style={{ marginTop: 14 }}>
+              <QuickLink sourceType="conversations.conversation" sourceId={id} />
             </div>
-            <div style={{ ...threadGuideNote, border: `1px solid ${palette.border}`, ...memoryInsetSurface(palette, darkMode), marginTop: 12 }}>
-              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.text }}>{threadPulseLabel}</p>
-            </div>
-          </section>
+          </div>
 
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "220ms" }}>
-            <AIAssistant content={conversation?.content} contentType="conversation" onApply={handleApplyConversationAI} />
-          </section>
+          <div className="cd-rail-card">
+            <AIAssistant content={conversation?.content} contentType="conversation" onApply={handleApplyAI} />
+          </div>
 
-          <section className="ui-enter ui-card-lift ui-smooth" style={{ ...sideCard, ...memoryPanelSurface(palette, darkMode), border: `1px solid ${palette.border}`, "--ui-delay": "240ms" }}>
+          <div className="cd-rail-card">
             <ContextPanel contentType="conversations.conversation" objectId={id} />
-          </section>
-        </div>
+          </div>
+        </aside>
       </div>
-
     </div>
   );
 }
-
-const page = { width: "100%" };
-const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
-const grid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
-const briefingGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
-const threadControlGrid = { position: "relative", zIndex: 1, display: "grid", gap: 12 };
-const threadCommandCard = { borderRadius: 26, padding: 18, display: "grid", gap: 14, boxShadow: "var(--ui-shadow-xs)" };
-const threadCommandHead = { display: "grid", gap: 6 };
-const threadCommandTitle = { margin: 0, fontSize: "clamp(1.04rem,1.6vw,1.24rem)", lineHeight: 1.15 };
-const threadCommandCopy = { margin: 0, fontSize: 13, lineHeight: 1.6 };
-const threadMetaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const threadActionRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const threadGuideGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 8 };
-const threadGuideItem = { borderRadius: 16, padding: "11px 12px", display: "grid", gap: 4 };
-const threadGuideLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
-const threadGuideValue = { margin: 0, fontSize: 14, fontWeight: 700, lineHeight: 1.2 };
-const threadGuideNote = { borderRadius: 16, padding: "12px 14px" };
-const briefingPrimaryCard = { borderRadius: 28, padding: 22, display: "grid", gap: 16, boxShadow: "var(--ui-shadow-sm)" };
-const briefingSideCard = { borderRadius: 24, padding: 18, display: "grid", gap: 12, alignContent: "start", boxShadow: "var(--ui-shadow-xs)" };
-const briefingBadgeRow = { display: "flex", gap: 8, flexWrap: "wrap" };
-const summaryChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
-const loadingWrap = { minHeight: 320, display: "grid", placeItems: "center" };
-const spinner = {
-  width: 28,
-  height: 28,
-  border: "2px solid var(--app-border-strong)",
-  borderTopColor: "var(--app-info)",
-  borderRadius: "50%",
-  animation: "spin 1s linear infinite",
-};
-const h2 = { margin: "0 0 10px", fontSize: 16, display: "flex", alignItems: "center", gap: 7 };
-const sub = { margin: "0 0 12px", fontSize: 14 };
-const card = { borderRadius: 24, padding: 18, marginBottom: 14, boxShadow: "var(--ui-shadow-sm)" };
-const typeGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 };
-const typeCard = { borderRadius: 14, padding: 16, textAlign: "left", cursor: "pointer" };
-const typeLabel = { margin: "0 0 6px", fontSize: 16, fontWeight: 700 };
-const formStack = { display: "grid", gap: 10 };
-const label = { fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" };
-const textInput = { borderRadius: 10, padding: "10px 12px", fontSize: 14, outline: "none", width: "100%" };
-const textareaInput = { ...textInput, resize: "vertical" };
-const buttonRow = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 };
-const primaryButton = {
-  marginTop: 10,
-  border: "none",
-  borderRadius: 10,
-  background: "var(--app-gradient-primary)",
-  color: "var(--app-button-text)",
-  padding: "10px 14px",
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-const titleMain = { margin: "0 0 10px", fontSize: "clamp(1.3rem,2.8vw,1.8rem)" };
-const heroSignals = { display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 8 };
-const signalChip = { borderRadius: 999, padding: "4px 9px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
-const heroChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" };
-const titleInput = { width: "100%", border: "none", background: "transparent", fontSize: 22, fontWeight: 700, marginBottom: 10, paddingBottom: 8, outline: "none" };
-const authorRow = { display: "flex", alignItems: "center", gap: 8 };
-const avatarWrap = { width: 34, height: 34, borderRadius: 10, overflow: "hidden", background: "linear-gradient(135deg,#ffcb8b,#ff935d)", display: "grid", placeItems: "center" };
-const avatarSmall = { width: 28, height: 28, borderRadius: 8, overflow: "hidden", background: "linear-gradient(135deg,#ffcb8b,#ff935d)", display: "grid", placeItems: "center" };
-const avatarImage = { width: "100%", height: "100%", objectFit: "cover" };
-const avatarInitial = { color: "var(--app-button-text)", fontSize: 13, fontWeight: 700 };
-const avatarSmallInitial = { color: "var(--app-button-text)", fontSize: 12, fontWeight: 700 };
-const authorNameStyle = { margin: 0, fontSize: 13, fontWeight: 700 };
-const metaText = { margin: "2px 0 0", fontSize: 11 };
-const actionDeck = { display: "grid", gap: 12, marginTop: 14, paddingTop: 14 };
-const actionDeckHeader = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" };
-const actionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
-const threadActionClusters = { display: "grid", gap: 10 };
-const threadActionCluster = { borderRadius: 16, padding: "12px 14px", display: "grid", gap: 8 };
-const threadActionClusterTitle = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
-const editingHint = { borderRadius: 12, padding: "10px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
-const ghostSuccessButton = { display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--app-success-border)", borderRadius: 999, background: "var(--app-success-soft)", color: "var(--app-success)", fontSize: 12, fontWeight: 700, padding: "8px 12px", cursor: "pointer" };
-const actionButton = (palette, emphasis = null, disabled = false) => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  border: `1px solid ${emphasis?.borderColor || palette.border}`,
-  background: emphasis?.background || palette.panelAlt,
-  color: emphasis?.color || palette.text,
-  fontSize: 12,
-  fontWeight: 700,
-  padding: "8px 12px",
-  cursor: disabled ? "not-allowed" : "pointer",
-  opacity: disabled ? 0.52 : 1,
-});
-const smallOutlineButton = (palette) => ({
-  border: `1px solid ${palette.border}`,
-  borderRadius: 999,
-  background: palette.panelAlt,
-  color: palette.text,
-  fontSize: 12,
-  fontWeight: 700,
-  padding: "8px 12px",
-  cursor: "pointer",
-});
-const smallDangerButton = (palette, darkMode) => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  border: `1px solid ${darkMode ? "rgba(238,146,153,0.42)" : "rgba(200,86,93,0.26)"}`,
-  borderRadius: 999,
-  background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)",
-  color: palette.danger,
-  fontSize: 12,
-  fontWeight: 700,
-  padding: "8px 12px",
-  cursor: "pointer",
-});
-const sectionLabelRow = { marginBottom: 8 };
-const sectionLabel = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" };
-const contentShell = { borderRadius: 20, padding: 18 };
-const reactionRow = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
-const reactionButton = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 10, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer" };
-const emptyState = { borderRadius: 18, padding: "24px 16px", textAlign: "center", fontSize: 13, marginBottom: 10 };
-const replyList = { display: "grid", gap: 8, marginBottom: 10 };
-const composer = { borderRadius: 18, padding: 14 };
-const railStack = { display: "grid", gap: 12, alignContent: "start", position: "sticky", top: 12 };
-const railStackMobile = { display: "grid", gap: 12, alignContent: "start" };
-const sideCard = { borderRadius: 22, padding: 16, boxShadow: "var(--ui-shadow-xs)" };
-const snapshotGrid = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 };
-const snapshotItem = { borderRadius: 16, padding: "11px 12px" };
-const snapshotLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
-const snapshotValue = { margin: "5px 0 0", fontSize: 13, fontWeight: 700, textTransform: "capitalize" };
-const replyCard = { borderRadius: 16, padding: 12, marginBottom: 8 };
-const replyHeader = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 };
-const replyAuthorWrap = { display: "flex", alignItems: "center", gap: 8 };
-const replyActionRow = { display: "flex", gap: 6 };
-const inlineAction = (palette) => ({
-  border: "none",
-  background: "transparent",
-  color: palette.muted,
-  fontSize: 11,
-  fontWeight: 700,
-  cursor: "pointer",
-});
-const inlineActionDanger = (palette) => ({ ...inlineAction(palette), color: palette.danger });
-const icon18 = { width: 18, height: 18 };
-const icon14 = { width: 14, height: 14 };
-
-function memoryHeroSurface(palette, darkMode) {
-  return {
-    background: darkMode
-      ? "linear-gradient(145deg, rgba(16,27,38,0.98), rgba(10,18,28,0.94))"
-      : "linear-gradient(145deg, rgba(244,250,255,0.98), rgba(229,241,249,0.94))",
-  };
-}
-
-function memoryPanelSurface(palette, darkMode) {
-  return {
-    background: darkMode
-      ? "linear-gradient(180deg, rgba(11,20,30,0.96), rgba(12,24,34,0.92))"
-      : "linear-gradient(180deg, rgba(248,252,255,0.98), rgba(236,245,250,0.94))",
-  };
-}
-
-function memoryInsetSurface(palette, darkMode) {
-  return {
-    background: darkMode
-      ? "linear-gradient(180deg, rgba(20,33,46,0.94), rgba(13,23,34,0.9))"
-      : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,251,0.94))",
-  };
-}
-
-export default ConversationDetail;

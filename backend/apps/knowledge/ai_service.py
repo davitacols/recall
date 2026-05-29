@@ -17,9 +17,16 @@ class AIService:
         )
         self.model = (
             (getattr(settings, "CLAUDE_MODEL", "") or "").strip()
-            or "claude-3-5-sonnet-20241022"
+            or "claude-sonnet-4-6"
         )
-        self.client = anthropic.Anthropic(api_key=api_key) if api_key else None
+        # Bound network time so a slow/unreachable API can't hang the request for
+        # minutes (SDK default is a 10-minute timeout with automatic retries).
+        # A short timeout means we fail fast and fall back to the rules engine.
+        self.client = (
+            anthropic.Anthropic(api_key=api_key, timeout=20.0, max_retries=1)
+            if api_key
+            else None
+        )
 
     def is_enabled(self):
         return self.client is not None

@@ -1,257 +1,240 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FlagIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  FlagIcon,
+  PlusIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import api from "../services/api";
-import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
-import { useTheme } from "../utils/ThemeAndAccessibility";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import { createPlainTextPreview } from "../utils/textPreview";
+import {
+  Avatar,
+  Button,
+  EmptyState,
+  Field,
+  IconButton,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+  Tabs,
+} from "../components/atlas";
+
+const STATUS_TABS = [
+  { id: "all", label: "All" },
+  { id: "not_started", label: "Not started" },
+  { id: "in_progress", label: "In progress" },
+  { id: "on_hold", label: "On hold" },
+  { id: "completed", label: "Completed" },
+];
+
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function statusVariant(s) {
+  const v = String(s || "").toLowerCase();
+  if (v === "completed") return "success";
+  if (v === "in_progress") return "inprogress";
+  if (v === "on_hold") return "moved";
+  if (v === "blocked") return "removed";
+  return "default";
+}
 
 export default function Goals() {
   const navigate = useNavigate();
-  const { darkMode } = useTheme();
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState("all");
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    target_date: "",
-    status: "not_started",
-    conversation_id: "",
-    decision_id: "",
-  });
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", target_date: "", status: "not_started" });
 
   useEffect(() => {
     fetchGoals();
   }, []);
 
   const fetchGoals = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const response = await api.get("/api/business/goals/");
-      setGoals(response.data || []);
-    } catch (error) {
-      console.error("Error fetching goals:", error);
+      const res = await api.get("/api/business/goals/");
+      setGoals(Array.isArray(res.data) ? res.data : res.data?.results || []);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to load goals");
       setGoals([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
     try {
-      await api.post("/api/business/goals/", formData);
+      await api.post("/api/business/goals/", form);
       setShowModal(false);
-      setFormData({ title: "", description: "", target_date: "", status: "not_started", conversation_id: "", decision_id: "" });
-      fetchGoals();
-    } catch (error) {
-      console.error("Error creating goal:", error);
+      setForm({ title: "", description: "", target_date: "", status: "not_started" });
+      await fetchGoals();
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to create goal");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const doneCount = goals.filter((goal) => goal.status === "completed").length;
-  const inProgressCount = goals.filter((goal) => goal.status === "in_progress").length;
-  const onHoldCount = goals.filter((goal) => goal.status === "on_hold").length;
-  const avgProgress = goals.length ? Math.round(goals.reduce((sum, goal) => sum + (goal.progress || 0), 0) / goals.length) : 0;
-  const goalPulse =
-    goals.length === 0
-      ? "No business goals have been defined yet."
-      : doneCount > 0
-        ? `${doneCount} goal${doneCount === 1 ? "" : "s"} are complete, while the remaining goals still shape the operating agenda.`
-        : `${inProgressCount} goal${inProgressCount === 1 ? "" : "s"} are actively moving and average progress is ${avgProgress}%.`;
+  const visible = useMemo(() => {
+    if (tab === "all") return goals;
+    return goals.filter((g) => g.status === tab);
+  }, [goals, tab]);
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh" }}>
-        <div style={ui.container}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10 }}>
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} style={{ borderRadius: 0, height: 128, background: palette.card, border: `1px solid ${palette.border}`, opacity: 0.7 }} />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const tabs = STATUS_TABS.map((t) => ({
+    id: t.id,
+    label: t.label,
+    count: t.id === "all" ? goals.length : goals.filter((g) => g.status === t.id).length,
+  }));
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <div style={ui.container}>
-        <WorkspaceHero
-          palette={palette}
-          darkMode={darkMode}
-          eyebrow="Business Goals"
-          title="Goals"
-          description="Track delivery outcomes, strategic milestones, and the higher-level work the team is trying to accomplish."
-          stats={[
-            { label: "Total", value: goals.length, helper: "Goals tracked in this workspace." },
-            { label: "In progress", value: inProgressCount, helper: "Goals currently moving." },
-            { label: "Completed", value: doneCount, helper: "Goals already achieved." },
-            { label: "Avg progress", value: `${avgProgress}%`, helper: "Average progress across all goals." },
-          ]}
-          aside={
-            <div
-              style={{
-                ...spotlightCard,
-                border: `1px solid ${palette.border}`,
-                background: darkMode
-                  ? "linear-gradient(145deg, rgba(29,24,20,0.96), rgba(20,17,14,0.88))"
-                  : "linear-gradient(145deg, rgba(255,252,248,0.98), rgba(245,239,229,0.9))",
-              }}
-            >
-              <p style={{ ...spotlightEyebrow, color: palette.muted }}>Goal pulse</p>
-              <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, color: palette.text }}>
-                {goals.length === 0 ? "No goals yet" : `${goals.length} goals in play`}
-              </h3>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{goalPulse}</p>
-            </div>
-          }
-          actions={
-            <button onClick={() => setShowModal(true)} className="ui-btn-polish ui-focus-ring" style={ui.primaryButton}>
-              <PlusIcon style={{ width: 14, height: 14 }} /> New Goal
-            </button>
-          }
+    <div style={{ padding: "0 32px 32px" }}>
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Goals" }]}
+        title="Goals"
+        subtitle="Track outcomes, owners, and progress across the workspace."
+        actions={
+          <Button appearance="primary" iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />} onClick={() => setShowModal(true)}>
+            Create goal
+          </Button>
+        }
+        tabs={<Tabs tabs={tabs} value={tab} onChange={setTab} />}
+        style={{ padding: "24px 0 0", background: "transparent" }}
+      />
+
+      {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
+
+      {loading ? (
+        <div style={{ marginTop: 16 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ height: 64, background: "var(--n20)", borderRadius: 4, marginBottom: 8 }} />
+          ))}
+        </div>
+      ) : visible.length === 0 ? (
+        <EmptyState
+          icon={<FlagIcon style={{ width: "100%", height: "100%" }} />}
+          title="No goals in this view"
+          description="Capture an objective to align team work with outcomes."
+          primaryAction={<Button appearance="primary" onClick={() => setShowModal(true)}>Create goal</Button>}
         />
-
-        <WorkspaceToolbar palette={palette}>
-          <div style={toolbarLayout}>
-            <div style={toolbarIntro}>
-              <p style={{ ...toolbarEyebrow, color: palette.muted }}>Planning guide</p>
-              <h2 style={{ ...toolbarTitle, color: palette.text }}>Use goals as the operating layer above tasks and projects</h2>
-              <p style={{ ...toolbarCopy, color: palette.muted }}>
-                Goals work best when they stay concise, measurable, and linked to the work that actually moves them forward.
-              </p>
-            </div>
-            <div style={toolbarChipRail}>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {doneCount} completed
-              </span>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {inProgressCount} active
-              </span>
-              <span style={{ ...toolbarChip, border: `1px solid ${palette.border}`, background: palette.cardAlt, color: palette.text }}>
-                {onHoldCount} on hold
-              </span>
-            </div>
-          </div>
-        </WorkspaceToolbar>
-
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8, marginBottom: 12 }}>
-          <Metric label="Total" value={goals.length} palette={palette} />
-          <Metric label="In Progress" value={inProgressCount} palette={palette} />
-          <Metric label="Completed" value={doneCount} palette={palette} />
-          <Metric label="Avg Progress" value={`${avgProgress}%`} palette={palette} />
-        </section>
-
-        <WorkspacePanel
-          palette={palette}
-          eyebrow="Goal atlas"
-          title="Strategic milestones"
-          description="Open a goal to see progress, linked work, and the detail behind the milestone."
-        >
-          {goals.length === 0 ? (
-            <WorkspaceEmptyState
-              palette={palette}
-              title="No goals yet"
-              description="Create the first goal to start tracking the business outcomes your projects and tasks should support."
-            />
-          ) : (
-            <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 12 }}>
-              {goals.map((goal) => (
-                <article
-                  key={goal.id}
-                  className="ui-card-lift ui-smooth"
-                  onClick={() => navigate(`/business/goals/${goal.id}`)}
-                  style={{ borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.cardAlt, padding: 16, cursor: "pointer", display: "grid", gap: 12 }}
-                >
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <FlagIcon style={{ width: 16, height: 16, color: statusColor(goal.status, palette), marginTop: 2 }} />
-                    <div style={{ minWidth: 0, flex: 1, display: "grid", gap: 6 }}>
-                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: palette.text }}>{goal.title}</p>
-                      <p style={{ margin: 0, fontSize: 13, color: palette.muted, lineHeight: 1.55 }}>
-                        {createPlainTextPreview(goal.description || "", "No description yet.", 150)}
-                      </p>
-                    </div>
-                  </div>
-                  <div style={{ width: "100%", height: 7, borderRadius: 999, background: palette.progressTrack, overflow: "hidden" }}>
-                    <div style={{ width: `${goal.progress || 0}%`, height: "100%", background: `linear-gradient(90deg,${palette.success},${palette.info})` }} />
-                  </div>
-                  <div style={metaRail}>
-                    <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
-                      {(goal.status || "not_started").replace("_", " ")}
+      ) : (
+        <div style={tableWrap}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "var(--app-surface-alt)" }}>
+                <th style={{ ...th, width: "45%" }}>Goal</th>
+                <th style={th}>Status</th>
+                <th style={th}>Progress</th>
+                <th style={th}>Owner</th>
+                <th style={th}>Target</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((g) => (
+                <tr key={g.id} style={{ borderBottom: "1px solid var(--app-border-subtle)" }}>
+                  <td style={td}>
+                    <Link to={`/business/goals/${g.id}`} style={{ color: "inherit", textDecoration: "none" }}>
+                      <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--app-link)" }}>{g.title}</span>
+                      {g.description ? (
+                        <span style={{ display: "block", marginTop: 2, fontSize: 12, color: "var(--app-muted)", maxWidth: 520, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {g.description}
+                        </span>
+                      ) : null}
+                    </Link>
+                  </td>
+                  <td style={td}>
+                    <Lozenge variant={statusVariant(g.status)}>{(g.status || "not_started").replace(/_/g, " ")}</Lozenge>
+                  </td>
+                  <td style={td}>
+                    <ProgressBar value={g.progress || 0} />
+                  </td>
+                  <td style={td}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <Avatar size="sm" name={g.owner_name || g.created_by_name || "—"} />
+                      <span style={{ fontSize: 13 }}>{g.owner_name || g.created_by_name || "—"}</span>
                     </span>
-                    <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
-                      {goal.progress || 0}%
-                    </span>
-                    {goal.target_date ? (
-                      <span style={{ ...metaChip, border: `1px solid ${palette.border}`, background: palette.card, color: palette.text }}>
-                        {new Date(goal.target_date).toLocaleDateString()}
-                      </span>
-                    ) : null}
-                  </div>
-                </article>
+                  </td>
+                  <td style={td}>
+                    <span style={{ fontSize: 13, color: "var(--app-muted)" }}>{formatDate(g.target_date)}</span>
+                  </td>
+                </tr>
               ))}
-            </section>
-          )}
-        </WorkspacePanel>
+            </tbody>
+          </table>
+        </div>
+      )}
 
-        {showModal && (
-          <div style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
-            <div style={{ width: "min(560px,100%)", borderRadius: 24, border: `1px solid ${palette.border}`, background: palette.card, padding: 16 }}>
-              <h2 style={{ margin: 0, fontSize: 20, color: palette.text }}>Create Goal</h2>
-              <form onSubmit={handleSubmit} style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                <input required placeholder="Goal title" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} style={ui.input} />
-                <textarea rows={4} placeholder="Description" value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} style={ui.input} />
-                <div style={ui.twoCol}>
-                  <input type="date" value={formData.target_date} onChange={(event) => setFormData({ ...formData, target_date: event.target.value })} style={ui.input} />
-                  <select value={formData.status} onChange={(event) => setFormData({ ...formData, status: event.target.value })} style={ui.input}>
-                    <option value="not_started">Not Started</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                    <option value="on_hold">On Hold</option>
-                  </select>
-                </div>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-                  <button type="button" onClick={() => setShowModal(false)} style={ui.secondaryButton}>Cancel</button>
-                  <button type="submit" style={ui.primaryButton}>Create</button>
-                </div>
-              </form>
+      {showModal ? (
+        <Modal title="Create goal" onClose={() => setShowModal(false)}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Field label="Title" isRequired>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="atlas-input" required autoFocus />
+            </Field>
+            <Field label="Description">
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="atlas-input" rows={4} />
+            </Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <Field label="Target date">
+                <input type="date" value={form.target_date} onChange={(e) => setForm({ ...form, target_date: e.target.value })} className="atlas-input" />
+              </Field>
+              <Field label="Status">
+                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="atlas-input">
+                  {STATUS_TABS.filter((t) => t.id !== "all").map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                </select>
+              </Field>
             </div>
-          </div>
-        )}
-      </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+              <Button type="button" appearance="subtle" onClick={() => setShowModal(false)}>Cancel</Button>
+              <Button type="submit" appearance="primary" isDisabled={submitting || !form.title.trim()}>{submitting ? "Creating…" : "Create"}</Button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
     </div>
   );
 }
 
-function Metric({ label, value, palette }) {
+function ProgressBar({ value }) {
+  const v = Math.max(0, Math.min(100, value));
   return (
-    <article style={{ borderRadius: 18, padding: 12, border: `1px solid ${palette.border}`, background: palette.cardAlt }}>
-      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: palette.text }}>{value}</p>
-      <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.muted }}>{label}</p>
-    </article>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 140 }}>
+      <div style={{ flex: 1, height: 6, background: "var(--n30)", borderRadius: 999, overflow: "hidden" }}>
+        <div style={{ width: `${v}%`, height: "100%", background: v >= 80 ? "var(--g400)" : v >= 40 ? "var(--b400)" : "var(--y400)" }} />
+      </div>
+      <span style={{ fontSize: 12, color: "var(--app-muted)", minWidth: 32, textAlign: "right" }}>{v}%</span>
+    </div>
   );
 }
 
-const spotlightCard = { minWidth: 240, borderRadius: 24, padding: 16, display: "grid", gap: 10 };
-const spotlightEyebrow = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" };
-const toolbarLayout = { display: "grid", gap: 14 };
-const toolbarIntro = { display: "grid", gap: 4 };
-const toolbarEyebrow = { margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
-const toolbarTitle = { margin: 0, fontSize: 24, lineHeight: 1.04 };
-const toolbarCopy = { margin: 0, fontSize: 13, lineHeight: 1.65, maxWidth: 760 };
-const toolbarChipRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const toolbarChip = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700 };
-const metaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const metaChip = { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "7px 11px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" };
-
-function statusColor(status, palette) {
-  if (status === "completed") return palette.success;
-  if (status === "in_progress") return palette.info;
-  if (status === "on_hold") return palette.warn;
-  return palette.muted;
+function Modal({ children, onClose, title, width = 520 }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", zIndex: 199 }} />
+      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 6, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--app-border)" }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
+          <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
+        </div>
+        <div style={{ padding: 20 }}>{children}</div>
+      </div>
+    </>
+  );
 }
+
+const tableWrap = { marginTop: 16, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, overflow: "hidden" };
+const th = { textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--app-muted)", padding: "10px 16px", borderBottom: "1px solid var(--app-border)" };
+const td = { padding: "12px 16px", fontSize: 14, color: "var(--app-text)", verticalAlign: "middle" };

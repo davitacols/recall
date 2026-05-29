@@ -9,7 +9,7 @@ from django.conf import settings
 
 class DeveloperAssistant:
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0, max_retries=1)
     
     def process_developer_conversation(self, conversation_data):
         """
@@ -31,7 +31,7 @@ class DeveloperAssistant:
         
         try:
             message = self.client.messages.create(
-                model="claude-3-haiku-20240307",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=2000,
                 messages=[{"role": "user", "content": prompt}]
             )

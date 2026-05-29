@@ -29,8 +29,8 @@ class StandardPagination(PageNumberPagination):
     max_page_size = 100
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def conversations_list(request):
     """List or create conversations with context"""
     if request.method == 'GET':
@@ -111,8 +111,8 @@ def conversations_list(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
 def conversation_detail(request, conversation_id):
     """Get, update, or delete conversation with full context"""
     try:
@@ -172,8 +172,8 @@ def conversation_detail(request, conversation_id):
         return Response({'message': 'Deleted'}, status=status.HTTP_204_NO_CONTENT)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def conversation_replies(request, conversation_id):
     """Get or create replies for conversation"""
     try:
@@ -220,8 +220,8 @@ def conversation_replies(request, conversation_id):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def conversation_context(request, conversation_id):
     """Get full context for a conversation"""
     context = ContextManager.get_conversation_context(
@@ -238,8 +238,8 @@ def conversation_context(request, conversation_id):
     return Response(context)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def conversation_timeline(request, conversation_id):
     """Get timeline of conversation events"""
     timeline = ContextManager.get_conversation_timeline(
@@ -256,8 +256,8 @@ def conversation_timeline(request, conversation_id):
     return Response({'timeline': timeline})
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def action_items(request, conversation_id):
     """Get or create action items for conversation"""
     try:
@@ -289,8 +289,8 @@ def action_items(request, conversation_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
 def action_item_detail(request, action_item_id):
     """Update or delete action item"""
     try:
@@ -314,8 +314,8 @@ def action_item_detail(request, action_item_id):
         return Response({'message': 'Deleted'}, status=status.HTTP_204_NO_CONTENT)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def link_conversation_to_decision(request, conversation_id):
     """Link conversation to a decision"""
     decision_id = request.data.get('decision_id')
@@ -341,8 +341,8 @@ def link_conversation_to_decision(request, conversation_id):
     )
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def bookmarks_list(request):
     """Get user's bookmarks"""
     bookmarks = Bookmark.objects.filter(
@@ -353,8 +353,8 @@ def bookmarks_list(request):
     return Response(serializer.data)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_bookmark(request, conversation_id):
     """Create bookmark for conversation"""
     try:
@@ -385,8 +385,8 @@ def create_bookmark(request, conversation_id):
     )
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def delete_bookmark(request, bookmark_id):
     """Delete bookmark"""
     try:
@@ -400,8 +400,8 @@ def delete_bookmark(request, bookmark_id):
         )
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def add_reaction(request, conversation_id):
     """Add reaction to conversation"""
     try:
@@ -435,8 +435,8 @@ def add_reaction(request, conversation_id):
     )
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def conversation_reactions(request, conversation_id):
     """Get reactions for conversation"""
     try:
@@ -469,8 +469,8 @@ def conversation_reactions(request, conversation_id):
     })
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def tags_list(request):
     """Get all tags for organization"""
     tags = Tag.objects.filter(
@@ -481,8 +481,8 @@ def tags_list(request):
     return Response(serializer.data)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def close_conversation(request, conversation_id):
     """Close conversation with summary"""
     try:
@@ -507,8 +507,8 @@ def close_conversation(request, conversation_id):
     return Response(serializer.data)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def context_summary(request, conversation_id):
     """Get concise context summary"""
     summary = ContextManager.get_context_summary(
@@ -525,8 +525,8 @@ def context_summary(request, conversation_id):
     return Response(summary)
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def export_conversation_pdf(request):
     """Export conversation to PDF"""
     conversation_id = request.GET.get('id')
@@ -597,8 +597,8 @@ def export_conversation_pdf(request):
     )
 
 
-@permission_classes([IsAuthenticated])
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def export_decision_pdf(request):
     """Export decision to PDF"""
     decision_id = request.GET.get('id')

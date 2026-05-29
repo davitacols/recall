@@ -454,6 +454,25 @@ const BASE_DOCUMENTATION_GROUPS = [
               "Review the evidence list before acting on an answer with low coverage.",
             ],
           },
+          {
+            heading: "Choosing a mode",
+            paragraphs: [
+              "The composer offers three modes that shape how the assistant responds to the same question:",
+            ],
+            bullets: [
+              "Ground — answer the question and cite the workspace records the answer rests on. The default for most questions.",
+              "Draft — turn the retrieved context into a polished written artifact, such as a status update or summary.",
+              "Plan — propose concrete next steps and owners; on execution-oriented prompts this is where suggested actions appear.",
+            ],
+          },
+          {
+            heading: "When the model is unavailable",
+            bullets: [
+              "Requests are time-bounded, so a slow or unreachable model fails fast instead of hanging.",
+              "If the grounded model can't be reached, the answer falls back to the rules engine rather than erroring silently.",
+              "On a hard failure the response surfaces a clear message with a Try again action, so a turn never spins forever.",
+            ],
+          },
         ],
       },
       {
@@ -642,25 +661,144 @@ const BASE_DOCUMENTATION_GROUPS = [
       {
         id: "github",
         slug: "integrations/github",
-        title: "GitHub Advanced Sync",
-        summary: "Connect pull requests, commits, and release signals back to Knoledgr decisions and delivery context.",
-        readTime: "4 min",
-        audience: "Engineering leads, platform teams",
+        title: "GitHub Integration",
+        summary: "Connect a repository to your workspace so pull requests, commits, and deployments stay tied to the decisions and issues that drove them.",
+        readTime: "6 min",
+        audience: "Engineering leads, platform teams, admins",
+        routes: ["/integrations/github"],
+        workflow: {
+          eyebrow: "Connection workflow",
+          title: "How GitHub connects to your organization",
+          description: "The integration is scoped to the whole workspace, not a single user. One repository is linked per workspace, credentials are stored encrypted, and incoming events are signature-verified before they touch your data.",
+          steps: [
+            {
+              title: "Connect the repository",
+              detail: "On /integrations/github, enter the repository as owner/repo and a GitHub personal access token with repo scope. The token is encrypted at rest and never returned by the API.",
+            },
+            {
+              title: "Add a webhook secret",
+              detail: "Set a webhook secret in Knoledgr and the matching secret in GitHub. Knoledgr verifies the X-Hub-Signature-256 HMAC on every delivery and rejects anything that doesn't match.",
+            },
+            {
+              title: "Point GitHub at the payload URL",
+              detail: "Copy the payload URL shown on the page into your repository's webhook settings and subscribe to pull_request and push events.",
+            },
+            {
+              title: "Let auto-linking do the work",
+              detail: "With auto-link enabled, PRs and commits that reference a decision (e.g. DEC-128 in the title or message) are attached automatically, and a merged PR can advance the decision to implemented.",
+            },
+          ],
+        },
+        visual: {
+          eyebrow: "Workspace dashboard",
+          title: "The integration page is a live operations view, not just a settings form",
+          caption: "Once connected, /integrations/github shows engineering signal, recent activity, and webhook health side by side so you can tell at a glance whether code context is flowing.",
+          panels: [
+            {
+              title: "Connection",
+              value: "Repo, enabled, auto-link",
+              helper: "Toggle the integration on/off and auto-linking, or disconnect (history is kept) without leaving the page.",
+              emphasis: true,
+            },
+            {
+              title: "Engineering signal",
+              value: "PRs, commits, deployments",
+              helper: "Counts of decision PRs, issue PRs, tracked commits, and recorded deployments for the workspace.",
+            },
+            {
+              title: "Recent activity",
+              value: "Commits and pull requests",
+              helper: "A merged feed of the latest repository activity with author, state, and a link out to GitHub.",
+            },
+            {
+              title: "Webhooks",
+              value: "Health and delivery log",
+              helper: "Payload URL, secret status, and the recent delivery log with processed / ignored / failed states.",
+            },
+          ],
+        },
+        examplesEyebrow: "Integration APIs",
+        examplesTitle: "GitHub integration API examples",
+        examplesDescription: "These endpoints back the integration page and the decision/issue engineering timelines. All require an authenticated workspace session except the public webhook receiver.",
+        examples: [
+          {
+            title: "Read or update the connection",
+            method: "GET",
+            endpoint: "/api/integrations/fresh/github/config/",
+            description: "Returns the current connection, engineering summary, recent activity, webhook readiness, and webhook observability. POST the same endpoint to connect or update settings; DELETE to disconnect.",
+            response: {
+              configured: true,
+              enabled: true,
+              repo_slug: "acme/recall",
+              auto_link_prs: true,
+              has_webhook_secret: true,
+              engineering_summary: { decision_pull_requests: 12, commits: 188, deployments: 9 },
+              webhook_readiness: { state: "ready", webhook_url: "https://api.example.com/api/integrations/github/webhook/" },
+            },
+          },
+          {
+            title: "Connect a repository",
+            method: "POST",
+            endpoint: "/api/integrations/fresh/github/config/",
+            description: "Stores encrypted credentials for the workspace. access_token is required on first connect; omit it later to keep the existing token while changing other settings.",
+            request: {
+              repo_owner: "acme",
+              repo_name: "recall",
+              access_token: "ghp_xxxxxxxxxxxxxxxxxxxx",
+              webhook_secret: "a-long-random-string",
+              auto_link_prs: true,
+              enabled: true,
+            },
+            response: { message: "GitHub integration configured" },
+          },
+          {
+            title: "Receive a signed webhook delivery",
+            method: "POST",
+            endpoint: "/api/integrations/github/webhook/",
+            description: "Public endpoint GitHub posts to. When a webhook secret is set, the X-Hub-Signature-256 HMAC must match or the delivery is rejected and logged as failed. pull_request and push events are processed; others are acknowledged and ignored.",
+            request: {
+              headers: { "X-GitHub-Event": "pull_request", "X-Hub-Signature-256": "sha256=..." },
+              body: { action: "closed", pull_request: { merged: true, title: "Implement DEC-128 rollout window" } },
+            },
+            response: { message: "PR processed", decision_updated: true },
+          },
+          {
+            title: "Pull a decision's engineering timeline",
+            method: "GET",
+            endpoint: "/api/integrations/fresh/github/decisions/:id/timeline/",
+            description: "Returns the commits, pull requests, deployments, and linked issues for a decision, plus an implementation status derived from those signals. Used by the decision detail page.",
+            response: {
+              implementation_status: "in_progress",
+              summary: { commits: 7, decision_pull_requests: 2, deployments: 1, linked_issues: 3 },
+            },
+          },
+        ],
         sections: [
           {
             heading: "What the integration adds",
             bullets: [
-              "PR and commit context on issue and project flows.",
-              "Release-related signals that help explain delivery movement.",
-              "A cleaner connection between code change and decision history.",
+              "Pull requests and commits linked to the decisions and issues that motivated them.",
+              "A merged PR can automatically move its decision to an implemented state.",
+              "Per-decision and per-issue engineering timelines (commits, PRs, deployments) on their detail pages.",
+              "Recorded deployments that connect a release back to the decision behind it.",
+            ],
+          },
+          {
+            heading: "Security model",
+            bullets: [
+              "Access tokens and webhook secrets are encrypted at rest and never returned by the API.",
+              "Every webhook delivery is HMAC-verified with X-Hub-Signature-256 when a secret is configured.",
+              "Failed-signature deliveries are rejected and recorded in the delivery log for audit.",
+              "The connection is workspace-scoped, so it follows your organization's access controls.",
             ],
           },
           {
             heading: "Recommended usage",
             bullets: [
-              "Use it when code delivery needs to stay attached to issue or decision context.",
-              "Review linked artifacts before using commit or PR signals as decision evidence.",
-              "Keep naming and workflow conventions consistent so linked records stay intelligible.",
+              "Reference the decision key (e.g. DEC-128) in PR titles and commit messages so auto-linking can attach them.",
+              "Always set a webhook secret in both GitHub and Knoledgr before relying on delivery.",
+              "Check the webhook delivery log if linked code stops appearing — failed or ignored states explain why.",
+              "Disconnecting keeps linked history; it only stops new events from syncing.",
             ],
           },
         ],

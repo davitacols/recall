@@ -3,7 +3,12 @@ const path = require("path");
 
 const SITE_URL = "https://knoledgr.com";
 const BRAND = "Knoledgr";
-const SOCIAL_IMAGE = `${SITE_URL}/brand/knoledgr-social-card.svg`;
+// PNG, 1366x637 (~1.91:1). SVG is not a valid OG image for Twitter/Facebook/Slack,
+// so social cards must point at a raster image.
+const SOCIAL_IMAGE = `${SITE_URL}/hero.png`;
+const SOCIAL_IMAGE_WIDTH = "1366";
+const SOCIAL_IMAGE_HEIGHT = "637";
+const SOCIAL_IMAGE_ALT = "Knoledgr — decision memory for teams";
 const buildDir = path.join(__dirname, "..", "build");
 const templatePath = path.join(buildDir, "index.html");
 
@@ -1055,12 +1060,14 @@ function buildPageHtml(template, config) {
   html = upsertMetaByProperty(html, "og:description", config.description);
   html = upsertMetaByProperty(html, "og:url", canonicalUrl);
   html = upsertMetaByProperty(html, "og:image", SOCIAL_IMAGE);
-  html = upsertMetaByProperty(html, "og:image:alt", `${BRAND} social card`);
+  html = upsertMetaByProperty(html, "og:image:width", SOCIAL_IMAGE_WIDTH);
+  html = upsertMetaByProperty(html, "og:image:height", SOCIAL_IMAGE_HEIGHT);
+  html = upsertMetaByProperty(html, "og:image:alt", SOCIAL_IMAGE_ALT);
   html = upsertMetaByName(html, "twitter:card", "summary_large_image");
   html = upsertMetaByName(html, "twitter:title", config.title);
   html = upsertMetaByName(html, "twitter:description", config.description);
   html = upsertMetaByName(html, "twitter:image", SOCIAL_IMAGE);
-  html = upsertMetaByName(html, "twitter:image:alt", `${BRAND} social card`);
+  html = upsertMetaByName(html, "twitter:image:alt", SOCIAL_IMAGE_ALT);
   html = upsertCanonical(html, canonicalUrl);
   html = upsertStructuredData(html, config.structuredData);
   html = upsertSnapshotStyles(html);

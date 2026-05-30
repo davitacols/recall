@@ -1,499 +1,243 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { BellIcon } from "@heroicons/react/24/outline";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { BellIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { useNotifications } from "../hooks/useNotifications";
 import { useToast } from "./Toast";
 import {
-  deleteNotification,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   normalizeNotification,
 } from "../services/notifications";
-import { useTheme } from "../utils/ThemeAndAccessibility";
 
-function NotificationBell({ openDirection = "down", align = "right" }) {
+const POLL_MS = 45000; // slow REST fallback; the WebSocket delivers in real time
+
+function relativeTime(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  const sec = Math.max(1, Math.round((Date.now() - d.getTime()) / 1000));
+  if (sec < 60) return "just now";
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+export default function NotificationBell() {
   const navigate = useNavigate();
-  const dropdownRef = useRef(null);
-  const { addToast } = useToast();
-  const { darkMode } = useTheme();
-
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
+  const { addToast } = useToast() || {};
+  const [items, setItems] = useState([]);
+  const [unread, setUnread] = useState(0);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [filter, setFilter] = useState("all");
-  const hasFetchedRef = useRef(false);
-
-  const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            panel: "#1d171b",
-            panelSoft: "#251d22",
-            border: "var(--app-border)",
-            borderStrong: "rgba(255,225,193,0.24)",
-            text: "var(--app-text)",
-            muted: "var(--app-muted)",
-            rowHover: "var(--app-info-soft)",
-            unreadDot: "#ff8a4c",
-            accent: "var(--app-accent)",
-            accentText: "#20120d",
-            badgeBg: "rgba(255,180,118,0.18)",
-          }
-        : {
-            panel: "var(--app-surface)",
-            panelSoft: "var(--app-surface-alt)",
-            border: "var(--app-border)",
-            borderStrong: "#d8cab6",
-            text: "var(--app-text)",
-            muted: "var(--app-muted)",
-            rowHover: "rgba(35,24,20,0.045)",
-            unreadDot: "#e85d04",
-            accent: "var(--app-accent)",
-            accentText: "#20120d",
-            badgeBg: "rgba(217,105,46,0.14)",
-          },
-    [darkMode]
-  );
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+  const rootRef = useRef(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
-      if (!hasFetchedRef.current) {
-        setLoading(true);
-      }
-      const { notifications: items, unreadCount: unread } = await listNotifications();
-      setNotifications(items);
-      setUnreadCount(unread);
-      hasFetchedRef.current = true;
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+      const { notifications, unreadCount } = await listNotifications();
+      setItems(notifications);
+      setUnread(unreadCount);
+    } catch (_) {
+      // keep last good state on transient failures
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Initial load + slow polling fallback (only while the tab is visible) + focus refetch.
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 4000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
-  useEffect(() => {
-    const onFocus = () => {
-      fetchNotifications();
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        fetchNotifications();
-      }
-    };
-
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") fetchNotifications();
+    }, POLL_MS);
+    const onFocus = () => fetchNotifications();
     window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
+    return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
   }, [fetchNotifications]);
 
-  useEffect(() => {
-    const onOutsideClick = (event) => {
-      if (!dropdownRef.current?.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    const onEscape = (event) => {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", onOutsideClick, true);
-    document.addEventListener("keydown", onEscape);
-    return () => {
-      document.removeEventListener("pointerdown", onOutsideClick, true);
-      document.removeEventListener("keydown", onEscape);
-    };
-  }, []);
-
-  const handleIncomingNotification = (payload) => {
+  // Real-time delivery over the notifications WebSocket.
+  const handleIncoming = useCallback((payload) => {
     const incoming = normalizeNotification(payload);
     if (!incoming) return;
+    setItems((prev) => [incoming, ...prev.filter((n) => n.id !== incoming.id)].slice(0, 50));
+    if (!incoming.is_read) setUnread((u) => u + 1);
+    if (addToast) addToast(incoming.title || incoming.message || "New notification", "info");
+  }, [addToast]);
+  useNotifications(handleIncoming);
 
-    setNotifications((prev) => {
-      const next = [incoming, ...prev.filter((n) => n.id !== incoming.id)];
-      return next.slice(0, 50);
-    });
+  // Refresh when opened.
+  useEffect(() => { if (open) fetchNotifications(); }, [open, fetchNotifications]);
 
-    if (!incoming.is_read) {
-      setUnreadCount((count) => count + 1);
-    }
+  // Close on outside click / Escape.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onClick = (e) => { if (!rootRef.current?.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onKey); };
+  }, [open]);
 
-    if (addToast) {
-      addToast(incoming.message || incoming.title, "info");
-    }
+  const markRead = async (id) => {
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    setUnread((u) => Math.max(0, u - 1));
+    try { await markNotificationRead(id); } catch (_) {}
   };
 
-  useNotifications(handleIncomingNotification);
-
-  const onMarkAsRead = async (notification) => {
-    if (!notification || notification.is_read) return;
-    try {
-      await markNotificationRead(notification.id);
-      setNotifications((prev) =>
-        prev.map((item) => (item.id === notification.id ? { ...item, is_read: true } : item))
-      );
-      setUnreadCount((count) => Math.max(0, count - 1));
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
+  const markAll = async () => {
+    if (!unread) return;
+    setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setUnread(0);
+    try { await markAllNotificationsRead(); } catch (_) {}
   };
 
-  const onMarkAllAsRead = async () => {
-    try {
-      await markAllNotificationsRead();
-      setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.error("Failed to mark all as read:", error);
-    }
+  const onItem = (n) => {
+    if (!n.is_read) markRead(n.id);
+    setOpen(false);
+    if (n.link) navigate(n.link.startsWith("/") ? n.link : `/${n.link}`);
   };
 
-  const onDelete = async (notification) => {
-    try {
-      await deleteNotification(notification.id);
-      setNotifications((prev) => prev.filter((item) => item.id !== notification.id));
-      if (!notification.is_read) {
-        setUnreadCount((count) => Math.max(0, count - 1));
-      }
-    } catch (error) {
-      console.error("Failed to delete notification:", error);
-    }
-  };
-
-  const visible = filter === "unread" ? notifications.filter((n) => !n.is_read) : notifications;
-  const visibleAttention = visible.filter((n) => ["mention", "decision", "task", "goal", "meeting"].includes(n.type));
-  const visibleFYI = visible.filter((n) => !["mention", "decision", "task", "goal", "meeting"].includes(n.type));
-
-  const formatTime = (value) => {
-    if (!value) return "";
-    const date = new Date(value);
-    const diffMs = Date.now() - date.getTime();
-    const mins = Math.floor(diffMs / 60000);
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  const renderItem = (item) => (
-    <article
-      key={item.id}
-      style={{
-        ...row,
-        border: `1px solid ${item.is_read ? palette.border : palette.borderStrong}`,
-        background: item.is_read ? palette.panelSoft : palette.badgeBg,
-      }}
-    >
-      <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <p style={{ ...title, color: palette.text }}>{item.title}</p>
-          {!item.is_read && <span style={{ ...unreadDot, background: palette.unreadDot }} />}
-        </div>
-        <p style={{ ...message, color: palette.muted }}>{item.message}</p>
-        <p style={{ ...timestamp, color: palette.muted }}>{formatTime(item.created_at)}</p>
-        <div style={actionsRow}>
-          {item.link ? (
-            <Link
-              to={item.link}
-              onClick={() => {
-                onMarkAsRead(item);
-                setIsOpen(false);
-              }}
-              className="ui-btn-polish ui-focus-ring"
-              style={{ ...actionLink, borderColor: palette.border, color: palette.text }}
-            >
-              Open
-            </Link>
-          ) : null}
-          {!item.is_read ? (
-            <button
-              onClick={() => onMarkAsRead(item)}
-              className="ui-btn-polish ui-focus-ring"
-              style={{ ...actionButton, borderColor: palette.border, color: palette.text }}
-            >
-              Mark read
-            </button>
-          ) : null}
-          <button
-            onClick={() => onDelete(item)}
-            className="ui-btn-polish ui-focus-ring"
-            style={{ ...actionButton, borderColor: "var(--app-danger-border)", color: "var(--app-danger)" }}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </article>
-  );
+  const badge = unread > 9 ? "9+" : String(unread);
 
   return (
-    <div style={{ position: "relative" }} ref={dropdownRef}>
+    <div className="nb" ref={rootRef}>
+      <style>{NB_STYLES}</style>
       <button
-        onClick={() =>
-          setIsOpen((open) => {
-            const next = !open;
-            if (next) fetchNotifications();
-            return next;
-          })
-        }
-        className="ui-btn-polish ui-focus-ring"
-        style={bellButton}
-        aria-label="Notifications"
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
+        type="button"
+        className={`nb-trigger ${open ? "is-open" : ""}`}
+        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
       >
-        <BellIcon style={{ width: 20, height: 20 }} />
-        {unreadCount > 0 && <span style={badge}>{unreadCount > 99 ? "99+" : unreadCount}</span>}
+        <BellIcon />
+        {unread > 0 ? <span className="nb-badge">{badge}</span> : null}
       </button>
 
-      {isOpen && (
-        <div
-          style={{
-            ...dropdown,
-            ...(openDirection === "up"
-              ? { top: "auto", bottom: "calc(100% + 8px)" }
-              : { top: "calc(100% + 8px)", bottom: "auto" }),
-            ...(align === "left"
-              ? { left: isMobile ? -12 : 0, right: "auto" }
-              : { right: isMobile ? -12 : 0, left: "auto" }),
-            width: isMobile ? "min(94vw, 430px)" : dropdown.width,
-            background: palette.panel,
-            border: `1px solid ${palette.border}`,
-          }}
-        >
-          <div style={{ ...header, borderBottom: `1px solid ${palette.border}` }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: palette.text }}>Notifications</h3>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  onClick={() => setFilter("all")}
-                  className="ui-btn-polish ui-focus-ring"
-                  style={{
-                    ...filterPill,
-                    border: `1px solid ${palette.border}`,
-                    background: filter === "all" ? palette.badgeBg : palette.panelSoft,
-                    color: palette.text,
-                  }}
-                >
-                  All ({notifications.length})
-                </button>
-                <button
-                  onClick={() => setFilter("unread")}
-                  className="ui-btn-polish ui-focus-ring"
-                  style={{
-                    ...filterPill,
-                    border: `1px solid ${palette.border}`,
-                    background: filter === "unread" ? palette.badgeBg : palette.panelSoft,
-                    color: palette.text,
-                  }}
-                >
-                  Unread ({unreadCount})
-                </button>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {unreadCount > 0 ? (
-                <button
-                  onClick={onMarkAllAsRead}
-                  className="ui-btn-polish ui-focus-ring"
-                  style={{ ...headerAction, border: `1px solid ${palette.border}`, color: palette.text }}
-                >
-                  Mark all read
-                </button>
-              ) : null}
-              <button
-                onClick={() => {
-                  navigate("/notifications");
-                  setIsOpen(false);
-                }}
-                className="ui-btn-polish ui-focus-ring"
-                style={{ ...headerAction, border: `1px solid ${palette.border}`, color: palette.text }}
-              >
-                View all
-              </button>
-            </div>
-          </div>
+      {open ? (
+        <div className="nb-panel" role="dialog" aria-label="Notifications">
+          <header className="nb-head">
+            <span className="nb-head-title">
+              Notifications{unread ? <span className="nb-head-count">{unread}</span> : null}
+            </span>
+            <button type="button" className="nb-mark" disabled={!unread} onClick={markAll}>
+              <CheckIcon /> Mark all read
+            </button>
+          </header>
 
-          <div style={{ maxHeight: 480, overflowY: "auto", padding: "10px 12px 12px", display: "grid", gap: 10 }}>
-            {loading ? (
-              <div style={{ ...empty, color: palette.muted }}>Loading notifications...</div>
-            ) : visible.length === 0 ? (
-              <div style={{ ...empty, color: palette.muted }}>You are all caught up.</div>
+          <div className="nb-list">
+            {loading && items.length === 0 ? (
+              <div className="nb-loading"><span className="nb-spinner" /></div>
+            ) : items.length === 0 ? (
+              <div className="nb-empty">
+                <BellIcon />
+                <p>You're all caught up.</p>
+              </div>
             ) : (
-              <>
-                {visibleAttention.length > 0 ? <div style={{ ...sectionTag, color: palette.muted }}>Attention</div> : null}
-                {visibleAttention.slice(0, 5).map(renderItem)}
-                {visibleFYI.length > 0 ? <div style={{ ...sectionTag, color: palette.muted }}>FYI</div> : null}
-                {visibleFYI.slice(0, 5).map(renderItem)}
-              </>
+              items.slice(0, 8).map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  className={`nb-item ${n.is_read ? "" : "is-unread"}`}
+                  onClick={() => onItem(n)}
+                >
+                  <span className="nb-dot" aria-hidden="true" />
+                  <span className="nb-item-body">
+                    <span className="nb-item-title">{n.title}</span>
+                    {n.message ? <span className="nb-item-msg">{n.message}</span> : null}
+                    <span className="nb-item-time">{relativeTime(n.created_at)}</span>
+                  </span>
+                </button>
+              ))
             )}
           </div>
+
+          <footer className="nb-foot">
+            <button type="button" className="nb-viewall" onClick={() => { setOpen(false); navigate("/notifications"); }}>
+              View all notifications
+            </button>
+          </footer>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
-const bellButton = {
-  position: "relative",
-  display: "grid",
-  placeItems: "center",
-  width: 32,
-  height: 32,
-  border: "none",
-  borderRadius: 9,
-  background: "transparent",
-  cursor: "pointer",
-};
-
-const badge = {
-  position: "absolute",
-  top: -4,
-  right: -4,
-  minWidth: 17,
-  height: 17,
-  borderRadius: 999,
-  background: "var(--app-danger)",
-  color: "var(--app-surface-alt)",
-  fontSize: 10,
-  fontWeight: 700,
-  display: "grid",
-  placeItems: "center",
-  padding: "0 4px",
-};
-
-const dropdown = {
-  position: "absolute",
-  top: "calc(100% + 8px)",
-  right: 0,
-  width: 430,
-  borderRadius: 16,
-  overflow: "hidden",
-  boxShadow: "0 20px 40px rgba(0,0,0,0.24)",
-  zIndex: 100,
-};
-
-const header = {
-  padding: "12px 14px",
-  display: "flex",
-  alignItems: "flex-start",
-  justifyContent: "space-between",
-  gap: 10,
-};
-
-const sectionTag = {
-  padding: "2px 2px 0",
-  fontSize: 11,
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-};
-
-const row = {
-  borderRadius: 14,
-  padding: "11px 12px",
-};
-
-const title = {
-  margin: 0,
-  fontSize: 14,
-  fontWeight: 700,
-  lineHeight: 1.35,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const message = {
-  margin: 0,
-  fontSize: 13,
-  lineHeight: 1.45,
-};
-
-const timestamp = {
-  margin: "3px 0 0",
-  fontSize: 12,
-};
-
-const unreadDot = {
-  width: 7,
-  height: 7,
-  borderRadius: "50%",
-  flexShrink: 0,
-};
-
-const actionsRow = {
-  display: "flex",
-  gap: 8,
-  marginTop: 6,
-  alignItems: "center",
-  flexWrap: "wrap",
-};
-
-const actionButton = {
-  border: "1px solid",
-  background: "transparent",
-  padding: "5px 9px",
-  borderRadius: 999,
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const actionLink = {
-  border: "1px solid",
-  background: "transparent",
-  padding: "5px 9px",
-  borderRadius: 999,
-  fontSize: 12,
-  fontWeight: 700,
-  textDecoration: "none",
-};
-
-const headerAction = {
-  border: "1px solid",
-  background: "transparent",
-  borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const filterPill = {
-  border: "1px solid",
-  borderRadius: 999,
-  padding: "7px 12px",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const empty = {
-  textAlign: "center",
-  padding: "24px 12px",
-  fontSize: 13,
-};
-
-export default NotificationBell;
+const NB_STYLES = `
+.nb { position: relative; display: inline-flex; }
+.nb-trigger {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent;
+  color: var(--app-text-subtle); cursor: pointer; transition: background 120ms ease, color 120ms ease;
+}
+.nb-trigger:hover, .nb-trigger.is-open { background: var(--app-surface-alt); color: var(--app-text); }
+.nb-trigger svg { width: 18px; height: 18px; }
+.nb-badge {
+  position: absolute; top: 0; right: 0; min-width: 16px; height: 16px; padding: 0 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--app-danger); color: #FFFFFF; font-size: 10px; font-weight: 700;
+  border-radius: 999px; border: 2px solid var(--app-surface); line-height: 1;
+}
+.nb-panel {
+  position: absolute; top: 42px; right: 0; width: 360px; max-width: calc(100vw - 24px);
+  background: var(--app-surface-overlay, var(--app-surface));
+  border: 1px solid var(--app-border); border-radius: 14px;
+  box-shadow: var(--ui-shadow-lg); z-index: 130; overflow: hidden;
+  animation: nbPop 140ms cubic-bezier(0.2,0,0,1);
+}
+@keyframes nbPop { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
+.nb-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--app-border-subtle);
+}
+.nb-head-title { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 620; color: var(--app-text); }
+.nb-head-count {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px;
+  background: var(--app-accent-soft); color: var(--app-accent); font-size: 11px; font-weight: 700; border-radius: 999px;
+}
+.nb-mark {
+  display: inline-flex; align-items: center; gap: 5px; border: none; background: transparent;
+  color: var(--app-accent); font-family: inherit; font-size: 12.5px; font-weight: 560; cursor: pointer;
+  padding: 4px 6px; border-radius: 6px; transition: background 110ms ease, color 110ms ease;
+}
+.nb-mark:hover:not(:disabled) { background: var(--app-surface-alt); }
+.nb-mark:disabled { color: var(--app-text-disabled); cursor: default; }
+.nb-mark svg { width: 13px; height: 13px; }
+.nb-list { max-height: 380px; overflow-y: auto; padding: 4px; }
+.nb-loading { display: grid; place-items: center; min-height: 120px; }
+.nb-spinner { width: 22px; height: 22px; border: 2px solid var(--app-border-strong); border-top-color: var(--app-accent); border-radius: 999px; animation: nbSpin 0.8s linear infinite; }
+@keyframes nbSpin { to { transform: rotate(360deg); } }
+.nb-empty { display: grid; place-items: center; gap: 8px; padding: 34px 16px; color: var(--app-muted); }
+.nb-empty svg { width: 26px; height: 26px; color: var(--app-text-disabled); }
+.nb-empty p { margin: 0; font-size: 13.5px; }
+.nb-item {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left;
+  padding: 11px 12px; border: none; background: transparent; border-radius: 10px; cursor: pointer;
+  transition: background 110ms ease;
+}
+.nb-item:hover { background: var(--app-surface-alt); }
+.nb-dot { width: 7px; height: 7px; border-radius: 999px; background: transparent; margin-top: 6px; flex-shrink: 0; }
+.nb-item.is-unread .nb-dot { background: var(--app-accent); }
+.nb-item.is-unread { background: var(--app-accent-soft); }
+.nb-item.is-unread:hover { background: var(--app-accent-soft); }
+.nb-item-body { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 2px; }
+.nb-item-title { font-size: 13.5px; font-weight: 600; color: var(--app-text); line-height: 1.35; }
+.nb-item-msg {
+  font-size: 12.5px; color: var(--app-muted); line-height: 1.45;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.nb-item-time { font-size: 11.5px; color: var(--app-text-disabled); margin-top: 2px; }
+.nb-foot { padding: 8px; border-top: 1px solid var(--app-border-subtle); }
+.nb-viewall {
+  width: 100%; height: 36px; border: none; background: transparent; color: var(--app-accent);
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px;
+  transition: background 110ms ease;
+}
+.nb-viewall:hover { background: var(--app-surface-alt); }
+@media (max-width: 520px) {
+  .nb-panel { position: fixed; top: 56px; right: 8px; left: 8px; width: auto; }
+}
+`;

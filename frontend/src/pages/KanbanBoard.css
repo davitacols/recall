@@ -1,0 +1,113 @@
+/* Kanban board — focused modern execution board. */
+
+.kb { padding: 20px 24px 28px; min-height: calc(100vh - var(--atlas-topnav-h, 60px)); }
+
+.kb-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 500; color: var(--app-muted);
+  background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 14px;
+  transition: color 120ms ease;
+}
+.kb-back:hover { color: var(--app-text); }
+.kb-back svg { width: 15px; height: 15px; }
+
+.kb-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.kb-title h1 { font-size: 24px; font-weight: 660; letter-spacing: -0.025em; margin: 0; }
+.kb-sub { margin: 3px 0 0; font-size: 13.5px; color: var(--app-muted); }
+.kb-head-right { display: flex; align-items: center; gap: 14px; }
+
+.kb-stats { display: flex; align-items: center; gap: 16px; }
+.kb-stat { display: flex; flex-direction: column; }
+.kb-stat b { font-size: 18px; font-weight: 680; letter-spacing: -0.02em; color: var(--app-text); line-height: 1; }
+.kb-stat span { font-size: 11px; color: var(--app-muted); margin-top: 3px; }
+
+.kb-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px;
+  border-radius: 9px; border: 1px solid var(--app-border); background: var(--app-surface);
+  color: var(--app-text); font-family: inherit; font-size: 13.5px; font-weight: 560; cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.kb-btn:hover { background: var(--app-surface-alt); border-color: var(--app-border-strong); }
+.kb-btn svg { width: 15px; height: 15px; }
+.kb-btn-primary {
+  background: var(--app-accent); border-color: transparent; color: #FFFFFF;
+  box-shadow: 0 1px 2px rgba(11,12,16,0.16), inset 0 1px 0 rgba(255,255,255,0.16);
+}
+.kb-btn-primary:hover { background: var(--b500); }
+
+.kb-error {
+  margin-bottom: 14px; padding: 10px 13px; border-radius: 10px;
+  background: var(--app-danger-soft); border: 1px solid var(--app-danger); color: var(--app-danger);
+  font-size: 13px;
+}
+
+/* Board lanes */
+.kb-board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; align-items: flex-start; }
+.kb-col {
+  width: 296px; flex-shrink: 0; display: flex; flex-direction: column;
+  background: var(--app-surface-alt); border: 1px solid var(--app-border-subtle);
+  border-radius: 14px; max-height: calc(100vh - 210px);
+}
+.kb-col-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 14px; border-bottom: 1px solid var(--app-border-subtle);
+}
+.kb-col-name { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--app-text-subtle); }
+.kb-col-count {
+  display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px;
+  border-radius: 999px; background: var(--app-surface); border: 1px solid var(--app-border);
+  font-size: 11px; font-weight: 700; color: var(--app-text-subtle);
+}
+.kb-col-body { padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 80px; }
+.kb-col-empty {
+  margin: 4px; padding: 18px 12px; text-align: center; font-size: 12.5px; color: var(--app-muted);
+  border: 1px dashed var(--app-border); border-radius: 10px;
+}
+
+/* Issue card */
+.kb-card {
+  display: flex; flex-direction: column; gap: 9px; padding: 12px;
+  background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 11px;
+  cursor: pointer; transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+.kb-card:hover { border-color: var(--app-border-strong); box-shadow: var(--ui-shadow-sm); }
+.kb-card.is-moving { opacity: 0.5; }
+.kb-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.kb-card-key { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--app-muted); letter-spacing: 0.02em; }
+.kb-del {
+  display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+  border: none; background: transparent; color: var(--app-text-disabled); border-radius: 6px; cursor: pointer;
+  opacity: 0; transition: opacity 110ms ease, background 110ms ease, color 110ms ease;
+}
+.kb-card:hover .kb-del { opacity: 1; }
+.kb-del:hover { background: var(--app-danger-soft); color: var(--app-danger); }
+.kb-del svg { width: 13px; height: 13px; }
+.kb-card-title { font-size: 13.5px; font-weight: 540; color: var(--app-text); line-height: 1.4; }
+.kb-card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kb-pri {
+  display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 6px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; text-transform: capitalize;
+}
+.kb-pri-highest { background: var(--app-danger-soft); color: var(--app-danger); }
+.kb-pri-high { background: var(--app-warning-soft); color: var(--app-warning); }
+.kb-pri-medium { background: var(--app-accent-soft); color: var(--app-accent); }
+.kb-pri-low, .kb-pri-lowest { background: var(--app-surface-alt); color: var(--app-muted); }
+.kb-assignee { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 12px; color: var(--app-text-subtle); }
+.kb-assignee-mark {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px;
+  background: linear-gradient(135deg, #6E76E0, #8A63D2); color: #FFFFFF; font-size: 10px; font-weight: 700;
+}
+
+/* Modal */
+.kb-overlay { position: fixed; inset: 0; z-index: 200; background: var(--app-overlay); display: grid; place-items: center; padding: 18px; }
+.kb-modal {
+  width: 100%; max-width: 460px; background: var(--app-surface-overlay, var(--app-surface));
+  border: 1px solid var(--app-border); border-radius: 16px; box-shadow: var(--ui-shadow-lg); padding: 20px;
+}
+.kb-modal h3 { margin: 0 0 14px; font-size: 17px; font-weight: 640; letter-spacing: -0.015em; }
+.kb-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+.kb-loading { min-height: 320px; display: grid; place-items: center; }
+.kb-spinner { width: 28px; height: 28px; border: 2px solid var(--app-border-strong); border-top-color: var(--app-accent); border-radius: 999px; animation: kbSpin 0.8s linear infinite; }
+@keyframes kbSpin { to { transform: rotate(360deg); } }
+.kb-missing { min-height: 320px; display: grid; place-items: center; color: var(--app-muted); }

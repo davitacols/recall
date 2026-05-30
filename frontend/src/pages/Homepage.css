@@ -27,6 +27,23 @@
 .hp *, .hp *::before, .hp *::after { box-sizing: border-box; }
 .hp svg { width: 18px; height: 18px; flex-shrink: 0; }
 
+/* ---------- Scroll reveal (viewport detection) ---------- */
+/* Uses the independent `translate` property so it composes with elements that
+   already animate `transform` on hover (e.g. the bento cards). */
+.hp [data-reveal] {
+  opacity: 0;
+  translate: 0 30px;
+  transition-property: opacity, translate, transform, border-color, box-shadow;
+  transition-duration: 680ms, 680ms, 160ms, 160ms, 160ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  transition-delay: var(--rd, 0ms), var(--rd, 0ms), 0ms, 0ms, 0ms;
+  will-change: opacity, translate;
+}
+.hp [data-reveal].is-revealed { opacity: 1; translate: 0 0; }
+@media (prefers-reduced-motion: reduce) {
+  .hp [data-reveal] { opacity: 1; translate: 0 0; transition: none; }
+}
+
 .hp-container { width: min(1160px, calc(100vw - 48px)); margin: 0 auto; }
 
 /* ---------- Header ---------- */

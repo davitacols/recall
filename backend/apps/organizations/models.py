@@ -82,7 +82,9 @@ class User(AbstractUser):
             ('weekly', 'Weekly'),
             ('never', 'Never')
         ],
-        default='daily'
+        # Real-time so each notification is emailed immediately via the synchronous
+        # path. Digest frequencies remain available as an opt-in for batched email.
+        default='realtime'
     )
     marketing_opt_in = models.BooleanField(default=False, db_index=True)
     marketing_opt_in_at = models.DateTimeField(null=True, blank=True)

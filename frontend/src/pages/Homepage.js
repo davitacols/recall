@@ -125,6 +125,7 @@ export default function Homepage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const appEntryHref = user ? "/dashboard" : "/login";
   const hero3dRef = useRef(null);
+  const revealRef = useRef(null);
 
   const onHeroMove = (e) => {
     const el = hero3dRef.current;
@@ -160,10 +161,34 @@ export default function Homepage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Scroll-reveal: fade + rise each [data-reveal] element as it enters the viewport.
+  useEffect(() => {
+    const root = revealRef.current;
+    if (!root) return undefined;
+    const els = Array.from(root.querySelectorAll("[data-reveal]"));
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      els.forEach((el) => el.classList.add("is-revealed"));
+      return undefined;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-revealed");
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.14, rootMargin: "0px 0px -8% 0px" }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
   const tryLink = (route) => (user ? route : "/login");
 
   return (
-    <div className="hp">
+    <div className="hp" ref={revealRef}>
       <header className={`hp-header ${isScrolled ? "hp-header-scrolled" : ""}`}>
         <div className="hp-container hp-header-row">
           <Link to="/" className="hp-brand-link" aria-label="Knoledgr homepage">
@@ -255,7 +280,7 @@ export default function Homepage() {
         {/* ---------- Product / bento ---------- */}
         <section id="product" className="hp-product">
           <div className="hp-container">
-            <div className="hp-product-intro">
+            <div className="hp-product-intro" data-reveal>
               <span className="hp-eyebrow">Product</span>
               <h2>Four surfaces, one workspace.</h2>
               <p>Each one solves a real problem teams hit every week. Skim them and pick where to start.</p>
@@ -263,7 +288,7 @@ export default function Homepage() {
 
             <div className="hp-bento">
               {/* Flagship — wide */}
-              <Link to={tryLink("/ask")} className="hp-bento-card hp-bento-wide">
+              <Link to={tryLink("/ask")} className="hp-bento-card hp-bento-wide" data-reveal>
                 <div className="hp-bento-copy">
                   <span className="hp-feature-eyebrow"><SparklesIcon aria-hidden="true" /> Ask Recall</span>
                   <h3>Ask anything. Get the answer with sources stapled to it.</h3>
@@ -277,7 +302,7 @@ export default function Homepage() {
               </Link>
 
               {/* Decisions */}
-              <Link to={tryLink("/decisions")} className="hp-bento-card">
+              <Link to={tryLink("/decisions")} className="hp-bento-card" data-reveal style={{ "--rd": "90ms" }}>
                 <div className="hp-bento-copy">
                   <span className="hp-feature-eyebrow"><CheckCircleIcon aria-hidden="true" /> Decisions</span>
                   <h3>The why doesn't have to live in someone's head.</h3>
@@ -290,7 +315,7 @@ export default function Homepage() {
               </Link>
 
               {/* Knowledge graph */}
-              <Link to={tryLink("/knowledge/graph")} className="hp-bento-card">
+              <Link to={tryLink("/knowledge/graph")} className="hp-bento-card" data-reveal style={{ "--rd": "180ms" }}>
                 <div className="hp-bento-copy">
                   <span className="hp-feature-eyebrow"><LinkIcon aria-hidden="true" /> Knowledge Graph</span>
                   <h3>Your workspace, finally connected.</h3>
@@ -303,7 +328,7 @@ export default function Homepage() {
               </Link>
 
               {/* Documents — wide reversed */}
-              <Link to={tryLink("/business/documents")} className="hp-bento-card hp-bento-wide hp-bento-rev">
+              <Link to={tryLink("/business/documents")} className="hp-bento-card hp-bento-wide hp-bento-rev" data-reveal>
                 <div className="hp-bento-copy">
                   <span className="hp-feature-eyebrow"><DocumentTextIcon aria-hidden="true" /> Documents</span>
                   <h3>Notes, specs, briefs — searchable the way they should be.</h3>
@@ -322,7 +347,7 @@ export default function Homepage() {
         {/* ---------- How it works ---------- */}
         <section id="how" className="hp-how">
           <div className="hp-container hp-how-grid">
-            <div className="hp-how-copy">
+            <div className="hp-how-copy" data-reveal>
               <span className="hp-eyebrow hp-eyebrow-light">How it works</span>
               <h2>Write the way you already write. Recall does the connecting.</h2>
               <p>
@@ -331,21 +356,21 @@ export default function Homepage() {
               </p>
             </div>
             <ol className="hp-steps">
-              <li>
+              <li data-reveal>
                 <span className="hp-step-num">01</span>
                 <div>
                   <h4>You work like normal</h4>
                   <p>Docs, meeting notes, tickets, decisions. Whatever you already do.</p>
                 </div>
               </li>
-              <li>
+              <li data-reveal style={{ "--rd": "110ms" }}>
                 <span className="hp-step-num">02</span>
                 <div>
                   <h4>Recall builds the graph</h4>
                   <p>Every piece of work gets linked to the people, projects, and decisions it touches.</p>
                 </div>
               </li>
-              <li>
+              <li data-reveal style={{ "--rd": "220ms" }}>
                 <span className="hp-step-num">03</span>
                 <div>
                   <h4>Anyone can ask</h4>
@@ -359,7 +384,7 @@ export default function Homepage() {
         {/* ---------- Quote ---------- */}
         <section className="hp-quote">
           <div className="hp-container">
-            <blockquote>
+            <blockquote data-reveal>
               <p>"What did we decide about the rollout window?"</p>
               <div className="hp-quote-answer">
                 <span className="hp-quote-tag">Recall</span>
@@ -374,7 +399,7 @@ export default function Homepage() {
 
         {/* ---------- Trust ---------- */}
         <section className="hp-trust">
-          <div className="hp-container hp-trust-inner">
+          <div className="hp-container hp-trust-inner" data-reveal>
             <p className="hp-trust-lede">Built for teams that take their workspace seriously.</p>
             <ul className="hp-trust-tags">
               {SECURITY_TAGS.map((tag) => (
@@ -386,7 +411,7 @@ export default function Homepage() {
 
         {/* ---------- CTA ---------- */}
         <section className="hp-cta">
-          <div className="hp-container hp-cta-inner">
+          <div className="hp-container hp-cta-inner" data-reveal>
             <h2>Stop re-explaining the same decisions.</h2>
             <p>Free while we're in beta. Set up takes about a minute.</p>
             <div className="hp-actions hp-actions-center">

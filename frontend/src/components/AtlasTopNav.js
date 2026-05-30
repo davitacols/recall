@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bars3Icon,
-  BellIcon,
   ChevronDownIcon,
   MagnifyingGlassIcon,
   PlusIcon,
@@ -13,6 +12,8 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { Avatar, IconButton } from "./atlas";
 import BrandLogo from "./BrandLogo";
+import NotificationBell from "./NotificationBell";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import { formatWorkspaceName } from "./unifiedNavConfig";
 
 /**
@@ -30,6 +31,7 @@ export default function AtlasTopNav({
   const [openMenu, setOpenMenu] = useState(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [showSwitcher, setShowSwitcher] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -155,11 +157,7 @@ export default function AtlasTopNav({
               label="Ask Recall"
               onClick={() => navigate("/ask")}
             />
-            <IconButton
-              icon={<BellIcon style={{ width: 18, height: 18 }} />}
-              label="Notifications"
-              onClick={() => navigate("/notifications")}
-            />
+            <NotificationBell />
             <IconButton
               icon={<QuestionMarkCircleIcon style={{ width: 18, height: 18 }} />}
               label="Help"
@@ -194,12 +192,15 @@ export default function AtlasTopNav({
                 <MenuItem onClick={() => { setOpenMenu(null); navigate("/settings"); }}>Settings</MenuItem>
                 <MenuItem onClick={() => { setOpenMenu(null); navigate("/notifications"); }}>Notifications</MenuItem>
                 <div className="atlas-topnav-divider" />
+                <MenuItem onClick={() => { setOpenMenu(null); setShowSwitcher(true); }}>Switch workspace</MenuItem>
+                <div className="atlas-topnav-divider" />
                 <MenuItem onClick={logout} danger>Sign out</MenuItem>
               </div>
             ) : null}
           </div>
         </div>
       </header>
+      {showSwitcher ? <WorkspaceSwitcher onClose={() => setShowSwitcher(false)} /> : null}
     </>
   );
 }

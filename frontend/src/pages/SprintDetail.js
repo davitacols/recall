@@ -252,7 +252,7 @@ function IssueList({ issues }) {
     return <EmptyState title="No issues in this sprint" description="Move issues from the backlog to plan this sprint." />;
   }
   return (
-    <div style={{ marginTop: 16, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, overflow: "hidden" }}>
+    <div style={{ marginTop: 16, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 12, overflow: "hidden" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "var(--app-surface-alt)" }}>
@@ -302,7 +302,7 @@ function BlockerList({ blockers, onAdd }) {
   return (
     <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
       {blockers.map((b) => (
-        <div key={b.id} style={{ display: "flex", gap: 12, padding: 16, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4 }}>
+        <div key={b.id} style={{ display: "flex", gap: 12, padding: 16, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 12 }}>
           <ExclamationTriangleIcon style={{ width: 20, height: 20, color: "var(--y500)", flexShrink: 0, marginTop: 2 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -330,7 +330,7 @@ function AutopilotView({ autopilot }) {
   }
   const suggestions = autopilot?.suggestions || autopilot?.actions || [];
   return (
-    <div style={{ marginTop: 16, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, padding: 24 }}>
+    <div style={{ marginTop: 16, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 12, padding: 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <SparklesIcon style={{ width: 20, height: 20, color: "var(--p400)" }} />
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500 }}>Autopilot suggestions</h2>
@@ -340,7 +340,7 @@ function AutopilotView({ autopilot }) {
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
           {suggestions.map((s, i) => (
-            <li key={s.id || i} style={{ padding: 12, border: "1px solid var(--app-border)", borderRadius: 4 }}>
+            <li key={s.id || i} style={{ padding: 12, border: "1px solid var(--app-border)", borderRadius: 12 }}>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{s.title || s.label || s.action}</p>
               {s.description ? <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--app-muted)" }}>{s.description}</p> : null}
             </li>
@@ -379,7 +379,7 @@ function Modal({ children, onClose, title, width = 520 }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", zIndex: 199 }} />
-      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 6, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
+      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 16, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--app-border)" }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
           <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
@@ -400,7 +400,7 @@ const statsRow = {
 const statCard = {
   background: "var(--app-surface)",
   border: "1px solid var(--app-border)",
-  borderRadius: 4,
+  borderRadius: 12,
   padding: 16,
 };
 
@@ -420,7 +420,7 @@ const progressFill = {
 const sidePanel = {
   background: "var(--app-surface-alt)",
   border: "1px solid var(--app-border)",
-  borderRadius: 4,
+  borderRadius: 12,
   padding: 16,
 };
 
@@ -443,7 +443,7 @@ const keyChip = {
   padding: "0 6px",
   background: "var(--n20)",
   border: "1px solid var(--app-border-subtle)",
-  borderRadius: 3,
+  borderRadius: 6,
   fontFamily: "var(--font-mono)",
   fontSize: 11,
   color: "var(--app-muted)",

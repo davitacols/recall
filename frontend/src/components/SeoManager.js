@@ -5,7 +5,11 @@ import { findDocumentationPageBySlug } from "../content/documentationPages";
 const BRAND = "Knoledgr";
 const SITE_URL = "https://knoledgr.com";
 const LOGO_IMAGE = `${SITE_URL}/logo/logo-app.png`;
-const DEFAULT_IMAGE = LOGO_IMAGE;
+// 1366x637 ≈ 1.91:1 — the right shape for summary_large_image social cards.
+const DEFAULT_IMAGE = `${SITE_URL}/hero.png`;
+const OG_IMAGE_WIDTH = "1366";
+const OG_IMAGE_HEIGHT = "637";
+const OG_IMAGE_ALT = "Knoledgr — decision memory for teams";
 const DEFAULT_DESCRIPTION =
   "Knoledgr connects conversations, decisions, projects, and documents so teams keep context and move faster.";
 
@@ -230,7 +234,7 @@ function resolveMeta(pathname) {
       title: `Reset Password | ${BRAND}`,
       description: `Set a new password for your ${BRAND} account.`,
       robots: "noindex,nofollow",
-      canonicalPath: "/forgot-password",
+      canonicalPath: "/reset-password",
       ogType: "website",
       structuredData: [],
     };
@@ -311,12 +315,14 @@ export default function SeoManager() {
     setOrCreateMeta('meta[property="og:description"]', { property: "og:description", content: meta.description });
     setOrCreateMeta('meta[property="og:url"]', { property: "og:url", content: canonicalUrl });
     setOrCreateMeta('meta[property="og:image"]', { property: "og:image", content: DEFAULT_IMAGE });
-    setOrCreateMeta('meta[property="og:image:alt"]', { property: "og:image:alt", content: `${BRAND} logo` });
+    setOrCreateMeta('meta[property="og:image:width"]', { property: "og:image:width", content: OG_IMAGE_WIDTH });
+    setOrCreateMeta('meta[property="og:image:height"]', { property: "og:image:height", content: OG_IMAGE_HEIGHT });
+    setOrCreateMeta('meta[property="og:image:alt"]', { property: "og:image:alt", content: OG_IMAGE_ALT });
     setOrCreateMeta('meta[name="twitter:card"]', { name: "twitter:card", content: "summary_large_image" });
     setOrCreateMeta('meta[name="twitter:title"]', { name: "twitter:title", content: meta.title });
     setOrCreateMeta('meta[name="twitter:description"]', { name: "twitter:description", content: meta.description });
     setOrCreateMeta('meta[name="twitter:image"]', { name: "twitter:image", content: DEFAULT_IMAGE });
-    setOrCreateMeta('meta[name="twitter:image:alt"]', { name: "twitter:image:alt", content: `${BRAND} logo` });
+    setOrCreateMeta('meta[name="twitter:image:alt"]', { name: "twitter:image:alt", content: OG_IMAGE_ALT });
     setOrCreateLink('link[rel="canonical"]', { rel: "canonical", href: canonicalUrl });
     setStructuredData(meta.structuredData);
   }, [pathname]);

@@ -34,7 +34,11 @@ import "./Agent.css";
 // and a small allowlist of components so the renderer matches the Aurora look.
 const MARKDOWN_PLUGINS = [remarkGfm];
 const MARKDOWN_COMPONENTS = {
-  a: ({ node, ...props }) => <a target="_blank" rel="noopener noreferrer" {...props} />,
+  a: ({ node, children, ...props }) => (
+    <a target="_blank" rel="noopener noreferrer" {...props}>
+      {children}
+    </a>
+  ),
   code: ({ inline, className, children, ...props }) => {
     if (inline) {
       return (

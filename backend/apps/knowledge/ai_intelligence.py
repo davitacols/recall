@@ -410,6 +410,31 @@ def _detect_project_issue_prioritization(query):
     )
 
 
+def _detect_team_workload_question(query):
+    """Catch team-wide workload questions: who's overloaded, who has bandwidth,
+    what should we rebalance. These don't contain literal keywords matched by
+    semantic search (no document says "overloaded"), so without a dedicated
+    handler they fall through to a generic 'no records found' answer.
+    """
+    text = str(query or '').strip().lower()
+    if not text:
+        return False
+    workload_signals = (
+        'overload', 'overloaded', 'overcommit', 'over-committed',
+        'workload', 'work load', 'bandwidth', 'capacity', 'stretched',
+        'too much on', 'burned out', 'swamped', 'pile on',
+    )
+    rebalance_signals = (
+        'reshuffl', 'rebalance', 'redistribute', 'reassign', 'shuffl',
+        'move work', 'spread work', 'take some off',
+    )
+    if any(w in text for w in workload_signals):
+        return True
+    if any(w in text for w in rebalance_signals):
+        return True
+    return False
+
+
 def _detect_conversational_opener(query):
     text = ' '.join(str(query or '').strip().lower().split())
     if not text:
@@ -1654,6 +1679,231 @@ def _build_user_task_priority_payload(request, org, user, query, assistant_mode,
         'learning_model': plan.get('learning_model', {}),
         'counts': plan.get('counts', {}),
         'sources': _copilot_sources_payload({'tasks': task_sources, 'total': len(task_sources)}),
+        'recommended_interventions': [],
+        'requires_approval_for_execution': False,
+        'execution': {'performed': False, 'dry_run': True, 'result': None},
+        'generated_at': now.isoformat(),
+    }
+    _log_copilot_query(request, org, user, query, response_payload)
+    return response_payload
+
+
+def _build_team_workload_payload(request, org, user, query, assistant_mode, now):
+    """Answer team-workload questions ("who is overloaded?", "what should we
+    reshuffle?") using assignment data we already have, instead of falling
+    through to a generic 'no records found' answer when semantic search
+    misses on words like "overloaded".
+
+    Load score per assignee:
+        count + (high_priority * 2) + (overdue * 3) + (in_progress * 1.2)
+    Anyone two standard deviations above the median is flagged overloaded;
+    anyone below the median with no overdue work is flagged as available.
+    Suggested reshuffles pair the most overloaded with the most available.
+    """
+    from collections import defaultdict
+    import math
+
+    plan = _build_chief_of_staff_plan(org, now, user=user)
+
+    issues = list(
+        Issue.objects.filter(organization=org)
+        .exclude(status='done')
+        .select_related('assignee', 'sprint', 'project')
+        .order_by('-updated_at')[:500]
+    )
+
+    per_person = defaultdict(lambda: {
+        'name': '',
+        'id': None,
+        'count': 0,
+        'high_priority': 0,
+        'overdue': 0,
+        'in_progress': 0,
+        'issues': [],
+    })
+    unassigned = 0
+    today = now.date()
+
+    for issue in issues:
+        if not issue.assignee_id:
+            unassigned += 1
+            continue
+        p = per_person[issue.assignee_id]
+        p['id'] = issue.assignee_id
+        p['name'] = issue.assignee.get_full_name() or issue.assignee.username or 'Unknown'
+        p['count'] += 1
+        if (issue.priority or '').lower() in ('high', 'urgent', 'critical'):
+            p['high_priority'] += 1
+        if issue.due_date and issue.due_date < today:
+            p['overdue'] += 1
+        if (issue.status or '').lower() in ('in_progress', 'in progress', 'doing'):
+            p['in_progress'] += 1
+        if len(p['issues']) < 3:
+            p['issues'].append({
+                'id': issue.id,
+                'key': issue.key,
+                'title': issue.title,
+                'priority': issue.priority,
+                'due_date': issue.due_date.isoformat() if issue.due_date else None,
+                'url': f'/issues/{issue.id}',
+                'project_name': issue.project.name if issue.project_id else '',
+            })
+
+    def _score(p):
+        return (
+            p['count']
+            + p['high_priority'] * 2
+            + p['overdue'] * 3
+            + int(p['in_progress'] * 1.2)
+        )
+
+    rows = [{**p, 'score': _score(p)} for p in per_person.values()]
+    rows.sort(key=lambda r: r['score'], reverse=True)
+
+    issue_sources = []
+    tool_links = []
+
+    if not rows:
+        answer = (
+            'No open issues are currently assigned to anyone in the workspace, '
+            'so there is nobody to flag as overloaded. '
+            'Once issues are created and assigned in the Issue Board, '
+            'Ask Recall can flag who is over capacity and suggest reshuffles.'
+        )
+        confidence = 60
+        tool_links.append({
+            'id': 'issues-board',
+            'label': 'Open Issue Board',
+            'url': '/issues',
+            'reason': 'No assigned issues yet — create or assign work first.',
+        })
+        missing = ['No assigned open issues were found in this workspace.']
+        coverage = 35
+    else:
+        scores = [r['score'] for r in rows]
+        median = sorted(scores)[len(scores) // 2]
+        try:
+            stdev = math.sqrt(sum((s - median) ** 2 for s in scores) / max(1, len(scores)))
+        except Exception:
+            stdev = 0.0
+        overload_threshold = max(median + max(stdev, 2), 4)
+
+        overloaded = [r for r in rows if r['score'] >= overload_threshold]
+        available = [r for r in rows if r['score'] <= median and r['overdue'] == 0]
+        # If everyone is below the threshold but someone has a lot more than
+        # everyone else, treat the top person as "most loaded" for the answer
+        # rather than declaring nobody overloaded.
+        most_loaded = overloaded or rows[:1]
+
+        # Compose answer
+        lines = ['Workload snapshot across the team:']
+        for index, r in enumerate(most_loaded[:3], start=1):
+            tag = 'overloaded' if r in overloaded else 'most loaded'
+            extras = []
+            if r['overdue']:
+                extras.append(f"{r['overdue']} overdue")
+            if r['high_priority']:
+                extras.append(f"{r['high_priority']} high-priority")
+            if r['in_progress']:
+                extras.append(f"{r['in_progress']} in-progress")
+            extra = f" ({', '.join(extras)})" if extras else ''
+            lines.append(
+                f"{index}. {r['name']} - {tag}: {r['count']} open issues{extra}."
+            )
+
+        if available:
+            lines.append('')
+            lines.append('People with capacity to take work on:')
+            for r in available[:3]:
+                lines.append(
+                    f"- {r['name']}: {r['count']} open issues, none overdue."
+                )
+
+        if unassigned:
+            lines.append('')
+            lines.append(f'There are also {unassigned} unassigned open issues that should be picked up before reshuffling.')
+
+        # Suggested reshuffles: top overloaded person's overdue or high-priority
+        # issues moved to top available person.
+        if overloaded and available:
+            from_person = overloaded[0]
+            to_person = available[0]
+            candidate = next(
+                (i for i in from_person['issues'] if i.get('priority') not in ('high', 'urgent', 'critical')),
+                from_person['issues'][0] if from_person['issues'] else None,
+            )
+            if candidate:
+                lines.append('')
+                lines.append(
+                    f"Suggested reshuffle: move {candidate['key'] or '#'} \"{candidate['title']}\" "
+                    f"from {from_person['name']} to {to_person['name']}."
+                )
+
+        answer = '\n'.join(lines)
+        confidence = min(92, 64 + min(len(rows), 6) * 4)
+        if not overloaded:
+            confidence = max(48, confidence - 12)
+
+        # Build sources from the most-loaded peoples' issues so citations exist.
+        for r in most_loaded[:3]:
+            for iss in r['issues']:
+                issue_sources.append({
+                    'id': iss['id'],
+                    'title': f"{iss['key'] or '#'} - {iss['title']}",
+                    'content_preview': f"{r['name']} owns this. Priority {iss['priority'] or 'medium'}, due {iss['due_date'] or 'unscheduled'}.",
+                    'priority': iss['priority'],
+                    'due_date': iss['due_date'],
+                    'url': iss['url'],
+                    'owner_name': r['name'],
+                    'project_name': iss.get('project_name', ''),
+                })
+                tool_links.append({
+                    'id': f"issue-{iss['id']}",
+                    'label': f"{iss['key'] or '#'}: {iss['title']}",
+                    'url': iss['url'],
+                    'reason': f"Owned by {r['name']} (load score {r['score']}).",
+                })
+        missing = []
+        coverage = 86 if len(rows) >= 3 else 64
+
+    search_data = {'issues': issue_sources, 'total': len(issue_sources)}
+    evidence_contract = _build_evidence_contract(search_data, now)
+    response_payload = {
+        'analysis_id': str(uuid4()),
+        'query': query,
+        'assistant_mode': assistant_mode,
+        'answer': answer,
+        'answer_engine': 'rules',
+        'confidence': confidence,
+        'confidence_band': _confidence_band(confidence),
+        'response_mode': 'team_workload',
+        'evidence_count': evidence_contract.get('evidence_count', len(issue_sources)),
+        'source_types': evidence_contract.get('source_types', ['issue']) if issue_sources else [],
+        'freshness_days': evidence_contract.get('freshness_days'),
+        'coverage_score': coverage,
+        'missing_evidence': missing,
+        'evidence_breakdown': [{'type': 'issue', 'label': 'issues', 'count': len(issue_sources)}] if issue_sources else [],
+        'citations': _rank_source_citations(search_data, query),
+        'credibility_summary': (
+            'This workload snapshot was computed from open issue assignments. '
+            'Load score combines issue count, priority, overdue, and in-progress status.'
+        ),
+        'answer_foundation': [
+            f'Considered {len(issues)} open issues across the workspace.',
+            'Done issues were excluded.',
+            'Overdue work is weighted 3x, high-priority 2x, in-progress 1.2x.',
+        ],
+        'follow_up_questions': [
+            'Draft a Slack message to propose the reshuffle.',
+            'Show me everything assigned to the most overloaded person.',
+            'Which sprints are most at risk because of this imbalance?',
+        ],
+        'tool_links': tool_links[:6],
+        'risk_status': plan.get('status'),
+        'readiness_score': plan.get('readiness_score'),
+        'learning_model': plan.get('learning_model', {}),
+        'counts': plan.get('counts', {}),
+        'sources': _copilot_sources_payload(search_data),
         'recommended_interventions': [],
         'requires_approval_for_execution': False,
         'execution': {'performed': False, 'dry_run': True, 'result': None},
@@ -3512,6 +3762,9 @@ def agi_copilot(request):
 
         if _detect_user_task_prioritization(query):
             return Response(_build_user_task_priority_payload(request, org, user, query, assistant_mode, now))
+
+        if _detect_team_workload_question(query):
+            return Response(_build_team_workload_payload(request, org, user, query, assistant_mode, now))
 
         if _detect_project_issue_prioritization(query):
             return Response(_build_project_issue_priority_payload(request, org, user, query, assistant_mode, now))

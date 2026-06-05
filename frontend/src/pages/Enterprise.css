@@ -1,42 +1,66 @@
+/* Enterprise — Aurora alignment.
+ *
+ * The page was authored against `--enterprise-*` tokens that were never
+ * defined anywhere in the codebase. The browser fell through to no value,
+ * which is why the page felt washed-out and detached from the rest of the
+ * app. Map every `--enterprise-*` to the app's actual Aurora tokens at the
+ * shell boundary so the existing JSX inherits the dark, gradient-accented
+ * look without a structural rewrite.
+ */
+
 .enterprise-shell {
+  --enterprise-text: var(--app-text);
+  --enterprise-muted: var(--app-muted);
+  --enterprise-border: var(--app-border);
+  --enterprise-card: var(--app-surface);
+  --enterprise-card-strong: var(--app-surface);
+  --enterprise-accent: #b095ff;
+  --enterprise-success: #34d399;
+  --enterprise-warn: #fbbf24;
+  --enterprise-danger: #fb7185;
+
   display: grid;
-  gap: 16px;
-  color: var(--enterprise-text);
+  gap: 14px;
+  padding: 0 32px 32px;
+  color: var(--app-text);
 }
 
 .enterprise-eyebrow {
   margin: 0;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--enterprise-muted);
+  color: var(--app-muted);
 }
 
 .enterprise-callout {
-  border: 1px solid var(--enterprise-border);
-  border-radius: 24px;
-  padding: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  padding: 16px 18px;
   min-width: 280px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  background: var(--enterprise-card-strong);
-  box-shadow: var(--ui-shadow-sm);
+  background:
+    linear-gradient(135deg, rgba(124, 77, 255, 0.10), rgba(33, 150, 243, 0.06)),
+    var(--app-surface);
 }
 
 .enterprise-callout-title {
   margin: 0;
-  font-size: 18px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: var(--enterprise-text);
+  font-size: 15px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--app-text);
 }
 
 .enterprise-callout-text {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--enterprise-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--app-muted);
 }
 
 .enterprise-signal-grid,
@@ -48,7 +72,7 @@
 .enterprise-featured-grid,
 .enterprise-rule-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .enterprise-signal-grid,
@@ -56,11 +80,11 @@
 .enterprise-role-grid,
 .enterprise-featured-grid,
 .enterprise-rule-grid {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 .enterprise-metric-grid {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 }
 
 .enterprise-info-grid {
@@ -72,62 +96,54 @@
 }
 
 .enterprise-signal {
-  border: 1px solid var(--enterprise-border);
-  border-radius: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
   padding: 14px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  background: var(--enterprise-card);
+  background: var(--app-surface);
 }
 
 .enterprise-signal-title {
   margin: 0;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .enterprise-signal-body {
   margin: 0;
   font-size: 13px;
-  line-height: 1.55;
-  color: var(--enterprise-text);
+  line-height: 1.5;
+  color: var(--app-text-subtle, var(--app-text));
 }
 
-.enterprise-signal-success .enterprise-signal-title {
-  color: var(--enterprise-success);
-}
-
-.enterprise-signal-warn .enterprise-signal-title {
-  color: var(--enterprise-warn);
-}
-
-.enterprise-signal-info .enterprise-signal-title {
-  color: var(--enterprise-accent);
-}
-
-.enterprise-signal-danger .enterprise-signal-title {
-  color: var(--enterprise-danger);
-}
+.enterprise-signal-success .enterprise-signal-title { color: #34d399; }
+.enterprise-signal-warn    .enterprise-signal-title { color: #fbbf24; }
+.enterprise-signal-info    .enterprise-signal-title { color: #b095ff; }
+.enterprise-signal-danger  .enterprise-signal-title { color: #fb7185; }
 
 .enterprise-warning {
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 12px 14px;
   font-size: 13px;
   line-height: 1.55;
-  color: var(--enterprise-warn);
-  background: color-mix(in srgb, var(--enterprise-warn) 14%, transparent);
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.28);
 }
 
 .enterprise-card,
 .enterprise-list-card {
-  border: 1px solid var(--enterprise-border);
-  border-radius: 22px;
-  padding: 16px;
-  display: grid;
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  background: var(--enterprise-card);
+  background: var(--app-surface);
 }
 
 .enterprise-card-header,
@@ -151,9 +167,11 @@
 .enterprise-card-header h3,
 .enterprise-block-head h3 {
   margin: 0;
-  font-size: 18px;
-  line-height: 1.2;
-  color: var(--enterprise-text);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--app-text);
 }
 
 .enterprise-card-header p,
@@ -163,43 +181,65 @@
 .enterprise-support-meta {
   margin: 0;
   font-size: 12px;
-  line-height: 1.6;
-  color: var(--enterprise-muted);
+  line-height: 1.55;
+  color: var(--app-muted);
 }
 
 .enterprise-body-copy {
   margin: 0;
   font-size: 13px;
-  line-height: 1.65;
-  color: var(--enterprise-muted);
+  line-height: 1.55;
+  color: var(--app-muted);
 }
 
 .enterprise-panel-icon {
   width: 18px;
   height: 18px;
-  color: var(--enterprise-accent);
+  color: #b095ff;
   flex-shrink: 0;
 }
 
 .enterprise-form-stack,
 .enterprise-list,
 .enterprise-section-block {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .enterprise-field {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
 }
 
 .enterprise-field > span,
 .enterprise-info-cell > span {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--enterprise-muted);
+  color: var(--app-muted);
+}
+
+.enterprise-field input,
+.enterprise-field select,
+.enterprise-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-alt);
+  color: var(--app-text);
+  font-size: 14px;
+  outline: none;
+  font: inherit;
+}
+
+.enterprise-field input:focus,
+.enterprise-field select:focus,
+.enterprise-field textarea:focus {
+  border-color: #b095ff;
 }
 
 .enterprise-check {
@@ -207,8 +247,8 @@
   gap: 10px;
   align-items: flex-start;
   font-size: 13px;
-  line-height: 1.55;
-  color: var(--enterprise-text);
+  line-height: 1.5;
+  color: var(--app-text);
 }
 
 .enterprise-check input {
@@ -216,18 +256,20 @@
 }
 
 .enterprise-info-cell {
-  border: 1px solid var(--enterprise-border);
-  border-radius: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
   padding: 12px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
-  background: var(--enterprise-card-strong);
+  background: var(--app-surface-alt);
 }
 
 .enterprise-info-cell strong {
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--enterprise-text);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--app-text);
 }
 
 .enterprise-info-cell-wide {
@@ -236,7 +278,7 @@
 
 .enterprise-support-meta {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -245,93 +287,78 @@
   align-items: center;
   gap: 6px;
   border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.enterprise-pill-success {
-  color: var(--enterprise-success);
-  background: color-mix(in srgb, var(--enterprise-success) 14%, transparent);
-}
-
-.enterprise-pill-warn {
-  color: var(--enterprise-warn);
-  background: color-mix(in srgb, var(--enterprise-warn) 14%, transparent);
-}
-
-.enterprise-pill-info {
-  color: var(--enterprise-accent);
-  background: color-mix(in srgb, var(--enterprise-accent) 14%, transparent);
-}
-
-.enterprise-pill-danger {
-  color: var(--enterprise-danger);
-  background: color-mix(in srgb, var(--enterprise-danger) 14%, transparent);
-}
+.enterprise-pill-success { color: #34d399; background: rgba(16, 185, 129, 0.16); }
+.enterprise-pill-warn    { color: #fbbf24; background: rgba(245, 158, 11, 0.18); }
+.enterprise-pill-info    { color: #b095ff; background: rgba(124, 77, 255, 0.18); }
+.enterprise-pill-danger  { color: #fb7185; background: rgba(244, 63, 94, 0.18); }
 
 .enterprise-risk-score {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 2px;
   text-align: right;
 }
 
 .enterprise-risk-score span {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--enterprise-muted);
+  color: var(--app-muted);
 }
 
 .enterprise-risk-score strong {
-  font-size: 24px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: 1;
-  color: var(--enterprise-text);
+  color: var(--app-text);
 }
 
 .enterprise-metric-card {
-  border: 1px solid var(--enterprise-border);
-  border-radius: 20px;
-  padding: 16px;
-  display: grid;
-  gap: 6px;
-  background: var(--enterprise-card);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--app-surface);
 }
 
 .enterprise-metric-label {
   margin: 0;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--enterprise-muted);
+  color: var(--app-muted);
 }
 
 .enterprise-metric-value {
   margin: 0;
-  font-family: var(--font-display, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 28px;
-  line-height: 0.98;
-  letter-spacing: -0.05em;
-  color: var(--enterprise-text);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--app-text);
 }
 
 .enterprise-metric-helper {
   margin: 0;
   font-size: 12px;
-  line-height: 1.55;
-  color: var(--enterprise-muted);
+  line-height: 1.5;
+  color: var(--app-muted);
 }
 
 @media (max-width: 720px) {
-  .enterprise-callout {
-    min-width: 0;
-  }
-
-  .enterprise-info-cell-wide {
-    grid-column: auto;
-  }
+  .enterprise-shell { padding: 0 16px 24px; }
+  .enterprise-callout { min-width: 0; }
+  .enterprise-info-cell-wide { grid-column: auto; }
 }

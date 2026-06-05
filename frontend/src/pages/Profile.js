@@ -14,7 +14,8 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import { useToast } from "../components/Toast";
-import { useTheme } from "../utils/ThemeAndAccessibility";
+import { PageHeader } from "../components/atlas";
+import "./Profile.css";
 
 function createEmptyIdentity() {
   return {
@@ -35,7 +36,6 @@ function createEmptyIdentity() {
 
 function Profile() {
   const { user, refreshUser } = useAuth();
-  const { darkMode } = useTheme();
   const { addToast } = useToast();
   const { userId } = useParams();
 
@@ -43,7 +43,6 @@ function Profile() {
   const hasRequestedUserId = Number.isInteger(requestedUserId) && requestedUserId > 0;
   const isViewingTeammate = Boolean(hasRequestedUserId && requestedUserId !== user?.id);
 
-  const [isCompact, setIsCompact] = useState(() => (typeof window !== "undefined" ? window.innerWidth < 960 : false));
   const [profile, setProfile] = useState({
     full_name: "",
     bio: "",
@@ -67,12 +66,6 @@ function Profile() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
-
-  useEffect(() => {
-    const onResize = () => setIsCompact(window.innerWidth < 960);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -99,38 +92,19 @@ function Profile() {
           ]);
         }
       } finally {
-        if (isActive) {
-          setLoadingProfile(false);
-        }
+        if (isActive) setLoadingProfile(false);
       }
     };
 
     load().catch(() => {
-      if (isActive) {
-        setLoadingProfile(false);
-      }
+      if (isActive) setLoadingProfile(false);
     });
 
     return () => {
       isActive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, requestedUserId, isViewingTeammate]);
-
-  const palette = useMemo(
-    () => ({
-      pageBg: "var(--app-bg)",
-      panelBg: "var(--app-surface)",
-      panelAlt: "var(--app-surface-alt)",
-      border: "var(--app-border)",
-      text: "var(--app-text)",
-      muted: "var(--app-muted)",
-      accent: "var(--app-accent)",
-      softAccent: darkMode ? "rgba(124,130,232,0.14)" : "rgba(94,106,210,0.08)",
-      success: "var(--app-success)",
-      danger: "var(--app-danger)",
-    }),
-    [darkMode]
-  );
 
   const directoryMembers = useMemo(
     () =>
@@ -149,24 +123,9 @@ function Profile() {
   const lastActiveLabel = formatDate(profileIdentity.last_active);
 
   const statItems = [
-    {
-      label: "Conversations",
-      value: stats.conversations || 0,
-      icon: ChatBubbleLeftRightIcon,
-      color: palette.accent,
-    },
-    {
-      label: "Replies",
-      value: stats.replies || 0,
-      icon: ClockIcon,
-      color: palette.success,
-    },
-    {
-      label: "Decisions",
-      value: stats.decisions || 0,
-      icon: CheckBadgeIcon,
-      color: "#86c8ff",
-    },
+    { label: "Conversations", value: stats.conversations || 0, Icon: ChatBubbleLeftRightIcon, tone: "violet" },
+    { label: "Replies", value: stats.replies || 0, Icon: ClockIcon, tone: "emerald" },
+    { label: "Decisions", value: stats.decisions || 0, Icon: CheckBadgeIcon, tone: "blue" },
   ];
 
   async function fetchOwnProfile(isActive) {
@@ -366,226 +325,116 @@ function Profile() {
     }
   };
 
-  if (loadingProfile) {
-    return (
-      <div style={{ display: "grid", gap: 14 }}>
-        <section
-          style={{
-            borderRadius: 18,
-            padding: "clamp(16px, 3vw, 24px)",
-            display: "grid",
-            gap: 10,
-            background: `linear-gradient(120deg, ${palette.softAccent}, transparent)`,
-            border: `1px solid ${palette.border}`,
-          }}
-        >
-          <p style={{ margin: 0, color: palette.muted, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            Profile
-          </p>
-          <h1 style={{ margin: 0, color: palette.text, fontSize: "clamp(1.25rem, 2.5vw, 1.85rem)" }}>Loading workspace profile...</h1>
-          <p style={{ margin: 0, color: palette.muted, fontSize: 13 }}>
-            Pulling identity, stats, and team context into one place.
-          </p>
-        </section>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <section
-        style={{
-          borderRadius: 18,
-          padding: "clamp(16px, 3vw, 24px)",
-          display: "grid",
-          gap: 14,
-          background: `linear-gradient(120deg, ${palette.softAccent}, transparent)`,
-          border: `1px solid ${palette.border}`,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 14,
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-            <div style={{ position: "relative", width: 72, height: 72 }}>
-              {avatarPreview ? (
-                <img
-                  src={avatarPreview}
-                  alt={subjectName}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    borderRadius: 16,
-                    border: `1px solid ${palette.border}`,
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    borderRadius: 16,
-                    background: "linear-gradient(135deg, #6E76E0, #8A63D2)",
-                    display: "grid",
-                    placeItems: "center",
-                    color: "var(--app-button-text)",
-                    fontWeight: 800,
-                    fontSize: 24,
-                  }}
-                >
-                  {(subjectName || "U").charAt(0).toUpperCase()}
-                </div>
-              )}
-              {!isViewingTeammate && (
-                <label
-                  style={{
-                    position: "absolute",
-                    right: -6,
-                    bottom: -6,
-                    width: 28,
-                    height: 28,
-                    borderRadius: 10,
-                    display: "grid",
-                    placeItems: "center",
-                    background: palette.panelAlt,
-                    border: `1px solid ${palette.border}`,
-                    cursor: "pointer",
-                  }}
-                  title="Change avatar"
-                >
-                  <CameraIcon style={{ width: 14, height: 14, color: palette.text }} />
-                  <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} />
-                </label>
-              )}
-            </div>
+    <div className="profile-page">
+      <PageHeader
+        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Profile" }]}
+        title={isViewingTeammate ? "Team member profile" : "Your profile"}
+        subtitle={
+          isViewingTeammate
+            ? "How this teammate shows up across the workspace."
+            : "Identity, security, and how your contributions appear to the team."
+        }
+        style={{ padding: "24px 0 0", background: "transparent" }}
+      />
 
-            <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, color: palette.muted, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                {isViewingTeammate ? "Team member profile" : "Knoledgr profile"}
-              </p>
-              <h1
-                style={{
-                  margin: "4px 0 2px",
-                  color: palette.text,
-                  fontSize: "clamp(1.3rem, 2.6vw, 1.9rem)",
-                  lineHeight: 1.1,
-                }}
-              >
-                {subjectName}
-              </h1>
-              <p style={{ margin: 0, color: palette.muted, fontSize: 13 }}>
-                {[subjectEmail, subjectOrg].filter(Boolean).join(" | ")}
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            {isViewingTeammate && (
-              <Link to="/profile" style={actionLinkStyle(palette, "ghost")}>
-                <ArrowLeftIcon style={{ width: 15, height: 15 }} />
-                My profile
-              </Link>
+      {/* Hero */}
+      <section className="profile-hero">
+        <div className="profile-hero-id">
+          <div className="profile-avatar">
+            {avatarPreview ? (
+              <img src={avatarPreview} alt={subjectName} />
+            ) : (
+              <div className="profile-avatar-fallback">
+                {(subjectName || "U").charAt(0).toUpperCase()}
+              </div>
             )}
-            <span style={statusChip(palette)}>{subjectRole}</span>
+            {!isViewingTeammate && (
+              <label className="profile-avatar-edit" title="Change avatar">
+                <CameraIcon />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  style={{ display: "none" }}
+                />
+              </label>
+            )}
+          </div>
+          <div className="profile-id-meta">
+            <p className="profile-eyebrow">
+              {isViewingTeammate ? "Teammate" : "You"}
+            </p>
+            <h2 className="profile-name">{subjectName}</h2>
+            <p className="profile-sub">
+              {[subjectEmail, subjectOrg].filter(Boolean).join(" · ")}
+            </p>
           </div>
         </div>
-
-        <div
-          style={{
-            display: "grid",
-            gap: 10,
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          }}
-        >
-          {statItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <article
-                key={item.label}
-                style={{
-                  borderRadius: 14,
-                  background: palette.panelAlt,
-                  border: `1px solid ${palette.border}`,
-                  padding: "12px 12px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <p style={{ margin: 0, color: palette.muted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                    {item.label}
-                  </p>
-                  <Icon style={{ width: 16, height: 16, color: item.color }} />
-                </div>
-                <p style={{ margin: "8px 0 0", color: palette.text, fontSize: 28, fontWeight: 800 }}>{item.value}</p>
-              </article>
-            );
-          })}
+        <div className="profile-hero-actions">
+          {isViewingTeammate && (
+            <Link to="/profile" className="profile-link-btn">
+              <ArrowLeftIcon style={{ width: 14, height: 14 }} /> My profile
+            </Link>
+          )}
+          <span className="profile-role-chip">{subjectRole}</span>
         </div>
       </section>
 
-      <section
-        style={{
-          display: "grid",
-          gap: 14,
-          gridTemplateColumns: isCompact ? "minmax(0,1fr)" : "minmax(0,1.35fr) minmax(320px,0.95fr)",
-          alignItems: "start",
-        }}
-      >
-        <div style={{ display: "grid", gap: 14 }}>
-          {isViewingTeammate ? (
-            <article style={panelStyle(palette)}>
-              <h2 style={{ margin: 0, color: palette.text, fontSize: 18 }}>Workspace Overview</h2>
-              <p style={{ margin: "5px 0 14px", color: palette.muted, fontSize: 13 }}>
-                Review who this teammate is, what they own, and how they show up in the workspace.
-              </p>
-              <div style={{ display: "grid", gap: 12 }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <p style={eyebrowStyle(palette)}>About</p>
-                  <p style={{ margin: 0, color: palette.text, fontSize: 14, lineHeight: 1.5 }}>
-                    {profile.bio || `${subjectName} has not added a profile summary yet.`}
-                  </p>
-                </div>
+      {/* KPIs */}
+      <div className="profile-kpis">
+        {statItems.map(({ label, value, Icon, tone }) => (
+          <div className="profile-kpi" key={label}>
+            <span className={`profile-kpi-icon profile-kpi-icon-${tone}`}>
+              <Icon />
+            </span>
+            <div className="profile-kpi-meta">
+              <span className="profile-kpi-value">{loadingProfile ? "—" : value}</span>
+              <span className="profile-kpi-label">{label}</span>
+            </div>
+          </div>
+        ))}
+      </div>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gap: 10,
-                    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-                  }}
-                >
-                  <InfoStat label="Timezone" value={profile.timezone || "UTC"} palette={palette} />
-                  <InfoStat label="Joined" value={joinedLabel || "Unavailable"} palette={palette} />
-                  <InfoStat label="Last active" value={lastActiveLabel || "Unavailable"} palette={palette} />
-                </div>
+      {/* Main two-column */}
+      <div className="profile-cols">
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {isViewingTeammate ? (
+            <article className="profile-card">
+              <div className="profile-card-head">
+                <h3 className="profile-card-title">About</h3>
+                <p className="profile-card-sub">Who this teammate is and how to reach them.</p>
+              </div>
+              <p className="profile-about">
+                {profile.bio || `${subjectName} has not added a profile summary yet.`}
+              </p>
+              <div className="profile-info-grid" style={{ marginTop: 14 }}>
+                <InfoStat label="Timezone" value={profile.timezone || "UTC"} />
+                <InfoStat label="Joined" value={joinedLabel || "Unavailable"} />
+                <InfoStat label="Last active" value={lastActiveLabel || "Unavailable"} />
               </div>
             </article>
           ) : (
-            <article style={panelStyle(palette)}>
-              <h2 style={{ margin: 0, color: palette.text, fontSize: 18 }}>Personal Information</h2>
-              <p style={{ margin: "5px 0 14px", color: palette.muted, fontSize: 13 }}>
-                Update your profile details so teammates can understand who owns context and execution.
-              </p>
-              <form onSubmit={handleUpdateProfile} style={{ display: "grid", gap: 10 }}>
+            <article className="profile-card">
+              <div className="profile-card-head">
+                <h3 className="profile-card-title">Personal information</h3>
+                <p className="profile-card-sub">
+                  How the team sees you. Used in citations, mentions, and decision audit trails.
+                </p>
+              </div>
+              <form className="profile-form" onSubmit={handleUpdateProfile}>
                 <Field
-                  label="Full Name"
+                  label="Full name"
                   type="text"
                   value={profile.full_name}
                   onChange={(event) => setProfile((prev) => ({ ...prev, full_name: event.target.value }))}
-                  palette={palette}
                 />
-                <Field label="Email" type="email" value={subjectEmail} disabled palette={palette} />
+                <Field label="Email" type="email" value={subjectEmail} disabled />
                 <Field
                   label="Timezone"
                   as="select"
                   value={profile.timezone}
                   onChange={(event) => setProfile((prev) => ({ ...prev, timezone: event.target.value }))}
-                  palette={palette}
                 >
                   <option value="UTC">UTC</option>
                   <option value="America/New_York">Eastern Time (ET)</option>
@@ -602,63 +451,62 @@ function Profile() {
                   rows={4}
                   value={profile.bio}
                   onChange={(event) => setProfile((prev) => ({ ...prev, bio: event.target.value }))}
-                  palette={palette}
+                  placeholder="One sentence on what you own. Helps teammates find the right person."
                 />
-                <button type="submit" disabled={savingProfile} style={actionButtonStyle(palette, "primary", savingProfile)}>
-                  {savingProfile ? "Saving..." : "Save changes"}
+                <button type="submit" disabled={savingProfile} className="profile-btn profile-btn-primary">
+                  {savingProfile ? "Saving…" : "Save changes"}
                 </button>
               </form>
             </article>
           )}
         </div>
 
-        <div style={{ display: "grid", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {!isViewingTeammate && (
-            <article style={panelStyle(palette)}>
-              <h2 style={{ margin: 0, color: palette.text, fontSize: 18 }}>Security</h2>
-              <p style={{ margin: "5px 0 14px", color: palette.muted, fontSize: 13 }}>
-                Rotate your password regularly to keep your workspace secure.
-              </p>
-              <form onSubmit={handleChangePassword} style={{ display: "grid", gap: 10 }}>
+            <article className="profile-card">
+              <div className="profile-card-head">
+                <h3 className="profile-card-title">Security</h3>
+                <p className="profile-card-sub">Rotate your password regularly to keep workspace memory safe.</p>
+              </div>
+              <form className="profile-form" onSubmit={handleChangePassword}>
                 <Field
-                  label="Current Password"
+                  label="Current password"
                   type="password"
                   value={passwords.old_password}
                   onChange={(event) => setPasswords((prev) => ({ ...prev, old_password: event.target.value }))}
-                  palette={palette}
                 />
                 <Field
-                  label="New Password"
+                  label="New password"
                   type="password"
                   value={passwords.new_password}
                   onChange={(event) => setPasswords((prev) => ({ ...prev, new_password: event.target.value }))}
-                  palette={palette}
                 />
                 <Field
-                  label="Confirm Password"
+                  label="Confirm new password"
                   type="password"
                   value={passwords.confirm_password}
                   onChange={(event) => setPasswords((prev) => ({ ...prev, confirm_password: event.target.value }))}
-                  palette={palette}
                 />
-                <button type="submit" disabled={savingPassword} style={actionButtonStyle(palette, "ghost", savingPassword)}>
-                  <ShieldCheckIcon style={{ width: 16, height: 16, color: palette.success }} />
-                  {savingPassword ? "Updating..." : "Change password"}
+                <button type="submit" disabled={savingPassword} className="profile-btn profile-btn-ghost">
+                  <ShieldCheckIcon />
+                  {savingPassword ? "Updating…" : "Change password"}
                 </button>
               </form>
             </article>
           )}
 
-          <article style={panelStyle(palette)}>
-            <h2 style={{ margin: 0, color: palette.text, fontSize: 18 }}>Recent Activity</h2>
-            <p style={{ margin: "5px 0 14px", color: palette.muted, fontSize: 13 }}>
-              {isViewingTeammate
-                ? "The newest conversation, reply, and decision signals for this teammate."
-                : "The latest conversations and bookmarks tied to your workspace record."}
-            </p>
-            <div style={{ display: "grid", gap: 8 }}>
+          <article className="profile-card">
+            <div className="profile-card-head">
+              <h3 className="profile-card-title">Recent activity</h3>
+              <p className="profile-card-sub">
+                {isViewingTeammate
+                  ? "Latest conversations, replies, and decisions this teammate touched."
+                  : "Latest conversations and bookmarks tied to your record."}
+              </p>
+            </div>
+            <div className="profile-activity">
               {activityItems.length === 0 ? (
-                <div style={emptyState(palette)}>
+                <div className="profile-empty">
                   {isViewingTeammate ? "No teammate activity is visible yet." : "No profile activity yet."}
                 </div>
               ) : (
@@ -666,65 +514,52 @@ function Profile() {
                   <ActivityItem
                     key={`${item.type}-${item.id || index}`}
                     item={item}
-                    palette={palette}
                   />
                 ))
               )}
             </div>
           </article>
         </div>
-      </section>
+      </div>
 
-      <article style={panelStyle(palette)}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
+      {/* Team directory */}
+      <article className="profile-card">
+        <div className="profile-directory-head">
           <div>
-            <h2 style={{ margin: 0, color: palette.text, fontSize: 18 }}>Team Directory</h2>
-            <p style={{ margin: "5px 0 0", color: palette.muted, fontSize: 13 }}>
-              Open teammate profiles directly from the workspace instead of relying on admin-only screens.
-            </p>
+            <h3 className="profile-card-title">Team directory</h3>
+            <p className="profile-card-sub">Open teammate profiles without going through admin screens.</p>
           </div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, color: palette.muted, fontSize: 13 }}>
-            <UserGroupIcon style={{ width: 16, height: 16 }} />
-            {directoryMembers.length} team member{directoryMembers.length === 1 ? "" : "s"}
-          </div>
+          <span className="profile-directory-count">
+            <UserGroupIcon />
+            {directoryMembers.length} member{directoryMembers.length === 1 ? "" : "s"}
+          </span>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gap: 10,
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            marginTop: 14,
-          }}
-        >
+        <div className="profile-directory-grid">
           {directoryMembers.length === 0 ? (
-            <div style={emptyState(palette)}>No team members are available in this workspace yet.</div>
+            <div className="profile-empty">No team members are available in this workspace yet.</div>
           ) : (
             directoryMembers.map((member) => {
               const memberName = member.full_name || member.username || "Member";
               const isCurrent = member.id === subjectId;
               const isSelfMember = member.id === user?.id;
-
               return (
-                <div key={member.id} style={directoryCardStyle(palette, isCurrent)}>
-                  <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-                    <p style={{ margin: 0, color: palette.text, fontSize: 14, fontWeight: 700 }}>{memberName}</p>
-                    <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>{member.email}</p>
+                <div key={member.id} className={`profile-directory-card${isCurrent ? " is-current" : ""}`}>
+                  <div>
+                    <p className="profile-member-name">{memberName}</p>
+                    <p className="profile-member-email">{member.email || "—"}</p>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <span style={miniChip(palette)}>{member.role}</span>
+                  <div className="profile-member-foot">
+                    <span className={`profile-chip${isCurrent ? " is-active" : ""}`}>
+                      {member.role || "member"}
+                    </span>
                     {isCurrent ? (
-                      <span style={miniChip(palette, true)}>Viewing</span>
+                      <span className="profile-chip is-active">Viewing</span>
                     ) : (
-                      <Link to={isSelfMember ? "/profile" : `/profile/${member.id}`} style={actionLinkStyle(palette, "ghost")}>
+                      <Link
+                        to={isSelfMember ? "/profile" : `/profile/${member.id}`}
+                        className="profile-link-btn"
+                      >
                         {isSelfMember ? "My profile" : "Open profile"}
                       </Link>
                     )}
@@ -739,99 +574,60 @@ function Profile() {
   );
 }
 
-function Field({ label, as = "input", palette, children, ...props }) {
-  const shared = {
-    width: "100%",
-    borderRadius: 10,
-    border: `1px solid ${palette.border}`,
-    background: palette.panelAlt,
-    color: palette.text,
-    padding: "10px 12px",
-    fontSize: 14,
-    outline: "none",
-  };
-
+function Field({ label, as = "input", children, ...props }) {
   return (
-    <label style={{ display: "grid", gap: 6 }}>
-      <span style={{ fontSize: 12, color: palette.muted, fontWeight: 700, letterSpacing: "0.03em", textTransform: "uppercase" }}>
-        {label}
-      </span>
+    <label className="profile-field">
+      <span className="profile-label">{label}</span>
       {as === "textarea" ? (
-        <textarea {...props} style={shared} />
+        <textarea className="profile-input" {...props} />
       ) : as === "select" ? (
-        <select {...props} style={shared}>
-          {children}
-        </select>
+        <select className="profile-input" {...props}>{children}</select>
       ) : (
-        <input {...props} style={shared} />
+        <input className="profile-input" {...props} />
       )}
     </label>
   );
 }
 
-function InfoStat({ label, value, palette }) {
+function InfoStat({ label, value }) {
   return (
-    <div
-      style={{
-        borderRadius: 12,
-        border: `1px solid ${palette.border}`,
-        background: palette.panelAlt,
-        padding: "12px 12px",
-      }}
-    >
-      <p style={eyebrowStyle(palette)}>{label}</p>
-      <p style={{ margin: "6px 0 0", color: palette.text, fontSize: 14, fontWeight: 700 }}>{value}</p>
+    <div className="profile-info-stat">
+      <p className="profile-info-stat-label">{label}</p>
+      <p className="profile-info-stat-value">{value}</p>
     </div>
   );
 }
 
-function ActivityItem({ item, palette }) {
-  const { icon: Icon, color } = activityPresentation(item.type, palette);
+function ActivityItem({ item }) {
+  const { Icon, color } = activityPresentation(item.type);
   const isLink = Boolean(item.href);
   const Wrapper = isLink ? Link : "div";
   const wrapperProps = isLink ? { to: item.href } : {};
-
   return (
-    <Wrapper
-      {...wrapperProps}
-      style={{
-        ...activityRow(palette),
-        textDecoration: "none",
-      }}
-    >
-      <Icon style={{ width: 15, height: 15, color }} />
-      <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
-        <p style={activityText(palette)}>{item.title || "Untitled activity"}</p>
-        <p style={{ margin: 0, color: palette.muted, fontSize: 12 }}>
-          {[item.subtitle, formatDate(item.timestamp)].filter(Boolean).join(" | ")}
+    <Wrapper {...wrapperProps} className="profile-activity-row">
+      <Icon style={{ color }} />
+      <div style={{ minWidth: 0 }}>
+        <p className="profile-activity-title">{item.title || "Untitled activity"}</p>
+        <p className="profile-activity-meta">
+          {[item.subtitle, formatDate(item.timestamp)].filter(Boolean).join(" · ")}
         </p>
       </div>
     </Wrapper>
   );
 }
 
-function activityPresentation(type, palette) {
-  if (type === "decision") {
-    return { icon: CheckBadgeIcon, color: "#86c8ff" };
-  }
-  if (type === "reply") {
-    return { icon: ClockIcon, color: palette.success };
-  }
-  if (type === "bookmark") {
-    return { icon: DocumentTextIcon, color: palette.success };
-  }
-  return { icon: CalendarDaysIcon, color: palette.accent };
+function activityPresentation(type) {
+  if (type === "decision") return { Icon: CheckBadgeIcon, color: "#60a5fa" };
+  if (type === "reply") return { Icon: ClockIcon, color: "#34d399" };
+  if (type === "bookmark") return { Icon: DocumentTextIcon, color: "#34d399" };
+  return { Icon: CalendarDaysIcon, color: "#b095ff" };
 }
 
 function formatDate(value) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function toTimestamp(value) {
@@ -839,137 +635,6 @@ function toTimestamp(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 0;
   return date.getTime();
-}
-
-function panelStyle(palette) {
-  return {
-    borderRadius: 16,
-    background: palette.panelBg,
-    border: `1px solid ${palette.border}`,
-    padding: 16,
-  };
-}
-
-function eyebrowStyle(palette) {
-  return {
-    margin: 0,
-    color: palette.muted,
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-  };
-}
-
-function actionButtonStyle(palette, variant, disabled) {
-  const isPrimary = variant === "primary";
-  return {
-    marginTop: 4,
-    border: `1px solid ${palette.border}`,
-    background: isPrimary ? palette.accent : "transparent",
-    color: isPrimary ? "var(--app-button-text)" : palette.text,
-    padding: "10px 14px",
-    borderRadius: 10,
-    cursor: disabled ? "not-allowed" : "pointer",
-    fontWeight: 700,
-    opacity: disabled ? 0.7 : 1,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    justifyContent: "center",
-  };
-}
-
-function actionLinkStyle(palette, variant) {
-  const isGhost = variant === "ghost";
-  return {
-    border: `1px solid ${palette.border}`,
-    background: isGhost ? "transparent" : palette.accent,
-    color: isGhost ? palette.text : "var(--app-button-text)",
-    padding: "9px 12px",
-    borderRadius: 10,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    fontSize: 13,
-    fontWeight: 700,
-    textDecoration: "none",
-  };
-}
-
-function statusChip(palette) {
-  return {
-    padding: "8px 12px",
-    borderRadius: 999,
-    background: palette.panelAlt,
-    border: `1px solid ${palette.border}`,
-    color: palette.text,
-    fontSize: 12,
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-  };
-}
-
-function miniChip(palette, active = false) {
-  return {
-    padding: "5px 9px",
-    borderRadius: 999,
-    background: active ? palette.softAccent : palette.panelAlt,
-    border: `1px solid ${palette.border}`,
-    color: palette.text,
-    fontSize: 11,
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.04em",
-  };
-}
-
-function emptyState(palette) {
-  return {
-    borderRadius: 12,
-    border: `1px dashed ${palette.border}`,
-    padding: "14px 12px",
-    color: palette.muted,
-    fontSize: 13,
-    textAlign: "center",
-    background: palette.pageBg,
-  };
-}
-
-function activityRow(palette) {
-  return {
-    display: "grid",
-    gridTemplateColumns: "15px minmax(0,1fr)",
-    alignItems: "start",
-    gap: 8,
-    borderRadius: 10,
-    border: `1px solid ${palette.border}`,
-    padding: "10px 11px",
-    background: palette.panelAlt,
-  };
-}
-
-function activityText(palette) {
-  return {
-    margin: 0,
-    color: palette.text,
-    fontSize: 13,
-    lineHeight: 1.35,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  };
-}
-
-function directoryCardStyle(palette, active) {
-  return {
-    display: "grid",
-    gap: 10,
-    borderRadius: 12,
-    border: `1px solid ${palette.border}`,
-    padding: "12px 12px",
-    background: active ? palette.softAccent : palette.panelAlt,
-  };
 }
 
 export default Profile;

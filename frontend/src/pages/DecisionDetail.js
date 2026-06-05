@@ -1,1397 +1,1138 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
-  ArrowDownTrayIcon,
   ArrowLeftIcon,
-  ArrowPathIcon,
+  ArrowRightIcon,
+  BoltIcon,
   CalendarIcon,
   ChartBarIcon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   ExclamationTriangleIcon,
+  LightBulbIcon,
   LinkIcon,
+  PencilSquareIcon,
+  PlusIcon,
   SparklesIcon,
-  UserIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useTheme } from "../utils/ThemeAndAccessibility";
-import { getProjectPalette, getProjectUi } from "../utils/projectUi";
-import RichTextRenderer from "../components/RichTextRenderer";
-import DecisionIllustration from "../components/DecisionIllustration";
-import ContextPanel from "../components/ContextPanel";
-import QuickLink from "../components/QuickLink";
-import { WorkspaceEmptyState, WorkspaceHero, WorkspacePanel, WorkspaceToolbar } from "../components/WorkspaceChrome";
-import AIAssistant from "../components/AIAssistant";
 import api from "../services/api";
-import { createPlainTextPreview } from "../utils/textPreview";
-import { buildAskRecallPath } from "../utils/askRecall";
+import { useToast } from "../components/Toast";
+import {
+  Avatar,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  Field,
+  IconButton,
+  Lozenge,
+  PageHeader,
+  SectionMessage,
+  Tabs,
+} from "../components/atlas";
+import { useAgentContextHint, useAgentDock } from "../components/AgentDock";
+import "./DecisionDetail.css";
 
-function DecisionDetail() {
+// ─── constants ──────────────────────────────────────────────────────────────
+
+const STATUS_OPTIONS = [
+  { value: "proposed", label: "Proposed", variant: "new" },
+  { value: "under_review", label: "Under Review", variant: "moved" },
+  { value: "approved", label: "Approved", variant: "success" },
+  { value: "rejected", label: "Rejected", variant: "removed" },
+  { value: "implemented", label: "Implemented", variant: "success" },
+  { value: "cancelled", label: "Cancelled", variant: "default" },
+];
+
+const IMPACT_LEVELS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "critical", label: "Critical" },
+];
+
+const METRIC_KINDS = [
+  { value: "number", label: "Number" },
+  { value: "percent", label: "Percent" },
+  { value: "binary", label: "Yes / No" },
+  { value: "text", label: "Qualitative" },
+];
+
+const DRIFT_BAND_META = {
+  on_track: { label: "On track", tone: "success", color: "#00875A" },
+  exceeded: { label: "Exceeded", tone: "success", color: "#006644" },
+  drifting: { label: "Drifting", tone: "moved", color: "#FF8B00" },
+  off_track: { label: "Off track", tone: "removed", color: "#DE350B" },
+  unknown: { label: "Pending", tone: "default", color: "#7A869A" },
+  no_outcomes: { label: "No outcomes yet", tone: "default", color: "#7A869A" },
+  mixed: { label: "Mixed", tone: "moved", color: "#FF8B00" },
+};
+
+const MARKDOWN_PLUGINS = [remarkGfm];
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function formatDate(value, opts) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, opts || { month: "short", day: "numeric", year: "numeric" });
+}
+
+function statusVariant(s) {
+  return STATUS_OPTIONS.find((o) => o.value === s)?.variant || "default";
+}
+
+function impactVariant(level) {
+  if (level === "critical" || level === "high") return "removed";
+  if (level === "medium") return "moved";
+  return "default";
+}
+
+function describeTarget(p) {
+  const t = p?.target_value || {};
+  if (p?.metric_kind === "binary") return t.value ? "Yes" : "No";
+  if (p?.metric_kind === "text") return t.value ? String(t.value) : "—";
+  if (t.value === undefined || t.value === null) return "—";
+  const unit = t.unit ? ` ${t.unit}` : p?.metric_kind === "percent" ? "%" : "";
+  return `${t.value}${unit}`;
+}
+
+function describeObserved(p, c) {
+  if (!c) return "—";
+  const v = c.observed_value || {};
+  if (p?.metric_kind === "binary") return v.value ? "Yes" : "No";
+  if (p?.metric_kind === "text") return v.value ? String(v.value) : "—";
+  if (v.value === undefined || v.value === null) return "—";
+  const unit = v.unit ? ` ${v.unit}` : p?.metric_kind === "percent" ? "%" : "";
+  return `${v.value}${unit}`;
+}
+
+function isOverdue(p) {
+  if (!p?.check_at) return false;
+  const d = new Date(p.check_at);
+  if (isNaN(d.getTime())) return false;
+  return d.getTime() < Date.now() && !p.latest_check;
+}
+
+// ─── page ───────────────────────────────────────────────────────────────────
+
+export default function DecisionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { darkMode } = useTheme();
-  const palette = useMemo(() => getProjectPalette(darkMode), [darkMode]);
-  const ui = useMemo(() => getProjectUi(palette), [palette]);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1100);
+  const toast = useToast?.() || { success: () => {}, error: () => {} };
+  const agentDock = useAgentDock();
 
   const [decision, setDecision] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [showLinkPR, setShowLinkPR] = useState(false);
-  const [prUrl, setPrUrl] = useState("");
-  const [linking, setLinking] = useState(false);
-  const [outcomeSaving, setOutcomeSaving] = useState(false);
-  const [outcomeError, setOutcomeError] = useState("");
-  const [outcomeMessage, setOutcomeMessage] = useState("");
-  const [impactTrail, setImpactTrail] = useState({ nodes: [], edges: [] });
-  const [impactTrailLoading, setImpactTrailLoading] = useState(false);
-  const [driftAlert, setDriftAlert] = useState(null);
-  const [orchestrating, setOrchestrating] = useState(false);
-  const [replayLoading, setReplayLoading] = useState(false);
-  const [replayError, setReplayError] = useState("");
-  const [replayTaskMessage, setReplayTaskMessage] = useState("");
-  const [replayTaskSaving, setReplayTaskSaving] = useState(false);
-  const [replayResult, setReplayResult] = useState(null);
-  const [exporting, setExporting] = useState(false);
-  const [contextRefreshKey, setContextRefreshKey] = useState(0);
-  const [githubTimeline, setGithubTimeline] = useState(null);
-  const [githubLoading, setGithubLoading] = useState(false);
-  const [replayForm, setReplayForm] = useState({
-    alternative_title: "",
-    alternative_summary: "",
-    risk_tolerance: "balanced",
-    execution_speed: "normal",
-    impact_level: "medium",
-  });
-  const [outcomeForm, setOutcomeForm] = useState({
-    was_successful: "",
-    review_confidence: "3",
-    outcome_notes: "",
-    impact_review_notes: "",
-    lessons_learned: "",
-    success_metrics_text: "{}",
-  });
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState("overview");
 
-  const fetchDecision = async () => {
+  // Intelligence state
+  const [predictions, setPredictions] = useState([]);
+  const [retros, setRetros] = useState([]);
+  const [twins, setTwins] = useState([]);
+  const [drift, setDrift] = useState(null);
+
+  // Modals / inline forms
+  const [showAddPrediction, setShowAddPrediction] = useState(false);
+  const [showAddRetro, setShowAddRetro] = useState(false);
+  const [logOutcomeFor, setLogOutcomeFor] = useState(null);
+  const [twinPremise, setTwinPremise] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // Agent dock context — uses decision-reviewer specialist
+  useAgentContextHint(
+    decision
+      ? {
+          kind: "decision",
+          label: `Decision · ${decision.title || `#${id}`}`,
+          goalPrefix: `Decision "${decision.title || `#${id}`}" (status: ${decision.status || "unknown"}) — `,
+          profile_slug: "decision-reviewer",
+        }
+      : null
+  );
+
+  // ─── data ────────────────────────────────────────────────────────────────
+
+  const fetchDecision = useCallback(async () => {
     try {
       const res = await api.get(`/api/decisions/${id}/`);
-      setDecision(res.data);
-      setReplayForm((prev) => ({
-        ...prev,
-        impact_level: res.data.impact_level || "medium",
-      }));
-      setOutcomeForm({
-        was_successful:
-          res.data.was_successful === true
-            ? "true"
-            : res.data.was_successful === false
-              ? "false"
-              : "",
-        review_confidence: String(
-          res.data.success_metrics?._review_meta?.review_confidence || 3
-        ),
-        outcome_notes: res.data.outcome_notes || "",
-        impact_review_notes: res.data.impact_review_notes || "",
-        lessons_learned: res.data.lessons_learned || "",
-        success_metrics_text: JSON.stringify(res.data.success_metrics || {}, null, 2),
-      });
-    } catch (error) {
-      console.error("Failed to fetch decision:", error);
-      setDecision(null);
+      setDecision(res.data?.data || res.data);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to load decision");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchDecisionIntelligence = async () => {
+  const fetchIntelligence = useCallback(async () => {
     try {
-      setImpactTrailLoading(true);
-      const [trailRes, driftRes] = await Promise.all([
-        api.get(`/api/decisions/${id}/impact-trail/?depth=2`),
-        api.get("/api/decisions/outcomes/drift-alerts/"),
+      const [predRes, retroRes, twinRes, driftRes] = await Promise.allSettled([
+        api.get(`/api/decisions/${id}/predictions/`),
+        api.get(`/api/decisions/${id}/retrospectives/`),
+        api.get(`/api/decisions/${id}/twins/`),
+        api.get(`/api/decisions/${id}/drift/`),
       ]);
-      setImpactTrail({
-        nodes: trailRes.data?.nodes || [],
-        edges: trailRes.data?.edges || [],
-      });
-      const drift = (driftRes.data?.items || []).find(
-        (item) => Number(item.decision_id) === Number(id)
-      );
-      setDriftAlert(drift || null);
-    } catch (error) {
-      console.error("Failed to fetch decision intelligence:", error);
-      setImpactTrail({ nodes: [], edges: [] });
-      setDriftAlert(null);
-    } finally {
-      setImpactTrailLoading(false);
-    }
-  };
-
-  const fetchDecisionGithub = async () => {
-    try {
-      setGithubLoading(true);
-      const res = await api.get(`/api/integrations/fresh/github/decisions/${id}/timeline/`);
-      setGithubTimeline(res.data);
-    } catch (error) {
-      console.error("Failed to fetch decision GitHub timeline:", error);
-      setGithubTimeline(null);
-    } finally {
-      setGithubLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDecision();
-    fetchDecisionIntelligence();
-    fetchDecisionGithub();
+      if (predRes.status === "fulfilled") setPredictions(predRes.value.data?.results || []);
+      if (retroRes.status === "fulfilled") setRetros(retroRes.value.data?.results || []);
+      if (twinRes.status === "fulfilled") setTwins(twinRes.value.data?.results || []);
+      if (driftRes.status === "fulfilled") setDrift(driftRes.value.data || null);
+    } catch (_) {}
   }, [id]);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1100);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    fetchDecision();
+    fetchIntelligence();
+  }, [fetchDecision, fetchIntelligence]);
 
-  const handleLinkPR = async (event) => {
-    event.preventDefault();
-    if (!prUrl.trim()) return;
-    setLinking(true);
+  // ─── status change ──────────────────────────────────────────────────────
 
+  const handleStatusChange = async (next) => {
+    if (!decision || decision.status === next) return;
     try {
-      await api.post(`/api/decisions/${id}/link-pr/`, { pr_url: prUrl });
-      setPrUrl("");
-      setShowLinkPR(false);
-      fetchDecision();
-      fetchDecisionGithub();
-    } catch (error) {
-      console.error("Failed to link PR:", error);
-      alert("Failed to link PR");
-    } finally {
-      setLinking(false);
-    }
-  };
-
-  const handleSaveOutcome = async (event) => {
-    event.preventDefault();
-    setOutcomeError("");
-    setOutcomeMessage("");
-    if (decision.status !== "implemented") {
-      setOutcomeError("Outcome review is available after implementation.");
-      return;
-    }
-    if (!outcomeForm.was_successful) {
-      setOutcomeError("Select success or failure.");
-      return;
-    }
-
-    let successMetrics = {};
-    try {
-      successMetrics = outcomeForm.success_metrics_text?.trim()
-        ? JSON.parse(outcomeForm.success_metrics_text)
-        : {};
-    } catch {
-      setOutcomeError("Success metrics must be valid JSON.");
-      return;
-    }
-
-    setOutcomeSaving(true);
-    try {
-      await api.post(`/api/decisions/${id}/outcome-review/`, {
-        was_successful: outcomeForm.was_successful === "true",
-        review_confidence: Number(outcomeForm.review_confidence),
-        outcome_notes: outcomeForm.outcome_notes,
-        impact_review_notes: outcomeForm.impact_review_notes,
-        lessons_learned: outcomeForm.lessons_learned,
-        success_metrics: successMetrics,
-      });
+      await api.put(`/api/decisions/${id}/`, { status: next });
+      toast.success?.(`Status updated to ${next.replace(/_/g, " ")}`);
       await fetchDecision();
-      await fetchDecisionIntelligence();
-      setOutcomeMessage("Outcome review saved.");
-    } catch (error) {
-      setOutcomeError(error?.response?.data?.error || "Failed to save outcome review.");
-    } finally {
-      setOutcomeSaving(false);
+    } catch (err) {
+      toast.error?.(err?.response?.data?.detail || "Could not update status");
     }
   };
 
-  const runFollowUpOrchestrator = async () => {
-    setOutcomeError("");
-    setOutcomeMessage("");
-    setOrchestrating(true);
+  // ─── prediction / outcome / retro / twin handlers ───────────────────────
+
+  const handleAddPrediction = async (form) => {
+    setBusy(true);
     try {
-      const res = await api.post("/api/decisions/outcomes/follow-up/run/", {
-        decision_id: Number(id),
-      });
-      const createdCount = res.data?.created_count || 0;
-      setOutcomeMessage(
-        createdCount > 0
-          ? `Created ${createdCount} follow-up task(s).`
-          : "No follow-up task created (already exists or decision is not eligible)."
-      );
-      await fetchDecisionIntelligence();
-    } catch (error) {
-      setOutcomeError(error?.response?.data?.error || "Failed to run follow-up orchestrator.");
+      await api.post(`/api/decisions/${id}/predictions/`, form);
+      toast.success?.("Prediction logged");
+      setShowAddPrediction(false);
+      await Promise.all([fetchIntelligence()]);
+    } catch (err) {
+      toast.error?.(err?.response?.data?.error || "Could not save prediction");
     } finally {
-      setOrchestrating(false);
+      setBusy(false);
     }
   };
 
-  const runReplaySimulation = async () => {
-    setReplayError("");
-    setReplayTaskMessage("");
-    setReplayLoading(true);
+  const handleLogOutcome = async (predictionId, payload) => {
+    setBusy(true);
     try {
-      const res = await api.post(`/api/decisions/${id}/replay-simulator/`, replayForm);
-      setReplayResult(res.data);
-    } catch (error) {
-      setReplayResult(null);
-      setReplayError(error?.response?.data?.error || "Failed to run decision replay simulation.");
+      const { data } = await api.post(`/api/decisions/predictions/${predictionId}/checks/`, payload);
+      toast.success?.("Outcome logged");
+      if (data?.auto_opened_retrospective_id) {
+        toast.success?.("Drifted off track — retrospective auto-opened");
+      }
+      setLogOutcomeFor(null);
+      await fetchIntelligence();
+    } catch (err) {
+      toast.error?.(err?.response?.data?.error || "Could not log outcome");
     } finally {
-      setReplayLoading(false);
+      setBusy(false);
     }
   };
 
-  const createTasksFromSimulation = async () => {
-    if (!replayResult?.recommended_safeguards?.length) return;
-    setReplayTaskSaving(true);
-    setReplayError("");
-    setReplayTaskMessage("");
+  const handleAddRetro = async (form) => {
+    setBusy(true);
     try {
-      const res = await api.post(`/api/decisions/${id}/replay-simulator/create-follow-up/`, {
-        safeguards: replayResult.recommended_safeguards,
-        scenario_title: replayResult?.scenario?.alternative_title || replayForm.alternative_title,
-      });
-      const createdCount = res.data?.created_count || 0;
-      setReplayTaskMessage(
-        createdCount > 0
-          ? `Created ${createdCount} follow-up task(s) from simulation safeguards.`
-          : "No new tasks created (possible duplicates)."
-      );
-    } catch (error) {
-      setReplayError(error?.response?.data?.error || "Failed to create follow-up tasks from simulation.");
+      await api.post(`/api/decisions/${id}/retrospectives/`, form);
+      toast.success?.("Retrospective opened");
+      setShowAddRetro(false);
+      await fetchIntelligence();
+    } catch (err) {
+      toast.error?.(err?.response?.data?.error || "Could not open retrospective");
     } finally {
-      setReplayTaskSaving(false);
+      setBusy(false);
     }
   };
 
-  const handleApplyDecisionAI = ({ kind, summary, actionItems }) => {
-    if (kind === "summary" && summary) {
-      setOutcomeForm((prev) => ({
-        ...prev,
-        outcome_notes: prev.outcome_notes
-          ? `${prev.outcome_notes}\n\nAI summary:\n${summary}`
-          : summary,
-      }));
-      setActiveTab("outcome");
-      return;
-    }
-    if (kind === "actions" && Array.isArray(actionItems) && actionItems.length > 0) {
-      setOutcomeForm((prev) => ({
-        ...prev,
-        lessons_learned: `${prev.lessons_learned || ""}${prev.lessons_learned ? "\n\n" : ""}AI suggested follow-up:\n${actionItems.map((item) => `- ${item}`).join("\n")}`,
-      }));
-      setActiveTab("outcome");
-    }
-  };
-
-  const handleExportDecision = async () => {
-    setExporting(true);
+  const handleRunTwin = async () => {
+    const premise = twinPremise.trim();
+    if (!premise) return;
+    setBusy(true);
     try {
-      const response = await api.get("/api/recall/export/decision-pdf/", {
-        params: { id },
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `decision_${id}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Failed to export decision:", error);
-      alert("Failed to export decision");
+      await api.post(`/api/decisions/${id}/twins/`, { counterfactual_premise: premise });
+      toast.success?.("Twin queued — agent is analyzing");
+      setTwinPremise("");
+      await fetchIntelligence();
+    } catch (err) {
+      toast.error?.(err?.response?.data?.error || "Could not start twin");
     } finally {
-      setExporting(false);
+      setBusy(false);
     }
   };
+
+  // Poll for in-flight twins so their analysis shows up as the agent finishes.
+  useEffect(() => {
+    const pending = twins.filter((t) => t.status === "queued" || t.status === "running");
+    if (!pending.length) return undefined;
+    const timer = setTimeout(() => fetchIntelligence(), 4000);
+    return () => clearTimeout(timer);
+  }, [twins, fetchIntelligence]);
+
+  // ─── derived ────────────────────────────────────────────────────────────
+
+  const overdueCount = useMemo(() => predictions.filter(isOverdue).length, [predictions]);
+  const headlineBand = drift?.headline_band || "no_outcomes";
+  const tabs = useMemo(
+    () => [
+      { id: "overview", label: "Overview" },
+      { id: "predictions", label: "Predictions", count: predictions.length },
+      { id: "twins", label: "Twin runs", count: twins.length },
+      { id: "retros", label: "Retrospectives", count: retros.length },
+    ],
+    [predictions.length, twins.length, retros.length]
+  );
+
+  // ─── render ─────────────────────────────────────────────────────────────
 
   if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-        <div style={{ width: 30, height: 30, border: `2px solid ${palette.border}`, borderTopColor: palette.info, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-      </div>
-    );
+    return <div style={{ padding: 32, color: "var(--app-muted)" }}>Loading decision…</div>;
   }
-
   if (!decision) {
     return (
-      <div style={{ minHeight: "100vh" }}>
-        <div style={ui.container}>
-          <WorkspacePanel
-            palette={palette}
-            darkMode={darkMode}
-            variant="memory"
-            eyebrow="Decision"
-            title="Decision not found"
-            description="The decision record may have been removed or is no longer available."
-          >
-            <WorkspaceEmptyState
-              palette={palette}
-              darkMode={darkMode}
-              variant="memory"
-              title="No decision record to show"
-              description="Return to the decision log to open another record."
-              action={
-                <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
-                  Back to decisions
-                </button>
-              }
-            />
-          </WorkspacePanel>
-        </div>
+      <div style={{ padding: 32 }}>
+        <SectionMessage tone="error" title="Decision not found">
+          {error || "We couldn't find that decision."}
+        </SectionMessage>
       </div>
     );
   }
 
-  const status = (decision.status || "proposed").replace("_", " ");
-  const impact = (decision.impact_level || "medium").replace("_", " ");
-  const reliabilityScore = decision.outcome_reliability?.score ?? 0;
-  const confidenceScore = decision.confidence?.score || 0;
-  const decisionMakerName =
-    decision.decision_maker_name ||
-    decision.decision_maker?.full_name ||
-    decision.decision_maker?.username ||
-    "Unknown";
-  const createdLabel = new Date(decision.created_at).toLocaleDateString();
-  const decisionDate = decision.decided_at
-    ? new Date(decision.decided_at).toLocaleDateString()
-    : "Awaiting final approval";
-  const linkedConversation = decision.conversation || null;
-  const decisionSummary = createPlainTextPreview(
-    decision.description,
-    "Open the overview tab to document the actual decision statement.",
-    240
-  );
-  const decisionAskRecallQuestion = `Summarize the decision "${decision.title}" and tell me what is still unresolved.`;
-  const rationaleSummary = createPlainTextPreview(
-    decision.rationale,
-    "Capture the rationale so future reviews can recover why this path was chosen.",
-    220
-  );
-  const reviewPosture = decision.review_completed_at
-    ? `Outcome review completed on ${new Date(decision.review_completed_at).toLocaleDateString()}.`
-    : decision.status === "implemented"
-      ? "Implementation is marked complete, but the outcome review is still open."
-      : "Outcome review will become more meaningful once implementation progresses.";
-  const implementationDeadlineLabel = decision.implementation_deadline
-    ? new Date(decision.implementation_deadline).toLocaleDateString()
-    : "No deadline set";
-  const decisionTabs = [
-    {
-      key: "overview",
-      label: "Overview",
-      description: "Recover the decision statement and the headline framing behind it.",
-    },
-    {
-      key: "rationale",
-      label: "Rationale",
-      description: "Inspect the why, the assumptions, and the pressure behind the call.",
-    },
-    {
-      key: "code",
-      label: "Engineering",
-      description: "Trace implementation evidence across pull requests, commits, and deployments.",
-    },
-    {
-      key: "details",
-      label: "Risk Notes",
-      description: "Review failure modes, alternatives, and supporting context around the decision.",
-    },
-    {
-      key: "outcome",
-      label: "Outcome Review",
-      description: "Record whether the decision worked and capture lessons from implementation.",
-    },
-    {
-      key: "impact",
-      label: "Impact Trail",
-      description: "See downstream graph links and how the record connects to other knowledge.",
-    },
-    {
-      key: "replay",
-      label: "Replay",
-      description: "Model alternate paths and turn simulation safeguards into follow-up work.",
-    },
-  ];
-  const activeTabMeta = decisionTabs.find((tab) => tab.key === activeTab) || decisionTabs[0];
-
   return (
-    <div style={{ minHeight: "100vh", position: "relative", fontFamily: 'var(--font-primary, "League Spartan"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-      <div
-        style={{
-          ...ambientLayer,
-          background: darkMode
-            ? "radial-gradient(circle at 8% 3%, rgba(59,130,246,0.18), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.1), transparent 30%), radial-gradient(circle at 52% 0%, rgba(99,102,241,0.1), transparent 24%)"
-            : "radial-gradient(circle at 8% 3%, rgba(59,130,246,0.12), transparent 34%), radial-gradient(circle at 90% 8%, rgba(16,185,129,0.08), transparent 30%), radial-gradient(circle at 52% 0%, rgba(99,102,241,0.08), transparent 24%)",
-        }}
-      />
-      <div style={{ ...ui.container, display: "grid", gap: 16 }}>
-        <WorkspaceHero
-          palette={palette}
-          darkMode={darkMode}
-          variant="memory"
-          eyebrow="Decision Record"
-          title={decision.title}
-          description="Recover the reasoning, confidence, review signals, and downstream impact from one structured decision workspace."
-          stats={[
-            { label: "Confidence", value: `${confidenceScore}%`, helper: "Current decision confidence score." },
-            { label: "Reliability", value: `${reliabilityScore}%`, helper: "Outcome reliability recorded so far." },
-            { label: "Impact trail", value: `${impactTrail.edges?.length || 0}`, helper: "Connected links in the graph trail." },
+    <div className="di">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "24px 32px 0" }}>
+        <IconButton icon={<ArrowLeftIcon style={{ width: 16, height: 16 }} />} label="Back" onClick={() => navigate(-1)} />
+        <Breadcrumb
+          items={[
+            { label: "Knoledgr", to: "/" },
+            { label: "Decisions", to: "/decisions" },
+            { label: decision.title || `#${id}` },
           ]}
-          aside={<DecisionIllustration decision={decision} darkMode={darkMode} size={96} />}
+        />
+      </div>
+
+      <div style={{ padding: "0 32px" }}>
+        <PageHeader
+          title={
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {decision.title}
+              <Lozenge variant={statusVariant(decision.status)}>{decision.status?.replace(/_/g, " ") || "unknown"}</Lozenge>
+              {decision.impact_level ? <Lozenge variant={impactVariant(decision.impact_level)}>{decision.impact_level} impact</Lozenge> : null}
+            </span>
+          }
+          subtitle={decision.description ? decision.description.slice(0, 220) : ""}
           actions={
             <>
-              <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
-                <ArrowLeftIcon style={{ width: 14, height: 14 }} /> Back to Decisions
-              </button>
-              <button
-                className="ui-btn-polish ui-focus-ring"
-                onClick={() => navigate(buildAskRecallPath(decisionAskRecallQuestion))}
-                style={ui.secondaryButton}
+              <Button
+                appearance="subtle"
+                iconBefore={<BoltIcon style={{ width: 14, height: 14 }} />}
+                onClick={() => agentDock.open()}
+                title="Ask the agent about this decision (⌘J)"
               >
-                <SparklesIcon style={{ width: 14, height: 14 }} /> Ask Recall
-              </button>
-              <QuickLink
-                sourceType="decisions.decision"
-                sourceId={id}
-                onLinked={() => {
-                  setContextRefreshKey((current) => current + 1);
-                  fetchDecisionIntelligence();
-                }}
-              />
-              <button className="ui-btn-polish ui-focus-ring" onClick={handleExportDecision} disabled={exporting} style={ui.secondaryButton}>
-                <ArrowDownTrayIcon style={{ width: 14, height: 14 }} /> {exporting ? "Exporting..." : "Export PDF"}
-              </button>
+                Ask Agent
+              </Button>
+              <StatusSelect status={decision.status} onChange={handleStatusChange} />
             </>
           }
+          tabs={<Tabs tabs={tabs} value={tab} onChange={setTab} />}
+          style={{ padding: "0", marginTop: 12, background: "transparent" }}
         />
 
-        <WorkspaceToolbar palette={palette} darkMode={darkMode} variant="memory">
-          <div
-            style={{
-              ...detailCommandGrid,
-              gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1.45fr) minmax(300px,0.92fr)",
-            }}
+        {/* Drift headline — always visible across tabs to keep moat features front-and-center */}
+        {predictions.length > 0 ? <DriftHeadline band={headlineBand} drift={drift} /> : null}
+        {overdueCount > 0 ? (
+          <SectionMessage
+            tone="warning"
+            title={`${overdueCount} prediction${overdueCount === 1 ? "" : "s"} need an outcome check`}
+            style={{ marginTop: 12 }}
+            actions={
+              <Button appearance="subtle" size="sm" onClick={() => setTab("predictions")}>
+                Log outcomes
+              </Button>
+            }
           >
-            <section
-              className="ui-card-lift ui-smooth"
-              style={{ ...detailCommandCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}
-            >
-              <div style={detailCommandHead}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
-                  Record control
-                </p>
-                <h2 style={{ ...detailCommandTitle, color: palette.text }}>
-                  Move between evidence, outcome, and replay without losing the original call
-                </h2>
-                <p style={{ ...detailCommandCopy, color: palette.muted }}>
-                  Keep the decision anchored to its owner, confidence, and implementation status while switching between the parts of the record that matter most right now.
-                </p>
-              </div>
+            The check-in date has passed without a logged observation. Capture reality while context is fresh.
+          </SectionMessage>
+        ) : null}
+      </div>
 
-              <div style={detailMetaRail}>
-                <Pill text={status} tone="blue" palette={palette} />
-                <Pill text={impact} tone="amber" palette={palette} />
-                <span style={toolbarMetaChip(palette)}>
-                  <UserIcon style={{ width: 14, height: 14 }} /> {decisionMakerName}
-                </span>
-                <span style={toolbarMetaChip(palette)}>
-                  <CalendarIcon style={{ width: 14, height: 14 }} /> Logged {createdLabel}
-                </span>
-                <span style={toolbarMetaChip(palette)}>
-                  <ChartBarIcon style={{ width: 14, height: 14 }} /> {confidenceScore}% confidence
-                </span>
-              </div>
+      <div className="di-grid" style={{ padding: "16px 32px 32px" }}>
+        <section style={{ minWidth: 0 }}>
+          {tab === "overview" ? (
+            <OverviewTab decision={decision} predictions={predictions} retros={retros} />
+          ) : null}
+          {tab === "predictions" ? (
+            <PredictionsTab
+              predictions={predictions}
+              onAdd={() => setShowAddPrediction(true)}
+              onLogOutcome={(pid) => setLogOutcomeFor(pid)}
+              logOutcomeFor={logOutcomeFor}
+              onCancelOutcome={() => setLogOutcomeFor(null)}
+              onSubmitOutcome={handleLogOutcome}
+              busy={busy}
+            />
+          ) : null}
+          {tab === "twins" ? (
+            <TwinsTab
+              twins={twins}
+              premise={twinPremise}
+              setPremise={setTwinPremise}
+              onRun={handleRunTwin}
+              busy={busy}
+            />
+          ) : null}
+          {tab === "retros" ? (
+            <RetrospectivesTab
+              retros={retros}
+              onAdd={() => setShowAddRetro(true)}
+            />
+          ) : null}
+        </section>
 
-              <div style={detailTabRail}>
-                {decisionTabs.map((tab) => (
-                  <button
-                    key={tab.key}
-                    className="ui-btn-polish ui-focus-ring"
-                    onClick={() => setActiveTab(tab.key)}
-                    style={detailTabButton(palette, activeTab === tab.key)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+        <aside className="di-side">
+          <DetailCard decision={decision} />
+        </aside>
+      </div>
 
-              <div style={detailActionRail}>
-                <button className="ui-btn-polish ui-focus-ring" onClick={() => navigate("/decisions")} style={ui.secondaryButton}>
-                  All Decisions
-                </button>
-                <button className="ui-btn-polish ui-focus-ring" onClick={() => setActiveTab("outcome")} style={ui.secondaryButton}>
-                  Outcome Review
-                </button>
-                <button className="ui-btn-polish ui-focus-ring" onClick={fetchDecision} style={ui.secondaryButton}>
-                  <ArrowPathIcon style={{ width: 13, height: 13 }} /> Refresh
-                </button>
-                {linkedConversation ? (
-                  <button
-                    className="ui-btn-polish ui-focus-ring"
-                    onClick={() => navigate(`/conversations/${linkedConversation.id}`)}
-                    style={ui.secondaryButton}
-                  >
-                    Source thread
-                  </button>
-                ) : null}
-              </div>
+      {showAddPrediction ? (
+        <Modal title="Add a predicted outcome" onClose={() => setShowAddPrediction(false)}>
+          <AddPredictionForm
+            onSubmit={handleAddPrediction}
+            onCancel={() => setShowAddPrediction(false)}
+            busy={busy}
+          />
+        </Modal>
+      ) : null}
 
-              <AIAssistant
-                content={`${decision.title || ""}\n\n${decision.description || ""}\n\n${decision.rationale || ""}`}
-                contentType="decision"
-                onApply={handleApplyDecisionAI}
-              />
-            </section>
+      {showAddRetro ? (
+        <Modal title="Open a retrospective" onClose={() => setShowAddRetro(false)}>
+          <AddRetrospectiveForm
+            onSubmit={handleAddRetro}
+            onCancel={() => setShowAddRetro(false)}
+            busy={busy}
+          />
+        </Modal>
+      ) : null}
+    </div>
+  );
+}
 
-            <section
-              className="ui-card-lift ui-smooth"
-              style={{ ...detailCommandCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}
-            >
-              <div style={detailCommandHead}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
-                  Active view
-                </p>
-                <h2 style={{ ...detailCommandTitle, color: palette.text }}>{activeTabMeta.label}</h2>
-                <p style={{ ...detailCommandCopy, color: palette.muted }}>{activeTabMeta.description}</p>
-              </div>
+// ─── header pieces ──────────────────────────────────────────────────────────
 
-              <div style={detailSnapshotGrid}>
-                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Owner</p>
-                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{decisionMakerName}</p>
-                </div>
-                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Recorded</p>
-                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{createdLabel}</p>
-                </div>
-                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Decision date</p>
-                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{decisionDate}</p>
-                </div>
-                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Deadline</p>
-                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{implementationDeadlineLabel}</p>
-                </div>
-              </div>
-
-              <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
-                  Review posture
-                </p>
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.text }}>{reviewPosture}</p>
-              </div>
-            </section>
+function StatusSelect({ status, onChange }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <Button
+        appearance="default"
+        iconAfter={<ChevronDownIcon style={{ width: 12, height: 12 }} />}
+        onClick={() => setOpen((v) => !v)}
+      >
+        Move to…
+      </Button>
+      {open ? (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpen(false)} />
+          <div className="di-statusmenu">
+            {STATUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className="di-statusmenu-row"
+                disabled={opt.value === status}
+                onClick={() => {
+                  setOpen(false);
+                  onChange(opt.value);
+                }}
+              >
+                <Lozenge variant={opt.variant}>{opt.label}</Lozenge>
+                {opt.value === status ? <CheckCircleIcon style={{ width: 14, height: 14, color: "var(--g400)" }} /> : null}
+              </button>
+            ))}
           </div>
-        </WorkspaceToolbar>
+        </>
+      ) : null}
+    </div>
+  );
+}
 
-        <div className="ui-enter" style={{ ...mainGrid, gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 360px", gap: 14, "--ui-delay": "180ms" }}>
-          <section className="ui-card-lift ui-smooth" style={{ ...panelCard, border: `1px solid ${palette.border}`, ...memoryHeroSurface(darkMode) }}>
-            <div style={{ display: "grid", gap: 12, marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${palette.border}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
-                <div style={{ display: "grid", gap: 6, maxWidth: 760 }}>
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
-                    Decision Briefing
-                  </p>
-                  <h2 style={{ margin: 0, fontSize: "clamp(1.24rem,2vw,1.68rem)", color: palette.text }}>
-                    What changed, why it matters, and how reliable the record feels right now
-                  </h2>
-                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: palette.muted }}>
-                    {decisionSummary}
-                  </p>
-                </div>
-                <div style={{ display: "grid", gap: 8, minWidth: "min(100%, 220px)" }}>
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, padding: "10px 12px", ...memoryInsetSurface(darkMode) }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>Decision date</p>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{decisionDate}</p>
-                  </div>
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, padding: "10px 12px", ...memoryInsetSurface(darkMode) }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: palette.muted }}>Owner</p>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{decisionMakerName}</p>
-                  </div>
-                </div>
-              </div>
+function DriftHeadline({ band, drift }) {
+  const meta = DRIFT_BAND_META[band] || DRIFT_BAND_META.unknown;
+  const counts = (drift?.predictions || []).reduce(
+    (acc, p) => {
+      const b = p.latest_check?.drift_band || "unknown";
+      acc[b] = (acc[b] || 0) + 1;
+      return acc;
+    },
+    {}
+  );
+  return (
+    <div className={`di-drift di-drift--${band}`}>
+      <div className="di-drift-bar">
+        <div className={`di-drift-fill di-drift-fill--${band}`} />
+      </div>
+      <div className="di-drift-meta">
+        <span className="di-drift-tag" style={{ background: `${meta.color}1f`, color: meta.color }}>
+          <ChartBarIcon /> {meta.label}
+        </span>
+        <span className="di-drift-counts">
+          {Object.entries(counts).map(([key, count]) => {
+            const m = DRIFT_BAND_META[key] || DRIFT_BAND_META.unknown;
+            return (
+              <span key={key} className="di-drift-count">
+                <span className="di-drift-dot" style={{ background: m.color }} />
+                {m.label}: {count}
+              </span>
+            );
+          })}
+        </span>
+      </div>
+    </div>
+  );
+}
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Decision statement</p>
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{decisionSummary}</p>
-                </div>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Rationale snapshot</p>
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{rationaleSummary}</p>
-                </div>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Review posture</p>
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>{reviewPosture}</p>
-                </div>
-                {decision.impact_assessment ? (
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Impact Assessment</p>
-                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>{decision.impact_assessment}</p>
-                  </div>
-                ) : null}
-                {decision.tradeoffs ? (
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Tradeoffs</p>
-                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
-                      {Array.isArray(decision.tradeoffs) ? decision.tradeoffs.join(", ") : decision.tradeoffs}
-                    </p>
-                  </div>
-                ) : null}
-                {linkedConversation ? (
-                  <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: palette.text }}>Source Conversation</p>
-                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.text }}>
-                      {linkedConversation.title || `Conversation #${linkedConversation.id}`}
-                    </p>
-                    <p style={{ margin: "6px 0 0", fontSize: 12, lineHeight: 1.6, color: palette.muted }}>
-                      This decision stays linked to its original discussion thread.
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            </div>
+// ─── overview tab ───────────────────────────────────────────────────────────
 
-            <div style={{ display: "grid", gap: 6, marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${palette.border}` }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
-                {activeTabMeta.label}
-              </p>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.muted }}>
-                {activeTabMeta.description}
-              </p>
-            </div>
+function OverviewTab({ decision, predictions, retros }) {
+  const latestLesson = retros[0];
+  const informedBy = Array.isArray(decision.informed_by_decisions) ? decision.informed_by_decisions : [];
+  return (
+    <div className="di-overview">
+      {informedBy.length > 0 ? (
+        <PanelCard title="Informed by" accent="violet">
+          <p className="di-informed-text">
+            This decision was drafted after acknowledging lessons from{" "}
+            <strong>{informedBy.length}</strong> past decision{informedBy.length === 1 ? "" : "s"}:
+          </p>
+          <div className="di-informed-list">
+            {informedBy.map((pid) => (
+              <Link key={pid} to={`/decisions/${pid}`} className="di-informed-chip">
+                <LightBulbIcon />
+                #{pid}
+              </Link>
+            ))}
+          </div>
+        </PanelCard>
+      ) : null}
+      {decision.description ? (
+        <PanelCard title="Description">
+          <div className="di-md">
+            <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{decision.description}</ReactMarkdown>
+          </div>
+        </PanelCard>
+      ) : null}
+      {decision.rationale ? (
+        <PanelCard title="Rationale">
+          <div className="di-md">
+            <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{decision.rationale}</ReactMarkdown>
+          </div>
+        </PanelCard>
+      ) : null}
+      {decision.if_this_fails ? (
+        <PanelCard title="If this fails…">
+          <div className="di-md">
+            <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{decision.if_this_fails}</ReactMarkdown>
+          </div>
+        </PanelCard>
+      ) : null}
+      {predictions.length > 0 ? (
+        <PanelCard title="At a glance">
+          <ul className="di-glance">
+            {predictions.slice(0, 4).map((p) => {
+              const band = p.latest_check?.drift_band || "unknown";
+              const meta = DRIFT_BAND_META[band] || DRIFT_BAND_META.unknown;
+              return (
+                <li key={p.id}>
+                  <span className="di-glance-dim">{p.dimension}</span>
+                  <span className="di-glance-target">target: {describeTarget(p)}</span>
+                  <span className="di-glance-band" style={{ color: meta.color }}>
+                    <span className="di-drift-dot" style={{ background: meta.color }} />
+                    {meta.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </PanelCard>
+      ) : null}
+      {latestLesson ? (
+        <PanelCard
+          title="Latest lesson"
+          accent="violet"
+        >
+          <p className="di-lesson-text">{latestLesson.lesson || latestLesson.summary || "—"}</p>
+          {latestLesson.confidence_delta !== null && latestLesson.confidence_delta !== undefined ? (
+            <p className="di-lesson-meta">
+              Confidence delta: <strong>{latestLesson.confidence_delta > 0 ? "+" : ""}{latestLesson.confidence_delta}</strong>
+            </p>
+          ) : null}
+        </PanelCard>
+      ) : null}
+    </div>
+  );
+}
 
-            {activeTab === "overview" && <TextBlock title="Overview" text={decision.description} palette={palette} darkMode={darkMode} />}
-            {activeTab === "rationale" && <TextBlock title="Rationale" text={decision.rationale || "No rationale provided"} palette={palette} darkMode={darkMode} />}
+function PanelCard({ title, children, accent }) {
+  return (
+    <div className={`di-panel ${accent ? `di-panel--${accent}` : ""}`}>
+      <p className="di-panel-title">{title}</p>
+      <div>{children}</div>
+    </div>
+  );
+}
 
-            {activeTab === "code" && (
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: 16, color: palette.text }}>Related Code</h3>
-                  <button className="ui-btn-polish ui-focus-ring" onClick={() => setShowLinkPR((prev) => !prev)} style={ui.secondaryButton}>{showLinkPR ? "Cancel" : "Link PR"}</button>
-                </div>
+// ─── predictions tab ────────────────────────────────────────────────────────
 
-                {showLinkPR && (
-                  <form onSubmit={handleLinkPR} style={{ ...innerCard, border: `1px solid ${palette.border}`, marginBottom: 8, display: "grid", gap: 8, ...memoryInsetSurface(darkMode) }}>
-                    <input type="url" value={prUrl} onChange={(event) => setPrUrl(event.target.value)} placeholder="https://github.com/org/repo/pull/123" style={ui.input} />
-                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                      <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={!prUrl.trim() || linking} style={ui.primaryButton}>{linking ? "Linking..." : "Link"}</button>
-                    </div>
-                  </form>
-                )}
-                <DecisionEngineeringSection
-                  timeline={githubTimeline}
-                  loading={githubLoading}
-                  palette={palette}
-                  darkMode={darkMode}
-                />
-              </div>
-            )}
+function PredictionsTab({ predictions, onAdd, onLogOutcome, logOutcomeFor, onCancelOutcome, onSubmitOutcome, busy }) {
+  return (
+    <div className="di-predictions">
+      <div className="di-section-head">
+        <div>
+          <h3>Predicted outcomes</h3>
+          <p>What we expected, what reality says, and what we'll do about the gap.</p>
+        </div>
+        <Button
+          appearance="primary"
+          iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />}
+          onClick={onAdd}
+        >
+          Add prediction
+        </Button>
+      </div>
 
-            {activeTab === "details" && (
-              <div style={{ display: "grid", gap: 10 }}>
-                {decision.context_reason && <TextBlock title="Context" text={decision.context_reason} palette={palette} darkMode={darkMode} />}
+      {predictions.length === 0 ? (
+        <EmptyState
+          icon={<ChartBarIcon style={{ width: "100%", height: "100%" }} />}
+          title="No predictions yet"
+          description="Capture what you expect this decision to deliver — and the date we'll check on it."
+          primaryAction={
+            <Button appearance="primary" onClick={onAdd}>
+              Add first prediction
+            </Button>
+          }
+        />
+      ) : (
+        <ul className="di-pred-list">
+          {predictions.map((p) => (
+            <PredictionCard
+              key={p.id}
+              prediction={p}
+              expanded={logOutcomeFor === p.id}
+              onLogClick={() => onLogOutcome(p.id)}
+              onLogCancel={onCancelOutcome}
+              onLogSubmit={(payload) => onSubmitOutcome(p.id, payload)}
+              busy={busy}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
-                {decision.if_this_fails && (
-                  <div
-                    style={{
-                      ...innerCard,
-                      border: `1px solid ${darkMode ? "rgba(238,146,153,0.42)" : "rgba(200,86,93,0.24)"}`,
-                      background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)",
-                    }}
-                  >
-                    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 8 }}>
-                      <ExclamationTriangleIcon style={{ width: 16, height: 16, color: palette.danger, marginTop: 1 }} />
-                      <div>
-                        <p style={{ margin: 0, fontSize: 13, color: palette.danger, fontWeight: 700 }}>If This Fails</p>
-                        <p style={{ margin: "4px 0 0", fontSize: 12, color: palette.text }}>{decision.if_this_fails}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+function PredictionCard({ prediction, expanded, onLogClick, onLogCancel, onLogSubmit, busy }) {
+  const latest = prediction.latest_check;
+  const band = latest?.drift_band || (isOverdue(prediction) ? "off_track" : "unknown");
+  const meta = DRIFT_BAND_META[band] || DRIFT_BAND_META.unknown;
+  return (
+    <li className={`di-pred di-pred--${band}`}>
+      <div className="di-pred-head">
+        <span className="di-pred-dim">{prediction.dimension}</span>
+        <span className="di-pred-band" style={{ background: `${meta.color}1f`, color: meta.color }}>
+          <span className="di-drift-dot" style={{ background: meta.color }} />
+          {meta.label}
+        </span>
+        {isOverdue(prediction) ? (
+          <span className="di-pred-overdue">
+            <ExclamationTriangleIcon /> overdue
+          </span>
+        ) : null}
+      </div>
+      <p className="di-pred-statement">{prediction.statement}</p>
+      <div className="di-pred-grid">
+        <Cell label="Target" value={describeTarget(prediction)} />
+        <Cell label="Observed" value={describeObserved(prediction, latest)} />
+        <Cell
+          label="Drift"
+          value={
+            latest?.drift_pct !== null && latest?.drift_pct !== undefined
+              ? `${latest.drift_pct > 0 ? "+" : ""}${latest.drift_pct.toFixed(1)}%`
+              : "—"
+          }
+        />
+        <Cell label="Check date" value={formatDate(prediction.check_at)} />
+      </div>
+      <div className="di-pred-actions">
+        {!expanded ? (
+          <Button
+            appearance={isOverdue(prediction) ? "primary" : "default"}
+            size="sm"
+            iconBefore={<SparklesIcon style={{ width: 12, height: 12 }} />}
+            onClick={onLogClick}
+          >
+            {latest ? "Log another observation" : "How did it go?"}
+          </Button>
+        ) : null}
+      </div>
+      {expanded ? (
+        <LogOutcomeForm
+          prediction={prediction}
+          onCancel={onLogCancel}
+          onSubmit={onLogSubmit}
+          busy={busy}
+        />
+      ) : null}
+    </li>
+  );
+}
 
-                {decision.alternatives_considered && (
-                  <div>
-                    <p style={{ margin: 0, fontSize: 13, color: palette.text, fontWeight: 700 }}>Alternatives Considered</p>
-                    <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: palette.muted, fontSize: 12 }}>
-                      {(Array.isArray(decision.alternatives_considered) ? decision.alternatives_considered : [decision.alternatives_considered]).map((alt, index) => (
-                        <li key={index} style={{ marginBottom: 4 }}>{alt}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
+function Cell({ label, value }) {
+  return (
+    <div className="di-cell">
+      <span className="di-cell-label">{label}</span>
+      <span className="di-cell-value">{value}</span>
+    </div>
+  );
+}
 
-            {activeTab === "outcome" && (
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Review status</p>
-                  <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                    {decision.review_completed_at
-                      ? `Reviewed on ${new Date(decision.review_completed_at).toLocaleDateString()}`
-                      : "No outcome review yet"}
-                  </p>
-                </div>
-                <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Outcome reliability</p>
-                  <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                    {decision.outcome_reliability?.score ?? 0}% ({decision.outcome_reliability?.band || "low"})
-                  </p>
-                </div>
-                {driftAlert && (
-                  <div style={{ ...innerCard, border: `1px solid ${darkMode ? "rgba(238,146,153,0.42)" : "rgba(200,86,93,0.24)"}`, background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)" }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 13, color: palette.danger, fontWeight: 700 }}>
-                      Drift alert: {driftAlert.severity} ({driftAlert.drift_score})
-                    </p>
-                    <ul style={{ margin: 0, paddingLeft: 16, color: palette.text, fontSize: 12 }}>
-                      {(driftAlert.signals || []).slice(0, 3).map((signal, idx) => (
-                        <li key={idx}>{signal}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+function LogOutcomeForm({ prediction, onCancel, onSubmit, busy }) {
+  const [value, setValue] = useState("");
+  const [notes, setNotes] = useState("");
 
-                <form onSubmit={handleSaveOutcome} style={{ display: "grid", gap: 8 }}>
-                  <label style={fieldLabel}>Outcome</label>
-                  <select
-                    value={outcomeForm.was_successful}
-                    onChange={(event) => setOutcomeForm((prev) => ({ ...prev, was_successful: event.target.value }))}
-                    style={ui.input}
-                  >
-                    <option value="">Select outcome</option>
-                    <option value="true">Successful</option>
-                    <option value="false">Unsuccessful</option>
-                  </select>
+  const submit = (e) => {
+    e.preventDefault();
+    let observedValue = {};
+    if (prediction.metric_kind === "binary") {
+      observedValue = { value: value === "yes" || value === "true" };
+    } else if (prediction.metric_kind === "text") {
+      observedValue = { value: value };
+    } else {
+      const num = parseFloat(value);
+      if (isNaN(num)) {
+        return;
+      }
+      observedValue = { value: num };
+      if (prediction.target_value?.unit) observedValue.unit = prediction.target_value.unit;
+    }
+    onSubmit({ observed_value: observedValue, notes: notes.trim() });
+  };
 
-                  <label style={fieldLabel}>Review Confidence (1-5)</label>
-                  <select
-                    value={outcomeForm.review_confidence}
-                    onChange={(event) => setOutcomeForm((prev) => ({ ...prev, review_confidence: event.target.value }))}
-                    style={ui.input}
-                  >
-                    <option value="1">1 - Low confidence</option>
-                    <option value="2">2</option>
-                    <option value="3">3 - Medium</option>
-                    <option value="4">4</option>
-                    <option value="5">5 - High confidence</option>
-                  </select>
+  return (
+    <form className="di-log-form" onSubmit={submit}>
+      <p className="di-log-prompt">How did "{prediction.dimension}" actually land?</p>
+      {prediction.metric_kind === "binary" ? (
+        <Field label="Observed">
+          <select className="atlas-input" value={value} onChange={(e) => setValue(e.target.value)} required>
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </Field>
+      ) : prediction.metric_kind === "text" ? (
+        <Field label="Observed">
+          <input className="atlas-input" value={value} onChange={(e) => setValue(e.target.value)} required />
+        </Field>
+      ) : (
+        <Field label={`Observed (${prediction.target_value?.unit || (prediction.metric_kind === "percent" ? "%" : "value")})`}>
+          <input className="atlas-input" type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} required />
+        </Field>
+      )}
+      <Field label="Notes (optional)">
+        <textarea className="atlas-input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What context matters for the lesson?" />
+      </Field>
+      <div className="di-form-actions">
+        <Button appearance="subtle" onClick={onCancel} type="button">Cancel</Button>
+        <Button appearance="primary" type="submit" isDisabled={busy || !value}>
+          {busy ? "Saving…" : "Log outcome"}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
-                  <label style={fieldLabel}>Outcome Notes</label>
-                  <textarea
-                    rows={3}
-                    value={outcomeForm.outcome_notes}
-                    onChange={(event) => setOutcomeForm((prev) => ({ ...prev, outcome_notes: event.target.value }))}
-                    style={ui.input}
-                  />
+function AddPredictionForm({ onSubmit, onCancel, busy }) {
+  const [form, setForm] = useState({
+    dimension: "",
+    statement: "",
+    metric_kind: "number",
+    target_value_value: "",
+    target_value_unit: "",
+    check_at: "",
+  });
 
-                  <label style={fieldLabel}>Impact Review Notes</label>
-                  <textarea
-                    rows={3}
-                    value={outcomeForm.impact_review_notes}
-                    onChange={(event) => setOutcomeForm((prev) => ({ ...prev, impact_review_notes: event.target.value }))}
-                    style={ui.input}
-                  />
+  const submit = (e) => {
+    e.preventDefault();
+    let target = {};
+    if (form.metric_kind === "binary") {
+      target = { value: form.target_value_value === "yes" };
+    } else if (form.metric_kind === "text") {
+      target = { value: form.target_value_value };
+    } else {
+      const num = parseFloat(form.target_value_value);
+      if (isNaN(num)) return;
+      target = { value: num };
+      if (form.target_value_unit.trim()) target.unit = form.target_value_unit.trim();
+    }
+    onSubmit({
+      dimension: form.dimension.trim(),
+      statement: form.statement.trim(),
+      metric_kind: form.metric_kind,
+      target_value: target,
+      check_at: form.check_at,
+    });
+  };
 
-                  <label style={fieldLabel}>Lessons Learned</label>
-                  <textarea
-                    rows={3}
-                    value={outcomeForm.lessons_learned}
-                    onChange={(event) => setOutcomeForm((prev) => ({ ...prev, lessons_learned: event.target.value }))}
-                    style={ui.input}
-                  />
+  return (
+    <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Field label="Dimension" isRequired helpText="Short label, e.g. 'adoption', 'latency', 'cost savings'.">
+        <input className="atlas-input" value={form.dimension} onChange={(e) => setForm({ ...form, dimension: e.target.value })} required autoFocus />
+      </Field>
+      <Field label="Statement" isRequired>
+        <textarea className="atlas-input" rows={2} value={form.statement} onChange={(e) => setForm({ ...form, statement: e.target.value })} required placeholder="What we expect to happen — be specific" />
+      </Field>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Field label="Metric kind">
+          <select className="atlas-input" value={form.metric_kind} onChange={(e) => setForm({ ...form, metric_kind: e.target.value })}>
+            {METRIC_KINDS.map((k) => (
+              <option key={k.value} value={k.value}>{k.label}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Check date" isRequired>
+          <input className="atlas-input" type="date" value={form.check_at} onChange={(e) => setForm({ ...form, check_at: e.target.value })} required />
+        </Field>
+      </div>
+      {form.metric_kind === "binary" ? (
+        <Field label="Target" isRequired>
+          <select className="atlas-input" value={form.target_value_value} onChange={(e) => setForm({ ...form, target_value_value: e.target.value })} required>
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </Field>
+      ) : form.metric_kind === "text" ? (
+        <Field label="Target" isRequired>
+          <input className="atlas-input" value={form.target_value_value} onChange={(e) => setForm({ ...form, target_value_value: e.target.value })} required />
+        </Field>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <Field label="Target value" isRequired>
+            <input className="atlas-input" type="number" step="any" value={form.target_value_value} onChange={(e) => setForm({ ...form, target_value_value: e.target.value })} required />
+          </Field>
+          <Field label="Unit (optional)">
+            <input className="atlas-input" value={form.target_value_unit} onChange={(e) => setForm({ ...form, target_value_unit: e.target.value })} placeholder={form.metric_kind === "percent" ? "%" : "e.g. ms, $/mo"} />
+          </Field>
+        </div>
+      )}
+      <div className="di-form-actions">
+        <Button appearance="subtle" type="button" onClick={onCancel}>Cancel</Button>
+        <Button appearance="primary" type="submit" isDisabled={busy}>
+          {busy ? "Saving…" : "Add prediction"}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
-                  <label style={fieldLabel}>Success Metrics (JSON)</label>
-                  <textarea
-                    rows={4}
-                    value={outcomeForm.success_metrics_text}
-                    onChange={(event) => setOutcomeForm((prev) => ({ ...prev, success_metrics_text: event.target.value }))}
-                    style={ui.input}
-                  />
+// ─── twins tab ──────────────────────────────────────────────────────────────
 
-                  {outcomeError && (
-                    <p style={{ margin: 0, fontSize: 12, color: palette.danger }}>{outcomeError}</p>
-                  )}
-                  {outcomeMessage && (
-                    <p style={{ margin: 0, fontSize: 12, color: palette.success }}>{outcomeMessage}</p>
-                  )}
-
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                    <button
-                      type="button"
-                      className="ui-btn-polish ui-focus-ring"
-                      onClick={runFollowUpOrchestrator}
-                      style={ui.secondaryButton}
-                      disabled={orchestrating || decision.was_successful !== false}
-                    >
-                      {orchestrating ? "Running..." : "Auto Create Follow-up Task"}
-                    </button>
-                    <button className="ui-btn-polish ui-focus-ring" type="submit" style={ui.primaryButton} disabled={outcomeSaving || decision.status !== "implemented"}>
-                      {outcomeSaving ? "Saving..." : "Save Outcome Review"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {activeTab === "impact" && (
-              <div style={{ display: "grid", gap: 10 }}>
-                <h3 style={{ margin: 0, fontSize: 15, color: palette.text }}>Knowledge Graph Impact Trail</h3>
-                {impactTrailLoading ? (
-                  <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>Loading impact graph...</p>
-                ) : (
-                  <>
-                    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                      <InfoRow label="Nodes" value={`${impactTrail.nodes.length}`} palette={palette} />
-                      <InfoRow label="Edges" value={`${impactTrail.edges.length}`} palette={palette} />
-                    </div>
-                    <div style={{ display: "grid", gap: 6 }}>
-                      {(impactTrail.edges || []).slice(0, 8).map((edge, idx) => (
-                        <div key={idx} style={{ borderRadius: 16, border: `1px solid ${palette.border}`, padding: "10px 12px", fontSize: 12, color: palette.muted, ...memoryInsetSurface(darkMode) }}>
-                          <span style={{ color: palette.text }}>{edge.type}</span> ({Number(edge.strength || 0).toFixed(2)})
-                        </div>
-                      ))}
-                      {(!impactTrail.edges || impactTrail.edges.length === 0) && (
-                        <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>No connected impact links yet.</p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {activeTab === "replay" && (
-              <div style={{ display: "grid", gap: 10 }}>
-                <h3 style={{ margin: 0, fontSize: 15, color: palette.text }}>Decision Replay Simulator</h3>
-                <p style={{ margin: 0, fontSize: 12, color: palette.muted }}>
-                  Model a what-if alternative against historical decisions and outcomes.
-                </p>
-
-                <div style={{ display: "grid", gap: 8 }}>
-                  <label style={fieldLabel}>Alternative Title</label>
-                  <input
-                    type="text"
-                    value={replayForm.alternative_title}
-                    onChange={(event) => setReplayForm((prev) => ({ ...prev, alternative_title: event.target.value }))}
-                    style={ui.input}
-                    placeholder="Alternative approach title"
-                  />
-
-                  <label style={fieldLabel}>Alternative Summary</label>
-                  <textarea
-                    rows={3}
-                    value={replayForm.alternative_summary}
-                    onChange={(event) => setReplayForm((prev) => ({ ...prev, alternative_summary: event.target.value }))}
-                    style={ui.input}
-                    placeholder="Describe how this alternative differs"
-                  />
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8 }}>
-                    <div style={{ display: "grid", gap: 4 }}>
-                      <label style={fieldLabel}>Risk Tolerance</label>
-                      <select
-                        value={replayForm.risk_tolerance}
-                        onChange={(event) => setReplayForm((prev) => ({ ...prev, risk_tolerance: event.target.value }))}
-                        style={ui.input}
-                      >
-                        <option value="conservative">Conservative</option>
-                        <option value="balanced">Balanced</option>
-                        <option value="aggressive">Aggressive</option>
-                      </select>
-                    </div>
-                    <div style={{ display: "grid", gap: 4 }}>
-                      <label style={fieldLabel}>Execution Speed</label>
-                      <select
-                        value={replayForm.execution_speed}
-                        onChange={(event) => setReplayForm((prev) => ({ ...prev, execution_speed: event.target.value }))}
-                        style={ui.input}
-                      >
-                        <option value="slow">Slow</option>
-                        <option value="normal">Normal</option>
-                        <option value="fast">Fast</option>
-                      </select>
-                    </div>
-                    <div style={{ display: "grid", gap: 4 }}>
-                      <label style={fieldLabel}>Impact Level</label>
-                      <select
-                        value={replayForm.impact_level}
-                        onChange={(event) => setReplayForm((prev) => ({ ...prev, impact_level: event.target.value }))}
-                        style={ui.input}
-                      >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button className="ui-btn-polish ui-focus-ring" type="button" onClick={runReplaySimulation} style={ui.primaryButton} disabled={replayLoading}>
-                      {replayLoading ? "Running..." : "Run Replay Simulation"}
-                    </button>
-                  </div>
-                </div>
-
-                {replayError && <p style={{ margin: 0, fontSize: 12, color: palette.danger }}>{replayError}</p>}
-                {replayTaskMessage && <p style={{ margin: 0, fontSize: 12, color: palette.success }}>{replayTaskMessage}</p>}
-
-                {replayResult && (
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Forecast</p>
-                      <InfoRow label="Failure risk" value={`${replayResult.forecast?.predicted_failure_risk_pct ?? 0}%`} palette={palette} />
-                      <InfoRow label="Expected impact" value={`${replayResult.forecast?.expected_impact_score ?? 0}/100`} palette={palette} />
-                      <InfoRow label="Confidence" value={`${replayResult.forecast?.confidence_pct ?? 0}%`} palette={palette} />
-                      <InfoRow label="Sample size" value={`${replayResult.based_on?.sample_size ?? 0}`} palette={palette} />
-                    </div>
-
-                    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Teams Most Affected</p>
-                      <ul style={{ margin: 0, paddingLeft: 16, color: palette.muted, fontSize: 12 }}>
-                        {(replayResult.teams_most_affected || []).map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Recommended Safeguards</p>
-                      <ul style={{ margin: 0, paddingLeft: 16, color: palette.muted, fontSize: 12 }}>
-                        {(replayResult.recommended_safeguards || []).map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
-                      </ul>
-                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-                        <button
-                          type="button"
-                          className="ui-btn-polish ui-focus-ring"
-                          onClick={createTasksFromSimulation}
-                          disabled={replayTaskSaving || !(replayResult.recommended_safeguards || []).length}
-                          style={ui.secondaryButton}
-                        >
-                          {replayTaskSaving ? "Creating..." : "Create Follow-up Tasks from Simulation"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-
-          <aside style={detailSidebarGrid}>
-            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
-              <div style={{ display: "grid", gap: 6, marginBottom: 14 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
-                  Decision snapshot
-                </p>
-                <h3 style={{ margin: 0, fontSize: 18, color: palette.text }}>
-                  Confidence, reliability, and execution state in one pass
-                </h3>
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: palette.muted }}>
-                  This rail keeps the health of the record visible while you review the deeper narrative in the main panel.
-                </p>
-              </div>
-
-              <div style={detailSnapshotGrid}>
-                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Confidence</p>
-                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{confidenceScore}%</p>
-                </div>
-                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Reliability</p>
-                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{reliabilityScore}%</p>
-                </div>
-                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Impact links</p>
-                  <p style={{ ...detailSnapshotValue, color: palette.text }}>{impactTrail.edges?.length || 0}</p>
-                </div>
-                <div style={{ ...detailSnapshotCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ ...detailSnapshotLabel, color: palette.muted }}>Status</p>
-                  <p style={{ ...detailSnapshotValue, color: palette.text, textTransform: "capitalize" }}>{status}</p>
-                </div>
-              </div>
-
-              <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
-                  Outcome posture
-                </p>
-                <InfoRow label="Reliability band" value={(decision.outcome_reliability?.band || "low").toUpperCase()} palette={palette} />
-                <InfoRow label="Decision date" value={decisionDate} palette={palette} />
-                <InfoRow label="Deadline" value={implementationDeadlineLabel} palette={palette} />
-              </div>
-
-              {decision.confidence?.factors?.length > 0 ? (
-                <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
-                    Confidence factors
-                  </p>
-                  <ul style={{ margin: 0, paddingLeft: 16, color: palette.text, fontSize: 12, lineHeight: 1.6 }}>
-                    {decision.confidence.factors.map((factor, index) => (
-                      <li key={index}>{factor}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </section>
-
-            <section className="ui-card-lift ui-smooth" style={{ ...sideCard, border: `1px solid ${palette.border}`, ...memoryPanelSurface(darkMode) }}>
-              <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: palette.muted }}>
-                  Context and review
-                </p>
-                <h3 style={{ margin: 0, fontSize: 18, color: palette.text }}>
-                  Stay close to the source thread and watch for drift
-                </h3>
-              </div>
-
-              <div style={detailSidebarPanel}>
-                <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
-                    Review posture
-                  </p>
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: palette.text }}>{reviewPosture}</p>
-                </div>
-
-                {driftAlert ? (
-                  <div
-                    style={{
-                      ...detailNoteCard,
-                      border: `1px solid ${darkMode ? "rgba(238,146,153,0.42)" : "rgba(200,86,93,0.24)"}`,
-                      background: darkMode ? "rgba(238,146,153,0.12)" : "rgba(200,86,93,0.08)",
-                    }}
-                  >
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.danger }}>
-                      Drift alert
-                    </p>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>
-                      {driftAlert.severity} severity with a score of {driftAlert.drift_score}
-                    </p>
-                    <ul style={{ margin: 0, paddingLeft: 16, color: palette.text, fontSize: 12, lineHeight: 1.6 }}>
-                      {(driftAlert.signals || []).slice(0, 3).map((signal, index) => (
-                        <li key={index}>{signal}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-
-                {linkedConversation ? (
-                  <div style={{ ...detailNoteCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.muted }}>
-                      Source conversation
-                    </p>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.5, color: palette.text }}>
-                      {linkedConversation.title || `Conversation #${linkedConversation.id}`}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: palette.muted }}>
-                      This record stays grounded in the original discussion so the reasoning chain does not drift away from the team conversation.
-                    </p>
-                    <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                      <button
-                        className="ui-btn-polish ui-focus-ring"
-                        onClick={() => navigate(`/conversations/${linkedConversation.id}`)}
-                        style={ui.secondaryButton}
-                      >
-                        Open source thread
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-            </section>
-
-            <ContextPanel contentType="decisions.decision" objectId={id} refreshKey={contextRefreshKey} />
-          </aside>
+function TwinsTab({ twins, premise, setPremise, onRun, busy }) {
+  return (
+    <div className="di-twins">
+      <div className="di-twin-composer">
+        <div className="di-twin-mark">
+          <SparklesIcon />
+        </div>
+        <div className="di-twin-body">
+          <p className="di-twin-title">Run a counterfactual</p>
+          <p className="di-twin-sub">
+            Ask the agent: <em>"What if we'd chosen differently?"</em> It will compare
+            the chosen path to your premise using workspace evidence, and write a
+            side-by-side analysis.
+          </p>
+          <textarea
+            className="atlas-input"
+            rows={3}
+            value={premise}
+            onChange={(e) => setPremise(e.target.value)}
+            placeholder="e.g. What if we'd chosen Vendor B instead, or delayed this 6 months?"
+          />
+          <div className="di-form-actions">
+            <Button
+              appearance="primary"
+              onClick={onRun}
+              isDisabled={busy || !premise.trim()}
+              iconBefore={<SparklesIcon style={{ width: 14, height: 14 }} />}
+            >
+              {busy ? "Queueing…" : "Run twin"}
+            </Button>
+          </div>
         </div>
       </div>
+
+      {twins.length === 0 ? null : (
+        <ul className="di-twin-list">
+          {twins.map((t) => <TwinCard key={t.id} twin={t} />)}
+        </ul>
+      )}
     </div>
   );
 }
 
-function Pill({ text, tone = "blue", palette }) {
-  const style = tone === "amber"
-    ? { border: `1px solid ${palette.warn}`, color: palette.warn, background: darkenableSoft(palette.warn) }
-    : { border: `1px solid ${palette.accent}`, color: palette.link, background: palette.accentSoft };
-  return <span style={{ ...style, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "5px 10px", textTransform: "capitalize" }}>{text}</span>;
-}
+function TwinCard({ twin }) {
+  const [twinDetail, setTwinDetail] = useState(null);
+  const [expanded, setExpanded] = useState(false);
 
-function darkenableSoft(color) {
-  const normalized = color.replace("#", "");
-  if (normalized.length !== 6) return "rgba(168, 116, 57, 0.12)";
-  const r = parseInt(normalized.slice(0, 2), 16);
-  const g = parseInt(normalized.slice(2, 4), 16);
-  const b = parseInt(normalized.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, 0.12)`;
-}
+  const toggle = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && !twinDetail) {
+      try {
+        const { data } = await api.get(`/api/decisions/twins/${twin.id}/`);
+        setTwinDetail(data);
+      } catch (_) {}
+    }
+  };
 
-function TextBlock({ title, text, palette, darkMode }) {
-  const content = text || "";
-  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(content);
+  const data = twinDetail || twin;
+  const statusTone =
+    data.status === "completed" ? "success"
+    : data.status === "failed" ? "removed"
+    : data.status === "running" ? "inprogress"
+    : "default";
+
   return (
-    <div>
-      <h3 style={{ margin: "0 0 8px", fontSize: 16, color: palette?.text || "var(--app-text)" }}>{title}</h3>
-      <div style={{ color: palette?.muted || "var(--app-muted)", fontSize: 13, lineHeight: 1.6 }}>
-        {hasHtml ? (
-          <RichTextRenderer content={content} darkMode={darkMode} />
-        ) : (
-          content.split("\n\n").map((paragraph, index) => (
-            <p key={index} style={{ margin: "0 0 10px" }}>{paragraph}</p>
-          ))
-        )}
+    <li className={`di-twin di-twin--${data.status}`}>
+      <button type="button" className="di-twin-row" onClick={toggle}>
+        <span className="di-twin-row-icon">
+          <SparklesIcon />
+        </span>
+        <span className="di-twin-row-text">
+          <span className="di-twin-row-premise">{data.counterfactual_premise}</span>
+          <span className="di-twin-row-meta">
+            <Lozenge variant={statusTone}>{data.status}</Lozenge>
+            <span>{formatDate(data.created_at)}</span>
+            {data.confidence ? <span>· {data.confidence}% confidence</span> : null}
+            {data.agent_run_id ? (
+              <Link
+                to={`/agent/${data.agent_run_id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="di-twin-runlink"
+              >
+                view agent run →
+              </Link>
+            ) : null}
+          </span>
+        </span>
+        <ChevronRightIcon className={`di-twin-caret ${expanded ? "is-open" : ""}`} />
+      </button>
+      {expanded ? (
+        <div className="di-twin-detail">
+          {data.analysis ? (
+            <div className="di-md">
+              <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{data.analysis}</ReactMarkdown>
+            </div>
+          ) : data.status === "running" || data.status === "queued" ? (
+            <p style={{ color: "var(--app-muted)", margin: 0 }}>The agent is still working…</p>
+          ) : (
+            <p style={{ color: "var(--app-muted)", margin: 0 }}>No analysis returned.</p>
+          )}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+// ─── retrospectives tab ─────────────────────────────────────────────────────
+
+function RetrospectivesTab({ retros, onAdd }) {
+  return (
+    <div className="di-retros">
+      <div className="di-section-head">
+        <div>
+          <h3>Retrospectives</h3>
+          <p>Lessons that compound across future similar decisions.</p>
+        </div>
+        <Button appearance="primary" iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />} onClick={onAdd}>
+          Open retrospective
+        </Button>
       </div>
+      {retros.length === 0 ? (
+        <EmptyState
+          icon={<LightBulbIcon style={{ width: "100%", height: "100%" }} />}
+          title="No retrospectives yet"
+          description="Retros get auto-opened when reality drifts off-track. You can also start one manually."
+          primaryAction={<Button appearance="primary" onClick={onAdd}>Open retrospective</Button>}
+        />
+      ) : (
+        <ul className="di-retro-list">
+          {retros.map((r) => <RetroCard key={r.id} retro={r} />)}
+        </ul>
+      )}
     </div>
   );
 }
 
-function InfoRow({ label, value, palette }) {
+function RetroCard({ retro }) {
+  const triggerTone =
+    retro.triggered_by === "drift" ? "removed"
+    : retro.triggered_by === "agent" ? "moved"
+    : "default";
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, marginBottom: 6 }}>
-      <span style={{ color: palette?.muted || "var(--app-muted)" }}>{label}</span>
-      <span style={{ color: palette?.text || "var(--app-text)", fontWeight: 700 }}>{value}</span>
-    </div>
+    <li className="di-retro">
+      <div className="di-retro-head">
+        <Lozenge variant={triggerTone}>triggered: {retro.triggered_by}</Lozenge>
+        <span className="di-retro-meta">{formatDate(retro.created_at)}</span>
+        {retro.author ? (
+          <span className="di-retro-author">
+            <Avatar size="sm" name={retro.author.name || ""} />
+            <span>{retro.author.name}</span>
+          </span>
+        ) : null}
+      </div>
+      {retro.summary ? (
+        <div className="di-md di-retro-section">
+          <p className="di-retro-label">Summary</p>
+          <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{retro.summary}</ReactMarkdown>
+        </div>
+      ) : null}
+      {retro.root_cause ? (
+        <div className="di-md di-retro-section">
+          <p className="di-retro-label">Root cause</p>
+          <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{retro.root_cause}</ReactMarkdown>
+        </div>
+      ) : null}
+      {retro.lesson ? (
+        <div className="di-md di-retro-section di-retro-lesson">
+          <p className="di-retro-label">Lesson</p>
+          <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{retro.lesson}</ReactMarkdown>
+        </div>
+      ) : null}
+      {retro.tags?.length ? (
+        <div className="di-retro-tags">
+          {retro.tags.map((t) => <Lozenge key={t}>{t}</Lozenge>)}
+        </div>
+      ) : null}
+      {retro.confidence_delta !== null && retro.confidence_delta !== undefined ? (
+        <p className="di-retro-confidence">
+          Confidence delta on similar future decisions:{" "}
+          <strong style={{ color: retro.confidence_delta > 0 ? "var(--g500)" : retro.confidence_delta < 0 ? "var(--r500)" : "var(--app-muted)" }}>
+            {retro.confidence_delta > 0 ? "+" : ""}{retro.confidence_delta}
+          </strong>
+        </p>
+      ) : null}
+    </li>
   );
 }
 
-function DecisionEngineeringSection({ timeline, loading, palette, darkMode }) {
-  if (loading) {
-    return (
-      <div style={{ ...innerCard, border: `1px solid ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center", ...memoryInsetSurface(darkMode) }}>
-        Loading engineering timeline...
-      </div>
-    );
-  }
-
-  if (!timeline?.repository?.configured) {
-    return (
-      <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, display: "grid", gap: 6, ...memoryInsetSurface(darkMode) }}>
-        <span>GitHub is not configured for this workspace yet.</span>
-        <span>Connect the repository in Integrations to unlock pull request, commit, and deployment timelines.</span>
-      </div>
-    );
-  }
-
-  const summary = timeline.summary || {};
-  const linkedIssues = timeline.linked_issues || [];
-  const pullRequests = timeline.pull_requests || [];
-  const commits = timeline.commits || [];
-  const deployments = timeline.deployments || [];
-  const manualLinks = timeline.manual_links || [];
-
+function AddRetrospectiveForm({ onSubmit, onCancel, busy }) {
+  const [form, setForm] = useState({ summary: "", root_cause: "", lesson: "", confidence_delta: 0, tags: "" });
+  const submit = (e) => {
+    e.preventDefault();
+    onSubmit({
+      triggered_by: "manual",
+      summary: form.summary,
+      root_cause: form.root_cause,
+      lesson: form.lesson,
+      confidence_delta: form.confidence_delta === "" ? null : Number(form.confidence_delta),
+      tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+    });
+  };
   return (
-    <div style={{ display: "grid", gap: 10 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 }}>
-        <SummaryCard label="Status" value={(timeline.implementation_status || "not_started").replaceAll("_", " ")} palette={palette} darkMode={darkMode} />
-        <SummaryCard label="Pull Requests" value={`${summary.decision_pull_requests || 0} direct / ${summary.issue_pull_requests || 0} issue`} palette={palette} darkMode={darkMode} />
-        <SummaryCard label="Commits" value={`${summary.commits || 0}`} palette={palette} darkMode={darkMode} />
-        <SummaryCard label="Deployments" value={`${summary.deployments || 0}`} palette={palette} darkMode={darkMode} />
+    <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Field label="Summary" helpText="What happened.">
+        <textarea className="atlas-input" rows={3} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} autoFocus />
+      </Field>
+      <Field label="Root cause" helpText="Why it happened.">
+        <textarea className="atlas-input" rows={3} value={form.root_cause} onChange={(e) => setForm({ ...form, root_cause: e.target.value })} />
+      </Field>
+      <Field label="Lesson" helpText="The takeaway to apply to similar future decisions.">
+        <textarea className="atlas-input" rows={3} value={form.lesson} onChange={(e) => setForm({ ...form, lesson: e.target.value })} />
+      </Field>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Field label="Confidence delta" helpText="−10 to +10. Does this raise or lower our confidence in similar future calls?">
+          <input className="atlas-input" type="number" min="-10" max="10" value={form.confidence_delta} onChange={(e) => setForm({ ...form, confidence_delta: e.target.value })} />
+        </Field>
+        <Field label="Tags (comma-separated)">
+          <input className="atlas-input" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="vendor-choice, scaling" />
+        </Field>
       </div>
-
-      <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-        <p style={{ margin: "0 0 6px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Repository Readiness</p>
-        <InfoRow label="Repository" value={timeline.repository?.repo_slug || "-"} palette={palette} />
-        <InfoRow label="Webhook" value={timeline.repository?.webhook_readiness?.label || "Not configured"} palette={palette} />
-        <InfoRow label="Suggested branch" value={timeline.naming?.suggested_branch || "-"} palette={palette} />
-        <InfoRow label="Suggested PR title" value={timeline.naming?.suggested_pr_title || "-"} palette={palette} />
+      <div className="di-form-actions">
+        <Button appearance="subtle" type="button" onClick={onCancel}>Cancel</Button>
+        <Button appearance="primary" type="submit" isDisabled={busy}>{busy ? "Saving…" : "Open retrospective"}</Button>
       </div>
+    </form>
+  );
+}
 
-      {linkedIssues.length ? (
-        <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-          <p style={{ margin: "0 0 8px", fontSize: 13, color: palette.text, fontWeight: 700 }}>Linked Execution Work</p>
-          <div style={{ display: "grid", gap: 8 }}>
-            {linkedIssues.map((issue) => (
-              <div key={issue.id} style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>{issue.key}: {issue.title}</p>
-                    <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>
-                      {[issue.project_name, issue.sprint_name, issue.branch_name || "No branch yet"].filter(Boolean).join(" | ")}
-                    </p>
-                  </div>
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      borderRadius: 999,
-                      padding: "6px 10px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      textTransform: "capitalize",
-                      background: palette.accentSoft,
-                      color: palette.link,
-                      border: `1px solid ${palette.accent}`,
-                    }}
-                  >
-                    {issue.status?.replaceAll("_", " ")}
-                  </span>
-                </div>
-              </div>
+// ─── side panel ─────────────────────────────────────────────────────────────
+
+function DetailCard({ decision }) {
+  return (
+    <div className="di-detail">
+      <p className="di-detail-title">Details</p>
+      <DetailRow label="Decision maker" value={
+        decision.decision_maker ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Avatar size="sm" name={decision.decision_maker.full_name || decision.decision_maker_name || ""} />
+            <span>{decision.decision_maker.full_name || decision.decision_maker_name || decision.decision_maker.email || "—"}</span>
+          </span>
+        ) : "—"
+      } />
+      <DetailRow label="Status" value={<Lozenge variant={statusVariant(decision.status)}>{decision.status?.replace(/_/g, " ")}</Lozenge>} />
+      <DetailRow label="Impact" value={<Lozenge variant={impactVariant(decision.impact_level)}>{decision.impact_level || "—"}</Lozenge>} />
+      {decision.confidence_level ? (
+        <DetailRow label="Confidence" value={<span>{decision.confidence_level}%</span>} />
+      ) : null}
+      <DetailRow label="Created" value={formatDate(decision.created_at)} />
+      {Array.isArray(decision.stakeholders) && decision.stakeholders.length ? (
+        <div style={{ marginTop: 12 }}>
+          <p className="di-detail-label">Stakeholders</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+            {decision.stakeholders.slice(0, 8).map((s) => (
+              <span key={s.id || s.email} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--app-text)" }}>
+                <Avatar size="sm" name={s.full_name || s.name || s.email || ""} />
+                <span>{s.full_name || s.name || s.email}</span>
+              </span>
             ))}
           </div>
         </div>
       ) : null}
-
-      <EngineeringList title="Pull Requests" items={pullRequests} palette={palette} darkMode={darkMode} emptyText="No pull requests linked yet." />
-      <EngineeringList title="Commits" items={commits} palette={palette} darkMode={darkMode} emptyText="No commits linked yet." />
-      <EngineeringList title="Deployments" items={deployments} palette={palette} darkMode={darkMode} emptyText="No deployments tracked yet." />
-
-      {manualLinks.length ? (
-        <EngineeringList title="Other Linked Evidence" items={manualLinks} palette={palette} darkMode={darkMode} emptyText="" />
-      ) : null}
     </div>
   );
 }
 
-function SummaryCard({ label, value, palette, darkMode }) {
+function DetailRow({ label, value }) {
   return (
-    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-      <p style={{ margin: 0, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: palette.muted, fontWeight: 700 }}>{label}</p>
-      <p style={{ margin: "6px 0 0", fontSize: 14, color: palette.text, fontWeight: 700, textTransform: "capitalize" }}>{value}</p>
+    <div className="di-detail-row">
+      <span className="di-detail-label">{label}</span>
+      <span className="di-detail-value">{value}</span>
     </div>
   );
 }
 
-function EngineeringList({ title, items, palette, darkMode, emptyText }) {
+// ─── modal shell ────────────────────────────────────────────────────────────
+
+function Modal({ children, onClose, title, width = 540 }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return (
-    <div style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-      <p style={{ margin: "0 0 8px", fontSize: 13, color: palette.text, fontWeight: 700 }}>{title}</p>
-      {items?.length ? (
-        <div style={{ display: "grid", gap: 8 }}>
-          {items.map((item, index) => {
-            const href = item.url;
-            const content = (
-              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 8 }}>
-                <LinkIcon style={{ width: 16, height: 16, color: palette.muted, marginTop: 2 }} />
-                <div>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: palette.text }}>
-                    {item.title || item.environment || item.short_hash || item.type || "Linked item"}
-                  </p>
-                  <p style={{ margin: "4px 0 0", fontSize: 11, color: palette.muted }}>
-                    {[
-                      item.status,
-                      item.subtitle,
-                      item.author,
-                      item.branch,
-                      item.environment,
-                      item.short_hash,
-                      item.deployed_by,
-                    ].filter(Boolean).join(" | ")}
-                  </p>
-                </div>
-              </div>
-            );
-
-            if (!href) {
-              return (
-                <div key={`${title}-${index}`} style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode) }}>
-                  {content}
-                </div>
-              );
-            }
-
-            return (
-              <a
-                key={`${title}-${href}-${index}`}
-                href={href}
-                target="_blank"
-                rel="noreferrer"
-                style={{ ...innerCard, border: `1px solid ${palette.border}`, ...memoryInsetSurface(darkMode), textDecoration: "none" }}
-              >
-                {content}
-              </a>
-            );
-          })}
+    <>
+      <div onClick={onClose} className="di-modal-backdrop" />
+      <div role="dialog" aria-modal="true" className="di-modal" style={{ width }}>
+        <div className="di-modal-head">
+          <h2>{title}</h2>
+          <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
         </div>
-      ) : emptyText ? (
-        <div style={{ ...innerCard, border: `1px dashed ${palette.border}`, color: palette.muted, fontSize: 12, textAlign: "center", ...memoryInsetSurface(darkMode) }}>
-          {emptyText}
-        </div>
-      ) : null}
-    </div>
+        <div className="di-modal-body">{children}</div>
+      </div>
+    </>
   );
 }
-
-const fieldLabel = { margin: 0, fontSize: 12, color: "var(--app-muted)", fontWeight: 700 };
-const ambientLayer = { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 };
-const toolbarMetaChip = (palette) => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  borderRadius: 999,
-  padding: "8px 12px",
-  border: `1px solid ${palette.border}`,
-  background: palette.cardAlt,
-  color: palette.text,
-  fontSize: 12,
-  fontWeight: 700,
-});
-const detailCommandGrid = { display: "grid", gap: 12 };
-const detailCommandCard = { borderRadius: 26, padding: "18px 18px 16px", display: "grid", gap: 14, boxShadow: "var(--ui-shadow-xs)" };
-const detailCommandHead = { display: "grid", gap: 6 };
-const detailCommandTitle = { margin: 0, fontSize: "clamp(1.02rem,1.6vw,1.24rem)", lineHeight: 1.15 };
-const detailCommandCopy = { margin: 0, fontSize: 13, lineHeight: 1.6 };
-const detailMetaRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const detailTabRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const detailActionRail = { display: "flex", gap: 8, flexWrap: "wrap" };
-const detailSnapshotGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8 };
-const detailSnapshotCard = { borderRadius: 18, padding: "12px 12px 10px", display: "grid", gap: 4 };
-const detailSnapshotLabel = { margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" };
-const detailSnapshotValue = { margin: 0, fontSize: 14, fontWeight: 700, lineHeight: 1.25 };
-const detailNoteCard = { borderRadius: 18, padding: "12px 14px", display: "grid", gap: 6 };
-const detailSidebarGrid = { display: "grid", gap: 12, alignContent: "start" };
-const detailSidebarPanel = { display: "grid", gap: 12 };
-const mainGrid = { position: "relative", zIndex: 1, display: "grid" };
-const panelCard = { borderRadius: 28, padding: "clamp(18px,2.4vw,24px)", boxShadow: "var(--ui-shadow-sm)" };
-const innerCard = { borderRadius: 20, padding: 14, background: "var(--app-surface-alt)" };
-const sideCard = { borderRadius: 24, padding: 16, boxShadow: "var(--ui-shadow-xs)" };
-
-function detailTabButton(palette, active) {
-  return {
-    borderRadius: 999,
-    border: `1px solid ${active ? palette.accent : palette.border}`,
-    background: active ? palette.accentSoft : palette.cardAlt,
-    color: active ? palette.link : palette.text,
-    padding: "8px 12px",
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: "pointer",
-  };
-}
-
-function memoryHeroSurface(darkMode) {
-  return {
-    background: darkMode
-      ? "linear-gradient(145deg, rgba(14,25,37,0.98), rgba(10,18,28,0.94))"
-      : "linear-gradient(145deg, rgba(245,250,255,0.98), rgba(230,241,249,0.94))",
-  };
-}
-
-function memoryPanelSurface(darkMode) {
-  return {
-    background: darkMode
-      ? "linear-gradient(180deg, rgba(11,20,30,0.96), rgba(11,24,34,0.92))"
-      : "linear-gradient(180deg, rgba(248,252,255,0.98), rgba(235,244,250,0.94))",
-  };
-}
-
-function memoryInsetSurface(darkMode) {
-  return {
-    background: darkMode
-      ? "linear-gradient(180deg, rgba(19,32,45,0.94), rgba(13,23,34,0.9))"
-      : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,251,0.94))",
-  };
-}
-
-export default DecisionDetail;
-

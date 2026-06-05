@@ -1,0 +1,159 @@
+/* ============================================================
+   BeforeYouCreate — reusable side panel for "similar past X"
+   surfacing on draft forms. Matches the CreateDecision visual
+   language so the pattern is recognizable across surfaces.
+   ============================================================ */
+
+.byc {
+  --byc-violet: #6E56FF;
+  --byc-blue: #2684FF;
+  --byc-gradient: linear-gradient(135deg, var(--byc-violet) 0%, var(--byc-blue) 100%);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.byc-head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 18px;
+  background: linear-gradient(180deg, rgba(110, 86, 255, 0.08), rgba(38, 132, 255, 0.02));
+  border-bottom: 1px solid rgba(110, 86, 255, 0.18);
+}
+
+.byc-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: var(--byc-gradient);
+  color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 8px 22px -10px rgba(110, 86, 255, 0.5);
+}
+.byc-mark svg { width: 18px; height: 18px; }
+
+.byc-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--app-text);
+}
+.byc-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--app-muted);
+}
+
+.byc-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--app-border);
+  border-top-color: var(--byc-violet);
+  border-radius: 999px;
+  animation: byc-spin 0.7s linear infinite;
+}
+@keyframes byc-spin { to { transform: rotate(360deg); } }
+
+.byc-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(255, 139, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 139, 0, 0.32);
+  font-size: 12.5px;
+  color: var(--app-text);
+}
+.byc-warning svg { width: 16px; height: 16px; color: #B45309; flex-shrink: 0; }
+.byc-warning strong { color: #B45309; }
+
+.byc-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 24px 18px;
+  color: var(--app-muted);
+}
+.byc-empty svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--byc-violet);
+}
+.byc-empty p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.byc-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Card primitives reused by consumers */
+.byc-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 120ms ease;
+}
+.byc-card:hover { border-color: var(--app-border-strong); }
+
+.byc-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.byc-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--app-text);
+  text-decoration: none;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+}
+.byc-card-title:hover { color: var(--byc-blue); text-decoration: underline; }
+
+.byc-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.byc-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--app-border-subtle);
+  font-size: 12px;
+  color: var(--app-muted);
+}
+.byc-card-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--app-muted);
+  text-decoration: none;
+  font-weight: 600;
+}
+.byc-card-open:hover { color: var(--app-text); }
+.byc-card-open svg { width: 12px; height: 12px; }

@@ -310,3 +310,17 @@ class SearchAnalytics(models.Model):
     class Meta:
         db_table = 'search_analytics'
         ordering = ['-searched_at']
+
+
+# Agent budgets — see budget_models.py for OrgAgentBudget + OrgAgentBudgetMonth.
+# Imported here so Django's app registry discovers them for migrations.
+from apps.organizations.budget_models import (  # noqa: E402,F401
+    OrgAgentBudget,
+    OrgAgentBudgetMonth,
+)
+
+# Outbound webhooks — see webhook_models.py.
+from apps.organizations.webhook_models import (  # noqa: E402,F401
+    WebhookSubscription,
+    WebhookDelivery,
+)

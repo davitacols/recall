@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import linking_views
+from . import intelligence_views
 
 urlpatterns = [
     path('', views.decisions, name='decisions'),
@@ -26,4 +27,23 @@ urlpatterns = [
     path('proposals/', views.proposals, name='proposals'),
     path('proposals/<int:proposal_id>/accept/', views.accept_proposal, name='accept_proposal'),
     path('proposals/<int:proposal_id>/reject/', views.reject_proposal, name='reject_proposal'),
+
+    # ---- Decision Intelligence ----
+    # Predictions on a decision
+    path('<int:decision_id>/predictions/', intelligence_views.decision_predictions, name='decision_predictions'),
+    path('predictions/<int:prediction_id>/', intelligence_views.prediction_detail, name='prediction_detail'),
+    path('predictions/<int:prediction_id>/checks/', intelligence_views.log_outcome_check, name='log_outcome_check'),
+    # Drift report aggregating across a decision's predictions
+    path('<int:decision_id>/drift/', intelligence_views.decision_drift_report, name='decision_drift_report'),
+    # Retrospectives (lessons learned)
+    path('<int:decision_id>/retrospectives/', intelligence_views.decision_retrospectives, name='decision_retrospectives'),
+    path('retrospectives/<int:retro_id>/', intelligence_views.update_retrospective, name='update_retrospective'),
+    # Twin runs (counterfactual analyses powered by the agent)
+    path('<int:decision_id>/twins/', intelligence_views.decision_twins, name='decision_twins'),
+    path('twins/<int:twin_id>/', intelligence_views.twin_detail, name='twin_detail'),
+    # Workspace-wide scorecard + manual sweep trigger
+    path('intelligence/overview/', intelligence_views.intelligence_overview, name='intelligence_overview'),
+    path('intelligence/sweep/', intelligence_views.trigger_intelligence_sweep, name='intelligence_sweep'),
+    # Before-you-decide: similar past decisions with outcomes
+    path('intelligence/similar/', intelligence_views.similar_decisions, name='intelligence_similar'),
 ]

@@ -18,6 +18,7 @@ import {
   PageHeader,
   SectionMessage,
 } from "../components/atlas";
+import { useAgentContextHint } from "../components/AgentDock";
 
 const DOC_TYPES = [
   { id: "policy", label: "Policy" },
@@ -61,6 +62,19 @@ export default function DocumentDetail() {
   const [form, setForm] = useState({ title: "", description: "", document_type: "other", content: "" });
   const [fileUrl, setFileUrl] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Frame the agent dock around this page. Doc Drafter is the natural
+  // specialist — summarize, draft follow-ups, generate updates.
+  useAgentContextHint(
+    doc
+      ? {
+          kind: "document",
+          label: `Page · ${doc.title || `#${id}`}`,
+          goalPrefix: `Page "${doc.title || `#${id}`}" — `,
+          profile_slug: "doc-drafter",
+        }
+      : null
+  );
 
   const authHeaders = () => {
     const token = localStorage.getItem("token") || localStorage.getItem("access_token");

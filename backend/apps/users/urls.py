@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .profile_views import update_profile, change_password, profile_stats
+from .export_views import export_my_data
 
 urlpatterns = [
     path('config/', views.auth_config, name='auth_config'),
@@ -18,5 +19,6 @@ urlpatterns = [
     path('profile/update/', update_profile, name='update_profile'),
     path('profile/change-password/', change_password, name='change_password'),
     path('profile/stats/', profile_stats, name='profile_stats'),
+    path('me/export/', export_my_data, name='export_my_data'),
     path('team/', views.team, name='team'),
 ]

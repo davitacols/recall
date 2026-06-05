@@ -13,6 +13,14 @@ app.conf.beat_schedule = {
         'task': 'apps.decisions.tasks.check_decision_reminders',
         'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
     },
+    'decision-intelligence-sweep': {
+        'task': 'apps.decisions.tasks.decision_intelligence_sweep',
+        'schedule': crontab(hour=9, minute=5),  # Daily at 9:05 AM (after reminders)
+    },
+    'send-weekly-intelligence-digest': {
+        'task': 'apps.decisions.tasks.send_weekly_intelligence_digest',
+        'schedule': crontab(hour=9, minute=10, day_of_week='mon'),  # Mondays 9:10 AM
+    },
     'send-hourly-notification-digests': {
         'task': 'apps.notifications.tasks.send_hourly_digests',
         'schedule': crontab(minute=0),  # Top of every hour
@@ -32,5 +40,13 @@ app.conf.beat_schedule = {
     'train-org-knowledge-models-nightly': {
         'task': 'apps.knowledge.tasks.train_all_org_knowledge_models_nightly',
         'schedule': crontab(hour=2, minute=0),  # Daily at 2 AM
+    },
+    'webhook-retry-sweep': {
+        'task': 'apps.organizations.tasks.webhook_retry_sweep',
+        'schedule': crontab(minute='*/2'),  # Every 2 minutes — backoff is in-task
+    },
+    'disable-failing-webhooks': {
+        'task': 'apps.organizations.tasks.disable_failing_webhooks',
+        'schedule': crontab(hour=3, minute=30),  # Nightly cleanup
     },
 }

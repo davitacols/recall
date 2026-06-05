@@ -1,7 +1,11 @@
+import logging
+
 from celery import shared_task
 
 from apps.organizations.models import Organization
 from .deep_learning import DeepKnowledgeTrainer
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
@@ -43,3 +47,36 @@ def train_all_org_knowledge_models_nightly(epochs=3, max_samples=1200):
         "total_orgs": len(summaries),
         "details": summaries,
     }
+
+
+@shared_task(name="knowledge.drive_agent_run", bind=True, max_retries=0)
+def drive_agent_run(self, run_id):
+    """Background driver for an AgentRun.
+
+    Picks up the run, replays its Anthropic message history, and resumes the
+    tool-use loop until the run lands (completed / awaiting_approval / failed).
+    Safe to retrigger: if the run is already in a terminal state it returns a
+    no-op summary.
+    """
+    from .models import AgentRun
+    from .agent import _run_loop
+
+    run = AgentRun.objects.filter(id=run_id).first()
+    if not run:
+        return {"status": "missing", "run_id": run_id}
+    if run.status in {"completed", "failed", "cancelled"}:
+        return {"status": run.status, "run_id": run_id}
+
+    try:
+        _run_loop(run, org=run.organization, user=run.user)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Agent run %s failed in worker: %s", run_id, exc)
+        run.refresh_from_db()
+        if run.status not in {"completed", "failed", "cancelled"}:
+            run.status = "failed"
+            run.error = f"Worker crashed: {exc}"
+            run.save(update_fields=["status", "error", "updated_at"])
+        return {"status": "failed", "run_id": run_id, "error": str(exc)}
+
+    run.refresh_from_db()
+    return {"status": run.status, "run_id": run_id, "iterations": run.iterations}

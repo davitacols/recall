@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
+  ChartBarIcon,
   DocumentCheckIcon,
   MagnifyingGlassIcon,
   PlusIcon,
@@ -113,6 +114,14 @@ export default function Decisions() {
         subtitle="Track committed choices, rationale, and impact across the workspace."
         actions={
           <>
+            <Button
+              appearance="subtle"
+              iconBefore={<ChartBarIcon style={{ width: 14, height: 14 }} />}
+              onClick={() => navigate("/decisions/intelligence")}
+              title="Workspace scorecard: predicted outcomes vs. reality"
+            >
+              Intelligence
+            </Button>
             <Button appearance="subtle" iconBefore={<SparklesIcon style={{ width: 14, height: 14 }} />} onClick={() => navigate("/decision-proposals")}>
               Proposals
             </Button>

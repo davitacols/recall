@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import AtlasTopNav from "./AtlasTopNav";
 import UnifiedNav from "./UnifiedNav";
 import { MobileNav } from "./MobileNav";
+import { AgentDock, AgentDockFab, AgentDockProvider } from "./AgentDock";
 
 const SIDEBAR_W = 248;
 const SIDEBAR_W_COLLAPSED = 60;
@@ -49,42 +50,48 @@ export default function UnifiedLayout({ children }) {
   const contentLeftPad = isMobile ? 0 : sidebarWidth;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--app-bg)",
-        color: "var(--app-text)",
-        "--atlas-topnav-h": `${TOPNAV_H}px`,
-        "--atlas-sidebar-w": `${SIDEBAR_W}px`,
-        "--atlas-sidebar-collapsed-w": `${SIDEBAR_W_COLLAPSED}px`,
-      }}
-    >
-      <AtlasTopNav
-        onToggleSidebar={toggleSidebar}
-        showSidebarToggle={isMobile}
-      />
-
-      {!isMobile ? (
-        <UnifiedNav
-          collapsed={collapsed}
-          onToggleCollapse={toggleSidebar}
-          width={SIDEBAR_W}
-          collapsedWidth={SIDEBAR_W_COLLAPSED}
-        />
-      ) : null}
-
-      <main
+    <AgentDockProvider>
+      <div
         style={{
-          paddingLeft: contentLeftPad,
-          minHeight: `calc(100vh - ${TOPNAV_H}px)`,
-          transition: "padding-left 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-          paddingBottom: isMobile ? 80 : 0,
+          minHeight: "100vh",
+          background: "var(--app-bg)",
+          color: "var(--app-text)",
+          "--atlas-topnav-h": `${TOPNAV_H}px`,
+          "--atlas-sidebar-w": `${SIDEBAR_W}px`,
+          "--atlas-sidebar-collapsed-w": `${SIDEBAR_W_COLLAPSED}px`,
         }}
       >
-        <div className="app-page-shell">{children}</div>
-      </main>
+        <AtlasTopNav
+          onToggleSidebar={toggleSidebar}
+          showSidebarToggle={isMobile}
+        />
 
-      {isMobile ? <MobileNav /> : null}
-    </div>
+        {!isMobile ? (
+          <UnifiedNav
+            collapsed={collapsed}
+            onToggleCollapse={toggleSidebar}
+            width={SIDEBAR_W}
+            collapsedWidth={SIDEBAR_W_COLLAPSED}
+          />
+        ) : null}
+
+        <main
+          style={{
+            paddingLeft: contentLeftPad,
+            minHeight: `calc(100vh - ${TOPNAV_H}px)`,
+            transition: "padding-left 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+            paddingBottom: isMobile ? 80 : 0,
+          }}
+        >
+          <div className="app-page-shell">{children}</div>
+        </main>
+
+        {isMobile ? <MobileNav /> : null}
+
+        {/* Global agent dock: FAB launcher + slide-over panel. */}
+        <AgentDockFab />
+        <AgentDock />
+      </div>
+    </AgentDockProvider>
   );
 }

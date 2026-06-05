@@ -16,6 +16,16 @@ from .ai_intelligence import (
     agi_copilot_what_if,
 )
 from .advanced_ai import check_similar_failures, get_success_rates, detect_bottlenecks, detect_knowledge_gaps, detect_patterns
+from .agent_views import (
+    start_agent_run,
+    get_agent_run,
+    list_agent_runs,
+    list_agent_profiles,
+    approve_agent_run,
+    cancel_agent_run,
+    agent_audit_log,
+    agent_budget_status,
+)
 from .enhanced_features import daily_digest, team_expertise, trend_analysis, auto_tag_content, metrics_tracking, sentiment_analysis
 from .export_views import export_knowledge
 from apps.decisions.phase2_views import knowledge_health
@@ -35,6 +45,17 @@ urlpatterns = [
     path('ai/copilot/feedback-summary/', agi_copilot_feedback_summary, name='agi_copilot_feedback_summary'),
     path('ai/copilot/feedback-trend/', agi_copilot_feedback_trend, name='agi_copilot_feedback_trend'),
     path('ai/copilot/what-if/', agi_copilot_what_if, name='agi_copilot_what_if'),
+
+    # Autonomous agent (tool-using)
+    path('ai/agent/runs/', list_agent_runs, name='agent_runs_list'),
+    path('ai/agent/profiles/', list_agent_profiles, name='agent_profiles_list'),
+    path('ai/agent/start/', start_agent_run, name='agent_run_start'),
+    path('ai/agent/runs/<int:run_id>/', get_agent_run, name='agent_run_detail'),
+    path('ai/agent/runs/<int:run_id>/approve/', approve_agent_run, name='agent_run_approve'),
+    path('ai/agent/runs/<int:run_id>/cancel/', cancel_agent_run, name='agent_run_cancel'),
+    path('ai/agent/audit/', agent_audit_log, name='agent_audit_log'),
+    path('ai/agent/budget/', agent_budget_status, name='agent_budget_status'),
+
     path('ai/check-failures/', check_similar_failures, name='check_similar_failures'),
     path('ai/success-rates/', get_success_rates, name='get_success_rates'),
     path('ai/bottlenecks/', detect_bottlenecks, name='detect_bottlenecks'),

@@ -27,6 +27,12 @@
     <meta name="apple-mobile-web-app-title" content="Knoledgr" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Warm the TLS handshake to Google Identity Services so the sign-in
+         button appears as soon as the GSI script can be parsed, rather than
+         waiting on cold DNS+TLS after React mounts. -->
+    <link rel="preconnect" href="https://accounts.google.com" crossorigin />
+    <link rel="dns-prefetch" href="https://accounts.google.com" />
+    <link rel="preload" as="script" href="https://accounts.google.com/gsi/client" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="icon" href="/logo/favicon-visible.png" type="image/png" sizes="32x32" />
     <link rel="shortcut icon" href="/logo/favicon-visible.png" type="image/png" sizes="32x32" />

@@ -21,6 +21,7 @@ import {
   SectionMessage,
   Tabs,
 } from "../components/atlas";
+import { useAgentContextHint } from "../components/AgentDock";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -61,6 +62,18 @@ export default function SprintDetail() {
   const [showBlocker, setShowBlocker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [blockerForm, setBlockerForm] = useState({ title: "", description: "", type: "blocker" });
+
+  // Frame the global agent dock around this sprint.
+  useAgentContextHint(
+    sprint
+      ? {
+          kind: "sprint",
+          label: `Sprint · ${sprint.name || `#${id}`}`,
+          goalPrefix: `Review sprint "${sprint.name || `#${id}`}" and tell me what's at risk. `,
+          profile_slug: "sprint-coach",
+        }
+      : null
+  );
 
   useEffect(() => {
     fetchData();

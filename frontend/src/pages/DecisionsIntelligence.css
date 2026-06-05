@@ -1,0 +1,378 @@
+/* ============================================================
+   Decisions Intelligence — workspace scorecard
+   The "show your boss what's happening" surface. Designed to
+   land like a vital-signs dashboard, not a list of records.
+   ============================================================ */
+
+.dii {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 80px);
+  --dii-violet: #6E56FF;
+  --dii-blue: #2684FF;
+  --dii-gradient: linear-gradient(135deg, var(--dii-violet) 0%, var(--dii-blue) 100%);
+}
+
+/* ─── title mark ───────────────────────────────────────────── */
+
+.dii-title-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: var(--dii-gradient);
+  color: #FFFFFF;
+  border-radius: 10px;
+  box-shadow: 0 8px 22px -8px rgba(110, 86, 255, 0.5);
+}
+.dii-title-mark svg { width: 18px; height: 18px; }
+
+/* ─── tiles ────────────────────────────────────────────────── */
+
+.dii-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+.dii-tile {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  align-items: center;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.dii-tile:hover { border-color: rgba(110, 86, 255, 0.28); }
+.dii-tile-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: rgba(110, 86, 255, 0.08);
+  color: var(--dii-violet);
+  border-radius: 10px;
+}
+.dii-tile-icon svg { width: 18px; height: 18px; }
+.dii-tile-body { min-width: 0; }
+.dii-tile-label {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+.dii-tile-value {
+  margin: 2px 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--app-text);
+  letter-spacing: -0.012em;
+  line-height: 1.1;
+}
+.dii-tile-hint {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--app-muted);
+}
+
+/* ─── headline row: quality + signals ──────────────────────── */
+
+.dii-headline {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.dii-quality {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.dii-quality::before {
+  content: "";
+  position: absolute;
+  inset: -30% 50% auto -10%;
+  height: 110px;
+  background: radial-gradient(ellipse at top left, rgba(110, 86, 255, 0.16), transparent 70%);
+  pointer-events: none;
+}
+.dii-quality-bar {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: var(--app-surface-alt);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.dii-quality-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 320ms ease;
+}
+.dii-quality--good     .dii-quality-fill { background: linear-gradient(90deg, #00875A, #2684FF); }
+.dii-quality--watch    .dii-quality-fill { background: linear-gradient(90deg, #FF8B00, #FF991F); }
+.dii-quality--low      .dii-quality-fill { background: linear-gradient(90deg, #DE350B, #BF2600); }
+.dii-quality--no-data  .dii-quality-fill { background: var(--app-surface-alt); }
+
+.dii-quality-meta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  position: relative;
+}
+.dii-quality-eyebrow {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+.dii-quality-value {
+  margin: 4px 0 0;
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1;
+  color: var(--app-text);
+}
+.dii-quality-value span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--app-muted);
+  margin-left: 4px;
+}
+.dii-quality-detail { display: flex; flex-direction: column; gap: 6px; }
+.dii-quality-hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--app-muted);
+  line-height: 1.5;
+}
+
+/* ─── signal tiles ─────────────────────────────────────────── */
+
+.dii-signals { display: grid; grid-template-rows: 1fr 1fr; gap: 10px; }
+.dii-signal {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 120ms ease, transform 120ms ease, background 120ms ease;
+}
+.dii-signal:hover { background: var(--app-surface-alt); transform: translateY(-1px); }
+.dii-signal--warning { border-color: rgba(255, 139, 0, 0.34); }
+.dii-signal--info    { border-color: rgba(110, 86, 255, 0.22); }
+.dii-signal-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+}
+.dii-signal--warning .dii-signal-icon { background: rgba(255, 139, 0, 0.14); color: #B45309; }
+.dii-signal--info    .dii-signal-icon { background: rgba(110, 86, 255, 0.12); color: var(--dii-violet); }
+.dii-signal-icon svg { width: 18px; height: 18px; }
+.dii-signal-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.dii-signal-value {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1;
+  color: var(--app-text);
+}
+.dii-signal-label { font-size: 12px; color: var(--app-muted); }
+.dii-signal-arrow { width: 14px; height: 14px; color: var(--app-muted); transition: transform 120ms ease; }
+.dii-signal:hover .dii-signal-arrow { transform: translateX(3px); color: var(--app-text); }
+
+/* ─── lists (attention + drift) ────────────────────────────── */
+
+.dii-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dii-list-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.dii-list-row:hover { border-color: rgba(110, 86, 255, 0.32); transform: translateY(-1px); }
+.dii-list-row--attention { border-left: 3px solid #FF8B00; }
+.dii-list-row--drift     { border-left: 3px solid #DE350B; }
+.dii-list-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+}
+.dii-list-icon svg { width: 16px; height: 16px; }
+.dii-list-icon--warning { background: rgba(255, 139, 0, 0.14); color: #B45309; }
+
+.dii-list-body { min-width: 0; }
+.dii-list-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text);
+  text-decoration: none;
+  display: inline-block;
+}
+.dii-list-title:hover { color: var(--dii-blue); text-decoration: underline; }
+.dii-list-statement {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--app-text);
+  line-height: 1.5;
+}
+.dii-list-meta {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--app-muted);
+}
+.dii-list-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--app-surface-alt);
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text);
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.dii-list-cta:hover {
+  background: var(--dii-gradient);
+  border-color: transparent;
+  color: #FFFFFF;
+}
+.dii-list-cta svg { width: 12px; height: 12px; }
+
+/* ─── lessons feed ─────────────────────────────────────────── */
+
+.dii-lessons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dii-lesson {
+  position: relative;
+  padding: 14px 16px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  transition: border-color 120ms ease;
+}
+.dii-lesson::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--app-border-subtle);
+}
+.dii-lesson--positive::before { background: #00875A; }
+.dii-lesson--negative::before { background: #DE350B; }
+.dii-lesson--neutral::before  { background: var(--dii-violet); }
+
+.dii-lesson-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.dii-lesson-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text);
+  text-decoration: none;
+}
+.dii-lesson-title:hover { color: var(--dii-blue); text-decoration: underline; }
+.dii-lesson-time { font-size: 11.5px; color: var(--app-muted); }
+
+.dii-lesson-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--app-text);
+  white-space: pre-wrap;
+}
+.dii-lesson-text.dii-lesson-empty {
+  color: var(--app-muted);
+  font-style: italic;
+}
+
+.dii-lesson-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--app-border-subtle);
+  flex-wrap: wrap;
+}
+.dii-lesson-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.dii-lesson-delta {
+  font-size: 12px;
+  color: var(--app-muted);
+  font-variant-numeric: tabular-nums;
+}
+.dii-lesson-delta--positive strong { color: #00875A; }
+.dii-lesson-delta--negative strong { color: #BF2600; }
+.dii-lesson-delta--neutral  strong { color: var(--dii-violet); }
+.dii-lesson-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--app-text);
+}
+
+/* ─── responsive ───────────────────────────────────────────── */
+
+@media (max-width: 960px) {
+  .dii-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dii-headline { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .dii-tiles { grid-template-columns: 1fr; }
+  .dii-list-row { grid-template-columns: 36px minmax(0, 1fr); }
+  .dii-list-cta { grid-column: 1 / -1; justify-self: start; }
+}

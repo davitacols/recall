@@ -726,36 +726,36 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
     () =>
       darkMode
         ? {
-            hero: "rounded-2xl border border-stone-700 bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 p-6",
-            heroEyebrow: "text-xs font-semibold tracking-[0.16em] text-stone-400 uppercase",
-            heroTitle: "mt-2 text-2xl md:text-3xl font-black text-stone-100",
-            heroText: "mt-2 text-sm text-stone-300 max-w-2xl",
-            card: "rounded-xl border border-stone-700 bg-stone-900 px-3 py-2 text-center min-w-[95px]",
-            cardValue: "text-lg font-bold text-stone-100",
-            cardLabel: "text-[10px] tracking-wider uppercase text-stone-400",
-            shellAside: "rounded-2xl border border-stone-700 bg-stone-900 p-3",
-            shellMain: "space-y-4 rounded-2xl border border-stone-700 bg-stone-900 p-5",
-            muted: "text-stone-400",
-            text: "text-stone-100",
-            subtext: "text-stone-300",
-            testBtn: "rounded-lg border border-stone-600 px-3 py-2 text-xs font-semibold text-stone-200 hover:bg-stone-800 disabled:opacity-60",
-            saveBtn: "rounded-lg border border-emerald-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60",
+            hero: "rounded-2xl border border-slate-700 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6",
+            heroEyebrow: "text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase",
+            heroTitle: "mt-2 text-2xl md:text-3xl font-black text-slate-100",
+            heroText: "mt-2 text-sm text-slate-300 max-w-2xl",
+            card: "rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-center min-w-[95px]",
+            cardValue: "text-lg font-bold text-slate-100",
+            cardLabel: "text-[10px] tracking-wider uppercase text-slate-400",
+            shellAside: "rounded-2xl border border-slate-700 bg-slate-900 p-3",
+            shellMain: "space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-5",
+            muted: "text-slate-400",
+            text: "text-slate-100",
+            subtext: "text-slate-300",
+            testBtn: "rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-60",
+            saveBtn: "rounded-lg border border-indigo-500 bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-60",
           }
         : {
-            hero: "rounded-2xl border border-stone-200 bg-gradient-to-r from-amber-50 via-orange-50 to-emerald-50 p-6",
-            heroEyebrow: "text-xs font-semibold tracking-[0.16em] text-stone-500 uppercase",
-            heroTitle: "mt-2 text-2xl md:text-3xl font-black text-stone-900",
-            heroText: "mt-2 text-sm text-stone-600 max-w-2xl",
-            card: "rounded-xl border border-stone-200 bg-white px-3 py-2 text-center min-w-[95px]",
-            cardValue: "text-lg font-bold text-stone-900",
-            cardLabel: "text-[10px] tracking-wider uppercase text-stone-500",
-            shellAside: "rounded-2xl border border-stone-200 bg-white p-3",
-            shellMain: "space-y-4 rounded-2xl border border-stone-200 bg-white p-5",
-            muted: "text-stone-500",
-            text: "text-stone-900",
-            subtext: "text-stone-600",
-            testBtn: "rounded-lg border border-stone-300 px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-60",
-            saveBtn: "rounded-lg border border-stone-900 bg-stone-900 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-800 disabled:opacity-60",
+            hero: "rounded-2xl border border-slate-200 bg-gradient-to-r from-indigo-50 via-violet-50 to-indigo-50 p-6",
+            heroEyebrow: "text-xs font-semibold tracking-[0.16em] text-slate-500 uppercase",
+            heroTitle: "mt-2 text-2xl md:text-3xl font-black text-slate-900",
+            heroText: "mt-2 text-sm text-slate-600 max-w-2xl",
+            card: "rounded-xl border border-slate-200 bg-white px-3 py-2 text-center min-w-[95px]",
+            cardValue: "text-lg font-bold text-slate-900",
+            cardLabel: "text-[10px] tracking-wider uppercase text-slate-500",
+            shellAside: "rounded-2xl border border-slate-200 bg-white p-3",
+            shellMain: "space-y-4 rounded-2xl border border-slate-200 bg-white p-5",
+            muted: "text-slate-500",
+            text: "text-slate-900",
+            subtext: "text-slate-600",
+            testBtn: "rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60",
+            saveBtn: "rounded-lg border border-indigo-600 bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60",
           },
     [darkMode]
   );
@@ -835,7 +835,7 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
       <div className="min-h-[50vh] grid place-items-center">
         <div
           className={`w-8 h-8 rounded-full border-2 border-t-transparent animate-spin ${
-            darkMode ? "border-stone-500" : "border-stone-300"
+            darkMode ? "border-slate-500" : "border-slate-300"
           }`}
         />
       </div>
@@ -879,8 +879,8 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
                     rel="noreferrer"
                     className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                       darkMode
-                        ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
-                        : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                        ? "border-slate-600 bg-slate-900 text-slate-100 hover:border-slate-400"
+                        : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
                     }`}
                   >
                     Open repo
@@ -893,8 +893,8 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
                     rel="noreferrer"
                     className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                       darkMode
-                        ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
-                        : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                        ? "border-slate-600 bg-slate-900 text-slate-100 hover:border-slate-400"
+                        : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
                     }`}
                   >
                     Webhook settings
@@ -904,8 +904,8 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
                   to="/docs/integrations/github"
                   className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     darkMode
-                      ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
-                      : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                      ? "border-slate-600 bg-slate-900 text-slate-100 hover:border-slate-400"
+                      : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
                   }`}
                 >
                   GitHub guide
@@ -916,11 +916,11 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
             <div
               className={`rounded-[28px] border p-5 ${
                 darkMode
-                  ? "border-stone-700 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.14),_transparent_55%),linear-gradient(180deg,rgba(28,25,23,0.95),rgba(17,24,39,0.92))]"
+                  ? "border-slate-700 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.14),_transparent_55%),linear-gradient(180deg,rgba(28,25,23,0.95),rgba(17,24,39,0.92))]"
                   : "border-white/70 bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.22),_transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.92),rgba(239,246,255,0.9))] shadow-[0_24px_60px_rgba(28,25,23,0.08)]"
               }`}
             >
-              <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                 GitHub signal
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -936,7 +936,7 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
                     <div
                       key={note}
                       className={`rounded-xl border px-3 py-3 text-sm ${
-                        darkMode ? "border-stone-700 bg-stone-900/80 text-stone-200" : "border-stone-200 bg-white/90 text-stone-700"
+                        darkMode ? "border-slate-700 bg-slate-900/80 text-slate-200" : "border-slate-200 bg-white/90 text-slate-700"
                       }`}
                     >
                       {note}
@@ -1049,7 +1049,7 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
               </div>
               <span
                 className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${
-                  darkMode ? "border-stone-700 bg-stone-800 text-stone-200" : "border-stone-200 bg-stone-50 text-stone-700"
+                  darkMode ? "border-slate-700 bg-slate-800 text-slate-200" : "border-slate-200 bg-slate-50 text-slate-700"
                 }`}
               >
                 <Activity size={18} />
@@ -1084,8 +1084,8 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
                         ? "border-emerald-500/30 bg-emerald-500/10"
                         : "border-emerald-200 bg-emerald-50"
                       : darkMode
-                        ? "border-stone-700 bg-stone-900"
-                        : "border-stone-200 bg-stone-50"
+                        ? "border-slate-700 bg-slate-900"
+                        : "border-slate-200 bg-slate-50"
                   }`}
                 >
                   <span
@@ -1095,13 +1095,13 @@ export default function Integrations({ forceActive = null, focusedProvider = nul
                           ? "bg-emerald-500/20 text-emerald-200"
                           : "bg-emerald-100 text-emerald-700"
                         : darkMode
-                          ? "bg-stone-800 text-stone-400"
-                          : "bg-white text-stone-500"
+                          ? "bg-slate-800 text-slate-400"
+                          : "bg-white text-slate-500"
                     }`}
                   >
                     {item.done ? <CheckCircle2 size={15} /> : index + 1}
                   </span>
-                  <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.label}</p>
+                  <p className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{item.label}</p>
                 </div>
               ))}
             </div>
@@ -1187,10 +1187,10 @@ function GitHubConnectConsole({
   const actionLabel = busy ? "Securing connection..." : setupProgress >= 80 ? "Reconnect and verify" : "Connect and verify";
   const inputClass = `mt-2 w-full rounded-xl border px-3 py-3 text-sm outline-none transition ${
     darkMode
-      ? "border-stone-700 bg-stone-950 text-stone-100 placeholder:text-stone-500 focus:border-emerald-400"
-      : "border-stone-200 bg-white text-stone-900 placeholder:text-stone-400 focus:border-stone-900"
+      ? "border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500 focus:border-emerald-400"
+      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-900"
   }`;
-  const labelClass = `text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`;
+  const labelClass = `text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-slate-400" : "text-slate-500"}`;
 
   const update = (field, fieldValue) => {
     onChange((prev) => ({ ...prev, [field]: fieldValue }));
@@ -1256,17 +1256,17 @@ function GitHubConnectConsole({
     <section
       className={`rounded-[28px] border p-5 ${
         darkMode
-          ? "border-stone-700 bg-[linear-gradient(135deg,rgba(28,25,23,0.96),rgba(15,23,42,0.94))]"
-          : "border-stone-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(240,253,244,0.92))]"
+          ? "border-slate-700 bg-[linear-gradient(135deg,rgba(28,25,23,0.96),rgba(15,23,42,0.94))]"
+          : "border-slate-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(240,253,244,0.92))]"
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className={labelClass}>Guided GitHub connection</p>
-          <h3 className={`mt-2 text-2xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
+          <h3 className={`mt-2 text-2xl font-black ${darkMode ? "text-slate-100" : "text-slate-900"}`}>
             One clean flow from repo to team signal
           </h3>
-          <p className={`mt-2 max-w-3xl text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
+          <p className={`mt-2 max-w-3xl text-sm leading-6 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
             Add the repository details, connect once, then use the webhook packet below to finish the GitHub side.
           </p>
         </div>
@@ -1280,8 +1280,8 @@ function GitHubConnectConsole({
                   ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
                   : "border-emerald-300 bg-emerald-50 text-emerald-700"
                 : darkMode
-                  ? "border-stone-600 bg-stone-900 text-stone-200"
-                  : "border-stone-300 bg-white text-stone-700"
+                  ? "border-slate-600 bg-slate-900 text-slate-200"
+                  : "border-slate-300 bg-white text-slate-700"
             }`}
           >
             {value.enabled ? "Automation on" : "Automation off"}
@@ -1290,10 +1290,10 @@ function GitHubConnectConsole({
             type="button"
             onClick={onConnect}
             disabled={busy}
-            className={`rounded-xl border px-4 py-2 text-xs font-semibold disabled:opacity-60 ${
+            className={`rounded-xl border px-4 py-2 text-xs font-semibold text-white disabled:opacity-60 ${
               darkMode
-                ? "border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-500"
-                : "border-stone-900 bg-stone-900 text-white hover:bg-stone-800"
+                ? "border-indigo-500 bg-indigo-600 hover:bg-indigo-500"
+                : "border-indigo-600 bg-indigo-600 hover:bg-indigo-700"
             }`}
           >
             {actionLabel}
@@ -1303,7 +1303,7 @@ function GitHubConnectConsole({
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <div className="space-y-4">
-          <div className={`rounded-2xl border p-3 ${darkMode ? "border-stone-700 bg-stone-900/75" : "border-white bg-white/90"}`}>
+          <div className={`rounded-2xl border p-3 ${darkMode ? "border-slate-700 bg-slate-900/75" : "border-white bg-white/90"}`}>
             <div className="grid gap-2 md:grid-cols-4">
               {setupCards.map((card, index) => {
                 const Icon = card.icon;
@@ -1317,14 +1317,14 @@ function GitHubConnectConsole({
                       selected
                         ? darkMode
                           ? "border-emerald-500 bg-emerald-500/10"
-                          : "border-stone-900 bg-stone-900 text-white"
+                          : "border-slate-900 bg-slate-900 text-white"
                         : card.done
                           ? darkMode
                             ? "border-emerald-500/20 bg-emerald-500/10"
                             : "border-emerald-200 bg-emerald-50"
                           : darkMode
-                            ? "border-stone-700 bg-stone-950 hover:border-stone-500"
-                            : "border-stone-200 bg-stone-50 hover:border-stone-300"
+                            ? "border-slate-700 bg-slate-950 hover:border-slate-500"
+                            : "border-slate-200 bg-slate-50 hover:border-slate-300"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -1337,20 +1337,20 @@ function GitHubConnectConsole({
                                 ? "bg-emerald-500/20 text-emerald-200"
                                 : "bg-white text-emerald-700"
                               : darkMode
-                                ? "bg-stone-800 text-stone-300"
-                                : "bg-white text-stone-600"
+                                ? "bg-slate-800 text-slate-300"
+                                : "bg-white text-slate-600"
                         }`}
                       >
                         <Icon size={16} />
                       </span>
-                      <span className={`text-xs font-bold ${selected && !darkMode ? "text-white" : darkMode ? "text-stone-300" : "text-stone-600"}`}>
+                      <span className={`text-xs font-bold ${selected && !darkMode ? "text-white" : darkMode ? "text-slate-300" : "text-slate-600"}`}>
                         {card.done ? <CheckCircle2 size={15} /> : index + 1}
                       </span>
                     </div>
-                    <p className={`mt-3 text-sm font-bold ${selected && !darkMode ? "text-white" : darkMode ? "text-stone-100" : "text-stone-900"}`}>
+                    <p className={`mt-3 text-sm font-bold ${selected && !darkMode ? "text-white" : darkMode ? "text-slate-100" : "text-slate-900"}`}>
                       {card.title}
                     </p>
-                    <p className={`mt-1 line-clamp-2 text-xs leading-5 ${selected && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-600"}`}>
+                    <p className={`mt-1 line-clamp-2 text-xs leading-5 ${selected && !darkMode ? "text-slate-200" : darkMode ? "text-slate-400" : "text-slate-600"}`}>
                       {card.detail}
                     </p>
                   </button>
@@ -1359,11 +1359,11 @@ function GitHubConnectConsole({
             </div>
           </div>
 
-          <div className={`rounded-2xl border p-5 ${darkMode ? "border-stone-700 bg-stone-900/75" : "border-white bg-white/90"}`}>
+          <div className={`rounded-2xl border p-5 ${darkMode ? "border-slate-700 bg-slate-900/75" : "border-white bg-white/90"}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className={labelClass}>Step {activeStepIndex + 1} of {setupCards.length}</p>
-                <h4 className={`mt-1 text-xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{currentStep.title}</h4>
+                <h4 className={`mt-1 text-xl font-black ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{currentStep.title}</h4>
               </div>
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -1372,8 +1372,8 @@ function GitHubConnectConsole({
                       ? "bg-emerald-500/15 text-emerald-200"
                       : "bg-emerald-100 text-emerald-700"
                     : darkMode
-                      ? "bg-stone-800 text-stone-300"
-                      : "bg-stone-100 text-stone-600"
+                      ? "bg-slate-800 text-slate-300"
+                      : "bg-slate-100 text-slate-600"
                 }`}
               >
                 {currentStep.done ? "Ready" : "Needs input"}
@@ -1480,11 +1480,11 @@ function GitHubConnectConsole({
 
             {activeStep === "launch" ? (
               <div className="mt-5 space-y-4">
-                <div className={`rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"}`}>
+                <div className={`rounded-2xl border p-4 ${darkMode ? "border-slate-700 bg-slate-950" : "border-slate-200 bg-slate-50"}`}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className={`text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Team automation</p>
-                      <p className={`mt-1 text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>
+                      <p className={`text-sm font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>Team automation</p>
+                      <p className={`mt-1 text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
                         Enable after connection and webhook delivery are verified.
                       </p>
                     </div>
@@ -1497,18 +1497,18 @@ function GitHubConnectConsole({
                             ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
                             : "border-emerald-300 bg-emerald-50 text-emerald-700"
                           : darkMode
-                            ? "border-stone-600 bg-stone-900 text-stone-200"
-                            : "border-stone-300 bg-white text-stone-700"
+                            ? "border-slate-600 bg-slate-900 text-slate-200"
+                            : "border-slate-300 bg-white text-slate-700"
                       }`}
                     >
                       {value.enabled ? "Automation on" : "Automation off"}
                     </button>
                   </div>
                 </div>
-                <label className={`flex items-center justify-between gap-3 rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"}`}>
+                <label className={`flex items-center justify-between gap-3 rounded-2xl border p-4 ${darkMode ? "border-slate-700 bg-slate-950" : "border-slate-200 bg-slate-50"}`}>
                   <span>
-                    <span className={`block text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Auto-link PRs</span>
-                    <span className={`mt-1 block text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>
+                    <span className={`block text-sm font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>Auto-link PRs</span>
+                    <span className={`mt-1 block text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
                       PR titles, branches, and commits can attach to decisions automatically.
                     </span>
                   </span>
@@ -1516,19 +1516,19 @@ function GitHubConnectConsole({
                     type="checkbox"
                     checked={Boolean(value.auto_link_prs)}
                     onChange={(event) => update("auto_link_prs", event.target.checked)}
-                    className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                   />
                 </label>
               </div>
             ) : null}
 
-            <div className={`mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4 ${darkMode ? "border-stone-700" : "border-stone-200"}`}>
+            <div className={`mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4 ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
               <button
                 type="button"
                 onClick={goPrevious}
                 disabled={activeStepIndex === 0}
                 className={`rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-40 ${
-                  darkMode ? "border-stone-600 text-stone-200 hover:bg-stone-800" : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                  darkMode ? "border-slate-600 text-slate-200 hover:bg-slate-800" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                 }`}
               >
                 Back
@@ -1539,7 +1539,7 @@ function GitHubConnectConsole({
                     type="button"
                     onClick={goNext}
                     className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
-                      darkMode ? "border-stone-600 text-stone-100 hover:bg-stone-800" : "border-stone-300 bg-white text-stone-800 hover:bg-stone-100"
+                      darkMode ? "border-slate-600 text-slate-100 hover:bg-slate-800" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-100"
                     }`}
                   >
                     Next: {nextStep.title}
@@ -1552,7 +1552,7 @@ function GitHubConnectConsole({
                   className={`rounded-xl border px-4 py-2 text-xs font-semibold disabled:opacity-60 ${
                     darkMode
                       ? "border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-500"
-                      : "border-stone-900 bg-stone-900 text-white hover:bg-stone-800"
+                      : "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
                   }`}
                 >
                   {actionLabel}
@@ -1563,17 +1563,17 @@ function GitHubConnectConsole({
         </div>
 
         <div className="space-y-4">
-          <div className={`rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-900/75" : "border-white bg-white/90"}`}>
+          <div className={`rounded-2xl border p-4 ${darkMode ? "border-slate-700 bg-slate-900/75" : "border-white bg-white/90"}`}>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className={labelClass}>Setup health</p>
-                <p className={`mt-1 text-3xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{setupProgress}%</p>
+                <p className={`mt-1 text-3xl font-black ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{setupProgress}%</p>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${darkMode ? "bg-stone-800 text-stone-200" : "bg-stone-100 text-stone-700"}`}>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}>
                 {activeSummary?.connected ? "Connected" : "In progress"}
               </span>
             </div>
-            <div className={`mt-4 h-2 overflow-hidden rounded-full ${darkMode ? "bg-stone-800" : "bg-stone-200"}`}>
+            <div className={`mt-4 h-2 overflow-hidden rounded-full ${darkMode ? "bg-slate-800" : "bg-slate-200"}`}>
               <div className="h-full rounded-full bg-emerald-500" style={{ width: `${setupProgress}%` }} />
             </div>
             <div className="mt-4 grid gap-2">
@@ -1588,14 +1588,14 @@ function GitHubConnectConsole({
                           ? "border-emerald-500/25 bg-emerald-500/10"
                           : "border-emerald-200 bg-emerald-50"
                         : darkMode
-                          ? "border-stone-700 bg-stone-950"
-                          : "border-stone-200 bg-stone-50"
+                          ? "border-slate-700 bg-slate-950"
+                          : "border-slate-200 bg-slate-50"
                     }`}
                   >
-                    <Icon size={17} className={card.done ? "text-emerald-500" : darkMode ? "text-stone-400" : "text-stone-500"} />
+                    <Icon size={17} className={card.done ? "text-emerald-500" : darkMode ? "text-slate-400" : "text-slate-500"} />
                     <div>
-                      <p className={`text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{card.title}</p>
-                      <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-stone-400" : "text-stone-600"}`}>{card.detail}</p>
+                      <p className={`text-sm font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{card.title}</p>
+                      <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>{card.detail}</p>
                     </div>
                   </div>
                 );
@@ -1603,7 +1603,7 @@ function GitHubConnectConsole({
             </div>
           </div>
 
-          <div className={`rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-900/75" : "border-white bg-white/90"}`}>
+          <div className={`rounded-2xl border p-4 ${darkMode ? "border-slate-700 bg-slate-900/75" : "border-white bg-white/90"}`}>
             <p className={labelClass}>Webhook packet</p>
             <div className="mt-3 space-y-2">
               {[
@@ -1615,19 +1615,19 @@ function GitHubConnectConsole({
                 <div
                   key={label}
                   className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-3 ${
-                    darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"
+                    darkMode ? "border-slate-700 bg-slate-950" : "border-slate-200 bg-slate-50"
                   }`}
                 >
                   <div className="min-w-0">
                     <p className={labelClass}>{label}</p>
-                    <p className={`mt-1 truncate text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{display}</p>
+                    <p className={`mt-1 truncate text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{display}</p>
                   </div>
                   {label !== "Delivery state" && display && !display.startsWith("Connect") && !display.startsWith("Public") ? (
                     <button
                       type="button"
                       onClick={() => copyValue(label, display)}
                       className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
-                        darkMode ? "border-stone-600 text-stone-200 hover:bg-stone-800" : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                        darkMode ? "border-slate-600 text-slate-200 hover:bg-slate-800" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                       }`}
                     >
                       {copied === label ? "Copied" : "Copy"}
@@ -1640,13 +1640,13 @@ function GitHubConnectConsole({
         </div>
       </div>
 
-      <div className={`mt-4 rounded-2xl border px-4 py-3 ${darkMode ? "border-stone-700 bg-stone-900/70" : "border-stone-200 bg-white/80"}`}>
+      <div className={`mt-4 rounded-2xl border px-4 py-3 ${darkMode ? "border-slate-700 bg-slate-900/70" : "border-slate-200 bg-white/80"}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className={`text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
+            <p className={`text-sm font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>
               {testResult ? testResult.title : guide?.nextAction?.title || "Ready for a clean connection"}
             </p>
-            <p className={`mt-1 text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>
+            <p className={`mt-1 text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
               {testResult ? testResult.detail : guide?.nextAction?.detail || "Connect and verify when the repository details are ready."}
             </p>
           </div>
@@ -1655,9 +1655,9 @@ function GitHubConnectConsole({
               type="checkbox"
               checked={Boolean(value.auto_link_prs)}
               onChange={(event) => update("auto_link_prs", event.target.checked)}
-              className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             />
-            <span className={`text-sm font-semibold ${darkMode ? "text-stone-200" : "text-stone-700"}`}>Auto-link PRs</span>
+            <span className={`text-sm font-semibold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>Auto-link PRs</span>
           </label>
         </div>
       </div>
@@ -1667,12 +1667,12 @@ function GitHubConnectConsole({
 
 function PreviewStrip({ darkMode, label, value, helper }) {
   return (
-    <div className={`rounded-xl border px-3 py-3 ${darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"}`}>
-      <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+    <div className={`rounded-xl border px-3 py-3 ${darkMode ? "border-slate-700 bg-slate-950" : "border-slate-200 bg-slate-50"}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
         {label}
       </p>
-      <p className={`mt-1 break-words text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
-      <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-stone-400" : "text-stone-600"}`}>{helper}</p>
+      <p className={`mt-1 break-words text-sm font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{value}</p>
+      <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>{helper}</p>
     </div>
   );
 }
@@ -1681,21 +1681,21 @@ function CopyRow({ darkMode, label, value, disabled, copied, onCopy }) {
   return (
     <div
       className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-3 ${
-        darkMode ? "border-stone-700 bg-stone-950" : "border-stone-200 bg-stone-50"
+        darkMode ? "border-slate-700 bg-slate-950" : "border-slate-200 bg-slate-50"
       }`}
     >
       <div className="min-w-0">
-        <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+        <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
           {label}
         </p>
-        <p className={`mt-1 truncate text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
+        <p className={`mt-1 truncate text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{value}</p>
       </div>
       {!disabled ? (
         <button
           type="button"
           onClick={onCopy}
           className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
-            darkMode ? "border-stone-600 text-stone-200 hover:bg-stone-800" : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+            darkMode ? "border-slate-600 text-slate-200 hover:bg-slate-800" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
           }`}
         >
           {copied ? "Copied" : "Copy"}
@@ -1711,27 +1711,27 @@ function SignalTile({ signal, darkMode }) {
     <div
       className={`rounded-2xl border p-4 ${
         darkMode
-          ? "border-stone-700 bg-stone-900/80"
+          ? "border-slate-700 bg-slate-900/80"
           : "border-white/80 bg-white/85 shadow-[0_16px_40px_rgba(28,25,23,0.06)]"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <span
           className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${
-            darkMode ? "bg-stone-800 text-emerald-200" : "bg-emerald-50 text-emerald-700"
+            darkMode ? "bg-slate-800 text-emerald-200" : "bg-emerald-50 text-emerald-700"
           }`}
         >
           <Icon size={18} />
         </span>
-        <span className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-500" : "text-stone-400"}`}>
+        <span className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
           Live
         </span>
       </div>
-      <p className={`mt-4 text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+      <p className={`mt-4 text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
         {signal.label}
       </p>
-      <p className={`mt-1 truncate text-lg font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{signal.value}</p>
-      <p className={`mt-1 text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>{signal.detail}</p>
+      <p className={`mt-1 truncate text-lg font-black ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{signal.value}</p>
+      <p className={`mt-1 text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>{signal.detail}</p>
     </div>
   );
 }
@@ -1746,7 +1746,7 @@ function TeamPathTile({ item, darkMode }) {
             ? "border-emerald-500/30 bg-emerald-500/10"
             : "border-emerald-200 bg-emerald-50/80"
           : darkMode
-            ? "border-stone-700 bg-stone-900/70"
+            ? "border-slate-700 bg-slate-900/70"
             : "border-white/80 bg-white/75"
       }`}
     >
@@ -1758,8 +1758,8 @@ function TeamPathTile({ item, darkMode }) {
                 ? "bg-emerald-500/20 text-emerald-200"
                 : "bg-white text-emerald-700"
               : darkMode
-                ? "bg-stone-800 text-stone-300"
-                : "bg-stone-100 text-stone-600"
+                ? "bg-slate-800 text-slate-300"
+                : "bg-slate-100 text-slate-600"
           }`}
         >
           <Icon size={17} />
@@ -1771,15 +1771,15 @@ function TeamPathTile({ item, darkMode }) {
                 ? "bg-emerald-500/15 text-emerald-200"
                 : "bg-emerald-100 text-emerald-700"
               : darkMode
-                ? "bg-stone-800 text-stone-300"
-                : "bg-stone-100 text-stone-600"
+                ? "bg-slate-800 text-slate-300"
+                : "bg-slate-100 text-slate-600"
           }`}
         >
           {item.done ? "Ready" : "Next"}
         </span>
       </div>
-      <p className={`mt-3 text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.title}</p>
-      <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{item.detail}</p>
+      <p className={`mt-3 text-sm font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{item.title}</p>
+      <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{item.detail}</p>
     </div>
   );
 }
@@ -1803,20 +1803,20 @@ function IntegrationMap({
     <div
       className={`rounded-[28px] border p-5 ${
         darkMode
-          ? "border-stone-700 bg-[linear-gradient(180deg,rgba(28,25,23,0.96),rgba(12,18,26,0.94))]"
+          ? "border-slate-700 bg-[linear-gradient(180deg,rgba(28,25,23,0.96),rgba(12,18,26,0.94))]"
           : "border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(240,253,244,0.9))] shadow-[0_24px_60px_rgba(28,25,23,0.08)]"
       }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
             Integration map
           </p>
-          <h2 className={`mt-2 text-xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Signal path</h2>
+          <h2 className={`mt-2 text-xl font-black ${darkMode ? "text-slate-100" : "text-slate-900"}`}>Signal path</h2>
         </div>
         <div className="grid h-24 w-24 place-items-center rounded-full p-2" style={ringStyle}>
-          <div className={`grid h-full w-full place-items-center rounded-full ${darkMode ? "bg-stone-950" : "bg-white"}`}>
-            <span className={`text-xl font-black ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{setupProgress}%</span>
+          <div className={`grid h-full w-full place-items-center rounded-full ${darkMode ? "bg-slate-950" : "bg-white"}`}>
+            <span className={`text-xl font-black ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{setupProgress}%</span>
           </div>
         </div>
       </div>
@@ -1832,31 +1832,31 @@ function IntegrationMap({
             <div
               key={item.label}
               className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
-                darkMode ? "border-stone-700 bg-stone-900/85" : "border-stone-200 bg-white/85"
+                darkMode ? "border-slate-700 bg-slate-900/85" : "border-slate-200 bg-white/85"
               }`}
             >
               <div className="flex min-w-0 items-center gap-3">
                 <span
                   className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                    darkMode ? "bg-stone-800 text-stone-200" : "bg-stone-100 text-stone-700"
+                    darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
                   }`}
                 >
                   <Icon size={16} />
                 </span>
                 <div className="min-w-0">
-                  <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+                  <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                     {item.label}
                   </p>
-                  <p className={`truncate text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.value}</p>
+                  <p className={`truncate text-sm font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{item.value}</p>
                 </div>
               </div>
-              <ArrowRight size={16} className={darkMode ? "text-stone-500" : "text-stone-400"} />
+              <ArrowRight size={16} className={darkMode ? "text-slate-500" : "text-slate-400"} />
             </div>
           );
         })}
       </div>
 
-      <div className={`mt-5 rounded-2xl border p-4 ${darkMode ? "border-stone-700 bg-stone-900/70" : "border-stone-200 bg-white/80"}`}>
+      <div className={`mt-5 rounded-2xl border p-4 ${darkMode ? "border-slate-700 bg-slate-900/70" : "border-slate-200 bg-white/80"}`}>
         <div className="flex items-center gap-3">
           <span
             className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${
@@ -1866,8 +1866,8 @@ function IntegrationMap({
             <Users size={18} />
           </span>
           <div>
-            <p className={`text-sm font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Team handoff</p>
-            <p className={`text-sm ${darkMode ? "text-stone-400" : "text-stone-600"}`}>
+            <p className={`text-sm font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>Team handoff</p>
+            <p className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
               {activeSummary?.nextAction || "Finish setup, then share the workflow."}
             </p>
           </div>
@@ -1887,18 +1887,18 @@ function ProviderSelectCard({ provider, active, darkMode, onClick }) {
         active
           ? darkMode
             ? "border-emerald-500 bg-emerald-500/10"
-            : "border-stone-900 bg-stone-900 text-white"
+            : "border-slate-900 bg-slate-900 text-white"
           : darkMode
-            ? "border-stone-700 bg-stone-900 hover:border-stone-500"
-            : "border-stone-200 bg-white hover:border-stone-300"
+            ? "border-slate-700 bg-slate-900 hover:border-slate-500"
+            : "border-slate-200 bg-white hover:border-slate-300"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className={`text-sm font-semibold ${active && !darkMode ? "text-white" : darkMode ? "text-stone-100" : "text-stone-900"}`}>
+          <p className={`text-sm font-semibold ${active && !darkMode ? "text-white" : darkMode ? "text-slate-100" : "text-slate-900"}`}>
             {provider.name}
           </p>
-          <p className={`mt-1 text-[11px] uppercase tracking-[0.14em] ${active && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-500"}`}>
+          <p className={`mt-1 text-[11px] uppercase tracking-[0.14em] ${active && !darkMode ? "text-slate-200" : darkMode ? "text-slate-400" : "text-slate-500"}`}>
             {provider.category}
           </p>
         </div>
@@ -1911,31 +1911,31 @@ function ProviderSelectCard({ provider, active, darkMode, onClick }) {
                   ? "bg-emerald-500/20 text-emerald-200"
                   : "bg-emerald-100 text-emerald-700"
               : active && !darkMode
-                ? "bg-white/10 text-stone-100"
+                ? "bg-white/10 text-slate-100"
                 : darkMode
-                  ? "bg-stone-800 text-stone-300"
-                  : "bg-stone-100 text-stone-600"
+                  ? "bg-slate-800 text-slate-300"
+                  : "bg-slate-100 text-slate-600"
           }`}
         >
           {provider.connected ? "Live" : "Setup"}
         </span>
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <div className={`h-2 flex-1 overflow-hidden rounded-full ${darkMode ? "bg-stone-800" : active && !darkMode ? "bg-white/15" : "bg-stone-200"}`}>
+        <div className={`h-2 flex-1 overflow-hidden rounded-full ${darkMode ? "bg-slate-800" : active && !darkMode ? "bg-white/15" : "bg-slate-200"}`}>
           <div
-            className={`h-full rounded-full ${provider.connected ? "bg-emerald-500" : active && !darkMode ? "bg-white" : darkMode ? "bg-stone-500" : "bg-stone-400"}`}
+            className={`h-full rounded-full ${provider.connected ? "bg-emerald-500" : active && !darkMode ? "bg-white" : darkMode ? "bg-slate-500" : "bg-slate-400"}`}
             style={{ width: `${progress}%` }}
           />
         </div>
-        <span className={`text-xs font-semibold ${active && !darkMode ? "text-white" : darkMode ? "text-stone-300" : "text-stone-700"}`}>
+        <span className={`text-xs font-semibold ${active && !darkMode ? "text-white" : darkMode ? "text-slate-300" : "text-slate-700"}`}>
           {progress}%
         </span>
       </div>
       <div className="mt-3 flex items-center justify-between gap-3">
-        <p className={`text-xs ${active && !darkMode ? "text-stone-200" : darkMode ? "text-stone-400" : "text-stone-500"}`}>
+        <p className={`text-xs ${active && !darkMode ? "text-slate-200" : darkMode ? "text-slate-400" : "text-slate-500"}`}>
           {provider.completedSteps}/{provider.totalSteps} checks
         </p>
-        <p className={`truncate text-xs font-medium ${active && !darkMode ? "text-white" : darkMode ? "text-stone-200" : "text-stone-700"}`}>
+        <p className={`truncate text-xs font-medium ${active && !darkMode ? "text-white" : darkMode ? "text-slate-200" : "text-slate-700"}`}>
           {provider.key === "github" ? "Open workspace" : provider.nextAction}
         </p>
       </div>
@@ -1974,17 +1974,17 @@ function GitHubConfig() {
         : "border-emerald-200 bg-emerald-50 text-emerald-800"
       : readiness?.state === "missing_secret"
         ? darkMode
-          ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-          : "border-amber-200 bg-amber-50 text-amber-800"
+          ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
+          : "border-indigo-200 bg-indigo-50 text-indigo-800"
         : darkMode
-          ? "border-stone-700 bg-stone-800 text-stone-300"
-          : "border-stone-200 bg-stone-50 text-stone-700";
+          ? "border-slate-700 bg-slate-800 text-slate-300"
+          : "border-slate-200 bg-slate-50 text-slate-700";
   const overviewShell = darkMode
-    ? "rounded-[18px] border border-stone-700 bg-stone-900/90 p-5"
-    : "rounded-[18px] border border-stone-200 bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)]";
+    ? "rounded-[18px] border border-slate-700 bg-slate-900/90 p-5"
+    : "rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)]";
   const surfaceTone = darkMode
-    ? "rounded-[14px] border border-stone-700 bg-stone-950/70"
-    : "rounded-[14px] border border-stone-200 bg-stone-50/60";
+    ? "rounded-[14px] border border-slate-700 bg-slate-950/70"
+    : "rounded-[14px] border border-slate-200 bg-slate-50/60";
   const [repoReference, setRepoReference] = useState(repoSlug || "");
 
   useEffect(() => {
@@ -2101,13 +2101,13 @@ function GitHubConfig() {
       <section className={overviewShell}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
-            <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
               GitHub setup
             </p>
-            <h3 className={`mt-2 text-2xl font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
+            <h3 className={`mt-2 text-2xl font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>
               Connect one repository, reveal the webhook, then confirm live delivery traffic
             </h3>
-            <p className={`mt-3 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
+            <p className={`mt-3 text-sm leading-6 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
               The setup flow is now simple: choose the repository, save one shared webhook secret, copy the exact values into GitHub,
               and wait for one real push or pull request delivery to land in Knoledgr.
             </p>
@@ -2120,8 +2120,8 @@ function GitHubConfig() {
                 rel="noreferrer"
                 className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   darkMode
-                    ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
-                    : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                    ? "border-slate-600 bg-slate-950 text-slate-100 hover:border-slate-400"
+                    : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
                 }`}
               >
                 Open repo
@@ -2134,8 +2134,8 @@ function GitHubConfig() {
                 rel="noreferrer"
                 className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   darkMode
-                    ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
-                    : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                    ? "border-slate-600 bg-slate-950 text-slate-100 hover:border-slate-400"
+                    : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
                 }`}
               >
                 Webhook settings
@@ -2146,8 +2146,8 @@ function GitHubConfig() {
               to="/docs/integrations/github"
               className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                 darkMode
-                  ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
-                  : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                  ? "border-slate-600 bg-slate-950 text-slate-100 hover:border-slate-400"
+                  : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
               }`}
             >
                 GitHub guide
@@ -2174,8 +2174,8 @@ function GitHubConfig() {
             <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-sky-300/80" : "text-sky-700"}`}>
               Next move
             </p>
-            <p className={`mt-2 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{nextActionTitle}</p>
-            <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{nextActionDetail}</p>
+            <p className={`mt-2 text-base font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{nextActionTitle}</p>
+            <p className={`mt-2 text-sm leading-6 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{nextActionDetail}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <StatusPill label="Repository" value={repoSlug || "Not saved yet"} tone={hasRepoTarget ? "sky" : "slate"} darkMode={darkMode} />
               <StatusPill label="Secret" value={hasSecret ? "Ready" : "Missing"} tone={hasSecret ? "emerald" : "amber"} darkMode={darkMode} />
@@ -2198,8 +2198,8 @@ function GitHubConfig() {
                   rel="noreferrer"
                   className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     darkMode
-                      ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
-                      : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                      ? "border-slate-600 bg-slate-950 text-slate-100 hover:border-slate-400"
+                      : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
                   }`}
                 >
                   Open webhook settings
@@ -2246,8 +2246,8 @@ function GitHubConfig() {
             <div className={`${surfaceTone} px-4 py-4`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="max-w-2xl">
-                  <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Repository target preview</p>
-                  <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
+                  <p className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>Repository target preview</p>
+                  <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
                     {parsedRepoReference
                       ? `Ready to use ${parsedRepoReference.slug}. Apply it below if the repository fields do not already match.`
                       : "Paste a full GitHub URL or owner/repo here to avoid manually splitting the repository."}
@@ -2259,8 +2259,8 @@ function GitHubConfig() {
                     onClick={applyParsedRepoReference}
                     className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                       darkMode
-                        ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
-                        : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                        ? "border-slate-600 bg-slate-900 text-slate-100 hover:border-slate-400"
+                        : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
                     }`}
                   >
                     Use {parsedRepoReference.slug}
@@ -2304,7 +2304,7 @@ function GitHubConfig() {
                 />
               </Field>
             </div>
-            <div className={`${surfaceTone} px-4 py-3 text-sm ${darkMode ? "text-stone-300" : "text-stone-700"}`}>
+            <div className={`${surfaceTone} px-4 py-3 text-sm ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
               Save after filling these fields. Once Knoledgr knows which repository to watch, the exact webhook payload URL appears in the next step.
             </div>
           </GitHubPanel>
@@ -2322,8 +2322,8 @@ function GitHubConfig() {
                   rel="noreferrer"
                   className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     darkMode
-                      ? "border-stone-600 bg-stone-950 text-stone-100 hover:border-stone-400"
-                      : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                      ? "border-slate-600 bg-slate-950 text-slate-100 hover:border-slate-400"
+                      : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
                   }`}
                 >
                   Open webhook settings
@@ -2365,13 +2365,13 @@ function GitHubConfig() {
             {!webhookUrl ? (
               <div
                 className={`rounded-[14px] border px-4 py-4 ${
-                  darkMode ? "border-amber-500/30 bg-amber-500/10 text-amber-100" : "border-amber-200 bg-amber-50 text-amber-900"
+                  darkMode ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-100" : "border-indigo-200 bg-indigo-50 text-indigo-900"
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="max-w-2xl">
                     <p className="text-sm font-semibold">Payload URL appears after you save</p>
-                    <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-amber-100/90" : "text-amber-900/80"}`}>
+                    <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-indigo-100/90" : "text-indigo-900/80"}`}>
                       Save the repository target and webhook secret first. Knoledgr then reveals the exact payload URL GitHub should send to.
                     </p>
                   </div>
@@ -2381,8 +2381,8 @@ function GitHubConfig() {
                     disabled={saving}
                     className={`inline-flex rounded-full border px-4 py-2 text-xs font-semibold ${
                       darkMode
-                        ? "border-amber-300/40 bg-stone-950 text-amber-100 hover:border-amber-200 disabled:opacity-60"
-                        : "border-amber-300 bg-white text-amber-900 hover:border-amber-400 disabled:opacity-60"
+                        ? "border-indigo-300/40 bg-slate-950 text-indigo-100 hover:border-indigo-200 disabled:opacity-60"
+                        : "border-indigo-300 bg-white text-indigo-900 hover:border-indigo-400 disabled:opacity-60"
                     }`}
                   >
                     {saving ? "Saving..." : "Save GitHub setup"}
@@ -2509,13 +2509,13 @@ function SignalCard({ label, value, darkMode }) {
   return (
     <div
       className={`rounded-xl border px-4 py-3 ${
-        darkMode ? "border-stone-700 bg-stone-800/70" : "border-stone-200 bg-stone-50/60"
+        darkMode ? "border-slate-700 bg-slate-800/70" : "border-slate-200 bg-slate-50/60"
       }`}
     >
-      <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
         {label}
       </p>
-      <p className={`mt-2 text-base font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{value}</p>
+      <p className={`mt-2 text-base font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{value}</p>
     </div>
   );
 }
@@ -2528,24 +2528,24 @@ function IntegrationAssistant({ providerName, guide, darkMode, testResult }) {
       ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
       : "border-emerald-200 bg-emerald-50 text-emerald-800"
     : darkMode
-      ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-      : "border-amber-200 bg-amber-50 text-amber-800";
+      ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
+      : "border-indigo-200 bg-indigo-50 text-indigo-800";
 
   return (
     <section
       className={`rounded-2xl border p-4 space-y-4 ${
-        darkMode ? "border-stone-700 bg-stone-800/60" : "border-stone-200 bg-stone-50/70"
+        darkMode ? "border-slate-700 bg-slate-800/60" : "border-slate-200 bg-slate-50/70"
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-3xl">
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
             Integration Assistant
           </p>
-          <h3 className={`mt-2 text-lg font-bold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>
+          <h3 className={`mt-2 text-lg font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>
             {guide.title}
           </h3>
-          <p className={`mt-2 text-sm ${darkMode ? "text-stone-300" : "text-stone-600"}`}>
+          <p className={`mt-2 text-sm ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
             {guide.description}
           </p>
         </div>
@@ -2557,8 +2557,8 @@ function IntegrationAssistant({ providerName, guide, darkMode, testResult }) {
             to={guide.docHref}
             className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
               darkMode
-                ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
-                : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+                ? "border-slate-600 bg-slate-900 text-slate-100 hover:border-slate-400"
+                : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
             }`}
           >
             {guide.docLabel}
@@ -2567,8 +2567,8 @@ function IntegrationAssistant({ providerName, guide, darkMode, testResult }) {
             to="/feedback"
             className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
               darkMode
-                ? "border-stone-600 bg-stone-900 text-stone-300 hover:border-stone-400"
-                : "border-stone-300 bg-white text-stone-700 hover:border-stone-500"
+                ? "border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400"
+                : "border-slate-300 bg-white text-slate-700 hover:border-slate-500"
             }`}
           >
             Need help?
@@ -2585,10 +2585,10 @@ function IntegrationAssistant({ providerName, guide, darkMode, testResult }) {
           {guide.statusLabel ? (
             <div
               className={`rounded-xl border px-4 py-3 text-sm ${
-                darkMode ? "border-stone-700 bg-stone-900 text-stone-200" : "border-stone-200 bg-white text-stone-700"
+                darkMode ? "border-slate-700 bg-slate-900 text-slate-200" : "border-slate-200 bg-white text-slate-700"
               }`}
             >
-              <span className={`font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{providerName} status:</span>{" "}
+              <span className={`font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{providerName} status:</span>{" "}
               {guide.statusLabel}
             </div>
           ) : null}
@@ -2601,8 +2601,8 @@ function IntegrationAssistant({ providerName, guide, darkMode, testResult }) {
                     ? "border-emerald-500/30 bg-emerald-500/10"
                     : "border-emerald-200 bg-emerald-50/80"
                   : darkMode
-                    ? "border-stone-700 bg-stone-900"
-                    : "border-stone-200 bg-white"
+                    ? "border-slate-700 bg-slate-900"
+                    : "border-slate-200 bg-white"
               }`}
             >
               <div className="flex items-start gap-3">
@@ -2613,15 +2613,15 @@ function IntegrationAssistant({ providerName, guide, darkMode, testResult }) {
                         ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
                         : "border-emerald-300 bg-emerald-100 text-emerald-700"
                       : darkMode
-                        ? "border-stone-600 bg-stone-800 text-stone-300"
-                        : "border-stone-300 bg-stone-100 text-stone-700"
+                        ? "border-slate-600 bg-slate-800 text-slate-300"
+                        : "border-slate-300 bg-slate-100 text-slate-700"
                   }`}
                 >
                   {step.done ? "OK" : index + 1}
                 </span>
                 <div>
-                  <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{step.title}</p>
-                  <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{step.detail}</p>
+                  <p className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{step.title}</p>
+                  <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{step.detail}</p>
                 </div>
               </div>
             </div>
@@ -2629,7 +2629,7 @@ function IntegrationAssistant({ providerName, guide, darkMode, testResult }) {
           {guide.extraNote ? (
             <div
               className={`rounded-xl border border-dashed px-4 py-3 text-sm break-all ${
-                darkMode ? "border-stone-600 text-stone-300" : "border-stone-300 text-stone-700"
+                darkMode ? "border-slate-600 text-slate-300" : "border-slate-300 text-slate-700"
               }`}
             >
               {guide.extraNote}
@@ -2660,15 +2660,15 @@ function NextActionCard({ nextAction, darkMode }) {
       <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-sky-200" : "text-sky-700"}`}>
         Next Best Step
       </p>
-      <p className={`mt-2 text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{nextAction.title}</p>
-      <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{nextAction.detail}</p>
+      <p className={`mt-2 text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{nextAction.title}</p>
+      <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{nextAction.detail}</p>
       {nextAction.targetId ? (
         <a
           href={`#${nextAction.targetId}`}
           className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
             darkMode
-              ? "border-stone-600 bg-stone-900 text-stone-100 hover:border-stone-400"
-              : "border-stone-300 bg-white text-stone-800 hover:border-stone-500"
+              ? "border-slate-600 bg-slate-900 text-slate-100 hover:border-slate-400"
+              : "border-slate-300 bg-white text-slate-800 hover:border-slate-500"
           }`}
         >
           Jump to field
@@ -2691,14 +2691,14 @@ function TestResultCard({ testResult, darkMode }) {
   return (
     <div className={`rounded-xl border px-4 py-4 ${tone}`}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">Latest Test Result</p>
-      <p className={`mt-2 text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{testResult.title}</p>
-      <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-700"}`}>{testResult.detail}</p>
+      <p className={`mt-2 text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{testResult.title}</p>
+      <p className={`mt-1 text-sm leading-6 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{testResult.detail}</p>
       {testResult.tips?.length ? (
         <div className="mt-3 space-y-2">
           {testResult.tips.map((tip) => (
             <div key={tip} className="flex items-start gap-2">
               <span className={`mt-1 inline-flex h-2.5 w-2.5 rounded-full ${darkMode ? "bg-current/70" : "bg-current/60"}`} />
-              <p className={`text-sm leading-6 ${darkMode ? "text-stone-200" : "text-stone-700"}`}>{tip}</p>
+              <p className={`text-sm leading-6 ${darkMode ? "text-slate-200" : "text-slate-700"}`}>{tip}</p>
             </div>
           ))}
         </div>
@@ -2712,10 +2712,10 @@ function AssistantFieldChecklist({ items = [], darkMode }) {
   return (
     <div
       className={`rounded-xl border p-4 ${
-        darkMode ? "border-stone-700 bg-stone-900" : "border-stone-200 bg-white"
+        darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
-      <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Live field checklist</p>
+      <p className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>Live field checklist</p>
       <div className="mt-3 space-y-2">
         {items.map((item) => (
           <div
@@ -2726,15 +2726,15 @@ function AssistantFieldChecklist({ items = [], darkMode }) {
                   ? "border-emerald-500/20 bg-emerald-500/10"
                   : "border-emerald-200 bg-emerald-50/70"
                 : darkMode
-                  ? "border-stone-700 bg-stone-800"
-                  : "border-stone-200 bg-stone-50"
+                  ? "border-slate-700 bg-slate-800"
+                  : "border-slate-200 bg-slate-50"
             }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className={`text-sm font-medium ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.label}</p>
-                <p className={`mt-1 text-xs break-all ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{item.value}</p>
-                <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-stone-400" : "text-stone-500"}`}>{item.helper}</p>
+                <p className={`text-sm font-medium ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{item.label}</p>
+                <p className={`mt-1 text-xs break-all ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{item.value}</p>
+                <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{item.helper}</p>
               </div>
               <div className="shrink-0 flex flex-col items-end gap-2">
                 <span
@@ -2744,8 +2744,8 @@ function AssistantFieldChecklist({ items = [], darkMode }) {
                         ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
                         : "border-emerald-200 bg-emerald-50 text-emerald-700"
                       : darkMode
-                        ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
-                        : "border-amber-200 bg-amber-50 text-amber-700"
+                        ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-200"
+                        : "border-indigo-200 bg-indigo-50 text-indigo-700"
                   }`}
                 >
                   {item.ready ? "Ready" : "Missing"}
@@ -2789,20 +2789,20 @@ function SetupValuesCard({ config, darkMode }) {
   return (
     <div
       className={`rounded-xl border p-4 ${
-        darkMode ? "border-stone-700 bg-stone-900" : "border-stone-200 bg-white"
+        darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
-      <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{config.title}</p>
+      <p className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{config.title}</p>
       <div className="mt-3 space-y-2">
         {config.items.map((item) => (
           <div
             key={item.label}
             className={`rounded-lg border px-3 py-3 ${
-              darkMode ? "border-stone-700 bg-stone-800" : "border-stone-200 bg-stone-50"
+              darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-slate-50"
             }`}
           >
             <div className="flex items-start justify-between gap-3">
-              <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-stone-400" : "text-stone-500"}`}>
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                 {item.label}
               </p>
               {item.copyValue ? (
@@ -2811,16 +2811,16 @@ function SetupValuesCard({ config, darkMode }) {
                   onClick={() => handleCopy(item.label, item.copyValue)}
                   className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
                     darkMode
-                      ? "border-stone-600 bg-stone-900 text-stone-200 hover:border-stone-400"
-                      : "border-stone-300 bg-white text-stone-700 hover:border-stone-500"
+                      ? "border-slate-600 bg-slate-900 text-slate-200 hover:border-slate-400"
+                      : "border-slate-300 bg-white text-slate-700 hover:border-slate-500"
                   }`}
                 >
                   {copiedLabel === item.label ? "Copied" : "Copy"}
                 </button>
               ) : null}
             </div>
-            <p className={`mt-2 text-sm font-medium break-all ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{item.value}</p>
-            <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-stone-400" : "text-stone-500"}`}>{item.helper}</p>
+            <p className={`mt-2 text-sm font-medium break-all ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{item.value}</p>
+            <p className={`mt-1 text-xs leading-5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{item.helper}</p>
           </div>
         ))}
       </div>
@@ -2848,10 +2848,10 @@ function ShortcutActionsCard({ shortcuts = [], darkMode }) {
   return (
     <div
       className={`rounded-xl border p-4 ${
-        darkMode ? "border-stone-700 bg-stone-900" : "border-stone-200 bg-white"
+        darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
-      <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>Setup shortcuts</p>
+      <p className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>Setup shortcuts</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {shortcuts.map((shortcut) =>
           shortcut.href ? (
@@ -2862,8 +2862,8 @@ function ShortcutActionsCard({ shortcuts = [], darkMode }) {
               rel={shortcut.external ? "noreferrer" : undefined}
               className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                 darkMode
-                  ? "border-stone-600 bg-stone-800 text-stone-100 hover:border-stone-400"
-                  : "border-stone-300 bg-stone-50 text-stone-800 hover:border-stone-500"
+                  ? "border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-400"
+                  : "border-slate-300 bg-slate-50 text-slate-800 hover:border-slate-500"
               }`}
             >
               {shortcut.label}
@@ -2875,8 +2875,8 @@ function ShortcutActionsCard({ shortcuts = [], darkMode }) {
               onClick={() => handleCopy(shortcut.label, shortcut.copyValue)}
               className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
                 darkMode
-                  ? "border-stone-600 bg-stone-800 text-stone-100 hover:border-stone-400"
-                  : "border-stone-300 bg-stone-50 text-stone-800 hover:border-stone-500"
+                  ? "border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-400"
+                  : "border-slate-300 bg-slate-50 text-slate-800 hover:border-slate-500"
               }`}
             >
               {copiedLabel === shortcut.label ? "Copied" : shortcut.label}
@@ -2892,15 +2892,15 @@ function GuideList({ title, items, darkMode }) {
   return (
     <div
       className={`rounded-xl border p-4 ${
-        darkMode ? "border-stone-700 bg-stone-900" : "border-stone-200 bg-white"
+        darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
       }`}
     >
-      <p className={`text-sm font-semibold ${darkMode ? "text-stone-100" : "text-stone-900"}`}>{title}</p>
+      <p className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{title}</p>
       <div className="mt-3 space-y-2">
         {items.map((item) => (
           <div key={item} className="flex items-start gap-2">
-            <span className={`mt-1 inline-flex h-2.5 w-2.5 rounded-full ${darkMode ? "bg-stone-500" : "bg-stone-400"}`} />
-            <p className={`text-sm leading-6 ${darkMode ? "text-stone-300" : "text-stone-600"}`}>{item}</p>
+            <span className={`mt-1 inline-flex h-2.5 w-2.5 rounded-full ${darkMode ? "bg-slate-500" : "bg-slate-400"}`} />
+            <p className={`text-sm leading-6 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{item}</p>
           </div>
         ))}
       </div>

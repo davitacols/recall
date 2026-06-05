@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  CpuChipIcon,
   HomeIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
@@ -106,6 +107,16 @@ export default function UnifiedNav({
               active={isHrefActive(location.pathname, navModel.askRecallItem.href)}
               ai
             />
+            {navModel.agentItem ? (
+              <NavItem
+                to={navModel.agentItem.href}
+                icon={CpuChipIcon}
+                label="Agent"
+                collapsed={collapsed}
+                active={isHrefActive(location.pathname, navModel.agentItem.href)}
+                ai
+              />
+            ) : null}
           </div>
 
           <div className="usb__divider" />

@@ -1,9 +1,11 @@
 import {
+  BoltIcon,
   CalendarIcon,
   ChartBarIcon,
   ChatBubbleLeftIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
+  CpuChipIcon,
   CubeIcon,
   DocumentCheckIcon,
   DocumentTextIcon,
@@ -83,6 +85,14 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
     summary: "AI assistant for memory, work, and decisions.",
   };
 
+  const agentItem = {
+    name: "Agent",
+    href: "/agent",
+    icon: CpuChipIcon,
+    description: "Autonomous tool-using copilot that plans multi-step work and asks for approval before write actions.",
+    summary: "Autonomous workspace agent with tool use.",
+  };
+
   const workstreamGroupsBase = [
     {
       name: "Knowledge",
@@ -96,14 +106,20 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
           description: "Find the source context behind AI answers",
         },
         {
+          name: "Browse",
+          href: "/knowledge/base",
+          icon: CubeIcon,
+          description: "Browse the workspace knowledge base",
+        },
+        {
           name: "Graph",
           href: "/knowledge/graph",
           icon: CubeIcon,
           description: "Trace the context graph AI uses to reason",
         },
         {
-          name: "Analytics",
-          href: "/knowledge/analytics",
+          name: "Insights",
+          href: "/knowledge/insights",
           icon: ChartBarIcon,
           description: "Measure AI context coverage, freshness, and flow",
         },
@@ -125,6 +141,12 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
           href: "/decisions",
           icon: DocumentCheckIcon,
           description: "Track committed choices, rationale, and owners",
+        },
+        {
+          name: "Decision Intelligence",
+          href: "/decisions/intelligence",
+          icon: ChartBarIcon,
+          description: "Predicted outcomes vs. reality across every decision",
         },
         {
           name: "Meetings",
@@ -351,7 +373,7 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
   const mobileMenuSections = [
     {
       title: "Overview",
-      items: [homeItem, askRecallItem],
+      items: [homeItem, askRecallItem, agentItem],
     },
     {
       title: "Workstreams",
@@ -366,6 +388,7 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
   return {
     homeItem,
     askRecallItem,
+    agentItem,
     workstreamGroups,
     appsItem,
     utilityItems,

@@ -19,6 +19,7 @@ import {
   PageHeader,
   SectionMessage,
 } from "../components/atlas";
+import { useAgentContextHint } from "../components/AgentDock";
 
 function formatDateTime(value) {
   if (!value) return "—";
@@ -39,6 +40,18 @@ export default function MeetingDetail() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", meeting_date: "", duration_minutes: 60, location: "", notes: "" });
   const [busy, setBusy] = useState(false);
+
+  // Frame the global agent dock around this meeting.
+  useAgentContextHint(
+    meeting
+      ? {
+          kind: "meeting",
+          label: `Meeting · ${meeting.title || `#${id}`}`,
+          goalPrefix: `Meeting "${meeting.title || `#${id}`}" — summarize the notes and pull out follow-ups. `,
+          profile_slug: "doc-drafter",
+        }
+      : null
+  );
 
   const authHeaders = () => {
     const token = localStorage.getItem("token") || localStorage.getItem("access_token");

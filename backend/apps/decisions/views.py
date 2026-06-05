@@ -203,6 +203,26 @@ def decisions(request):
             except Conversation.DoesNotExist:
                 pass
         
+        # "Before-you-decide" lineage: validate any informed_by_decisions ids
+        # against the user's org so we never persist cross-tenant references.
+        informed_by_raw = data.get('informed_by_decisions') or []
+        informed_by_ids = []
+        if isinstance(informed_by_raw, list) and informed_by_raw:
+            cleaned = []
+            for value in informed_by_raw:
+                try:
+                    cleaned.append(int(value))
+                except (TypeError, ValueError):
+                    continue
+            if cleaned:
+                valid_ids = set(
+                    Decision.objects.filter(
+                        organization=request.user.organization,
+                        id__in=cleaned,
+                    ).values_list('id', flat=True)
+                )
+                informed_by_ids = [i for i in cleaned if i in valid_ids]
+
         decision = Decision.objects.create(
             organization=request.user.organization,
             conversation=conversation,
@@ -211,7 +231,8 @@ def decisions(request):
             rationale=data.get('rationale', ''),
             impact_level=data.get('impact_level', 'medium'),
             decision_maker=request.user,
-            sprint_id=data.get('sprint_id')  # Link to sprint if provided
+            sprint_id=data.get('sprint_id'),  # Link to sprint if provided
+            informed_by_decisions=informed_by_ids,
         )
         
         # Log activity
@@ -226,12 +247,33 @@ def decisions(request):
         # Notify Slack only
         from apps.integrations.utils import notify_decision_created
         notify_decision_created(decision)
-        
+
+        # Outbound webhook fan-out
+        try:
+            from apps.organizations.webhook_models import dispatch, EVENT_DECISION_CREATED
+            dispatch(
+                organization=request.user.organization,
+                event=EVENT_DECISION_CREATED,
+                payload={
+                    "decision": {
+                        "id": decision.id,
+                        "title": decision.title,
+                        "status": decision.status,
+                        "impact_level": decision.impact_level,
+                        "decision_maker_id": getattr(decision.decision_maker, "id", None),
+                        "informed_by_decisions": decision.informed_by_decisions or [],
+                    },
+                    "actor_id": request.user.id,
+                },
+            )
+        except Exception:
+            pass
+
         # Update onboarding progress
         if not request.user.first_decision_made:
             request.user.first_decision_made = True
             request.user.save(update_fields=['first_decision_made'])
-        
+
         return Response({
             'id': decision.id,
             'title': decision.title,
@@ -252,7 +294,22 @@ def approve_decision(request, decision_id):
         )
         
         decision.approve()
-        
+
+        try:
+            from apps.organizations.webhook_models import dispatch, EVENT_DECISION_STATUS_CHANGED
+            dispatch(
+                organization=request.user.organization,
+                event=EVENT_DECISION_STATUS_CHANGED,
+                payload={
+                    "decision_id": decision.id,
+                    "new_status": decision.status,
+                    "change": "approved",
+                    "actor_id": request.user.id,
+                },
+            )
+        except Exception:
+            pass
+
         # Notify decision maker
         from apps.notifications.utils import create_notification
         if decision.decision_maker != request.user:
@@ -1213,6 +1270,21 @@ def implement_decision(request, decision_id):
         decision.status = 'implemented'
         decision.implemented_at = timezone.now()
         decision.save()
+
+        try:
+            from apps.organizations.webhook_models import dispatch, EVENT_DECISION_STATUS_CHANGED
+            dispatch(
+                organization=request.user.organization,
+                event=EVENT_DECISION_STATUS_CHANGED,
+                payload={
+                    "decision_id": decision.id,
+                    "new_status": "implemented",
+                    "change": "implemented",
+                    "actor_id": request.user.id,
+                },
+            )
+        except Exception:
+            pass
         
         log_activity(
             organization=request.user.organization,

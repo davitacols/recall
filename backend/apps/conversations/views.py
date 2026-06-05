@@ -74,8 +74,16 @@ def conversations(request):
         paginator = ConversationPagination()
         page = paginator.paginate_queryset(queryset, request)
         
+        # Prefetch mentions in one query so the per-row loop doesn't fan out.
+        page_list = list(page)
+        mention_map = {}
+        if page_list:
+            ids = [c.id for c in page_list]
+            for conv in Conversation.objects.filter(id__in=ids).prefetch_related('mentioned_users'):
+                mention_map[conv.id] = list(conv.mentioned_users.values_list('id', flat=True))
+
         conversations_data = []
-        for conv in page:
+        for conv in page_list:
             conversations_data.append({
                 'id': conv.id,
                 'title': conv.title,
@@ -83,13 +91,23 @@ def conversations(request):
                 'post_type': conv.post_type,
                 'priority': conv.priority,
                 'author': conv.author.get_full_name(),
+                'author_id': conv.author_id,
                 'author_avatar': conv.author.avatar.url if conv.author.avatar else None,
+                'owner_id': conv.owner_id,
                 'created_at': conv.created_at,
+                'updated_at': conv.updated_at,
                 'reply_count': conv.reply_count,
+                'view_count': conv.view_count,
                 'ai_summary': conv.ai_summary,
                 'ai_keywords': conv.ai_keywords,
                 'is_pinned': conv.is_pinned,
-                'status_label': conv.status_label
+                'is_closed': conv.is_closed,
+                'is_crisis': conv.is_crisis,
+                'closed_at': conv.closed_at,
+                'emotional_context': conv.emotional_context,
+                'key_takeaway': conv.key_takeaway,
+                'status_label': conv.status_label,
+                'mentioned_user_ids': mention_map.get(conv.id, []),
             })
         
         return paginator.get_paginated_response(conversations_data)

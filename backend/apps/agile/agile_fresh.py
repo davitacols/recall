@@ -307,28 +307,57 @@ def projects(request):
         if suffix > 999:
             return Response({'error': 'Unable to generate unique project key'}, status=400)
 
+    # Resolve an optional lead — frontend may send `lead_id` as a string or
+    # number. We validate against the org so cross-tenant ids never land.
+    lead = request.user
+    lead_ref = request.data.get('lead_id', request.data.get('lead'))
+    if lead_ref not in (None, '', 0, '0'):
+        try:
+            lead_id = int(lead_ref)
+        except (TypeError, ValueError):
+            return Response({'error': 'lead_id must be an integer'}, status=400)
+        candidate = User.objects.filter(id=lead_id, organization=request.user.organization).first()
+        if not candidate:
+            return Response({'error': 'Lead user not found in this workspace'}, status=400)
+        lead = candidate
+
+    # Create the project + default board + columns as a single atomic unit so
+    # we never leave a half-built project behind on partial failure.
+    from django.db import transaction
+
     try:
-        project = Project.objects.create(
-            organization=request.user.organization,
-            name=name,
-            key=key,
-            description=(request.data.get('description') or '').strip(),
-            lead=request.user
-        )
+        with transaction.atomic():
+            project = Project.objects.create(
+                organization=request.user.organization,
+                name=name,
+                key=key,
+                description=(request.data.get('description') or '').strip(),
+                lead=lead,
+            )
+            board = Board.objects.create(
+                organization=request.user.organization,
+                project=project,
+                name='Backlog',
+                board_type='kanban',
+            )
+            for i, col_name in enumerate(['To Do', 'In Progress', 'In Review', 'Done']):
+                Column.objects.create(board=board, name=col_name, order=i)
     except IntegrityError:
         return Response({'error': 'Project key already exists. Please try again.'}, status=400)
-    
-    board = Board.objects.create(
-        organization=request.user.organization,
-        project=project,
-        name='Backlog',
-        board_type='kanban'
-    )
-    
-    for i, col_name in enumerate(['To Do', 'In Progress', 'In Review', 'Done']):
-        Column.objects.create(board=board, name=col_name, order=i)
-    
-    return Response({'id': project.id, 'name': project.name, 'key': project.key})
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Failed to create project: %s", exc)
+        return Response({'error': f'Could not create project: {exc}'}, status=400)
+
+    return Response({
+        'id': project.id,
+        'name': project.name,
+        'key': project.key,
+        'description': project.description,
+        'lead_id': project.lead_id,
+        'lead_name': project.lead.get_full_name() if project.lead else None,
+        'board_id': board.id,
+        'created_at': project.created_at.isoformat(),
+    }, status=201)
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
@@ -450,15 +479,55 @@ def sprints(request, project_id):
             'blocked_count': s.blocked_count,
         } for s in sprints])
     
-    sprint = Sprint.objects.create(
-        organization=request.user.organization,
-        project=project,
-        name=request.data['name'],
-        start_date=request.data['start_date'],
-        end_date=request.data['end_date'],
-        goal=request.data.get('goal', '')
-    )
-    return Response({'id': sprint.id, 'name': sprint.name})
+    from datetime import date as _date
+
+    name = (request.data.get('name') or '').strip()
+    start_raw = request.data.get('start_date')
+    end_raw = request.data.get('end_date')
+    if not name:
+        return Response({'error': 'name is required'}, status=400)
+    if not start_raw or not end_raw:
+        return Response({'error': 'start_date and end_date are required'}, status=400)
+
+    def _parse_date(value, field):
+        if isinstance(value, _date):
+            return value
+        try:
+            return _date.fromisoformat(str(value)[:10])
+        except (TypeError, ValueError):
+            raise ValueError(f'{field} must be a valid ISO date (YYYY-MM-DD)')
+
+    try:
+        start_date = _parse_date(start_raw, 'start_date')
+        end_date = _parse_date(end_raw, 'end_date')
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=400)
+
+    if end_date < start_date:
+        return Response({'error': 'end_date must be on or after start_date'}, status=400)
+
+    try:
+        sprint = Sprint.objects.create(
+            organization=request.user.organization,
+            project=project,
+            name=name,
+            start_date=start_date,
+            end_date=end_date,
+            goal=(request.data.get('goal') or '').strip(),
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Failed to create sprint: %s", exc)
+        return Response({'error': f'Could not create sprint: {exc}'}, status=400)
+
+    return Response({
+        'id': sprint.id,
+        'name': sprint.name,
+        'start_date': sprint.start_date.isoformat(),
+        'end_date': sprint.end_date.isoformat(),
+        'goal': sprint.goal,
+        'status': sprint.status,
+        'project_id': sprint.project_id,
+    }, status=201)
 
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
@@ -635,6 +704,17 @@ def issues(request, project_id):
     if parent_issue_id and not Issue.objects.filter(id=parent_issue_id, project=project).exists():
         return Response({'error': 'Invalid parent_issue_id for this project'}, status=400)
 
+    # Normalize empty due_date so Django doesn't try to parse "" as a date.
+    due_date_raw = request.data.get('due_date')
+    if due_date_raw in ('', None):
+        due_date = None
+    else:
+        from datetime import date as _date
+        try:
+            due_date = _date.fromisoformat(str(due_date_raw)[:10])
+        except (TypeError, ValueError):
+            return Response({'error': 'due_date must be a valid ISO date (YYYY-MM-DD)'}, status=400)
+
     try:
         issue = Issue.objects.create(
             organization=request.user.organization,
@@ -651,15 +731,53 @@ def issues(request, project_id):
             story_points=story_points,
             issue_type=request.data.get('issue_type', 'task'),
             sprint_id=sprint_id,
-            due_date=request.data.get('due_date'),
+            due_date=due_date,
             parent_issue_id=parent_issue_id
         )
     except Exception as exc:
+        logger.exception("Failed to create issue: %s", exc)
         return Response({'error': str(exc)}, status=400)
 
-    _notify_issue_assignment(request.user, issue, issue.assignee_id)
+    # Notification side-effects must never fail the create.
+    try:
+        _notify_issue_assignment(request.user, issue, issue.assignee_id)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("issue %s created but assignment notify failed: %s", issue.id, exc)
 
-    return Response({'id': issue.id, 'key': issue.key, 'title': issue.title}, status=201)
+    try:
+        from apps.organizations.webhook_models import dispatch, EVENT_ISSUE_CREATED
+        dispatch(
+            organization=request.user.organization,
+            event=EVENT_ISSUE_CREATED,
+            payload={
+                "issue": {
+                    "id": issue.id,
+                    "key": issue.key,
+                    "title": issue.title,
+                    "priority": issue.priority,
+                    "issue_type": issue.issue_type,
+                    "project_id": issue.project_id,
+                    "sprint_id": issue.sprint_id,
+                    "assignee_id": issue.assignee_id,
+                },
+                "actor_id": request.user.id,
+            },
+        )
+    except Exception:
+        pass
+
+    return Response({
+        'id': issue.id,
+        'key': issue.key,
+        'title': issue.title,
+        'status': issue.status,
+        'priority': issue.priority,
+        'issue_type': issue.issue_type,
+        'project_id': issue.project_id,
+        'sprint_id': issue.sprint_id,
+        'assignee_id': issue.assignee_id,
+        'created_at': issue.created_at.isoformat(),
+    }, status=201)
 
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
@@ -900,38 +1018,53 @@ def add_comment(request, issue_id):
     if not has_project_permission(request.user, Permission.EDIT_ISSUE.value, issue.project_id):
         return Response({'error': 'Permission denied for this project'}, status=403)
     
-    comment = IssueComment.objects.create(
-        issue=issue,
-        author=request.user,
-        content=request.data['content']
-    )
+    # The IssueDetail UI posts {"body": "..."}; older flows use "content".
+    raw_content = request.data.get('content', request.data.get('body', ''))
+    content = (raw_content or '').strip()
+    if not content:
+        return Response({'error': 'content is required'}, status=400)
 
-    actor_name = request.user.get_full_name() or request.user.username
-    notified_ids = {request.user.id}
-    if issue.assignee_id and issue.assignee_id not in notified_ids:
-        create_notification(
-            user=issue.assignee,
-            notification_type='task',
-            title=f'New comment on {issue.key}',
-            message=f'{actor_name} commented on {issue.title}',
-            link=f'/issues/{issue.id}',
+    try:
+        comment = IssueComment.objects.create(
+            issue=issue,
+            author=request.user,
+            content=content,
         )
-        notified_ids.add(issue.assignee_id)
-    if issue.reporter_id and issue.reporter_id not in notified_ids:
-        create_notification(
-            user=issue.reporter,
-            notification_type='task',
-            title=f'New comment on {issue.key}',
-            message=f'{actor_name} commented on {issue.title}',
-            link=f'/issues/{issue.id}',
-        )
-    
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Failed to create comment on issue %s: %s", issue_id, exc)
+        return Response({'error': f'Could not create comment: {exc}'}, status=400)
+
+    # Notifications must never fail the create — log and continue.
+    try:
+        actor_name = request.user.get_full_name() or request.user.username
+        notified_ids = {request.user.id}
+        if issue.assignee_id and issue.assignee_id not in notified_ids:
+            create_notification(
+                user=issue.assignee,
+                notification_type='task',
+                title=f'New comment on {issue.key}',
+                message=f'{actor_name} commented on {issue.title}',
+                link=f'/issues/{issue.id}',
+            )
+            notified_ids.add(issue.assignee_id)
+        if issue.reporter_id and issue.reporter_id not in notified_ids:
+            create_notification(
+                user=issue.reporter,
+                notification_type='task',
+                title=f'New comment on {issue.key}',
+                message=f'{actor_name} commented on {issue.title}',
+                link=f'/issues/{issue.id}',
+            )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("comment %s created but notify failed: %s", comment.id, exc)
+
     return Response({
         'id': comment.id,
         'author': comment.author.get_full_name(),
         'content': comment.content,
-        'created_at': comment.created_at.isoformat()
-    })
+        'body': comment.content,  # convenience for newer clients
+        'created_at': comment.created_at.isoformat(),
+    }, status=201)
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -953,12 +1086,19 @@ def labels(request, project_id):
             'color': l.color
         } for l in labels])
     
-    label = IssueLabel.objects.create(
-        organization=request.user.organization,
-        name=request.data['name'],
-        color=request.data.get('color', '#4F46E5')
-    )
-    return Response({'id': label.id, 'name': label.name, 'color': label.color})
+    name = (request.data.get('name') or '').strip()
+    if not name:
+        return Response({'error': 'name is required'}, status=400)
+    try:
+        label = IssueLabel.objects.create(
+            organization=request.user.organization,
+            name=name,
+            color=request.data.get('color', '#4F46E5'),
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Failed to create label: %s", exc)
+        return Response({'error': f'Could not create label: {exc}'}, status=400)
+    return Response({'id': label.id, 'name': label.name, 'color': label.color}, status=201)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -1158,44 +1298,71 @@ def blockers(request):
         if not User.objects.filter(id=assigned_to_id, organization=request.user.organization).exists():
             return Response({'error': 'Invalid assigned_to_id for this organization'}, status=400)
     
-    conversation = Conversation.objects.create(
-        organization=request.user.organization,
-        author=request.user,
-        title=request.data['title'],
-        content=request.data.get('description', ''),
-        post_type='blocker'
-    )
-    
-    blocker = Blocker.objects.create(
-        organization=request.user.organization,
-        conversation=conversation,
-        sprint=sprint,
-        title=request.data['title'],
-        description=request.data.get('description', ''),
-        blocker_type=request.data.get('type', 'technical'),
-        blocked_by=request.user,
-        assigned_to_id=assigned_to_id,
-    )
+    title = (request.data.get('title') or '').strip()
+    if not title:
+        return Response({'error': 'title is required'}, status=400)
+    description = (request.data.get('description') or '').strip()
+    blocker_type = request.data.get('type', 'technical')
 
-    if blocker.assigned_to_id and blocker.assigned_to_id != request.user.id:
-        create_notification(
-            user=blocker.assigned_to,
-            notification_type='task',
-            title=f'Blocker assigned in {sprint.name}',
-            message=f'{request.user.get_full_name() or request.user.username} assigned blocker "{blocker.title}" to you',
-            link='/blockers',
-        )
+    # Conversation + Blocker must land together — atomic so we never leave a
+    # phantom Conversation if the Blocker insert fails.
+    from django.db import transaction
 
-    if sprint.project and sprint.project.lead_id and sprint.project.lead_id != request.user.id:
-        create_notification(
-            user=sprint.project.lead,
-            notification_type='system',
-            title=f'New blocker in {sprint.name}',
-            message=f'{request.user.get_full_name() or request.user.username} reported blocker "{blocker.title}"',
-            link='/blockers',
-        )
-    
-    return Response({'id': blocker.id, 'title': blocker.title, 'sprint_id': sprint.id})
+    try:
+        with transaction.atomic():
+            conversation = Conversation.objects.create(
+                organization=request.user.organization,
+                author=request.user,
+                title=title,
+                content=description,
+                post_type='blocker',
+            )
+            blocker = Blocker.objects.create(
+                organization=request.user.organization,
+                conversation=conversation,
+                sprint=sprint,
+                title=title,
+                description=description,
+                blocker_type=blocker_type,
+                blocked_by=request.user,
+                assigned_to_id=assigned_to_id,
+            )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Failed to create blocker: %s", exc)
+        return Response({'error': f'Could not create blocker: {exc}'}, status=400)
+
+    # Notifications must never fail the create — log and continue.
+    try:
+        actor_name = request.user.get_full_name() or request.user.username
+        if blocker.assigned_to_id and blocker.assigned_to_id != request.user.id:
+            create_notification(
+                user=blocker.assigned_to,
+                notification_type='task',
+                title=f'Blocker assigned in {sprint.name}',
+                message=f'{actor_name} assigned blocker "{blocker.title}" to you',
+                link='/blockers',
+            )
+        if sprint.project and sprint.project.lead_id and sprint.project.lead_id != request.user.id:
+            create_notification(
+                user=sprint.project.lead,
+                notification_type='system',
+                title=f'New blocker in {sprint.name}',
+                message=f'{actor_name} reported blocker "{blocker.title}"',
+                link='/blockers',
+            )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("blocker %s created but notify failed: %s", blocker.id, exc)
+
+    return Response({
+        'id': blocker.id,
+        'title': blocker.title,
+        'description': blocker.description,
+        'sprint_id': sprint.id,
+        'status': blocker.status,
+        'type': blocker.blocker_type,
+        'assigned_to_id': blocker.assigned_to_id,
+        'created_at': blocker.created_at.isoformat(),
+    }, status=201)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -1261,28 +1428,38 @@ def retrospectives(request, sprint_id):
             'created_by': retro.created_by.get_full_name()
         })
     
-    retro, created = Retrospective.objects.get_or_create(
-        sprint=sprint,
-        defaults={
-            'organization': request.user.organization,
-            'created_by': request.user,
-            'what_went_well': request.data.get('what_went_well', []),
-            'what_needs_improvement': request.data.get('what_needs_improvement', []),
-            'action_items': request.data.get('action_items', [])
-        }
-    )
-    
-    if not created:
-        retro.what_went_well = request.data.get('what_went_well', retro.what_went_well)
-        retro.what_needs_improvement = request.data.get('what_needs_improvement', retro.what_needs_improvement)
-        retro.action_items = request.data.get('action_items', retro.action_items)
-        retro.save()
-    
+    def _ensure_list(value, fallback):
+        if value is None:
+            return fallback
+        if isinstance(value, list):
+            return value
+        return fallback
+
+    try:
+        retro, created = Retrospective.objects.get_or_create(
+            sprint=sprint,
+            defaults={
+                'organization': request.user.organization,
+                'created_by': request.user,
+                'what_went_well': _ensure_list(request.data.get('what_went_well'), []),
+                'what_needs_improvement': _ensure_list(request.data.get('what_needs_improvement'), []),
+                'action_items': _ensure_list(request.data.get('action_items'), []),
+            },
+        )
+        if not created:
+            retro.what_went_well = _ensure_list(request.data.get('what_went_well'), retro.what_went_well)
+            retro.what_needs_improvement = _ensure_list(request.data.get('what_needs_improvement'), retro.what_needs_improvement)
+            retro.action_items = _ensure_list(request.data.get('action_items'), retro.action_items)
+            retro.save()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Failed to save retrospective for sprint %s: %s", sprint_id, exc)
+        return Response({'error': f'Could not save retrospective: {exc}'}, status=400)
+
     return Response({
         'id': retro.id,
         'sprint_id': sprint.id,
-        'message': 'Retrospective created' if created else 'Retrospective updated'
-    })
+        'message': 'Retrospective created' if created else 'Retrospective updated',
+    }, status=201 if created else 200)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

@@ -1,6 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
+import RouteErrorBoundary from "./components/RouteErrorBoundary";
+import "./components/RouteErrorBoundary.css";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { CommandPalette } from "./components/CommandPalette";
 import { CommandBar } from "./components/GestureControls";
@@ -16,7 +18,8 @@ import { ThemeProvider } from "./utils/ThemeAndAccessibility";
 
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const ActivityFeed = lazy(() => import("./pages/ActivityFeed"));
-const AdvancedSearch = lazy(() => import("./pages/AdvancedSearch"));
+const Agent = lazy(() => import("./pages/Agent"));
+const AgentAudit = lazy(() => import("./pages/AgentAudit"));
 const APIKeys = lazy(() => import("./pages/APIKeys"));
 const AskRecall = lazy(() => import("./pages/AskRecall"));
 const AuditLogs = lazy(() => import("./pages/AuditLogs"));
@@ -32,6 +35,8 @@ const DataExport = lazy(() => import("./pages/DataExport"));
 const Decisions = lazy(() => import("./pages/Decisions"));
 const DecisionDetail = lazy(() => import("./pages/DecisionDetail"));
 const DecisionProposals = lazy(() => import("./pages/DecisionProposals"));
+const DecisionsIntelligence = lazy(() => import("./pages/DecisionsIntelligence"));
+const CreateDecision = lazy(() => import("./pages/CreateDecision"));
 const DocumentDetail = lazy(() => import("./pages/DocumentDetail"));
 const Documentation = lazy(() => import("./pages/Documentation"));
 const Documents = lazy(() => import("./pages/Documents"));
@@ -49,13 +54,13 @@ const Insights = lazy(() => import("./pages/Insights"));
 const Integrations = lazy(() => import("./pages/Integrations"));
 const GitHubIntegration = lazy(() => import("./pages/GitHubIntegration"));
 const IssueDetail = lazy(() => import("./pages/IssueDetail"));
+const CreateIssue = lazy(() => import("./pages/CreateIssue"));
 const IssueTemplates = lazy(() => import("./pages/IssueTemplates"));
 const KanbanBoard = lazy(() => import("./pages/KanbanBoardFull"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
-const KnowledgeAnalytics = lazy(() => import("./pages/KnowledgeAnalytics"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
 const KnowledgeGraph = lazy(() => import("./pages/KnowledgeGraph"));
-const KnowledgeHealthDashboard = lazy(() => import("./pages/KnowledgeHealthDashboard"));
+const KnowledgeLayout = lazy(() => import("./pages/KnowledgeLayout"));
 const Login = lazy(() => import("./pages/Login"));
 const MeetingDetail = lazy(() => import("./pages/MeetingDetail"));
 const Meetings = lazy(() => import("./pages/Meetings"));
@@ -201,15 +206,30 @@ const APP_ROUTES = [
   { path: "/conversations/new", element: <CreateConversation /> },
   { path: "/conversations/:id", element: <ConversationDetail /> },
   { path: "/decisions", element: <Decisions /> },
+  { path: "/decisions/new", element: <CreateDecision /> },
+  { path: "/decisions/intelligence", element: <DecisionsIntelligence /> },
   { path: "/decisions/:id", element: <DecisionDetail /> },
-  { path: "/knowledge", element: <Knowledge /> },
-  { path: "/knowledge/graph", element: <KnowledgeGraph /> },
-  { path: "/knowledge/analytics", element: <KnowledgeAnalytics /> },
-  { path: "/knowledge-base", element: <KnowledgeBase /> },
-  { path: "/knowledge-health", element: <KnowledgeHealthDashboard /> },
+  // Unified Knowledge hub — one destination with tabs (Search / Browse / Graph / Insights).
+  {
+    path: "/knowledge",
+    element: <KnowledgeLayout />,
+    children: [
+      { index: true, element: <Knowledge /> },
+      { path: "base", element: <KnowledgeBase /> },
+      { path: "graph", element: <KnowledgeGraph /> },
+      { path: "insights", element: <Insights /> },
+      // Consolidated: the old analytics + health surfaces now live under Insights.
+      { path: "analytics", element: <Navigate to="/knowledge/insights" replace /> },
+    ],
+  },
+  // Redirect the previously scattered standalone routes into the hub.
+  { path: "/knowledge-base", element: <Navigate to="/knowledge/base" replace /> },
+  { path: "/knowledge-health", element: <Navigate to="/knowledge/insights" replace /> },
+  { path: "/insights", element: <Navigate to="/knowledge/insights" replace /> },
+  { path: "/search", element: <Navigate to="/knowledge" replace /> },
   { path: "/ask", element: <AskRecall /> },
-  { path: "/insights", element: <Insights /> },
-  { path: "/search", element: <AdvancedSearch /> },
+  { path: "/agent", element: <Agent /> },
+  { path: "/agent/:runId", element: <Agent /> },
   { path: "/activity", element: <ActivityFeed /> },
   { path: "/profile", element: <Profile /> },
   { path: "/profile/:userId", element: <Profile /> },
@@ -245,6 +265,7 @@ const APP_ROUTES = [
   { path: "/boards", element: <Navigate to="/projects" replace /> },
   { path: "/agile/templates", element: <IssueTemplates /> },
   { path: "/agile/filters", element: <SavedFilters /> },
+  { path: "/issues/new", element: <CreateIssue /> },
   { path: "/issues/:issueId", element: <IssueDetail /> },
   { path: "/issues", element: <Navigate to="/projects" replace /> },
   { path: "/messages", element: <Navigate to="/notifications" replace /> },
@@ -269,6 +290,7 @@ const APP_ROUTES = [
 
 const ADMIN_ROUTES = [
   { path: "/settings", element: <Settings /> },
+  { path: "/agent/audit", element: <AgentAudit /> },
   { path: "/invitations", element: <StaffInvitations /> },
   { path: "/integrations", element: <Integrations /> },
   { path: "/integrations/github", element: <GitHubIntegration /> },
@@ -293,11 +315,25 @@ const STAFF_ROUTES = [
   { path: "/partners/inbox", element: <PartnerInbox /> },
 ];
 
+function wrapElement(element) {
+  // Wrap leaf elements so a thrown render error stays scoped to one page
+  // instead of blanking the whole shell. The boundary is keyed by location,
+  // so navigating to another route resets the error state automatically.
+  return <RouteErrorBoundary>{element}</RouteErrorBoundary>;
+}
+
 function renderRoute(route, idx) {
-  if (route.index) {
-    return <Route key={`index-${idx}`} index element={route.element} />;
+  if (route.children) {
+    return (
+      <Route key={route.path || `layout-${idx}`} path={route.path} element={route.element}>
+        {route.children.map(renderRoute)}
+      </Route>
+    );
   }
-  return <Route key={route.path} path={route.path} element={route.element} />;
+  if (route.index) {
+    return <Route key={`index-${idx}`} index element={wrapElement(route.element)} />;
+  }
+  return <Route key={route.path} path={route.path} element={wrapElement(route.element)} />;
 }
 
 function AppContent() {

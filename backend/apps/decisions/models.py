@@ -67,7 +67,12 @@ class Decision(models.Model):
     if_this_fails = models.TextField(blank=True)
     confidence_level = models.IntegerField(null=True, blank=True)
     confidence_votes = models.JSONField(default=list, blank=True)
-    
+
+    # Decisions whose lessons informed this one at draft time. Auditable record
+    # of the "before-you-decide" loop closing: each id references a past Decision
+    # whose retrospective the author acknowledged when writing this draft.
+    informed_by_decisions = models.JSONField(default=list, blank=True)
+
     alternatives_considered = models.JSONField(default=list, blank=True)
     tradeoffs = models.TextField(blank=True)
     code_links = models.JSONField(default=list, blank=True)
@@ -275,3 +280,14 @@ def auto_link_decision(sender, instance, created, **kwargs):
             engine.auto_link_content(instance, instance.organization)
         except Exception:
             pass
+
+
+# Decision Intelligence — see intelligence_models.py for the moat models
+# (predictions, outcome checks, retrospectives, twin runs). Imported here
+# so Django's app registry discovers them for migrations.
+from apps.decisions.intelligence_models import (  # noqa: E402,F401
+    DecisionPrediction,
+    DecisionOutcomeCheck,
+    DecisionRetrospective,
+    DecisionTwinRun,
+)

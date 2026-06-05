@@ -20,6 +20,7 @@ import {
   SectionMessage,
   Tabs,
 } from "../components/atlas";
+import { useAgentContextHint } from "../components/AgentDock";
 
 const DOC_TYPES = [
   { id: "all", label: "All" },
@@ -62,6 +63,17 @@ export default function Documents() {
   const [uploadFile, setUploadFile] = useState(null);
   const [viewerUrl, setViewerUrl] = useState("");
   const [showViewer, setShowViewer] = useState(false);
+
+  // Frame the agent dock around the documents library. If the user has
+  // typed a query, feed it into the prompt so the agent searches with it.
+  useAgentContextHint({
+    kind: "documents",
+    label: query.trim() ? `Documents · "${query.trim()}"` : "Documents library",
+    goalPrefix: query.trim()
+      ? `Find pages in this workspace related to "${query.trim()}" and summarize what's there. `
+      : "Help me find or organize pages in this workspace. ",
+    profile_slug: "doc-drafter",
+  });
 
   useEffect(() => {
     fetchDocuments();

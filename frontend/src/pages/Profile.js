@@ -117,32 +117,18 @@ function Profile() {
   }, [user, requestedUserId, isViewingTeammate]);
 
   const palette = useMemo(
-    () =>
-      darkMode
-        ? {
-            pageBg: "#0f0b0d",
-            panelBg: "var(--app-surface)",
-            panelAlt: "var(--app-surface-alt)",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "#b7a691",
-            accent: "var(--app-accent)",
-            softAccent: "rgba(255,180,118,0.15)",
-            success: "var(--app-success)",
-            danger: "var(--app-danger)",
-          }
-        : {
-            pageBg: "var(--app-bg)",
-            panelBg: "var(--app-surface)",
-            panelAlt: "var(--app-surface-alt)",
-            border: "var(--app-border)",
-            text: "var(--app-text)",
-            muted: "var(--app-muted)",
-            accent: "var(--app-accent)",
-            softAccent: "rgba(217,105,46,0.11)",
-            success: "#238a62",
-            danger: "#c63838",
-          },
+    () => ({
+      pageBg: "var(--app-bg)",
+      panelBg: "var(--app-surface)",
+      panelAlt: "var(--app-surface-alt)",
+      border: "var(--app-border)",
+      text: "var(--app-text)",
+      muted: "var(--app-muted)",
+      accent: "var(--app-accent)",
+      softAccent: darkMode ? "rgba(124,130,232,0.14)" : "rgba(94,106,210,0.08)",
+      success: "var(--app-success)",
+      danger: "var(--app-danger)",
+    }),
     [darkMode]
   );
 
@@ -446,7 +432,7 @@ function Profile() {
                     width: "100%",
                     height: "100%",
                     borderRadius: 16,
-                    background: `linear-gradient(135deg, ${palette.accent}, #ffcf92)`,
+                    background: "linear-gradient(135deg, #6E76E0, #8A63D2)",
                     display: "grid",
                     placeItems: "center",
                     color: "var(--app-button-text)",

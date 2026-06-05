@@ -18,6 +18,7 @@ import {
   PageHeader,
   SectionMessage,
 } from "../components/atlas";
+import { useAgentContextHint } from "../components/AgentDock";
 
 const STATUSES = [
   { id: "not_started", label: "Not started" },
@@ -53,6 +54,18 @@ export default function GoalDetail() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", target_date: "", status: "not_started", progress: 0 });
   const [busy, setBusy] = useState(false);
+
+  // Frame the global agent dock around this goal.
+  useAgentContextHint(
+    goal
+      ? {
+          kind: "goal",
+          label: `Goal · ${goal.title || `#${id}`}`,
+          goalPrefix: `Goal "${goal.title || `#${id}`}" — what should we do to advance it? `,
+          profile_slug: "general",
+        }
+      : null
+  );
 
   useEffect(() => {
     fetchGoal();

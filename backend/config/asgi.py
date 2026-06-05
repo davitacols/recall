@@ -10,6 +10,7 @@ from channels.security.websocket import AllowedHostsOriginValidator
 from django.urls import path
 from apps.agile.consumers import BoardConsumer
 from apps.notifications.consumers import NotificationConsumer
+from apps.knowledge.consumers import AgentRunConsumer
 from config.ws_auth import JWTAuthMiddleware
 
 django_asgi_app = get_asgi_application()
@@ -17,6 +18,7 @@ django_asgi_app = get_asgi_application()
 websocket_urlpatterns = [
     path('ws/boards/<int:board_id>/', BoardConsumer.as_asgi()),
     path('ws/notifications/', NotificationConsumer.as_asgi()),
+    path('ws/agent/runs/<int:run_id>/', AgentRunConsumer.as_asgi()),
 ]
 
 try:

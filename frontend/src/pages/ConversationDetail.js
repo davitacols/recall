@@ -28,6 +28,7 @@ import AIAssistant from "../components/AIAssistant";
 import ContextPanel from "../components/ContextPanel";
 import QuickLink from "../components/QuickLink";
 import { buildAskRecallPath } from "../utils/askRecall";
+import { useAgentContextHint } from "../components/AgentDock";
 import "./ConversationDetail.css";
 
 const REACTIONS = [
@@ -137,6 +138,18 @@ export default function ConversationDetail() {
 
   const [conversation, setConversation] = useState(null);
   const [replies, setReplies] = useState([]);
+
+  // Frame the agent dock around this conversation thread.
+  useAgentContextHint(
+    conversation
+      ? {
+          kind: "conversation",
+          label: `Conversation · ${conversation.title || `#${id}`}`,
+          goalPrefix: `Conversation "${conversation.title || `#${id}`}" — summarize the thread and pull out follow-ups, decisions, or open questions. `,
+          profile_slug: "general",
+        }
+      : null
+  );
   const [reactions, setReactions] = useState({ reactions: [], user_reaction: null });
   const [newReply, setNewReply] = useState("");
   const [loading, setLoading] = useState(true);

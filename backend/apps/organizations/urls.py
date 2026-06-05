@@ -28,6 +28,9 @@ from .analytics_views import (
 from .apikey_views import api_keys_list, api_key_delete, api_key_toggle
 from .auditlog_views import audit_logs_list, audit_log_stats
 from .export_views import export_data_endpoint
+from .webhook_views import (
+    webhook_subscriptions, webhook_subscription_detail, webhook_deliveries,
+)
 from .search_views import global_search
 from .bulk_operations import (
     bulk_delete_conversations, bulk_archive_conversations, bulk_update_status,
@@ -197,6 +200,11 @@ urlpatterns = [
     path('import/platform/', import_export_views.import_platform_data),
     path('data-export/', import_export_views.export_data),
     
+    # Outbound webhooks
+    path('webhooks/', webhook_subscriptions, name='webhook-subscriptions'),
+    path('webhooks/<int:subscription_id>/', webhook_subscription_detail, name='webhook-subscription-detail'),
+    path('webhooks/<int:subscription_id>/deliveries/', webhook_deliveries, name='webhook-deliveries'),
+
     # Global Search
     path('search/', global_search, name='global-search'),
     

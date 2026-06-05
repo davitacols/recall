@@ -20,6 +20,7 @@ import {
   SectionMessage,
   Tabs,
 } from "../components/atlas";
+import { useAgentContextHint } from "../components/AgentDock";
 
 const TYPE_FACETS = [
   { id: "all", label: "All" },
@@ -77,6 +78,19 @@ export default function Knowledge() {
   const [activeFacet, setActiveFacet] = useState("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Frame the agent dock around the current search context. When the user
+  // has typed a query, the dock will pre-seed a goal that uses it.
+  useAgentContextHint({
+    kind: "knowledge",
+    label: query.trim()
+      ? `Search · "${query.trim()}"${activeFacet !== "all" ? ` (${activeFacet})` : ""}`
+      : "Workspace memory",
+    goalPrefix: query.trim()
+      ? `Search the workspace for "${query.trim()}" and summarize the most useful findings. `
+      : "Search the workspace memory and surface what I should know. ",
+    profile_slug: "general",
+  });
 
   useEffect(() => {
     let mounted = true;

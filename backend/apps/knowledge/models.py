@@ -110,3 +110,98 @@ class TrendingTopic(models.Model):
         indexes = [
             models.Index(fields=['organization', '-trend_score']),
         ]
+
+class AgentRun(models.Model):
+    """A multi-step Claude agent run within a workspace.
+
+    The agent loops using Anthropic's tool-use API. Each iteration produces a
+    list of `steps` (plan / tool_call / tool_result / thought / final) that
+    the frontend renders as an inline trace. Write tools are not executed
+    automatically — they accumulate in `pending_tool_calls` and the run pauses
+    in `awaiting_approval` until a workspace member approves them.
+    """
+
+    STATUS_CHOICES = [
+        ('running', 'Running'),
+        ('awaiting_approval', 'Awaiting approval'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True, related_name='agent_runs')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='agent_runs')
+
+    goal = models.TextField()
+    status = models.CharField(max_length=24, choices=STATUS_CHOICES, default='running', db_index=True)
+    profile_slug = models.CharField(max_length=40, default='general', db_index=True)
+
+    # Anthropic Messages API conversation history. Replayed to resume the loop.
+    messages = models.JSONField(default=list, blank=True)
+
+    # Render-ready trace: [{kind, payload, ts}, ...].
+    steps = models.JSONField(default=list, blank=True)
+
+    # Write tool calls awaiting human approval: [{id, name, input}, ...].
+    pending_tool_calls = models.JSONField(default=list, blank=True)
+
+    final_answer = models.TextField(blank=True)
+    error = models.TextField(blank=True)
+
+    iterations = models.PositiveIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'agent_runs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', '-created_at']),
+            models.Index(fields=['organization', 'status']),
+        ]
+
+    def __str__(self):
+        return f"AgentRun #{self.pk} ({self.status})"
+
+
+class AgentStep(models.Model):
+    """One frame in an AgentRun's reasoning trace.
+
+    Stored as its own table (not just JSON on AgentRun) so that:
+      - Long runs can be paginated by the frontend.
+      - The DB can index by kind (e.g. count tool calls per run, find runs
+        where a specific tool failed).
+      - We can push a single step over websocket without re-serializing
+        the entire run.
+
+    The legacy JSON `steps` field on AgentRun is kept in sync during the
+    transition window so existing serializers don't break; new readers should
+    prefer this table.
+    """
+
+    KIND_CHOICES = [
+        ('plan', 'Plan'),
+        ('thought', 'Thought'),
+        ('tool_call', 'Tool call'),
+        ('tool_result', 'Tool result'),
+        ('final', 'Final'),
+    ]
+
+    run = models.ForeignKey(AgentRun, on_delete=models.CASCADE, related_name='step_rows')
+    ordinal = models.PositiveIntegerField()
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, db_index=True)
+    payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'agent_steps'
+        ordering = ['ordinal']
+        unique_together = [('run', 'ordinal')]
+        indexes = [
+            models.Index(fields=['run', 'ordinal']),
+            models.Index(fields=['run', 'kind']),
+        ]
+
+    def __str__(self):
+        return f"AgentStep run={self.run_id} #{self.ordinal} {self.kind}"

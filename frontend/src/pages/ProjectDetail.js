@@ -28,6 +28,7 @@ import {
   SectionMessage,
   Tabs,
 } from "../components/atlas";
+import { useAgentContextHint } from "../components/AgentDock";
 import { statusToLozenge } from "../utils/designTokens";
 
 function formatDate(value) {
@@ -65,6 +66,18 @@ export default function ProjectDetail() {
   const [sprintForm, setSprintForm] = useState({ name: "", start_date: "", end_date: "", goal: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Frame the global agent dock around this project.
+  useAgentContextHint(
+    project
+      ? {
+          kind: "project",
+          label: `Project · ${project.name || project.slug || `#${projectId}`}`,
+          goalPrefix: `Project "${project.name || project.slug || `#${projectId}`}" — `,
+          profile_slug: "general",
+        }
+      : null
+  );
 
   useEffect(() => {
     let mounted = true;

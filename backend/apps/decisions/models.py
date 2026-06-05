@@ -24,11 +24,19 @@ class Decision(models.Model):
     ]
     
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
+    # Migration 0003 made this column nullable in the DB to support decisions
+    # created without a source conversation (e.g. drafted directly from the
+    # /decisions/new page). The model field was not updated to match, which
+    # caused ForeignKey.__set__ to raise ValueError on `conversation=None`
+    # before the SQL even ran — every decision created without a conversation
+    # 500'd. Align the model with the migration.
     conversation = models.ForeignKey(
-        Conversation, 
-        on_delete=models.CASCADE, 
+        Conversation,
+        on_delete=models.CASCADE,
         related_name='decisions',
-        db_index=True
+        null=True,
+        blank=True,
+        db_index=True,
     )
     title = models.CharField(
         max_length=255, 

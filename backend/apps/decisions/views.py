@@ -316,16 +316,19 @@ def decisions(request):
         except Exception:
             pass
 
-        # Update onboarding progress
-        if not request.user.first_decision_made:
-            request.user.first_decision_made = True
-            request.user.save(update_fields=['first_decision_made'])
+        # Update onboarding progress — never let this fail the create.
+        try:
+            if not request.user.first_decision_made:
+                request.user.first_decision_made = True
+                request.user.save(update_fields=['first_decision_made'])
+        except Exception as exc:
+            logger.warning('decision %s created but onboarding flag update failed: %s', decision.id, exc)
 
         return Response({
             'id': decision.id,
             'title': decision.title,
-            'status': decision.status,
-            'created_at': decision.created_at
+            'status': getattr(decision, 'status', None),
+            'created_at': decision.created_at.isoformat() if decision.created_at else None,
         }, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])

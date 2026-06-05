@@ -189,9 +189,24 @@ def decisions(request):
         return Response(decisions_data)
     
     elif request.method == 'POST':
-        data = request.data
-        
-        # Get conversation if provided
+        import logging
+        logger = logging.getLogger(__name__)
+        data = request.data or {}
+
+        # Explicit validation up front so missing fields surface as 400, not
+        # a 500 from KeyError or DB integrity error deep in the side-effects.
+        title = (data.get('title') or '').strip()
+        description = (data.get('description') or '').strip()
+        if not title:
+            return Response({'error': 'title is required'}, status=400)
+        if not description:
+            return Response({'error': 'description is required'}, status=400)
+
+        impact_level = (data.get('impact_level') or 'medium').strip().lower()
+        if impact_level not in {'low', 'medium', 'high', 'critical'}:
+            impact_level = 'medium'
+
+        # Get conversation if provided (org-scoped)
         conversation = None
         if data.get('conversation_id'):
             from apps.conversations.models import Conversation
@@ -200,9 +215,20 @@ def decisions(request):
                     id=data['conversation_id'],
                     organization=request.user.organization
                 )
-            except Conversation.DoesNotExist:
-                pass
-        
+            except (Conversation.DoesNotExist, ValueError, TypeError):
+                conversation = None
+
+        # Validate sprint scope. An invalid sprint_id was previously the
+        # silent cause of a 500 — the FK error wasn't caught.
+        sprint_id = data.get('sprint_id')
+        if sprint_id:
+            try:
+                from apps.agile.models import Sprint
+                if not Sprint.objects.filter(id=sprint_id, organization=request.user.organization).exists():
+                    sprint_id = None
+            except Exception:
+                sprint_id = None
+
         # "Before-you-decide" lineage: validate any informed_by_decisions ids
         # against the user's org so we never persist cross-tenant references.
         informed_by_raw = data.get('informed_by_decisions') or []
@@ -223,30 +249,51 @@ def decisions(request):
                 )
                 informed_by_ids = [i for i in cleaned if i in valid_ids]
 
-        decision = Decision.objects.create(
+        # Build the create kwargs defensively so an older deployed schema
+        # missing `informed_by_decisions` (migration 0014) doesn't blow up.
+        create_kwargs = dict(
             organization=request.user.organization,
             conversation=conversation,
-            title=data['title'],
-            description=data['description'],
-            rationale=data.get('rationale', ''),
-            impact_level=data.get('impact_level', 'medium'),
+            title=title,
+            description=description,
+            rationale=(data.get('rationale') or '').strip(),
+            impact_level=impact_level,
             decision_maker=request.user,
-            sprint_id=data.get('sprint_id'),  # Link to sprint if provided
-            informed_by_decisions=informed_by_ids,
+            sprint_id=sprint_id,
         )
-        
-        # Log activity
-        log_activity(
-            organization=request.user.organization,
-            actor=request.user,
-            action_type='decision_created',
-            content_object=decision,
-            title=decision.title
-        )
-        
-        # Notify Slack only
-        from apps.integrations.utils import notify_decision_created
-        notify_decision_created(decision)
+        try:
+            Decision._meta.get_field('informed_by_decisions')
+            create_kwargs['informed_by_decisions'] = informed_by_ids
+        except Exception:
+            pass
+
+        try:
+            decision = Decision.objects.create(**create_kwargs)
+        except Exception as exc:
+            logger.exception('Failed to create decision: %s', exc)
+            return Response(
+                {'error': 'Could not create the decision. Please try again.'},
+                status=500,
+            )
+
+        # Activity log and Slack notification are side-effects; never let
+        # them turn a successful create into a failed response.
+        try:
+            log_activity(
+                organization=request.user.organization,
+                actor=request.user,
+                action_type='decision_created',
+                content_object=decision,
+                title=decision.title,
+            )
+        except Exception as exc:
+            logger.warning('decision %s created but log_activity failed: %s', decision.id, exc)
+
+        try:
+            from apps.integrations.utils import notify_decision_created
+            notify_decision_created(decision)
+        except Exception as exc:
+            logger.warning('decision %s created but Slack notify failed: %s', decision.id, exc)
 
         # Outbound webhook fan-out
         try:

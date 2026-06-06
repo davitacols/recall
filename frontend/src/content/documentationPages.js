@@ -259,14 +259,29 @@ const BASE_DOCUMENTATION_GROUPS = [
               "Alternatives considered and why they were not selected.",
               "Confidence, expected impact, risks, and next steps.",
               "Links back to the conversation, documents, and execution work affected.",
+              "At least one prediction with a target value and a check-at date.",
             ],
           },
           {
             heading: "Outcome discipline",
             bullets: [
+              "Every decision should ship with a prediction. Without one, there is nothing to check.",
               "Review whether the result matched expectations after implementation.",
               "Capture lessons learned, drift, and follow-up actions.",
               "Use replay and analysis features to improve future decision quality.",
+            ],
+          },
+          {
+            heading: "Where the deeper docs live",
+            paragraphs: [
+              "This page is the operational overview. For the data model, math, and APIs behind the decision intelligence loop, see the dedicated pages:",
+            ],
+            bullets: [
+              "intelligence/decision-loop — the predict/check/drift/retro/learn loop end to end.",
+              "intelligence/predictions-and-drift — the drift formula and band thresholds.",
+              "intelligence/retrospectives-and-lessons — how lessons surface in future drafts.",
+              "intelligence/before-you-decide — the panel that runs on every keystroke.",
+              "intelligence/autonomous-agent — running long, traceable analyses across the decision corpus.",
             ],
           },
         ],
@@ -497,6 +512,498 @@ const BASE_DOCUMENTATION_GROUPS = [
               "Keep links current between decisions and downstream work.",
               "Use the graph alongside Ask Recall when investigating historical changes.",
               "Treat missing links as a documentation signal, not just a graph issue.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "decision-loop",
+        slug: "intelligence/decision-loop",
+        title: "The Decision Intelligence Loop",
+        summary: "Every Knoledgr decision is a contract with reality. Predictions are logged at decision time, reality is observed, drift is computed, and retrospectives auto-open when the gap is large enough to learn from.",
+        readTime: "7 min",
+        audience: "CTOs, engineering leads, product leadership",
+        routes: ["/decisions/intelligence", "/decisions/:id"],
+        workflow: {
+          eyebrow: "Closed loop",
+          title: "The six stages of the loop",
+          description: "This is the moat. Every other primitive in Knoledgr exists either to feed this loop or act on its output.",
+          steps: [
+            {
+              title: "Draft",
+              detail: "On every keystroke of a new decision, the workspace searches past decisions for similar ones and surfaces them in the Before-You-Decide panel.",
+            },
+            {
+              title: "Predict",
+              detail: "The author logs one or more predictions: dimension, statement, metric kind (number/percent/binary/text), target value, and check-at date.",
+            },
+            {
+              title: "Observe",
+              detail: "When the check-at date arrives, anyone with the right permission posts an outcome check with the observed value.",
+            },
+            {
+              title: "Classify",
+              detail: "Knoledgr computes signed drift % from target and classifies it into a band: on_track, drifting, off_track, or exceeded.",
+            },
+            {
+              title: "Retro",
+              detail: "Off-track checks auto-open a DecisionRetrospective tied to the check. The team fills in summary, root cause, and lesson.",
+            },
+            {
+              title: "Surface",
+              detail: "The lesson feeds back into the Before-You-Decide search index. The next decision that touches the same area sees it inline.",
+            },
+          ],
+        },
+        sections: [
+          {
+            heading: "Why the loop matters",
+            paragraphs: [
+              "Teams make 30 decisions a week. In a year that's 1,500 decisions, of which a team remembers maybe 50. Without a loop, the team makes the same mistakes twice and loses days relitigating them. The loop converts ephemeral team memory into a durable, queryable record of what was predicted, what happened, and what was learned.",
+              "Crucially, the loop closes automatically. The team doesn't have to remember to learn from a missed prediction — when drift exceeds the threshold, Knoledgr opens the retrospective on its own and adds it to the *Awaiting you* bucket in the relevant owner's pipeline.",
+            ],
+          },
+          {
+            heading: "What a good first prediction looks like",
+            bullets: [
+              "Specific: \"60% of teams will use LaunchDarkly within 6 weeks\" (not \"adoption will be high\").",
+              "Numeric: a value with a unit. Binary (yes/no) and text are supported but harder to check.",
+              "Time-bounded: a check_at date that's actually in the future and realistic.",
+              "Falsifiable: someone other than the author should be able to verify the observation.",
+            ],
+          },
+          {
+            heading: "Drift bands",
+            bullets: [
+              "on_track — within 15% of target (signed).",
+              "drifting — between 15% and 50% off in either direction.",
+              "off_track — more than 50% off target (or below target for cost/error metrics).",
+              "exceeded — more than 50% above target on positive metrics like adoption or revenue.",
+              "unknown — text/binary metrics where numeric drift can't be computed.",
+            ],
+          },
+          {
+            heading: "Decision lineage (informed_by)",
+            paragraphs: [
+              "Every decision can carry a list of past decisions whose lessons informed it. When a draft acknowledges a past retrospective from the Before-You-Decide panel, that decision id is persisted in informed_by_decisions on the new decision. This creates an auditable graph of how lessons propagate forward.",
+              "The lineage is queryable: you can ask \"which decisions descend from the failed Q2 caching rollout?\" and get a real answer instead of a guess.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "predictions-and-drift",
+        slug: "intelligence/predictions-and-drift",
+        title: "Predictions and Drift",
+        summary: "The math behind drift bands, the data model for predictions, and the rules for when an outcome auto-opens a retrospective.",
+        readTime: "5 min",
+        audience: "Engineers, data leads, operators",
+        routes: [
+          "/api/decisions/:id/predictions/",
+          "/api/decisions/predictions/:id/checks/",
+          "/api/decisions/:id/drift/",
+        ],
+        examplesEyebrow: "Predictions API",
+        examplesTitle: "Logging predictions and outcome checks",
+        examples: [
+          {
+            title: "Log a prediction on a decision",
+            method: "POST",
+            endpoint: "/api/decisions/:decisionId/predictions/",
+            description: "Predictions are the contract with reality. One decision can carry multiple predictions across different dimensions.",
+            request: {
+              dimension: "adoption",
+              statement: "60% of teams will be using LaunchDarkly within 6 weeks",
+              metric_kind: "percent",
+              target_value: { value: 60 },
+              baseline_value: { value: 12 },
+              check_at: "2026-07-15",
+            },
+            response: {
+              id: 318,
+              decision_id: 42,
+              dimension: "adoption",
+              statement: "60% of teams will be using LaunchDarkly within 6 weeks",
+              metric_kind: "percent",
+              target_value: { value: 60 },
+              check_at: "2026-07-15",
+              created_at: "2026-06-03T14:22:10Z",
+            },
+          },
+          {
+            title: "Post an outcome check",
+            method: "POST",
+            endpoint: "/api/decisions/predictions/:predictionId/checks/",
+            description: "Drift is computed automatically. If the band lands at off_track, a retrospective opens on its own and the id is returned inline.",
+            request: {
+              observed_value: { value: 10 },
+              notes: "Slack export sampled on 2026-07-15. 8 of 80 teams active.",
+            },
+            response: {
+              id: 612,
+              prediction_id: 318,
+              observed_value: { value: 10 },
+              drift_pct: -83.33,
+              drift_band: "off_track",
+              auto_opened_retrospective_id: 47,
+            },
+          },
+          {
+            title: "Read the decision drift report",
+            method: "GET",
+            endpoint: "/api/decisions/:decisionId/drift/",
+            description: "Aggregates the latest check on every prediction tied to the decision and returns a headline band (worst-case of off_track > drifting > on_track).",
+            response: {
+              decision_id: 42,
+              title: "Adopt LaunchDarkly",
+              status: "approved",
+              headline_band: "off_track",
+              predictions: [
+                {
+                  prediction_id: 318,
+                  dimension: "adoption",
+                  statement: "60% of teams will be using LaunchDarkly within 6 weeks",
+                  check_at: "2026-07-15",
+                  latest_check: {
+                    observed_value: { value: 10 },
+                    drift_pct: -83.33,
+                    drift_band: "off_track",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        sections: [
+          {
+            heading: "The drift formula",
+            paragraphs: [
+              "For numeric and percent metrics: drift_pct = ((observed - target) / |target|) * 100. The result is signed — a negative number means you came in below target, positive means above.",
+              "The sign matters. For adoption or revenue, exceeded (over 50% above target) is good news; for cost or error rate, the same number is a fire. Knoledgr does not assume direction; the dimension name is yours to interpret.",
+            ],
+          },
+          {
+            heading: "Bands as policy, not just labels",
+            bullets: [
+              "The 15% and 50% thresholds are the defaults. You can override them per workspace in the intelligence settings — strict teams set the off_track band at 25%.",
+              "When a band lands off_track, an outcome-logged webhook fires and a retrospective auto-opens — unless one already exists for that check.",
+              "Repeat off-track observations on the same prediction do not duplicate retrospectives if one is already linked to that check. They do open new retros if a fresh check lands off-track.",
+            ],
+          },
+          {
+            heading: "Binary and text metrics",
+            paragraphs: [
+              "binary metrics check observed.value === target.value. They classify as on_track or off_track only — no drift_pct.",
+              "text metrics never compute drift. They're useful for qualitative predictions like \"customer feedback will be positive\" but they don't trigger auto-retros. Treat them as documentation, not accountability.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "retrospectives-and-lessons",
+        slug: "intelligence/retrospectives-and-lessons",
+        title: "Retrospectives and Lessons",
+        summary: "Auto-opened retrospectives are the moment the loop closes. The lesson captured in one becomes the warning that prevents the next mistake.",
+        readTime: "4 min",
+        audience: "Tech leads, EMs, ops owners",
+        routes: ["/decisions/:id", "/api/decisions/:id/retrospectives/"],
+        examplesEyebrow: "Retrospectives API",
+        examplesTitle: "Writing a retrospective",
+        examples: [
+          {
+            title: "List retrospectives on a decision",
+            method: "GET",
+            endpoint: "/api/decisions/:decisionId/retrospectives/",
+            description: "Returns every retrospective tied to the decision, manual or auto-opened.",
+            response: {
+              results: [
+                {
+                  id: 47,
+                  decision_id: 42,
+                  triggered_by: "drift",
+                  triggered_by_check: 612,
+                  summary: "Adoption stalled at 16%. Spec mismatch between flag service and team rollouts.",
+                  root_cause: "We did not audit existing flag count before sizing the migration.",
+                  lesson: "For any future migration, audit existing usage by team in the first sprint before committing a target adoption percent.",
+                  confidence_delta: -25,
+                  tags: ["migration", "discovery"],
+                  closed_at: null,
+                },
+              ],
+            },
+          },
+          {
+            title: "Open a manual retrospective",
+            method: "POST",
+            endpoint: "/api/decisions/:decisionId/retrospectives/",
+            description: "Authors can open a retro any time — not just when drift triggers it. Useful for milestone reviews or pre-mortems.",
+            request: {
+              triggered_by: "milestone",
+              summary: "End-of-quarter review of the LaunchDarkly migration.",
+              root_cause: "",
+              lesson: "",
+              tags: ["q3-review"],
+            },
+            response: {
+              id: 51,
+              triggered_by: "milestone",
+              created_at: "2026-09-30T09:00:00Z",
+            },
+          },
+        ],
+        sections: [
+          {
+            heading: "The four fields that matter",
+            bullets: [
+              "summary — what happened, in one paragraph. Optional, but writing it forces clarity.",
+              "root_cause — your honest answer for why the prediction missed. Vague root causes produce vague lessons.",
+              "lesson — the one sentence that should reach the next person drafting a similar decision. This is the only field that compounds.",
+              "confidence_delta — an integer between -100 and +100 representing how much this experience should shift your confidence in similar future decisions.",
+            ],
+          },
+          {
+            heading: "How lessons surface in future drafts",
+            paragraphs: [
+              "When someone opens a new decision draft, the Before-You-Decide panel runs a semantic similarity search over the workspace's decision corpus. Decisions whose retrospectives have a non-empty lesson field are weighted higher in the ranking — the platform treats a learned lesson as more valuable evidence than a plain decision record.",
+              "Acknowledging a surfaced past decision (clicking it in the panel) persists the past decision id into the new decision's informed_by_decisions field. This is how lineage is built without imposing manual tagging discipline.",
+            ],
+          },
+          {
+            heading: "Closing a retrospective",
+            paragraphs: [
+              "A retrospective stays open until someone sets closed_at. Open retros appear in the owner's pipeline as *Awaiting you* items. Closing one signals \"we've learned what we can; the lesson is captured.\"",
+              "Closing a retro does not remove it from search. Old lessons still surface on relevant future drafts.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "before-you-decide",
+        slug: "intelligence/before-you-decide",
+        title: "Before You Decide",
+        summary: "The panel that runs on every keystroke of a new decision draft and surfaces past decisions whose lessons should change the call you're about to make.",
+        readTime: "3 min",
+        audience: "All teams writing decisions",
+        routes: ["/decisions/new", "/api/decisions/intelligence/similar/"],
+        visual: {
+          eyebrow: "Surface map",
+          title: "What the panel shows",
+          caption: "Up to five results, ranked by semantic similarity to the draft. Each result has the past decision's title, drift band, and the one-sentence lesson from any retrospective.",
+          panels: [
+            {
+              title: "Search input",
+              value: "Title + description",
+              helper: "The draft form fires a debounced fetch on each keystroke after the title hits 12 characters.",
+              emphasis: true,
+            },
+            {
+              title: "Ranking signal",
+              value: "Similarity × outcome weight",
+              helper: "Decisions with retrospectives and lessons are scored higher than plain decision records.",
+            },
+            {
+              title: "Drift indicator",
+              value: "Color-coded band",
+              helper: "Past decisions show the headline drift band from their predictions so the team can see which lessons are battle-tested.",
+            },
+            {
+              title: "Acknowledgement",
+              value: "informed_by_decisions",
+              helper: "Clicking a past decision adds its id to the new draft's lineage when the decision is saved.",
+            },
+          ],
+        },
+        examplesEyebrow: "Similar decisions API",
+        examplesTitle: "How the panel calls the backend",
+        examples: [
+          {
+            title: "Search for similar past decisions",
+            method: "POST",
+            endpoint: "/api/decisions/intelligence/similar/",
+            description: "Sent from the draft form on every debounced keystroke. The backend uses the same search engine that powers Ask Recall, scoped to the decision corpus.",
+            request: {
+              title: "Adopt LaunchDarkly for feature flags",
+              description: "We need a centralized way to roll out features safely.",
+              limit: 5,
+            },
+            response: {
+              results: [
+                {
+                  id: 17,
+                  title: "Adopt internal flag service",
+                  outcome_label: "off_track",
+                  summary: "Migration cost 3x estimate, sunset after 6 months.",
+                  lesson: "Audit existing flag count by team before sizing the migration.",
+                  similarity_score: 0.81,
+                },
+                {
+                  id: 33,
+                  title: "Move analytics to ClickHouse",
+                  outcome_label: "on_track",
+                  summary: "Adoption hit 78% within 4 weeks.",
+                  similarity_score: 0.42,
+                },
+              ],
+            },
+          },
+        ],
+        sections: [
+          {
+            heading: "Why it runs on every keystroke",
+            paragraphs: [
+              "Surfacing the lesson after the decision is drafted is too late. The author has already committed cognitively to a direction. The panel runs on the *draft* surface — while the author is still open to new information — so the lesson lands at the moment it can still change the call.",
+              "The fetch is debounced at 350ms and the in-flight request is cancelled if a newer keystroke fires. This keeps the panel responsive without thrashing the backend.",
+            ],
+          },
+          {
+            heading: "When the panel shows nothing",
+            bullets: [
+              "Title is under 12 characters — too short to compute meaningful similarity.",
+              "No past decisions match above the relevance floor.",
+              "On a fresh workspace with zero decisions, this is normal. The wedge compounds over months.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "autonomous-agent",
+        slug: "intelligence/autonomous-agent",
+        title: "Autonomous Agent",
+        summary: "A multi-step Claude tool-use agent with five specialist profiles and human approval gates on every write action. Different surface from Ask Recall: long-running, traceable, optionally autonomous.",
+        readTime: "8 min",
+        audience: "Admins, managers, power users",
+        routes: ["/agent", "/agent/audit", "/api/knowledge/ai/agent/start/", "/ws/agent/runs/:id/"],
+        workflow: {
+          eyebrow: "Run lifecycle",
+          title: "How an agent run unfolds",
+          description: "An agent run is a finite-state machine with explicit human checkpoints. It can finish completely, pause for approval, or fail — never silently mutate state.",
+          steps: [
+            {
+              title: "Goal + profile",
+              detail: "Caller submits a goal and picks a profile (general, sprint-coach, decision-reviewer, doc-drafter, standup). The profile gates which tools the run can use.",
+            },
+            {
+              title: "Tool-use loop",
+              detail: "The agent calls read tools freely (search, fetch, summarize). Steps are recorded to the AgentStep table and pushed live to any open trace via WebSocket.",
+            },
+            {
+              title: "Approval gate",
+              detail: "If the model wants to call a write tool, the run pauses with status=awaiting_approval and the pending_tool_calls list. No write happens without a human approving from the agent panel.",
+            },
+            {
+              title: "Resume or cancel",
+              detail: "On approval, the writes execute and the loop resumes. On cancel, the run terminates and the audit log records who decided what.",
+            },
+            {
+              title: "Completion",
+              detail: "When the model emits a final answer, the run is marked completed and the final_answer is rendered as markdown in the trace.",
+            },
+          ],
+        },
+        visual: {
+          eyebrow: "Specialist profiles",
+          title: "Five built-in profiles, each scoped to a different operating context",
+          panels: [
+            {
+              title: "general",
+              value: "All tools, broadest scope",
+              helper: "Default profile. Good when you don't know which lane the answer lives in.",
+              emphasis: true,
+            },
+            {
+              title: "sprint-coach",
+              value: "Sprint + issue tools",
+              helper: "Diagnoses sprint health, identifies stalls, recommends rebalances. Read-only by default.",
+            },
+            {
+              title: "decision-reviewer",
+              value: "Decision intelligence tools",
+              helper: "Runs counterfactual analyses (twin runs) and reviews drift across the decision corpus.",
+            },
+            {
+              title: "doc-drafter",
+              value: "Conversations + documents",
+              helper: "Drafts notes, status updates, retrospectives. Requires approval to publish.",
+            },
+            {
+              title: "standup",
+              value: "Activity + pipeline tools",
+              helper: "Builds Friday-update style summaries. Output is markdown ready to paste into Slack.",
+            },
+          ],
+        },
+        examplesEyebrow: "Agent API",
+        examplesTitle: "Starting and resuming a run",
+        examples: [
+          {
+            title: "Start a new run",
+            method: "POST",
+            endpoint: "/api/knowledge/ai/agent/start/",
+            description: "Kicks off a run. Returns the serialized run after the first batch of iterations. The run may be completed, awaiting_approval, or failed.",
+            request: {
+              goal: "Summarize this week's decisions and flag any with drifted predictions.",
+              profile_slug: "decision-reviewer",
+            },
+            response: {
+              id: 904,
+              status: "completed",
+              profile_slug: "decision-reviewer",
+              iterations: 4,
+              final_answer: "This week 6 decisions were approved. 1 is showing drift (#42, LaunchDarkly).",
+            },
+          },
+          {
+            title: "Approve pending write tools",
+            method: "POST",
+            endpoint: "/api/knowledge/ai/agent/runs/:runId/approve/",
+            description: "When a run is awaiting_approval, this endpoint approves the listed tool calls and resumes the loop. Approving an empty array cancels the writes and resumes anyway.",
+            request: {
+              approved_tool_call_ids: ["tu_01", "tu_02"],
+            },
+            response: {
+              id: 904,
+              status: "running",
+            },
+          },
+          {
+            title: "Check workspace agent budget",
+            method: "GET",
+            endpoint: "/api/knowledge/ai/agent/budget/",
+            description: "Per-org budget for agent runs and copilot calls. Returns the cap, the used count, and whether new runs are still allowed this month.",
+            response: {
+              run: { allowed: true, used: 47, limit: 200, remaining: 153 },
+              copilot: { allowed: true, used: 1218, limit: 5000, remaining: 3782 },
+            },
+          },
+        ],
+        sections: [
+          {
+            heading: "Approval gates, not auto-execution",
+            paragraphs: [
+              "Every write tool in the registry is marked is_write=True. When the model wants to call one, the agent records the call in pending_tool_calls, returns a synthetic tool_result that says \"awaiting_human_approval\", and pauses the run. The model never observes the actual side-effect happening — it only sees the placeholder.",
+              "This design is intentional. It means the model cannot use the result of a prior write to chain into another write. Every mutation requires a fresh, explicit human approval — which keeps autonomous-feeling runs safely audited.",
+            ],
+          },
+          {
+            heading: "Live trace over WebSocket",
+            paragraphs: [
+              "When the agent panel is open on a run, it connects to /ws/agent/runs/:runId/ and receives every step and status change as it happens. The connection is authenticated against the run's organization at connect time. Disconnection is graceful; polling resumes as a fallback.",
+              "The push payload mirrors the AgentStep schema: { type: 'step', kind, payload, ts } for steps and { type: 'status', status, final_answer, pending_tool_calls } for lifecycle changes.",
+            ],
+          },
+          {
+            heading: "Budget controls",
+            bullets: [
+              "Per-org monthly cap for run starts and copilot calls.",
+              "When the cap is hit, /api/knowledge/ai/agent/start/ returns 402 with a budget breakdown.",
+              "Budget is enforced at start_run; in-flight runs always finish.",
+              "The budget meter on the agent page reads from /api/knowledge/ai/agent/budget/ — show it to the team so they understand the constraint.",
+            ],
+          },
+          {
+            heading: "The audit page",
+            paragraphs: [
+              "Admins and managers can open /agent/audit to see every run in the workspace: who started it, with which profile, the final answer, and the list of pending or executed writes. Useful for compliance reviews and for spotting which profiles are doing the most useful work.",
             ],
           },
         ],
@@ -825,6 +1332,174 @@ const BASE_DOCUMENTATION_GROUPS = [
               "Multi-project initiatives with changing priorities and handoffs.",
               "Reporting environments where raw status is not enough without rationale.",
               "Organizations trying to reduce duplicate context across Jira and internal collaboration.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "webhooks",
+        slug: "integrations/webhooks",
+        title: "Outbound Webhooks",
+        summary: "Subscribe to workspace events and have Knoledgr POST signed payloads to a URL you control. Turn the decision intelligence loop into something other tools can react to.",
+        readTime: "6 min",
+        audience: "Engineers, platform teams, integrators",
+        routes: ["/api/organizations/webhooks/"],
+        visual: {
+          eyebrow: "Event catalog",
+          title: "Eight events fire today",
+          panels: [
+            {
+              title: "decision.created",
+              value: "A new decision was saved",
+              helper: "Fires after the row is committed. Payload includes the full decision plus informed_by lineage.",
+              emphasis: true,
+            },
+            {
+              title: "decision.status_changed",
+              value: "Approve, implement, or reject",
+              helper: "Use this to mirror status into your project tracker or to gate a CI deploy on decision approval.",
+            },
+            {
+              title: "decision.prediction_logged",
+              value: "Reality contract recorded",
+              helper: "Useful for piping predictions into your own analytics pipeline alongside the metric system that will observe them.",
+            },
+            {
+              title: "decision.outcome_logged",
+              value: "Reality observed",
+              helper: "Carries the drift band. Wire this to Slack to broadcast off_track decisions to a channel.",
+            },
+            {
+              title: "decision.retro_opened",
+              value: "Auto or manual retrospective",
+              helper: "The triggered_by field distinguishes drift-opened from milestone-opened retros.",
+            },
+            {
+              title: "agent.run_completed",
+              value: "Final answer ready",
+              helper: "Lets you forward agent output to a different surface (dashboard, digest, knowledge base).",
+            },
+            {
+              title: "agent.run_awaiting_approval",
+              value: "Human action needed",
+              helper: "Page the right person when the agent has pending writes — especially useful for off-hours autonomous runs.",
+            },
+            {
+              title: "issue.created",
+              value: "Issue tracker mirror",
+              helper: "Mirror new issues into Jira or Linear via your own bridge code.",
+            },
+          ],
+        },
+        examplesEyebrow: "Webhooks API",
+        examplesTitle: "Managing subscriptions",
+        examples: [
+          {
+            title: "List subscriptions and the available events",
+            method: "GET",
+            endpoint: "/api/organizations/webhooks/",
+            description: "Returns every subscription in the workspace plus the canonical list of event names. Admin or manager role required.",
+            response: {
+              available_events: [
+                "decision.created",
+                "decision.status_changed",
+                "decision.prediction_logged",
+                "decision.outcome_logged",
+                "decision.retro_opened",
+                "agent.run_completed",
+                "agent.run_awaiting_approval",
+                "issue.created",
+              ],
+              results: [
+                {
+                  id: 12,
+                  url: "https://example.com/hooks/knoledgr",
+                  event: "decision.outcome_logged",
+                  is_active: true,
+                  description: "Slack alert for off-track decisions",
+                  fail_count: 0,
+                  last_fired_at: "2026-06-04T11:13:02Z",
+                  created_at: "2026-05-18T08:30:00Z",
+                  secret: null,
+                },
+              ],
+            },
+          },
+          {
+            title: "Create a subscription",
+            method: "POST",
+            endpoint: "/api/organizations/webhooks/",
+            description: "The secret is returned once on create and never again. Store it immediately — it's required to verify signatures on incoming payloads.",
+            request: {
+              url: "https://example.com/hooks/knoledgr",
+              event: "decision.outcome_logged",
+              description: "Slack alert for off-track decisions",
+            },
+            response: {
+              id: 12,
+              url: "https://example.com/hooks/knoledgr",
+              event: "decision.outcome_logged",
+              is_active: true,
+              secret: "rZSk_2BoF3Yb9tH...",
+              created_at: "2026-06-04T15:11:22Z",
+            },
+          },
+          {
+            title: "Read delivery history",
+            method: "GET",
+            endpoint: "/api/organizations/webhooks/:subscriptionId/deliveries/",
+            description: "Returns the last 50 delivery attempts for a subscription: attempt count, HTTP status received, response body excerpt, error message if any.",
+            response: {
+              results: [
+                {
+                  id: 4811,
+                  event: "decision.outcome_logged",
+                  attempt: 1,
+                  status: "succeeded",
+                  response_status: 200,
+                  response_body: "ok",
+                  created_at: "2026-06-04T11:13:02Z",
+                  last_attempt_at: "2026-06-04T11:13:03Z",
+                },
+              ],
+            },
+          },
+        ],
+        sections: [
+          {
+            heading: "Signature verification",
+            paragraphs: [
+              "Every request carries an X-Knoledgr-Signature header of the form sha256=<hex>. The hex value is the HMAC-SHA256 of the raw request body using the subscription's shared secret. Reject any payload whose recomputed signature does not match.",
+              "Also check X-Knoledgr-Event (the event name) and X-Knoledgr-Delivery (the WebhookDelivery row id, useful for deduplication and replay).",
+            ],
+            bullets: [
+              "Use a constant-time comparison when verifying the signature. Don't use ==.",
+              "Reject requests with a User-Agent other than Knoledgr-Webhooks/1.0 if you want to be strict.",
+              "Treat the delivery id as an idempotency key — if you've seen it, skip processing.",
+            ],
+          },
+          {
+            heading: "Retry policy",
+            bullets: [
+              "Attempt 1 fires immediately when the event happens.",
+              "Attempts 2 and 3 are retried by a Celery beat task with backoffs of 30s, 5m, and 30m measured from the previous attempt.",
+              "Any delivery still failing after attempt 3 is marked failed and never retried.",
+              "Subscriptions that accumulate 25 consecutive failures get auto-disabled at the nightly sweep. An admin must explicitly reactivate.",
+            ],
+          },
+          {
+            heading: "Payload shape",
+            paragraphs: [
+              "All payloads share the structure { event, payload, actor_id, ts }. The payload object varies by event. For decision.outcome_logged, payload.check contains the DecisionOutcomeCheck serialization including drift_pct and drift_band; for agent.run_completed, payload.run_id and payload.final_answer are the primary fields.",
+              "We never include workspace secrets, user passwords, or full conversation transcripts in the payload. If you need richer context, follow up with an authenticated API call using the ids in the payload.",
+            ],
+          },
+          {
+            heading: "Operational notes",
+            bullets: [
+              "Webhook fan-out is best-effort and synchronous from the request that triggered the event. A slow receiver can add ~10s to the request unless your endpoint returns 2xx fast. Aim to ack within 200ms and process async on your side.",
+              "Both the request that triggered the event and the delivery dispatcher run inside the same Django process. Webhook failures never roll back the underlying create.",
+              "When the workspace is under suspicion of webhook spam, the fail_count auto-disable threshold can be tightened in the disable_failing_webhooks Celery task.",
             ],
           },
         ],

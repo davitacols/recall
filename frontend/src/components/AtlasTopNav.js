@@ -160,8 +160,8 @@ export default function AtlasTopNav({
             <NotificationBell />
             <IconButton
               icon={<QuestionMarkCircleIcon style={{ width: 18, height: 18 }} />}
-              label="Help"
-              onClick={() => navigate("/docs")}
+              label="Help & docs"
+              onClick={() => window.open("/docs", "_blank", "noopener,noreferrer")}
             />
             <IconButton
               icon={<Cog6ToothIcon style={{ width: 18, height: 18 }} />}

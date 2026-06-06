@@ -14,6 +14,7 @@ import { Avatar, IconButton } from "./atlas";
 import BrandLogo from "./BrandLogo";
 import NotificationBell from "./NotificationBell";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
+import { useDocsDrawer } from "./DocsDrawer";
 import { formatWorkspaceName } from "./unifiedNavConfig";
 
 /**
@@ -28,6 +29,7 @@ export default function AtlasTopNav({
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const docsDrawer = useDocsDrawer();
   const [openMenu, setOpenMenu] = useState(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -161,7 +163,7 @@ export default function AtlasTopNav({
             <IconButton
               icon={<QuestionMarkCircleIcon style={{ width: 18, height: 18 }} />}
               label="Help & docs"
-              onClick={() => window.open("/docs", "_blank", "noopener,noreferrer")}
+              onClick={() => docsDrawer.toggle()}
             />
             <IconButton
               icon={<Cog6ToothIcon style={{ width: 18, height: 18 }} />}

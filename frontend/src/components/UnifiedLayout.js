@@ -3,6 +3,7 @@ import AtlasTopNav from "./AtlasTopNav";
 import UnifiedNav from "./UnifiedNav";
 import { MobileNav } from "./MobileNav";
 import { AgentDock, AgentDockFab, AgentDockProvider } from "./AgentDock";
+import { DocsDrawer, DocsDrawerProvider } from "./DocsDrawer";
 
 const SIDEBAR_W = 248;
 const SIDEBAR_W_COLLAPSED = 60;
@@ -50,6 +51,7 @@ export default function UnifiedLayout({ children }) {
   const contentLeftPad = isMobile ? 0 : sidebarWidth;
 
   return (
+    <DocsDrawerProvider>
     <AgentDockProvider>
       <div
         style={{
@@ -91,7 +93,12 @@ export default function UnifiedLayout({ children }) {
         {/* Global agent dock: FAB launcher + slide-over panel. */}
         <AgentDockFab />
         <AgentDock />
+
+        {/* Global docs drawer: searchable inline help, toggled by the
+            top-nav Help button or ⌘/. */}
+        <DocsDrawer />
       </div>
     </AgentDockProvider>
+    </DocsDrawerProvider>
   );
 }

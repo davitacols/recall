@@ -729,25 +729,32 @@ def intelligence_overview(request):
 
     # Workspace counts.
     totals = {
+        "decisions": Decision.objects.filter(organization=org).count(),
         "predictions": DecisionPrediction.objects.filter(organization=org).count(),
         "outcome_checks": DecisionOutcomeCheck.objects.filter(organization=org).count(),
         "retrospectives": DecisionRetrospective.objects.filter(organization=org).count(),
         "twin_runs": DecisionTwinRun.objects.filter(organization=org).count(),
     }
 
+    drift_signals_payload = [
+        {
+            "prediction_id": c.prediction_id,
+            "decision_id": c.prediction.decision_id,
+            "decision_title": c.prediction.decision.title,
+            "dimension": c.prediction.dimension,
+            "statement": c.prediction.statement,
+            "drift_band": c.drift_band,
+            "drift_pct": c.drift_pct,
+            "observed_at": c.observed_at.isoformat() if c.observed_at else None,
+        }
+        for c in drifted
+    ]
+
     return Response({
         "totals": totals,
-        "drift_signals": [
-            {
-                "decision_id": c.prediction.decision_id,
-                "decision_title": c.prediction.decision.title,
-                "dimension": c.prediction.dimension,
-                "drift_band": c.drift_band,
-                "drift_pct": c.drift_pct,
-                "observed_at": c.observed_at.isoformat() if c.observed_at else None,
-            }
-            for c in drifted
-        ],
+        # Provide both names so legacy / new consumers both work.
+        "drift_signals": drift_signals_payload,
+        "recent_drift_signals": drift_signals_payload,
         "pending_checks": [
             {
                 "prediction_id": p.id,
@@ -766,6 +773,9 @@ def intelligence_overview(request):
                 "decision_id": r.decision_id,
                 "decision_title": r.decision.title,
                 "lesson": (r.lesson or r.summary or "").strip()[:240],
+                "summary": (r.summary or "")[:512],
+                "triggered_by": r.triggered_by,
+                "closed_at": r.closed_at.isoformat() if r.closed_at else None,
                 "tags": r.tags or [],
                 "confidence_delta": r.confidence_delta,
                 "author": _person(r.author),

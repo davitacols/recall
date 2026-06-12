@@ -46,6 +46,8 @@ export default function UnifiedDashboard() {
   const [drift, setDrift] = useState({ items: [], total: 0 });
   const [sprint, setSprint] = useState(null);
 
+  const [conversations, setConversations] = useState([]);
+
   useEffect(() => {
     let mounted = true;
     Promise.allSettled([
@@ -55,8 +57,11 @@ export default function UnifiedDashboard() {
       api.get("/api/knowledge/timeline/?days=7&page=1&per_page=15"),
       api.get("/api/decisions/outcomes/drift-alerts/"),
       api.get("/api/agile/current-sprint/"),
+      // Pipeline buckets come from conversations — same source the
+      // Conversations page buckets so the dashboard counts agree.
+      api.get("/api/conversations/?page=1&per_page=80"),
     ])
-      .then(([ovRes, pRes, wRes, tRes, dRes, sRes]) => {
+      .then(([ovRes, pRes, wRes, tRes, dRes, sRes, cRes]) => {
         if (!mounted) return;
         if (ovRes.status === "fulfilled") setOverview(unwrap(ovRes.value?.data, {}));
         if (pRes.status === "fulfilled") setPersonal(unwrap(pRes.value?.data, {}));
@@ -70,6 +75,15 @@ export default function UnifiedDashboard() {
           setDrift({ items: d.items || [], total: d.total || 0 });
         }
         if (sRes.status === "fulfilled") setSprint(unwrap(sRes.value?.data, null));
+        if (cRes.status === "fulfilled") {
+          const data = cRes.value?.data;
+          const list = Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data)
+            ? data
+            : [];
+          setConversations(list.filter((c) => c && c.id));
+        }
       })
       .finally(() => mounted && setLoading(false));
     return () => {
@@ -91,7 +105,12 @@ export default function UnifiedDashboard() {
     [overview]
   );
   const driftSignals = useMemo(() => {
-    const fromOverview = Array.isArray(overview?.recent_drift_signals)
+    // Backend returns drift_signals; older deployments may return
+    // recent_drift_signals; the legacy outcomes/drift-alerts shape is
+    // the last fallback.
+    const fromOverview = Array.isArray(overview?.drift_signals)
+      ? overview.drift_signals
+      : Array.isArray(overview?.recent_drift_signals)
       ? overview.recent_drift_signals
       : [];
     if (fromOverview.length) return fromOverview;
@@ -192,29 +211,50 @@ export default function UnifiedDashboard() {
     return out.slice(0, 6);
   }, [pendingChecks, recentRetros, personal]);
 
+  // Pipeline counts derived from the conversations list — same rules the
+  // Conversations page uses, so the dashboard matches what users see there.
   const pipeline = useMemo(() => {
-    const b = workspace?.pipeline_buckets || {};
+    const now = Date.now();
+    const daysSince = (v) => {
+      const t = v ? new Date(v).getTime() : 0;
+      if (!t) return Infinity;
+      return (now - t) / 86400000;
+    };
+    const open = (c) => !c.is_closed && c.status_label !== "resolved";
+    let ready = 0;
+    let inProgress = 0;
+    let stalled = 0;
+    let awaiting = 0;
+    for (const c of conversations) {
+      const age = daysSince(c.updated_at || c.created_at);
+      if (
+        open(c) &&
+        c.post_type === "proposal" &&
+        (c.reply_count || 0) >= 3 &&
+        (c.emotional_context === "consensus" || (c.reply_count || 0) >= 6)
+      ) {
+        ready += 1;
+        continue;
+      }
+      if (c.status_label === "in_progress" || (open(c) && age <= 3 && (c.reply_count || 0) > 0)) {
+        inProgress += 1;
+        continue;
+      }
+      if (open(c) && age > 7) {
+        stalled += 1;
+        continue;
+      }
+      if (open(c) && c.status_label === "needs_followup") {
+        awaiting += 1;
+      }
+    }
     return [
-      {
-        key: "ready",
-        label: "Ready to decide",
-        value:
-          b.ready_to_decide ??
-          (Array.isArray(workspace?.proposals_ready_to_decide)
-            ? workspace.proposals_ready_to_decide.length
-            : 0),
-      },
-      { key: "wip", label: "In progress", value: b.in_progress ?? 0 },
-      {
-        key: "stalled",
-        label: "Stalled",
-        value:
-          b.stalled ??
-          (Array.isArray(workspace?.stalled_threads) ? workspace.stalled_threads.length : 0),
-      },
-      { key: "awaiting", label: "Awaiting someone", value: b.awaiting_you ?? 0 },
+      { key: "ready", label: "Ready to decide", value: ready },
+      { key: "wip", label: "In progress", value: inProgress },
+      { key: "stalled", label: "Stalled", value: stalled },
+      { key: "awaiting", label: "Needs follow-up", value: awaiting },
     ];
-  }, [workspace]);
+  }, [conversations]);
 
   const driftRows = useMemo(() => driftSignals.slice(0, 5), [driftSignals]);
   const latestLesson = useMemo(

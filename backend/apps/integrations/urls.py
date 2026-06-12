@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, integration_endpoints, github_endpoints, github_app_views
+from . import views, integration_endpoints, github_endpoints, github_app_views, github_app_pr_views
 from .github_integration import list_integrations
 
 urlpatterns = [
@@ -44,6 +44,9 @@ urlpatterns = [
     path('github/app/repos/<int:repo_pk>/', github_app_views.github_app_repo_toggle, name='github_app_repo_toggle'),
     path('github/app/resync/', github_app_views.github_app_resync, name='github_app_resync'),
     path('github/app/webhook/', github_app_views.github_app_webhook, name='github_app_webhook'),
+
+    # PR search (Phase 2): list PRs in a connected repo for the link picker.
+    path('github/app/repos/<int:repo_pk>/pulls/', github_app_pr_views.github_app_repo_pulls, name='github_app_repo_pulls'),
     
     # Jira
     path('jira/create/<int:blocker_id>/', views.create_jira_issue, name='create_jira_issue'),

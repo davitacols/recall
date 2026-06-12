@@ -166,4 +166,5 @@ from apps.integrations.github_app_models import (  # noqa: F401, E402
     GitHubAppInstallation,
     GitHubRepo,
     GitHubAppDelivery,
+    DecisionPullRequest,
 )

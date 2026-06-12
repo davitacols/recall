@@ -34,6 +34,7 @@ import {
   Tabs,
 } from "../components/atlas";
 import { useAgentContextHint, useAgentDock } from "../components/AgentDock";
+import GitHubPRPicker from "../components/integrations/GitHubPRPicker";
 import "./DecisionDetail.css";
 
 // ─── constants ──────────────────────────────────────────────────────────────
@@ -137,6 +138,10 @@ export default function DecisionDetail() {
   const [twins, setTwins] = useState([]);
   const [drift, setDrift] = useState(null);
 
+  // GitHub linking
+  const [prLinks, setPrLinks] = useState([]);
+  const [showPrPicker, setShowPrPicker] = useState(false);
+
   // Modals / inline forms
   const [showAddPrediction, setShowAddPrediction] = useState(false);
   const [showAddRetro, setShowAddRetro] = useState(false);
@@ -184,10 +189,30 @@ export default function DecisionDetail() {
     } catch (_) {}
   }, [id]);
 
+  const fetchPrLinks = useCallback(async () => {
+    try {
+      const res = await api.get(`/api/decisions/${id}/github/links/`);
+      setPrLinks(res.data?.results || []);
+    } catch (_) {
+      setPrLinks([]);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchDecision();
     fetchIntelligence();
-  }, [fetchDecision, fetchIntelligence]);
+    fetchPrLinks();
+  }, [fetchDecision, fetchIntelligence, fetchPrLinks]);
+
+  const handleUnlinkPr = async (linkId) => {
+    if (!window.confirm("Remove this PR link from the decision?")) return;
+    try {
+      await api.delete(`/api/decisions/${id}/github/links/${linkId}/`);
+      setPrLinks((prev) => prev.filter((l) => l.id !== linkId));
+    } catch (err) {
+      toast.error?.(err?.response?.data?.error || "Could not unlink PR");
+    }
+  };
 
   // ─── status change ──────────────────────────────────────────────────────
 
@@ -283,8 +308,9 @@ export default function DecisionDetail() {
       { id: "predictions", label: "Predictions", count: predictions.length },
       { id: "twins", label: "Twin runs", count: twins.length },
       { id: "retros", label: "Retrospectives", count: retros.length },
+      { id: "pulls", label: "Pull requests", count: prLinks.length },
     ],
-    [predictions.length, twins.length, retros.length]
+    [predictions.length, twins.length, retros.length, prLinks.length]
   );
 
   // ─── render ─────────────────────────────────────────────────────────────
@@ -391,6 +417,13 @@ export default function DecisionDetail() {
               onAdd={() => setShowAddRetro(true)}
             />
           ) : null}
+          {tab === "pulls" ? (
+            <PullRequestsTab
+              links={prLinks}
+              onLink={() => setShowPrPicker(true)}
+              onUnlink={handleUnlinkPr}
+            />
+          ) : null}
         </section>
 
         <aside className="di-side">
@@ -416,6 +449,17 @@ export default function DecisionDetail() {
             busy={busy}
           />
         </Modal>
+      ) : null}
+
+      {showPrPicker ? (
+        <GitHubPRPicker
+          decisionId={id}
+          onClose={() => setShowPrPicker(false)}
+          onLinked={(link) => {
+            setPrLinks((prev) => [link, ...prev.filter((l) => l.id !== link.id)]);
+            toast.success?.(`Linked ${link.repo.full_name} #${link.pr_number}`);
+          }}
+        />
       ) : null}
     </div>
   );
@@ -1026,6 +1070,78 @@ function RetroCard({ retro }) {
         </p>
       ) : null}
     </li>
+  );
+}
+
+function PullRequestsTab({ links, onLink, onUnlink }) {
+  return (
+    <div className="di-pulls">
+      <div className="di-section-head">
+        <div>
+          <h3>Pull requests</h3>
+          <p>Structured links to the PRs that implement this decision. Click <strong>Link a PR</strong> to pick one from a connected repo.</p>
+        </div>
+        <Button appearance="primary" iconBefore={<LinkIcon style={{ width: 14, height: 14 }} />} onClick={onLink}>
+          Link a PR
+        </Button>
+      </div>
+      {links.length === 0 ? (
+        <EmptyState
+          icon={<LinkIcon style={{ width: "100%", height: "100%" }} />}
+          title="No PRs linked yet"
+          description="Connect the GitHub App on /integrations/github, then come back here and pick a PR. Status, author, and merge state will sync automatically."
+          primaryAction={<Button appearance="primary" onClick={onLink}>Link a PR</Button>}
+        />
+      ) : (
+        <ul className="di-pr-list">
+          {links.map((l) => (
+            <li key={l.id} className="di-pr-card">
+              <div className="di-pr-meta">
+                <span className="di-pr-number">{l.repo?.full_name}<span className="di-pr-hash">#{l.pr_number}</span></span>
+                <Lozenge variant={l.state === "merged" ? "moved" : l.state === "closed" ? "default" : "success"}>
+                  {l.state}
+                </Lozenge>
+                {l.head_branch ? (
+                  <span className="di-pr-branch">
+                    {l.head_branch} → {l.base_branch}
+                  </span>
+                ) : null}
+              </div>
+              <a className="di-pr-title" href={l.html_url} target="_blank" rel="noopener noreferrer">
+                {l.title}
+              </a>
+              <div className="di-pr-foot">
+                {l.author_avatar_url ? (
+                  <img className="di-pr-avatar" src={l.author_avatar_url} alt={l.author_login} />
+                ) : null}
+                <span>{l.author_login || "unknown"}</span>
+                {l.linked_by ? (
+                  <>
+                    <span className="di-pr-dot" />
+                    <span>linked by {l.linked_by}</span>
+                  </>
+                ) : null}
+                {l.linked_at ? (
+                  <>
+                    <span className="di-pr-dot" />
+                    <span>{formatDate(l.linked_at)}</span>
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  className="di-pr-unlink"
+                  onClick={() => onUnlink(l.id)}
+                  aria-label="Unlink PR"
+                  title="Unlink"
+                >
+                  <XMarkIcon />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

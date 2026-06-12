@@ -53,6 +53,7 @@ const ImportExport = lazy(() => import("./pages/ImportExport"));
 const Insights = lazy(() => import("./pages/Insights"));
 const Integrations = lazy(() => import("./pages/Integrations"));
 const GitHubIntegration = lazy(() => import("./pages/GitHubIntegration"));
+const GitHubAppCallback = lazy(() => import("./pages/GitHubAppCallback"));
 const IssueDetail = lazy(() => import("./pages/IssueDetail"));
 const CreateIssue = lazy(() => import("./pages/CreateIssue"));
 const IssueTemplates = lazy(() => import("./pages/IssueTemplates"));
@@ -294,6 +295,7 @@ const ADMIN_ROUTES = [
   { path: "/invitations", element: <StaffInvitations /> },
   { path: "/integrations", element: <Integrations /> },
   { path: "/integrations/github", element: <GitHubIntegration /> },
+  { path: "/integrations/github/callback", element: <GitHubAppCallback /> },
   { path: "/integrations-manage", element: <Navigate to="/integrations" replace /> },
   { path: "/analytics", element: <AnalyticsOverview /> },
   { path: "/team", element: <TeamManagement /> },

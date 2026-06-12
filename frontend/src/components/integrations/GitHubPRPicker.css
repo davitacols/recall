@@ -1,0 +1,265 @@
+.ghp-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 9, 14, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 80px 16px 16px;
+  animation: ghp-fade 140ms ease;
+}
+@keyframes ghp-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.ghp {
+  width: 100%;
+  max-width: 640px;
+  border-radius: 16px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.36);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 100px);
+  overflow: hidden;
+  color: var(--app-text);
+  animation: ghp-slide 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes ghp-slide {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.ghp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--app-border);
+  background:
+    linear-gradient(135deg, rgba(124, 77, 255, 0.10), rgba(33, 150, 243, 0.06)),
+    var(--app-surface);
+}
+.ghp-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--app-text);
+}
+.ghp-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  background: transparent;
+  color: var(--app-text-subtle);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.ghp-close:hover { background: var(--app-surface-alt); color: var(--app-text); }
+.ghp-close svg { width: 15px; height: 15px; }
+
+.ghp-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1.4fr);
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--app-border);
+}
+@media (max-width: 560px) {
+  .ghp-controls { grid-template-columns: 1fr; }
+}
+
+.ghp-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.ghp-select-wrap, .ghp-search-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ghp-select {
+  width: 100%;
+  height: 36px;
+  padding: 0 30px 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-alt);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 13px;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+}
+.ghp-select:focus { border-color: #b095ff; }
+.ghp-select-wrap > svg {
+  position: absolute;
+  right: 10px;
+  width: 14px;
+  height: 14px;
+  color: var(--app-muted);
+  pointer-events: none;
+}
+
+.ghp-search-input input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 34px;
+  border-radius: 9px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-alt);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.ghp-search-input input:focus { border-color: #b095ff; }
+.ghp-search-input > svg {
+  position: absolute;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  color: var(--app-muted);
+  pointer-events: none;
+}
+
+.ghp-results { padding: 12px 18px 18px; overflow-y: auto; flex: 1; }
+.ghp-empty {
+  padding: 24px 12px;
+  text-align: center;
+  border-radius: 10px;
+  border: 1px dashed var(--app-border);
+  color: var(--app-muted);
+  font-size: 13px;
+}
+.ghp-empty p { margin: 0 0 6px; }
+.ghp-empty a { color: #93b6ff; }
+.ghp-empty-sub { font-size: 12px; }
+
+.ghp-error {
+  margin: 0 18px 12px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  background: rgba(244, 63, 94, 0.10);
+  color: #fb7185;
+  font-size: 12.5px;
+}
+
+.ghp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ghp-pr {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.ghp-pr:hover { background: var(--app-surface-alt); border-color: var(--app-border-strong, var(--app-border)); }
+.ghp-pr:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.ghp-pr-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1;
+  grid-row: 1;
+}
+.ghp-pr-number {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--app-muted);
+}
+.ghp-state {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+}
+.ghp-state-closed { background: rgba(148, 163, 184, 0.18); color: #cbd5e1; }
+.ghp-state-merged { background: rgba(124, 77, 255, 0.18); color: #b095ff; }
+
+.ghp-pr-title {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--app-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ghp-pr-foot {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--app-muted);
+  flex-wrap: wrap;
+}
+.ghp-pr-avatar {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+.ghp-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--app-border-strong, var(--app-border));
+}
+.ghp-branch {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 11px;
+}
+
+.ghp-pr-open {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--app-muted);
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+.ghp-pr-open:hover { color: var(--app-text); border-color: var(--app-border); }
+.ghp-pr-open svg { width: 13px; height: 13px; }

@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from django.db import models
 
-from apps.organizations.models import Organization
+from apps.decisions.models import Decision
+from apps.organizations.models import Organization, User
 
 
 class GitHubAppInstallation(models.Model):
@@ -182,3 +183,95 @@ class GitHubAppDelivery(models.Model):
             models.Index(fields=["organization", "-created_at"]),
             models.Index(fields=["installation", "-created_at"]),
         ]
+
+
+class DecisionPullRequest(models.Model):
+    """Persistent link between a Knoledgr decision and a GitHub PR.
+
+    Replaces the brittle "regex-scrape the PR body for DEC-42" approach
+    with a structured row. Created by:
+
+    1. A user clicking 'Link a PR' on the decision detail and picking from
+       the PR picker (the primary surface).
+    2. The GitHub App webhook receiver parsing a structured marker in the
+       PR body (`<!-- knoledgr-decision:42 -->`) when the team uses the
+       copy-pasteable badge.
+    3. Optional Phase 3: a knoledgr/link-decision GitHub Action that
+       matches branch names or commit footers.
+
+    Lives next to GitHubAppInstallation/GitHubRepo because the link only
+    makes sense in the GitHub App world — legacy PAT integrations don't
+    persist PR metadata this way.
+    """
+
+    LINK_SOURCE_MANUAL = "manual"
+    LINK_SOURCE_BADGE = "badge"
+    LINK_SOURCE_BRANCH = "branch"
+    LINK_SOURCE_ACTION = "action"
+    LINK_SOURCE_CHOICES = [
+        (LINK_SOURCE_MANUAL, "Manual link from decision page"),
+        (LINK_SOURCE_BADGE, "Inline knoledgr-decision marker in PR body"),
+        (LINK_SOURCE_BRANCH, "Branch name match"),
+        (LINK_SOURCE_ACTION, "knoledgr/link-decision GitHub Action"),
+    ]
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="decision_pull_requests",
+        db_index=True,
+    )
+    decision = models.ForeignKey(
+        Decision,
+        on_delete=models.CASCADE,
+        related_name="github_pull_requests",
+        db_index=True,
+    )
+    repo = models.ForeignKey(
+        GitHubRepo,
+        on_delete=models.CASCADE,
+        related_name="decision_links",
+        db_index=True,
+    )
+
+    # GitHub identifiers
+    pr_number = models.IntegerField()
+    pr_node_id = models.CharField(max_length=64, blank=True)
+
+    # Cached PR display metadata so the decision page doesn't have to call
+    # GitHub on every render. Refreshed when webhook events update the PR.
+    title = models.CharField(max_length=512)
+    html_url = models.URLField(max_length=512)
+    state = models.CharField(max_length=16, default="open")  # open | closed | merged
+    author_login = models.CharField(max_length=128, blank=True)
+    author_avatar_url = models.URLField(max_length=512, blank=True)
+    base_branch = models.CharField(max_length=255, blank=True)
+    head_branch = models.CharField(max_length=255, blank=True)
+    body_excerpt = models.CharField(max_length=512, blank=True)
+    merged_at = models.DateTimeField(null=True, blank=True)
+    pr_updated_at = models.DateTimeField(null=True, blank=True)
+
+    # Provenance
+    link_source = models.CharField(
+        max_length=16, choices=LINK_SOURCE_CHOICES, default=LINK_SOURCE_MANUAL
+    )
+    linked_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="github_pr_links",
+    )
+
+    linked_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "decision_pull_requests"
+        ordering = ["-linked_at"]
+        unique_together = [("decision", "repo", "pr_number")]
+        indexes = [
+            models.Index(fields=["organization", "-linked_at"]),
+            models.Index(fields=["decision", "-linked_at"]),
+            models.Index(fields=["repo", "pr_number"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"DecisionPullRequest(decision={self.decision_id}, {self.repo.full_name}#{self.pr_number})"

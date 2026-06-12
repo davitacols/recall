@@ -2,19 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeftIcon,
-  CalendarDaysIcon,
   CameraIcon,
-  ChatBubbleLeftRightIcon,
-  CheckBadgeIcon,
-  ClockIcon,
-  DocumentTextIcon,
   ShieldCheckIcon,
-  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import { useToast } from "../components/Toast";
-import { PageHeader } from "../components/atlas";
 import "./Profile.css";
 
 function createEmptyIdentity() {
@@ -123,9 +116,9 @@ function Profile() {
   const lastActiveLabel = formatDate(profileIdentity.last_active);
 
   const statItems = [
-    { label: "Conversations", value: stats.conversations || 0, Icon: ChatBubbleLeftRightIcon, tone: "violet" },
-    { label: "Replies", value: stats.replies || 0, Icon: ClockIcon, tone: "emerald" },
-    { label: "Decisions", value: stats.decisions || 0, Icon: CheckBadgeIcon, tone: "blue" },
+    { label: "Conversations", value: stats.conversations || 0 },
+    { label: "Replies", value: stats.replies || 0 },
+    { label: "Decisions", value: stats.decisions || 0 },
   ];
 
   async function fetchOwnProfile(isActive) {
@@ -326,301 +319,279 @@ function Profile() {
   };
 
   return (
-    <div className="profile-page">
-      <PageHeader
-        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Profile" }]}
-        title={isViewingTeammate ? "Team member profile" : "Your profile"}
-        subtitle={
-          isViewingTeammate
-            ? "How this teammate shows up across the workspace."
-            : "Identity, security, and how your contributions appear to the team."
-        }
-        style={{ padding: "24px 0 0", background: "transparent" }}
-      />
-
-      {/* Hero */}
-      <section className="profile-hero">
-        <div className="profile-hero-id">
-          <div className="profile-avatar">
+    <div className="pf">
+      <header className="pf-header">
+        <div className="pf-header-left">
+          <div className="pf-avatar">
             {avatarPreview ? (
               <img src={avatarPreview} alt={subjectName} />
             ) : (
-              <div className="profile-avatar-fallback">
-                {(subjectName || "U").charAt(0).toUpperCase()}
-              </div>
+              <div className="pf-avatar-fallback">{(subjectName || "U").charAt(0).toUpperCase()}</div>
             )}
             {!isViewingTeammate && (
-              <label className="profile-avatar-edit" title="Change avatar">
+              <label className="pf-avatar-edit" title="Change avatar">
                 <CameraIcon />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  style={{ display: "none" }}
-                />
+                <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} />
               </label>
             )}
           </div>
-          <div className="profile-id-meta">
-            <p className="profile-eyebrow">
-              {isViewingTeammate ? "Teammate" : "You"}
-            </p>
-            <h2 className="profile-name">{subjectName}</h2>
-            <p className="profile-sub">
-              {[subjectEmail, subjectOrg].filter(Boolean).join(" · ")}
+          <div className="pf-header-id">
+            <h1 className="pf-name">{subjectName}</h1>
+            <p className="pf-sub">{[subjectEmail, subjectOrg].filter(Boolean).join(" · ")}</p>
+            <p className="pf-meta">
+              <span className="pf-role">{subjectRole}</span>
+              {joinedLabel ? <span>· Joined {joinedLabel}</span> : null}
+              {lastActiveLabel ? <span>· Last active {lastActiveLabel}</span> : null}
             </p>
           </div>
         </div>
-        <div className="profile-hero-actions">
-          {isViewingTeammate && (
-            <Link to="/profile" className="profile-link-btn">
-              <ArrowLeftIcon style={{ width: 14, height: 14 }} /> My profile
+        {isViewingTeammate ? (
+          <div className="pf-header-actions">
+            <Link to="/profile" className="pf-btn">
+              <ArrowLeftIcon /> My profile
             </Link>
-          )}
-          <span className="profile-role-chip">{subjectRole}</span>
-        </div>
-      </section>
+          </div>
+        ) : null}
+      </header>
 
-      {/* KPIs */}
-      <div className="profile-kpis">
-        {statItems.map(({ label, value, Icon, tone }) => (
-          <div className="profile-kpi" key={label}>
-            <span className={`profile-kpi-icon profile-kpi-icon-${tone}`}>
-              <Icon />
-            </span>
-            <div className="profile-kpi-meta">
-              <span className="profile-kpi-value">{loadingProfile ? "—" : value}</span>
-              <span className="profile-kpi-label">{label}</span>
-            </div>
+      {/* Stat strip */}
+      <section className="pf-stats">
+        {statItems.map(({ label, value }, i) => (
+          <div className="pf-stat" key={label}>
+            <span className="pf-stat-value">{loadingProfile ? "—" : value}</span>
+            <span className="pf-stat-label">{label}</span>
           </div>
         ))}
-      </div>
+      </section>
 
-      {/* Main two-column */}
-      <div className="profile-cols">
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Two-column grid */}
+      <div className="pf-grid">
+        <section className="pf-card">
+          <header className="pf-card-head">
+            <h2>{isViewingTeammate ? "About" : "Personal information"}</h2>
+            <p>
+              {isViewingTeammate
+                ? "Who this teammate is and how to reach them."
+                : "How the team sees you. Used in citations, mentions, and decision audit trails."}
+            </p>
+          </header>
           {isViewingTeammate ? (
-            <article className="profile-card">
-              <div className="profile-card-head">
-                <h3 className="profile-card-title">About</h3>
-                <p className="profile-card-sub">Who this teammate is and how to reach them.</p>
-              </div>
-              <p className="profile-about">
+            <>
+              <p className="pf-bio">
                 {profile.bio || `${subjectName} has not added a profile summary yet.`}
               </p>
-              <div className="profile-info-grid" style={{ marginTop: 14 }}>
-                <InfoStat label="Timezone" value={profile.timezone || "UTC"} />
-                <InfoStat label="Joined" value={joinedLabel || "Unavailable"} />
-                <InfoStat label="Last active" value={lastActiveLabel || "Unavailable"} />
-              </div>
-            </article>
+              <dl className="pf-defs">
+                <Def label="Timezone" value={profile.timezone || "UTC"} />
+                <Def label="Joined" value={joinedLabel || "—"} />
+                <Def label="Last active" value={lastActiveLabel || "—"} />
+              </dl>
+            </>
           ) : (
-            <article className="profile-card">
-              <div className="profile-card-head">
-                <h3 className="profile-card-title">Personal information</h3>
-                <p className="profile-card-sub">
-                  How the team sees you. Used in citations, mentions, and decision audit trails.
-                </p>
-              </div>
-              <form className="profile-form" onSubmit={handleUpdateProfile}>
-                <Field
-                  label="Full name"
-                  type="text"
-                  value={profile.full_name}
-                  onChange={(event) => setProfile((prev) => ({ ...prev, full_name: event.target.value }))}
-                />
-                <Field label="Email" type="email" value={subjectEmail} disabled />
-                <Field
-                  label="Timezone"
-                  as="select"
-                  value={profile.timezone}
-                  onChange={(event) => setProfile((prev) => ({ ...prev, timezone: event.target.value }))}
-                >
-                  <option value="UTC">UTC</option>
-                  <option value="America/New_York">Eastern Time (ET)</option>
-                  <option value="America/Chicago">Central Time (CT)</option>
-                  <option value="America/Denver">Mountain Time (MT)</option>
-                  <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                  <option value="Europe/London">London (GMT)</option>
-                  <option value="Europe/Paris">Paris (CET)</option>
-                  <option value="Asia/Tokyo">Tokyo (JST)</option>
-                </Field>
-                <Field
-                  label="Bio"
-                  as="textarea"
-                  rows={4}
-                  value={profile.bio}
-                  onChange={(event) => setProfile((prev) => ({ ...prev, bio: event.target.value }))}
-                  placeholder="One sentence on what you own. Helps teammates find the right person."
-                />
-                <button type="submit" disabled={savingProfile} className="profile-btn profile-btn-primary">
+            <form className="pf-form" onSubmit={handleUpdateProfile}>
+              <Field
+                label="Full name"
+                type="text"
+                value={profile.full_name}
+                onChange={(e) => setProfile((p) => ({ ...p, full_name: e.target.value }))}
+              />
+              <Field label="Email" type="email" value={subjectEmail} disabled />
+              <Field
+                label="Timezone"
+                as="select"
+                value={profile.timezone}
+                onChange={(e) => setProfile((p) => ({ ...p, timezone: e.target.value }))}
+              >
+                <option value="UTC">UTC</option>
+                <option value="America/New_York">Eastern (ET)</option>
+                <option value="America/Chicago">Central (CT)</option>
+                <option value="America/Denver">Mountain (MT)</option>
+                <option value="America/Los_Angeles">Pacific (PT)</option>
+                <option value="Europe/London">London (GMT)</option>
+                <option value="Europe/Paris">Paris (CET)</option>
+                <option value="Asia/Tokyo">Tokyo (JST)</option>
+              </Field>
+              <Field
+                label="Bio"
+                as="textarea"
+                rows={4}
+                value={profile.bio}
+                onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
+                placeholder="One sentence on what you own. Helps teammates find the right person."
+              />
+              <div className="pf-form-actions">
+                <button type="submit" disabled={savingProfile} className="pf-btn pf-btn-primary">
                   {savingProfile ? "Saving…" : "Save changes"}
                 </button>
-              </form>
-            </article>
-          )}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {!isViewingTeammate && (
-            <article className="profile-card">
-              <div className="profile-card-head">
-                <h3 className="profile-card-title">Security</h3>
-                <p className="profile-card-sub">Rotate your password regularly to keep workspace memory safe.</p>
               </div>
-              <form className="profile-form" onSubmit={handleChangePassword}>
+            </form>
+          )}
+        </section>
+
+        <div className="pf-col">
+          {!isViewingTeammate && (
+            <section className="pf-card">
+              <header className="pf-card-head">
+                <h2>Security</h2>
+                <p>Rotate your password regularly.</p>
+              </header>
+              <form className="pf-form" onSubmit={handleChangePassword}>
                 <Field
                   label="Current password"
                   type="password"
                   value={passwords.old_password}
-                  onChange={(event) => setPasswords((prev) => ({ ...prev, old_password: event.target.value }))}
+                  onChange={(e) => setPasswords((p) => ({ ...p, old_password: e.target.value }))}
                 />
                 <Field
                   label="New password"
                   type="password"
                   value={passwords.new_password}
-                  onChange={(event) => setPasswords((prev) => ({ ...prev, new_password: event.target.value }))}
+                  onChange={(e) => setPasswords((p) => ({ ...p, new_password: e.target.value }))}
                 />
                 <Field
                   label="Confirm new password"
                   type="password"
                   value={passwords.confirm_password}
-                  onChange={(event) => setPasswords((prev) => ({ ...prev, confirm_password: event.target.value }))}
+                  onChange={(e) => setPasswords((p) => ({ ...p, confirm_password: e.target.value }))}
                 />
-                <button type="submit" disabled={savingPassword} className="profile-btn profile-btn-ghost">
-                  <ShieldCheckIcon />
-                  {savingPassword ? "Updating…" : "Change password"}
-                </button>
+                <div className="pf-form-actions">
+                  <button type="submit" disabled={savingPassword} className="pf-btn">
+                    <ShieldCheckIcon />
+                    {savingPassword ? "Updating…" : "Change password"}
+                  </button>
+                </div>
               </form>
-            </article>
+            </section>
           )}
 
-          <article className="profile-card">
-            <div className="profile-card-head">
-              <h3 className="profile-card-title">Recent activity</h3>
-              <p className="profile-card-sub">
+          <section className="pf-card">
+            <header className="pf-card-head">
+              <h2>Recent activity</h2>
+              <p>
                 {isViewingTeammate
-                  ? "Latest conversations, replies, and decisions this teammate touched."
+                  ? "Latest conversations, replies, and decisions."
                   : "Latest conversations and bookmarks tied to your record."}
               </p>
-            </div>
-            <div className="profile-activity">
-              {activityItems.length === 0 ? (
-                <div className="profile-empty">
-                  {isViewingTeammate ? "No teammate activity is visible yet." : "No profile activity yet."}
-                </div>
-              ) : (
-                activityItems.map((item, index) => (
-                  <ActivityItem
-                    key={`${item.type}-${item.id || index}`}
-                    item={item}
-                  />
-                ))
-              )}
-            </div>
-          </article>
+            </header>
+            {activityItems.length === 0 ? (
+              <p className="pf-empty">
+                {isViewingTeammate ? "No teammate activity is visible yet." : "No profile activity yet."}
+              </p>
+            ) : (
+              <ul className="pf-activity">
+                {activityItems.map((item, i) => (
+                  <ActivityItem key={`${item.type}-${item.id || i}`} item={item} />
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       </div>
 
       {/* Team directory */}
-      <article className="profile-card">
-        <div className="profile-directory-head">
+      <section className="pf-card">
+        <header className="pf-card-head pf-card-head-row">
           <div>
-            <h3 className="profile-card-title">Team directory</h3>
-            <p className="profile-card-sub">Open teammate profiles without going through admin screens.</p>
+            <h2>Team directory</h2>
+            <p>Open teammate profiles without going through admin screens.</p>
           </div>
-          <span className="profile-directory-count">
-            <UserGroupIcon />
+          <span className="pf-count">
             {directoryMembers.length} member{directoryMembers.length === 1 ? "" : "s"}
           </span>
-        </div>
+        </header>
+        {directoryMembers.length === 0 ? (
+          <p className="pf-empty">No team members are available in this workspace yet.</p>
+        ) : (
+          <table className="pf-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th aria-label="actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {directoryMembers.map((member) => {
+                const memberName = member.full_name || member.username || "Member";
+                const isCurrent = member.id === subjectId;
+                const isSelfMember = member.id === user?.id;
+                return (
+                  <tr key={member.id} className={isCurrent ? "is-current" : ""}>
+                    <td>{memberName}</td>
+                    <td className="pf-table-muted">{member.email || "—"}</td>
+                    <td className="pf-table-muted">{member.role || "member"}</td>
+                    <td className="pf-table-right">
+                      {isCurrent ? (
+                        <span className="pf-table-muted">Viewing</span>
+                      ) : (
+                        <Link
+                          to={isSelfMember ? "/profile" : `/profile/${member.id}`}
+                          className="pf-table-link"
+                        >
+                          {isSelfMember ? "My profile" : "Open profile →"}
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </div>
+  );
+}
 
-        <div className="profile-directory-grid">
-          {directoryMembers.length === 0 ? (
-            <div className="profile-empty">No team members are available in this workspace yet.</div>
-          ) : (
-            directoryMembers.map((member) => {
-              const memberName = member.full_name || member.username || "Member";
-              const isCurrent = member.id === subjectId;
-              const isSelfMember = member.id === user?.id;
-              return (
-                <div key={member.id} className={`profile-directory-card${isCurrent ? " is-current" : ""}`}>
-                  <div>
-                    <p className="profile-member-name">{memberName}</p>
-                    <p className="profile-member-email">{member.email || "—"}</p>
-                  </div>
-                  <div className="profile-member-foot">
-                    <span className={`profile-chip${isCurrent ? " is-active" : ""}`}>
-                      {member.role || "member"}
-                    </span>
-                    {isCurrent ? (
-                      <span className="profile-chip is-active">Viewing</span>
-                    ) : (
-                      <Link
-                        to={isSelfMember ? "/profile" : `/profile/${member.id}`}
-                        className="profile-link-btn"
-                      >
-                        {isSelfMember ? "My profile" : "Open profile"}
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </article>
+function Def({ label, value }) {
+  return (
+    <div className="pf-def">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   );
 }
 
 function Field({ label, as = "input", children, ...props }) {
   return (
-    <label className="profile-field">
-      <span className="profile-label">{label}</span>
+    <label className="pf-field">
+      <span className="pf-label">{label}</span>
       {as === "textarea" ? (
-        <textarea className="profile-input" {...props} />
+        <textarea className="pf-input" {...props} />
       ) : as === "select" ? (
-        <select className="profile-input" {...props}>{children}</select>
+        <select className="pf-input" {...props}>
+          {children}
+        </select>
       ) : (
-        <input className="profile-input" {...props} />
+        <input className="pf-input" {...props} />
       )}
     </label>
   );
 }
 
-function InfoStat({ label, value }) {
-  return (
-    <div className="profile-info-stat">
-      <p className="profile-info-stat-label">{label}</p>
-      <p className="profile-info-stat-value">{value}</p>
-    </div>
-  );
-}
-
 function ActivityItem({ item }) {
-  const { Icon, color } = activityPresentation(item.type);
   const isLink = Boolean(item.href);
-  const Wrapper = isLink ? Link : "div";
-  const wrapperProps = isLink ? { to: item.href } : {};
-  return (
-    <Wrapper {...wrapperProps} className="profile-activity-row">
-      <Icon style={{ color }} />
-      <div style={{ minWidth: 0 }}>
-        <p className="profile-activity-title">{item.title || "Untitled activity"}</p>
-        <p className="profile-activity-meta">
+  const Wrapper = isLink ? Link : "li";
+  const wrapperProps = isLink ? { to: item.href, className: "pf-activity-row is-link" } : { className: "pf-activity-row" };
+  const inner = (
+    <>
+      <span className="pf-activity-kind">{item.type || "activity"}</span>
+      <span className="pf-activity-body">
+        <span className="pf-activity-title">{item.title || "Untitled activity"}</span>
+        <span className="pf-activity-meta">
           {[item.subtitle, formatDate(item.timestamp)].filter(Boolean).join(" · ")}
-        </p>
-      </div>
-    </Wrapper>
+        </span>
+      </span>
+    </>
   );
-}
-
-function activityPresentation(type) {
-  if (type === "decision") return { Icon: CheckBadgeIcon, color: "#60a5fa" };
-  if (type === "reply") return { Icon: ClockIcon, color: "#34d399" };
-  if (type === "bookmark") return { Icon: DocumentTextIcon, color: "#34d399" };
-  return { Icon: CalendarDaysIcon, color: "#b095ff" };
+  if (isLink) {
+    return (
+      <li className="pf-activity-li">
+        <Wrapper {...wrapperProps}>{inner}</Wrapper>
+      </li>
+    );
+  }
+  return <Wrapper {...wrapperProps}>{inner}</Wrapper>;
 }
 
 function formatDate(value) {

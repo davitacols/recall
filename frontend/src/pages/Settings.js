@@ -1,28 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  BellIcon,
-  BuildingOffice2Icon,
-  Cog6ToothIcon,
   PlusIcon,
-  ShieldCheckIcon,
   TrashIcon,
-  UserGroupIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { useToast } from "../components/Toast";
-import {
-  Avatar,
-  Button,
-  EmptyState,
-  Field,
-  IconButton,
-  Lozenge,
-  PageHeader,
-  SectionMessage,
-} from "../components/atlas";
+import "./Settings.css";
 
 const ROLES = ["admin", "manager", "contributor", "viewer"];
 
@@ -67,11 +53,11 @@ export default function Settings() {
   const sections = useMemo(
     () =>
       [
-        { id: "notifications", label: "Notifications", icon: BellIcon },
-        { id: "appearance", label: "Appearance", icon: Cog6ToothIcon },
-        isAdmin ? { id: "organization", label: "Organization", icon: BuildingOffice2Icon } : null,
-        isAdmin ? { id: "team", label: "Team", icon: UserGroupIcon } : null,
-        { id: "privacy", label: "Privacy", icon: ShieldCheckIcon },
+        { id: "notifications", label: "Notifications" },
+        { id: "appearance", label: "Appearance" },
+        isAdmin ? { id: "organization", label: "Organization" } : null,
+        isAdmin ? { id: "team", label: "Team" } : null,
+        { id: "privacy", label: "Privacy" },
       ].filter(Boolean),
     [isAdmin]
   );
@@ -206,35 +192,30 @@ export default function Settings() {
   };
 
   return (
-    <div style={{ padding: "0 32px 32px" }}>
-      <PageHeader
-        breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Settings" }]}
-        title="Settings"
-        subtitle="Control workspace configuration, access, and product behavior."
-        style={{ padding: "24px 0 0", background: "transparent" }}
-      />
+    <div className="st">
+      <header className="st-header">
+        <h1 className="st-title">Settings</h1>
+        <p className="st-sub">Workspace configuration, access, and product behavior.</p>
+      </header>
 
-      <div style={layout}>
-        <nav style={sideNav}>
+      <div className="st-grid">
+        <nav className="st-nav" aria-label="Settings sections">
           {sections.map((s) => {
-            const Icon = s.icon;
             const active = section === s.id;
             return (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => setSection(s.id)}
-                className={`atlas-sidebar-item ${active ? "is-active" : ""}`}
-                style={{ margin: "2px 0", width: "100%", borderRadius: 3 }}
+                className={`st-nav-item${active ? " is-active" : ""}`}
               >
-                <Icon style={{ width: 14, height: 14 }} />
-                <span style={{ flex: 1 }}>{s.label}</span>
+                {s.label}
               </button>
             );
           })}
         </nav>
 
-        <section style={content}>
+        <section className="st-content">
           {section === "notifications" ? (
             <NotificationsSection settings={notifications} onSave={saveNotifications} />
           ) : null}
@@ -272,20 +253,41 @@ export default function Settings() {
 
       {showInvite ? (
         <Modal title="Invite member" onClose={() => setShowInvite(false)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Field label="Email" isRequired>
-              <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="atlas-input" type="email" autoFocus />
+          <div className="st-form">
+            <Field label="Email" required>
+              <input
+                className="st-input"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                type="email"
+                autoFocus
+              />
             </Field>
             <Field label="Role">
-              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="atlas-input">
-                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              <select
+                className="st-input"
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+              >
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
               </select>
             </Field>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <Button appearance="subtle" onClick={() => setShowInvite(false)}>Cancel</Button>
-              <Button appearance="primary" onClick={sendInvite} isDisabled={busy || !inviteEmail.trim()}>
+            <div className="st-modal-actions">
+              <button type="button" className="st-btn" onClick={() => setShowInvite(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="st-btn st-btn-primary"
+                onClick={sendInvite}
+                disabled={busy || !inviteEmail.trim()}
+              >
                 {busy ? "Sending…" : "Send invitation"}
-              </Button>
+              </button>
             </div>
           </div>
         </Modal>
@@ -294,33 +296,38 @@ export default function Settings() {
   );
 }
 
+/* ─── sections ─────────────────────────────────────────── */
+
 function NotificationsSection({ settings, onSave }) {
   return (
-    <Panel title="Notifications" description="Choose which events trigger notifications and how often you receive digests.">
+    <Panel
+      title="Notifications"
+      description="Choose which events notify you and how often you receive digests."
+    >
       <Toggle
-        label="Mention notifications"
-        description="Notify me when someone @mentions me."
+        label="Mentions"
+        description="Notify me when someone @-mentions me."
         checked={settings.mention_notifications}
         onChange={(v) => onSave({ ...settings, mention_notifications: v })}
       />
       <Toggle
-        label="Reply notifications"
+        label="Replies"
         description="Notify me when someone replies to my thread."
         checked={settings.reply_notifications}
         onChange={(v) => onSave({ ...settings, reply_notifications: v })}
       />
       <Toggle
-        label="Decision notifications"
-        description="Notify me when a decision is committed in this workspace."
+        label="Decisions"
+        description="Notify me when a decision is committed."
         checked={settings.decision_notifications}
         onChange={(v) => onSave({ ...settings, decision_notifications: v })}
       />
-      <Field label="Digest frequency" helpText="How often we email a digest of activity.">
+      <Field label="Digest frequency" hint="How often we email a digest of activity.">
         <select
+          className="st-input"
+          style={{ maxWidth: 220 }}
           value={settings.digest_frequency}
           onChange={(e) => onSave({ ...settings, digest_frequency: e.target.value })}
-          className="atlas-input"
-          style={{ maxWidth: 200 }}
         >
           <option value="off">Off</option>
           <option value="daily">Daily</option>
@@ -332,29 +339,30 @@ function NotificationsSection({ settings, onSave }) {
 }
 
 function AppearanceSection({ darkMode, onToggleDark, experienceMode, onSetExperience }) {
+  const modes = [
+    { id: "simple", label: "Simple", hint: "Hide advanced surfaces" },
+    { id: "standard", label: "Standard", hint: "Default workspace" },
+    { id: "power", label: "Power", hint: "All surfaces enabled" },
+  ];
   return (
     <Panel title="Appearance" description="Tune theme and how much complexity the workspace shows you.">
-      <Toggle label="Dark theme" description="Use a darker interface in low-light environments." checked={darkMode} onChange={onToggleDark} />
-      <Field label="Experience mode" helpText="Hide advanced surfaces for a simpler workspace.">
-        <div style={{ display: "flex", gap: 8 }}>
-          {[
-            { id: "simple", label: "Simple", hint: "Hide advanced surfaces" },
-            { id: "standard", label: "Standard", hint: "Default workspace" },
-            { id: "power", label: "Power", hint: "All surfaces enabled" },
-          ].map((m) => (
+      <Toggle
+        label="Dark theme"
+        description="Use a darker interface in low-light environments."
+        checked={darkMode}
+        onChange={onToggleDark}
+      />
+      <Field label="Experience mode" hint="Hide advanced surfaces for a simpler workspace.">
+        <div className="st-segmented">
+          {modes.map((m) => (
             <button
               key={m.id}
               type="button"
               onClick={() => onSetExperience(m.id)}
-              style={{
-                ...modePill,
-                background: experienceMode === m.id ? "var(--b50)" : "var(--app-surface-alt)",
-                borderColor: experienceMode === m.id ? "var(--b400)" : "var(--app-border)",
-                color: experienceMode === m.id ? "var(--b500)" : "var(--app-text)",
-              }}
+              className={`st-seg${experienceMode === m.id ? " is-active" : ""}`}
             >
-              <strong>{m.label}</strong>
-              <span style={{ marginLeft: 6, fontSize: 11, color: "var(--app-muted)" }}>· {m.hint}</span>
+              <span>{m.label}</span>
+              <span className="st-seg-hint">{m.hint}</span>
             </button>
           ))}
         </div>
@@ -363,24 +371,42 @@ function AppearanceSection({ darkMode, onToggleDark, experienceMode, onSetExperi
   );
 }
 
-function OrganizationSection({ organization, orgName, setOrgName, orgDescription, setOrgDescription, onSave, busy }) {
+function OrganizationSection({
+  organization,
+  orgName,
+  setOrgName,
+  orgDescription,
+  setOrgDescription,
+  onSave,
+  busy,
+}) {
   return (
     <Panel title="Organization" description="Edit your workspace identity.">
-      <Field label="Name" isRequired>
-        <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="atlas-input" />
+      <Field label="Name" required>
+        <input className="st-input" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
       </Field>
       <Field label="Description">
-        <textarea value={orgDescription} onChange={(e) => setOrgDescription(e.target.value)} className="atlas-input" rows={4} />
+        <textarea
+          className="st-input"
+          value={orgDescription}
+          onChange={(e) => setOrgDescription(e.target.value)}
+          rows={4}
+        />
       </Field>
       {organization?.slug ? (
-        <Field label="Slug" helpText="Workspace URL identifier.">
-          <input value={organization.slug} className="atlas-input" disabled />
+        <Field label="Slug" hint="Workspace URL identifier.">
+          <input className="st-input" value={organization.slug} disabled />
         </Field>
       ) : null}
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button appearance="primary" onClick={onSave} isDisabled={busy || !orgName.trim()}>
+      <div className="st-form-actions">
+        <button
+          type="button"
+          className="st-btn st-btn-primary"
+          onClick={onSave}
+          disabled={busy || !orgName.trim()}
+        >
           {busy ? "Saving…" : "Save changes"}
-        </Button>
+        </button>
       </div>
     </Panel>
   );
@@ -392,76 +418,83 @@ function TeamSection({ members, invitations, onInvite, onCancelInvite, onRemove 
       title="Team"
       description="Manage members and pending invitations."
       action={
-        <Button appearance="primary" iconBefore={<PlusIcon style={{ width: 14, height: 14 }} />} onClick={onInvite}>
-          Invite member
-        </Button>
+        <button type="button" className="st-btn st-btn-primary" onClick={onInvite}>
+          <PlusIcon /> Invite member
+        </button>
       }
     >
-      <h4 style={subheading}>Members <span style={{ fontWeight: 400, color: "var(--app-muted)" }}>· {members.length}</span></h4>
+      <h4 className="st-subhead">
+        Members <span className="st-count">· {members.length}</span>
+      </h4>
       {members.length === 0 ? (
-        <EmptyState title="No members" description="Invite teammates to start collaborating." />
+        <p className="st-empty">No members yet. Invite teammates to start collaborating.</p>
       ) : (
-        <div style={tableWrap}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "var(--app-surface-alt)" }}>
-                <th style={th}>Name</th>
-                <th style={th}>Role</th>
-                <th style={th}>Email</th>
-                <th style={{ ...th, textAlign: "right" }} />
+        <table className="st-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Email</th>
+              <th aria-label="actions" />
+            </tr>
+          </thead>
+          <tbody>
+            {members.map((m) => (
+              <tr key={m.id || m.user_id}>
+                <td>{m.full_name || m.email}</td>
+                <td className="st-table-muted">{m.role || "contributor"}</td>
+                <td className="st-table-muted">{m.email}</td>
+                <td className="st-table-right">
+                  <button
+                    type="button"
+                    className="st-table-link"
+                    onClick={() => onRemove(m.id || m.user_id)}
+                  >
+                    Remove
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => (
-                <tr key={m.id || m.user_id} style={{ borderBottom: "1px solid var(--app-border-subtle)" }}>
-                  <td style={td}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <Avatar size="sm" name={m.full_name || m.email} />
-                      <span>{m.full_name || m.email}</span>
-                    </span>
-                  </td>
-                  <td style={td}><Lozenge>{m.role || "contributor"}</Lozenge></td>
-                  <td style={td}><span style={{ color: "var(--app-muted)", fontSize: 13 }}>{m.email}</span></td>
-                  <td style={{ ...td, textAlign: "right" }}>
-                    <Button appearance="subtle" size="sm" onClick={() => onRemove(m.id || m.user_id)}>Remove</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       )}
 
-      <h4 style={{ ...subheading, marginTop: 24 }}>Pending invitations <span style={{ fontWeight: 400, color: "var(--app-muted)" }}>· {invitations.length}</span></h4>
+      <h4 className="st-subhead" style={{ marginTop: 24 }}>
+        Pending invitations <span className="st-count">· {invitations.length}</span>
+      </h4>
       {invitations.length === 0 ? (
-        <p style={{ fontSize: 13, color: "var(--app-muted)" }}>No pending invitations.</p>
+        <p className="st-empty">No pending invitations.</p>
       ) : (
-        <div style={tableWrap}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "var(--app-surface-alt)" }}>
-                <th style={th}>Email</th>
-                <th style={th}>Role</th>
-                <th style={th}>Sent</th>
-                <th style={{ ...th, textAlign: "right" }} />
+        <table className="st-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Sent</th>
+              <th aria-label="actions" />
+            </tr>
+          </thead>
+          <tbody>
+            {invitations.map((inv) => (
+              <tr key={inv.id}>
+                <td>{inv.email}</td>
+                <td className="st-table-muted">{inv.role}</td>
+                <td className="st-table-muted">
+                  {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : "—"}
+                </td>
+                <td className="st-table-right">
+                  <button
+                    type="button"
+                    className="st-table-link"
+                    onClick={() => onCancelInvite(inv.id)}
+                  >
+                    <TrashIcon /> Cancel
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {invitations.map((inv) => (
-                <tr key={inv.id} style={{ borderBottom: "1px solid var(--app-border-subtle)" }}>
-                  <td style={td}>{inv.email}</td>
-                  <td style={td}><Lozenge>{inv.role}</Lozenge></td>
-                  <td style={td}><span style={{ color: "var(--app-muted)", fontSize: 13 }}>{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : "—"}</span></td>
-                  <td style={{ ...td, textAlign: "right" }}>
-                    <Button appearance="subtle" size="sm" iconBefore={<TrashIcon style={{ width: 12, height: 12 }} />} onClick={() => onCancelInvite(inv.id)}>
-                      Cancel
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       )}
     </Panel>
   );
@@ -470,124 +503,84 @@ function TeamSection({ members, invitations, onInvite, onCancelInvite, onRemove 
 function PrivacySection() {
   return (
     <Panel title="Privacy" description="How Knoledgr handles your data.">
-      <SectionMessage tone="info">
+      <p className="st-info">
         Your workspace data stays in this tenant. Export or delete it from the Profile page.
-      </SectionMessage>
+      </p>
     </Panel>
   );
 }
 
+/* ─── building blocks ─────────────────────────────────── */
+
 function Panel({ title, description, action, children }) {
   return (
-    <div style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, padding: 24 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 8 }}>
+    <article className="st-panel">
+      <header className="st-panel-head">
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: "var(--app-text)" }}>{title}</h2>
-          {description ? <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--app-muted)" }}>{description}</p> : null}
+          <h2>{title}</h2>
+          {description ? <p>{description}</p> : null}
         </div>
         {action}
-      </div>
-      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>{children}</div>
-    </div>
+      </header>
+      <div className="st-panel-body">{children}</div>
+    </article>
+  );
+}
+
+function Field({ label, hint, required, children }) {
+  return (
+    <label className="st-field">
+      <span className="st-field-label">
+        {label}
+        {required ? <span aria-hidden="true"> *</span> : null}
+      </span>
+      {children}
+      {hint ? <span className="st-field-hint">{hint}</span> : null}
+    </label>
   );
 }
 
 function Toggle({ label, description, checked, onChange }) {
   return (
-    <label style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, cursor: "pointer", padding: "8px 0", borderBottom: "1px solid var(--app-border-subtle)" }}>
-      <div>
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "var(--app-text)" }}>{label}</p>
-        {description ? <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--app-muted)" }}>{description}</p> : null}
-      </div>
-      <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+    <label className="st-toggle">
+      <span className="st-toggle-text">
+        <span className="st-toggle-label">{label}</span>
+        {description ? <span className="st-toggle-desc">{description}</span> : null}
+      </span>
+      <span className="st-toggle-switch">
         <input
           type="checkbox"
           checked={!!checked}
           onChange={(e) => onChange?.(e.target.checked)}
-          style={{ position: "absolute", opacity: 0, width: "100%", height: "100%", margin: 0, cursor: "pointer" }}
         />
-        <span
-          style={{
-            width: 32,
-            height: 18,
-            borderRadius: 999,
-            background: checked ? "var(--b400)" : "var(--n50)",
-            position: "relative",
-            transition: "background 120ms ease",
-          }}
-        >
-          <span
-            style={{
-              position: "absolute",
-              top: 2,
-              left: checked ? 16 : 2,
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: "#FFFFFF",
-              transition: "left 120ms ease",
-            }}
-          />
+        <span className="st-toggle-track">
+          <span className="st-toggle-thumb" />
         </span>
       </span>
     </label>
   );
 }
 
-function Modal({ children, onClose, title, width = 480 }) {
+function Modal({ children, onClose, title }) {
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", zIndex: 199 }} />
-      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 6, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--app-border)" }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
-          <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
-        </div>
-        <div style={{ padding: 20 }}>{children}</div>
+      <div className="st-modal-back" onClick={onClose} />
+      <div role="dialog" aria-modal="true" className="st-modal">
+        <header className="st-modal-head">
+          <h2>{title}</h2>
+          <button type="button" className="st-modal-close" onClick={onClose} aria-label="Close">
+            <XMarkIcon />
+          </button>
+        </header>
+        <div className="st-modal-body">{children}</div>
       </div>
     </>
   );
 }
-
-const layout = {
-  marginTop: 16,
-  display: "grid",
-  gridTemplateColumns: "220px minmax(0, 1fr)",
-  gap: 24,
-  alignItems: "start",
-};
-
-const sideNav = {
-  position: "sticky",
-  top: 72,
-  background: "var(--app-surface)",
-  border: "1px solid var(--app-border)",
-  borderRadius: 4,
-  padding: 8,
-};
-
-const content = {
-  minWidth: 0,
-};
-
-const modePill = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "8px 12px",
-  border: "1px solid var(--app-border)",
-  borderRadius: 3,
-  background: "var(--app-surface-alt)",
-  fontFamily: "inherit",
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const tableWrap = { background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, overflow: "hidden", marginTop: 8 };
-const th = { textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--app-muted)", padding: "10px 16px", borderBottom: "1px solid var(--app-border)" };
-const td = { padding: "10px 16px", fontSize: 14, color: "var(--app-text)", verticalAlign: "middle" };
-const subheading = { margin: "16px 0 8px", fontSize: 14, fontWeight: 600, color: "var(--app-text)" };

@@ -1,0 +1,250 @@
+/* Sidebar — type-driven, no gradients, no glow.
+ * Same restraint as the dashboard. Hairlines and weight do the work. */
+
+.nav {
+  position: fixed;
+  top: var(--atlas-topnav-h, 60px);
+  left: 0;
+  bottom: 0;
+  width: var(--nav-w, 248px);
+  z-index: 90;
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
+  transition: width 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.nav.is-collapsed { width: var(--nav-cw, 60px); }
+
+.nav-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: var(--nav-w, 248px);
+}
+
+/* ─── workspace header ───────────────────────────────────────── */
+
+.nav-workspace {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px;
+  min-height: 56px;
+  border-bottom: 1px solid var(--app-border);
+  flex-shrink: 0;
+}
+.nav-ws-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--app-surface-alt);
+  color: var(--app-text);
+  font-size: 12px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border: 1px solid var(--app-border);
+  letter-spacing: -0.01em;
+  font-feature-settings: "tnum" 1;
+}
+.nav-ws-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  transition: opacity 140ms ease;
+}
+.nav-ws-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+.nav-ws-role {
+  font-size: 11px;
+  color: var(--app-muted);
+  text-transform: lowercase;
+}
+.nav.is-collapsed .nav-ws-meta { opacity: 0; pointer-events: none; }
+
+.nav-toggle {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1px solid var(--app-border);
+  background: transparent;
+  color: var(--app-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background 100ms ease, color 100ms ease;
+}
+.nav-toggle:hover {
+  background: var(--app-surface-alt);
+  color: var(--app-text);
+}
+.nav-toggle svg { width: 12px; height: 12px; }
+.nav.is-collapsed .nav-toggle { margin: 0 auto; }
+
+/* ─── pinned ─────────────────────────────────────────────────── */
+
+.nav-pinned {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 8px 6px;
+  border-bottom: 1px solid var(--app-border);
+}
+
+/* ─── scrollable nav ─────────────────────────────────────────── */
+
+.nav-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-border) transparent;
+}
+.nav-scroll::-webkit-scrollbar { width: 4px; }
+.nav-scroll::-webkit-scrollbar-thumb {
+  background: var(--app-border);
+  border-radius: 2px;
+}
+
+.nav-group { margin-bottom: 4px; }
+.nav-group.is-collapsed {
+  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nav-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.nav-group-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+  transition: color 100ms ease;
+}
+.nav-group-head:hover .nav-group-name { color: var(--app-text); }
+.nav-group.has-active .nav-group-name { color: var(--app-text-subtle, var(--app-text)); }
+
+.nav-group-chev {
+  width: 10px;
+  height: 10px;
+  color: var(--app-text-disabled, var(--app-muted));
+  transform: rotate(-90deg);
+  transition: transform 140ms ease;
+}
+.nav-group-chev.is-open { transform: rotate(0deg); }
+
+.nav-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 8px 4px;
+}
+
+/* ─── nav item ───────────────────────────────────────────────── */
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: var(--app-text-subtle, var(--app-text));
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 100ms ease, color 100ms ease;
+  white-space: nowrap;
+}
+.nav-item:hover {
+  background: var(--app-surface-alt);
+  color: var(--app-text);
+  text-decoration: none;
+}
+.nav-item.is-active {
+  background: var(--app-surface-alt);
+  color: var(--app-text);
+  font-weight: 600;
+}
+.nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--app-text);
+}
+.nav-item.is-small {
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+
+.nav-item-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: currentColor;
+  opacity: 0.85;
+}
+.nav-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav.is-collapsed .nav-item-label { opacity: 0; pointer-events: none; }
+.nav.is-collapsed .nav-item {
+  justify-content: center;
+  padding: 8px 0;
+}
+.nav.is-collapsed .nav-item-icon { opacity: 1; }
+.nav.is-collapsed .nav-item.is-active::before {
+  left: 4px;
+  top: 8px;
+  bottom: 8px;
+}
+
+/* ─── footer ────────────────────────────────────────────────── */
+
+.nav-footer {
+  border-top: 1px solid var(--app-border);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+/* ─── responsive ────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .nav { display: none; }
+}

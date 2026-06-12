@@ -1,24 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  ArrowRightIcon,
-  ArrowTopRightOnSquareIcon,
-  ArrowTrendingDownIcon,
-  ArrowUturnRightIcon,
-  BoltIcon,
-  ChartBarSquareIcon,
-  ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  CursorArrowRaysIcon,
-  DocumentTextIcon,
-  ExclamationTriangleIcon,
-  FireIcon,
-  HandRaisedIcon,
-  LightBulbIcon,
-  PlusIcon,
-  SparklesIcon,
-} from "@heroicons/react/24/outline";
+import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import "./UnifiedDashboard.css";
@@ -40,15 +21,6 @@ function timeAgo(input) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 5) return "Up late";
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  if (h < 22) return "Good evening";
-  return "Up late";
-}
-
 function unwrap(payload, fallback) {
   if (Array.isArray(payload)) return payload;
   if (payload && typeof payload === "object") {
@@ -57,26 +29,15 @@ function unwrap(payload, fallback) {
   return fallback;
 }
 
-const driftToneClass = (band) => {
-  switch (band) {
-    case "off_track":
-      return "rose";
-    case "drifting":
-      return "amber";
-    case "exceeded":
-      return "violet";
-    case "on_track":
-      return "emerald";
-    default:
-      return "slate";
-  }
-};
+function bandLabel(band) {
+  if (!band) return "unknown";
+  return band.replace("_", " ");
+}
 
 // ─── page ───────────────────────────────────────────────────────────────────
 
 export default function UnifiedDashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState(null);
   const [personal, setPersonal] = useState(null);
@@ -121,351 +82,218 @@ export default function UnifiedDashboard() {
   const firstName = user?.full_name?.split(" ")[0] || "";
   const totals = overview?.totals || {};
 
-  // Loop metrics — the canonical KPI strip. Pull from intelligence/overview;
-  // gracefully degrade to 0 when the workspace is brand new.
-  const loopTiles = useMemo(() => {
-    const recentRetros = Array.isArray(overview?.recent_retros) ? overview.recent_retros : [];
-    const pendingChecks = Array.isArray(overview?.pending_checks) ? overview.pending_checks : [];
-    const driftSignals = Array.isArray(overview?.recent_drift_signals)
+  const recentRetros = useMemo(
+    () => (Array.isArray(overview?.recent_retros) ? overview.recent_retros : []),
+    [overview]
+  );
+  const pendingChecks = useMemo(
+    () => (Array.isArray(overview?.pending_checks) ? overview.pending_checks : []),
+    [overview]
+  );
+  const driftSignals = useMemo(() => {
+    const fromOverview = Array.isArray(overview?.recent_drift_signals)
       ? overview.recent_drift_signals
       : [];
-    const openRetros = recentRetros.filter((r) => !r.closed_at).length;
-    const offTrack = driftSignals.filter((d) => d.drift_band === "off_track").length;
-    return [
-      {
-        key: "decisions",
-        label: "Decisions",
-        Icon: CheckCircleIcon,
-        value: totals.decisions ?? "—",
-        sub: "all-time",
-        tone: "blue",
-        to: "/decisions",
-      },
+    if (fromOverview.length) return fromOverview;
+    return Array.isArray(drift.items) ? drift.items : [];
+  }, [overview, drift.items]);
+
+  const offTrackCount = useMemo(
+    () => driftSignals.filter((d) => d.drift_band === "off_track").length,
+    [driftSignals]
+  );
+  const openRetrosCount = useMemo(
+    () => recentRetros.filter((r) => !r.closed_at).length,
+    [recentRetros]
+  );
+  const capturedLessonsCount = useMemo(
+    () => recentRetros.filter((r) => (r.lesson || "").trim().length > 0).length,
+    [recentRetros]
+  );
+
+  const stats = useMemo(
+    () => [
+      { key: "decisions", label: "Decisions", value: totals.decisions ?? "—", to: "/decisions" },
       {
         key: "predictions",
         label: "Predictions",
-        Icon: ChartBarSquareIcon,
         value: totals.predictions ?? "—",
-        sub: "logged",
-        tone: "violet",
         to: "/decisions/intelligence",
       },
       {
-        key: "checks",
-        label: "Outcomes checked",
-        Icon: CursorArrowRaysIcon,
+        key: "outcomes",
+        label: "Outcomes",
         value: totals.outcome_checks ?? "—",
-        sub: `${pendingChecks.length} pending`,
-        tone: "emerald",
+        sub: pendingChecks.length ? `${pendingChecks.length} pending` : null,
         to: "/decisions/intelligence",
       },
       {
         key: "drift",
-        label: "Drift signals",
-        Icon: ArrowTrendingDownIcon,
-        value: offTrack || "0",
-        sub: "off-track",
-        tone: offTrack ? "rose" : "slate",
+        label: "Off-track",
+        value: offTrackCount,
+        emphasized: offTrackCount > 0,
         to: "/decisions/intelligence",
       },
       {
         key: "retros",
         label: "Open retros",
-        Icon: ArrowUturnRightIcon,
-        value: openRetros,
-        sub: `${totals.retrospectives ?? 0} all-time`,
-        tone: openRetros ? "amber" : "slate",
+        value: openRetrosCount,
+        sub: totals.retrospectives ? `${totals.retrospectives} total` : null,
         to: "/decisions/intelligence",
       },
       {
         key: "lessons",
-        label: "Lessons captured",
-        Icon: LightBulbIcon,
-        value:
-          recentRetros.filter((r) => (r.lesson || "").trim().length > 0).length ||
-          totals.retrospectives ||
-          "—",
-        sub: "compounding",
-        tone: "teal",
+        label: "Lessons",
+        value: capturedLessonsCount || totals.retrospectives || "—",
         to: "/decisions/intelligence",
       },
-    ];
-  }, [overview, totals]);
+    ],
+    [totals, pendingChecks.length, offTrackCount, openRetrosCount, capturedLessonsCount]
+  );
 
-  // Awaiting-you items: union of high-signal personal items.
+  // Awaiting items — flat, no colored mark
   const awaiting = useMemo(() => {
     const out = [];
-    // Pending predictions assigned to user (best-effort — backend may not
-    // include user attribution; we show all pending in that case).
-    const pendingChecks = Array.isArray(overview?.pending_checks)
-      ? overview.pending_checks
-      : [];
     pendingChecks.slice(0, 3).forEach((p) => {
       out.push({
         id: `pc-${p.prediction_id || p.id}`,
         kind: "prediction",
-        Icon: CursorArrowRaysIcon,
-        tone: "violet",
         title: p.statement || p.dimension || "Prediction needs an outcome check",
-        meta: `${p.dimension || ""}${p.check_at ? ` · due ${timeAgo(p.check_at)}` : ""}`,
+        meta: [p.dimension, p.check_at ? `due ${timeAgo(p.check_at)}` : null].filter(Boolean).join(" · "),
         href: p.decision_id ? `/decisions/${p.decision_id}` : "/decisions/intelligence",
       });
     });
-    // Open retros without a lesson written yet
-    const recentRetros = Array.isArray(overview?.recent_retros) ? overview.recent_retros : [];
     recentRetros
       .filter((r) => !r.closed_at && !(r.lesson || "").trim())
       .slice(0, 2)
       .forEach((r) => {
         out.push({
           id: `retro-${r.id}`,
-          kind: "retro",
-          Icon: ArrowUturnRightIcon,
-          tone: "amber",
+          kind: "retrospective",
           title: r.summary || "Retrospective needs a lesson",
-          meta: `${r.triggered_by ? `triggered by ${r.triggered_by}` : "open"} · ${timeAgo(r.created_at)}`,
+          meta: [r.triggered_by ? `triggered by ${r.triggered_by}` : null, timeAgo(r.created_at)]
+            .filter(Boolean)
+            .join(" · "),
           href: r.decision_id ? `/decisions/${r.decision_id}` : "/decisions/intelligence",
         });
       });
-    // Mentioned conversations from the personal briefing
     const mentions = personal?.mentions || personal?.recent_conversations || [];
     mentions.slice(0, 2).forEach((m) => {
       out.push({
         id: `m-${m.id}`,
         kind: "conversation",
-        Icon: ChatBubbleLeftRightIcon,
-        tone: "blue",
         title: m.title || m.headline || "Conversation tagged you",
-        meta: `${m.post_type || "conversation"} · ${timeAgo(m.updated_at || m.created_at)}`,
+        meta: [m.post_type || "conversation", timeAgo(m.updated_at || m.created_at)]
+          .filter(Boolean)
+          .join(" · "),
         href: m.id ? `/conversations/${m.id}` : "/conversations",
       });
     });
     return out.slice(0, 6);
-  }, [overview, personal]);
+  }, [pendingChecks, recentRetros, personal]);
 
-  // Pipeline counts pulled from the workspace briefing or fallback to
-  // overview totals. These map to the Conversations buckets we ship.
   const pipeline = useMemo(() => {
-    const buckets = workspace?.pipeline_buckets || {};
-    return {
-      readyToDecide:
-        buckets.ready_to_decide ??
-        (Array.isArray(workspace?.proposals_ready_to_decide)
-          ? workspace.proposals_ready_to_decide.length
-          : 0),
-      stalled:
-        buckets.stalled ??
-        (Array.isArray(workspace?.stalled_threads)
-          ? workspace.stalled_threads.length
-          : 0),
-      inProgress: buckets.in_progress ?? 0,
-      awaitingYou: buckets.awaiting_you ?? awaiting.length,
-    };
-  }, [workspace, awaiting.length]);
+    const b = workspace?.pipeline_buckets || {};
+    return [
+      {
+        key: "ready",
+        label: "Ready to decide",
+        value:
+          b.ready_to_decide ??
+          (Array.isArray(workspace?.proposals_ready_to_decide)
+            ? workspace.proposals_ready_to_decide.length
+            : 0),
+      },
+      { key: "wip", label: "In progress", value: b.in_progress ?? 0 },
+      {
+        key: "stalled",
+        label: "Stalled",
+        value:
+          b.stalled ??
+          (Array.isArray(workspace?.stalled_threads) ? workspace.stalled_threads.length : 0),
+      },
+      { key: "awaiting", label: "Awaiting someone", value: b.awaiting_you ?? 0 },
+    ];
+  }, [workspace]);
 
-  const driftRows = useMemo(() => {
-    const signals = Array.isArray(overview?.recent_drift_signals)
-      ? overview.recent_drift_signals
-      : drift.items || [];
-    return signals.slice(0, 4);
-  }, [overview, drift.items]);
+  const driftRows = useMemo(() => driftSignals.slice(0, 5), [driftSignals]);
+  const latestLesson = useMemo(
+    () => recentRetros.find((r) => (r.lesson || "").trim().length > 0) || null,
+    [recentRetros]
+  );
 
-  const latestLesson = useMemo(() => {
-    const retros = Array.isArray(overview?.recent_retros) ? overview.recent_retros : [];
-    return retros.find((r) => (r.lesson || "").trim().length > 0) || null;
-  }, [overview]);
+  // ─── render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="dash">
-      {/* ─── hero ─────────────────────────────────────────────────── */}
-      <section className="dash-hero">
-        <div>
-          <p className="dash-eyebrow">
+      <header className="dash-hero">
+        <div className="dash-hero-left">
+          <p className="dash-hero-date">
             {new Date().toLocaleDateString(undefined, {
               weekday: "long",
               month: "long",
               day: "numeric",
             })}
           </p>
-          <h1 className="dash-h1">
-            {greeting()}{firstName ? `, ${firstName}` : ""}.
+          <h1 className="dash-hero-title">
+            {firstName || "Welcome back"}
           </h1>
-          <p className="dash-sub">
-            {awaiting.length
-              ? `${awaiting.length} thing${awaiting.length === 1 ? "" : "s"} waiting on you across the decision loop.`
-              : "Nothing's blocking you. Good time to push the next decision forward."}
-          </p>
+          {awaiting.length > 0 ? (
+            <p className="dash-hero-summary">
+              {awaiting.length} item{awaiting.length === 1 ? "" : "s"} waiting on you.
+            </p>
+          ) : (
+            <p className="dash-hero-summary">No open items waiting on you.</p>
+          )}
         </div>
         <div className="dash-hero-actions">
           <Link to="/decisions/new" className="dash-btn dash-btn-primary">
-            <PlusIcon /> Draft a decision
+            Draft a decision
           </Link>
           <Link to="/ask" className="dash-btn">
-            <SparklesIcon /> Ask Recall
+            Ask Recall
           </Link>
           <Link to="/agent" className="dash-btn">
-            <BoltIcon /> Run agent
+            Run agent
           </Link>
         </div>
-      </section>
+      </header>
 
-      {/* ─── the loop: KPI strip ─────────────────────────────────── */}
-      <section className="dash-section">
-        <div className="dash-section-head">
-          <div>
-            <h2 className="dash-h2">The decision loop</h2>
-            <p className="dash-h2-sub">
-              Every decision logged, every prediction checked, every lesson surfaced. The moat.
-            </p>
-          </div>
-          <Link to="/decisions/intelligence" className="dash-section-link">
-            Full scorecard <ArrowRightIcon />
+      {/* Stat strip — plain numbers, hairlines between. */}
+      <section className="dash-stats">
+        {stats.map((s, i) => (
+          <Link
+            key={s.key}
+            to={s.to}
+            className={`dash-stat${s.emphasized ? " is-emphasized" : ""}`}
+          >
+            <span className="dash-stat-value">{loading ? "—" : s.value}</span>
+            <span className="dash-stat-label">{s.label}</span>
+            {s.sub ? <span className="dash-stat-sub">{s.sub}</span> : null}
           </Link>
-        </div>
-        <div className="dash-loop">
-          {loopTiles.map(({ key, label, Icon, value, sub, tone, to }) => (
-            <Link key={key} to={to} className={`dash-tile dash-tile-${tone}`}>
-              <span className="dash-tile-icon">
-                <Icon />
-              </span>
-              <span className="dash-tile-meta">
-                <span className="dash-tile-value">{loading ? "—" : value}</span>
-                <span className="dash-tile-label">{label}</span>
-                <span className="dash-tile-sub">{sub}</span>
-              </span>
-            </Link>
-          ))}
-        </div>
+        ))}
       </section>
 
-      {/* ─── awaiting + pipeline ─────────────────────────────────── */}
       <section className="dash-grid">
-        {/* Awaiting you */}
+        {/* Needs your attention */}
         <article className="dash-card dash-card-tall">
-          <div className="dash-card-head">
-            <div>
-              <h3 className="dash-card-title">
-                <HandRaisedIcon /> Needs your attention
-              </h3>
-              <p className="dash-card-sub">
-                Predictions due, retros without a lesson, threads where you're tagged.
-              </p>
-            </div>
+          <header className="dash-card-head">
+            <h2>Needs your attention</h2>
             <span className="dash-card-count">{awaiting.length}</span>
-          </div>
+          </header>
           {loading ? (
             <DashSkeleton lines={4} />
           ) : awaiting.length === 0 ? (
-            <div className="dash-empty">
-              <CheckCircleIcon />
-              <p>You're clear. Move something forward.</p>
-            </div>
+            <div className="dash-empty">You're clear.</div>
           ) : (
-            <ul className="dash-list">
-              {awaiting.map((item) => {
-                const { Icon } = item;
-                return (
-                  <li key={item.id}>
-                    <Link to={item.href} className="dash-list-row">
-                      <span className={`dash-list-mark dash-mark-${item.tone}`}>
-                        <Icon />
-                      </span>
-                      <span className="dash-list-body">
-                        <span className="dash-list-title">{item.title}</span>
-                        <span className="dash-list-meta">{item.meta}</span>
-                      </span>
-                      <ArrowRightIcon className="dash-list-arrow" />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </article>
-
-        {/* Pipeline */}
-        <article className="dash-card">
-          <div className="dash-card-head">
-            <div>
-              <h3 className="dash-card-title">
-                <ChatBubbleLeftRightIcon /> Pipeline
-              </h3>
-              <p className="dash-card-sub">Where ideas are this morning.</p>
-            </div>
-            <Link to="/conversations" className="dash-link">
-              Open pipeline <ArrowRightIcon />
-            </Link>
-          </div>
-          <div className="dash-pipeline">
-            <PipelineRow
-              label="Ready to decide"
-              value={pipeline.readyToDecide}
-              tone="emerald"
-              hint="Proposals with consensus."
-            />
-            <PipelineRow
-              label="In progress"
-              value={pipeline.inProgress}
-              tone="blue"
-              hint="Active threads this week."
-            />
-            <PipelineRow
-              label="Stalled"
-              value={pipeline.stalled}
-              tone="amber"
-              hint="Open but quiet for over a week."
-            />
-            <PipelineRow
-              label="Awaiting someone"
-              value={pipeline.awaitingYou}
-              tone="violet"
-              hint="Blocked on a human, not a decision."
-            />
-          </div>
-        </article>
-
-        {/* Drift radar */}
-        <article className="dash-card">
-          <div className="dash-card-head">
-            <div>
-              <h3 className="dash-card-title">
-                <ArrowTrendingDownIcon /> Drift radar
-              </h3>
-              <p className="dash-card-sub">Predictions reality has answered.</p>
-            </div>
-          </div>
-          {loading ? (
-            <DashSkeleton lines={3} />
-          ) : driftRows.length === 0 ? (
-            <div className="dash-empty">
-              <CheckCircleIcon />
-              <p>Nothing's drifted lately. Predictions are on track.</p>
-            </div>
-          ) : (
-            <ul className="dash-drift">
-              {driftRows.map((d, i) => (
-                <li
-                  key={d.prediction_id || d.id || i}
-                  className={`dash-drift-row dash-drift-${driftToneClass(d.drift_band)}`}
-                >
-                  <Link
-                    to={d.decision_id ? `/decisions/${d.decision_id}` : "/decisions/intelligence"}
-                    className="dash-drift-link"
-                  >
-                    <span className="dash-drift-headline">
-                      <span className="dash-drift-dimension">
-                        {d.dimension || d.statement || d.decision_title || "Drift event"}
-                      </span>
-                      <span className="dash-drift-pct">
-                        {typeof d.drift_pct === "number"
-                          ? `${d.drift_pct > 0 ? "+" : ""}${Math.round(d.drift_pct)}%`
-                          : ""}
-                      </span>
-                    </span>
-                    <span className="dash-drift-meta">
-                      <span className="dash-drift-band">{(d.drift_band || "unknown").replace("_", " ")}</span>
-                      {d.decision_title ? <span>{d.decision_title}</span> : null}
-                      <span>{timeAgo(d.observed_at || d.created_at)}</span>
+            <ul className="dash-rows">
+              {awaiting.map((item) => (
+                <li key={item.id}>
+                  <Link to={item.href} className="dash-row">
+                    <span className="dash-row-kind">{item.kind}</span>
+                    <span className="dash-row-main">
+                      <span className="dash-row-title">{item.title}</span>
+                      <span className="dash-row-meta">{item.meta}</span>
                     </span>
                   </Link>
                 </li>
@@ -474,102 +302,149 @@ export default function UnifiedDashboard() {
           )}
         </article>
 
-        {/* Latest lesson */}
-        <article className="dash-card dash-card-lesson">
-          <div className="dash-card-head">
-            <div>
-              <h3 className="dash-card-title">
-                <LightBulbIcon /> Latest lesson
-              </h3>
-              <p className="dash-card-sub">A retrospective the workspace just captured.</p>
-            </div>
-          </div>
+        {/* Pipeline */}
+        <article className="dash-card">
+          <header className="dash-card-head">
+            <h2>Pipeline</h2>
+            <Link to="/conversations" className="dash-card-link">
+              View all
+            </Link>
+          </header>
+          <table className="dash-table">
+            <tbody>
+              {pipeline.map((p) => (
+                <tr key={p.key}>
+                  <td className="dash-table-num">{loading ? "—" : p.value}</td>
+                  <td className="dash-table-label">{p.label}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </article>
+
+        {/* Drift radar */}
+        <article className="dash-card">
+          <header className="dash-card-head">
+            <h2>Drift</h2>
+          </header>
+          {loading ? (
+            <DashSkeleton lines={3} />
+          ) : driftRows.length === 0 ? (
+            <div className="dash-empty">Nothing's drifted recently.</div>
+          ) : (
+            <table className="dash-table">
+              <tbody>
+                {driftRows.map((d, i) => (
+                  <tr key={d.prediction_id || d.id || i}>
+                    <td className="dash-table-main">
+                      <Link
+                        to={d.decision_id ? `/decisions/${d.decision_id}` : "/decisions/intelligence"}
+                        className="dash-table-link"
+                      >
+                        {d.dimension || d.statement || d.decision_title || "Drift event"}
+                      </Link>
+                      {d.decision_title && (d.dimension || d.statement) ? (
+                        <span className="dash-table-sub">{d.decision_title}</span>
+                      ) : null}
+                    </td>
+                    <td className="dash-table-pct">
+                      {typeof d.drift_pct === "number"
+                        ? `${d.drift_pct > 0 ? "+" : ""}${Math.round(d.drift_pct)}%`
+                        : "—"}
+                    </td>
+                    <td className={`dash-table-band dash-band-${d.drift_band || "unknown"}`}>
+                      {bandLabel(d.drift_band)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </article>
+
+        {/* Latest lesson — plain text, no quote treatment */}
+        <article className="dash-card">
+          <header className="dash-card-head">
+            <h2>Latest lesson</h2>
+          </header>
           {loading ? (
             <DashSkeleton lines={3} />
           ) : !latestLesson ? (
-            <div className="dash-empty">
-              <LightBulbIcon />
-              <p>No lessons captured yet. They show up here as soon as a retrospective lands.</p>
-            </div>
+            <div className="dash-empty">No lessons captured yet.</div>
           ) : (
             <Link
-              to={latestLesson.decision_id ? `/decisions/${latestLesson.decision_id}` : "/decisions/intelligence"}
+              to={
+                latestLesson.decision_id
+                  ? `/decisions/${latestLesson.decision_id}`
+                  : "/decisions/intelligence"
+              }
               className="dash-lesson"
             >
-              <p className="dash-lesson-quote">"{latestLesson.lesson}"</p>
+              <p className="dash-lesson-text">{latestLesson.lesson}</p>
               <p className="dash-lesson-attrib">
                 {latestLesson.decision_title ? (
-                  <span>From <strong>{latestLesson.decision_title}</strong></span>
+                  <span>{latestLesson.decision_title}</span>
                 ) : (
-                  <span>From a recent decision</span>
+                  <span>Decision</span>
                 )}
-                <span className="dash-dot" />
+                <span className="dash-sep">·</span>
                 <span>{timeAgo(latestLesson.created_at)}</span>
               </p>
             </Link>
           )}
         </article>
 
-        {/* Sprint snapshot */}
+        {/* Sprint */}
         <article className="dash-card">
-          <div className="dash-card-head">
-            <div>
-              <h3 className="dash-card-title">
-                <FireIcon /> Current sprint
-              </h3>
-              <p className="dash-card-sub">Where the team's execution sits.</p>
-            </div>
+          <header className="dash-card-head">
+            <h2>Sprint</h2>
             {sprint?.id ? (
-              <Link to={`/sprint/${sprint.id}`} className="dash-link">
-                Open <ArrowRightIcon />
+              <Link to={`/sprint/${sprint.id}`} className="dash-card-link">
+                Open
               </Link>
             ) : null}
-          </div>
+          </header>
           {sprint?.id ? (
             <SprintSnapshot sprint={sprint} />
           ) : (
-            <div className="dash-empty">
-              <FireIcon />
-              <p>No active sprint. Start one from the Sprints board.</p>
-            </div>
+            <div className="dash-empty">No active sprint.</div>
           )}
         </article>
 
         {/* Activity */}
         <article className="dash-card dash-card-wide">
-          <div className="dash-card-head">
-            <div>
-              <h3 className="dash-card-title">
-                <ClockIcon /> Recent activity
-              </h3>
-              <p className="dash-card-sub">Last 7 days across the workspace.</p>
-            </div>
-            <Link to="/activity" className="dash-link">
-              Open activity <ArrowRightIcon />
+          <header className="dash-card-head">
+            <h2>Activity</h2>
+            <Link to="/activity" className="dash-card-link">
+              View all
             </Link>
-          </div>
+          </header>
           {loading ? (
             <DashSkeleton lines={5} />
           ) : !timeline.length ? (
-            <div className="dash-empty">
-              <ClockIcon />
-              <p>It's been quiet. New events will appear here.</p>
-            </div>
+            <div className="dash-empty">Nothing recent.</div>
           ) : (
             <ul className="dash-activity">
-              {timeline.slice(0, 8).map((evt, i) => (
+              {timeline.slice(0, 10).map((evt, i) => (
                 <li key={evt.id || i} className="dash-activity-row">
-                  <span className="dash-activity-bullet" />
                   <span className="dash-activity-body">
-                    <span>
-                      {evt.actor_name ? <strong>{evt.actor_name} </strong> : null}
-                      {evt.action_label || evt.summary || evt.title || "did something"}
+                    {evt.actor_name ? (
+                      <span className="dash-activity-actor">{evt.actor_name}</span>
+                    ) : null}{" "}
+                    <span className="dash-activity-text">
+                      {evt.action_label || evt.summary || evt.title || "activity"}
                     </span>
-                    <span className="dash-activity-meta">
-                      {evt.target_label || evt.subject || ""}
-                      {evt.target_label || evt.subject ? <span className="dash-dot" /> : null}
-                      <span>{timeAgo(evt.created_at || evt.timestamp)}</span>
-                    </span>
+                    {evt.target_label || evt.subject ? (
+                      <>
+                        <span className="dash-sep">·</span>
+                        <span className="dash-activity-target">
+                          {evt.target_label || evt.subject}
+                        </span>
+                      </>
+                    ) : null}
+                  </span>
+                  <span className="dash-activity-time">
+                    {timeAgo(evt.created_at || evt.timestamp)}
                   </span>
                 </li>
               ))}
@@ -583,18 +458,6 @@ export default function UnifiedDashboard() {
 
 // ─── small bits ─────────────────────────────────────────────────────────────
 
-function PipelineRow({ label, value, tone, hint }) {
-  return (
-    <div className={`dash-pipe-row dash-pipe-${tone}`}>
-      <span className="dash-pipe-value">{value || 0}</span>
-      <span className="dash-pipe-body">
-        <span className="dash-pipe-label">{label}</span>
-        <span className="dash-pipe-hint">{hint}</span>
-      </span>
-    </div>
-  );
-}
-
 function SprintSnapshot({ sprint }) {
   const done = sprint.completed_count ?? 0;
   const wip = sprint.in_progress_count ?? 0;
@@ -603,7 +466,7 @@ function SprintSnapshot({ sprint }) {
   const pct = Math.round((done / total) * 100);
   return (
     <div className="dash-sprint">
-      <div className="dash-sprint-head">
+      <div className="dash-sprint-meta">
         <span className="dash-sprint-name">{sprint.name || "Active sprint"}</span>
         {sprint.end_date ? (
           <span className="dash-sprint-end">
@@ -618,7 +481,7 @@ function SprintSnapshot({ sprint }) {
       <div className="dash-sprint-bar">
         <span style={{ width: `${pct}%` }} />
       </div>
-      <p className="dash-sprint-meta">
+      <p className="dash-sprint-counts">
         {done} done · {wip} in progress · {todo} to do
       </p>
     </div>

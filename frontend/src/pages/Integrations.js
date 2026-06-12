@@ -283,9 +283,9 @@ function Card({ item, status, loading }) {
 
   if (unavailable) {
     return (
-      <article className="int-card is-disabled" aria-disabled="true">
+      <div className="int-card is-disabled" role="article">
         {Body}
-      </article>
+      </div>
     );
   }
 

@@ -124,27 +124,7 @@ export default function Homepage() {
   const { user } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const appEntryHref = user ? "/dashboard" : "/login";
-  const hero3dRef = useRef(null);
   const revealRef = useRef(null);
-
-  const onHeroMove = (e) => {
-    const el = hero3dRef.current;
-    if (!el) return;
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const r = el.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width - 0.5;
-    const py = (e.clientY - r.top) / r.height - 0.5;
-    el.style.setProperty("--rx", `${px * 16}deg`);
-    el.style.setProperty("--ry", `${-py * 12}deg`);
-    el.style.setProperty("--px", `${px * 18}px`);
-  };
-  const onHeroLeave = () => {
-    const el = hero3dRef.current;
-    if (!el) return;
-    el.style.setProperty("--rx", "0deg");
-    el.style.setProperty("--ry", "0deg");
-    el.style.setProperty("--px", "0px");
-  };
 
   useEffect(() => {
     const savedTheme = document.documentElement.getAttribute("data-theme");
@@ -192,7 +172,7 @@ export default function Homepage() {
       <header className={`hp-header ${isScrolled ? "hp-header-scrolled" : ""}`}>
         <div className="hp-container hp-header-row">
           <Link to="/" className="hp-brand-link" aria-label="Knoledgr homepage">
-            <BrandLogo tone="blue" size="lg" />
+            <BrandLogo tone="warm" size="md" />
           </Link>
           <nav className="hp-nav" aria-label="Public navigation">
             <a href="#product">Product</a>
@@ -212,58 +192,39 @@ export default function Homepage() {
       <main>
         {/* ---------- Hero ---------- */}
         <section className="hp-hero">
-          <div className="hp-orb hp-orb-a" aria-hidden="true" />
-          <div className="hp-orb hp-orb-b" aria-hidden="true" />
           <div className="hp-container hp-hero-inner">
-            <Link to="/ask" className="hp-hero-badge">
-              <span className="hp-hero-badge-pill">New</span>
-              Source-grounded answers
-              <ArrowRightIcon aria-hidden="true" />
-            </Link>
-            <h1>
-              Your team already knows the answer.{" "}
-              <span className="hp-hero-accent">Knoledgr remembers where it is.</span>
-            </h1>
-            <p className="hp-hero-sub">
-              Pages, decisions, meetings, and tasks — connected. Ask anything and get an
-              answer from your own workspace, with the sources attached.
-            </p>
-            <div className="hp-actions">
-              <Link to={appEntryHref} className="hp-button hp-button-primary hp-button-large">
-                {user ? "Open workspace" : "Start free"}
-                <ArrowLongRightIcon aria-hidden="true" />
+            <div className="hp-hero-text" data-reveal>
+              <Link to="/ask" className="hp-hero-badge">
+                <span className="hp-hero-badge-pill">New</span>
+                Source-grounded answers
+                <ArrowRightIcon aria-hidden="true" />
               </Link>
-              <a href="#product" className="hp-button hp-button-secondary hp-button-large">
-                See how it works
-              </a>
-            </div>
-            <ul className="hp-proof">
-              <li><CheckCircleIcon aria-hidden="true" /> No tagging required</li>
-              <li><CheckCircleIcon aria-hidden="true" /> Set up in a minute</li>
-            </ul>
-          </div>
-
-          <div
-            className="hp-hero-3d"
-            ref={hero3dRef}
-            onPointerMove={onHeroMove}
-            onPointerLeave={onHeroLeave}
-            aria-hidden="true"
-          >
-            <div className="hp-hero-stage">
-              <div className="hp-hero-tilt">
-                <div className="hp-hero-glow" />
-                <div className="hp-hero-card"><AskMock /></div>
-                <span className="hp-float hp-float-a">
-                  <CheckCircleIcon aria-hidden="true" /> Decided · DEC-128
-                </span>
-                <span className="hp-float hp-float-b">
-                  <SparklesIcon aria-hidden="true" /> 3 sources cited
-                </span>
-                <span className="hp-float hp-float-c">
-                  <LinkIcon aria-hidden="true" /> Sprint 42 retro
-                </span>
+              <h1>
+                Your team already knows the answer.
+                <br />
+                <span className="hp-hero-accent">Knoledgr remembers where it is.</span>
+              </h1>
+              <p className="hp-hero-sub">
+                Pages, decisions, meetings, and tasks — connected. Ask anything and get an
+                answer from your own workspace, with the sources attached.
+              </p>
+              <div className="hp-actions">
+                <Link to={appEntryHref} className="hp-button hp-button-primary hp-button-large">
+                  {user ? "Open workspace" : "Start free"}
+                  <ArrowLongRightIcon aria-hidden="true" />
+                </Link>
+                <a href="#product" className="hp-button hp-button-secondary hp-button-large">
+                  See how it works
+                </a>
               </div>
+              <ul className="hp-proof">
+                <li><CheckCircleIcon aria-hidden="true" /> No tagging required</li>
+                <li><CheckCircleIcon aria-hidden="true" /> Set up in a minute</li>
+              </ul>
+            </div>
+
+            <div className="hp-hero-mock" data-reveal>
+              <AskMock />
             </div>
           </div>
 

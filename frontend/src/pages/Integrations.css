@@ -1,0 +1,272 @@
+/* Integrations — clean catalog grid. Cards link out to dedicated config
+ * pages. Aurora token-driven; per-provider accent colors via CSS vars. */
+
+:root {
+  --int-accent-github:    #f0f6fc;
+  --int-accent-slack:     #e01e5a;
+  --int-accent-webhooks:  #b095ff;
+  --int-accent-jira:      #2684ff;
+  --int-accent-linear:    #c7d2fe;
+  --int-accent-gitlab:    #fc6d26;
+  --int-accent-teams:     #6264a7;
+  --int-accent-notion:    #f7f6f3;
+}
+
+.int-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 32px 32px;
+  color: var(--app-text);
+}
+
+/* Strip: search · categories · counter */
+.int-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 0 4px;
+}
+.int-strip-search {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 360px;
+}
+.int-strip-search svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--app-muted);
+  pointer-events: none;
+}
+.int-strip-search input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 36px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.int-strip-search input:focus { border-color: #b095ff; }
+
+.int-strip-cats {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+}
+.int-cat {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--app-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: background 120ms ease, color 120ms ease;
+}
+.int-cat:hover { color: var(--app-text); }
+.int-cat.is-active {
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.22), rgba(33, 150, 243, 0.18));
+  color: #fafbff;
+}
+
+.int-strip-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  font-size: 12px;
+  color: var(--app-muted);
+  margin-left: auto;
+}
+.int-strip-count svg { width: 14px; height: 14px; color: #34d399; }
+.int-strip-count strong {
+  color: var(--app-text);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* Grid */
+.int-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.int-empty {
+  grid-column: 1 / -1;
+  padding: 36px;
+  text-align: center;
+  border-radius: 12px;
+  border: 1px dashed var(--app-border);
+  color: var(--app-muted);
+  font-size: 13px;
+}
+
+/* Card */
+.int-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+.int-card:hover {
+  background:
+    linear-gradient(135deg, rgba(124, 77, 255, 0.06), rgba(33, 150, 243, 0.03)),
+    var(--app-surface);
+  border-color: rgba(124, 77, 255, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  text-decoration: none;
+}
+.int-card.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+.int-card.is-disabled:hover {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Card head: glyph + status pill */
+.int-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.int-card-glyph {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent, var(--app-text));
+  flex-shrink: 0;
+  border: 1px solid var(--app-border);
+}
+.int-card-glyph svg { width: 20px; height: 20px; }
+
+.int-card-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.int-card-pill svg { width: 11px; height: 11px; }
+.int-card-pill-on {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+}
+.int-card-pill-off {
+  background: var(--app-surface-alt);
+  color: var(--app-text-subtle, var(--app-text));
+  border: 1px solid var(--app-border);
+}
+.int-card-pill-soon {
+  background: rgba(148, 163, 184, 0.14);
+  color: #cbd5e1;
+}
+
+/* Card body */
+.int-card-title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 650;
+  letter-spacing: -0.012em;
+  color: var(--app-text);
+}
+.int-card-summary {
+  margin: 0;
+  font-size: 12.8px;
+  line-height: 1.55;
+  color: var(--app-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 60px;
+}
+
+/* Card foot */
+.int-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--app-border);
+}
+.int-card-category {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+.int-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #b095ff;
+}
+.int-card-cta svg {
+  width: 13px;
+  height: 13px;
+  transition: transform 140ms ease;
+}
+.int-card:hover .int-card-cta svg { transform: translate(2px, -2px); }
+.int-card-eta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fbbf24;
+}
+.int-card-eta svg { width: 12px; height: 12px; }
+
+/* Responsive tweaks */
+@media (max-width: 720px) {
+  .int-page { padding: 0 16px 24px; }
+  .int-strip-count { margin-left: 0; }
+}

@@ -2,22 +2,19 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRightIcon,
-  ArrowUpRightIcon,
   BoltIcon,
   BookmarkIcon,
-  BuildingOffice2Icon,
   CheckIcon,
   ClipboardIcon,
   DocumentTextIcon,
   PaperAirplaneIcon,
   PlusIcon,
-  SparklesIcon,
   TrashIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
-import { Avatar, Lozenge } from "../components/atlas";
+import { Avatar } from "../components/atlas";
 import "./AskRecall.css";
 
 const THREAD_KEY_PREFIX = "knoledgr.askRecall.threadV2";
@@ -450,32 +447,28 @@ export default function AskRecall() {
   return (
     <div className="ar">
       <header className="ar-head">
-        <div className="ar-head-title">
-          <span className="ar-head-mark"><SparklesIcon /></span>
-          <div>
+        <div className="ar-head-left">
+          <span className="ar-monogram" aria-hidden="true">R</span>
+          <div className="ar-head-text">
             <h1>Ask Recall</h1>
             <p>
-              Workspace copilot for {user?.organization_name || "your team"} — ask about anyone, any project, any decision.
+              Copilot for {user?.organization_name || "your workspace"}. Ask anything — type{" "}
+              <kbd className="ar-kbd-inline">@</kbd> to scope by person.
             </p>
           </div>
         </div>
-        <div className="ar-head-meta">
+        <div className="ar-head-right">
           {members.length ? (
             <span className="ar-head-people" title={`${members.length} teammates in this workspace`}>
               <UserGroupIcon />
-              <span>{members.length} teammates</span>
+              <span>{members.length}</span>
             </span>
           ) : null}
-          <button
-            type="button"
-            className="ar-agentbtn"
-            onClick={() => navigate("/agent")}
-            title="Switch to autonomous agent"
-          >
+          <button type="button" className="ar-btn" onClick={() => navigate("/agent")} title="Switch to autonomous agent">
             <BoltIcon />
-            Run agent
+            Agent
           </button>
-          <button type="button" className="ar-newbtn" onClick={handleNewChat}>
+          <button type="button" className="ar-btn" onClick={handleNewChat}>
             <PlusIcon />
             New chat
           </button>
@@ -484,17 +477,16 @@ export default function AskRecall() {
 
       <div className="ar-layout">
         <aside className="ar-rail">
-          <span className="ar-rail-label">History</span>
+          <p className="ar-rail-label">History</p>
           {isEmpty ? (
-            <p className="ar-rail-empty">Your questions will show up here once you start asking.</p>
+            <p className="ar-rail-empty">Your questions appear here.</p>
           ) : (
             [...thread].reverse().map((t) => (
               <div className="ar-rail-item" key={t.id}>
                 <button type="button" className="ar-rail-btn" onClick={() => scrollToTurn(t.id)}>
-                  <SparklesIcon />
-                  <span style={{ minWidth: 0 }}>
-                    <span className="ar-rail-q">{t.question}</span>
-                    <span className="ar-rail-meta">{formatTime(t.createdAt)} · {t.mode}</span>
+                  <span className="ar-rail-q">{t.question}</span>
+                  <span className="ar-rail-meta">
+                    {formatTime(t.createdAt)} · {t.mode}
                   </span>
                 </button>
                 <button
@@ -512,59 +504,55 @@ export default function AskRecall() {
 
         <div className="ar-main">
           {isEmpty ? (
-            <div className="ar-convo">
-              <div className="ar-empty">
-                <span className="ar-empty-mark"><SparklesIcon /></span>
-                <h2>Your workspace copilot</h2>
-                <p>
-                  Ask about anyone in {user?.organization_name || "your workspace"} — what they're working on, what decisions they own,
-                  what's blocked. Recall pulls from pages, decisions, sprints, and tasks across the whole organization,
-                  and shows its sources. Type <kbd className="ar-kbd-inline">@</kbd> to scope by person.
-                </p>
-                {members.length ? (
-                  <div className="ar-team-strip">
-                    {members.slice(0, 8).map((m) => (
-                      <span key={m.id} title={m.name}>
-                        <Avatar size="sm" name={m.name} src={m.avatar} />
-                      </span>
-                    ))}
-                    {members.length > 8 ? (
-                      <span className="ar-team-more">+{members.length - 8}</span>
-                    ) : null}
-                  </div>
-                ) : null}
-                <div className="ar-starters">
-                  {SUGGESTIONS.map((s) => (
-                    <button key={s} type="button" className="ar-starter" onClick={() => runQuery(s)}>
-                      <SparklesIcon />
-                      <span>{s}</span>
-                      <ArrowUpRightIcon className="ar-starter-go" />
-                    </button>
+            <div className="ar-empty">
+              <p className="ar-empty-eyebrow">Workspace copilot</p>
+              <h2>What do you want to know?</h2>
+              <p className="ar-empty-tagline">
+                Ask about anyone in {user?.organization_name || "your workspace"} — what they're working on,
+                which decisions they own, what's blocked. Answers are grounded in pages, decisions, sprints, and tasks.
+              </p>
+              {members.length ? (
+                <div className="ar-team-strip">
+                  {members.slice(0, 8).map((m) => (
+                    <span key={m.id} title={m.name}>
+                      <Avatar size="sm" name={m.name} src={m.avatar} />
+                    </span>
                   ))}
+                  {members.length > 8 ? <span className="ar-team-more">+{members.length - 8}</span> : null}
                 </div>
-              </div>
+              ) : null}
+              <p className="ar-empty-divider">Start with</p>
+              <ul className="ar-starters">
+                {SUGGESTIONS.map((s) => (
+                  <li key={s}>
+                    <button type="button" className="ar-starter" onClick={() => runQuery(s)}>
+                      <span>{s}</span>
+                      <ArrowRightIcon />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : (
             <div className="ar-convo">
-              <div className="ar-convo-inner">
-                {thread.map((t) => (
-                  <React.Fragment key={t.id}>
-                    <div className="ar-user" ref={(el) => (turnRefs.current[t.id] = el)}>
-                      {t.question}
-                    </div>
-                    <AssistantTurn
-                      turn={t}
-                      canExecute={canExecute}
-                      executing={executingId === t.id}
-                      onExecute={() => handleExecute(t)}
-                      onFollowUp={(q) => runQuery(q)}
-                      onRetry={() => runQuery(t.question, { mode: t.mode })}
-                      onSave={() => saveTurn(user, t)}
-                    />
-                  </React.Fragment>
-                ))}
-                <div ref={convoEndRef} />
-              </div>
+              {thread.map((t) => (
+                <React.Fragment key={t.id}>
+                  <div className="ar-user-turn" ref={(el) => (turnRefs.current[t.id] = el)}>
+                    <p className="ar-user-label">You · {formatTime(t.createdAt)}</p>
+                    <p className="ar-user-text">{t.question}</p>
+                  </div>
+                  <AssistantTurn
+                    turn={t}
+                    canExecute={canExecute}
+                    executing={executingId === t.id}
+                    onExecute={() => handleExecute(t)}
+                    onFollowUp={(q) => runQuery(q)}
+                    onRetry={() => runQuery(t.question, { mode: t.mode })}
+                    onSave={() => saveTurn(user, t)}
+                  />
+                </React.Fragment>
+              ))}
+              <div ref={convoEndRef} />
             </div>
           )}
 
@@ -703,200 +691,200 @@ function AssistantTurn({ turn, canExecute, executing, onExecute, onFollowUp, onR
   const actions = turn.nextActions || [];
 
   return (
-    <div className="ar-bot">
-      <span className="ar-bot-avatar"><SparklesIcon /></span>
-      <div className="ar-bot-body">
-        <div className="ar-bot-head">
-          <span className="ar-bot-name">Ask Recall</span>
-          <span className="ar-bot-mode">{turn.mode}</span>
-          {typeof turn.confidence === "number" ? (
-            <span className="ar-confidence">
-              Confidence <b>{turn.confidence}%</b>
-            </span>
+    <div className="ar-bot-turn">
+      <div className="ar-bot-head">
+        <span className="ar-bot-label">Recall · {turn.mode}</span>
+        {typeof turn.confidence === "number" ? (
+          <span className="ar-confidence">{turn.confidence}% confidence</span>
+        ) : null}
+      </div>
+
+      {turn.pending ? (
+        <div className="ar-thinking" aria-label="Thinking">
+          <span />
+          <span />
+          <span />
+        </div>
+      ) : turn.errorMsg ? (
+        <div className="ar-turn-error">
+          <span>{turn.errorMsg}</span>
+          {onRetry ? (
+            <button type="button" className="ar-retry" onClick={onRetry}>
+              Try again
+            </button>
           ) : null}
         </div>
+      ) : (
+        <>
+          <p className="ar-answer">{turn.answer || "No answer was returned."}</p>
 
-        {turn.pending ? (
-          <div className="ar-thinking" aria-label="Thinking">
-            <span /><span /><span />
-          </div>
-        ) : turn.errorMsg ? (
-          <div className="ar-turn-error">
-            <span>{turn.errorMsg}</span>
-            {onRetry ? (
-              <button type="button" className="ar-retry" onClick={onRetry}>Try again</button>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            <div className="ar-answer">{turn.answer || "No answer was returned."}</div>
+          {turn.involved && turn.involved.length ? (
+            <div className="ar-involved">
+              <span className="ar-mini-label">People</span>
+              <span className="ar-involved-list">
+                {turn.involved.map((p) => (
+                  <span key={p.id} className="ar-involved-row" title={p.name}>
+                    <Avatar size="sm" name={p.name} src={p.avatar} />
+                    <span>{p.name}</span>
+                  </span>
+                ))}
+              </span>
+            </div>
+          ) : null}
 
-            {turn.involved && turn.involved.length ? (
-              <div className="ar-involved">
-                <BuildingOffice2Icon />
-                <span className="ar-involved-label">People involved</span>
-                <span className="ar-involved-list">
-                  {turn.involved.map((p) => (
-                    <span key={p.id} className="ar-involved-row" title={p.name}>
-                      <Avatar size="sm" name={p.name} src={p.avatar} />
-                      <span>{p.name}</span>
-                    </span>
-                  ))}
-                </span>
-              </div>
-            ) : null}
-
-            {actions.length ? (
-              <div className="ar-actions-box">
-                <p className="ar-mini-label">Suggested actions</p>
+          {actions.length ? (
+            <div className="ar-section">
+              <p className="ar-mini-label">Suggested actions</p>
+              <ul className="ar-action-list">
                 {actions.map((a, i) => {
                   const inner = (
                     <>
-                      <ArrowRightIcon />
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: "block", fontWeight: 600 }}>{a.title}</span>
-                        {a.description ? (
-                          <span style={{ display: "block", fontSize: 12, color: "var(--app-muted)", marginTop: 2 }}>
-                            {a.description}
-                          </span>
-                        ) : null}
+                      <span className="ar-action-body">
+                        <span className="ar-action-title">{a.title}</span>
+                        {a.description ? <span className="ar-action-desc">{a.description}</span> : null}
                       </span>
                       {a.impact ? (
-                        <Lozenge variant={a.impact === "high" || a.impact === "critical" ? "removed" : a.impact === "medium" ? "moved" : "default"}>
+                        <span
+                          className={`ar-impact ar-impact-${
+                            a.impact === "high" || a.impact === "critical"
+                              ? "high"
+                              : a.impact === "medium"
+                              ? "med"
+                              : "low"
+                          }`}
+                        >
                           {a.impact}
-                        </Lozenge>
+                        </span>
                       ) : null}
+                      <ArrowRightIcon className="ar-action-arrow" />
                     </>
                   );
+                  const key = a.id || i;
                   if (a.url) {
                     const isExternal = /^https?:\/\//i.test(a.url);
                     if (isExternal) {
                       return (
-                        <a
-                          key={a.id || i}
-                          className="ar-action"
-                          href={a.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {inner}
-                        </a>
+                        <li key={key}>
+                          <a className="ar-action" href={a.url} target="_blank" rel="noopener noreferrer">
+                            {inner}
+                          </a>
+                        </li>
                       );
                     }
                     return (
-                      <Link key={a.id || i} className="ar-action" to={a.url}>
-                        {inner}
-                      </Link>
+                      <li key={key}>
+                        <Link className="ar-action" to={a.url}>
+                          {inner}
+                        </Link>
+                      </li>
                     );
                   }
                   return (
-                    <div className="ar-action" key={a.id || i}>
-                      {inner}
-                    </div>
+                    <li key={key}>
+                      <div className="ar-action">{inner}</div>
+                    </li>
                   );
                 })}
-              </div>
-            ) : null}
+              </ul>
+            </div>
+          ) : null}
 
-            {sources.length ? (
-              <div className="ar-sources">
-                <p className="ar-mini-label">Sources</p>
-                <div className="ar-sources-grid">
-                  {sources.map((src, i) => {
-                    const isExternal = src.url && /^https?:\/\//i.test(src.url);
-                    const body = (
-                      <>
-                        <div className="ar-source-top">
-                          <DocumentTextIcon />
-                          <span className="ar-source-title">{src.title || src.snippet || "Source"}</span>
-                        </div>
-                        {src.snippet ? <p className="ar-source-snippet">{src.snippet}</p> : null}
-                        {src.kind || typeof src.relevance === "number" || src.direct ? (
-                          <div className="ar-source-meta">
-                            {src.kind ? <Lozenge>{src.kind}</Lozenge> : null}
-                            {src.direct ? <Lozenge variant="success">Direct match</Lozenge> : null}
-                            {typeof src.relevance === "number" ? (
-                              <span style={{ fontSize: 11, color: "var(--app-muted)" }}>
-                                {Math.round(src.relevance * 100)}% match
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </>
+          {sources.length ? (
+            <div className="ar-section">
+              <p className="ar-mini-label">Sources</p>
+              <ul className="ar-source-list">
+                {sources.map((src, i) => {
+                  const isExternal = src.url && /^https?:\/\//i.test(src.url);
+                  const body = (
+                    <>
+                      <span className="ar-source-head">
+                        <DocumentTextIcon />
+                        <span className="ar-source-title">{src.title || src.snippet || "Source"}</span>
+                        {src.kind ? <span className="ar-source-kind">{src.kind}</span> : null}
+                      </span>
+                      {src.snippet ? <span className="ar-source-snippet">{src.snippet}</span> : null}
+                      {src.direct || typeof src.relevance === "number" ? (
+                        <span className="ar-source-meta">
+                          {src.direct ? <span className="ar-source-direct">direct match</span> : null}
+                          {typeof src.relevance === "number" ? (
+                            <span>{Math.round(src.relevance * 100)}% match</span>
+                          ) : null}
+                        </span>
+                      ) : null}
+                    </>
+                  );
+                  const key = src.id || i;
+                  if (!src.url) {
+                    return (
+                      <li key={key}>
+                        <div className="ar-source">{body}</div>
+                      </li>
                     );
-                    if (!src.url) {
-                      return <div key={src.id || i} className="ar-source">{body}</div>;
-                    }
-                    if (isExternal) {
-                      return (
-                        <a
-                          key={src.id || i}
-                          className="ar-source"
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
+                  }
+                  if (isExternal) {
+                    return (
+                      <li key={key}>
+                        <a className="ar-source" href={src.url} target="_blank" rel="noopener noreferrer">
                           {body}
                         </a>
-                      );
-                    }
-                    return (
-                      <Link key={src.id || i} className="ar-source" to={src.url}>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={key}>
+                      <Link className="ar-source" to={src.url}>
                         {body}
                       </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="ar-tools">
-              <button type="button" className="ar-tool" onClick={handleCopy}>
-                {copied ? <CheckIcon /> : <ClipboardIcon />}
-                {copied ? "Copied" : "Copy"}
-              </button>
-              <button
-                type="button"
-                className="ar-tool"
-                onClick={handleSave}
-                disabled={!turn.answer || saved}
-                aria-label="Save answer"
-                title={saved ? "Saved" : "Save this answer to your bookmarks"}
-              >
-                {saved ? <CheckIcon /> : <BookmarkIcon />}
-                {saved ? "Saved" : "Save"}
-              </button>
-              {canExecute && actions.length && turn.requiresApproval && !turn.executed ? (
-                <button
-                  type="button"
-                  className="ar-tool is-primary"
-                  onClick={onExecute}
-                  disabled={executing}
-                >
-                  {executing ? "Running…" : `Run ${actions.length} action${actions.length === 1 ? "" : "s"}`}
-                </button>
-              ) : null}
-              {turn.executed ? (
-                <span className="ar-tool" style={{ color: "var(--app-success)" }}>
-                  <CheckIcon />
-                  Actions run
-                </span>
-              ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
+          ) : null}
 
-            {(turn.followUps || []).length ? (
-              <div className="ar-followups">
-                <span className="ar-followups-label">Try next:</span>
+          <div className="ar-tools">
+            <button type="button" className="ar-tool" onClick={handleCopy}>
+              {copied ? <CheckIcon /> : <ClipboardIcon />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+            <button
+              type="button"
+              className="ar-tool"
+              onClick={handleSave}
+              disabled={!turn.answer || saved}
+              aria-label="Save answer"
+              title={saved ? "Saved" : "Save this answer to your bookmarks"}
+            >
+              {saved ? <CheckIcon /> : <BookmarkIcon />}
+              {saved ? "Saved" : "Save"}
+            </button>
+            {canExecute && actions.length && turn.requiresApproval && !turn.executed ? (
+              <button type="button" className="ar-tool ar-tool-primary" onClick={onExecute} disabled={executing}>
+                {executing ? "Running…" : `Run ${actions.length} action${actions.length === 1 ? "" : "s"}`}
+              </button>
+            ) : null}
+            {turn.executed ? (
+              <span className="ar-tool ar-tool-done">
+                <CheckIcon />
+                Actions run
+              </span>
+            ) : null}
+          </div>
+
+          {(turn.followUps || []).length ? (
+            <div className="ar-followups">
+              <span className="ar-followups-label">Try next</span>
+              <div className="ar-followup-chips">
                 {turn.followUps.slice(0, 4).map((q, i) => (
                   <button key={i} type="button" className="ar-chip" onClick={() => onFollowUp(q)}>
                     {q}
                   </button>
                 ))}
               </div>
-            ) : null}
-          </>
-        )}
-      </div>
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

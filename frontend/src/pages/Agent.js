@@ -2,36 +2,31 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowRightIcon,
-  BoltIcon,
-  CheckCircleIcon,
   CheckIcon,
   ChevronDownIcon,
   ClipboardIcon,
-  ClockIcon,
   CommandLineIcon,
   CpuChipIcon,
-  DocumentTextIcon,
-  EllipsisHorizontalIcon,
   ExclamationTriangleIcon,
   PaperAirplaneIcon,
-  PauseCircleIcon,
-  PencilSquareIcon,
   PlusIcon,
-  RocketLaunchIcon,
   ShieldCheckIcon,
   SparklesIcon,
   StopIcon,
   XMarkIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  EllipsisHorizontalIcon,
+  PauseCircleIcon,
 } from "@heroicons/react/24/outline";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
-import { Lozenge } from "../components/atlas";
 import "./Agent.css";
 
-// Shared markdown config — GFM (tables, strikethrough, autolinks, task lists)
-// and a small allowlist of components so the renderer matches the Aurora look.
+// ---------- markdown ----------
+
 const MARKDOWN_PLUGINS = [remarkGfm];
 const MARKDOWN_COMPONENTS = {
   a: ({ node, children, ...props }) => (
@@ -42,13 +37,13 @@ const MARKDOWN_COMPONENTS = {
   code: ({ inline, className, children, ...props }) => {
     if (inline) {
       return (
-        <code className="ag-md-inline-code" {...props}>
+        <code className="ag-inline-code" {...props}>
           {children}
         </code>
       );
     }
     return (
-      <pre className="ag-md-code">
+      <pre className="ag-code">
         <code className={className} {...props}>
           {children}
         </code>
@@ -69,31 +64,31 @@ function Markdown({ children, className = "" }) {
 
 // ---------- constants ----------
 
-const STATUS_META = {
-  running: { label: "Thinking", tone: "running", accent: "var(--b400)" },
-  awaiting_approval: { label: "Needs your approval", tone: "approval", accent: "var(--y400)" },
-  completed: { label: "Complete", tone: "complete", accent: "var(--g400)" },
-  failed: { label: "Failed", tone: "failed", accent: "var(--r400)" },
-  cancelled: { label: "Cancelled", tone: "cancelled", accent: "var(--n100)" },
+const STATUS_LABEL = {
+  running: "running",
+  awaiting_approval: "needs approval",
+  completed: "complete",
+  failed: "failed",
+  cancelled: "cancelled",
 };
 
-const PROFILE_ICON = {
-  cpu: CpuChipIcon,
-  rocket: RocketLaunchIcon,
-  check: CheckCircleIcon,
-  document: DocumentTextIcon,
-  bolt: BoltIcon,
+const STATUS_TONE = {
+  running: "running",
+  awaiting_approval: "warn",
+  completed: "ok",
+  failed: "err",
+  cancelled: "muted",
 };
 
 const FALLBACK_PROFILE = {
   slug: "general",
-  name: "General agent",
-  tagline: "All tools, broadest scope.",
-  description: "The default workspace agent.",
-  icon: "cpu",
+  name: "General",
+  tagline: "Reasons across the whole workspace.",
+  description: "Use this when you don't know which specialist applies — the general agent has access to every tool.",
   starter_goals: [
-    "Find the 5 highest-priority open issues without an assignee.",
-    "Summarize this week's approved decisions.",
+    "Summarize this week's decisions and flag any with drifted predictions.",
+    "Audit open issues across all projects and suggest a triage order.",
+    "Draft a status update from the last 7 days of activity.",
   ],
 };
 
@@ -109,32 +104,36 @@ function timeAgo(value) {
   if (m < 60) return `${m}m ago`;
   const h = Math.round(m / 60);
   if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  if (days < 7) return `${days}d ago`;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function dayBucket(value) {
-  if (!value) return "earlier";
+  if (!value) return "Earlier";
   const d = new Date(value);
-  if (isNaN(d.getTime())) return "earlier";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const yesterday = new Date(today.getTime() - 86400000);
-  const weekAgo = new Date(today.getTime() - 6 * 86400000);
-  if (d >= today) return "today";
-  if (d >= yesterday) return "yesterday";
-  if (d >= weekAgo) return "this week";
-  return "earlier";
+  if (isNaN(d.getTime())) return "Earlier";
+  const now = new Date();
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(d, now)) return "Today";
+  if (sameDay(d, yesterday)) return "Yesterday";
+  if (now - d < 7 * 86400000) return "This week";
+  return "Earlier";
 }
 
 function groupRuns(runs) {
-  const buckets = { today: [], yesterday: [], "this week": [], earlier: [] };
-  runs.forEach((r) => buckets[dayBucket(r.created_at)].push(r));
-  return Object.entries(buckets).filter(([, list]) => list.length > 0);
-}
-
-function truncate(value, max = 60) {
-  const s = String(value ?? "");
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+  const map = new Map();
+  for (const r of runs) {
+    const k = dayBucket(r.created_at);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(r);
+  }
+  return [...map.entries()];
 }
 
 function safeStringify(value) {
@@ -145,43 +144,21 @@ function safeStringify(value) {
   }
 }
 
-// Friendly one-liner for a tool result so the user can scan without expanding.
-function summarizeOutput(name, out) {
-  if (out === null || out === undefined) return "No output";
-  if (Array.isArray(out)) {
-    if (!out.length) return "0 results";
-    const first = out[0] || {};
-    const sample = first.title || first.name || first.key || first.email || "";
-    return `${out.length} result${out.length === 1 ? "" : "s"}${sample ? ` · ${truncate(sample, 60)}` : ""}`;
-  }
-  if (typeof out === "object") {
-    if (out.error) return `Error: ${out.error}`;
-    if (typeof out.total === "number") {
-      const types = Object.keys(out.buckets || {}).filter((k) => (out.buckets[k] || []).length > 0);
-      return `${out.total} matches across ${types.length} source${types.length === 1 ? "" : "s"}`;
-    }
-    if (typeof out.total_issues === "number") return `${out.total_issues} issues across the sprint`;
-    if (out.key || out.title || out.name) return out.key ? `${out.key} · ${truncate(out.title || out.name || "", 60)}` : truncate(out.title || out.name, 80);
-    if (out.id && out.status) return `#${out.id} · ${out.status}`;
-    if (out.created) return "Created";
-  }
-  return truncate(String(out), 80);
+function truncate(value, max = 60) {
+  const s = String(value ?? "");
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
-// Compact arg renderer for tool calls.
-function ArgChips({ input }) {
-  const entries = Object.entries(input || {});
-  if (!entries.length) return null;
-  return (
-    <span className="ag-args">
-      {entries.map(([k, v]) => (
-        <span key={k} className="ag-arg">
-          <em>{k}</em>
-          <code>{typeof v === "string" ? truncate(v, 32) : truncate(JSON.stringify(v), 32)}</code>
-        </span>
-      ))}
-    </span>
-  );
+function summarizeOutput(name, out) {
+  if (out == null) return "ok";
+  if (typeof out === "string") return truncate(out, 80);
+  if (Array.isArray(out)) return `${out.length} item${out.length === 1 ? "" : "s"}`;
+  if (typeof out === "object") {
+    const keys = Object.keys(out);
+    if (keys.length === 1) return `${keys[0]}: ${truncate(JSON.stringify(out[keys[0]]), 40)}`;
+    return `${keys.length} field${keys.length === 1 ? "" : "s"}`;
+  }
+  return String(out);
 }
 
 // ---------- page ----------
@@ -191,18 +168,15 @@ export default function Agent() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // composer
   const [goal, setGoal] = useState("");
   const composerRef = useRef(null);
 
-  // run + run list
   const [run, setRun] = useState(null);
   const [runs, setRuns] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const traceEndRef = useRef(null);
 
-  // profile catalog + selection
   const [profiles, setProfiles] = useState([FALLBACK_PROFILE]);
   const [profileSlug, setProfileSlug] = useState(() => {
     try {
@@ -212,14 +186,13 @@ export default function Agent() {
     }
   });
   const [profilePickerOpen, setProfilePickerOpen] = useState(false);
-  const [showToolPanel, setShowToolPanel] = useState(false);
 
   const activeProfile = useMemo(
     () => profiles.find((p) => p.slug === profileSlug) || profiles[0] || FALLBACK_PROFILE,
     [profiles, profileSlug]
   );
 
-  // ----- data fetches -----
+  // ----- data -----
 
   const fetchRuns = useCallback(async () => {
     try {
@@ -266,8 +239,7 @@ export default function Agent() {
     traceEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [run?.steps?.length, run?.status]);
 
-  // Live websocket feed — every step / status change pushes to all viewers.
-  // Falls back gracefully to the polling tick below if the socket can't open.
+  // WebSocket live trace
   useEffect(() => {
     if (!run?.id || run.status !== "running") return undefined;
     let socket = null;
@@ -283,9 +255,7 @@ export default function Agent() {
           const msg = JSON.parse(evt.data || "{}");
           if (msg.type === "step") {
             const { type: _t, ...step } = msg;
-            setRun((prev) =>
-              prev ? { ...prev, steps: [...(prev.steps || []), step] } : prev
-            );
+            setRun((prev) => (prev ? { ...prev, steps: [...(prev.steps || []), step] } : prev));
           } else if (msg.type === "status") {
             setRun((prev) =>
               prev
@@ -293,8 +263,7 @@ export default function Agent() {
                     ...prev,
                     status: msg.status || prev.status,
                     final_answer: msg.final_answer ?? prev.final_answer,
-                    pending_tool_calls:
-                      msg.pending_tool_calls ?? prev.pending_tool_calls,
+                    pending_tool_calls: msg.pending_tool_calls ?? prev.pending_tool_calls,
                   }
                 : prev
             );
@@ -313,8 +282,7 @@ export default function Agent() {
     };
   }, [run?.id, run?.status, fetchRuns]);
 
-  // Poll while the run is running so the trace grows in front of the user.
-  // Kept as a fallback for environments without working websockets.
+  // polling fallback
   useEffect(() => {
     if (!run?.id || run.status !== "running") return undefined;
     let cancelled = false;
@@ -409,29 +377,40 @@ export default function Agent() {
     setTimeout(() => composerRef.current?.focus(), 50);
   };
 
-  const tools = run?.tools_available || [];
-
   return (
     <div className="ag">
-      <PageHeader
-        profile={activeProfile}
-        onOpenProfilePicker={() => setProfilePickerOpen(true)}
-        toolCount={tools.length}
-        onToggleTools={() => setShowToolPanel((v) => !v)}
-        toolsVisible={showToolPanel}
-        run={run}
-        onNewRun={handleNewRun}
-        userOrg={user?.organization_name}
-      />
-
-      {showToolPanel && tools.length ? <ToolPanel tools={tools} /> : null}
+      <header className="ag-header">
+        <div className="ag-header-left">
+          <span className="ag-monogram" aria-hidden="true">A</span>
+          <div className="ag-header-text">
+            <h1>Agent</h1>
+            <p>Autonomous specialist for {user?.organization_name || "your workspace"}.</p>
+          </div>
+        </div>
+        <div className="ag-header-right">
+          <button
+            type="button"
+            className="ag-chip"
+            onClick={() => setProfilePickerOpen(true)}
+            title="Switch specialist"
+          >
+            <span>{activeProfile?.name || "General"}</span>
+            <ChevronDownIcon />
+          </button>
+          <Link to="/agent/audit" className="ag-chip" title="Workspace audit log">
+            <ShieldCheckIcon />
+            <span>Audit</span>
+          </Link>
+          {run ? (
+            <button type="button" className="ag-btn" onClick={handleNewRun}>
+              <PlusIcon /> New run
+            </button>
+          ) : null}
+        </div>
+      </header>
 
       <div className="ag-grid">
-        <RunRail
-          runs={runs}
-          profiles={profiles}
-          activeId={run?.id}
-        />
+        <RunRail runs={runs} activeId={run?.id} />
 
         <section className="ag-main">
           {error ? (
@@ -449,12 +428,7 @@ export default function Agent() {
               onOpenProfilePicker={() => setProfilePickerOpen(true)}
             />
           ) : (
-            <RunView
-              run={run}
-              busy={busy}
-              onApprove={handleApprove}
-              onCancel={handleCancel}
-            />
+            <RunView run={run} busy={busy} onApprove={handleApprove} onCancel={handleCancel} />
           )}
 
           <div ref={traceEndRef} />
@@ -484,122 +458,36 @@ export default function Agent() {
   );
 }
 
-// ---------- header ----------
-
-function PageHeader({ profile, onOpenProfilePicker, toolCount, onToggleTools, toolsVisible, run, onNewRun, userOrg }) {
-  const Icon = PROFILE_ICON[profile?.icon] || CpuChipIcon;
-  return (
-    <header className="ag-header">
-      <div className="ag-header-left">
-        <div className="ag-brand">
-          <span className="ag-brand-mark">
-            <CpuChipIcon />
-          </span>
-          <div className="ag-brand-text">
-            <h1>Workspace Agent</h1>
-            <p>Autonomous specialists for {userOrg || "your team"}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="ag-header-right">
-        <button
-          type="button"
-          className="ag-profile-pill"
-          onClick={onOpenProfilePicker}
-          title="Switch profile"
-        >
-          <span className="ag-profile-pill-icon">
-            <Icon />
-          </span>
-          <span className="ag-profile-pill-name">{profile?.name || "General agent"}</span>
-          <ChevronDownIcon />
-        </button>
-
-        {toolCount ? (
-          <button
-            type="button"
-            className={`ag-tools-pill ${toolsVisible ? "is-active" : ""}`}
-            onClick={onToggleTools}
-            title="Available tools for this run"
-          >
-            <CommandLineIcon />
-            <span>{toolCount}</span>
-          </button>
-        ) : null}
-
-        <Link to="/agent/audit" className="ag-tools-pill" title="Workspace audit log (admin)">
-          <ShieldCheckIcon />
-          <span>Audit</span>
-        </Link>
-
-        {run ? (
-          <button type="button" className="ag-newrun" onClick={onNewRun}>
-            <PlusIcon /> New run
-          </button>
-        ) : null}
-      </div>
-    </header>
-  );
-}
-
-function ToolPanel({ tools }) {
-  return (
-    <div className="ag-toolpanel">
-      <div className="ag-toolpanel-head">
-        <span>{tools.length} tools available to this profile</span>
-      </div>
-      <div className="ag-toolpanel-grid">
-        {tools.map((t) => (
-          <div key={t.name} className={`ag-tool ${t.is_write ? "is-write" : "is-read"}`}>
-            <code>{t.name}</code>
-            <span>{t.description}</span>
-            <Lozenge variant={t.is_write ? "moved" : "default"}>{t.is_write ? "write" : "read"}</Lozenge>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ---------- run rail ----------
 
-function RunRail({ runs, profiles, activeId }) {
+function RunRail({ runs, activeId }) {
   const groups = useMemo(() => groupRuns(runs), [runs]);
   return (
     <aside className="ag-rail">
       <div className="ag-rail-head">
-        <span>Recent runs</span>
+        <span>Runs</span>
         <span className="ag-rail-count">{runs.length}</span>
       </div>
       {runs.length === 0 ? (
-        <p className="ag-rail-empty">No runs yet. Start one below.</p>
+        <p className="ag-rail-empty">No runs yet.</p>
       ) : (
         groups.map(([label, list]) => (
           <div key={label} className="ag-rail-group">
             <p className="ag-rail-group-label">{label}</p>
             {list.map((r) => {
-              const meta = STATUS_META[r.status] || STATUS_META.running;
               const isActive = activeId === r.id;
-              const prof = profiles.find((p) => p.slug === r.profile_slug);
-              const Icon = PROFILE_ICON[prof?.icon] || CpuChipIcon;
               return (
                 <Link
                   key={r.id}
                   to={`/agent/${r.id}`}
-                  className={`ag-rail-row ag-rail-row--${meta.tone} ${isActive ? "is-active" : ""}`}
+                  className={`ag-rail-row${isActive ? " is-active" : ""}`}
                 >
-                  <span className="ag-rail-icon">
-                    <Icon />
-                  </span>
-                  <span className="ag-rail-body">
-                    <span className="ag-rail-goal">{r.goal}</span>
-                    <span className="ag-rail-meta">
-                      <span className={`ag-status-dot ag-status-dot--${meta.tone}`} />
-                      <span>{meta.label}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{timeAgo(r.created_at)}</span>
-                    </span>
+                  <span className="ag-rail-goal">{r.goal}</span>
+                  <span className="ag-rail-meta">
+                    <span className={`ag-dot ag-dot-${STATUS_TONE[r.status] || "muted"}`} />
+                    <span>{STATUS_LABEL[r.status] || r.status}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{timeAgo(r.created_at)}</span>
                   </span>
                 </Link>
               );
@@ -614,37 +502,28 @@ function RunRail({ runs, profiles, activeId }) {
 // ---------- empty state ----------
 
 function Empty({ profile, busy, onPick, onOpenProfilePicker }) {
-  const Icon = PROFILE_ICON[profile?.icon] || CpuChipIcon;
   const starters = profile?.starter_goals?.length ? profile.starter_goals : FALLBACK_PROFILE.starter_goals;
   return (
     <div className="ag-empty">
-      <div className="ag-empty-hero">
-        <span className="ag-empty-icon">
-          <Icon />
-        </span>
-        <h2>{profile?.name || "General agent"}</h2>
-        <p>{profile?.description || profile?.tagline}</p>
-        <button type="button" className="ag-empty-switch" onClick={onOpenProfilePicker}>
-          Switch specialist
-          <ChevronDownIcon />
+      <div className="ag-empty-head">
+        <p className="ag-empty-eyebrow">Specialist</p>
+        <h2>{profile?.name || "General"}</h2>
+        <p className="ag-empty-tagline">{profile?.description || profile?.tagline}</p>
+        <button type="button" className="ag-link" onClick={onOpenProfilePicker}>
+          Switch specialist <ChevronDownIcon />
         </button>
       </div>
-      <div className="ag-empty-divider">Start with…</div>
-      <div className="ag-empty-starters">
+      <div className="ag-empty-divider">Start with</div>
+      <ul className="ag-starters">
         {starters.map((s) => (
-          <button
-            key={s}
-            type="button"
-            className="ag-starter"
-            onClick={() => onPick(s)}
-            disabled={busy}
-          >
-            <SparklesIcon />
-            <span>{s}</span>
-            <ArrowRightIcon className="ag-starter-go" />
-          </button>
+          <li key={s}>
+            <button type="button" className="ag-starter" onClick={() => onPick(s)} disabled={busy}>
+              <span>{s}</span>
+              <ArrowRightIcon />
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }
@@ -652,55 +531,35 @@ function Empty({ profile, busy, onPick, onOpenProfilePicker }) {
 // ---------- run view ----------
 
 function RunView({ run, busy, onApprove, onCancel }) {
-  const meta = STATUS_META[run.status] || STATUS_META.running;
-  const profile = run.profile;
-  const ProfileIcon = profile ? PROFILE_ICON[profile.icon] || CpuChipIcon : CpuChipIcon;
+  const tone = STATUS_TONE[run.status] || "running";
   const stepsCount = (run.steps || []).length;
+  const profile = run.profile;
 
   return (
     <div className="ag-run">
-      <div className={`ag-run-card ag-run-card--${meta.tone}`}>
-        <div className="ag-run-card-bar" />
-        <div className="ag-run-head">
-          {profile ? (
-            <div className="ag-run-profile">
-              <span className="ag-run-profile-icon">
-                <ProfileIcon />
-              </span>
-              <div>
-                <p className="ag-run-profile-name">{profile.name}</p>
-                <p className="ag-run-profile-tagline">{profile.tagline}</p>
-              </div>
-            </div>
+      <div className="ag-run-head">
+        <p className="ag-run-goal">{run.goal}</p>
+        <div className="ag-run-meta">
+          <span className={`ag-status ag-status-${tone}`}>
+            <span className={`ag-dot ag-dot-${tone}`} />
+            {STATUS_LABEL[run.status] || run.status}
+          </span>
+          {profile ? <span className="ag-run-meta-item">{profile.name}</span> : null}
+          <span className="ag-run-meta-item">
+            <ClockIcon /> {run.iterations} iteration{run.iterations === 1 ? "" : "s"}
+          </span>
+          <span className="ag-run-meta-item">{stepsCount} step{stepsCount === 1 ? "" : "s"}</span>
+          <span className="ag-run-meta-item">{timeAgo(run.created_at)}</span>
+          {run.status === "running" || run.status === "awaiting_approval" ? (
+            <button type="button" className="ag-cancel" onClick={onCancel}>
+              <StopIcon /> Cancel
+            </button>
           ) : null}
-          <p className="ag-run-goal">{run.goal}</p>
-          <div className="ag-run-meta">
-            <span className={`ag-status-tag ag-status-tag--${meta.tone}`}>
-              <span className={`ag-status-dot ag-status-dot--${meta.tone}`} />
-              {meta.label}
-            </span>
-            <span className="ag-run-meta-item">
-              <ClockIcon /> {run.iterations} iteration{run.iterations === 1 ? "" : "s"}
-            </span>
-            <span className="ag-run-meta-item">
-              {stepsCount} step{stepsCount === 1 ? "" : "s"}
-            </span>
-            <span className="ag-run-meta-item">{timeAgo(run.created_at)}</span>
-            {run.status === "running" || run.status === "awaiting_approval" ? (
-              <button type="button" className="ag-cancel" onClick={onCancel}>
-                <StopIcon /> Cancel
-              </button>
-            ) : null}
-          </div>
         </div>
       </div>
 
       {run.status === "awaiting_approval" && run.pending_tool_calls?.length ? (
-        <ApprovalSheet
-          pending={run.pending_tool_calls}
-          busy={busy}
-          onSubmit={onApprove}
-        />
+        <ApprovalSheet pending={run.pending_tool_calls} busy={busy} onSubmit={onApprove} />
       ) : null}
 
       <Trace steps={run.steps || []} status={run.status} />
@@ -729,8 +588,7 @@ function FinalAnswerCard({ text }) {
   return (
     <div className="ag-final">
       <div className="ag-final-head">
-        <CheckCircleIcon />
-        <span>Final answer</span>
+        <span className="ag-final-label">Answer</span>
         <button type="button" className="ag-final-copy" onClick={copy}>
           {copied ? <CheckIcon /> : <ClipboardIcon />}
           {copied ? "Copied" : "Copy"}
@@ -744,8 +602,6 @@ function FinalAnswerCard({ text }) {
 // ---------- trace ----------
 
 function Trace({ steps, status }) {
-  // Pair tool_call → tool_result for cleaner rendering.
-  // Hook must run unconditionally — bail out below if there are no steps.
   const items = useMemo(() => {
     const list = steps || [];
     const paired = [];
@@ -771,27 +627,16 @@ function Trace({ steps, status }) {
   if (!items.length) return null;
 
   const running = status === "running";
-  const lastIdx = items.length - 1;
 
   return (
     <ol className="ag-trace">
       {items.map((item, i) => (
-        <TraceRow
-          key={i}
-          item={item}
-          isLast={i === lastIdx}
-          running={running && i === lastIdx}
-        />
+        <TraceRow key={i} item={item} />
       ))}
       {running ? (
-        <li className="ag-trace-row ag-trace-row--pulse">
-          <span className="ag-trace-marker ag-trace-marker--thinking">
-            <SparklesIcon />
-          </span>
-          <span className="ag-trace-thinking">
-            Thinking
-            <span className="ag-dots"><span /><span /><span /></span>
-          </span>
+        <li className="ag-trace-row ag-trace-pulse">
+          <span className="ag-trace-marker">…</span>
+          <span className="ag-trace-pulse-text">Thinking</span>
         </li>
       ) : null}
     </ol>
@@ -801,23 +646,17 @@ function Trace({ steps, status }) {
 function TraceRow({ item }) {
   if (item.kind === "user_goal") {
     return (
-      <li className="ag-trace-row ag-trace-row--goal">
-        <span className="ag-trace-marker ag-trace-marker--user">You</span>
-        <div className="ag-trace-body">
-          <p className="ag-trace-goal">{item.payload?.text}</p>
-        </div>
+      <li className="ag-trace-row ag-trace-row-goal">
+        <span className="ag-trace-marker">you</span>
+        <p className="ag-trace-text">{item.payload?.text}</p>
       </li>
     );
   }
   if (item.kind === "thought") {
     return (
-      <li className="ag-trace-row ag-trace-row--thought">
-        <span className="ag-trace-marker ag-trace-marker--thought">
-          <SparklesIcon />
-        </span>
-        <div className="ag-trace-body">
-          <Markdown className="ag-trace-thought">{item.payload?.text}</Markdown>
-        </div>
+      <li className="ag-trace-row ag-trace-row-thought">
+        <span className="ag-trace-marker">think</span>
+        <Markdown className="ag-trace-text">{item.payload?.text}</Markdown>
       </li>
     );
   }
@@ -826,19 +665,13 @@ function TraceRow({ item }) {
   }
   if (item.kind === "result_only") {
     return (
-      <li className="ag-trace-row ag-trace-row--result">
-        <span className="ag-trace-marker ag-trace-marker--result">
-          <EllipsisHorizontalIcon />
-        </span>
-        <div className="ag-trace-body">
-          <pre className="ag-trace-pre">{safeStringify(item.result?.payload)}</pre>
-        </div>
+      <li className="ag-trace-row ag-trace-row-result">
+        <span className="ag-trace-marker">out</span>
+        <pre className="ag-pre">{safeStringify(item.result?.payload)}</pre>
       </li>
     );
   }
-  if (item.kind === "final") {
-    return null; // rendered separately as FinalAnswerCard
-  }
+  if (item.kind === "final") return null;
   return null;
 }
 
@@ -852,60 +685,55 @@ function ToolRow({ call, result }) {
   const resultOutput = resPayload.output;
   const resultPending = !result && !resPayload.output;
 
-  let stateClass = "ag-tool-state--pending";
-  let stateText = isWrite ? "Awaiting your approval" : "Running…";
+  let stateClass = "is-pending";
+  let stateText = isWrite ? "awaiting approval" : "running";
   if (result) {
     if (resultError) {
-      stateClass = "ag-tool-state--error";
-      stateText = `Error: ${truncate(resultError, 60)}`;
+      stateClass = "is-error";
+      stateText = `error · ${truncate(resultError, 60)}`;
     } else if (resultDenied) {
-      stateClass = "ag-tool-state--denied";
-      stateText = `Denied${resPayload.reason ? ` · ${resPayload.reason}` : ""}`;
+      stateClass = "is-denied";
+      stateText = `denied${resPayload.reason ? ` · ${resPayload.reason}` : ""}`;
     } else if (resPayload.executed) {
-      stateClass = "ag-tool-state--executed";
-      stateText = `Executed · ${summarizeOutput(payload.name, resultOutput)}`;
+      stateClass = "is-ok";
+      stateText = `executed · ${summarizeOutput(payload.name, resultOutput)}`;
     } else if (resultOutput !== undefined) {
-      stateClass = "ag-tool-state--ok";
+      stateClass = "is-ok";
       stateText = summarizeOutput(payload.name, resultOutput);
     } else {
-      stateClass = "ag-tool-state--pending";
-      stateText = isWrite ? "Awaiting your approval" : "Done";
+      stateText = isWrite ? "awaiting approval" : "done";
     }
   }
 
   return (
-    <li className={`ag-trace-row ag-trace-row--tool ${isWrite ? "is-write" : "is-read"}`}>
-      <span className={`ag-trace-marker ag-trace-marker--tool ${isWrite ? "is-write" : ""}`}>
+    <li className={`ag-trace-row ag-trace-row-tool${isWrite ? " is-write" : ""}`}>
+      <span className="ag-trace-marker">
         <CommandLineIcon />
       </span>
-      <div className="ag-trace-body">
+      <div className="ag-tool">
         <button
           type="button"
-          className="ag-tool-card"
+          className="ag-tool-head"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
         >
-          <div className="ag-tool-headline">
-            <code className="ag-tool-name">{payload.name}</code>
-            <ArgChips input={payload.input} />
-            <ChevronDownIcon className={`ag-tool-caret ${expanded ? "is-open" : ""}`} />
-          </div>
-          <div className={`ag-tool-state ${stateClass}`}>
-            {resultPending ? <span className="ag-tool-state-spinner" /> : null}
-            <span>{stateText}</span>
-          </div>
+          <code className="ag-tool-name">{payload.name}</code>
+          {isWrite ? <span className="ag-tool-tag">write</span> : null}
+          <ChevronDownIcon className={`ag-tool-chev${expanded ? " is-open" : ""}`} />
         </button>
+        <p className={`ag-tool-state ${stateClass}`}>
+          {resultPending ? <span className="ag-spinner" /> : null}
+          <span>{stateText}</span>
+        </p>
         {expanded ? (
           <div className="ag-tool-expand">
-            <div className="ag-tool-expand-block">
-              <p className="ag-mini-label">Input</p>
-              <pre className="ag-trace-pre">{safeStringify(payload.input || {})}</pre>
-            </div>
+            <p className="ag-mini-label">Input</p>
+            <pre className="ag-pre">{safeStringify(payload.input || {})}</pre>
             {result ? (
-              <div className="ag-tool-expand-block">
+              <>
                 <p className="ag-mini-label">{resultError ? "Error" : "Output"}</p>
-                <pre className="ag-trace-pre">{safeStringify(resultError || resultOutput || resPayload)}</pre>
-              </div>
+                <pre className="ag-pre">{safeStringify(resultError || resultOutput || resPayload)}</pre>
+              </>
             ) : null}
           </div>
         ) : null}
@@ -940,16 +768,12 @@ function ApprovalSheet({ pending, busy, onSubmit }) {
   return (
     <div className="ag-approval">
       <div className="ag-approval-head">
-        <span className="ag-approval-mark">
-          <PauseCircleIcon />
-        </span>
+        <PauseCircleIcon />
         <div>
           <p className="ag-approval-title">
             {pending.length} write action{pending.length === 1 ? "" : "s"} need approval
           </p>
-          <p className="ag-approval-sub">
-            Edit the inputs below and approve, or deny individual ones with a reason.
-          </p>
+          <p className="ag-approval-sub">Edit inputs and approve, or deny individual ones with a reason.</p>
         </div>
       </div>
       <ul className="ag-approval-list">
@@ -957,12 +781,12 @@ function ApprovalSheet({ pending, busy, onSubmit }) {
           const input = { ...(p.input || {}), ...(overrides[p.id] || {}) };
           const isDenied = !!denied[p.id];
           return (
-            <li key={p.id} className={`ag-approval-row ${isDenied ? "is-denied" : ""}`}>
+            <li key={p.id} className={`ag-approval-row${isDenied ? " is-denied" : ""}`}>
               <div className="ag-approval-row-head">
                 <code className="ag-approval-name">{p.name}</code>
                 <button
                   type="button"
-                  className={`ag-approval-deny ${isDenied ? "is-on" : ""}`}
+                  className={`ag-approval-deny${isDenied ? " is-on" : ""}`}
                   aria-pressed={isDenied}
                   onClick={() => setDenied((d) => ({ ...d, [p.id]: !d[p.id] }))}
                 >
@@ -999,11 +823,11 @@ function ApprovalSheet({ pending, busy, onSubmit }) {
         })}
       </ul>
       <div className="ag-approval-footer">
-        <button type="button" className="ag-approval-secondary" onClick={() => submit(false)} disabled={busy}>
+        <button type="button" className="ag-btn" onClick={() => submit(false)} disabled={busy}>
           <XMarkIcon /> Deny all
         </button>
-        <button type="button" className="ag-approval-primary" onClick={() => submit(true)} disabled={busy}>
-          <CheckIcon /> {busy ? "Running…" : "Approve & run"}
+        <button type="button" className="ag-btn ag-btn-primary" onClick={() => submit(true)} disabled={busy}>
+          <CheckIcon /> {busy ? "Running…" : "Approve and run"}
         </button>
       </div>
     </div>
@@ -1012,14 +836,15 @@ function ApprovalSheet({ pending, busy, onSubmit }) {
 
 // ---------- composer ----------
 
-const Composer = React.forwardRef(function Composer({ value, onChange, onSubmit, busy, profile, onOpenProfilePicker, hasRun }, ref) {
-  const Icon = PROFILE_ICON[profile?.icon] || CpuChipIcon;
+const Composer = React.forwardRef(function Composer(
+  { value, onChange, onSubmit, busy, profile, onOpenProfilePicker, hasRun },
+  ref
+) {
   const autoGrow = (el) => {
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   };
-
   return (
     <form
       className="ag-composer"
@@ -1032,19 +857,20 @@ const Composer = React.forwardRef(function Composer({ value, onChange, onSubmit,
         type="button"
         className="ag-composer-profile"
         onClick={onOpenProfilePicker}
-        title={`Specialist: ${profile?.name || "General agent"}`}
+        title={`Specialist: ${profile?.name || "General"}`}
       >
-        <span className="ag-composer-profile-icon">
-          <Icon />
-        </span>
-        <span className="ag-composer-profile-text">{profile?.name || "General"}</span>
+        <span>{profile?.name || "General"}</span>
         <ChevronDownIcon />
       </button>
       <textarea
         ref={ref}
         value={value}
         rows={1}
-        placeholder={hasRun ? "Start another run…" : "Give the agent a goal — it'll plan, search workspace memory, and propose actions."}
+        placeholder={
+          hasRun
+            ? "Start another run…"
+            : "Give the agent a goal — it'll plan, search workspace memory, and propose actions."
+        }
         onChange={(e) => {
           onChange(e.target.value);
           autoGrow(e.target);
@@ -1068,7 +894,7 @@ const Composer = React.forwardRef(function Composer({ value, onChange, onSubmit,
   );
 });
 
-// ---------- profile picker overlay ----------
+// ---------- profile picker ----------
 
 function ProfilePicker({ profiles, activeSlug, onPick, onClose }) {
   useEffect(() => {
@@ -1081,7 +907,7 @@ function ProfilePicker({ profiles, activeSlug, onPick, onClose }) {
 
   return (
     <>
-      <div className="ag-picker-backdrop" onClick={onClose} />
+      <div className="ag-picker-back" onClick={onClose} />
       <div className="ag-picker" role="dialog" aria-modal="true">
         <div className="ag-picker-head">
           <p>Choose a specialist</p>
@@ -1089,43 +915,26 @@ function ProfilePicker({ profiles, activeSlug, onPick, onClose }) {
             <XMarkIcon />
           </button>
         </div>
-        <div className="ag-picker-grid">
+        <ul className="ag-picker-list">
           {profiles.map((p) => {
-            const Icon = PROFILE_ICON[p.icon] || CpuChipIcon;
             const isActive = p.slug === activeSlug;
             return (
-              <button
-                key={p.slug}
-                type="button"
-                className={`ag-picker-card ${isActive ? "is-active" : ""}`}
-                onClick={() => onPick(p.slug)}
-              >
-                <span className="ag-picker-card-top">
-                  <span className="ag-picker-card-icon">
-                    <Icon />
-                  </span>
-                  {isActive ? (
-                    <span className="ag-picker-card-check">
-                      <CheckIcon />
-                    </span>
-                  ) : null}
-                </span>
-                <span className="ag-picker-card-name">{p.name}</span>
-                <span className="ag-picker-card-tagline">{p.tagline}</span>
-                {p.starter_goals?.length ? (
-                  <span className="ag-picker-card-starters">
-                    {p.starter_goals.slice(0, 2).map((s) => (
-                      <span key={s} className="ag-picker-card-starter">
-                        <PencilSquareIcon />
-                        {truncate(s, 64)}
-                      </span>
-                    ))}
-                  </span>
-                ) : null}
-              </button>
+              <li key={p.slug}>
+                <button
+                  type="button"
+                  className={`ag-picker-row${isActive ? " is-active" : ""}`}
+                  onClick={() => onPick(p.slug)}
+                >
+                  <div className="ag-picker-row-head">
+                    <span className="ag-picker-name">{p.name}</span>
+                    {isActive ? <CheckIcon className="ag-picker-check" /> : null}
+                  </div>
+                  <p className="ag-picker-tagline">{p.tagline}</p>
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </div>
     </>
   );

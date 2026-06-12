@@ -35,11 +35,17 @@ from apps.integrations.github_app import (
     verify_webhook_signature,
 )
 from apps.integrations.github_app_models import (
+    DecisionPullRequest,
     GitHubAppDelivery,
     GitHubAppInstallation,
     GitHubRepo,
 )
 from apps.users.auth_utils import check_rate_limit
+
+# Phase 3 linking handlers
+from apps.integrations.github_app_linkers import (
+    handle_pull_request_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -460,10 +466,11 @@ def _summarize(event: str, action: str, payload: dict) -> str:
 def _dispatch_event(event: str, action: str, payload: dict, installation: GitHubAppInstallation, repo):
     """Route an event to the right handler.
 
-    Right now the only behavior we hardcode is keeping our installation +
-    repo rows in sync with GitHub. Decision-link processing will live in
-    Phase 2 (a separate dispatcher reading payload metadata for the
-    knoledgr-decision marker).
+    - installation.* — keep our install row in sync with GitHub's view.
+    - installation_repositories.* — resync the local repo list.
+    - pull_request.* — Phase 3: auto-link via inline marker / branch
+      pattern, then refresh cached metadata on any existing DecisionPullRequest
+      rows so the decision detail page stays accurate.
     """
     if event == "installation":
         if action in ("suspend", "suspended"):
@@ -487,7 +494,14 @@ def _dispatch_event(event: str, action: str, payload: dict, installation: GitHub
             logger.warning("installation_repositories resync failed: %s", exc)
         return
 
-    # All other events fall through to per-event processors in Phase 2
-    # (decision linking, PR-status sync, etc.). The audit row is enough
-    # for Phase 1 — we'll prove the pipeline works before adding logic.
+    if event == "pull_request" and repo is not None:
+        try:
+            handle_pull_request_event(action, payload, installation, repo)
+        except Exception as exc:
+            logger.warning("pull_request handler failed (action=%s): %s", action, exc)
+        return
+
+    # Push, pull_request_review, deployment_status etc. fall through and
+    # only land in the audit row for now. The hooks are in place to add
+    # per-event behavior without touching the receiver itself.
     return

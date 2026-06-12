@@ -1,0 +1,34 @@
+name: 'Knoledgr — Link Decision'
+description: 'Fails the PR check unless a Knoledgr decision id is linked via marker, branch, or commit footer.'
+author: 'Knoledgr'
+branding:
+  icon: 'link'
+  color: 'purple'
+
+inputs:
+  required:
+    description: 'When true, fail the action if no decision id is found.'
+    required: false
+    default: 'true'
+  patterns:
+    description: 'Comma-separated patterns to accept. Any of: marker | branch | footer | title.'
+    required: false
+    default: 'marker,branch,footer'
+  comment-on-missing:
+    description: 'When true and no decision id is found, leave a comment on the PR pointing at the docs.'
+    required: false
+    default: 'true'
+  docs-url:
+    description: 'URL surfaced in the missing-link comment.'
+    required: false
+    default: 'https://knoledgr.com/docs/integrations/github'
+
+outputs:
+  decision-ids:
+    description: 'Comma-separated decision ids found on the PR.'
+  source:
+    description: 'The first pattern that produced a match: marker | branch | footer | title.'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

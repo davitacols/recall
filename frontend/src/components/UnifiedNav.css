@@ -22,83 +22,16 @@
   width: var(--nav-w, 248px);
 }
 
-/* ─── workspace header ───────────────────────────────────────── */
-
-.nav-workspace {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 12px;
-  min-height: 56px;
-  border-bottom: 1px solid var(--app-border);
-  flex-shrink: 0;
-}
-.nav-ws-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: var(--app-surface-alt);
-  color: var(--app-text);
-  font-size: 12px;
-  font-weight: 600;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  border: 1px solid var(--app-border);
-  letter-spacing: -0.01em;
-  font-feature-settings: "tnum" 1;
-}
-.nav-ws-meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  transition: opacity 140ms ease;
-}
-.nav-ws-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--app-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  letter-spacing: -0.01em;
-}
-.nav-ws-role {
-  font-size: 11px;
-  color: var(--app-muted);
-  text-transform: lowercase;
-}
-.nav.is-collapsed .nav-ws-meta { opacity: 0; pointer-events: none; }
-
-.nav-toggle {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  border: 1px solid var(--app-border);
-  background: transparent;
-  color: var(--app-muted);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  transition: background 100ms ease, color 100ms ease;
-}
-.nav-toggle:hover {
-  background: var(--app-surface-alt);
-  color: var(--app-text);
-}
-.nav-toggle svg { width: 12px; height: 12px; }
-.nav.is-collapsed .nav-toggle { margin: 0 auto; }
-
 /* ─── pinned ─────────────────────────────────────────────────── */
+/* No workspace header inside the sidebar — the top nav owns workspace
+ * identity (toggle + brand + workspace switcher + profile). The sidebar
+ * starts directly with the pinned items. */
 
 .nav-pinned {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 8px 8px 6px;
+  padding: 10px 8px 8px;
   border-bottom: 1px solid var(--app-border);
 }
 

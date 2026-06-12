@@ -63,10 +63,7 @@ export default function UnifiedLayout({ children }) {
           "--atlas-sidebar-collapsed-w": `${SIDEBAR_W_COLLAPSED}px`,
         }}
       >
-        <AtlasTopNav
-          onToggleSidebar={toggleSidebar}
-          showSidebarToggle={isMobile}
-        />
+        <AtlasTopNav onToggleSidebar={toggleSidebar} />
 
         {!isMobile ? (
           <UnifiedNav

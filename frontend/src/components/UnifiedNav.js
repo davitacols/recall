@@ -2,15 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   CpuChipIcon,
   HomeIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
-import { buildUnifiedNavModel, formatWorkspaceName, isHrefActive } from "./unifiedNavConfig";
+import { buildUnifiedNavModel, isHrefActive } from "./unifiedNavConfig";
 import "./UnifiedNav.css";
 
 const OPEN_GROUPS_KEY = "knoledgr.sidebar.openGroupsV1";
@@ -54,12 +52,6 @@ export default function UnifiedNav({
     [user, experienceMode, installedApps]
   );
 
-  const workspaceLabel =
-    user?.organization_name ||
-    (user?.organization_slug ? formatWorkspaceName(user.organization_slug) : "Knoledgr");
-  const workspaceInitial = workspaceLabel.charAt(0)?.toUpperCase() || "K";
-  const userRole = user?.role || "member";
-
   const toggleGroup = (name) => {
     setOpenGroups((prev) => {
       const next = { ...prev, [name]: !prev[name] };
@@ -77,27 +69,6 @@ export default function UnifiedNav({
       aria-label="Workspace navigation"
     >
       <div className="nav-inner">
-        {/* Workspace header */}
-        <div className="nav-workspace">
-          <span className="nav-ws-mark" aria-hidden="true">
-            {workspaceInitial}
-          </span>
-          <div className="nav-ws-meta">
-            <span className="nav-ws-name" title={workspaceLabel}>
-              {workspaceLabel}
-            </span>
-            <span className="nav-ws-role">{userRole}</span>
-          </div>
-          <button
-            type="button"
-            className="nav-toggle"
-            onClick={onToggleCollapse}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-          </button>
-        </div>
-
         {/* Pinned */}
         <div className="nav-pinned">
           <NavItem

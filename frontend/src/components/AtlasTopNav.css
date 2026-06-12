@@ -56,17 +56,11 @@
 }
 .tn-brand:hover { background: var(--app-surface-alt); text-decoration: none; }
 .tn-brand-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: var(--app-text);
-  color: var(--app-surface);
-  display: grid;
-  place-items: center;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-feature-settings: "tnum" 1;
+  width: 22px;
+  height: 22px;
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 .tn-brand-name {
   font-size: 14px;

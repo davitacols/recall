@@ -82,7 +82,14 @@ export default function AtlasTopNav({
           </button>
 
           <Link to="/dashboard" className="tn-brand" aria-label="Knoledgr home">
-            <span className="tn-brand-mark" aria-hidden="true">K</span>
+            <img
+              src="/logo/logo-mark.png"
+              alt=""
+              aria-hidden="true"
+              className="tn-brand-mark"
+              width={22}
+              height={22}
+            />
             <span className="tn-brand-name">Knoledgr</span>
           </Link>
 

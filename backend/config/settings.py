@@ -454,6 +454,19 @@ else:
         },
     }
 
+# GitHub App integration (replaces the legacy PAT-based GitHubIntegration).
+# All four must be set for the App endpoints to come online — when any are
+# missing the install-url endpoint returns 503 so the UI can render a
+# "not configured for this deployment" state rather than crashing.
+#
+# Private key is the App's RSA private key as a PEM string. Render and
+# similar PaaS providers escape newlines as \n; the helper module
+# normalizes those back to real newlines before signing.
+GITHUB_APP_ID = config('GITHUB_APP_ID', default='')
+GITHUB_APP_SLUG = config('GITHUB_APP_SLUG', default='')
+GITHUB_APP_PRIVATE_KEY = config('GITHUB_APP_PRIVATE_KEY', default='')
+GITHUB_APP_WEBHOOK_SECRET = config('GITHUB_APP_WEBHOOK_SECRET', default='')
+
 from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=config('JWT_ACCESS_TOKEN_HOURS', default=8, cast=int)),

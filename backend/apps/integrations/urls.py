@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, integration_endpoints, github_endpoints
+from . import views, integration_endpoints, github_endpoints, github_app_views
 from .github_integration import list_integrations
 
 urlpatterns = [
@@ -35,6 +35,15 @@ urlpatterns = [
     path('github/commits/<int:issue_id>/', github_endpoints.issue_commits, name='github_commits'),
     path('github/prs/<int:issue_id>/', github_endpoints.issue_pull_requests, name='github_prs'),
     path('github/activity/', github_endpoints.github_activity, name='github_activity'),
+
+    # GitHub App (new — replaces PAT flow over time)
+    path('github/app/install-url/', github_app_views.github_app_install_url, name='github_app_install_url'),
+    path('github/app/callback/', github_app_views.github_app_install_callback, name='github_app_install_callback'),
+    path('github/app/', github_app_views.github_app_installation, name='github_app_installation'),
+    path('github/app/repos/', github_app_views.github_app_repos, name='github_app_repos'),
+    path('github/app/repos/<int:repo_pk>/', github_app_views.github_app_repo_toggle, name='github_app_repo_toggle'),
+    path('github/app/resync/', github_app_views.github_app_resync, name='github_app_resync'),
+    path('github/app/webhook/', github_app_views.github_app_webhook, name='github_app_webhook'),
     
     # Jira
     path('jira/create/<int:blocker_id>/', views.create_jira_issue, name='create_jira_issue'),

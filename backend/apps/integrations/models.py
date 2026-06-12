@@ -156,3 +156,14 @@ class Commit(models.Model):
     
     def __str__(self):
         return f"{self.sha[:7]}: {self.message[:50]}"
+
+
+# Expose the GitHub App models on this module so makemigrations picks them
+# up alongside the legacy GitHubIntegration. They live in their own file
+# (github_app_models.py) to keep the new code discoverable as a unit
+# during rollout.
+from apps.integrations.github_app_models import (  # noqa: F401, E402
+    GitHubAppInstallation,
+    GitHubRepo,
+    GitHubAppDelivery,
+)

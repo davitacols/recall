@@ -6,20 +6,17 @@
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 80px);
-  --aa-violet: #6E56FF;
-  --aa-blue: #2684FF;
-  --aa-gradient: linear-gradient(135deg, var(--aa-violet) 0%, var(--aa-blue) 100%);
 }
 
 .aa-title-mark {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
-  background: var(--aa-gradient);
-  color: #FFFFFF;
-  border-radius: 10px;
-  box-shadow: 0 8px 22px -8px rgba(110, 86, 255, 0.5);
+  background: var(--app-surface-alt);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+  border-radius: 7px;
 }
 .aa-title-mark svg { width: 18px; height: 18px; }
 
@@ -219,7 +216,7 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  color: var(--aa-blue);
+  color: var(--app-text);
   text-decoration: none;
   font-weight: 600;
 }

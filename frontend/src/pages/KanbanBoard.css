@@ -95,7 +95,8 @@
 .kb-assignee { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 12px; color: var(--app-text-subtle); }
 .kb-assignee-mark {
   display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px;
-  background: linear-gradient(135deg, #6E76E0, #8A63D2); color: #FFFFFF; font-size: 10px; font-weight: 700;
+  background: var(--app-surface-alt); border: 1px solid var(--app-border); color: var(--app-text);
+  font-size: 10px; font-weight: 600;
 }
 
 /* Modal */

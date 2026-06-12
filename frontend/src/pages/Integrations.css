@@ -81,8 +81,8 @@
 }
 .int-cat:hover { color: var(--app-text); }
 .int-cat.is-active {
-  background: linear-gradient(135deg, rgba(124, 77, 255, 0.22), rgba(33, 150, 243, 0.18));
-  color: #fafbff;
+  background: var(--app-text);
+  color: var(--app-surface);
 }
 
 .int-strip-count {
@@ -139,12 +139,9 @@
     box-shadow 140ms ease;
 }
 .int-card:hover {
-  background:
-    linear-gradient(135deg, rgba(124, 77, 255, 0.06), rgba(33, 150, 243, 0.03)),
-    var(--app-surface);
-  border-color: rgba(124, 77, 255, 0.35);
+  background: var(--app-surface-alt);
+  border-color: var(--app-border-strong, var(--app-border));
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   text-decoration: none;
 }
 .int-card.is-disabled {

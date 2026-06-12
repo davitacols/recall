@@ -37,8 +37,8 @@
 }
 
 .ci-similar.is-resolved {
-  background: linear-gradient(180deg, rgba(0, 135, 90, 0.04), transparent);
-  border-color: rgba(0, 135, 90, 0.28);
+  background: var(--app-surface-alt);
+  border-color: rgba(16, 185, 129, 0.32);
 }
 
 .ci-similar-state {

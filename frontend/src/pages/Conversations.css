@@ -57,9 +57,8 @@
 }
 .conv-kpi:hover { transform: translateY(-1px); border-color: var(--app-border-strong); }
 .conv-kpi.is-active {
-  border-color: transparent;
-  background: linear-gradient(135deg, rgba(124, 77, 255, 0.18), rgba(33, 150, 243, 0.18));
-  box-shadow: 0 0 0 1px rgba(124, 77, 255, 0.45) inset;
+  background: var(--app-surface-alt);
+  border-color: var(--app-text);
 }
 .conv-kpi-icon {
   display: grid;

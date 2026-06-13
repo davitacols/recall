@@ -157,7 +157,7 @@ export default function Meetings() {
       {loading ? (
         <div style={{ marginTop: 16 }}>
           {[0, 1, 2].map((i) => (
-            <div key={i} style={{ height: 64, background: "var(--n20)", borderRadius: 4, marginBottom: 8 }} />
+            <div key={i} style={{ height: 64, background: "var(--app-surface-alt)", border: "1px solid var(--app-border)", borderRadius: 10, marginBottom: 8 }} />
           ))}
         </div>
       ) : grouped.length === 0 ? (
@@ -272,7 +272,7 @@ function Modal({ children, onClose, title, width = 520 }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "var(--app-overlay)", zIndex: 199 }} />
-      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 6, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
+      <div role="dialog" aria-modal="true" style={{ position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)", width, maxWidth: "calc(100vw - 32px)", background: "var(--app-surface-overlay)", border: "1px solid var(--app-border)", borderRadius: 12, boxShadow: "var(--ui-shadow-lg)", zIndex: 200, overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--app-border)" }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
           <IconButton icon={<XMarkIcon style={{ width: 16, height: 16 }} />} label="Close" onClick={onClose} />
@@ -284,10 +284,10 @@ function Modal({ children, onClose, title, width = 520 }) {
 }
 
 const dayHeading = {
-  margin: "16px 0 6px",
+  margin: "20px 0 8px",
   fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.04em",
+  fontWeight: 600,
+  letterSpacing: "0.08em",
   textTransform: "uppercase",
   color: "var(--app-muted)",
 };
@@ -295,7 +295,7 @@ const dayHeading = {
 const list = {
   display: "flex",
   flexDirection: "column",
-  gap: 4,
+  gap: 6,
 };
 
 const meetingRow = {
@@ -303,13 +303,14 @@ const meetingRow = {
   alignItems: "center",
   gap: 16,
   width: "100%",
-  padding: "12px 16px",
+  padding: "14px 16px",
   background: "var(--app-surface)",
   border: "1px solid var(--app-border)",
-  borderRadius: 4,
+  borderRadius: 10,
   cursor: "pointer",
   fontFamily: "inherit",
   textAlign: "left",
+  transition: "border-color 120ms ease, transform 120ms ease",
 };
 
 const meetingDesc = {

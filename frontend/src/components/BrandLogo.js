@@ -1,4 +1,5 @@
 import React from "react";
+import Wordmark from "./Wordmark";
 
 const tones = {
   warm: { text: "#171513" },
@@ -9,9 +10,9 @@ const tones = {
 };
 
 function getSizeTokens(size) {
-  if (size === "sm") return { mark: 22, text: 16, gap: 8 };
+  if (size === "sm") return { mark: 22, text: 15, gap: 7 };
   if (size === "lg") return { mark: 34, text: 24, gap: 11 };
-  return { mark: 28, text: 20, gap: 10 };
+  return { mark: 28, text: 19, gap: 9 };
 }
 
 export default function BrandLogo({
@@ -19,7 +20,9 @@ export default function BrandLogo({
   tone = "warm",
   showText = true,
   label = "Knoledgr",
-  textWeight = 800,
+  // textWeight retained for backward compat; ignored by Wordmark.
+  // eslint-disable-next-line no-unused-vars
+  textWeight,
   style,
   downloadUrl,
   downloadName,
@@ -54,18 +57,12 @@ export default function BrandLogo({
         }}
       />
       {showText ? (
-        <span
-          style={{
-            fontSize: token.text,
-            fontWeight: textWeight,
-            lineHeight: 0.94,
-            color: color.text,
-            fontFamily: '"League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-            whiteSpace: "nowrap",
-          }}
-        >
-          {label}
-        </span>
+        <Wordmark
+          size={token.text}
+          color={color.text}
+          label={label}
+          ariaLabel={label}
+        />
       ) : null}
     </span>
   );

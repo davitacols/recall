@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
+import Spinner from "./components/Spinner";
 import RouteErrorBoundary from "./components/RouteErrorBoundary";
 import "./components/RouteErrorBoundary.css";
 import { GlobalSearch } from "./components/GlobalSearch";
@@ -111,21 +112,8 @@ const TeamHealth = lazyMvpSurface("TeamHealth");
 
 function RouteLoading() {
   return (
-    <div style={{ minHeight: "45vh", display: "grid", placeItems: "center", padding: 32 }}>
-      <div style={{ display: "grid", gap: 10, justifyItems: "center", color: "#2563eb" }}>
-        <div
-          aria-hidden="true"
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: "50%",
-            border: "3px solid rgba(37, 99, 235, 0.18)",
-            borderTopColor: "#2563eb",
-            animation: "spin 0.8s linear infinite",
-          }}
-        />
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>Loading workspace</span>
-      </div>
+    <div style={{ minHeight: "45vh", display: "grid", placeItems: "center", padding: 32, color: "var(--app-text)" }}>
+      <Spinner block size={26} label="Loading workspace" />
     </div>
   );
 }

@@ -68,8 +68,10 @@
   border-radius: 10px;
   flex-shrink: 0;
   background: var(--app-surface-alt);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
 }
-.conv-kpi-icon svg { width: 18px; height: 18px; }
+.conv-kpi-icon svg { width: 16px; height: 16px; }
 .conv-kpi-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .conv-kpi-count {
   font-size: 22px;
@@ -89,15 +91,9 @@
   text-overflow: ellipsis;
 }
 
-/* KPI color accents — the icon tile tints */
-.conv-kpi-indigo .conv-kpi-icon { background: rgba(94, 106, 210, 0.16); color: #8e98e8; }
-.conv-kpi-violet .conv-kpi-icon { background: rgba(124, 77, 255, 0.18); color: #b095ff; }
-.conv-kpi-rose   .conv-kpi-icon { background: rgba(244, 63, 94, 0.18); color: #fb7185; }
-.conv-kpi-emerald .conv-kpi-icon { background: rgba(16, 185, 129, 0.18); color: #34d399; }
-.conv-kpi-amber  .conv-kpi-icon { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
-.conv-kpi-blue   .conv-kpi-icon { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
-.conv-kpi-slate  .conv-kpi-icon { background: rgba(148, 163, 184, 0.18); color: #cbd5e1; }
-.conv-kpi-teal   .conv-kpi-icon { background: rgba(20, 184, 166, 0.18); color: #5eead4; }
+/* KPI accents — neutral by default. Reserve color for actual semantic alerts. */
+.conv-kpi-rose .conv-kpi-icon { color: #ef4444; border-color: rgba(239, 68, 68, 0.32); }
+.conv-kpi-amber .conv-kpi-icon { color: #f59e0b; border-color: rgba(245, 158, 11, 0.28); }
 
 /* Pipeline (bucketed) */
 .conv-pipeline {
@@ -141,10 +137,13 @@
   place-items: center;
   width: 30px;
   height: 30px;
-  border-radius: 9px;
+  border-radius: 8px;
   flex-shrink: 0;
+  background: var(--app-surface-alt);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
 }
-.conv-bucket-marker svg { width: 16px; height: 16px; }
+.conv-bucket-marker svg { width: 15px; height: 15px; }
 .conv-bucket-titles { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .conv-bucket-title { font-weight: 650; font-size: 14px; letter-spacing: -0.01em; }
 .conv-bucket-hint { font-size: 12px; color: var(--app-muted); }
@@ -166,15 +165,9 @@
   border-top: 1px solid var(--app-border);
 }
 
-/* Bucket tone accents */
-.conv-bucket-violet .conv-bucket-marker { background: rgba(124, 77, 255, 0.18); color: #b095ff; }
-.conv-bucket-rose .conv-bucket-marker { background: rgba(244, 63, 94, 0.18); color: #fb7185; }
-.conv-bucket-emerald .conv-bucket-marker { background: rgba(16, 185, 129, 0.18); color: #34d399; }
-.conv-bucket-amber .conv-bucket-marker { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
-.conv-bucket-blue .conv-bucket-marker { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
-.conv-bucket-slate .conv-bucket-marker { background: rgba(148, 163, 184, 0.18); color: #cbd5e1; }
-.conv-bucket-teal .conv-bucket-marker { background: rgba(20, 184, 166, 0.18); color: #5eead4; }
-.conv-bucket-indigo .conv-bucket-marker { background: rgba(94, 106, 210, 0.18); color: #8e98e8; }
+/* Bucket accents — neutral by default. Color only for true semantic alerts. */
+.conv-bucket-rose .conv-bucket-marker { color: #ef4444; border-color: rgba(239, 68, 68, 0.32); }
+.conv-bucket-amber .conv-bucket-marker { color: #f59e0b; border-color: rgba(245, 158, 11, 0.28); }
 
 /* Row */
 .conv-row {
@@ -197,11 +190,14 @@
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 9px;
+  border-radius: 8px;
   flex-shrink: 0;
   margin-top: 2px;
+  background: var(--app-surface-alt);
+  border: 1px solid var(--app-border);
+  color: var(--app-muted);
 }
-.conv-row-type svg { width: 16px; height: 16px; }
+.conv-row-type svg { width: 15px; height: 15px; }
 
 .conv-row-main { flex: 1; min-width: 0; }
 .conv-row-head {
@@ -216,7 +212,7 @@
   letter-spacing: -0.012em;
   color: var(--app-text);
 }
-.conv-row:hover .conv-row-title { color: var(--app-accent); }
+.conv-row:hover .conv-row-title { color: var(--app-text); }
 
 .conv-row-takeaway {
   margin: 4px 0 0;
@@ -279,7 +275,7 @@
   opacity: 0;
   transition: opacity 120ms ease, transform 120ms ease;
 }
-.conv-row:hover .conv-row-go { opacity: 1; transform: translateX(2px); color: var(--app-accent); }
+.conv-row:hover .conv-row-go { opacity: 1; transform: translateX(2px); color: var(--app-muted); }
 .conv-row-del {
   display: inline-flex;
   align-items: center;

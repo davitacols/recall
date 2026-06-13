@@ -8,29 +8,39 @@ const BASE_DOCUMENTATION_GROUPS = [
       {
         id: "overview",
         slug: "getting-started/overview",
-        title: "Platform Overview",
-        summary: "Understand how Knoledgr connects conversations, decisions, documents, and execution into one memory system.",
-        readTime: "4 min",
-        audience: "Admins, operators, team leads",
+        title: "What is Knoledgr",
+        summary: "The two-minute version: what Knoledgr does, who it's for, and the four things you'll actually use.",
+        readTime: "3 min",
+        audience: "Everyone",
         sections: [
           {
-            heading: "What Knoledgr is",
+            heading: "The short version",
             paragraphs: [
-              "Knoledgr is a knowledge-first operating workspace for teams that need context to survive real execution. Instead of storing decisions, documents, discussions, and delivery work in separate systems, it keeps them linked as one working record.",
-            ],
-            bullets: [
-              "Capture the why behind work, not just the current status.",
-              "Keep conversations, decisions, documents, and execution history searchable together.",
-              "Use Ask Recall and the Knowledge Graph to recover context without replaying old threads.",
+              "Knoledgr is where your team keeps decisions, conversations, meeting notes, and documents linked together. Six months from now, when someone asks \"why did we pick Postgres?\", the answer is one search away — with the original discussion, the rationale, and what happened after.",
+              "It's a workspace, not a wiki. Pages get rewritten and forgotten. Knoledgr is built around the events that matter: a thread that turned into a decision, a decision that turned into work, work that turned into a lesson.",
             ],
           },
           {
-            heading: "Core product surfaces",
+            heading: "The four surfaces you'll use",
             bullets: [
-              "Conversations for discovery, discussion, and meeting capture.",
-              "Decisions for rationale, approvals, confidence, and outcome review.",
-              "Documents for long-lived reference material linked to active work.",
-              "Projects, issues, sprints, and blockers for execution with context attached.",
+              "Conversations — open threads, questions, proposals, and meeting capture. Where the team thinks out loud.",
+              "Decisions — once the team commits, the rationale and alternatives get pinned here with the people who decided.",
+              "Documents — specs, briefs, playbooks. Reference material that points to the decisions behind it.",
+              "Projects, issues, sprints — the execution side. Every piece links back to the decision that drove it.",
+            ],
+          },
+          {
+            heading: "What makes it different",
+            bullets: [
+              "Ask Recall answers in plain English with sources attached — no hunting through old threads.",
+              "Decisions ship with a prediction, so you can check later whether the choice actually worked.",
+              "Everything is connected by default. You don't tag anything — Knoledgr links it as you write.",
+            ],
+          },
+          {
+            heading: "Who it's for",
+            paragraphs: [
+              "Teams between 10 and 200 people that ship real work, make consequential choices, and lose context every time someone leaves. If you've ever rewritten the same decision twice because nobody could find the original, this is for you.",
             ],
           },
         ],
@@ -38,26 +48,47 @@ const BASE_DOCUMENTATION_GROUPS = [
       {
         id: "workspace-setup",
         slug: "getting-started/workspace-setup",
-        title: "Workspace Setup",
-        summary: "Set up your Knoledgr workspace, invite the right people, and establish a clean structure from day one.",
-        readTime: "5 min",
+        title: "Set up your workspace",
+        summary: "Get a working workspace in about ten minutes. Skip the planning theater — start with one team and one type of work.",
+        readTime: "4 min",
         audience: "Workspace admins",
         sections: [
           {
-            heading: "Start with a clear operating model",
-            bullets: [
-              "Decide which teams will use Knoledgr first and what work should live there.",
-              "Define naming patterns for projects, decisions, meetings, and documents.",
-              "Set expectations for when a discussion becomes a decision and when a decision must link to execution work.",
+            heading: "Before you invite anyone",
+            paragraphs: [
+              "Start narrow. Pick one team that already makes real decisions — usually engineering, product, or ops — and one kind of work where the why gets lost: tech choices, vendor selections, scope changes. You can always widen later. You can't easily walk back \"everyone, start using this.\"",
             ],
           },
           {
-            heading: "Recommended first setup",
+            heading: "Step 1 — Name the workspace",
+            paragraphs: [
+              "Use your company name plus the team if you'll have more than one workspace later (\"Acme — Platform\"). The workspace name shows up in invites, email subjects, and the top-left of every page.",
+            ],
+          },
+          {
+            heading: "Step 2 — Invite the first three people",
             bullets: [
-              "Invite admins and managers first so ownership is clear.",
-              "Create your active projects and current sprint structure.",
-              "Seed one or two core documents and a handful of real decisions.",
-              "Enable integrations only after the basic workflow is working cleanly.",
+              "Yourself and the team lead — both as admins.",
+              "One person who's good at writing things down. They'll set the bar for everyone else.",
+              "Don't invite the whole team yet. Three people for the first week is enough to find the friction before you scale.",
+            ],
+          },
+          {
+            heading: "Step 3 — Seed two real things",
+            bullets: [
+              "One decision you've already made — write it down as if you were making it today. Include alternatives and what you actually picked.",
+              "One conversation thread for a real open question. Use it instead of Slack for the next two days.",
+            ],
+            paragraphs: [
+              "Don't seed test data. Real content makes Ask Recall useful immediately and shows the team what \"good\" looks like.",
+            ],
+          },
+          {
+            heading: "Skip these on day one",
+            bullets: [
+              "Integrations. Connect Slack/GitHub/Jira after the basic loop works.",
+              "Custom roles and permission tiers. Default admin + member is fine for a 3-person pilot.",
+              "Naming conventions documents. Establish them by example, not by rule.",
             ],
           },
         ],
@@ -65,25 +96,54 @@ const BASE_DOCUMENTATION_GROUPS = [
       {
         id: "first-rollout",
         slug: "getting-started/first-rollout",
-        title: "First Rollout",
-        summary: "Roll Knoledgr out to a live team without overwhelming people or creating duplicate process.",
+        title: "Roll it out to the team",
+        summary: "Take a working pilot and expand to the rest of the team without it dying in week three.",
         readTime: "5 min",
-        audience: "Leads and rollout owners",
+        audience: "Team leads, rollout owners",
         sections: [
           {
-            heading: "Launch with one real workflow",
-            bullets: [
-              "Pick a live initiative, not a fake pilot.",
-              "Use Knoledgr for the next decision cycle, not just as an archive.",
-              "Require linked conversations, decisions, and follow-through for that initiative.",
+            heading: "Roll out around one upcoming decision",
+            paragraphs: [
+              "The fastest way to make Knoledgr stick: pick an upcoming decision your team has to make anyway — a vendor pick, a scope cut, an architecture call — and require that it goes through Knoledgr. Not as an archive after the fact. As the place the decision actually happens.",
+              "This works because the team gets a visible win (\"we used the new system and it worked\") instead of a maintenance burden (\"we have to copy everything over now\").",
             ],
           },
           {
-            heading: "What to measure in week one",
+            heading: "Week 1 — Pick the decision, set the expectation",
             bullets: [
-              "How quickly people can recover why a change happened.",
-              "Whether issues and tasks have visible decision context.",
-              "How often teammates can answer questions with Ask Recall instead of manual re-explaining.",
+              "Announce in the team's normal channel: \"For the X decision this month, the discussion, alternatives, and final call live in Knoledgr.\"",
+              "Open the conversation thread yourself. First post should frame the question and link any relevant background.",
+              "When someone replies in Slack instead, gently redirect: \"Can you drop this in the thread? I want to make sure it's findable later.\"",
+            ],
+          },
+          {
+            heading: "Week 2 — Close the loop visibly",
+            bullets: [
+              "When the decision is made, promote the thread to a formal decision record. Use the \"Convert to decision\" button on the conversation.",
+              "Log a prediction with the decision — what you expect to happen, by when. Even a rough one is better than none.",
+              "Link the resulting work (tickets, PRs, docs) back to the decision. This is the moment context starts to compound.",
+            ],
+          },
+          {
+            heading: "Week 3 — Use Ask Recall in a meeting",
+            paragraphs: [
+              "Next time someone asks \"wait, why did we decide X?\", open Ask Recall in front of the room and answer it in fifteen seconds. This single moment converts more skeptics than any rollout deck.",
+            ],
+          },
+          {
+            heading: "How to tell it's working",
+            bullets: [
+              "People stop asking \"where do we put this?\" — they just open Knoledgr.",
+              "Newer teammates ramp on context without 1:1 catch-ups.",
+              "When you revisit an old decision, the rationale is still readable six months later.",
+            ],
+          },
+          {
+            heading: "Common ways it dies",
+            bullets: [
+              "Treating it as documentation, not a decision tool. If it's just a place to file things after, nobody opens it.",
+              "Letting Slack stay the source of truth. The redirect step in week one is the most important habit.",
+              "Skipping predictions. Without them, decisions don't compound into lessons — they just become a list.",
             ],
           },
         ],
@@ -98,24 +158,60 @@ const BASE_DOCUMENTATION_GROUPS = [
         id: "conversations",
         slug: "workflows/conversations",
         title: "Conversations",
-        summary: "Use conversations for discovery, meeting capture, updates, blockers, and early-stage reasoning.",
+        summary: "Open threads for questions, proposals, and meeting notes — the place your team thinks before it decides.",
         readTime: "4 min",
-        audience: "All users",
+        audience: "Everyone",
+        routes: ["/conversations", "/conversations/new", "/conversations/:id"],
         sections: [
           {
-            heading: "When to use conversations",
+            heading: "What a conversation is for",
+            paragraphs: [
+              "Conversations are where work starts as a question and ends as a decision (or a decision not to decide). They're not chat — they're persistent, threaded, and searchable. Think of them as the lighter weight cousin of a decision: not yet committed, but worth remembering.",
+            ],
             bullets: [
-              "Capture discovery threads, updates, questions, and meeting output.",
-              "Record blockers and unresolved tradeoffs before they become execution surprises.",
-              "Use meaningful titles so search, graph, and AI retrieval work well later.",
+              "A question with no obvious answer (\"Should we move billing to Stripe?\")",
+              "A proposal that needs review (\"Here's how I want to restructure the auth flow.\")",
+              "Meeting notes that capture what was discussed and what's still open.",
+              "An update the team should see but doesn't need to act on yet.",
             ],
           },
           {
-            heading: "Good conversation hygiene",
+            heading: "The pipeline view",
+            paragraphs: [
+              "The Conversations page groups threads by what they need from you, not by recency. The buckets are:",
+            ],
             bullets: [
-              "Keep one conversation focused on one topic or decision area.",
-              "Link supporting documents and related work while the context is still fresh.",
-              "Promote high-signal threads into formal decisions when commitment is needed.",
+              "Awaiting you — threads where you're the owner or were mentioned and someone's waiting.",
+              "Urgent — flagged as urgent or crisis-tagged. Eat the oxygen until resolved.",
+              "Ready to decide — proposals with momentum. One click from becoming a decision.",
+              "Needs follow-up — promises made, not yet kept.",
+              "In progress — active threads moving this week.",
+              "Stalled — open but quiet for over a week. Revisit or close.",
+              "Recently harvested — resolved threads whose takeaways are now part of the workspace's memory.",
+            ],
+          },
+          {
+            heading: "Starting a good conversation",
+            bullets: [
+              "Title it like a question or a claim, not a topic. \"Move billing to Stripe?\" beats \"Billing.\"",
+              "First post: state the question, what you know, what you don't, what would help.",
+              "Tag the people you actually need from. Tagging the whole team is the same as tagging nobody.",
+              "Pick the right post type — discussion, question, proposal, update. It changes the icon and how it's bucketed.",
+            ],
+          },
+          {
+            heading: "Turning a conversation into a decision",
+            paragraphs: [
+              "When the team has agreed (or you've made the call), open the thread and click \"Convert to decision.\" Knoledgr drafts a decision record from the thread — title, summary, alternatives discussed, owner — and you fill in the rationale and prediction.",
+              "The original thread stays linked. Six months later, someone reading the decision can click back to the conversation that produced it.",
+            ],
+          },
+          {
+            heading: "When not to use a conversation",
+            bullets: [
+              "Real-time pings or pure social chat — Slack is still better at that.",
+              "Long-lived reference material — that's a document.",
+              "An already-made decision — go straight to a decision record.",
             ],
           },
         ],
@@ -253,35 +349,55 @@ const BASE_DOCUMENTATION_GROUPS = [
         ],
         sections: [
           {
-            heading: "What belongs in a decision",
-            bullets: [
-              "The question being resolved and the chosen direction.",
-              "Alternatives considered and why they were not selected.",
-              "Confidence, expected impact, risks, and next steps.",
-              "Links back to the conversation, documents, and execution work affected.",
-              "At least one prediction with a target value and a check-at date.",
-            ],
-          },
-          {
-            heading: "Outcome discipline",
-            bullets: [
-              "Every decision should ship with a prediction. Without one, there is nothing to check.",
-              "Review whether the result matched expectations after implementation.",
-              "Capture lessons learned, drift, and follow-up actions.",
-              "Use replay and analysis features to improve future decision quality.",
-            ],
-          },
-          {
-            heading: "Where the deeper docs live",
+            heading: "What goes in a decision",
             paragraphs: [
-              "This page is the operational overview. For the data model, math, and APIs behind the decision intelligence loop, see the dedicated pages:",
+              "A good decision record has five things. If any of them are missing, you'll regret it later.",
             ],
             bullets: [
-              "intelligence/decision-loop — the predict/check/drift/retro/learn loop end to end.",
-              "intelligence/predictions-and-drift — the drift formula and band thresholds.",
-              "intelligence/retrospectives-and-lessons — how lessons surface in future drafts.",
-              "intelligence/before-you-decide — the panel that runs on every keystroke.",
-              "intelligence/autonomous-agent — running long, traceable analyses across the decision corpus.",
+              "The question — what were you actually choosing between?",
+              "What you picked, and the rationale in two or three sentences.",
+              "Alternatives considered and why they lost. Not just the runner-up — the rejected options matter.",
+              "A prediction. What do you expect to happen, by when, measured how? \"We'll cut latency by 30% within four weeks\" is good. \"It'll be better\" is not.",
+              "Owner — who's on the hook for making it happen and reviewing the outcome.",
+            ],
+          },
+          {
+            heading: "Decisions vs proposals",
+            paragraphs: [
+              "Proposals are decisions-in-waiting. Use one when you want explicit review before commitment — when the team is bigger than three, when the impact is wide, or when you want a paper trail of the approval.",
+              "Most everyday decisions skip the proposal step. Write the decision, mark it approved, move on. The proposal queue is for the choices that warrant ceremony.",
+            ],
+          },
+          {
+            heading: "The prediction is the whole point",
+            paragraphs: [
+              "Without a prediction, a decision is just an opinion that got typed up. The prediction is what lets Knoledgr come back to you in six weeks and say \"you said latency would drop 30% — what actually happened?\"",
+              "Predictions don't have to be precise. Three useful shapes:",
+            ],
+            bullets: [
+              "A number with a target (\"weekly active users above 5,000 by end of Q2\").",
+              "A yes/no with a deadline (\"the migration finishes before Aug 1, no rollback needed\").",
+              "A qualitative outcome with a check-at date (\"team morale improves — survey in 60 days\").",
+            ],
+          },
+          {
+            heading: "After it's implemented",
+            paragraphs: [
+              "When the work ships, come back to the decision and run an outcome review. It takes about two minutes: was it successful (yes/no/mixed), what's the score (1–5), what did you learn?",
+              "The point isn't a grade. It's that the lesson gets stored next to the decision, so the next time someone considers a similar choice, the Before You Decide panel surfaces it — \"hey, you tried something like this; here's how it went.\"",
+            ],
+          },
+          {
+            heading: "Where to go deeper",
+            paragraphs: [
+              "This page covers the everyday decision flow. For the mechanics behind drift, retros, predictions, and the Before You Decide panel:",
+            ],
+            bullets: [
+              "intelligence/decision-loop — the full draft → predict → check → retro → learn cycle.",
+              "intelligence/predictions-and-drift — how drift is calculated and the on-track / drifting / off-track bands.",
+              "intelligence/retrospectives-and-lessons — how lessons get pulled forward into future decisions.",
+              "intelligence/before-you-decide — what the panel checks while you type, and why.",
+              "intelligence/autonomous-agent — running long-form analyses across your decision history.",
             ],
           },
         ],
@@ -290,24 +406,40 @@ const BASE_DOCUMENTATION_GROUPS = [
         id: "documents",
         slug: "workflows/documents",
         title: "Documents",
-        summary: "Use documents as stable reference material that stays close to active work instead of drifting into a separate archive.",
-        readTime: "4 min",
-        audience: "All users",
+        summary: "Specs, briefs, playbooks. Reference material that stays linked to the decisions and work it describes.",
+        readTime: "3 min",
+        audience: "Everyone",
+        routes: ["/business/documents", "/business/documents/:id"],
         sections: [
           {
-            heading: "What documents are best for",
+            heading: "When to write a document instead of a conversation",
+            paragraphs: [
+              "Use a document when the content needs to outlive the discussion. A conversation is volatile — it's where you think. A document is durable — it's where you record what's true.",
+            ],
             bullets: [
-              "Requirements, operating notes, playbooks, meeting summaries, and durable reference material.",
-              "Source-of-truth context that should outlive one sprint or thread.",
-              "Documents that need to stay linked to decisions, conversations, or execution work.",
+              "A spec for something being built.",
+              "An onboarding playbook for a recurring process.",
+              "A briefing that gets shared across teams or with new hires.",
+              "Architecture notes that need to stay current as the system evolves.",
             ],
           },
           {
-            heading: "How to keep docs useful",
+            heading: "Link aggressively",
+            paragraphs: [
+              "A document on its own is just a page. A document linked to the three decisions that shaped it and the six tickets that implemented it is a piece of context. The links are what make documents searchable later and what make Ask Recall trust them as sources.",
+            ],
             bullets: [
-              "Link documents to the work they support instead of leaving them isolated.",
-              "Update documents when decisions materially change the operating plan.",
-              "Use comments and snapshots when teams need to review changes over time.",
+              "Use @-mention to link decisions, conversations, people, and other documents inline.",
+              "When you write \"per DEC-128…\", make the reference a real link. Future readers can click through.",
+              "If a decision changes the document's recommendations, link the new decision and add a date.",
+            ],
+          },
+          {
+            heading: "Keeping documents from rotting",
+            bullets: [
+              "If a decision invalidates part of the document, update the document. Don't write a new one.",
+              "If the whole document is stale, archive it and link the replacement. Don't leave wrong information searchable.",
+              "Use the \"last reviewed\" stamp at the top of long-lived documents. A reader needs to know if they're reading something from last month or last year.",
             ],
           },
         ],
@@ -454,38 +586,64 @@ const BASE_DOCUMENTATION_GROUPS = [
         ],
         sections: [
           {
-            heading: "What Ask Recall does well",
-            bullets: [
-              "Answer organization questions using conversations, decisions, documents, projects, sprints, and issues.",
-              "Show evidence coverage and confidence instead of pretending certainty.",
-              "Diagnose operational risk and recommend interventions when a prompt is execution-oriented.",
-            ],
-          },
-          {
-            heading: "How to ask better questions",
-            bullets: [
-              "Use project names, sprint names, decision titles, or document names when possible.",
-              "Ask specific why, what changed, and current-state questions.",
-              "Review the evidence list before acting on an answer with low coverage.",
-            ],
-          },
-          {
-            heading: "Choosing a mode",
+            heading: "What Ask Recall is good at",
             paragraphs: [
-              "The composer offers three modes that shape how the assistant responds to the same question:",
+              "Ask Recall answers questions about your workspace using your workspace as the source. It's not a chatbot reaching for the open web — every answer is built from your team's conversations, decisions, documents, projects, and meetings, with the sources cited.",
             ],
             bullets: [
-              "Ground — answer the question and cite the workspace records the answer rests on. The default for most questions.",
-              "Draft — turn the retrieved context into a polished written artifact, such as a status update or summary.",
-              "Plan — propose concrete next steps and owners; on execution-oriented prompts this is where suggested actions appear.",
+              "\"Why did we decide to use Postgres?\" — pulls the decision record and the discussion that produced it.",
+              "\"What's blocking the Q3 rollout?\" — pulls open issues, recent blockers, and their owners.",
+              "\"Summarize last week's product meetings.\" — reads the meeting threads and gives you the actual outcomes.",
+              "\"Who knows about our auth setup?\" — finds the people who've written about it, decided on it, or owned it.",
             ],
           },
           {
-            heading: "When the model is unavailable",
+            heading: "How to ask a question it can answer",
+            paragraphs: [
+              "Plain English works. But specific is better than general. Three rules:",
+            ],
             bullets: [
-              "Requests are time-bounded, so a slow or unreachable model fails fast instead of hanging.",
-              "If the grounded model can't be reached, the answer falls back to the rules engine rather than erroring silently.",
-              "On a hard failure the response surfaces a clear message with a Try again action, so a turn never spins forever.",
+              "Use names you'd recognize on the surface — project names, sprint names, decision titles, people. Ask Recall anchors retrieval on those terms.",
+              "Ask one question per prompt. \"Why did we pick X, and what should we do about Y?\" gets a worse answer than two separate prompts.",
+              "Ask about specific time windows when it matters. \"What changed in the billing project last month?\" beats \"What's happening with billing?\"",
+            ],
+          },
+          {
+            heading: "The three modes",
+            paragraphs: [
+              "Same question, different shape of answer. Switch with the mode selector under the prompt:",
+            ],
+            bullets: [
+              "Ground (default) — answer with citations. Use this when you want to know what's true.",
+              "Draft — write a polished version of the answer. Use this for status updates, summaries, or emails you're about to send.",
+              "Plan — propose next steps with owners. Use this when the question is \"what should we do?\"",
+            ],
+          },
+          {
+            heading: "Reading the answer",
+            paragraphs: [
+              "Every answer comes with three signals you should glance at before acting:",
+            ],
+            bullets: [
+              "Confidence — high / medium / low. Low confidence usually means thin evidence, not a wrong answer.",
+              "Evidence count — how many workspace records the answer is built from. One source is a starting point, six is a real answer.",
+              "Coverage — whether the workspace had enough material to answer the question at all. Low coverage is a documentation gap, not an Ask Recall bug.",
+            ],
+          },
+          {
+            heading: "What it can't do",
+            bullets: [
+              "Make stuff up confidently. If there's no evidence in your workspace, the answer will say so instead of guessing.",
+              "Answer about things outside your workspace. It doesn't know your industry, your competitors, or the public web.",
+              "Take actions on its own. Suggested actions on Plan-mode answers require explicit confirmation before anything runs.",
+            ],
+          },
+          {
+            heading: "When something feels off",
+            bullets: [
+              "If the model is slow or unreachable, the answer falls back to the rules engine instead of hanging.",
+              "If the answer cites the wrong sources, use the thumbs-down with a one-line note — that feedback shapes future retrieval.",
+              "If you keep getting low coverage on a topic, that's a signal to write the document, not to ask differently.",
             ],
           },
         ],
@@ -494,24 +652,35 @@ const BASE_DOCUMENTATION_GROUPS = [
         id: "knowledge-graph",
         slug: "intelligence/knowledge-graph",
         title: "Knowledge Graph",
-        summary: "Visualize how conversations, decisions, documents, people, and execution entities connect.",
+        summary: "See how your decisions, conversations, documents, and people are connected. Use it when you want the shape of the context, not a single answer.",
         readTime: "4 min",
-        audience: "Leads, operators, researchers",
+        audience: "Leads, researchers, anyone investigating",
+        routes: ["/knowledge/graph"],
         sections: [
           {
-            heading: "What the graph is for",
+            heading: "What you can do with the graph",
+            paragraphs: [
+              "Ask Recall gives you an answer. The graph gives you the territory. Use it when you want to understand how a decision connects to the work it spawned, who's involved across a project, or which areas of the workspace are well-connected versus orphaned.",
+            ],
             bullets: [
-              "Explore connected context around a project, issue, document, or decision.",
-              "Spot isolated work that has weak supporting context.",
-              "Find related artifacts and subject-matter experts faster.",
+              "Start from a decision and trace forward to every linked conversation, document, and ticket.",
+              "Start from a person and see what they've decided, written, and owned.",
+              "Spot orphans — decisions with no linked work, documents nobody references. Usually a sign something is stale or never got followed through.",
             ],
           },
           {
-            heading: "Best practices",
+            heading: "Reading what you see",
             bullets: [
-              "Keep links current between decisions and downstream work.",
-              "Use the graph alongside Ask Recall when investigating historical changes.",
-              "Treat missing links as a documentation signal, not just a graph issue.",
+              "Nodes are entities: decisions, conversations, documents, people, projects.",
+              "Edges are real links — created by @-mentions, by the Convert-to-decision flow, by linking tickets to decisions. Knoledgr doesn't infer connections it can't show you the source of.",
+              "Cluster density matters. A tight cluster around a decision means the team kept the context attached. A lonely node means the decision happened in isolation and probably can't be reconstructed later.",
+            ],
+          },
+          {
+            heading: "Missing links are a signal",
+            paragraphs: [
+              "If the graph shows a decision floating alone, that's not a graph bug — it's an information bug in your workspace. The fix is to go link the work it produced (or admit the decision never went anywhere).",
+              "Use this to find the parts of your workspace that are quietly losing context, then go fix them.",
             ],
           },
         ],
@@ -1018,24 +1187,38 @@ const BASE_DOCUMENTATION_GROUPS = [
         id: "projects-issues",
         slug: "execution/projects-and-issues",
         title: "Projects and Issues",
-        summary: "Run work in projects and issue detail views that preserve the reasoning behind execution changes.",
+        summary: "Where the work lives. Same ticketing flow you know — but every issue carries the decision and discussion that produced it.",
         readTime: "5 min",
         audience: "Product, engineering, operations",
+        routes: ["/projects", "/projects/:id", "/business/tasks"],
         sections: [
           {
-            heading: "Execution with context",
-            bullets: [
-              "Projects hold the delivery frame and issue flow.",
-              "Issues can link directly to decisions, conversations, meetings, and documents.",
-              "Issue detail pages surface engineering context, attachments, watchers, and impact panels.",
+            heading: "Why issues live here instead of Jira",
+            paragraphs: [
+              "You can keep using Jira if you want — Knoledgr integrates with it. But for new projects, keeping the issues in Knoledgr means each one has the decision that created it, the conversation it came out of, and the document that spec'd it, all linked by default. The why isn't a separate system.",
+              "If a teammate opens an issue and wonders \"what was the original thinking?\", they click the linked decision. They don't ping you.",
             ],
           },
           {
-            heading: "Keep issue records healthy",
+            heading: "Creating an issue from a decision",
+            paragraphs: [
+              "The fastest path: open the decision, click \"Create issue from this decision.\" The issue is pre-populated with the decision's title and links back automatically. The decision now shows the issue under \"Linked work\" — and as the issue progresses, the decision page reflects it.",
+              "If the work is already underway, you can add the back-link from either side. The relationship is symmetric.",
+            ],
+          },
+          {
+            heading: "Good issue hygiene",
             bullets: [
-              "Link important issues to the decision or conversation that created them.",
-              "Use blockers and comments to preserve current execution friction.",
-              "Treat issue status as a delivery signal, not the full story on its own.",
+              "Title the issue as the unit of work, not the symptom. \"Migrate billing to Stripe\" beats \"Stripe migration ticket.\"",
+              "Link the decision that drove it. If there isn't one, you might be doing work without a documented choice.",
+              "When you close the issue, mention how it went on the linked decision. That's how the loop closes.",
+              "Use blockers as first-class records, not as Slack messages. Blockers show up in dashboards and trigger sprint risk signals.",
+            ],
+          },
+          {
+            heading: "Blockers are a signal, not a chore",
+            paragraphs: [
+              "When something is stuck, log it as a blocker on the issue. Yes, it's an extra click. But that blocker now appears in the sprint board, in the dashboard, and in any \"what's blocking us?\" question to Ask Recall. Untracked blockers cost twice — once when they slip and again when nobody can explain why the sprint missed.",
             ],
           },
         ],
@@ -1044,24 +1227,42 @@ const BASE_DOCUMENTATION_GROUPS = [
         id: "sprints-autopilot",
         slug: "execution/sprints-and-autopilot",
         title: "Sprints and Autopilot",
-        summary: "Use sprints, blockers, and sprint autopilot to keep delivery planning tied to real decision and risk signals.",
+        summary: "Sprint boards plus an opinionated assistant that tells you what to drop, add, or worry about — with the evidence for each call.",
         readTime: "5 min",
         audience: "Delivery leads, managers",
+        routes: ["/business/sprints", "/business/sprints/:id", "/business/sprints/:id/history"],
         sections: [
           {
-            heading: "What sprint management covers",
-            bullets: [
-              "Sprint boards, sprint detail views, blocker tracking, and retrospective memory.",
-              "Issue moves, capacity signals, and delivery health in one operating layer.",
-              "Decision dependencies that explain why sprint flow changed.",
+            heading: "Sprints, in one paragraph",
+            paragraphs: [
+              "Each sprint has a board (issues moving through states), a detail page (capacity, blockers, decisions in flight), and a history view that survives the sprint closing. The board behaves the way you'd expect — drag, status changes, swimlanes. The interesting part is what Knoledgr does around it.",
             ],
           },
           {
-            heading: "What Autopilot looks at",
+            heading: "What Autopilot is actually doing",
+            paragraphs: [
+              "Autopilot is the assistant that watches the sprint and tells you, mid-sprint, what's likely to slip and what to do about it. It's not magic — it's looking at four things:",
+            ],
             bullets: [
-              "Pace versus remaining time, blockers, unresolved decisions, and work-in-progress pressure.",
-              "Drop or add recommendations based on sprint risk.",
-              "Traceable action plans rather than opaque scoring.",
+              "Pace — how much you've burned down vs. how much time is left.",
+              "Blockers — how many are open, how long they've been open, who owns them.",
+              "Unresolved decisions — work in the sprint that depends on a decision still being debated.",
+              "Work in progress — how many items each person is juggling. WIP creep is the leading indicator of a missed sprint.",
+            ],
+          },
+          {
+            heading: "When to drop or add",
+            paragraphs: [
+              "Autopilot recommends drops when the math says you'll miss otherwise — too much WIP, too many blockers, too little time. It recommends adds when burndown is ahead and the team has bandwidth. Each recommendation has a one-line reason.",
+              "Take the recommendation, or don't. The point is that you're making the call with visible evidence instead of vibes.",
+            ],
+          },
+          {
+            heading: "Closing the sprint",
+            bullets: [
+              "Run the retro. Capture what shipped, what slipped, what surprised you.",
+              "If a decision contributed to slippage (\"we underestimated the migration\"), link it. That goes back into the decision's outcome review.",
+              "The history view stays — six months later, you can come back and ask Recall \"what did we ship in Q2 sprints?\" and get a real answer.",
             ],
           },
         ],
@@ -1075,25 +1276,43 @@ const BASE_DOCUMENTATION_GROUPS = [
       {
         id: "teams-roles",
         slug: "admin/teams-roles-and-governance",
-        title: "Teams, Roles, and Governance",
-        summary: "Control access without breaking collaboration speed, and keep governance tied to actual operational habits.",
+        title: "Teams, roles, and access",
+        summary: "Three roles, sensible defaults, and the few places it's worth being strict about access.",
         readTime: "4 min",
         audience: "Admins and managers",
+        routes: ["/settings/team", "/settings/security"],
         sections: [
           {
-            heading: "Role model",
+            heading: "The three roles",
+            paragraphs: [
+              "Knoledgr keeps the role model deliberately thin. Most workspaces don't need a custom permission tier — they need clarity on who can do what.",
+            ],
             bullets: [
-              "Admins manage workspace settings, approvals, and protected operations.",
-              "Managers drive operational workflows and team execution.",
-              "Contributors participate in day-to-day collaboration and delivery.",
+              "Admin — workspace settings, billing, security, integrations, invites, and audit. Usually 1–2 people.",
+              "Manager — can edit any decision or document, run sprints, approve proposals. Department leads, EM, PM.",
+              "Member — can create and edit their own decisions, conversations, and documents; can read everyone else's. The default for everyone else on the team.",
             ],
           },
           {
-            heading: "Governance habits that matter",
+            heading: "Don't over-engineer access",
+            paragraphs: [
+              "The temptation in a knowledge tool is to lock things down. Resist it. The whole value is that context is findable — if half the workspace is private, Ask Recall can't answer questions about it, and the team will route around the tool.",
+              "The two places restriction makes sense: HR/people topics, and pre-announcement strategy. Everything else is more useful open.",
+            ],
+          },
+          {
+            heading: "Inviting people",
             bullets: [
-              "Review pending outcomes and drift regularly.",
-              "Require decision linkage for high-impact execution changes.",
-              "Use audit, export, and enterprise controls where the operating model requires them.",
+              "Use the team's email domain in workspace settings — anyone with that domain can self-join.",
+              "For everyone else, send an invite with a role pre-set. The invite shows them what they'll get access to before they accept.",
+              "Audit pending invites monthly. Old pending invites are a small but real attack surface.",
+            ],
+          },
+          {
+            heading: "When someone leaves",
+            paragraphs: [
+              "Deactivate, don't delete. Their decisions, documents, and conversations should stay — that's the workspace's memory. Their name shows as \"former member\" on records they authored, and their account can no longer sign in.",
+              "If you're required to fully purge their authorship, that's a separate admin action and produces an audit log entry.",
             ],
           },
         ],
@@ -1101,25 +1320,43 @@ const BASE_DOCUMENTATION_GROUPS = [
       {
         id: "security-compliance",
         slug: "admin/security-and-compliance",
-        title: "Security and Compliance",
-        summary: "Manage security settings, audit access, and compliance controls from the admin surface.",
+        title: "Security and compliance",
+        summary: "SSO, MFA, audit logs, data export — the controls your security team will ask about, in plain terms.",
         readTime: "4 min",
         audience: "Admins, security leads",
+        routes: ["/settings/security", "/settings/audit", "/security-annex"],
         sections: [
           {
-            heading: "Security controls in product",
+            heading: "The controls that exist",
             bullets: [
-              "Security settings, audit logs, API keys, invitations, and data export live in admin flows.",
-              "Enterprise policies can require SSO, MFA, integration approval, and retention controls.",
-              "Partner and operational inboxes stay staff-only where the data is not customer-scoped.",
+              "SSO — SAML 2.0 with any compatible IdP (Okta, Azure AD, Google Workspace). Available on team and enterprise plans.",
+              "MFA — required workspace-wide or optional per-user. Set the policy under Security → Authentication.",
+              "Audit log — every admin action and high-impact write. Exportable as JSON or CSV.",
+              "API keys — scoped per integration, revocable individually, never re-displayed after creation.",
+              "Data export — full workspace export as JSON; available to admins on demand.",
             ],
           },
           {
-            heading: "When to use enterprise controls",
+            heading: "What's in the audit log",
+            paragraphs: [
+              "Anything that materially changes the workspace or its access: invites sent and accepted, role changes, integration installs and removals, security policy edits, exports, and API key lifecycle events.",
+              "Not in the audit log: routine reads, regular content edits, conversation replies. The audit log is meant to answer \"who did this admin thing?\" not \"who read this document?\"",
+            ],
+          },
+          {
+            heading: "Compliance posture",
+            paragraphs: [
+              "Knoledgr is SOC 2 Type II compliant; the report is available under NDA. Data residency for enterprise workspaces is US (default) or EU, set at workspace creation and not movable after. Encryption: TLS 1.2+ in transit, AES-256 at rest.",
+              "For the full security details — subprocessors, retention windows, breach notification — see the Security Annex linked from the footer.",
+            ],
+          },
+          {
+            heading: "When to escalate to enterprise controls",
             bullets: [
-              "If you need tighter governance around apps, access, residency, or auditability.",
-              "If rollout requires formal incident handling or policy enforcement.",
-              "If teams need portfolio-level visibility with stronger admin review loops.",
+              "You need integration installs to require admin approval.",
+              "You need workspace-wide retention policies (auto-archive after N years).",
+              "You need to enforce SSO with no password fallback.",
+              "You need IP allowlisting or session length policies.",
             ],
           },
         ],
@@ -1825,25 +2062,63 @@ const BASE_DOCUMENTATION_GROUPS = [
         id: "troubleshooting",
         slug: "reference/troubleshooting",
         title: "Troubleshooting",
-        summary: "Use these checks when docs, AI answers, context quality, or operational confidence feel weak.",
+        summary: "The problems most teams hit, and what they actually mean.",
         readTime: "4 min",
-        audience: "Admins, operators, power users",
+        audience: "Everyone",
         sections: [
           {
-            heading: "Common problems",
+            heading: "Ask Recall keeps saying \"low coverage\"",
+            paragraphs: [
+              "This isn't a model problem. It means the workspace doesn't have enough material on the topic for an answer to be built. Three things to check, in order:",
+            ],
             bullets: [
-              "Weak Ask Recall answers usually mean low evidence coverage or poor naming.",
-              "Sparse knowledge graph context usually means missing links between work artifacts.",
-              "Low sprint confidence usually points to blockers, unresolved decisions, or unstable scope.",
-              "Shallow docs usage usually means teams are storing context elsewhere instead of linking it inside Knoledgr.",
+              "Is the topic actually documented somewhere? If everyone's been discussing it in Slack and nobody wrote it down, Ask Recall has nothing to retrieve.",
+              "Are the relevant decisions and documents using the same names? \"Stripe migration\" and \"billing rewrite\" don't match each other. Pick one and rename.",
+              "Is the question phrased around terms that appear in the workspace? \"Why did we do that thing?\" can't anchor on anything. \"Why did we pick Stripe over Adyen?\" can.",
             ],
           },
           {
-            heading: "Where to look next",
+            heading: "The Knowledge Graph looks empty around a decision",
+            paragraphs: [
+              "An isolated node means the decision was made and nothing got linked to it after. Two paths:",
+            ],
             bullets: [
-              "Review the linked records first before assuming a ranking or AI problem.",
-              "Use documents and decisions as durable anchors for important context.",
-              "Check security, integrations, and enterprise settings when behavior differs across roles or workspaces.",
+              "Go back to the decision and add links to the tickets, documents, and conversations that came out of it. The graph updates immediately.",
+              "If there's actually nothing downstream — the decision was made and never acted on — that's its own signal. Either close the decision as cancelled or pick it back up.",
+            ],
+          },
+          {
+            heading: "Decisions don't show up in the dashboard \"awaiting outcome review\" list",
+            bullets: [
+              "Check that the decision has a prediction with a check-at date. No prediction → nothing to review.",
+              "Check that the check-at date has actually passed. Predictions don't surface as overdue until then.",
+              "Check that the decision status is \"implemented.\" Proposed or under-review decisions don't get outcome review prompts.",
+            ],
+          },
+          {
+            heading: "Sprint Autopilot says we're at risk and I don't think we are",
+            paragraphs: [
+              "Autopilot looks at four signals — pace, blockers, unresolved decisions, WIP. If the warning feels wrong, hover the risk indicator and check which one is firing.",
+            ],
+            bullets: [
+              "If it's WIP: someone has too many issues in progress. Often a leadership member with everything assigned to them by default.",
+              "If it's blockers: there are open blockers nobody's logged the resolution for. Close the resolved ones.",
+              "If it's unresolved decisions: a ticket in the sprint depends on a decision still being debated. Force the decision or pull the ticket.",
+            ],
+          },
+          {
+            heading: "An integration installed but isn't syncing",
+            bullets: [
+              "Check the integration's status page under Settings → Integrations. Most issues show up there with a one-line reason.",
+              "For GitHub: the linked app may have been removed on the GitHub side. Reinstall.",
+              "For Slack: webhook URLs expire if the channel is archived. Recreate the webhook.",
+              "For Jira: token-based auth eventually requires re-auth. The notice in the integration panel will tell you.",
+            ],
+          },
+          {
+            heading: "Something's broken and none of the above fits",
+            paragraphs: [
+              "Send a note from the Feedback page with the URL you were on and what happened. Include the rough time so we can match it to logs. We read every one.",
             ],
           },
         ],

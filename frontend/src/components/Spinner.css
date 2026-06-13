@@ -1,0 +1,61 @@
+/* Spinner — calm hairline arc.
+ * The SVG itself rotates; the track is a symmetric circle so it
+ * reads as stationary even while rotating. One animation, one node. */
+
+.kn-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  vertical-align: middle;
+  line-height: 0;
+}
+
+.kn-spinner--block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 16px;
+  line-height: 1;
+}
+
+.kn-spinner__svg {
+  display: block;
+  flex-shrink: 0;
+  animation: kn-spin 0.9s linear infinite;
+}
+
+.kn-spinner__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--app-muted, currentColor);
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+
+.kn-spinner--block .kn-spinner__label {
+  font-size: 13.5px;
+}
+
+/* Screen reader only — announces "Loading" or the label. */
+.kn-spinner__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes kn-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kn-spinner__svg { animation-duration: 3s; }
+}

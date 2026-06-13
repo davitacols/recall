@@ -237,12 +237,12 @@ function SkeletonTable() {
 
 const toolbar = { display: "flex", alignItems: "center", gap: 8, padding: "16px 0" };
 const searchIcon = { position: "absolute", left: 8, top: 8, width: 16, height: 16, color: "var(--app-muted)", pointerEvents: "none" };
-const tableWrap = { background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, overflow: "hidden" };
+const tableWrap = { background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 10, overflow: "hidden" };
 const tableStyle = { width: "100%", borderCollapse: "collapse" };
 const tableHeadRow = { background: "var(--app-surface-alt)" };
-const th = { textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--app-muted)", padding: "10px 16px", borderBottom: "1px solid var(--app-border)" };
+const th = { textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--app-muted)", padding: "10px 16px", borderBottom: "1px solid var(--app-border)" };
 const tableRow = { borderBottom: "1px solid var(--app-border-subtle)" };
 const td = { padding: "12px 16px", fontSize: 14, color: "var(--app-text)", verticalAlign: "middle" };
 const titleLink = { display: "block", color: "inherit", textDecoration: "none" };
-const titleText = { display: "block", fontSize: 14, fontWeight: 600, color: "var(--app-link)" };
+const titleText = { display: "block", fontSize: 14, fontWeight: 600, color: "var(--app-text)", letterSpacing: "-0.005em" };
 const excerptText = { display: "block", marginTop: 2, fontSize: 12, color: "var(--app-muted)", maxWidth: 540, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };

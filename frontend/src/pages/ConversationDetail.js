@@ -40,13 +40,13 @@ const REACTIONS = [
 function typeMeta(postType) {
   const t = String(postType || "discussion").toLowerCase().replace(/\s+/g, "_");
   const map = {
-    discussion: { Icon: ChatBubbleLeftRightIcon, color: "#5E6AD2", soft: "rgba(94,106,210,0.12)" },
-    question: { Icon: QuestionMarkCircleIcon, color: "#2FA4B8", soft: "rgba(47,164,184,0.13)" },
-    proposal: { Icon: LightBulbIcon, color: "#8A63D2", soft: "rgba(138,99,210,0.13)" },
-    decision: { Icon: CheckCircleIcon, color: "#2F9E6E", soft: "rgba(47,158,110,0.13)" },
-    update: { Icon: MegaphoneIcon, color: "#C8761E", soft: "rgba(200,118,30,0.13)" },
+    discussion: { Icon: ChatBubbleLeftRightIcon },
+    question: { Icon: QuestionMarkCircleIcon },
+    proposal: { Icon: LightBulbIcon },
+    decision: { Icon: CheckCircleIcon },
+    update: { Icon: MegaphoneIcon },
   };
-  return map[t] || { Icon: ChatBubbleLeftRightIcon, color: "#5E6AD2", soft: "rgba(94,106,210,0.12)" };
+  return map[t] || { Icon: ChatBubbleLeftRightIcon };
 }
 
 function initial(name) {
@@ -404,7 +404,7 @@ export default function ConversationDetail() {
   const replyCount = replies.length;
   const reactionTotal = (reactions.reactions || []).reduce((a, r) => a + (r.count || 0), 0);
   const type = (conversation.post_type || "discussion").replace("_", " ");
-  const { Icon: TypeIcon, color: typeColor, soft: typeSoft } = typeMeta(conversation.post_type);
+  const { Icon: TypeIcon } = typeMeta(conversation.post_type);
   const createdLabel = new Date(conversation.created_at).toLocaleDateString();
   const updatedLabel = conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : createdLabel;
   const isOwner = Number(conversation.author?.id || conversation.author_id) === Number(currentUserId);
@@ -416,7 +416,7 @@ export default function ConversationDetail() {
 
       <header className="cd-head">
         <div className="cd-head-meta">
-          <span className="cd-type-badge" style={{ background: typeSoft, color: typeColor }}>
+          <span className="cd-type-badge">
             <TypeIcon /> {type}
           </span>
           <span style={{ fontSize: 12.5, color: "var(--app-muted)" }}>

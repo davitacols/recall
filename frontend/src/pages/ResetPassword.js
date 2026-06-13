@@ -2,12 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
-import {
-  AuthLayout,
-  Button,
-  Field,
-  SectionMessage,
-} from "../components/atlas";
+import BrandLogo from "../components/BrandLogo";
+import "./Login.css";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -31,6 +27,14 @@ export default function ResetPassword() {
     ],
     [password]
   );
+
+  useEffect(() => {
+    const saved = document.documentElement.getAttribute("data-theme");
+    document.documentElement.setAttribute("data-theme", "light");
+    return () => {
+      document.documentElement.setAttribute("data-theme", saved || localStorage.getItem("theme") || "light");
+    };
+  }, []);
 
   useEffect(() => {
     if (!message) return undefined;
@@ -71,73 +75,73 @@ export default function ResetPassword() {
   };
 
   return (
-    <AuthLayout
-      title="Set a new password"
-      subtitle="Choose a strong password that you haven't used before."
-    >
-      {message ? (
-        <SectionMessage tone="success" title="Password updated">
-          {message} Redirecting in {seconds}…
-        </SectionMessage>
-      ) : (
-        <>
-          {error ? <SectionMessage tone="error" style={{ marginBottom: 16 }}>{error}</SectionMessage> : null}
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Field label="New password" isRequired>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="atlas-input"
-                autoComplete="new-password"
-                required
-                autoFocus
-              />
-            </Field>
-            <Field label="Confirm password" isRequired>
-              <input
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                className="atlas-input"
-                autoComplete="new-password"
-                required
-              />
-            </Field>
-            <ul style={checklist}>
-              {checks.map((c) => (
-                <li key={c.key} style={{ ...checkItem, color: c.valid ? "var(--g500)" : "var(--app-muted)" }}>
-                  <CheckIcon style={{ width: 12, height: 12, opacity: c.valid ? 1 : 0.3 }} />
-                  {c.label}
-                </li>
-              ))}
-            </ul>
-            <Button type="submit" appearance="primary" fullWidth isDisabled={loading}>
-              {loading ? "Saving…" : "Update password"}
-            </Button>
-          </form>
-        </>
-      )}
+    <div className="lg">
+      <header className="lg-top">
+        <Link to="/" className="lg-brand" aria-label="Knoledgr home">
+          <BrandLogo tone="warm" size="md" />
+        </Link>
+        <Link to="/login" className="lg-back">← Back to sign in</Link>
+      </header>
 
-      <p style={{ marginTop: 16, fontSize: 13, color: "var(--app-muted)" }}>
-        <Link to="/login" style={{ color: "var(--app-link)" }}>Back to sign in</Link>
-      </p>
-    </AuthLayout>
+      <main className="lg-main">
+        <div className="lg-card">
+          <div className="lg-head">
+            <h1 className="lg-title">Set a new password</h1>
+            <p className="lg-subtitle">Choose a strong password that you haven't used before.</p>
+          </div>
+
+          {message ? (
+            <div className="lg-success" role="status">
+              <strong>Password updated.</strong>
+              <p>{message}</p>
+              <p className="lg-success-meta">Redirecting in {seconds}…</p>
+            </div>
+          ) : (
+            <>
+              {error ? <div className="lg-error" role="alert">{error}</div> : null}
+              <form onSubmit={handleSubmit} className="lg-form">
+                <label className="lg-field">
+                  <span className="lg-label">New password</span>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="lg-input"
+                    autoComplete="new-password"
+                    required
+                    autoFocus
+                  />
+                </label>
+                <label className="lg-field">
+                  <span className="lg-label">Confirm password</span>
+                  <input
+                    type="password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    className="lg-input"
+                    autoComplete="new-password"
+                    required
+                  />
+                </label>
+                <ul className="lg-checks">
+                  {checks.map((c) => (
+                    <li key={c.key} className={`lg-check ${c.valid ? "is-valid" : ""}`}>
+                      <CheckIcon /> {c.label}
+                    </li>
+                  ))}
+                </ul>
+                <button type="submit" className="lg-submit" disabled={loading}>
+                  {loading ? "Saving…" : "Update password"}
+                </button>
+              </form>
+            </>
+          )}
+
+          <p className="lg-foot-line">
+            <Link to="/login" className="lg-link">Back to sign in</Link>
+          </p>
+        </div>
+      </main>
+    </div>
   );
 }
-
-const checklist = {
-  margin: "4px 0 0",
-  padding: 0,
-  listStyle: "none",
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 4,
-};
-
-const checkItem = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  fontSize: 12,
-};

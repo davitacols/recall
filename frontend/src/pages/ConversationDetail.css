@@ -31,11 +31,14 @@
   padding: 0 10px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  background: var(--app-surface-alt);
+  border: 1px solid var(--app-border);
+  color: var(--app-text-subtle);
 }
-.cd-type-badge svg { width: 13px; height: 13px; }
+.cd-type-badge svg { width: 13px; height: 13px; color: var(--app-muted); }
 
 .cd-title {
   margin: 0;

@@ -174,7 +174,7 @@ export default function MeetingDetail() {
       <div style={pageGrid}>
         <section style={{ minWidth: 0 }}>
           {editing ? (
-            <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 12, padding: 20, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4 }}>
+            <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 12, padding: 20, background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 10 }}>
               <Field label="Title" isRequired>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="atlas-input" required />
               </Field>
@@ -197,7 +197,7 @@ export default function MeetingDetail() {
               </Field>
             </form>
           ) : (
-            <article style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 4, padding: 24, minHeight: 240 }}>
+            <article style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 10, padding: 24, minHeight: 240 }}>
               {meeting.notes ? (
                 <div className="atlas-article" style={{ whiteSpace: "pre-wrap", lineHeight: 1.55, fontSize: 14, color: "var(--app-text)" }}>
                   {meeting.notes}
@@ -238,7 +238,7 @@ function DetailRow({ icon, label, value }) {
     <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0" }}>
       <span style={{ color: "var(--app-muted)", marginTop: 2 }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 11, color: "var(--app-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>{label}</p>
+        <p style={{ margin: 0, fontSize: 11, color: "var(--app-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>{label}</p>
         <p style={{ margin: 0, fontSize: 13, color: "var(--app-text)" }}>{value}</p>
       </div>
     </div>
@@ -255,15 +255,15 @@ const pageGrid = {
 const sidePanel = {
   background: "var(--app-surface-alt)",
   border: "1px solid var(--app-border)",
-  borderRadius: 4,
+  borderRadius: 10,
   padding: 16,
 };
 
 const panelTitle = {
-  margin: "0 0 8px",
+  margin: "0 0 10px",
   fontSize: 11,
-  fontWeight: 700,
+  fontWeight: 600,
   textTransform: "uppercase",
-  letterSpacing: "0.04em",
+  letterSpacing: "0.08em",
   color: "var(--app-muted)",
 };

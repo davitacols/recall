@@ -35,11 +35,11 @@ import { useAgentContextHint } from "../components/AgentDock";
 import "./Conversations.css";
 
 const POST_TYPE_META = {
-  discussion: { Icon: ChatBubbleLeftRightIcon, color: "#5E6AD2", soft: "rgba(94,106,210,0.13)", label: "Discussion" },
-  question: { Icon: QuestionMarkCircleIcon, color: "#2FA4B8", soft: "rgba(47,164,184,0.14)", label: "Question" },
-  proposal: { Icon: LightBulbIcon, color: "#8A63D2", soft: "rgba(138,99,210,0.14)", label: "Proposal" },
-  decision: { Icon: CheckCircleIcon, color: "#2F9E6E", soft: "rgba(47,158,110,0.13)", label: "Decision" },
-  update: { Icon: MegaphoneIcon, color: "#C8761E", soft: "rgba(200,118,30,0.14)", label: "Update" },
+  discussion: { Icon: ChatBubbleLeftRightIcon, label: "Discussion" },
+  question: { Icon: QuestionMarkCircleIcon, label: "Question" },
+  proposal: { Icon: LightBulbIcon, label: "Proposal" },
+  decision: { Icon: CheckCircleIcon, label: "Decision" },
+  update: { Icon: MegaphoneIcon, label: "Update" },
 };
 
 function postTypeMeta(t) {
@@ -233,14 +233,14 @@ function PipelineKPI({ id, title, count, Icon, tone, active, onClick }) {
 }
 
 function Row({ c, onDelete }) {
-  const { Icon, color, soft, label } = postTypeMeta(c.post_type);
+  const { Icon, label } = postTypeMeta(c.post_type);
   const author = c.author || "Anonymous";
   const summary = stripHtml(c.key_takeaway || c.ai_summary || c.content || "");
   const isUrgent = c.is_crisis || c.priority === "urgent";
   const isClosed = c.is_closed || c.status_label === "resolved";
   return (
     <Link to={`/conversations/${c.id}`} className="conv-row" data-closed={isClosed ? "1" : "0"}>
-      <span className="conv-row-type" style={{ background: soft, color }} title={label}>
+      <span className="conv-row-type" title={label}>
         <Icon />
       </span>
       <div className="conv-row-main">

@@ -1,11 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import {
-  AuthLayout,
-  Button,
-  Field,
-  SectionMessage,
-} from "../components/atlas";
+import BrandLogo from "../components/BrandLogo";
+import "./Login.css";
 
 export default function AcceptInvite() {
   const { token } = useParams();
@@ -17,6 +13,14 @@ export default function AcceptInvite() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const saved = document.documentElement.getAttribute("data-theme");
+    document.documentElement.setAttribute("data-theme", "light");
+    return () => {
+      document.documentElement.setAttribute("data-theme", saved || localStorage.getItem("theme") || "light");
+    };
+  }, []);
 
   useEffect(() => {
     const verify = async () => {
@@ -67,77 +71,95 @@ export default function AcceptInvite() {
     }
   };
 
-  if (loading) {
-    return (
-      <AuthLayout title="Verifying invitation…" subtitle="Just a moment.">
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--app-muted)" }}>
-          <span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid var(--n40)", borderTopColor: "var(--b400)", animation: "spin 1s linear infinite" }} />
-          Loading…
+  const shell = (title, subtitle, children) => (
+    <div className="lg">
+      <header className="lg-top">
+        <Link to="/" className="lg-brand" aria-label="Knoledgr home">
+          <BrandLogo tone="warm" size="md" />
+        </Link>
+        <Link to="/login" className="lg-back">← Back to sign in</Link>
+      </header>
+      <main className="lg-main">
+        <div className="lg-card">
+          <div className="lg-head">
+            <h1 className="lg-title">{title}</h1>
+            <p className="lg-subtitle">{subtitle}</p>
+          </div>
+          {children}
         </div>
-      </AuthLayout>
-    );
+      </main>
+    </div>
+  );
+
+  if (loading) {
+    return shell("Verifying invitation…", "Just a moment.", (
+      <p className="lg-foot-line" style={{ color: "var(--lg-muted)" }}>Loading…</p>
+    ));
   }
 
   if (error && !invitation) {
-    return (
-      <AuthLayout title="Invitation invalid" subtitle={error}>
-        <Button appearance="primary" fullWidth onClick={() => navigate("/login")}>
-          Go to sign in
-        </Button>
-      </AuthLayout>
-    );
+    return shell("Invitation invalid", error, (
+      <button type="button" className="lg-submit" onClick={() => navigate("/login")}>
+        Go to sign in
+      </button>
+    ));
   }
 
-  return (
-    <AuthLayout
-      title={`Join ${invitation?.organization_name || "the workspace"}`}
-      subtitle={
-        invitation?.inviter_name
-          ? `${invitation.inviter_name} invited you to join as ${invitation?.role || "member"}.`
-          : "Create your account to accept this invitation."
-      }
-    >
-      {error ? <SectionMessage tone="error" style={{ marginBottom: 16 }}>{error}</SectionMessage> : null}
+  return shell(
+    `Join ${invitation?.organization_name || "the workspace"}`,
+    invitation?.inviter_name
+      ? `${invitation.inviter_name} invited you to join as ${invitation?.role || "member"}.`
+      : "Create your account to accept this invitation.",
+    (
+      <>
+        {error ? <div className="lg-error" role="alert">{error}</div> : null}
 
-      <form onSubmit={handleAccept} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Field label="Email" isRequired>
-          <input
-            type="email"
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            className="atlas-input"
-            disabled={!!invitation?.email}
-            required
-          />
-        </Field>
-        <Field label="Full name" isRequired>
-          <input
-            value={form.full_name}
-            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-            className="atlas-input"
-            required
-            autoFocus
-          />
-        </Field>
-        <Field label="Password" isRequired>
-          <input
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="atlas-input"
-            autoComplete="new-password"
-            required
-          />
-        </Field>
-        <Button type="submit" appearance="primary" fullWidth isDisabled={submitting || !form.full_name || !form.password}>
-          {submitting ? "Joining…" : "Accept invitation"}
-        </Button>
-      </form>
+        <form onSubmit={handleAccept} className="lg-form">
+          <label className="lg-field">
+            <span className="lg-label">Email</span>
+            <input
+              type="email"
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              className="lg-input"
+              disabled={!!invitation?.email}
+              required
+            />
+          </label>
+          <label className="lg-field">
+            <span className="lg-label">Full name</span>
+            <input
+              value={form.full_name}
+              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              className="lg-input"
+              required
+              autoFocus
+            />
+          </label>
+          <label className="lg-field">
+            <span className="lg-label">Password</span>
+            <input
+              type="password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              className="lg-input"
+              autoComplete="new-password"
+              required
+            />
+          </label>
+          <button
+            type="submit"
+            className="lg-submit"
+            disabled={submitting || !form.full_name || !form.password}
+          >
+            {submitting ? "Joining…" : "Accept invitation"}
+          </button>
+        </form>
 
-      <p style={{ marginTop: 16, fontSize: 13, color: "var(--app-muted)" }}>
-        Already have an account?{" "}
-        <Link to="/login" style={{ color: "var(--app-link)" }}>Sign in</Link>
-      </p>
-    </AuthLayout>
+        <p className="lg-foot-line">
+          Already have an account? <Link to="/login" className="lg-link">Sign in</Link>
+        </p>
+      </>
+    )
   );
 }

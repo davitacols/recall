@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q, Count
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, timezone as dt_timezone
 from pathlib import Path
 import json
 from .models import KnowledgeEntry
@@ -65,11 +65,25 @@ def _briefing_priority_rank(value):
     return order.get(str(value or '').lower(), 5)
 
 
-def _briefing_sort_key(item):
+def _briefing_recency(item):
+    """Epoch seconds for a briefing item, tolerant of naive timestamps.
+
+    The business_* tables were created by raw SQL rather than migrations, so
+    their columns are `timestamp without time zone` and arrive naive while
+    every other source is aware. Sorting a mixed list on the datetimes
+    themselves raises TypeError, so normalise to UTC and reduce to a float
+    before any comparison happens.
+    """
     timestamp = item.get('_sort_timestamp') or timezone.now()
+    if timezone.is_naive(timestamp):
+        timestamp = timestamp.replace(tzinfo=dt_timezone.utc)
+    return timestamp.timestamp()
+
+
+def _briefing_sort_key(item):
     return (
         _briefing_priority_rank(item.get('priority')),
-        -timestamp.timestamp(),
+        -_briefing_recency(item),
     )
 
 
@@ -639,7 +653,7 @@ def workspace_briefing(request):
             )
         )
 
-    what_changed.sort(key=lambda item: item.get('_sort_timestamp') or timezone.now(), reverse=True)
+    what_changed.sort(key=_briefing_recency, reverse=True)
     what_changed = what_changed[:6]
 
     needs_attention = []

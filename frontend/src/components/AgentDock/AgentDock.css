@@ -63,13 +63,13 @@
 .ad-head-mark svg { width: 16px; height: 16px; }
 .ad-head-name {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--app-text);
 }
 .ad-head-context {
   margin: 1px 0 0;
-  font-size: 12.5px;
+  font-size: 14.5px;
   color: var(--app-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -78,7 +78,7 @@
 }
 .ad-head-context kbd {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   padding: 1px 5px;
   background: var(--app-surface-alt);
   border: 1px solid var(--app-border-subtle);
@@ -121,7 +121,7 @@
   background: rgba(222, 53, 11, 0.08);
   border: 1px solid rgba(222, 53, 11, 0.32);
   border-radius: 10px;
-  font-size: 13.5px;
+  font-size: 15.5px;
   color: #BF2600;
   margin: 0 16px;
 }
@@ -165,13 +165,13 @@
 .ad-empty-icon svg { width: 18px; height: 18px; }
 .ad-empty-hero h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 600;
   color: var(--app-text);
 }
 .ad-empty-hero p {
   margin: 4px 0 0;
-  font-size: 13.5px;
+  font-size: 15.5px;
   color: var(--app-muted);
   line-height: 1.55;
 }
@@ -185,7 +185,7 @@
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: 999px;
-  font-size: 12.5px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--app-text);
   cursor: pointer;
@@ -202,14 +202,14 @@
   background: var(--ad-gradient-soft);
   border: 1px solid rgba(110, 86, 255, 0.28);
   border-radius: 10px;
-  font-size: 13.5px;
+  font-size: 15.5px;
   color: var(--app-text);
 }
 .ad-empty-context svg { width: 14px; height: 14px; color: #6E56FF; flex-shrink: 0; }
 .ad-empty-context strong { font-weight: 600; }
 
 .ad-empty-divider {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.06em;
   font-weight: 700;
   text-transform: uppercase;
@@ -227,7 +227,7 @@
   border: 1px solid var(--app-border);
   border-radius: 10px;
   color: var(--app-text);
-  font-size: 14px;
+  font-size: 16px;
   text-align: left;
   cursor: pointer;
   font-family: inherit;
@@ -256,7 +256,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: 14.5px;
   color: var(--app-muted);
 }
 .ad-run-meta svg { width: 12px; height: 12px; }
@@ -269,7 +269,7 @@
   background: transparent;
   border: 1px solid var(--app-border);
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--app-muted);
   cursor: pointer;
@@ -285,7 +285,7 @@
   background: var(--app-surface-alt);
   border: 1px solid var(--app-border);
   border-radius: 12px;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.5;
   color: var(--app-text);
   font-weight: 500;
@@ -323,7 +323,7 @@
   padding: 3px 10px 3px 8px;
   background: var(--app-surface-alt);
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--app-text);
@@ -405,7 +405,7 @@
 .ad-trace-row--thought .ad-md {
   font-style: italic;
   color: var(--app-muted);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
   border-left: 2px solid rgba(110,86,255,0.32);
   padding-left: 10px;
@@ -415,7 +415,7 @@
 .ad-trace-thinking {
   display: inline-flex;
   align-items: center;
-  font-size: 13.5px;
+  font-size: 15.5px;
   color: var(--app-muted);
   font-style: italic;
 }
@@ -444,7 +444,7 @@
 .ad-trace-row--tool.is-write .ad-tool { border-color: rgba(255,139,0,0.28); }
 .ad-tool-name {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--app-text);
   align-self: flex-start;
@@ -456,7 +456,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: 14.5px;
   color: var(--app-muted);
 }
 .ad-tool-state--ok { color: #00A971; }
@@ -486,7 +486,7 @@
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -496,7 +496,7 @@
 
 /* ───── Markdown (shared) ───── */
 
-.ad-md { color: var(--app-text); font-size: 14px; line-height: 1.6; }
+.ad-md { color: var(--app-text); font-size: 16px; line-height: 1.6; }
 .ad-md > :first-child { margin-top: 0; }
 .ad-md > :last-child { margin-bottom: 0; }
 .ad-md h1, .ad-md h2, .ad-md h3, .ad-md h4 {
@@ -505,10 +505,10 @@
   color: var(--app-text);
   line-height: 1.3;
 }
-.ad-md h1 { font-size: 17px; }
-.ad-md h2 { font-size: 15.5px; padding-bottom: 4px; border-bottom: 1px solid var(--app-border-subtle); }
-.ad-md h3 { font-size: 14.5px; }
-.ad-md h4 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--app-muted); }
+.ad-md h1 { font-size: 19px; }
+.ad-md h2 { font-size: 17.5px; padding-bottom: 4px; border-bottom: 1px solid var(--app-border-subtle); }
+.ad-md h3 { font-size: 16.5px; }
+.ad-md h4 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--app-muted); }
 .ad-md p { margin: 0 0 8px; line-height: 1.6; }
 .ad-md ul, .ad-md ol { margin: 0 0 8px; padding-left: 20px; }
 .ad-md li { margin: 2px 0; }
@@ -529,14 +529,14 @@
   width: 100%;
   border-collapse: collapse;
   margin: 8px 0;
-  font-size: 13px;
+  font-size: 15px;
   background: var(--app-surface-alt);
   border: 1px solid var(--app-border);
   border-radius: 8px;
   overflow: hidden;
 }
 .ad-md th, .ad-md td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--app-border-subtle); }
-.ad-md th { background: var(--app-surface); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--app-muted); }
+.ad-md th { background: var(--app-surface); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--app-muted); }
 .ad-md code {
   font-family: var(--font-mono);
   font-size: 0.92em;
@@ -552,7 +552,7 @@
   border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   overflow-x: auto;
-  font-size: 12.5px;
+  font-size: 14.5px;
 }
 .ad-md pre code { background: transparent; border: none; padding: 0; }
 
@@ -569,7 +569,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 600;
   color: var(--app-text);
 }
@@ -591,7 +591,7 @@
 }
 .ad-approval-name {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--app-text);
 }
@@ -600,7 +600,7 @@
   background: transparent;
   border: 1px solid var(--app-border);
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--app-text);
   cursor: pointer;
@@ -617,7 +617,7 @@
 }
 .ad-approval-field > span {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--app-muted);
 }
@@ -628,7 +628,7 @@
   background: var(--app-surface-alt);
   border: 1px solid var(--app-border);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--app-text);
   font-family: inherit;
 }
@@ -646,7 +646,7 @@
   height: 30px;
   padding: 0 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -712,7 +712,7 @@
   outline: none;
   resize: none;
   font-family: inherit;
-  font-size: 14.5px;
+  font-size: 16.5px;
   line-height: 1.45;
   color: var(--app-text);
 }
@@ -769,7 +769,7 @@
 }
 .ad-picker-head p {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--app-text);
 }
@@ -819,12 +819,12 @@
   flex-direction: column;
 }
 .ad-picker-row-text > span:first-child {
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 600;
   color: var(--app-text);
 }
 .ad-picker-row-text > span:last-child {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--app-muted);
 }
 .ad-picker-row-check {
@@ -851,7 +851,7 @@
   border: none;
   border-radius: 999px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 12px 28px -8px rgba(110, 86, 255, 0.6);
@@ -878,7 +878,7 @@
   line-height: 1.05;
 }
 .ad-fab-context {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   opacity: 0.85;
   white-space: nowrap;
@@ -894,7 +894,7 @@
   background: rgba(255, 255, 255, 0.18);
   border-radius: 6px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 

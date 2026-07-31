@@ -209,7 +209,7 @@ body {
   min-height: 100vh;
   text-rendering: optimizeLegibility;
   font-feature-settings: "kern", "liga", "calt";
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.45;
   letter-spacing: -0.01em;
 }
@@ -239,12 +239,12 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
 }
 
-h1 { font-size: 33px; line-height: 1.1; font-weight: 800; letter-spacing: -0.04em; }
-h2 { font-size: 26px; line-height: 1.12; font-weight: 700; letter-spacing: -0.035em; }
-h3 { font-size: 22px; line-height: 1.15; font-weight: 700; letter-spacing: -0.028em; }
-h4 { font-size: 17px; line-height: 1.2; font-weight: 600; letter-spacing: -0.018em; }
-h5 { font-size: 15px; line-height: 1.25; font-weight: 600; letter-spacing: -0.01em; }
-h6 { font-size: 12px; line-height: 1.3; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--app-muted); }
+h1 { font-size: 34px; line-height: 1.1; font-weight: 800; letter-spacing: -0.04em; }
+h2 { font-size: 27px; line-height: 1.12; font-weight: 700; letter-spacing: -0.035em; }
+h3 { font-size: 24px; line-height: 1.15; font-weight: 700; letter-spacing: -0.028em; }
+h4 { font-size: 19px; line-height: 1.2; font-weight: 600; letter-spacing: -0.018em; }
+h5 { font-size: 17px; line-height: 1.25; font-weight: 600; letter-spacing: -0.01em; }
+h6 { font-size: 14px; line-height: 1.3; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--app-muted); }
 
 p {
   color: var(--app-text);
@@ -341,7 +341,7 @@ code, kbd, pre, samp {
   align-items: center;
   height: 18px;
   padding: 0 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 18px;
   letter-spacing: 0.02em;
@@ -357,7 +357,7 @@ code, kbd, pre, samp {
   min-width: 18px;
   height: 18px;
   padding: 0 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   border-radius: 9999px;
@@ -375,7 +375,7 @@ code, kbd, pre, samp {
 .atlas-tab {
   position: relative;
   padding: 8px 4px;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 500;
   color: var(--app-muted);
   background: transparent;
@@ -401,7 +401,7 @@ code, kbd, pre, samp {
   height: 32px;
   padding: 0 14px;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 540;
   letter-spacing: -0.006em;
   border: none;
@@ -434,8 +434,8 @@ code, kbd, pre, samp {
 .atlas-btn--danger { background: var(--r400); color: #FFFFFF; }
 .atlas-btn--danger:hover:not(:disabled) { background: var(--r500); }
 
-.atlas-btn--sm { height: 28px; padding: 0 10px; font-size: 14px; border-radius: 7px; }
-.atlas-btn--lg { height: 40px; padding: 0 18px; font-size: 16px; border-radius: 9px; }
+.atlas-btn--sm { height: 28px; padding: 0 10px; font-size: 16px; border-radius: 7px; }
+.atlas-btn--lg { height: 40px; padding: 0 18px; font-size: 18px; border-radius: 9px; }
 
 .atlas-icon-btn {
   display: inline-flex;
@@ -457,7 +457,7 @@ code, kbd, pre, samp {
 .atlas-input {
   height: 36px;
   padding: 0 12px;
-  font-size: 15px;
+  font-size: 17px;
   color: var(--app-text);
   background: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -489,7 +489,7 @@ textarea.atlas-input { height: auto; min-height: 80px; padding: 10px 12px; line-
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--app-muted);
 }
 .atlas-breadcrumb a { color: var(--app-muted); }
@@ -504,7 +504,7 @@ textarea.atlas-input { height: auto; min-height: 80px; padding: 10px 12px; line-
   padding: 0 12px 0 13px;
   margin: 0 8px;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 500;
   color: var(--app-text);
   cursor: pointer;
@@ -521,7 +521,7 @@ textarea.atlas-input { height: auto; min-height: 80px; padding: 10px 12px; line-
 .atlas-sidebar-section-label {
   display: block;
   padding: 16px 16px 4px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -537,10 +537,10 @@ textarea.atlas-input { height: auto; min-height: 80px; padding: 10px 12px; line-
   .atlas-auth-grid { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
-.atlas-article h1 { font-size: 32px; line-height: 1.16; font-weight: 500; margin: 24px 0 12px; }
-.atlas-article h2 { font-size: 26px; line-height: 1.2; font-weight: 500; margin: 24px 0 12px; }
-.atlas-article h3 { font-size: 22px; line-height: 1.2; font-weight: 500; margin: 20px 0 8px; }
-.atlas-article h4 { font-size: 17px; font-weight: 600; margin: 16px 0 8px; }
+.atlas-article h1 { font-size: 33px; line-height: 1.16; font-weight: 500; margin: 24px 0 12px; }
+.atlas-article h2 { font-size: 27px; line-height: 1.2; font-weight: 500; margin: 24px 0 12px; }
+.atlas-article h3 { font-size: 24px; line-height: 1.2; font-weight: 500; margin: 20px 0 8px; }
+.atlas-article h4 { font-size: 19px; font-weight: 600; margin: 16px 0 8px; }
 .atlas-article p { margin: 0 0 12px; }
 .atlas-article ul, .atlas-article ol { margin: 0 0 12px 20px; }
 .atlas-article li { margin-bottom: 4px; }

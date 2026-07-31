@@ -17,14 +17,14 @@
 }
 .st-title {
   margin: 0;
-  font-size: 26px;
+  font-size: 27px;
   font-weight: 600;
   letter-spacing: -0.022em;
   color: var(--app-text);
 }
 .st-sub {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--app-muted);
 }
 
@@ -59,7 +59,7 @@
   background: transparent;
   color: var(--app-text-subtle, var(--app-text));
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   cursor: pointer;
   border-radius: 6px;
@@ -112,14 +112,14 @@
 }
 .st-panel-head h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.005em;
   color: var(--app-text);
 }
 .st-panel-head p {
   margin: 4px 0 0;
-  font-size: 13.5px;
+  font-size: 15.5px;
   color: var(--app-muted);
   max-width: 540px;
 }
@@ -142,7 +142,7 @@
   background: var(--app-surface);
   color: var(--app-text);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 500;
   cursor: pointer;
   transition: background 100ms ease, border-color 100ms ease;
@@ -182,12 +182,12 @@
   gap: 5px;
 }
 .st-field-label {
-  font-size: 12.5px;
+  font-size: 14.5px;
   font-weight: 500;
   color: var(--app-muted);
 }
 .st-field-hint {
-  font-size: 12.5px;
+  font-size: 14.5px;
   color: var(--app-muted);
 }
 .st-input {
@@ -198,7 +198,7 @@
   background: var(--app-surface);
   color: var(--app-text);
   font: inherit;
-  font-size: 14.5px;
+  font-size: 16.5px;
   outline: none;
   transition: border-color 100ms ease;
 }
@@ -208,8 +208,8 @@
   color: var(--app-muted);
   cursor: not-allowed;
 }
-textarea.st-input { resize: vertical; min-height: 80px; font: inherit; font-size: 14.5px; }
-select.st-input { font: inherit; font-size: 14.5px; }
+textarea.st-input { resize: vertical; min-height: 80px; font: inherit; font-size: 16.5px; }
+select.st-input { font: inherit; font-size: 16.5px; }
 
 /* ─── toggle ──────────────────────────────────────────────── */
 
@@ -229,12 +229,12 @@ select.st-input { font: inherit; font-size: 14.5px; }
   gap: 2px;
 }
 .st-toggle-label {
-  font-size: 14.5px;
+  font-size: 16.5px;
   font-weight: 500;
   color: var(--app-text);
 }
 .st-toggle-desc {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--app-muted);
 }
 .st-toggle-switch {
@@ -301,7 +301,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
   border-right: 1px solid var(--app-border);
   color: var(--app-text-subtle, var(--app-text));
   font: inherit;
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 500;
   cursor: pointer;
   transition: background 100ms ease;
@@ -313,7 +313,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
   color: var(--app-text);
 }
 .st-seg-hint {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
   color: var(--app-muted);
 }
@@ -341,7 +341,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
 
 .st-subhead {
   margin: 4px 0 8px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--app-text);
 }
@@ -352,7 +352,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
 .st-empty {
   margin: 8px 0;
   padding: 12px 0;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--app-muted);
 }
 
@@ -362,7 +362,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
 }
 .st-table th {
   text-align: left;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -373,7 +373,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
 .st-table th:last-child { text-align: right; }
 .st-table td {
   padding: 10px 0;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--app-text);
   border-bottom: 1px solid var(--app-border);
   vertical-align: middle;
@@ -381,7 +381,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
 .st-table tr:last-child td { border-bottom: none; }
 .st-table-muted {
   color: var(--app-muted);
-  font-size: 13.5px;
+  font-size: 15.5px;
 }
 .st-table-right { text-align: right; }
 .st-table-link {
@@ -392,7 +392,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
   border: none;
   color: var(--app-text);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 500;
   cursor: pointer;
   padding: 0;
@@ -406,7 +406,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
   border: 1px solid var(--app-border);
   border-radius: 7px;
   background: var(--app-surface-alt);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--app-text-subtle, var(--app-text));
 }
 
@@ -444,7 +444,7 @@ select.st-input { font: inherit; font-size: 14.5px; }
 }
 .st-modal-head h2 {
   margin: 0;
-  font-size: 14.5px;
+  font-size: 16.5px;
   font-weight: 600;
   color: var(--app-text);
 }

@@ -68,7 +68,7 @@
   filter: brightness(0) invert(1);
 }
 .tn-brand-name {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.014em;
   color: var(--app-text);
@@ -92,7 +92,7 @@
   color: var(--app-text);
   cursor: pointer;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   transition: background 100ms ease, border-color 100ms ease;
   max-width: 280px;
@@ -110,14 +110,14 @@
   color: var(--app-text);
   display: grid;
   place-items: center;
-  font-size: 12.5px;
+  font-size: 14.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   flex-shrink: 0;
   border: 1px solid var(--app-border);
 }
 .tn-workspace-name {
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -169,13 +169,13 @@
   background: transparent;
   color: var(--app-text);
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   padding: 0 4px;
 }
 .tn-search input::placeholder { color: var(--app-muted); }
 .tn-search kbd {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--app-text-disabled, var(--app-muted));
   padding: 1px 5px;
   border-radius: 3px;
@@ -207,7 +207,7 @@
   background: var(--app-text);
   color: var(--app-surface);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 600;
   cursor: pointer;
   transition: background 100ms ease;
@@ -265,7 +265,7 @@
   color: var(--app-text);
   cursor: pointer;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   transition: background 100ms ease, border-color 100ms ease;
 }
@@ -319,7 +319,7 @@
 }
 .tn-profile-fullname {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--app-text);
   overflow: hidden;
@@ -328,7 +328,7 @@
 }
 .tn-profile-email {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 14.5px;
   color: var(--app-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -336,7 +336,7 @@
 }
 .tn-profile-role {
   margin: 2px 0 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--app-text-disabled, var(--app-muted));
   text-transform: lowercase;
 }
@@ -359,7 +359,7 @@
   color: var(--app-text);
   text-decoration: none;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   text-align: left;
   transition: background 100ms ease;

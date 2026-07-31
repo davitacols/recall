@@ -58,14 +58,14 @@
 .docs-drawer-head-icon svg { width: 18px; height: 18px; }
 .docs-drawer-head-title {
   margin: 0;
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 650;
   letter-spacing: -0.01em;
   color: var(--app-text);
 }
 .docs-drawer-head-sub {
   margin: 3px 0 0;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--app-muted);
   display: flex;
   align-items: center;
@@ -80,7 +80,7 @@
   border: 1px solid var(--app-border);
   background: var(--app-surface-alt);
   color: var(--app-text-subtle);
-  font-size: 12px;
+  font-size: 14px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
 }
 .docs-drawer-close {
@@ -113,7 +113,7 @@
   background: var(--app-surface-alt);
   color: var(--app-text);
   font: inherit;
-  font-size: 14.5px;
+  font-size: 16.5px;
   outline: none;
   transition: border-color 120ms ease;
 }
@@ -158,7 +158,7 @@
 .docs-drawer-group { display: flex; flex-direction: column; gap: 6px; }
 .docs-drawer-group-title {
   margin: 0 0 4px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -193,12 +193,12 @@
   transform: translateY(-1px);
 }
 .docs-drawer-page-title {
-  font-size: 14.5px;
+  font-size: 16.5px;
   font-weight: 650;
   color: var(--app-text);
 }
 .docs-drawer-page-summary {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--app-muted);
   line-height: 1.5;
   display: -webkit-box;
@@ -236,7 +236,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -248,12 +248,12 @@
   color: var(--app-border-strong, var(--app-border));
 }
 .docs-drawer-result-title {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 650;
   color: var(--app-text);
 }
 .docs-drawer-result-snippet {
-  font-size: 13.5px;
+  font-size: 15.5px;
   color: var(--app-muted);
   line-height: 1.55;
 }
@@ -270,8 +270,8 @@
   text-align: center;
   color: var(--app-muted);
 }
-.docs-drawer-empty p { margin: 0 0 6px; font-size: 14.5px; color: var(--app-text-subtle); }
-.docs-drawer-empty-sub { font-size: 13.5px; color: var(--app-muted); }
+.docs-drawer-empty p { margin: 0 0 6px; font-size: 16.5px; color: var(--app-text-subtle); }
+.docs-drawer-empty-sub { font-size: 15.5px; color: var(--app-muted); }
 
 /* Page reader */
 .docs-drawer-reader { display: flex; flex-direction: column; gap: 14px; }
@@ -282,7 +282,7 @@
   color: var(--app-text-subtle);
   padding: 6px 10px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -304,7 +304,7 @@
     var(--app-surface);
 }
 .docs-drawer-page-group {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -312,21 +312,21 @@
 }
 .docs-drawer-page-h {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.012em;
   color: var(--app-text);
 }
 .docs-drawer-page-sum {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
   color: var(--app-muted);
 }
 .docs-drawer-page-meta {
   display: flex;
   gap: 14px;
-  font-size: 12.5px;
+  font-size: 14.5px;
   color: var(--app-muted);
 }
 
@@ -341,7 +341,7 @@
   border: 1px solid transparent;
   background: linear-gradient(135deg, #7c4dff, #2196f3);
   color: #fff;
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 600;
   text-decoration: none;
 }
@@ -351,14 +351,14 @@
 .docs-drawer-section { display: flex; flex-direction: column; gap: 8px; }
 .docs-drawer-section h3 {
   margin: 4px 0 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 650;
   letter-spacing: -0.005em;
   color: var(--app-text);
 }
 .docs-drawer-section p {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
   color: var(--app-text-subtle, var(--app-text));
 }
@@ -370,7 +370,7 @@
   gap: 4px;
 }
 .docs-drawer-section li {
-  font-size: 13.5px;
+  font-size: 15.5px;
   line-height: 1.55;
   color: var(--app-muted);
 }

@@ -38,14 +38,14 @@
 
 .byc-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.005em;
   color: var(--app-text);
 }
 .byc-sub {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--app-muted);
 }
 
@@ -66,7 +66,7 @@
   padding: 10px 14px;
   background: rgba(255, 139, 0, 0.1);
   border-bottom: 1px solid rgba(255, 139, 0, 0.32);
-  font-size: 13.5px;
+  font-size: 15.5px;
   color: var(--app-text);
 }
 .byc-warning svg { width: 16px; height: 16px; color: #B45309; flex-shrink: 0; }
@@ -87,7 +87,7 @@
 }
 .byc-empty p {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
 }
 
@@ -120,7 +120,7 @@
   gap: 8px;
 }
 .byc-card-title {
-  font-size: 14.5px;
+  font-size: 16.5px;
   font-weight: 600;
   color: var(--app-text);
   text-decoration: none;
@@ -144,7 +144,7 @@
   gap: 8px;
   padding-top: 6px;
   border-top: 1px solid var(--app-border-subtle);
-  font-size: 13px;
+  font-size: 15px;
   color: var(--app-muted);
 }
 .byc-card-open {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLongRightIcon,
   ArrowRightIcon,
@@ -14,6 +15,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import BrandLogo from "../components/BrandLogo";
+import KnowledgeGraphCanvas from "../components/KnowledgeGraphCanvas";
 import { useAuth } from "../hooks/useAuth";
 import "./Homepage.css";
 
@@ -36,28 +38,85 @@ const SOURCES = [
   { label: "Tickets", icon: ClipboardDocumentListIcon },
 ];
 
+/* ---------- Motion ----------
+ * One shared vocabulary so the page moves as a system rather than a pile of
+ * effects: things enter from 12px below, on the same easing, staggered by
+ * their reading order. Every variant respects prefers-reduced-motion via the
+ * `reduce` flag threaded down from the component.
+ */
+const EASE = [0.2, 0, 0, 1];
+
+const riseParent = (reduce, stagger = 0.07) => ({
+  hidden: {},
+  show: { transition: { staggerChildren: reduce ? 0 : stagger } },
+});
+
+const rise = (reduce) => ({
+  hidden: { opacity: 0, y: reduce ? 0 : 12 },
+  show: { opacity: 1, y: 0, transition: { duration: reduce ? 0 : 0.5, ease: EASE } },
+});
+
 /* ---------- Crafted CSS product mockups ---------- */
 
-function AskMock({ compact }) {
+/* The hero mock animates in the product's actual sequence — question, then
+   answer, then the sources that back it. The motion is the argument: the
+   citations arrive last because that is the part that matters. */
+function AskMock({ compact, animate }) {
+  const reduce = useReducedMotion();
+  if (!animate) {
+    return (
+      <div className={`mk ${compact ? "mk-sm" : ""}`}>
+        <div className="mk-prompt">
+          <SparklesIcon />
+          <span>What did we decide about the rollout window?</span>
+        </div>
+        <div className="mk-answer">
+          <p>
+            Two weeks ago the team agreed to ship <strong>Friday mornings only</strong>,
+            driven by the on-call rotation change. Owner: Priya.
+          </p>
+          <div className="mk-sources">
+            <span className="mk-src-label">Sources</span>
+            <span className="mk-chip">DEC-128</span>
+            <span className="mk-chip">Sprint 42 retro</span>
+            <span className="mk-chip">Roadmap brief</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const chips = ["DEC-128", "Sprint 42 retro", "Roadmap brief"];
+
   return (
-    <div className={`mk ${compact ? "mk-sm" : ""}`}>
-      <div className="mk-prompt">
+    <motion.div
+      className={`mk ${compact ? "mk-sm" : ""}`}
+      initial="hidden"
+      animate="show"
+      variants={riseParent(reduce, 0.5)}
+    >
+      <motion.div className="mk-prompt" variants={rise(reduce)}>
         <SparklesIcon />
         <span>What did we decide about the rollout window?</span>
-      </div>
-      <div className="mk-answer">
+      </motion.div>
+      <motion.div className="mk-answer" variants={rise(reduce)}>
         <p>
           Two weeks ago the team agreed to ship <strong>Friday mornings only</strong>,
           driven by the on-call rotation change. Owner: Priya.
         </p>
-        <div className="mk-sources">
-          <span className="mk-src-label">Sources</span>
-          <span className="mk-chip">DEC-128</span>
-          <span className="mk-chip">Sprint 42 retro</span>
-          <span className="mk-chip">Roadmap brief</span>
-        </div>
-      </div>
-    </div>
+        <motion.div
+          className="mk-sources"
+          variants={riseParent(reduce, 0.1)}
+          initial="hidden"
+          animate="show"
+        >
+          <motion.span className="mk-src-label" variants={rise(reduce)}>Sources</motion.span>
+          {chips.map((c) => (
+            <motion.span key={c} className="mk-chip" variants={rise(reduce)}>{c}</motion.span>
+          ))}
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -82,29 +141,6 @@ function DecisionMock() {
   );
 }
 
-function GraphMock() {
-  return (
-    <div className="mk mk-sm mk-graph">
-      <svg viewBox="0 0 320 170" preserveAspectRatio="xMidYMid meet">
-        <line x1="160" y1="85" x2="70" y2="42" />
-        <line x1="160" y1="85" x2="262" y2="48" />
-        <line x1="160" y1="85" x2="60" y2="132" />
-        <line x1="160" y1="85" x2="250" y2="132" />
-        <circle className="mk-node-hub" cx="160" cy="85" r="9" />
-        <circle className="mk-node" cx="70" cy="42" r="6" />
-        <circle className="mk-node" cx="262" cy="48" r="6" />
-        <circle className="mk-node" cx="60" cy="132" r="6" />
-        <circle className="mk-node" cx="250" cy="132" r="6" />
-      </svg>
-      <div className="mk-graph-labels">
-        <span className="mk-chip">Decision</span>
-        <span className="mk-chip">Project</span>
-        <span className="mk-chip">Owner</span>
-        <span className="mk-chip">Doc</span>
-      </div>
-    </div>
-  );
-}
 
 function GitHubMock() {
   return (
@@ -137,6 +173,7 @@ export default function Homepage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const appEntryHref = user ? "/dashboard" : "/login";
   const revealRef = useRef(null);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     const savedTheme = document.documentElement.getAttribute("data-theme");
@@ -153,28 +190,59 @@ export default function Homepage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Scroll-reveal: fade + rise each [data-reveal] element as it enters the viewport.
+  // Scroll choreography. GSAP + ScrollTrigger replaces the hand-rolled
+  // IntersectionObserver: same [data-reveal] contract, but siblings that enter
+  // together are batched and staggered, so a row of cards arrives as a wave
+  // rather than four independent pops.
   useEffect(() => {
     const root = revealRef.current;
     if (!root) return undefined;
     const els = Array.from(root.querySelectorAll("[data-reveal]"));
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!els.length) return undefined;
+
+    if (
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       els.forEach((el) => el.classList.add("is-revealed"));
       return undefined;
     }
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-revealed");
-            io.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.14, rootMargin: "0px 0px -8% 0px" }
+
+    let ctx;
+    let cancelled = false;
+
+    // Code-split: GSAP only loads for visitors who reach this page, and never
+    // blocks first paint.
+    Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(
+      ([{ gsap }, { ScrollTrigger }]) => {
+        if (cancelled) return;
+        gsap.registerPlugin(ScrollTrigger);
+
+        ctx = gsap.context(() => {
+          ScrollTrigger.batch(els, {
+            start: "top 88%",
+            once: true,
+            onEnter: (batch) => {
+              gsap.to(batch, {
+                opacity: 1,
+                y: 0,
+                duration: 0.62,
+                ease: "power3.out",
+                stagger: 0.09,
+                overwrite: true,
+                onComplete: () =>
+                  batch.forEach((el) => el.classList.add("is-revealed")),
+              });
+            },
+          });
+        }, root);
+      }
     );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+
+    return () => {
+      cancelled = true;
+      if (ctx) ctx.revert();
+    };
   }, []);
 
   const tryLink = (route) => (user ? route : "/login");
@@ -205,23 +273,30 @@ export default function Homepage() {
         {/* ---------- Hero ---------- */}
         <section className="hp-hero">
           <div className="hp-container hp-hero-inner">
-            <div className="hp-hero-text" data-reveal>
-              <Link to="/ask" className="hp-hero-badge">
-                <span className="hp-hero-badge-pill">New</span>
-                Source-grounded answers
-                <ArrowRightIcon aria-hidden="true" />
-              </Link>
-              <h1>
+            <motion.div
+              className="hp-hero-text"
+              initial="hidden"
+              animate="show"
+              variants={riseParent(reduceMotion, 0.09)}
+            >
+              <motion.div variants={rise(reduceMotion)}>
+                <Link to="/ask" className="hp-hero-badge">
+                  <span className="hp-hero-badge-pill">New</span>
+                  Source-grounded answers
+                  <ArrowRightIcon aria-hidden="true" />
+                </Link>
+              </motion.div>
+              <motion.h1 variants={rise(reduceMotion)}>
                 Six months from now,
                 <br />
                 <span className="hp-hero-accent">you'll ask why you did this.</span>
-              </h1>
-              <p className="hp-hero-sub">
+              </motion.h1>
+              <motion.p className="hp-hero-sub" variants={rise(reduceMotion)}>
                 Knoledgr records the decisions your team makes and the reasoning behind
                 them, links them to the pull requests that implemented them, and answers
                 questions about any of it — with the sources attached.
-              </p>
-              <div className="hp-actions">
+              </motion.p>
+              <motion.div className="hp-actions" variants={rise(reduceMotion)}>
                 <Link to={appEntryHref} className="hp-button hp-button-primary hp-button-large">
                   {user ? "Open workspace" : "Start free"}
                   <ArrowLongRightIcon aria-hidden="true" />
@@ -229,16 +304,21 @@ export default function Homepage() {
                 <a href="#product" className="hp-button hp-button-secondary hp-button-large">
                   See how it works
                 </a>
-              </div>
-              <ul className="hp-proof">
+              </motion.div>
+              <motion.ul className="hp-proof" variants={rise(reduceMotion)}>
                 <li><CheckCircleIcon aria-hidden="true" /> Connect GitHub in a minute</li>
                 <li><CheckCircleIcon aria-hidden="true" /> Nothing to migrate</li>
-              </ul>
-            </div>
+              </motion.ul>
+            </motion.div>
 
-            <div className="hp-hero-mock" data-reveal>
-              <AskMock />
-            </div>
+            <motion.div
+              className="hp-hero-mock"
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.6, ease: EASE, delay: reduceMotion ? 0 : 0.25 }}
+            >
+              <AskMock animate />
+            </motion.div>
           </div>
 
           <div className="hp-container hp-works">
@@ -317,7 +397,7 @@ export default function Homepage() {
                   </p>
                   <span className="hp-inline-link">{user ? "Open Graph" : "See the graph"} <ArrowRightIcon aria-hidden="true" /></span>
                 </div>
-                <div className="hp-bento-mock"><GraphMock /></div>
+                <div className="hp-bento-mock"><KnowledgeGraphCanvas /></div>
               </Link>
             </div>
           </div>

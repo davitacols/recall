@@ -73,7 +73,7 @@
   text-align: left;
 }
 .nav-group-name {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -110,7 +110,7 @@
   border-radius: 6px;
   color: var(--app-text-subtle, var(--app-text));
   text-decoration: none;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   transition: background 100ms ease, color 100ms ease;
   white-space: nowrap;
@@ -137,7 +137,7 @@
 }
 .nav-item.is-small {
   padding: 6px 10px;
-  font-size: 13.5px;
+  font-size: 15.5px;
 }
 
 .nav-item-icon {

@@ -25,13 +25,15 @@ const SECURITY_TAGS = [
   "Source-grounded answers",
 ];
 
-const WORKS_WITH = [
-  { label: "Conversations", icon: ChatBubbleLeftRightIcon },
-  { label: "Decisions", icon: CheckCircleIcon },
-  { label: "Meetings", icon: CalendarIcon },
-  { label: "Tasks", icon: ClipboardDocumentListIcon },
-  { label: "Documents", icon: DocumentTextIcon },
-  { label: "GitHub", icon: CodeBracketIcon },
+/* Framed as the places reasoning already gets buried, not as product surfaces
+   we replace. Under the decision-memory positioning these are inputs, so the
+   page never invites a feature-by-feature comparison with Jira. */
+const SOURCES = [
+  { label: "Pull requests", icon: CodeBracketIcon },
+  { label: "Threads", icon: ChatBubbleLeftRightIcon },
+  { label: "Meeting notes", icon: CalendarIcon },
+  { label: "Design docs", icon: DocumentTextIcon },
+  { label: "Tickets", icon: ClipboardDocumentListIcon },
 ];
 
 /* ---------- Crafted CSS product mockups ---------- */
@@ -104,21 +106,31 @@ function GraphMock() {
   );
 }
 
-function DocsMock() {
+function GitHubMock() {
   return (
     <div className="mk mk-sm">
-      <p className="mk-title">Rollout playbook</p>
-      <div className="mk-line w-95" />
-      <div className="mk-line w-80" />
-      <div className="mk-ref">
-        <DocumentTextIcon />
-        <span>References <strong>DEC-128</strong></span>
+      <div className="mk-row mk-row-top">
+        <span className="mk-tag">DEC-128</span>
+        <span className="mk-lozenge mk-lozenge-green">Decided</span>
       </div>
-      <div className="mk-line w-88" />
-      <div className="mk-line w-60" />
+      <p className="mk-title">Ship releases Friday mornings only</p>
+      <div className="mk-divider" />
+      <div className="mk-pr">
+        <CodeBracketIcon />
+        <span className="mk-pr-id">#412</span>
+        <span className="mk-pr-title">Move deploy window to Friday AM</span>
+        <span className="mk-lozenge mk-lozenge-merged">Merged</span>
+      </div>
+      <div className="mk-pr">
+        <CodeBracketIcon />
+        <span className="mk-pr-id">#418</span>
+        <span className="mk-pr-title">Update on-call rotation docs</span>
+        <span className="mk-lozenge mk-lozenge-merged">Merged</span>
+      </div>
     </div>
   );
 }
+
 
 export default function Homepage() {
   const { user } = useAuth();
@@ -200,13 +212,14 @@ export default function Homepage() {
                 <ArrowRightIcon aria-hidden="true" />
               </Link>
               <h1>
-                Your team already knows the answer.
+                Six months from now,
                 <br />
-                <span className="hp-hero-accent">Knoledgr remembers where it is.</span>
+                <span className="hp-hero-accent">you'll ask why you did this.</span>
               </h1>
               <p className="hp-hero-sub">
-                Pages, decisions, meetings, and tasks — connected. Ask anything and get an
-                answer from your own workspace, with the sources attached.
+                Knoledgr records the decisions your team makes and the reasoning behind
+                them, links them to the pull requests that implemented them, and answers
+                questions about any of it — with the sources attached.
               </p>
               <div className="hp-actions">
                 <Link to={appEntryHref} className="hp-button hp-button-primary hp-button-large">
@@ -218,8 +231,8 @@ export default function Homepage() {
                 </a>
               </div>
               <ul className="hp-proof">
-                <li><CheckCircleIcon aria-hidden="true" /> No tagging required</li>
-                <li><CheckCircleIcon aria-hidden="true" /> Set up in a minute</li>
+                <li><CheckCircleIcon aria-hidden="true" /> Connect GitHub in a minute</li>
+                <li><CheckCircleIcon aria-hidden="true" /> Nothing to migrate</li>
               </ul>
             </div>
 
@@ -229,9 +242,9 @@ export default function Homepage() {
           </div>
 
           <div className="hp-container hp-works">
-            <p className="hp-works-label">One workspace, every kind of work</p>
+            <p className="hp-works-label">Where the reasoning usually gets buried</p>
             <div className="hp-works-row">
-              {WORKS_WITH.map(({ label, icon: Icon }) => (
+              {SOURCES.map(({ label, icon: Icon }) => (
                 <span key={label} className="hp-works-chip"><Icon aria-hidden="true" /> {label}</span>
               ))}
             </div>
@@ -242,9 +255,12 @@ export default function Homepage() {
         <section id="product" className="hp-product">
           <div className="hp-container">
             <div className="hp-product-intro" data-reveal>
-              <span className="hp-eyebrow">Product</span>
-              <h2>Four surfaces, one workspace.</h2>
-              <p>Each one solves a real problem teams hit every week. Skim them and pick where to start.</p>
+              <span className="hp-eyebrow">How it holds together</span>
+              <h2>A decision, and everything that led to it.</h2>
+              <p>
+                Not another place to do your work — a record of why the work went the way
+                it did, wired to the tools you already use.
+              </p>
             </div>
 
             <div className="hp-bento">
@@ -275,31 +291,33 @@ export default function Homepage() {
                 <div className="hp-bento-mock"><DecisionMock /></div>
               </Link>
 
-              {/* Knowledge graph */}
-              <Link to={tryLink("/knowledge/graph")} className="hp-bento-card" data-reveal style={{ "--rd": "180ms" }}>
+              {/* GitHub — the wedge. Promoted to a first-class card because it is
+                  the adoption path: one connect, no migration. */}
+              <Link to="/integrations/github" className="hp-bento-card" data-reveal style={{ "--rd": "180ms" }}>
                 <div className="hp-bento-copy">
-                  <span className="hp-feature-eyebrow"><LinkIcon aria-hidden="true" /> Knowledge Graph</span>
-                  <h3>Your workspace, finally connected.</h3>
+                  <span className="hp-feature-eyebrow"><CodeBracketIcon aria-hidden="true" /> GitHub</span>
+                  <h3>The decision, next to the code that shipped it.</h3>
                   <p className="hp-bento-body">
-                    Docs link to decisions, decisions link to projects, projects link to owners.
+                    Connect a repo and Knoledgr links merged pull requests back to the
+                    decision they came from. Nothing to migrate.
                   </p>
-                  <span className="hp-inline-link">{user ? "Open Graph" : "Try the graph"} <ArrowRightIcon aria-hidden="true" /></span>
+                  <span className="hp-inline-link">Connect GitHub <ArrowRightIcon aria-hidden="true" /></span>
                 </div>
-                <div className="hp-bento-mock"><GraphMock /></div>
+                <div className="hp-bento-mock"><GitHubMock /></div>
               </Link>
 
-              {/* Documents — wide reversed */}
-              <Link to={tryLink("/business/documents")} className="hp-bento-card hp-bento-wide hp-bento-rev" data-reveal>
+              {/* Knowledge graph — wide reversed */}
+              <Link to={tryLink("/knowledge/graph")} className="hp-bento-card hp-bento-wide hp-bento-rev" data-reveal>
                 <div className="hp-bento-copy">
-                  <span className="hp-feature-eyebrow"><DocumentTextIcon aria-hidden="true" /> Documents</span>
-                  <h3>Notes, specs, briefs — searchable the way they should be.</h3>
+                  <span className="hp-feature-eyebrow"><LinkIcon aria-hidden="true" /> Knowledge Graph</span>
+                  <h3>Follow the reasoning back as far as it goes.</h3>
                   <p className="hp-bento-body">
-                    Write in a clean editor. Reference other docs, decisions, and people. When Recall
-                    answers a question, your docs are the source.
+                    Every decision links to the threads, documents and people it came from —
+                    and to the decisions it later replaced. Nothing is a dead end.
                   </p>
-                  <span className="hp-inline-link">{user ? "Open Documents" : "Try Documents"} <ArrowRightIcon aria-hidden="true" /></span>
+                  <span className="hp-inline-link">{user ? "Open Graph" : "See the graph"} <ArrowRightIcon aria-hidden="true" /></span>
                 </div>
-                <div className="hp-bento-mock"><DocsMock /></div>
+                <div className="hp-bento-mock"><GraphMock /></div>
               </Link>
             </div>
           </div>
@@ -320,8 +338,8 @@ export default function Homepage() {
               <li data-reveal>
                 <span className="hp-step-num">01</span>
                 <div>
-                  <h4>You work like normal</h4>
-                  <p>Docs, meeting notes, tickets, decisions. Whatever you already do.</p>
+                  <h4>Connect GitHub</h4>
+                  <p>One repo is enough to start. You don't move anything, and nobody changes how they work.</p>
                 </div>
               </li>
               <li data-reveal style={{ "--rd": "110ms" }}>

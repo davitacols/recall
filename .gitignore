@@ -45,6 +45,11 @@ staticfiles/
 .env.local
 *.pot
 
+# VPS deploy — real production secrets. The .example template IS tracked.
+deploy/.env.prod
+# Deploy docs are exempt from the blanket *.md rule above.
+!deploy/*.md
+
 # Security - Never commit these
 *.pem
 *.key

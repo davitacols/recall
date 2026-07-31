@@ -11,7 +11,12 @@
 *_new.py
 *_old.py
 *_backup.py
+# Blanket rule for scratch files, but the Django test harness itself must be
+# version controlled — without these two the suite cannot run from a clean
+# checkout, which silently rules out CI.
 *_test.py
+!backend/config/settings_test.py
+!backend/config/urls_test.py
 *_guard.js
 *_guards.js
 *_fetchData.js

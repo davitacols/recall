@@ -88,7 +88,22 @@ def handle_pull_request_event(
     snapshot = _pr_snapshot(pr)
 
     # 1 + 2: refresh existing rows for this PR (cheap, always run).
+    # Deliberately runs even for disabled repos: links created while the repo
+    # was enabled should not silently go stale, and the UI promises that
+    # "past links stay intact".
     _refresh_existing_links(repo, pr_number, snapshot)
+
+    # A disabled repo must not produce NEW links. Without this the toggle only
+    # hid repos from the PR picker while the webhook kept auto-linking them
+    # behind the user's back — the opposite of what "disabled" implies, and a
+    # real problem for an installation granted access to every repo in an
+    # account, where most of them are nothing to do with this workspace.
+    if not repo.is_enabled_for_decisions:
+        logger.info(
+            "Skipping auto-link for disabled repo %s (PR #%s)",
+            repo.full_name, pr_number,
+        )
+        return
 
     # 3: parse inline markers from the body.
     body = pr.get("body") or ""

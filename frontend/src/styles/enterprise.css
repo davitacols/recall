@@ -32,7 +32,7 @@ html, body, #root {
   font-family: "League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.6;
 }
 
@@ -42,17 +42,17 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.01em;
 }
 
-h1 { font-size: 28px; }
-h2 { font-size: 24px; }
-h3 { font-size: 20px; }
-h4 { font-size: 16px; }
+h1 { font-size: 30px; }
+h2 { font-size: 26px; }
+h3 { font-size: 22px; }
+h4 { font-size: 17px; }
 
 p { color: var(--text-secondary); }
 
 button, .btn {
   height: 38px;
   padding: 0 18px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   border-radius: 0 !important;
   border: none;
@@ -106,7 +106,7 @@ input, textarea, select {
   border-radius: 0 !important;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 15px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

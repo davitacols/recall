@@ -44,7 +44,7 @@
 }
 .aa-tile-label {
   margin: 0;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -52,7 +52,7 @@
 }
 .aa-tile-value {
   margin: 2px 0 0;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.012em;
   color: var(--app-text);
@@ -76,7 +76,7 @@
   min-width: 160px;
 }
 .aa-filter-label {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -90,7 +90,7 @@
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--app-text);
   cursor: pointer;
   font-family: inherit;
@@ -144,7 +144,7 @@
 }
 .aa-event-tool {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--app-text);
   padding: 1px 6px;
@@ -157,7 +157,7 @@
   gap: 4px;
   padding: 2px 9px;
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -166,7 +166,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--app-muted);
   margin-left: auto;
 }
@@ -182,7 +182,7 @@
   border: 1px solid var(--app-border-subtle);
   border-radius: 6px;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--app-text);
   max-width: 100%;
   overflow-x: auto;
@@ -198,7 +198,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--app-muted);
   flex-wrap: wrap;
 }

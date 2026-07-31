@@ -28,7 +28,7 @@
 }
 
 .kn-spinner__label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--app-muted, currentColor);
   letter-spacing: -0.005em;
@@ -36,7 +36,7 @@
 }
 
 .kn-spinner--block .kn-spinner__label {
-  font-size: 13.5px;
+  font-size: 14.5px;
 }
 
 /* Screen reader only — announces "Loading" or the label. */

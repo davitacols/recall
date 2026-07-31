@@ -40,7 +40,7 @@
   text-decoration: none;
 }
 .lg-back {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--lg-muted);
   text-decoration: none;
   transition: color 140ms ease;
@@ -80,7 +80,7 @@
 }
 .lg-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.022em;
   color: var(--lg-text);
@@ -88,7 +88,7 @@
 }
 .lg-subtitle {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 14.5px;
   line-height: 1.55;
   color: var(--lg-muted);
 }
@@ -112,7 +112,7 @@
   border: none;
   background: transparent;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--lg-muted);
   border-radius: 7px;
@@ -130,7 +130,7 @@
 
 .lg-error {
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
   color: var(--lg-danger);
   background: rgba(180, 35, 24, 0.06);
@@ -139,7 +139,7 @@
 }
 .lg-success {
   padding: 14px 16px;
-  font-size: 13.5px;
+  font-size: 14.5px;
   line-height: 1.55;
   color: var(--lg-text);
   background: rgba(4, 120, 87, 0.06);
@@ -157,7 +157,7 @@
 }
 .lg-success-meta {
   margin-top: 6px !important;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--lg-muted);
 }
 
@@ -174,7 +174,7 @@
   gap: 6px;
 }
 .lg-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--lg-text-subtle);
   letter-spacing: -0.005em;
@@ -188,7 +188,7 @@
   background: var(--lg-surface);
   color: var(--lg-text);
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   outline: none;
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
@@ -240,7 +240,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--lg-muted);
 }
 .lg-check svg {
@@ -266,7 +266,7 @@
   background: var(--lg-text);
   color: var(--lg-bg);
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   transition: background 140ms ease, border-color 140ms ease;
@@ -286,11 +286,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 14px;
 }
 .lg-foot-line {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--lg-muted);
 }
 .lg-link {
@@ -298,7 +298,7 @@
   border: none;
   color: var(--lg-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   padding: 0;
@@ -315,7 +315,7 @@
   margin: 0;
   padding-top: 6px;
   border-top: 1px solid var(--lg-border);
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--lg-muted);
   line-height: 1.5;
 }
@@ -340,7 +340,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;

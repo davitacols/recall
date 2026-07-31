@@ -9,4 +9,9 @@ urlpatterns = [
     path("api/organizations/", include("apps.organizations.urls")),
     path("api/integrations/", include("apps.integrations.urls")),
     path("api/integrations/fresh/", include("apps.integrations.urls_fresh")),
+    # Mirrors config/urls.py. Their absence here made the search tests fail
+    # with 404s that looked like product bugs but were a gap in this file —
+    # the endpoints answer fine in production.
+    path("api/recall/", include("apps.conversations.unified_urls")),
+    path("api/recall/search/", include("apps.knowledge.bm25_urls")),
 ]

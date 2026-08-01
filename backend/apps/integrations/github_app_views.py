@@ -202,14 +202,43 @@ def github_app_install_callback(request):
     except (TypeError, ValueError):
         return Response({"error": "installation_id must be numeric"}, status=400)
 
-    # CSRF: state must match the one we issued for this user. We don't fail
-    # hard if state is missing (the frontend can also accept a callback
-    # without state for users who opened a stale install URL), but if state
-    # is present we enforce it.
-    if state:
-        record = _pop_state(state)
-        if not record or record["user_id"] != request.user.id:
-            return Response({"error": "Install state did not match. Try connecting again."}, status=400)
+    # State is mandatory. It used to be enforced only when present, so a
+    # request with no state skipped the check entirely — and since the binding
+    # below trusts request.user.organization, an authenticated user in any
+    # workspace could POST another workspace's installation_id (a small,
+    # enumerable integer) and take over its GitHub connection, inheriting its
+    # repository list and webhook events. Anyone with a stale install URL can
+    # simply reconnect; that is a far better outcome than leaving the hole.
+    if not state:
+        return Response(
+            {"error": "Missing install state. Start the connection again from Integrations."},
+            status=400,
+        )
+    record = _pop_state(state)
+    if not record or record["user_id"] != request.user.id:
+        return Response({"error": "Install state did not match. Try connecting again."}, status=400)
+
+    # An installation belongs to exactly one workspace. Without this, completing
+    # the callback from a different workspace silently moved it — the previous
+    # owner lost GitHub linking with no notice, and its repo rows were left
+    # behind pointing at an installation it no longer held.
+    existing = GitHubAppInstallation.objects.filter(installation_id=installation_id).first()
+    if existing and existing.organization_id != request.user.organization_id:
+        logger.warning(
+            "Refused to rebind GitHub installation %s from org %s to org %s (user %s)",
+            installation_id, existing.organization_id,
+            request.user.organization_id, request.user.id,
+        )
+        return Response(
+            {
+                "error": (
+                    "This GitHub installation is already connected to another "
+                    "workspace. Uninstall the Knoledgr app from that account "
+                    "first, or install it on a different account."
+                )
+            },
+            status=409,
+        )
 
     # Fetch the install record from GitHub to confirm it actually exists
     # and the App has access. This also gives us account_login + permissions.
